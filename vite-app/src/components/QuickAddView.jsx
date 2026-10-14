@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect, useLayoutEffect, useCallba
 import { API_URL } from '../utils/api.js';
 import { HAND_CONFIG } from '../utils/utils.js';
 import { findGaps, applyAnswer } from '../utils/quick-add/gaps.js';
+import { replayerGame, gameConfig } from '../utils/quick-add/game.js';
 
 /* Quick Add — describe a hand in words, then answer one question at a time
    until the replayer has what it needs. Contract: docs/quick-add-contract.md.
@@ -116,7 +117,7 @@ const spacedCards = s => (String(s || '').replace(/\s+/g, '').match(/[2-9TJQKA][
 
 function summarize(hand) {
   if (!hand) return [];
-  const cfg = HAND_CONFIG[hand.gameType] || {};
+  const cfg = gameConfig(hand.gameType) || HAND_CONFIG[hand.gameType] || {};
   const rows = [];
   const mode = hand.gameMode === 'cash' ? 'Cash' + (hand.currency ? ' ' + hand.currency : '') : hand.gameMode === 'mtt' ? 'Tournament' : null;
   rows.push(['Game', [hand.gameType, mode].filter(Boolean).join(' · ') || null]);
@@ -153,8 +154,18 @@ function toReplayable(hand) {
     draws: Array.isArray(s?.draws) ? s.draws : [],
   }));
   h.blinds = h.blinds || {};
+  /* TODO(replayer follow-up, owner 2026-10-14): a hero-less hand (hand.heroless, the narrator
+     watched) is opened with heroIdx 0 until the replayer can show one with every known card
+     face up; the flag travels with the hand. See lib/quick-add/decisions.js, OBSERVER_HANDS. */
   if (h.heroIdx == null) h.heroIdx = 0;
+  /* TODO(replayer follow-up, owner 2026-10-14): PLO5, PLO6, PLO6 8/b, Short Deck and NLO8 get
+     replayer configs of their own; until then the replayer is given the nearest game it has and
+     the hand keeps the quick-add name in `variant`. */
+  if (typeof h.gameType === 'string' && replayerGame(h.gameType) !== h.gameType) { h.variant = h.gameType; h.gameType = replayerGame(h.gameType); }
   delete h.quickAddDismissed; // the gaps engine's "don't ask again" list
+  // What the parse left pending or asked (docs/quick-add-contract.md, hand.quickAdd) is the
+  // quick-add flow's, not the replayer's: its questions and their options must not be saved.
+  delete h.quickAdd;
   return h;
 }
 
@@ -290,12 +301,15 @@ export default function QuickAddView({ token, heroName, onBack, onOpen }) {
     onOpen(toReplayable(hand), target, description);
   };
 
-  const parse = async () => {
-    const description = text.trim();
+  // handIndex: a post that tells several hands, and the player asked for another one (decision F).
+  const parse = async (handIndex) => {
+    const again = Number.isInteger(handIndex) ? handIndex : null;
+    const description = again ? ((log.find(m => m.side === 'user') || {}).text || text).trim() : text.trim();
     if (!description || busy) return;
     setBusy('parse'); setError(null);
+    const hints = { ...(heroName ? { heroName } : {}), ...(again ? { handIndex: again } : {}) };
     const { ok, status, data } = await postJson('/quick-add/parse', token, {
-      text: description, source: 'text', hints: heroName ? { heroName } : undefined,
+      text: description, source: 'text', hints: Object.keys(hints).length ? hints : undefined,
     });
     setBusy(null);
     if (!ok || !data?.hand) { setError(describeFailure(ok ? 500 : status, 'parse')); return; }
@@ -315,6 +329,7 @@ export default function QuickAddView({ token, heroName, onBack, onOpen }) {
 
   const choose = (gap, option) => {
     if (busy) return;
+    if (option.value && option.value.op === 'reparse') { parse(option.value.handIndex); return; }
     const settled = settleAuto(applyAnswer(hand, gap, option.value));
     say({ side: 'app', text: gap.question }, { side: 'user', tone: isDismiss(option) ? 'skip' : undefined, text: option.label }, ...settled.notes);
     setHand(settled.hand); setError(null); setReply('');

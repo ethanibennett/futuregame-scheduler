@@ -19,6 +19,11 @@
 
 import { cardsOf } from './cards.js';
 
+/* Cent stakes add up in binary floating point to 0.44999999999999996: "called 0.3,
+   but the price was 0.3" (2026-10-14, a 5NL hand history). Every running total is
+   cleaned of that noise; chip amounts never need more than six decimals. */
+const clean = (x) => (Number.isFinite(x) ? Math.round(x * 1e6) / 1e6 : x);
+
 const STRADDLE_TYPES = ['utg', 'button', 'rock', 'mississippi'];
 
 function straddleSeatFor(type, n, stored) {
@@ -243,17 +248,17 @@ export class Table {
   /* Chips into the pot that are not a wager on this street (antes). */
   post(p, amount) {
     const a = Math.max(0, amount);
-    this.stacks[p] -= a;
-    this.pot += a;
+    this.stacks[p] = clean(this.stacks[p] - a);
+    this.pot = clean(this.pot + a);
     if (this.stacks[p] <= 0 && Number.isFinite(this.stacks[p])) this.allIn.add(p);
   }
 
   /* Chips wagered on this street. */
   put(p, amount) {
     const a = Math.max(0, amount);
-    this.stacks[p] -= a;
-    this.contrib[p] += a;
-    this.pot += a;
+    this.stacks[p] = clean(this.stacks[p] - a);
+    this.contrib[p] = clean(this.contrib[p] + a);
+    this.pot = clean(this.pot + a);
     if (this.stacks[p] <= 0 && Number.isFinite(this.stacks[p])) this.allIn.add(p);
   }
 
@@ -333,7 +338,7 @@ export class Table {
     return out;
   }
 
-  callAmount(p) { return Math.max(0, this.maxBet - this.contrib[p]); }
+  callAmount(p) { return Math.max(0, clean(this.maxBet - this.contrib[p])); }
   remaining(p) { return this.stacks[p]; }
 
   /* Bet sizes for the street and the seat about to act. */

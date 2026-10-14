@@ -321,7 +321,10 @@ export function checkActions(hand, env, out) {
         }
         const said = fills.map(f => playerName(hand, f.player) + ' ' + (f.action === 'fold' ? 'folded' : f.action === 'check' ? 'checked' : 'called'));
         const allFold = fills.every(f => f.action === 'fold');
-        const quiet = silentFolds(fills);
+        /* After the flop, seats skipped before the first bet checked: a player
+           named first with nothing bet acted after them (server
+           insertImpliedChecks, 2026-10-14). That follows from the hand. */
+        const quiet = silentFolds(fills) || (si > 0 && fills.length > 0 && fills.every(f => f.action === 'check'));
         const question = allFold
           ? 'Nothing is recorded for ' + listWords(fills.map(f => playerName(hand, f.player))) + ' before ' + describe(hand, a, t) + ' on the ' + sName + '. Did ' + (fills.length > 1 ? 'they' : playerName(hand, fills[0].player)) + ' fold?'
           : 'Before ' + describe(hand, a, t) + ' on the ' + sName + ': ' + listWords(said) + '?';

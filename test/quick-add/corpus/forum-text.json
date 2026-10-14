@@ -1,0 +1,9519 @@
+[
+ {
+  "id": "web-observer-check-it-down-569r",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1vq5oao/apparently_i_witnessed_an_unethical_poker_move/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "observer",
+   "board-shorthand"
+  ],
+  "text": "1/3, 7 handed. Watched this hand. UTG makes it $15, it folds round to the BB who calls. UTG says he'll check it down if BB wants, so they both table pre: A10h for UTG, 78o for BB. Flop 569r, UTG laughs and fist bumps him. OTTNH. Then the button tells UTG that was an unethical move, letting everyone fold and then checking it down. Who's right?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 1,
+    "bb": 3
+   },
+   "players": 7,
+   "observer": true,
+   "board": {
+    "flop": "5x6x9x"
+   },
+   "showdown": {
+    "UTG": "AhTh",
+    "BB": "7x8x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      15
+     ],
+     [
+      "BB",
+      "call",
+      12
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "check"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "\"OTTNH\" is \"on to the next hand\": nothing after the flop is told. \"A10h\" is both cards hearts (suited). The narrator was not in the hand, so it is stored hero-less.",
+  "flaws": [
+   "seating"
+  ]
+ },
+ {
+  "id": "web-q10ss-utg-turn-raise-dup-ten",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/18qki1i/510_6_players_q10ss_35_open_utg/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "shorthand",
+   "3bet",
+   "impossible-cards"
+  ],
+  "text": "5/10, 6 players. Hero opens UTG to 35 with Q10ss, BB calls, about 1800 behind each after that. Pretty passive table, not many 3! pre. Pot 75. Flop: 10s Qc 6d, top two for me. BB bets out 75, I call. Pot 225. Turn 8s, second spade so now I have the backdoor draw too. BB bets 150. Edit: I raised to 450, he 3! me to 950, I called for the price. River bricked, an offsuit 6, and I folded to his shove. He says he had a set of queens.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "blinds": {
+    "sb": 5,
+    "bb": 10
+   },
+   "players": 6,
+   "heroPosition": "UTG",
+   "heroCards": "QsTs",
+   "stacks": {
+    "UTG": 1835,
+    "BB": 1835
+   },
+   "board": {
+    "flop": "TsQc6d",
+    "turn": "8s",
+    "river": "6x"
+   },
+   "winners": [
+    "BB"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      35
+     ],
+     [
+      "BB",
+      "call",
+      25
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "bet",
+      75
+     ],
+     [
+      "UTG",
+      "call",
+      75
+     ]
+    ],
+    "turn": [
+     [
+      "BB",
+      "bet",
+      150
+     ],
+     [
+      "UTG",
+      "raise",
+      450
+     ],
+     [
+      "BB",
+      "raise",
+      800
+     ],
+     [
+      "UTG",
+      "call",
+      500
+     ]
+    ],
+    "river": [
+     [
+      "BB",
+      "all-in",
+      775
+     ],
+     [
+      "UTG",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": [
+     "streets.0.cards.hero",
+     "streets.1.cards.board"
+    ],
+    "id": [
+     "card",
+     "dup",
+     "notation"
+    ],
+    "about": "Q10ss and a flop with the 10 of spades: the Ts is in two places"
+   }
+  ],
+  "flaws": [
+   "duplicate-card"
+  ],
+  "notes": "The \"1800 behind after the BB calls\" is a mid-hand stack: 35 in plus 1800 left."
+ },
+ {
+  "id": "web-ak-4bet-cumulative-boards",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1wlwq3e/overplayed_ak_or_just_a_cooler/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "4bet",
+   "board-repeats",
+   "stated-pot",
+   "terse"
+  ],
+  "text": "2/2 NLH, live.\nOpen AhKd UTG to 15.\nBTN (good reg) 3b 45.\n4b to 135 from me, V calls.\nFlop KsJc4h (270): bet 125, call.\nTurn KsJc4h 7s (520): bet 225, call.\nRiver KsJc4h 7s Ad (970): jam ~450, V snaps AA.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "blinds": {
+    "sb": 2,
+    "bb": 2
+   },
+   "heroPosition": "UTG",
+   "heroCards": "AhKd",
+   "board": {
+    "flop": "KsJc4h",
+    "turn": "7s",
+    "river": "Ad"
+   },
+   "showdown": {
+    "BTN": "AxAx"
+   },
+   "winners": [
+    "BTN"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      15
+     ],
+     [
+      "BTN",
+      "raise",
+      45
+     ],
+     [
+      "UTG",
+      "raise",
+      120
+     ],
+     [
+      "BTN",
+      "call",
+      90
+     ]
+    ],
+    "flop": [
+     [
+      "UTG",
+      "bet",
+      125
+     ],
+     [
+      "BTN",
+      "call",
+      125
+     ]
+    ],
+    "turn": [
+     [
+      "UTG",
+      "bet",
+      225
+     ],
+     [
+      "BTN",
+      "call",
+      225
+     ]
+    ],
+    "river": [
+     [
+      "UTG",
+      "all-in",
+      450
+     ],
+     [
+      "BTN",
+      "call",
+      450
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "Each later street repeats the earlier board; the pots in brackets check the arithmetic (274 vs 270 is within rake)."
+ },
+ {
+  "id": "web-22-3bet-iso-stacked-by-42o",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1rj7mvi/applied_hungry_horse_strategy_at_hustlers_today/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "3bet",
+   "we-narrator",
+   "stated-pot",
+   "unknown-seat"
+  ],
+  "text": "Rec opens UTG to $20 at 5/5. Trying the iso plan: we 3-bet to $60 with 22 so we play heads up in position against him. He calls.\nFlop ($120): A♠ 5♦ 3♥\nWe c-bet small, $40. He calls.\nTurn ($200): 9♠\nWe barrel $250. He calls again.\nRiver: K♥, total brick. His range is capped so I jam $1000 for a fold. He snap calls with 42o, flopped wheel, I get stacked.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "blinds": {
+    "sb": 5,
+    "bb": 5
+   },
+   "heroCards": "2x2x",
+   "board": {
+    "flop": "As5d3h",
+    "turn": "9s",
+    "river": "Kh"
+   },
+   "showdown": {
+    "UTG": "4x2x"
+   },
+   "winners": [
+    "UTG"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      20
+     ],
+     [
+      "hero",
+      "raise",
+      60
+     ],
+     [
+      "UTG",
+      "call",
+      40
+     ]
+    ],
+    "flop": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "hero",
+      "bet",
+      40
+     ],
+     [
+      "UTG",
+      "call",
+      40
+     ]
+    ],
+    "turn": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "hero",
+      "bet",
+      250
+     ],
+     [
+      "UTG",
+      "call",
+      250
+     ]
+    ],
+    "river": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "hero",
+      "all-in",
+      1000
+     ],
+     [
+      "UTG",
+      "call",
+      1000
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the hero is \"in position\" but no seat is named"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "The stated flop pot (120) is 10 under the arithmetic (130): rake, which must not raise a pot question. The checks to the hero are implied by \"we c-bet\" in position."
+ },
+ {
+  "id": "web-qq-vs-cold-4bet-grandpa",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1ws8hkq/12_but_ak_has_16_combos_famous_last_words_vs_an/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "4bet",
+   "stack-behind",
+   "board-shorthand"
+  ],
+  "text": "1/2. Villain is a loose passive old guy who started the hand with about $380.\nUTG opens $10. I 3-bet to $35 from UTG1 with QQ (QhQc).\nGrandpa in the CO, who never raises, cold 4-bets to $105. UTG folds. KK+ obviously, but AK has 16 combos, so I call the extra $70.\nPot ~$220, he has about $275 behind and he's already reaching for it.\nFlop ($220): J83hhx\nI check, he jams his $275, I call. He has KK. Respect your elders.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 1,
+    "bb": 2
+   },
+   "heroPosition": "UTG+1",
+   "heroCards": "QhQc",
+   "stacks": {
+    "CO": 380
+   },
+   "board": {
+    "flop": "Jh8h3x"
+   },
+   "showdown": {
+    "CO": "KxKx"
+   },
+   "winners": [
+    "CO"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      10
+     ],
+     [
+      "UTG+1",
+      "raise",
+      35
+     ],
+     [
+      "CO",
+      "raise",
+      105
+     ],
+     [
+      "UTG",
+      "fold"
+     ],
+     [
+      "UTG+1",
+      "call",
+      70
+     ]
+    ],
+    "flop": [
+     [
+      "UTG+1",
+      "check"
+     ],
+     [
+      "CO",
+      "all-in",
+      275
+     ],
+     [
+      "UTG+1",
+      "call",
+      275
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "the hero's own stack is never given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.2.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the turn and river are never given"
+   }
+  ]
+ },
+ {
+  "id": "web-a6ss-multiway-flop-5-handed-rit",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1whidas/25_live_cash_hand_where_i_had_no_clue_how_to_play/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "multiway",
+   "run-it-twice",
+   "stacks-in-bb",
+   "all-in"
+  ],
+  "text": "2/5 NLH, 8 handed.\nUTG (100bb, abc reg) opens 4x\nUTG+1 (50bb, loose limp-caller) calls\nLJ (200bb) calls\nHJ (80bb, loose) calls\nHero OTB with A6ss calls, blinds are passive so I don't fear a squeeze\nSB and BB fold\nFlop 5h: AdAh4d\nChecks to me OTB, I bet 6bb\nUTG calls, UTG+1 shoves 46bb, LJ folds, HJ folds\nHero calls, UTG folds\nWe ran it twice, he said flush draw, I held both.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "blinds": {
+    "sb": 2,
+    "bb": 5
+   },
+   "players": 8,
+   "heroPosition": "BTN",
+   "heroCards": "As6s",
+   "stacks": {
+    "UTG": 500,
+    "UTG+1": 250,
+    "LJ": 1000,
+    "HJ": 400
+   },
+   "board": {
+    "flop": "AdAh4d"
+   },
+   "winners": [
+    "BTN"
+   ],
+   "unsupported": true,
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      20
+     ],
+     [
+      "UTG+1",
+      "call",
+      20
+     ],
+     [
+      "LJ",
+      "call",
+      20
+     ],
+     [
+      "HJ",
+      "call",
+      20
+     ],
+     [
+      "BTN",
+      "call",
+      20
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ]
+    ],
+    "flop": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "UTG+1",
+      "check"
+     ],
+     [
+      "LJ",
+      "check"
+     ],
+     [
+      "HJ",
+      "check"
+     ],
+     [
+      "BTN",
+      "bet",
+      30
+     ],
+     [
+      "UTG",
+      "call",
+      30
+     ],
+     [
+      "UTG+1",
+      "all-in",
+      230
+     ],
+     [
+      "LJ",
+      "fold"
+     ],
+     [
+      "HJ",
+      "fold"
+     ],
+     [
+      "BTN",
+      "call",
+      200
+     ],
+     [
+      "UTG",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "the hero's stack is never given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.2.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "neither runout is given"
+   },
+   {
+    "kind": "impossible",
+    "field": "quickAdd.unsupported",
+    "id": "unsupported",
+    "about": "a format the replayer cannot store"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.0.cards.opponents",
+    "id": [
+     "cards",
+     "showdown",
+     "choice"
+    ],
+    "about": "the shover's cards are never shown, only \"flush draw\""
+   }
+  ],
+  "notes": "\"Flop 5h\" means five-handed to the flop, not the five of hearts. \"Shoves 46bb\" is what was left after his 4bb call."
+ },
+ {
+  "id": "web-a9-otb-3bet-turn-jam",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1u7uf15/is_this_a_good_bluff_or_a_punt/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "3bet",
+   "shorthand",
+   "board-shorthand",
+   "stack-behind"
+  ],
+  "text": "2/5, 4 handed, $1500 eff. UTG makes it $20. Hero on the button (OTB) 3! to $65 holding A9cs. BB cold calls ($430) and UTG calls too.\nFlop is 732r and it is x to hero, so I bet $115. BB folds, UTG calls. Turn 5c (NFD, which I block): UTG donks $280, leaving around $1000 back.\nI am never strong here, a small overpair at best, so I jam. He tanks for a while, then lays down TT, or so he says.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 2,
+    "bb": 5
+   },
+   "players": 4,
+   "heroPosition": "BTN",
+   "heroCards": "Ac9s",
+   "effectiveStack": 1500,
+   "board": {
+    "flop": "7x3x2x",
+    "turn": "5c"
+   },
+   "winners": [
+    "BTN"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      20
+     ],
+     [
+      "BTN",
+      "raise",
+      65
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "call",
+      60
+     ],
+     [
+      "UTG",
+      "call",
+      45
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "BTN",
+      "bet",
+      115
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      115
+     ]
+    ],
+    "turn": [
+     [
+      "UTG",
+      "bet",
+      280
+     ],
+     [
+      "BTN",
+      "all-in",
+      1320
+     ],
+     [
+      "UTG",
+      "fold"
+     ]
+    ]
+   },
+   "stacks": {
+    "BB": 430
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "only the BB's stack ($430) and the effective stack are given; the others are not"
+   }
+  ],
+  "notes": "Owner reading: a parenthesised amount after a player (\"BB cold calls ($430)\") is that player's starting stack."
+ },
+ {
+  "id": "web-66-whole-table-calls-turn-jams",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1rpq5zr/top_boat_in_trouble_in_a_texas_game/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "group-action",
+   "implied-check",
+   "multiway",
+   "texas-game",
+   "decision"
+  ],
+  "text": "1/3$ texas game, 6 handed, $2000 eff. UTG opens $15 and the whole table calls; me in the BB with 66, call. Flop ($90) 6h 5d 5h: checks to UTG, he bets $30, everybody calls, I raise to $150, UTG folds and the rest call. Turn ($860) 4h: I bet $300 so trips and flushes keep coming; HJ clicks it to $600, CO jams, BTN jams, SB jams. Top boat, what now?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 1,
+    "bb": 3
+   },
+   "players": 6,
+   "heroPosition": "BB",
+   "heroCards": "6x6x",
+   "effectiveStack": 2000,
+   "board": {
+    "flop": "6h5d5h",
+    "turn": "4h"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      15
+     ],
+     [
+      "HJ",
+      "call",
+      15
+     ],
+     [
+      "CO",
+      "call",
+      15
+     ],
+     [
+      "BTN",
+      "call",
+      15
+     ],
+     [
+      "SB",
+      "call",
+      14
+     ],
+     [
+      "BB",
+      "call",
+      12
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "bet",
+      30
+     ],
+     [
+      "HJ",
+      "call",
+      30
+     ],
+     [
+      "CO",
+      "call",
+      30
+     ],
+     [
+      "BTN",
+      "call",
+      30
+     ],
+     [
+      "SB",
+      "call",
+      30
+     ],
+     [
+      "BB",
+      "raise",
+      150
+     ],
+     [
+      "UTG",
+      "fold"
+     ],
+     [
+      "HJ",
+      "call",
+      120
+     ],
+     [
+      "CO",
+      "call",
+      120
+     ],
+     [
+      "BTN",
+      "call",
+      120
+     ],
+     [
+      "SB",
+      "call",
+      120
+     ]
+    ],
+    "turn": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "bet",
+      300
+     ],
+     [
+      "HJ",
+      "raise",
+      600
+     ],
+     [
+      "CO",
+      "all-in",
+      null
+     ],
+     [
+      "BTN",
+      "all-in",
+      null
+     ],
+     [
+      "SB",
+      "all-in",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "action:2",
+     "street-open:2",
+     "next:2",
+     "group-seats:2",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero to act on the turn"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "action:2",
+     "size",
+     "choice"
+    ],
+    "about": "the three jams have no sizes"
+   }
+  ],
+  "notes": "\"Whole table calls\" and \"rest call\" are group actions; the SB's turn check is implied by the hero betting."
+ },
+ {
+  "id": "web-kj-straddled-flopped-boat",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1wr9a2e/25_live_flopped_a_boat_and_think_i_missed_value/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "straddle",
+   "gbp",
+   "stated-pot",
+   "checkraise"
+  ],
+  "text": "£2/£5, 8-handed, usually straddled to £10. Hero is effective at £1,200.\nUTG straddle is on. I open K♣ J♦ from the HJ to £25, only the CO calls.\nFlop (£67): K♥ J♥ J♠. I check, CO bets £25, I call.\nTurn (£117): 4♥. I check, CO bets £100, I raise to £250, he calls.\nRiver (£617): 6♣. I bet £375 and he tanks forever then calls. Could I have got his stack?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "GBP",
+   "blinds": {
+    "sb": 2,
+    "bb": 5,
+    "straddle": [
+     "utg"
+    ]
+   },
+   "players": 8,
+   "heroPosition": "HJ",
+   "heroCards": "KcJd",
+   "effectiveStack": 1200,
+   "board": {
+    "flop": "KhJhJs",
+    "turn": "4h",
+    "river": "6c"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "HJ",
+      "raise",
+      25
+     ],
+     [
+      "CO",
+      "call",
+      25
+     ]
+    ],
+    "flop": [
+     [
+      "HJ",
+      "check"
+     ],
+     [
+      "CO",
+      "bet",
+      25
+     ],
+     [
+      "HJ",
+      "call",
+      25
+     ]
+    ],
+    "turn": [
+     [
+      "HJ",
+      "check"
+     ],
+     [
+      "CO",
+      "bet",
+      100
+     ],
+     [
+      "HJ",
+      "raise",
+      250
+     ],
+     [
+      "CO",
+      "call",
+      150
+     ]
+    ],
+    "river": [
+     [
+      "HJ",
+      "bet",
+      375
+     ],
+     [
+      "CO",
+      "call",
+      375
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "result",
+    "id": [
+     "result",
+     "showdown"
+    ],
+    "about": "the showdown is mentioned but neither the cards nor the winner"
+   }
+  ]
+ },
+ {
+  "id": "web-65s-straddle-four-way-flop-jams",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1sqolo2/that_escalated_quickly/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "straddle",
+   "multiway",
+   "all-in",
+   "side-pot",
+   "labelled-lines"
+  ],
+  "text": "2/5, $10 straddle on, $1,900 effective\nHero (HJ): limps $10 with 6h5h\nCO: calls $10\nBTN: calls $10\nSB: folds\nBB: raises to $20\n(UTG straddle): folds\nHero: calls\nCO: calls\nBTN: calls\nFour of us see 7c8c4s\nBB bets $30, I flat, CO calls, BTN raises to $325, BB goes all-in for $675, I jam, CO calls all in, BTN calls with what he had left\nTurn 2h, river 4h, CO shows 77 for the rivered boat. Brutal.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 2,
+    "bb": 5,
+    "straddle": [
+     "utg"
+    ]
+   },
+   "heroPosition": "HJ",
+   "heroCards": "6h5h",
+   "board": {
+    "flop": "7c8c4s",
+    "turn": "2h",
+    "river": "4h"
+   },
+   "showdown": {
+    "CO": "7x7x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "HJ",
+      "call",
+      10
+     ],
+     [
+      "CO",
+      "call",
+      10
+     ],
+     [
+      "BTN",
+      "call",
+      10
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "raise",
+      15
+     ],
+     [
+      "UTG",
+      "fold"
+     ],
+     [
+      "HJ",
+      "call",
+      10
+     ],
+     [
+      "CO",
+      "call",
+      10
+     ],
+     [
+      "BTN",
+      "call",
+      10
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "bet",
+      30
+     ],
+     [
+      "HJ",
+      "call",
+      30
+     ],
+     [
+      "CO",
+      "call",
+      30
+     ],
+     [
+      "BTN",
+      "raise",
+      325
+     ],
+     [
+      "BB",
+      "all-in",
+      645
+     ],
+     [
+      "HJ",
+      "all-in",
+      null
+     ],
+     [
+      "CO",
+      "all-in",
+      null
+     ],
+     [
+      "BTN",
+      "all-in",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "size",
+     "choice"
+    ],
+    "about": "the all-in sizes do not add up against the stacks"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "result",
+    "id": [
+     "result",
+     "showdown"
+    ],
+    "about": "side pots: who won what is not said"
+   }
+  ],
+  "notes": "The all-in sizes in the post do not add up against \"$1,900 effective\", so only the BB's is kept."
+ },
+ {
+  "id": "web-aa-bb-raise-seven-limpers",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1ud8x2k/aa_on_the_bb_with_7_limpers_13/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "limp",
+   "multiway",
+   "complete"
+  ],
+  "text": "1/3, $350 for me in the BB. Loose, limpy table. Limps from UTG, UTG+1, LJ, HJ, CO and the BU (UTG+2 folds), the SB completes, and I raise to $30 with AhAd. Everybody folds. Too big, or fine to take it down?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 1,
+    "bb": 3
+   },
+   "players": 9,
+   "heroPosition": "BB",
+   "heroCards": "AhAd",
+   "stacks": {
+    "BB": 350
+   },
+   "winners": [
+    "BB"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "call",
+      3
+     ],
+     [
+      "UTG+1",
+      "call",
+      3
+     ],
+     [
+      "UTG+2",
+      "fold"
+     ],
+     [
+      "LJ",
+      "call",
+      3
+     ],
+     [
+      "HJ",
+      "call",
+      3
+     ],
+     [
+      "CO",
+      "call",
+      3
+     ],
+     [
+      "BTN",
+      "call",
+      3
+     ],
+     [
+      "SB",
+      "call",
+      2
+     ],
+     [
+      "BB",
+      "raise",
+      27
+     ],
+     [
+      "UTG",
+      "fold"
+     ],
+     [
+      "UTG+1",
+      "fold"
+     ],
+     [
+      "LJ",
+      "fold"
+     ],
+     [
+      "HJ",
+      "fold"
+     ],
+     [
+      "CO",
+      "fold"
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "the limpers' stacks are never given"
+   }
+  ]
+ },
+ {
+  "id": "web-qq-emoji-suits-turn-checkraise",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1w1rtq9/13_hand_analysis/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "emoji-suits",
+   "stacks-in-bb",
+   "checkraise"
+  ],
+  "text": "Hero 1/3 in MP, 66 bb effective, with Q♣️Q♠️.\nPassive fish with a $200 stack raises to $17 UTG. Big size and no reads so I just flat. SB calls too.\nFlop A❤️A♦️7♠️. Both check to me and I cbet $20 for worse pairs. Only UTG calls.\nTurn 4♣️. UTG checks, I bet $45, he check raises all in and I fold. Check back the turn instead?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 1,
+    "bb": 3
+   },
+   "heroPosition": "MP",
+   "heroCards": "QcQs",
+   "stacks": {
+    "UTG": 200
+   },
+   "board": {
+    "flop": "AhAd7s",
+    "turn": "4c"
+   },
+   "winners": [
+    "UTG"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      17
+     ],
+     [
+      "MP",
+      "call",
+      17
+     ],
+     [
+      "SB",
+      "call",
+      16
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "MP",
+      "bet",
+      20
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      20
+     ]
+    ],
+    "turn": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "MP",
+      "bet",
+      45
+     ],
+     [
+      "UTG",
+      "all-in",
+      163
+     ],
+     [
+      "MP",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "the hero's 66bb is effective; the SB's stack is unknown"
+   }
+  ],
+  "notes": "The suits carry emoji variation selectors (U+FE0F) and the heart is U+2764."
+ },
+ {
+  "id": "web-jts-utg-silent-calls-river-shove",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1x241yw/13_mp_with_jt_suited_nlh/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "multiway",
+   "implied-actions",
+   "board-shorthand",
+   "decision"
+  ],
+  "text": "1/3. Effective stack is the CO, around $100; I had him covered.\nUTG, sticky and passive, open limps.\nHero in MP opens to $20 with JT suited. CO calls, BB calls.\nFlop 6d8xTx. BB checks, Hero B$25, CO and BB call.\nTurn 6x, checks around.\nRiver Kc. UTG and hero check, CO shoves $59, UTG folds. Do I call $59 to win ~$200?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 1,
+    "bb": 3
+   },
+   "heroPosition": "MP",
+   "heroCards": "JxTx",
+   "board": {
+    "flop": "6d8xTx",
+    "turn": "6x",
+    "river": "Kc"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "call",
+      3
+     ],
+     [
+      "MP",
+      "raise",
+      20
+     ],
+     [
+      "CO",
+      "call",
+      20
+     ],
+     [
+      "BB",
+      "call",
+      17
+     ],
+     [
+      "UTG",
+      "call",
+      17
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "MP",
+      "bet",
+      25
+     ],
+     [
+      "CO",
+      "call",
+      25
+     ],
+     [
+      "BB",
+      "call",
+      25
+     ],
+     [
+      "UTG",
+      "call",
+      25
+     ]
+    ],
+    "turn": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "MP",
+      "check"
+     ],
+     [
+      "CO",
+      "check"
+     ]
+    ],
+    "river": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "MP",
+      "check"
+     ],
+     [
+      "CO",
+      "all-in",
+      59
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "street-open:0",
+     "next:0",
+     "group-seats:0",
+     "pot-mismatch"
+    ],
+    "about": "UTG's call of the raise is never said, but UTG is still in on the river"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.3.actions",
+    "id": [
+     "action:3",
+     "street-open:3",
+     "next:3",
+     "group-seats:3",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero to call"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "UTG's preflop call and flop call, and the BB's river check and fold, are implied, not said."
+ },
+ {
+  "id": "web-33-two-mp-players-set-under-set",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/69lmki/13_hand_analysis_help/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "multiway"
+  ],
+  "text": "1/3 NLHE at MGM. Stacks: Hero 360, V1 300, V2 675.\nDealt 3c3s in MP. V1 (no reads) opens UTG+2 to $12. V2, also MP and two seats to my right, a very tight Razz/Stud guy, flats. I call too, everyone else folds, three ways.\nPot $40. Flop 3d4h5h. V1 leads $40, V2 thinks and raises to $110. Hero?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 1,
+    "bb": 3
+   },
+   "heroCards": "3c3s",
+   "stacks": {
+    "UTG+1": 300,
+    "MP1": 675,
+    "LJ": 360
+   },
+   "board": {
+    "flop": "3d4h5h"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG+1",
+      "raise",
+      12
+     ],
+     [
+      "MP1",
+      "call",
+      12
+     ],
+     [
+      "LJ",
+      "call",
+      12
+     ]
+    ],
+    "flop": [
+     [
+      "UTG+1",
+      "bet",
+      40
+     ],
+     [
+      "MP1",
+      "raise",
+      110
+     ]
+    ]
+   },
+   "heroPosition": "LJ"
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero to act"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "Owner reading: when positions are unclear, estimate them and keep the seat order right — likely hero LJ, V2 UTG+2/MP1 (with the opener V1 before V2); the parse says so in a note."
+ },
+ {
+  "id": "web-2nl-converter-aa-turn-allin",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/5d0sq8/utg_with_aa_vs_bb_flat_on_876r_flop_facing_cr_on/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "hand-history",
+   "micro",
+   "all-in",
+   "complete"
+  ],
+  "text": "2NL 6-max, beginner, and I can't fold overpairs.\nStacks: UTG Hero ($2.19), MP ($4.25), CO ($5.65), BTN ($1.49), SB ($2.22), BB ($2.00)\nPreflop ($0.03, 6 players): Hero UTG with A♦ A♣ makes it $0.08, four folds, the BB calls\nFlop 7♣ 6♥ 8♦ ($0.17): BB checks, Hero $0.11, BB calls\nTurn 3♣ ($0.39): BB checks, Hero $0.25, BB raises to $0.60, Hero all-in to $2.00, BB calls all-in\nRiver 6♣: BB has 8♣ 8♠, full house, and wins. Fold the turn next time?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 0.01,
+    "bb": 0.02
+   },
+   "players": 6,
+   "heroPosition": "UTG",
+   "heroCards": "AdAc",
+   "stacks": {
+    "UTG": 2.19,
+    "HJ": 4.25,
+    "CO": 5.65,
+    "BTN": 1.49,
+    "SB": 2.22,
+    "BB": 2
+   },
+   "board": {
+    "flop": "7c6h8d",
+    "turn": "3c",
+    "river": "6c"
+   },
+   "showdown": {
+    "BB": "8c8s"
+   },
+   "winners": [
+    "BB"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      0.08
+     ],
+     [
+      "HJ",
+      "fold"
+     ],
+     [
+      "CO",
+      "fold"
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "call",
+      0.06
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "bet",
+      0.11
+     ],
+     [
+      "BB",
+      "call",
+      0.11
+     ]
+    ],
+    "turn": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "bet",
+      0.25
+     ],
+     [
+      "BB",
+      "raise",
+      0.6
+     ],
+     [
+      "UTG",
+      "all-in",
+      1.75
+     ],
+     [
+      "BB",
+      "call",
+      1.21
+     ]
+    ]
+   }
+  },
+  "notes": "Blinds only from \"2NL\" and the $0.03 preflop pot."
+ },
+ {
+  "id": "web-aa-3bet-pot-turn-xr-river-jam",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1w6i5al/shot_took_25_online_and_faced_this_spot_call_or/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "3bet",
+   "stated-pot",
+   "decision"
+  ],
+  "text": "Shot taking at $2.50/$5 online. Hero CO with A♠A♦. UTG opens $15, I 3-bet to $65, he calls.\nFlop ($137.50): 6♣ 6♥ 3♣, he checks, I bet $45, he calls.\nTurn ($227.50): 2♣, he checks, I bet $80, he check-raises to $302.50, I call.\nRiver ($832.50): 2♦ and he jams $612.50. Call or fold?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 2.5,
+    "bb": 5
+   },
+   "heroPosition": "CO",
+   "heroCards": "AsAd",
+   "board": {
+    "flop": "6c6h3c",
+    "turn": "2c",
+    "river": "2d"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      15
+     ],
+     [
+      "CO",
+      "raise",
+      65
+     ],
+     [
+      "UTG",
+      "call",
+      50
+     ]
+    ],
+    "flop": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "CO",
+      "bet",
+      45
+     ],
+     [
+      "UTG",
+      "call",
+      45
+     ]
+    ],
+    "turn": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "CO",
+      "bet",
+      80
+     ],
+     [
+      "UTG",
+      "raise",
+      302.5
+     ],
+     [
+      "CO",
+      "call",
+      222.5
+     ]
+    ],
+    "river": [
+     [
+      "UTG",
+      "all-in",
+      612.5
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.3.actions",
+    "id": [
+     "action:3",
+     "street-open:3",
+     "next:3",
+     "group-seats:3",
+     "pot-mismatch"
+    ],
+    "about": "the hero is facing the river jam"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "the hero's stack is never given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ]
+ },
+ {
+  "id": "web-qq-limp-reraise-around-double",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1uqtf8n/is_it_possible_to_find_a_fold_here/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "online",
+   "limp",
+   "pot-fractions",
+   "hedged-size"
+  ],
+  "text": "Playing 0.25/0.5 online. Queens UTG. On this site everybody folds to a UTG open, even a 2BB one, so I limp. Folds to the button who raises me. I re-raise to around double and he calls.\nFlop Q 6 2 rainbow, really dry so I check, he checks back.\nTurn a king, I bet half pot, he calls.\nRiver a ten, AJ gets there. I bet 3/4 pot and he moves all in. I call out of disgust and yes, it's AJ. Any fold possible?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "blinds": {
+    "sb": 0.25,
+    "bb": 0.5
+   },
+   "heroPosition": "UTG",
+   "heroCards": "QxQx",
+   "board": {
+    "flop": "Qx6x2x",
+    "turn": "Kx",
+    "river": "Tx"
+   },
+   "showdown": {
+    "BTN": "AxJx"
+   },
+   "winners": [
+    "BTN"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "call",
+      0.5
+     ],
+     [
+      "BTN",
+      "raise",
+      null
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "raise",
+      null
+     ],
+     [
+      "BTN",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "BTN",
+      "check"
+     ]
+    ],
+    "turn": [
+     [
+      "UTG",
+      "bet",
+      null
+     ],
+     [
+      "BTN",
+      "call",
+      null
+     ]
+    ],
+    "river": [
+     [
+      "UTG",
+      "bet",
+      null
+     ],
+     [
+      "BTN",
+      "all-in",
+      null
+     ],
+     [
+      "UTG",
+      "call",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "size",
+     "choice"
+    ],
+    "about": "the button's raise has no size and the re-raise is only \"around double\""
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ]
+ },
+ {
+  "id": "web-jj-zoom-converter-snap-called-twice",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/2ul1gm/5nl_zoom_river_call/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "hand-history",
+   "micro",
+   "restated-action",
+   "all-in"
+  ],
+  "text": "5NL Zoom on Stars, 6 handed ($0.05 BB), from the converter, tidied up.\nStacks: BTN $3.94 / SB $2.82 / BB $5.90 / UTG $5.62 / Hero in MP $6.36 / CO $7.17 (tight, 3bet 0)\nPre: Hero gets Jc Js in MP. UTG folds, Hero to $0.15, CO 3bets to $0.45, BTN SB BB fold, Hero calls the $0.30.\nFlop ($0.97, heads up) 6h 8c 7h: Hero $0.60, CO calls.\nCO snap called\nTurn ($2.17) 5c: Hero checks, CO $1.04, Hero calls.\nRiver ($4.25) 4c: Hero checks, CO shoves $5.08, Hero calls his last $4.27.\nToo thin? Only AKcc and 99 beat me.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 0.02,
+    "bb": 0.05
+   },
+   "players": 6,
+   "heroPosition": "HJ",
+   "heroCards": "JcJs",
+   "stacks": {
+    "BTN": 3.94,
+    "SB": 2.82,
+    "BB": 5.9,
+    "UTG": 5.62,
+    "HJ": 6.36,
+    "CO": 7.17
+   },
+   "board": {
+    "flop": "6h8c7h",
+    "turn": "5c",
+    "river": "4c"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "fold"
+     ],
+     [
+      "HJ",
+      "raise",
+      0.15
+     ],
+     [
+      "CO",
+      "raise",
+      0.45
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "HJ",
+      "call",
+      0.3
+     ]
+    ],
+    "flop": [
+     [
+      "HJ",
+      "bet",
+      0.6
+     ],
+     [
+      "CO",
+      "call",
+      0.6
+     ]
+    ],
+    "turn": [
+     [
+      "HJ",
+      "check"
+     ],
+     [
+      "CO",
+      "bet",
+      1.04
+     ],
+     [
+      "HJ",
+      "call",
+      1.04
+     ]
+    ],
+    "river": [
+     [
+      "HJ",
+      "check"
+     ],
+     [
+      "CO",
+      "all-in",
+      5.08
+     ],
+     [
+      "HJ",
+      "call",
+      4.27
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "result",
+    "id": [
+     "result",
+     "showdown"
+    ],
+    "about": "the showdown is not given"
+   }
+  ],
+  "notes": "\"CO snap called\" repeats the flop call: one call, not two. The small blind is only implied by \"$0.05 BB\"."
+ },
+ {
+  "id": "web-lhe-button-blind-two-hands-turn-six-or-seven",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1j13sv9/3060_limit_holdem_its_not_nlh_in_for_3000_out_for/",
+  "game": "LHE",
+  "tags": [
+   "cash",
+   "limit",
+   "button-blind",
+   "several-hands",
+   "hedged-card",
+   "ambiguous"
+  ],
+  "text": "Nine hours of 30/60 LIMIT hold'em and I booked a $5 win. The blinds here are $10 on the button, $20 SB, $30 BB.\nBad beat: TT on the button, UTG opens, I make it $90, four callers, $410 in before the flop. Flop T 9 4, top set, then a jack on the turn and I'm against 87 and KQ. River doesn't pair.\nGood beat: 88 in the HJ, I open for two bets, donkey 1 calls, donkey 2 three-bets, the nit in the BB flats, I cap it. Flop 5 5 4. Nit checks, I bet, D1 calls, D2 check-raises, nit folds, I three-bet, D2 caps (he had K5 of hearts). On the turn (a six or a seven, I forget which) it went bet, call, call. River the eight of clubs. Nice pot.",
+  "expect": {
+   "gameType": "LHE",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 20,
+    "bb": 30,
+    "bigBet": 60
+   },
+   "heroPosition": "HJ",
+   "heroCards": "8x8x",
+   "board": {
+    "flop": "5x5x4x"
+   },
+   "unsupported": true,
+   "otherHands": 1
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.2.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the turn was \"a six or a seven\""
+   },
+   {
+    "kind": "impossible",
+    "field": "quickAdd.unsupported",
+    "id": "unsupported",
+    "about": "a format the replayer cannot store"
+   },
+   {
+    "kind": "ambiguous",
+    "field": "quickAdd.otherHands",
+    "id": "hand-choice",
+    "about": "the post tells more than one hand"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the two donkeys' seats are never named"
+   }
+  ],
+  "notes": "Two hands; the second has more detail. A button blind cannot be stored."
+ },
+ {
+  "id": "web-mtt-kq-sb-3bet-ante-pot-95k",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/5jh4qv/tournament_kq_sb_vs_villian_utg_open/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "ante-per-player",
+   "stated-pot",
+   "3bet",
+   "complete"
+  ],
+  "text": "14 left over two tables, I'm 7 handed with KQ in the SB.\nChips: me 1,300,000 and villian (UTG) 6,265,000\nLevel 20,000/40,000, Ante : 5000, so Pot: 95,000 before anyone acts\nHe opens UTG to 80k, it folds to me, I 3bet to 240k, folds back and he calls the 160k\nPot: 565k\nFlop 7d Kc 2h, I bet 275k and he folds.\nHe is laggy but good. Did I leave value on the table?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 20000,
+    "bb": 40000,
+    "ante": 35000
+   },
+   "players": 7,
+   "heroPosition": "SB",
+   "heroCards": "KxQx",
+   "stacks": {
+    "SB": 1300000,
+    "UTG": 6265000
+   },
+   "board": {
+    "flop": "7dKc2h"
+   },
+   "winners": [
+    "SB"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      80000
+     ],
+     [
+      "SB",
+      "raise",
+      220000
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      160000
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "bet",
+      275000
+     ],
+     [
+      "UTG",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "notes": "The 95,000 pot is 20k + 40k + 7 × 5k: the ante is every player's, so the replayer's big blind ante is 35,000."
+ },
+ {
+  "id": "web-satellite-decimal-comma-bb-stacks",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1vs93yh/dumbest_icm_situation_ever/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "satellite",
+   "stacks-in-bb",
+   "decimal-comma"
+  ],
+  "text": "Satellite, 5 left and 4 seats paid, all seats worth the same.\nBU: 1,2BB, SB: 2,2BB, BB: 2,5BB, UTG (me) 5BB, UTG+1: 6,8BB\nI raise 4BB with KK, UTG+1 shoves, everyone else folds, I call. He has A8s and flops an ace. Why would he even do that.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "players": 5,
+   "heroPosition": "UTG",
+   "heroCards": "KxKx",
+   "showdown": {
+    "UTG+1": "Ax8x"
+   },
+   "winners": [
+    "UTG+1"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      null
+     ],
+     [
+      "UTG+1",
+      "all-in",
+      null
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the board is never given beyond \"flops an ace\""
+   }
+  ],
+  "notes": "Stacks are in big blinds with decimal commas (1,2BB = 1.2BB); the answer to the blinds question can be \"record it in big blinds\"."
+ },
+ {
+  "id": "web-mtt-6-12k-plus2-open-co-3bet",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/17v5zss/icm_spot_stone_cold_bubble_large_live_mtt/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "stakes-k",
+   "shorthand",
+   "bubble",
+   "decision"
+  ],
+  "text": "550€ live MTT, ~1500 runners, hand for hand on the stone bubble (160 left, 159 paid).\nHero 260K in the BB with QsQc, 6/12k with bb ante.\n+2 (1M behind) opens to 28K, his standard. CO (600K) 3! to 60K. Hero? Pure ICM fold or too good to pass?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 6000,
+    "bb": 12000,
+    "ante": 12000
+   },
+   "heroPosition": "BB",
+   "heroCards": "QsQc",
+   "stacks": {
+    "BB": 260000,
+    "UTG+2": 1000000,
+    "CO": 600000
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG+2",
+      "raise",
+      28000
+     ],
+     [
+      "CO",
+      "raise",
+      60000
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "street-open:0",
+     "next:0",
+     "group-seats:0",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero to act"
+   }
+  ],
+  "notes": "\"6/12k\" is 6,000/12,000: the k belongs to both numbers. \"+2\" is UTG+2."
+ },
+ {
+  "id": "web-acr-ft-bubble-66-bb-sizes",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/vltxqf/ft_bubble_spot_icm/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "online",
+   "stacks-in-bb",
+   "decision"
+  ],
+  "text": "ACR $33 100k, 10 left of 12 at the FT bubble. Hero in the BB with 66 (18bb), 6 handed. HJ opens 2bb from a 42bb stack, BU calls 2bb off 35bb. Jam or complete and set mine at 7:1? Average stack is 30bb.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "players": 6,
+   "heroPosition": "BB",
+   "heroCards": "6x6x",
+   "actions": {
+    "preflop": [
+     [
+      "HJ",
+      "raise",
+      null
+     ],
+     [
+      "CO",
+      "fold"
+     ],
+     [
+      "BTN",
+      "call",
+      null
+     ],
+     [
+      "SB",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "street-open:0",
+     "next:0",
+     "group-seats:0",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero to act"
+   }
+  ],
+  "notes": "Everything is in big blinds; the 30bb average is not a stack in this hand."
+ },
+ {
+  "id": "web-sng-t-chips-qq-3way-allin",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/6jki1t/sng_bubble_spot_icm_fold/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "sng",
+   "t-chips",
+   "all-in",
+   "multiway"
+  ],
+  "text": "Stars $7 9-man SnG, 3 paid, blinds 75/150.\nBTN: t2090 (13.9bb)\nSB: t5650\nBB: t3340\nHero (CO): t2420\nPre (t225): Hero raises to t425 with Q Q, BTN shoves t2090, SB folds, BB calls t1940, Hero shoves t2420, BB calls t330. Should I have open shoved instead?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 75,
+    "bb": 150
+   },
+   "players": 4,
+   "heroPosition": "CO",
+   "heroCards": "QxQx",
+   "stacks": {
+    "BTN": 2090,
+    "SB": 5650,
+    "BB": 3340,
+    "CO": 2420
+   },
+   "actions": {
+    "preflop": [
+     [
+      "CO",
+      "raise",
+      425
+     ],
+     [
+      "BTN",
+      "all-in",
+      2090
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "call",
+      1940
+     ],
+     [
+      "CO",
+      "all-in",
+      1995
+     ],
+     [
+      "BB",
+      "call",
+      330
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "everyone is all in but no board is given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "result",
+    "id": [
+     "result",
+     "showdown"
+    ],
+    "about": "no result is given"
+   }
+  ]
+ },
+ {
+  "id": "web-mtt-bubble-8-16-jj-implied-thousands",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/7ykqbk/hh_tourney_bubble_icm_spot/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "stakes-k",
+   "implied-units",
+   "verbless",
+   "board-shorthand",
+   "decision"
+  ],
+  "text": "Stone bubble: 10 left, 9 paid, a big jump and then shallow. We're about average at 300kish. Blinds 8-16.\nWe +2 to 37k with JJ; Mp and bb call. The flop is 873r. bb x, then we 41k, then mp snap 100k and bb folds. MP covers us. If we fold we still beat 3 others. Should this just be a rip pre?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 8000,
+    "bb": 16000
+   },
+   "heroPosition": "UTG+2",
+   "heroCards": "JxJx",
+   "stacks": {
+    "UTG+2": 300000
+   },
+   "board": {
+    "flop": "8x7x3x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG+2",
+      "raise",
+      37000
+     ],
+     [
+      "MP",
+      "call",
+      37000
+     ],
+     [
+      "BB",
+      "call",
+      21000
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG+2",
+      "bet",
+      41000
+     ],
+     [
+      "MP",
+      "raise",
+      100000
+     ],
+     [
+      "BB",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero facing the raise"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "MP covers, but MP's stack is unknown"
+   }
+  ],
+  "notes": "\"8-16\" is 8k/16k: the other sizes (37k, 41k, 300kish) carry the k. \"we 41k\" is a verbless bet."
+ },
+ {
+  "id": "web-pko-k5ss-sb-complete-click-bb-units",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1tsdzhs/interesting_icm_spot/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "pko",
+   "H-hero",
+   "stacks-in-bb",
+   "click",
+   "side-pot",
+   "suit-count"
+  ],
+  "text": "$55 50k PKO, 10 left of 840, ~$400 + bounties for 10th, 1st about $6k. I'm 3rd in chips; the shortest stack (1.7bb, biggest bounty) is on my left.\nChip leader limps the CO, folds to H in the SB with 43bb and K5ss. I complete to avoid a big pot OOP vs the CL.\nBB checks his option with 0.6bb behind.\nFlop K 7 6 rainbow, no spade. H x, BB jams his 0.6bb, CO calls, H calls.\nTurn 5h, heart draw now. H x, CO overbets to 6bb, H clicks it to 12.5bb, CO snap jams and covers.\nI tank called. He had 84dd and I'm out 9th.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "heroPosition": "SB",
+   "heroCards": "Ks5s",
+   "board": {
+    "flop": "Kx7x6x",
+    "turn": "5h"
+   },
+   "showdown": {
+    "CO": "8d4d"
+   },
+   "winners": [
+    "CO"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "CO",
+      "call",
+      null
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "call",
+      null
+     ],
+     [
+      "BB",
+      "check"
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "all-in",
+      null
+     ],
+     [
+      "CO",
+      "call",
+      null
+     ],
+     [
+      "SB",
+      "call",
+      null
+     ]
+    ],
+    "turn": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "CO",
+      "bet",
+      null
+     ],
+     [
+      "SB",
+      "raise",
+      null
+     ],
+     [
+      "CO",
+      "all-in",
+      null
+     ],
+     [
+      "SB",
+      "call",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "\"H\" is the hero. \"Rainbow, no spade\" is a suit count (no spades) the fill must keep. \"Clicks it to 12.5bb\" is a raise to 12.5bb."
+ },
+ {
+  "id": "web-mtt-7-left-akp-folds-to-btn",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/avswqm/does_icm_allow_folding_ak_preflop_here/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "bubble",
+   "icm",
+   "stacks-listed",
+   "decision"
+  ],
+  "text": "Amsterdam, 110EU plus a 50EU rebuy/add-on. Seven left, six paid.\nStacks: UTG 60k | UTG+1 6k | Hijack 60k | Cutoff 36k | me on the Button 26k | SB 130k | BB 55k\nBlinds 2k/4k with a 4k bb ante. Payouts run 4.8k down to 950EU.\nUTG+1, the cutoff and the SB are competent; the rest are recs. Folded to me with AKo. Play?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 2000,
+    "bb": 4000,
+    "ante": 4000
+   },
+   "players": 7,
+   "heroPosition": "BTN",
+   "heroCards": "AxKx",
+   "stacks": {
+    "UTG": 60000,
+    "UTG+1": 6000,
+    "HJ": 60000,
+    "CO": 36000,
+    "BTN": 26000,
+    "SB": 130000,
+    "BB": 55000
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "fold"
+     ],
+     [
+      "UTG+1",
+      "fold"
+     ],
+     [
+      "HJ",
+      "fold"
+     ],
+     [
+      "CO",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "street-open:0",
+     "next:0",
+     "group-seats:0",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero to act"
+   }
+  ],
+  "notes": "The payout table is not part of the hand."
+ },
+ {
+  "id": "web-mtt-kt-bluff-shove-river-emoji",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/13byr19/bluffed_off_whole_stack_in_biggest_tourney_buy/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "emoji-suits",
+   "tournament-starting-stack",
+   "all-in",
+   "complete"
+  ],
+  "text": "8 handed, 30k starting stack, 30 minute levels. Level 4: 200/400 with a 400 BB ante.\nLJ limps (80k stack). Hero in the CO with K❤️10♠️ (60k) raises to 1000. Folds back to LJ who calls.\nFlop J♦️3♣️9♣️: LJ checks, I bet 1800, LJ calls.\nTurn 8♠️: LJ checks, I bet 3000, LJ calls.\nRiver 6❤️: LJ snap leads 10,000. I go all in as a bluff, I block Q10 and he looks like a missed club draw. He snap calls with 63o and I'm out.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 200,
+    "bb": 400,
+    "ante": 400
+   },
+   "players": 8,
+   "heroPosition": "CO",
+   "heroCards": "KhTs",
+   "stacks": {
+    "LJ": 80000,
+    "CO": 60000
+   },
+   "board": {
+    "flop": "Jd3c9c",
+    "turn": "8s",
+    "river": "6h"
+   },
+   "showdown": {
+    "LJ": "6x3x"
+   },
+   "winners": [
+    "LJ"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "LJ",
+      "call",
+      400
+     ],
+     [
+      "CO",
+      "raise",
+      1000
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "LJ",
+      "call",
+      600
+     ]
+    ],
+    "flop": [
+     [
+      "LJ",
+      "check"
+     ],
+     [
+      "CO",
+      "bet",
+      1800
+     ],
+     [
+      "LJ",
+      "call",
+      1800
+     ]
+    ],
+    "turn": [
+     [
+      "LJ",
+      "check"
+     ],
+     [
+      "CO",
+      "bet",
+      3000
+     ],
+     [
+      "LJ",
+      "call",
+      3000
+     ]
+    ],
+    "river": [
+     [
+      "LJ",
+      "bet",
+      10000
+     ],
+     [
+      "CO",
+      "all-in",
+      54200
+     ],
+     [
+      "LJ",
+      "call",
+      44200
+     ]
+    ]
+   }
+  },
+  "notes": "The 30k starting stack is the tournament's, not anybody's stack in this hand."
+ },
+ {
+  "id": "web-mtt-q5cc-sb-turn-pot-proves-a-caller",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/17s4n3a/am_i_just_outplayed_or_my_mistake_on_the_river/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "online",
+   "stated-pot",
+   "bb-ante",
+   "ambiguous"
+  ],
+  "text": "Online MTT, 6 at the table, ITM, level 22: 1750/3500/3000 ANTE. I'm the table's cheap chip leader.\nMP limps, button calls, I complete Qc5c in the SB (pot 17,000).\nFlop 6s 10c 8h, checks through (pot still 17,000).\nTurn 4c: I bet 5610, button raises to 16774, I call, everyone else folds (pot 56,158).\nRiver Ac: I donk 42,119 and the button folds, showing pocket 6s for the set. Should I have check-raised?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 1750,
+    "bb": 3500,
+    "ante": 3000
+   },
+   "players": 6,
+   "heroPosition": "SB",
+   "heroCards": "Qc5c",
+   "board": {
+    "flop": "6sTc8h",
+    "turn": "4c",
+    "river": "Ac"
+   },
+   "winners": [
+    "SB"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "HJ",
+      "call",
+      3500
+     ],
+     [
+      "CO",
+      "fold"
+     ],
+     [
+      "BTN",
+      "call",
+      3500
+     ],
+     [
+      "SB",
+      "call",
+      1750
+     ],
+     [
+      "BB",
+      "check"
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "HJ",
+      "check"
+     ],
+     [
+      "BTN",
+      "check"
+     ]
+    ],
+    "turn": [
+     [
+      "SB",
+      "bet",
+      5610
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "HJ",
+      "fold"
+     ],
+     [
+      "BTN",
+      "raise",
+      16774
+     ],
+     [
+      "SB",
+      "call",
+      11164
+     ]
+    ],
+    "river": [
+     [
+      "SB",
+      "bet",
+      42119
+     ],
+     [
+      "BTN",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   },
+   {
+    "kind": [
+     "impossible",
+     "ambiguous"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "pot-mismatch",
+     "action:2"
+    ],
+    "about": "the 56,158 turn pot is 5,610 more than the actions: someone called the turn bet before \"everyone folds\""
+   }
+  ],
+  "notes": "The 17,000 preflop pot shows the 3,000 ante is a big blind ante. \"MP\" at a six-max table is the HJ."
+ },
+ {
+  "id": "web-mtt-flop-shove-j10d-two-outer",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/wmvtp6/definition_of_run_good/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "fragment",
+   "stacks-in-bb"
+  ],
+  "text": "J 10d, shoved the flop for 12bb and saw I was dominated, half stood up, then a J turn and a J river. Best two-outer ever; I went on to finish 3rd.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "heroCards": "JdTd"
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the flop is never given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "nobody's seat is said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.0.cards.opponents",
+    "id": [
+     "cards",
+     "showdown",
+     "choice"
+    ],
+    "about": "the hand that dominated is never named"
+   }
+  ],
+  "notes": "Owner reading: one suit letter after a two-card holding means both cards (\"J 10d\" = JdTd); the player can edit it."
+ },
+ {
+  "id": "web-plo-aa65-lj-pots-river-other-two-fold",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1ugn2zj/live_25_plo_hand_review_river_bluff_multiway/",
+  "game": "PLO",
+  "tags": [
+   "cash",
+   "pot-limit",
+   "multiway",
+   "group-action",
+   "stated-pot"
+  ],
+  "text": "Live 2/5 PLO, 7 handed. I'm the effective stack at $320.\nUTG limps (just lost a big one thinking his naked Ad was the nut flush on a four-diamond board).\nHero in the LJ, next to act, AcAd6c5h, opens to $20.\nHJ calls (competent, plays PLO/PLO5 online). CO calls (loose, face-up sizings). BU, SB, BB fold. UTG calls.\nFlop ($87): 8h 9c Td. Checks to the CO who bets $20, everyone calls.\nTurn ($167): Jd, checks through.\nRiver: Qc. UTG checks, I pot it, HJ calls, the other two fold. HJ has the nuts, AxKxJx8x. Bad bluff with the wrong blockers?",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 2,
+    "bb": 5
+   },
+   "players": 7,
+   "heroPosition": "LJ",
+   "heroCards": "AcAd6c5h",
+   "stacks": {
+    "LJ": 320
+   },
+   "board": {
+    "flop": "8h9cTd",
+    "turn": "Jd",
+    "river": "Qc"
+   },
+   "showdown": {
+    "HJ": "AxKxJx8x"
+   },
+   "winners": [
+    "HJ"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "call",
+      5
+     ],
+     [
+      "LJ",
+      "raise",
+      20
+     ],
+     [
+      "HJ",
+      "call",
+      20
+     ],
+     [
+      "CO",
+      "call",
+      20
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      15
+     ]
+    ],
+    "flop": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "LJ",
+      "check"
+     ],
+     [
+      "HJ",
+      "check"
+     ],
+     [
+      "CO",
+      "bet",
+      20
+     ],
+     [
+      "UTG",
+      "call",
+      20
+     ],
+     [
+      "LJ",
+      "call",
+      20
+     ],
+     [
+      "HJ",
+      "call",
+      20
+     ]
+    ],
+    "turn": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "LJ",
+      "check"
+     ],
+     [
+      "HJ",
+      "check"
+     ],
+     [
+      "CO",
+      "check"
+     ]
+    ],
+    "river": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "LJ",
+      "bet",
+      167
+     ],
+     [
+      "HJ",
+      "call",
+      167
+     ],
+     [
+      "CO",
+      "fold"
+     ],
+     [
+      "UTG",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "only the hero's (effective) stack is given"
+   }
+  ],
+  "notes": "\"Pot it\" on the river is a pot-sized bet of 167. \"The other two fold\" is a group fold."
+ },
+ {
+  "id": "web-plo-1-2-4-800-stakes-unclear",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1s2vlgu/interesting_124800_plo_hand/",
+  "game": "PLO",
+  "tags": [
+   "cash",
+   "pot-limit",
+   "odd-stakes",
+   "grouped-suits",
+   "fragment",
+   "double-straddle"
+  ],
+  "text": "1/2/4/800 PLO, and I'm the 400 (360k).\nUtg opens 3k; callers: a sometimes-spewy villain (320k), a super tight MP (25k), a wildcard on the button (250k); I call with JJ57hdhd.\nFive ways to T64shh. Checked to the villain: 10k. MP jams 22k, folds to me, I call, villain re pots to 106k...",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "cash",
+   "heroCards": "JhJd5h7d",
+   "board": {
+    "flop": "Ts6h4h"
+   },
+   "blinds": {
+    "sb": 100,
+    "bb": 200,
+    "straddle": [
+     "utg"
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the villain's seat and the hero's are not named"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "Owner reading: \"1/2/4/800 PLO\" is 100/200 blinds, a 400 straddle (the hero) and an 800 double straddle, the chips in thousands. The 800 straddle's seat is not said; \"Utg opens\" is the seat after the 400 straddler."
+ },
+ {
+  "id": "web-plo-mtt-bubble-bb-raise-pot-turn-jam",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1ndkx7l/curious_if_this_was_a_punt_from_icm_perspective/",
+  "game": "PLO",
+  "tags": [
+   "mtt",
+   "pot-limit",
+   "bubble",
+   "average-stack-noise",
+   "checkraise"
+  ],
+  "text": "Online PLO4 MTT bubble, 37 of 220 left, 36 paid, 6 max. Blinds 2.5k/5.0k, I have 55k; shortest is 25k, average 110k.\nCutoff (big stack, 200k) limps 5k. I check my option in the BB with KsJd4h5h.\nFlop KhJh6c, top two and a weak flush draw. I check expecting the big stack to bet, he bets 5k, I raise pot to 27.5k, he calls.\nTurn 4d, blank. I jam my last 22.5k and he calls. Should I just check-call on the bubble?",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 2500,
+    "bb": 5000
+   },
+   "players": 6,
+   "heroPosition": "BB",
+   "heroCards": "KsJd4h5h",
+   "stacks": {
+    "BB": 55000,
+    "CO": 200000
+   },
+   "board": {
+    "flop": "KhJh6c",
+    "turn": "4d"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "CO",
+      "call",
+      5000
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "check"
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "CO",
+      "bet",
+      5000
+     ],
+     [
+      "BB",
+      "raise",
+      27500
+     ],
+     [
+      "CO",
+      "call",
+      22500
+     ]
+    ],
+    "turn": [
+     [
+      "BB",
+      "all-in",
+      22500
+     ],
+     [
+      "CO",
+      "call",
+      22500
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.ante",
+    "id": "blinds.ante",
+    "about": "a tournament hand with no ante said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.3.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the river is never given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "result",
+    "id": [
+     "result",
+     "showdown"
+    ],
+    "about": "no result is given"
+   }
+  ],
+  "notes": "The 25k shortest and 110k average stacks are not players in the hand."
+ },
+ {
+  "id": "web-plo-mtt-aa92hh-hero-fold-to-pot-jam",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1p0xppa/hero_call_aa_on_the_stone_bubble_of_plo_tourney/",
+  "game": "PLO",
+  "tags": [
+   "mtt",
+   "pot-limit",
+   "H-V",
+   "grouped-suits",
+   "stacks-in-bb",
+   "board-shorthand"
+  ],
+  "text": "12 left, 11 paid. H is the chip leader on 70BB; V is second on 60BB, aggressive and capable of bluffing. Average 35BB, a few 10BB shorties.\nV raises the CO to 3BB, H calls in the SB with AA92hh for ICM reasons, BB folds.\nFlop Q62hcc: H x, V bets 3BB, H calls.\nTurn Th: H x, V pots 14BB, H calls.\nRiver 6s: H x, V pots all in, H?\nResult: H folds, V shows KT85ssdd for air.",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "mtt",
+   "heroPosition": "SB",
+   "heroCards": "AxAx9x2x",
+   "board": {
+    "flop": "Qh6c2c",
+    "turn": "Th",
+    "river": "6s"
+   },
+   "showdown": {
+    "CO": "KsTs8d5d"
+   },
+   "winners": [
+    "CO"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "CO",
+      "raise",
+      null
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "call",
+      null
+     ],
+     [
+      "BB",
+      "fold"
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "CO",
+      "bet",
+      null
+     ],
+     [
+      "SB",
+      "call",
+      null
+     ]
+    ],
+    "turn": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "CO",
+      "bet",
+      null
+     ],
+     [
+      "SB",
+      "call",
+      null
+     ]
+    ],
+    "river": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "CO",
+      "all-in",
+      null
+     ],
+     [
+      "SB",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "\"AA92hh\" says two hearts, not which: never both aces of hearts. Stacks and sizes are in big blinds only."
+ },
+ {
+  "id": "web-plo-double-board-bomb-pot-quartered",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1umzkrd/13_hand_analysis_plo_dbbp_turned_nutnut/",
+  "game": "PLO",
+  "tags": [
+   "cash",
+   "pot-limit",
+   "bomb-pot",
+   "double-board",
+   "unsupported"
+  ],
+  "text": "PLO bomb pot at 1/3 with two boards, about $1000 effective against the main villain. I hold 5h6s7s8d and the pot starts at $40.\nBoard 1 flop is 589 rainbow, board 2 flop is 5d9hTd. From EP I pot it, two players call, and the pot is $160.\nTurn 1 is a K (board 1 stays rainbow); turn 2 is the 6d, which gives me a double flush draw. I pot again and the next player folds. Villain repots to $640, I repot all in and he calls holding 678J with no flush draws, so the same nuts but with straight redraws.\nRiver 1 is a T, river 2 an A. I get quartered.",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "cash",
+   "heroCards": "5h6s7s8d",
+   "board": {
+    "flop": "5x8x9x",
+    "turn": "Kx",
+    "river": "Tx"
+   },
+   "unsupported": true
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.unsupported",
+    "id": "unsupported",
+    "about": "a format the replayer cannot store"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the callers' seats are never named"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "A double-board bomb pot: the replayer keeps the first board only and has no bomb pot."
+ },
+ {
+  "id": "web-plo8-btn-flat-flop-raise-river-fold",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1p5t41u/hand_analysis_12_plo_8/",
+  "game": "PLO8",
+  "tags": [
+   "cash",
+   "pot-limit",
+   "hi-lo",
+   "stated-pot",
+   "checkraise"
+  ],
+  "text": "1/2 PLO8. Hero on the button, $484 effective.\nUTG opens to 4, UTG+1 (whale) raises to 12, I flat with AhJd9h8c, UTG calls.\nFlop 7h10sKd (pot 39). Checks to me, I bet 18, UTG check-raises to 54, whale folds, I call.\nTurn 8d (pot 147): UTG checks, I check.\nRiver 10d (pot 147): UTG bets 110 and I fold. Should I have bet the turn?",
+  "expect": {
+   "gameType": "PLO8",
+   "gameMode": "cash",
+   "blinds": {
+    "sb": 1,
+    "bb": 2
+   },
+   "heroPosition": "BTN",
+   "heroCards": "AhJd9h8c",
+   "effectiveStack": 484,
+   "board": {
+    "flop": "7hTsKd",
+    "turn": "8d",
+    "river": "Td"
+   },
+   "winners": [
+    "UTG"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      4
+     ],
+     [
+      "UTG+1",
+      "raise",
+      12
+     ],
+     [
+      "BTN",
+      "call",
+      12
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      8
+     ]
+    ],
+    "flop": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "UTG+1",
+      "check"
+     ],
+     [
+      "BTN",
+      "bet",
+      18
+     ],
+     [
+      "UTG",
+      "raise",
+      54
+     ],
+     [
+      "UTG+1",
+      "fold"
+     ],
+     [
+      "BTN",
+      "call",
+      36
+     ]
+    ],
+    "turn": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "BTN",
+      "check"
+     ]
+    ],
+    "river": [
+     [
+      "UTG",
+      "bet",
+      110
+     ],
+     [
+      "BTN",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ]
+ },
+ {
+  "id": "web-plo5-btn-straddle-second-nut-flush",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1mc4asl/plo5_hand_review_playing_2nd_nut_flush_on_the/",
+  "game": "PLO",
+  "tags": [
+   "cash",
+   "online",
+   "plo5",
+   "variant",
+   "button-straddle",
+   "stacks-in-bb"
+  ],
+  "text": "GG, 5 handed, BN straddle to 2bb.\nHero (HJ) AK987 (dshsh): open 7bb. CO calls, BN calls. SPR ~5.\nFlop 963 (sss): Hero x, CO b33, BN c, Hero x/r pot, CO f, BN shoves, H calls. BN has the nut flush.\nHow do I play the second nut flush multiway?",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "cash",
+   "blinds": {
+    "straddle": [
+     "button"
+    ]
+   },
+   "players": 5,
+   "heroPosition": "HJ",
+   "board": {
+    "flop": "9s6s3s"
+   },
+   "winners": [
+    "BTN"
+   ],
+   "unsupported": true,
+   "actions": {
+    "preflop": [
+     [
+      "HJ",
+      "raise",
+      null
+     ],
+     [
+      "CO",
+      "call",
+      null
+     ],
+     [
+      "BTN",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "HJ",
+      "check"
+     ],
+     [
+      "CO",
+      "bet",
+      null
+     ],
+     [
+      "BTN",
+      "call",
+      null
+     ],
+     [
+      "HJ",
+      "raise",
+      null
+     ],
+     [
+      "CO",
+      "fold"
+     ],
+     [
+      "BTN",
+      "all-in",
+      null
+     ],
+     [
+      "HJ",
+      "call",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.unsupported",
+    "id": "unsupported",
+    "about": "a format the replayer cannot store"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "impossible",
+     "ambiguous"
+    ],
+    "field": "streets.0.cards.hero",
+    "id": [
+     "cards",
+     "notation"
+    ],
+    "about": "five hole cards in a four-card game"
+   }
+  ],
+  "notes": "PLO5 is recorded as PLO, so the fifth hole card cannot be kept."
+ },
+ {
+  "id": "web-plo5-double-board-three-mp-callers",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1omd5oi/plo_double_board_bomb_pot_hand_analysis/",
+  "game": "PLO",
+  "tags": [
+   "cash",
+   "plo5",
+   "bomb-pot",
+   "double-board",
+   "group-action",
+   "unsupported"
+  ],
+  "text": "5-card PLO, 7 handed double board bomb pot. Hero in the SB with Ah7h10s7c3c.\nBoard A: Qh3h5h, nuts for me. Board B: 7d2s3s, also the nuts.\nI bet 1/3, three MP players call, the button calls.\nTurn: board A Jh, board B Qs, spades get there. I bet pot and only the first MP caller calls, best player in the casino.\nRiver: board A Js, board B 3s, both boards pair. I check... block or check?",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "cash",
+   "heroPosition": "SB",
+   "board": {
+    "flop": "Qh3h5h",
+    "turn": "Jh",
+    "river": "Js"
+   },
+   "unsupported": true
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.unsupported",
+    "id": "unsupported",
+    "about": "a format the replayer cannot store"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the three MP callers are never told apart"
+   },
+   {
+    "kind": [
+     "impossible",
+     "ambiguous"
+    ],
+    "field": "streets.0.cards.hero",
+    "id": [
+     "cards",
+     "notation"
+    ],
+    "about": "five hole cards in a four-card game"
+   }
+  ],
+  "notes": "Board B and the bomb pot cannot be stored; \"three MP players call\" is a group of three."
+ },
+ {
+  "id": "web-plo-private-game-6jqq-rainbow-fold",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1me45b9/plo_hand/",
+  "game": "PLO",
+  "tags": [
+   "cash",
+   "pot-limit",
+   "rainbow-holding",
+   "out-of-turn",
+   "multiway"
+  ],
+  "text": "No-rake private game. In the BB with 6JQQ rain bow, about average stacked. SRP, four of us see 2T9 rainbow: cut off checks, button pots, everyone calls, cut off pots again (set, I figure). Button calls, I call, three of us see a Q turn: 2T9Q, two clubs now. Cut off checks, I check, button bets half, cut off pots. I have one club and fold. Button shows TT (top set, three clubs) and folds too. Cut off says JJKx.\nEdit: the button and I had ~$200 each, the cut off $400.",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "cash",
+   "heroPosition": "BB",
+   "heroCards": "6xJxQxQx",
+   "stacks": {
+    "BB": 200,
+    "BTN": 200,
+    "CO": 400
+   },
+   "board": {
+    "flop": "2xTx9x",
+    "turn": "Qx"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the cut off acts before the big blind after the flop, which is out of turn"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "\"6JQQ rain bow\" is a holding with four different suits, not a board."
+ },
+ {
+  "id": "web-observer-plo-bigo-split-dark-bet",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1hwbr18/hilarious_plo_hand_at_pmill/",
+  "game": "PLO",
+  "tags": [
+   "cash",
+   "observer",
+   "split-game",
+   "ambiguous-game",
+   "dark-bet"
+  ],
+  "text": "Saw the funniest hand at the Peppermill on Friday. 1/2 PLO/Big O split game, playing deep, about 2.5k average.\nOne guy opens $15 and gets 3 callers, $65 in. Flop 2h 3h Jd.\nGuy 1 in the SB ($2.5k, wild and pretty bad) pots it for $65, some random calls, Guy 2 (solid pro who covers the table) repots to $325. Guy 1 calls, then bets $500 in the dark.\nTurn 4h. Guy 2 shoves. Guy 1 turns over JJ and moans about the turn but calls for the odds. Guy 2 shows Ah5h for the straight flush: \"you're drawing dead.\"",
+  "expect": {
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 1,
+    "bb": 2
+   },
+   "observer": true,
+   "board": {
+    "flop": "2h3hJd",
+    "turn": "4h"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "gameType",
+    "id": "game",
+    "about": "the game is not said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "only Guy 1's seat is named"
+   }
+  ],
+  "notes": "A PLO/Big O split game: the two cards shown cannot say which game this hand was. Nobody here is the narrator."
+ },
+ {
+  "id": "web-plo-5nl-bomb-pot-cumulative-boards",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/18nbyys/plo_bomb_pot_hand_review_not_sure_how_i_played/",
+  "game": "PLO",
+  "tags": [
+   "cash",
+   "online",
+   "bomb-pot",
+   "board-repeats",
+   "stated-pot",
+   "unsupported"
+  ],
+  "text": "5NL on ACR, where bomb pots go straight to the flop with no preflop betting.\nHero BU with Ac Ts 5s 8d\nFlop: Tc Ad 5d, pot $1.19. I cover V, $5.59 effective.\nV in the BB bets $1.25, folds to me, I call.\nTurn: Tc Ad 5d 2c, pot $3.57. V bets $3.75, I call.\nRiver: Tc Ad 5d 2c 6d, pot $10.69. V bets $0.57 all in, I call.\nWill edit with the result. Raise the flop instead?",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "cash",
+   "currency": "USD",
+   "heroPosition": "BTN",
+   "heroCards": "AcTs5s8d",
+   "board": {
+    "flop": "TcAd5d",
+    "turn": "2c",
+    "river": "6d"
+   },
+   "unsupported": true,
+   "actions": {
+    "flop": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "bet",
+      1.25
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BTN",
+      "call",
+      1.25
+     ]
+    ],
+    "turn": [
+     [
+      "BB",
+      "bet",
+      3.75
+     ],
+     [
+      "BTN",
+      "call",
+      3.75
+     ]
+    ],
+    "river": [
+     [
+      "BB",
+      "all-in",
+      0.57
+     ],
+     [
+      "BTN",
+      "call",
+      0.57
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.unsupported",
+    "id": "unsupported",
+    "about": "a format the replayer cannot store"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "result",
+    "id": [
+     "result",
+     "showdown"
+    ],
+    "about": "the result was never added"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "action:2",
+     "size",
+     "choice"
+    ],
+    "about": "the turn bet is bigger than the stated pot, which pot limit does not allow"
+   }
+  ],
+  "flaws": [
+   "seating"
+  ],
+  "notes": "A bomb pot: no blinds and no preflop action, which the validator reads as everyone folding preflop. Each street restates the board."
+ },
+ {
+  "id": "web-plo-5-t-river-tank-call-angle",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/601wxa/5t_plo_600_river_hero_call_villain_tries_to_kill/",
+  "game": "PLO",
+  "tags": [
+   "cash",
+   "pot-limit",
+   "T-for-ten",
+   "river-only",
+   "rainbow-holding"
+  ],
+  "text": "$5/T PLO. Hero has KK84 rainbow on a 5d 7h Js Jh 2c board, checks, then tank calls $600 into $740. While tanking I kept saying \"you got it\" without mucking, the villain tossed the dealer a $1 tip, I called and he called the floor saying my hand was dead. Floor let it play and he mucked. Angle?",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 5,
+    "bb": 10
+   },
+   "heroCards": "KxKx8x4x",
+   "board": {
+    "flop": "5d7hJs",
+    "turn": "Jh",
+    "river": "2c"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "neither player's seat is named"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "street-open:0",
+     "next:0",
+     "group-seats:0",
+     "pot-mismatch"
+    ],
+    "about": "nothing before the river is told"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "\"$5/T\" is 5/10. The story is about a floor ruling; only the river is told."
+ },
+ {
+  "id": "web-plo-fragment-ai-on-flop",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1its6qq/are_these_odds_on_the_flop_correct_or_am_i_losing/",
+  "game": "PLO",
+  "tags": [
+   "fragment",
+   "terse"
+  ],
+  "text": "PLO HI: all in on the flop, then a 7 turn and an 8 river; he had the J-high flush draw. Are my odds right?",
+  "expect": {
+   "gameType": "PLO"
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "streets.0.cards.hero",
+    "id": "cards:hero",
+    "about": "the hero's cards are never named"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the flop is never given"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "Too little to replay: no cards, flop or seats."
+ },
+ {
+  "id": "web-plo8-4-card-we-3x-button",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1584gcx/omaha_hilo_hand/",
+  "game": "PLO8",
+  "tags": [
+   "cash",
+   "hi-lo",
+   "we-narrator",
+   "slash-cards",
+   "decision"
+  ],
+  "text": "4 card, 5/10, 1250 effective. EP opens and we 3x from the button with Ad/Kx/10x/3d; villain calls. Flop 4d/4x/6d: a flush draw and the second nut low draw for us. EP pots it for 500. Now?",
+  "expect": {
+   "gameType": "PLO8",
+   "blinds": {
+    "sb": 5,
+    "bb": 10
+   },
+   "heroPosition": "BTN",
+   "heroCards": "AdKxTx3d",
+   "effectiveStack": 1250,
+   "board": {
+    "flop": "4d4x6d"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      null
+     ],
+     [
+      "BTN",
+      "raise",
+      null
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "UTG",
+      "bet",
+      500
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "size",
+     "choice"
+    ],
+    "about": "the open has no size, so the raise to 3x it has none either"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero to act"
+   }
+  ],
+  "notes": "Owner reading: \"we 3x\" is a raise to 3 times the open, NOT a 3-bet. The open and the raise have no sizes. \"4 card\" with \"second nut low draw\" is Omaha hi-lo, not PLO."
+ },
+ {
+  "id": "web-nlo8-full-tilt-steel-wheel-quartered",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/ahcxc/getting_run_over_by_the_steel_wheel_nlo8_3_handed/",
+  "game": "PLO8",
+  "tags": [
+   "cash",
+   "hand-history",
+   "no-limit-omaha",
+   "variant",
+   "hi-lo",
+   "split"
+  ],
+  "text": "FTP $0.10/$0.25 NL Omaha Hi/Lo, 3 handed. Stacks: BB $20.91, BTN $29.25, me (SB) $25.25.\nPre ($0.35): I have 3s Ac 3c 2d. BTN to $0.75, I call $0.65, BB calls $0.50.\nFlop ($2.25) 2h 5h 4h: I check, BB checks, BTN $1.25, I make it $6, BB out, BTN calls $4.75.\nTurn ($14.25) 9c: I shove $18.50, BTN calls.\nRiver Jc. BTN: Jh Ah 3h Ad (HI straight flush, five high; LO 5,4,3,2,A). Me: 3s Ac 3c 2d (LO 5,4,3,2,A). He gets the high and half the low, I get a quarter. Steel wheel, ouch.",
+  "expect": {
+   "gameType": "PLO8",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 0.1,
+    "bb": 0.25
+   },
+   "players": 3,
+   "heroPosition": "SB",
+   "heroCards": "3sAc3c2d",
+   "stacks": {
+    "BB": 20.91,
+    "BTN": 29.25,
+    "SB": 25.25
+   },
+   "board": {
+    "flop": "2h5h4h",
+    "turn": "9c",
+    "river": "Jc"
+   },
+   "showdown": {
+    "BTN": "JhAh3hAd"
+   },
+   "winners": {
+    "refs": [
+     "BTN",
+     "SB"
+    ],
+    "split": true
+   },
+   "unsupported": true,
+   "actions": {
+    "preflop": [
+     [
+      "BTN",
+      "raise",
+      0.75
+     ],
+     [
+      "SB",
+      "call",
+      0.65
+     ],
+     [
+      "BB",
+      "call",
+      0.5
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "BTN",
+      "bet",
+      1.25
+     ],
+     [
+      "SB",
+      "raise",
+      6
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "BTN",
+      "call",
+      4.75
+     ]
+    ],
+    "turn": [
+     [
+      "SB",
+      "all-in",
+      18.5
+     ],
+     [
+      "BTN",
+      "call",
+      18.5
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.unsupported",
+    "id": "unsupported",
+    "about": "a format the replayer cannot store"
+   }
+  ],
+  "flaws": [
+   "betting"
+  ],
+  "notes": "No-limit Omaha hi-lo is recorded as PLO8, so the turn shove is over the pot limit. \"LO: 5,4,3,2,A\" is a made hand, not cards."
+ },
+ {
+  "id": "web-short-deck-seat-numbers-button-blind",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/b742cm/short_deck_hand_analysis_10c_ante_10c_btn/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "online",
+   "short-deck",
+   "hand-history",
+   "seat-numbers",
+   "unsupported"
+  ],
+  "text": "Practising short deck at micros on Stars. 6+ Hold'em No Limit (button blind $0.10, ante $0.10), 6-max, Seat #4 is the button.\nSeat 1: Villain ($19.37)\nSeat 4: Hero ($22.36)\nSeat 6: Another player ($22.59)\nEveryone antes $0.10, Hero posts the button blind $0.10\nDealt to Hero 9h Th\nAnother player folds, Villain raises to $0.60, Hero raises to $2.10, Villain calls\nFlop 8c 9d Ah: Villain bets $2.30, Hero calls\nTurn 6d: Villain bets $4.30, Hero calls\nRiver 6c: Villain bets $10.57 all in, Hero calls\nAm I getting value-towned by AT+ here?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "players": 3,
+   "heroCards": "9hTh",
+   "board": {
+    "flop": "8c9dAh",
+    "turn": "6d",
+    "river": "6c"
+   },
+   "unsupported": true
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.unsupported",
+    "id": "unsupported",
+    "about": "a format the replayer cannot store"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "short deck has a button blind and no small or big blind, so the seats do not map"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": "missing",
+    "field": [
+     "heroIdx",
+     "players.*.position"
+    ],
+    "id": [
+     "hero",
+     "seat",
+     "button"
+    ],
+    "about": "the seat of the hero (the button, seat 4) has to come from the seat numbers"
+   }
+  ],
+  "notes": "Short deck (6+) with a button blind and antes: the replayer records it as hold'em and cannot post the blinds this way."
+ },
+ {
+  "id": "web-stud8-bring-in-door-from-432",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/we996/good_bad_beat_stories_from_nonnlhe_games/",
+  "game": "Stud 8",
+  "tags": [
+   "mtt",
+   "stud",
+   "hi-lo",
+   "horse",
+   "all-in",
+   "scoop"
+  ],
+  "text": "WCOOP HORSE satellite, final table, 6 left for 5 seats; the Stud8 round.\nI'm dealt 4 3 2 and I have the bring in. It folds to the short stack on my right, showing a Q, and he completes with most of his chips. I raise him all in and he calls, showing 10 8 Q.\nOn 4th he catches a 2 and I catch an A: ace high and four to a low, a flush and a straight vs his queen high!\nBoards at the end: me 4 3 2 A J 9 K, ace-king high and no low; him 10 8 Q 2 6 2 4, a pair of deuces. He scoops it.",
+  "expect": {
+   "gameType": "Stud 8",
+   "gameMode": "mtt",
+   "heroCards": "4x3x2x",
+   "heroStreetCards": {
+    "4th": "Ax",
+    "5th": "Jx",
+    "6th": "9x",
+    "7th": "Kx"
+   },
+   "studUp": {
+    "@Qx": "Qx2x6x2x"
+   },
+   "winners": [
+    "@Qx"
+   ],
+   "actions": {
+    "3rd": [
+     [
+      "hero",
+      "bring-in",
+      null
+     ],
+     [
+      "@Qx",
+      "bet",
+      null
+     ],
+     [
+      "hero",
+      "raise",
+      null
+     ],
+     [
+      "@Qx",
+      "call",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "The bring-in says the door card: the 2 of \"4 3 2\" is the up card."
+ },
+ {
+  "id": "web-badugi-bvb-pat-three-draws",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1szofc/funny_badugi_hand_4080/",
+  "game": "Badugi",
+  "tags": [
+   "cash",
+   "limit",
+   "draw",
+   "blind-vs-blind"
+  ],
+  "text": "Badugi 40/80, BvB. BB for me with an A4KQ badugi; SB raises, I call. First draw: he takes 1, I pat; he checks, I bet, he calls. Second draw: he takes 1, I pat; he checks, I bet, he raises, I call (I nearly broke to draw 2, but he took 1 again so I patted). Last: he checks, I check behind, he misses and I win. Had he patted his tri I'd have broken.",
+  "expect": {
+   "gameType": "Badugi",
+   "gameMode": "cash",
+   "blinds": {
+    "sb": 20,
+    "bb": 40,
+    "bigBet": 80
+   },
+   "heroPosition": "BB",
+   "heroCards": "AxKxQx4x",
+   "winners": [
+    "BB"
+   ],
+   "draws": {
+    "predraw": [
+     [
+      "SB",
+      1
+     ],
+     [
+      "BB",
+      0
+     ]
+    ],
+    "draw1": [
+     [
+      "SB",
+      1
+     ],
+     [
+      "BB",
+      0
+     ]
+    ],
+    "draw2": [
+     [
+      "SB",
+      1
+     ],
+     [
+      "BB",
+      0
+     ]
+    ]
+   },
+   "actions": {
+    "predraw": [
+     [
+      "SB",
+      "raise",
+      60
+     ],
+     [
+      "BB",
+      "call",
+      40
+     ]
+    ],
+    "draw1": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "bet",
+      40
+     ],
+     [
+      "SB",
+      "call",
+      40
+     ]
+    ],
+    "draw2": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "bet",
+      80
+     ],
+     [
+      "SB",
+      "raise",
+      160
+     ],
+     [
+      "BB",
+      "call",
+      80
+     ]
+    ],
+    "draw3": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "check"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "\"His tri\" is a three-card badugi. Blinds assumed half a small bet and a small bet, as limit draw games post."
+ },
+ {
+  "id": "web-27td-two-hands-draw-counts-list",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1sluw3r/when_to_break_in_draw_games_super_multiway/",
+  "game": "2-7 TD",
+  "tags": [
+   "cash",
+   "limit",
+   "draw",
+   "several-hands",
+   "decision"
+  ],
+  "text": "Two hands, both 10/20 limit.\n2-7 TD: two limps, I raise with 87332 on the BTN, the SB, BB and both limpers call. They draw 2/3/2/2. Throw the 3, or 83? What if someone draws 1?\nBadugi: three limps, I raise A25K on the CO, BTN 3!, two callers, I call. They draw 2/1/1. Break the K or pat?",
+  "expect": {
+   "gameType": "2-7 TD",
+   "gameMode": "cash",
+   "blinds": {
+    "sb": 5,
+    "bb": 10,
+    "bigBet": 20
+   },
+   "heroPosition": "BTN",
+   "heroCards": "8x7x3x3x2x",
+   "otherHands": 1
+  },
+  "expectGaps": [
+   {
+    "kind": "ambiguous",
+    "field": "quickAdd.otherHands",
+    "id": "hand-choice",
+    "about": "the post tells more than one hand"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the limpers' seats are never named"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "\"2/3/2/2\" are four players' draws in turn order. A second, badugi hand is told too."
+ },
+ {
+  "id": "web-stud-hi-paren-down-cards-boat-vs-quads",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1tz13v3/fold_boat_to_3_on_7th_stud_hi/",
+  "game": "Stud Hi",
+  "tags": [
+   "cash",
+   "stud",
+   "limit",
+   "paren-notation",
+   "decision"
+  ],
+  "text": "20/40 stud. No reads, old guy, plays reasonably.\n2 brings in, V calls with a 4, I complete with (JJ)Q, the bring-in and V call.\n4th: H (JJ)QJ, V (xx)44, BI (xx)2T. V checks, H x, BI x.\n5th: H (JJ)QJ6, V (xx)444, BI (xx)2TK. V bets, H calls, BI folds.\n6th/7th: H (JJ)QJ68(6), V (xx)444A(x). 6th V bets, H calls. 7th V bets, H raises, V 3-bets. Fold the boat?",
+  "expect": {
+   "gameType": "Stud Hi",
+   "gameMode": "cash",
+   "blinds": {
+    "bb": 20,
+    "bigBet": 40
+   },
+   "heroCards": "JxJxQx",
+   "heroStreetCards": {
+    "4th": "Jx",
+    "5th": "6x",
+    "6th": "8x",
+    "7th": "6x"
+   },
+   "studUp": {
+    "@4x": "4x4x4xAx",
+    "@2x": "2xTxKx"
+   },
+   "actions": {
+    "3rd": [
+     [
+      "@2x",
+      "bring-in",
+      null
+     ],
+     [
+      "@4x",
+      "call",
+      null
+     ],
+     [
+      "hero",
+      "raise",
+      20
+     ],
+     [
+      "@2x",
+      "call",
+      null
+     ],
+     [
+      "@4x",
+      "call",
+      null
+     ]
+    ],
+    "4th": [
+     [
+      "@4x",
+      "check"
+     ],
+     [
+      "hero",
+      "check"
+     ],
+     [
+      "@2x",
+      "check"
+     ]
+    ],
+    "5th": [
+     [
+      "@4x",
+      "bet",
+      40
+     ],
+     [
+      "hero",
+      "call",
+      40
+     ],
+     [
+      "@2x",
+      "fold"
+     ]
+    ],
+    "6th": [
+     [
+      "@4x",
+      "bet",
+      40
+     ],
+     [
+      "hero",
+      "call",
+      40
+     ]
+    ],
+    "7th": [
+     [
+      "@4x",
+      "bet",
+      40
+     ],
+     [
+      "hero",
+      "raise",
+      80
+     ],
+     [
+      "@4x",
+      "raise",
+      80
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.ante",
+    "id": "blinds.ante",
+    "about": "a tournament hand with no ante said"
+   },
+   {
+    "kind": "missing",
+    "field": [
+     "blinds.bringIn",
+     "streets.0.actions.0"
+    ],
+    "id": [
+     "bringin",
+     "blinds",
+     "action:0:0"
+    ],
+    "about": "the bring-in size is not said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.4.actions",
+    "id": [
+     "action:4",
+     "street-open:4",
+     "next:4",
+     "group-seats:4",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero facing the 3-bet"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "Parentheses are face-down cards: \"(JJ)Q\" is two jacks down and a queen up; \"(xx)\" are an opponent's unknown down cards."
+ },
+ {
+  "id": "web-stud-mtt-brackets-big-bet-stacks",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1oz5c5e/stud_tournament_spot_how_to_play_overpair_vs_door/",
+  "game": "Stud Hi",
+  "tags": [
+   "mtt",
+   "stud",
+   "bracket-notation",
+   "stacks-in-big-bets"
+  ],
+  "text": "Small stud tournament, 3 left, top 2 paid 65/35. V1 is a calling station with 7 big bets, V2 a seasoned pro with 15BB, and H also has 15BB.\n3rd street: V1 completes with the 5c, V2 raises with the 8d, H 3-bets holding [Ks 8h] Kd. Both call.\n4th street: V1 shows 5c 9h over [xx xx]; V2 has [xx xx] 8d 8c; H has [Ks 8h] Kd 5h. V2 bets, H calls, V1 calls.\n5th street: V1 gets the Jd, V2 the As and H the 4h. V2 bets and H folds. Was folding on 4th after the pair right?",
+  "expect": {
+   "gameType": "Stud Hi",
+   "gameMode": "mtt",
+   "players": 3,
+   "heroCards": "Ks8hKd",
+   "heroStreetCards": {
+    "4th": "5h",
+    "5th": "4h"
+   },
+   "studUp": {
+    "@5c": "5c9hJd",
+    "@8d": "8d8cAs"
+   },
+   "actions": {
+    "3rd": [
+     [
+      "@5c",
+      "bet",
+      null
+     ],
+     [
+      "@8d",
+      "raise",
+      null
+     ],
+     [
+      "hero",
+      "raise",
+      null
+     ],
+     [
+      "@5c",
+      "call",
+      null
+     ],
+     [
+      "@8d",
+      "call",
+      null
+     ]
+    ],
+    "4th": [
+     [
+      "@8d",
+      "bet",
+      null
+     ],
+     [
+      "hero",
+      "call",
+      null
+     ],
+     [
+      "@5c",
+      "call",
+      null
+     ]
+    ],
+    "5th": [
+     [
+      "@8d",
+      "bet",
+      null
+     ],
+     [
+      "hero",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": [
+     "blinds.bringIn",
+     "streets.0.actions"
+    ],
+    "id": [
+     "bringin",
+     "action:0",
+     "blinds"
+    ],
+    "about": "the hand starts with a completion; who brought it in is not said"
+   }
+  ],
+  "notes": "\"[xx xx]\" are face-down cards. Stacks are in big bets, which the replayer counts in big blinds (small bets)."
+ },
+ {
+  "id": "web-stud8-odd-structure-up-cards-resorted",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1961akh/stud_8_hand_analysis/",
+  "game": "Stud 8",
+  "tags": [
+   "cash",
+   "stud",
+   "hi-lo",
+   "odd-structure",
+   "resorted-upcards",
+   "stated-pot"
+  ],
+  "text": "Stud 8 with a 10/10/10/20/20 structure (odd, but that's the game). 35 under and 4 showing for me; suits irrelevant.\n3rd: I bring in 5 (will 3! any complete), two folds, then xx6, xx8 and xxJ call. Pot 38.\n4th, me 3546: xx6A bets, xx8Q folds, xxJc9c calls, I raise, both call. Pot 98.\n5th, me 35467: now xxA62 and xxJc9cKs. xxA62 bets, J calls, I raise, both call. Pot 158.\n6th, me 354675: xxA623 and xxJc9cKsJs. J checks, I bet, xxA623 raises, J calls, I 3-bet, both call. Pot 318.\n7th, me 354675J: J bets, we both just call. Pot 378. Pumping too much with a dead low?",
+  "expect": {
+   "gameType": "Stud 8",
+   "gameMode": "cash",
+   "blinds": {
+    "bb": 10,
+    "bigBet": 20,
+    "bringIn": 5
+   },
+   "heroCards": "3x5x4x",
+   "heroStreetCards": {
+    "4th": "6x",
+    "5th": "7x",
+    "6th": "5x",
+    "7th": "Jx"
+   },
+   "studUp": {
+    "@6x": "6xAx2x3x",
+    "@8x": "8xQx",
+    "@Jc": "Jc9cKsJs"
+   },
+   "actions": {
+    "3rd": [
+     [
+      "hero",
+      "bring-in",
+      5
+     ],
+     [
+      "@6x",
+      "call",
+      5
+     ],
+     [
+      "@8x",
+      "call",
+      5
+     ],
+     [
+      "@Jc",
+      "call",
+      5
+     ]
+    ],
+    "4th": [
+     [
+      "@6x",
+      "bet",
+      10
+     ],
+     [
+      "@8x",
+      "fold"
+     ],
+     [
+      "@Jc",
+      "call",
+      10
+     ],
+     [
+      "hero",
+      "raise",
+      20
+     ],
+     [
+      "@6x",
+      "call",
+      10
+     ],
+     [
+      "@Jc",
+      "call",
+      10
+     ]
+    ],
+    "5th": [
+     [
+      "@6x",
+      "bet",
+      10
+     ],
+     [
+      "@Jc",
+      "call",
+      10
+     ],
+     [
+      "hero",
+      "raise",
+      20
+     ],
+     [
+      "@6x",
+      "call",
+      10
+     ],
+     [
+      "@Jc",
+      "call",
+      10
+     ]
+    ],
+    "6th": [
+     [
+      "@Jc",
+      "check"
+     ],
+     [
+      "hero",
+      "bet",
+      20
+     ],
+     [
+      "@6x",
+      "raise",
+      40
+     ],
+     [
+      "@Jc",
+      "call",
+      40
+     ],
+     [
+      "hero",
+      "raise",
+      40
+     ],
+     [
+      "@6x",
+      "call",
+      20
+     ],
+     [
+      "@Jc",
+      "call",
+      20
+     ]
+    ],
+    "7th": [
+     [
+      "@Jc",
+      "bet",
+      20
+     ],
+     [
+      "@6x",
+      "call",
+      20
+     ],
+     [
+      "hero",
+      "call",
+      20
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "action:2",
+     "size",
+     "choice"
+    ],
+    "about": "5th street is bet at the small limit in this structure, which the replayer cannot store"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.ante",
+    "id": "blinds.ante",
+    "about": "a tournament hand with no ante said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "result",
+    "id": [
+     "result",
+     "showdown"
+    ],
+    "about": "no result is given"
+   }
+  ],
+  "flaws": [
+   "betting"
+  ],
+  "notes": "\"xxA62\" is the same player as \"xx6A\": the up cards are re-sorted each street. \"35 under and 4 showing\" = 3 and 5 down, the 4 up. Owner reading: \"10/10/10/20/20\" per-street sizes — ask the user to clarify."
+ },
+ {
+  "id": "web-stud8-someone-completed-four-callers",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/12sy23m/stud_8_hand_review_where_did_i_go_wrong/",
+  "game": "Stud 8",
+  "tags": [
+   "cash",
+   "stud",
+   "hi-lo",
+   "anonymous-actors",
+   "decision"
+  ],
+  "text": "10-20 stud 8, lost a big one. I have As3sTs with the T showing; I only play for low with a 2... er, when I have the flush draw. Someone completes 3rd and four of us call, me included. Pot 58. The villain is loose and drinking; if he bets he has a made low.\n4th I catch the 2d. Someone bets, four call. Pot 98. Only one player shows a low draw, 24.\n5th I get the 6c, he gets a 6 too: I show A3 T26, he shows xx 246. Someone bets 20, he raises, the next guy re-raises. One player still behind me. 60 to call into 218 — what do I do?",
+  "expect": {
+   "gameType": "Stud 8",
+   "gameMode": "cash",
+   "blinds": {
+    "bb": 10,
+    "bigBet": 20
+   },
+   "heroCards": "As3sTs",
+   "heroStreetCards": {
+    "4th": "2d",
+    "5th": "6c"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "\"someone\" completes and bets: the actors are never named"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.ante",
+    "id": "blinds.ante",
+    "about": "a tournament hand with no ante said"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "The players are \"someone\", \"the villain\" and \"the next guy\", told by what they show, not by seat."
+ },
+ {
+  "id": "web-razz-rules-question-not-a-hand",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/6avv3p/question_about_razz/",
+  "game": "Razz",
+  "tags": [
+   "not-a-hand",
+   "rules-question"
+  ],
+  "text": "Argument at our home game, settle it: razz showdown between two players. One shows 9864A, the other 97432. Who wins and why? Only answer if you actually play razz.",
+  "expect": {
+   "gameType": "Razz",
+   "recordable": false
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.notRecordable",
+    "id": "scope",
+    "about": "not one recordable hand"
+   }
+  ],
+  "notes": "A rules question: \"9864A\" and \"97432\" are made hands, not a hand to replay."
+ },
+ {
+  "id": "web-27td-converter-snow-hand-lines",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/3k343h/27_triple_draw_hand_review/",
+  "game": "2-7 TD",
+  "tags": [
+   "cash",
+   "limit",
+   "draw",
+   "hand-history",
+   "snow",
+   "post-draw-hand"
+  ],
+  "text": "Stars $0.10/$0.20 limit 2-7 triple draw, 4 handed (converted).\nPre-draw (1.5 SB): I'm BTN with T 9 4 2 2. CO folds, I raise, SB folds, BB 3-bets, I call.\nDraw 1 (6.5 SB): BB takes 1, I take 3.\nHand: A 4 4 2 2\nBB bets, I raise, he calls.\nDraw 2 (5.25 BB): BB takes 1, I stand pat.\nHand: A 4 4 2 2\nBB checks, I bet, he calls.\nDraw 3 (7.25 BB): BB takes 1, I stand pat. BB bets, I raise.\nWith a deuce and a four out he rarely has a 7, so I snowed. He called with 87653.",
+  "expect": {
+   "gameType": "2-7 TD",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 0.05,
+    "bb": 0.1,
+    "bigBet": 0.2
+   },
+   "players": 4,
+   "heroPosition": "BTN",
+   "heroCards": "Tx9x4x2x2x",
+   "draws": {
+    "predraw": [
+     [
+      "BB",
+      1
+     ],
+     [
+      "BTN",
+      3
+     ]
+    ],
+    "draw1": [
+     [
+      "BB",
+      1
+     ],
+     [
+      "BTN",
+      0
+     ]
+    ],
+    "draw2": [
+     [
+      "BB",
+      1
+     ],
+     [
+      "BTN",
+      0
+     ]
+    ]
+   },
+   "showdown": {
+    "BB": "8x7x6x5x3x"
+   },
+   "winners": [
+    "BB"
+   ],
+   "actions": {
+    "predraw": [
+     [
+      "CO",
+      "fold"
+     ],
+     [
+      "BTN",
+      "raise",
+      0.2
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "raise",
+      0.2
+     ],
+     [
+      "BTN",
+      "call",
+      0.1
+     ]
+    ],
+    "draw1": [
+     [
+      "BB",
+      "bet",
+      0.1
+     ],
+     [
+      "BTN",
+      "raise",
+      0.2
+     ],
+     [
+      "BB",
+      "call",
+      0.1
+     ]
+    ],
+    "draw2": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "BTN",
+      "bet",
+      0.2
+     ],
+     [
+      "BB",
+      "call",
+      0.2
+     ]
+    ],
+    "draw3": [
+     [
+      "BB",
+      "bet",
+      0.2
+     ],
+     [
+      "BTN",
+      "raise",
+      0.4
+     ],
+     [
+      "BB",
+      "call",
+      0.2
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "\"Hand: A 4 4 2 2\" is the hero's hand after the draw, not new cards. Standing pat on a pair is a snow (a bluff)."
+ },
+ {
+  "id": "web-27td-wild-cards-ruling",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/22bx94/need_help_with_a_ruling_triple_draw/",
+  "game": "2-7 TD",
+  "tags": [
+   "not-a-hand",
+   "rules-question",
+   "wild-cards"
+  ],
+  "text": "Home game ruling please. After ~15 hands of normal triple draw I called 4s and 5s wild. Three-way showdown, biggest pot of the night: AAAKK, QJT85 (straight flush with the wilds) and 774 45 for five of a kind, which we never agreed was a hand. Who wins? Reddit decides.",
+  "expect": {
+   "gameType": "2-7 TD",
+   "recordable": false
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.notRecordable",
+    "id": "scope",
+    "about": "not one recordable hand"
+   }
+  ],
+  "notes": "Wild cards and a ruling: no hand the replayer can store."
+ },
+ {
+  "id": "web-observer-27td-pat-247jk-or-257jk",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/ve11j1/hellmuth_pats_247jk/",
+  "game": "2-7 TD",
+  "tags": [
+   "mtt",
+   "observer",
+   "hedged-card",
+   "ambiguous"
+  ],
+  "text": "You'll hear about it tomorrow on the vlogs: in the 10k 2-7 triple draw event a famous pro stood pat on 247JK (or maybe 257JK) on the first draw against someone drawing three. Laughably bad.",
+  "expect": {
+   "gameType": "2-7 TD",
+   "gameMode": "mtt",
+   "observer": true
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.0.cards.opponents",
+    "id": [
+     "cards",
+     "showdown",
+     "choice"
+    ],
+    "about": "\"247JK, or maybe 257JK\": the pat hand was said two ways"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "nobody's seat is said"
+   }
+  ]
+ },
+ {
+  "id": "web-bad-beat-jackpot-tip-story",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/14qljte/how_much_would_you_tip_the_dealer_if_you_won_40/jqoa67f/",
+  "game": "NLH",
+  "tags": [
+   "not-a-hand",
+   "story"
+  ],
+  "text": "Back in college I hit a $168k bad beat jackpot at a casino in AC, I had the high hand, quad 4s over quad 2s. My share was $42k; the pit boss said tip 8-10k, I got annoyed, tipped $2k and never went back. Any tip over $1k is generous.",
+  "expect": {
+   "gameType": "NLH",
+   "recordable": false
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.notRecordable",
+    "id": "scope",
+    "about": "not one recordable hand"
+   }
+  ],
+  "notes": "A story about a jackpot tip: the hand itself is never told."
+ },
+ {
+  "id": "web-app-rant-two-fragments",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/17devew/texas_poker_hit_app/kjxdp8z/",
+  "game": "NLH",
+  "tags": [
+   "not-a-hand",
+   "rant",
+   "all-caps",
+   "several-hands"
+  ],
+  "text": "THIS APP IS RIGGED, CHEATED 3 TIMES TODAY. IN A TOURNAMENT ONE GUY FOLDED, THE OTHER WENT ALL IN, WE BOTH HAD ABOUT 1K, I WON AND NEVER GOT HIS CHIPS. NEXT GAME I HAD A4, HE HAD A2, BOARD A66Q AND SOMETHING, SAME HAND, THEY GAVE HIM THE WHOLE POT AND DELETED IT FROM THE CHAT. BOTS EVERYWHERE. STAY AWAY.",
+  "expect": {
+   "gameType": "NLH",
+   "recordable": false
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.notRecordable",
+    "id": "scope",
+    "about": "not one recordable hand"
+   }
+  ]
+ },
+ {
+  "id": "web-rigged-rant-jj-vs-j5-555",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/myhtsg/online_poker_is_rigged/ilwk8dv/",
+  "game": "NLH",
+  "tags": [
+   "not-a-hand",
+   "rant",
+   "fragment"
+  ],
+  "text": "Four straight 1-3 outers on the river took me out of a big event on ClubWPT. Five sets of quads in a few hours. This week I called a shove with JJ against J5 and the flop came 555. That doesn't happen naturally. Rigged for entertainment.",
+  "expect": {
+   "gameType": "NLH",
+   "recordable": false
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.notRecordable",
+    "id": "scope",
+    "about": "not one recordable hand"
+   }
+  ]
+ },
+ {
+  "id": "web-kk-blinds-as-lines-all-others-fold",
+  "source": "text",
+  "sourceUrl": "https://www.pokerchipforum.com/threads/2-5-with-kk.131369/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "blind-lines",
+   "verbless",
+   "group-action",
+   "stated-pot",
+   "decision"
+  ],
+  "text": "$2/$5 live, $385 in front of me after two dull hours. Villain: loose passive, calls down with bottom pair, stacks off light.\nSB $2 / BB $5\nUTG+1 $15\nUTG+2 calls $15\nHero (LJ) raises $50 w/ KK\nVillain (HJ) calls $50\nAll others fold\nHU to the flop with $137 in the middle; $335 behind me and he covers.\nFlop 8 7 10 rainbow. Hero?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 2,
+    "bb": 5
+   },
+   "heroPosition": "LJ",
+   "heroCards": "KxKx",
+   "stacks": {
+    "LJ": 385
+   },
+   "board": {
+    "flop": "8x7xTx"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG+1",
+      "raise",
+      15
+     ],
+     [
+      "UTG+2",
+      "call",
+      15
+     ],
+     [
+      "LJ",
+      "raise",
+      50
+     ],
+     [
+      "HJ",
+      "call",
+      50
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG+1",
+      "fold"
+     ],
+     [
+      "UTG+2",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops on the flop with the hero to act"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "the villain covers, but his stack is unknown"
+   }
+  ],
+  "notes": "\"SB $2 / BB $5\" are the posts; \"UTG+1 $15\" with no verb is a raise to 15. The $137 pot proves both limp-callers folded to the raise."
+ },
+ {
+  "id": "web-mtt-home-akss-min-click-dollars-on-chips",
+  "source": "text",
+  "sourceUrl": "https://www.pokerchipforum.com/threads/ak-in-late-stages-of-a-nlhe-tournament-gets-re-raised-by-villain.143947/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "home-game",
+   "click",
+   "earlier-hand-noise",
+   "decision"
+  ],
+  "text": "29-runner $200 home NLHE tournament, down to three, we have the button.\nButton (hero): ~350K\nSB: ~200K\nBB (villain, solid TAG): ~450K\n6K/12K with a 12K BBA if I remember right. Pays 2830 / 1650 / 890.\nA few hands back he raised the button, I called, flopped TPTK and checked, he bet $50,000 and we check-raise shoved; he folded.\nNow: I find AK suited on the button and min-click to $25K (2xBB). SB folds, BB raises to 50K (4xBB). Flat or 4-bet, and what then?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 6000,
+    "bb": 12000,
+    "ante": 12000
+   },
+   "players": 3,
+   "heroPosition": "BTN",
+   "heroCards": "AxKx",
+   "stacks": {
+    "BTN": 350000,
+    "SB": 200000,
+    "BB": 450000
+   },
+   "actions": {
+    "preflop": [
+     [
+      "BTN",
+      "raise",
+      25000
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "raise",
+      38000
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "street-open:0",
+     "next:0",
+     "group-seats:0",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero facing the 3-bet"
+   }
+  ],
+  "notes": "The \"few hands earlier\" hand must not leak in. \"$25K\" is chips, and 2xBB is really 24K."
+ },
+ {
+  "id": "web-sohe-split-decision-not-a-hand",
+  "source": "text",
+  "sourceUrl": "https://www.pokerchipforum.com/threads/big-sohe-soshe-tough-split.134249/",
+  "game": "PLO",
+  "tags": [
+   "not-a-hand",
+   "split-game",
+   "bomb-pot",
+   "smilie-cards"
+  ],
+  "text": "All bomb pots, ante 1, ~100 effective, no limit. It's \"big\" SOHE: seven hole cards split into four for the Omaha board and three for Super Hold'em, 6 handed. I have :ah::ac::kc::qc::th::5h::5d:. How do you split it? Only the split matters, not the rest of the hand.",
+  "expect": {
+   "recordable": false
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.notRecordable",
+    "id": "scope",
+    "about": "not one recordable hand"
+   }
+  ],
+  "notes": "A split decision in a game the replayer does not have."
+ },
+ {
+  "id": "web-mtt-first-hand-four-hands-told",
+  "source": "text",
+  "sourceUrl": "https://www.pokerchipforum.com/threads/can-one-have-a-worse-start-to-a-tournament.140556/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "several-hands",
+   "odd-blinds",
+   "board-shorthand",
+   "anonymous-actors"
+  ],
+  "text": "Worst start ever. 20-runner tournament, 15k starting stacks, 100/100 blinds.\nFirst hand I'm in the SB, five limpers, I make it 900 to go with AJss. Four calls. Flop 974r, I check and it checks around. Turn 10, I lead 1k and get three callers. River bricks, I check, someone bets, I fold.\nNext hand on the button, four limpers, AKhh, make it 800, three callers. Q 10 x flop, checks to me, I bet 1k, one call. Second heart on the turn, checked through; Q river, he leads, I fold.\nThird hand 10 3 off, fold.\nFourth hand, three limpers, AA (s/c), I make it 800, two callers. 522r flop, checks to me, I bet 2K, UTG raises to 4k, folds to me, I shove, she calls with 10h 2d. Rebuy after four hands.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 100,
+    "bb": 100
+   },
+   "heroPosition": "SB",
+   "heroCards": "AsJs",
+   "board": {
+    "flop": "9x7x4x",
+    "turn": "Tx"
+   },
+   "otherHands": 3
+  },
+  "expectGaps": [
+   {
+    "kind": "ambiguous",
+    "field": "quickAdd.otherHands",
+    "id": "hand-choice",
+    "about": "the post tells more than one hand"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the limpers and callers are never named"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "flaws": [
+   "seating"
+  ],
+  "notes": "Four hands; the first is recorded (no actions expected: its players are never named). In the first hand of a tournament the starting stack is everyone's stack, but the text does not tie it to this hand."
+ },
+ {
+  "id": "web-mtt-jj-4bet-shove-calls-for-less-exposed",
+  "source": "text",
+  "sourceUrl": "https://www.pokerchipforum.com/threads/holdem-spot-against-exposed-hand.141968/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "smilie-cards",
+   "calls-for-less",
+   "side-pot",
+   "unknown-label",
+   "decision"
+  ],
+  "text": "Live $250 MTT, 150 runners, 40 left and 17 paid, average stack 78k, big blind 2500.\nStacks: me UTG 140k, UTG1 200k (solid, maybe a pro), HJ 34k (60% VPIP, passive), BB: unknown 18k.\nPreflop I raise :jh: :jd: to 6k and UTG1 3! to 12k. HJ calls. The BB 4! shoves tiny to 18k. I call and so do UTG1 and HJ.\nFlop :qh: :ts: :3h: -- I check, UTG1 bets 20k, HJ calls for less (16k). UTG1 turns over :ah: :2h:. I played it badly; what now?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "blinds": {
+    "bb": 2500
+   },
+   "heroPosition": "UTG",
+   "heroCards": "JhJd",
+   "stacks": {
+    "UTG": 140000,
+    "UTG+1": 200000,
+    "HJ": 34000,
+    "BB": 18000
+   },
+   "board": {
+    "flop": "QhTs3h"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      6000
+     ],
+     [
+      "UTG+1",
+      "raise",
+      12000
+     ],
+     [
+      "HJ",
+      "call",
+      12000
+     ],
+     [
+      "BB",
+      "all-in",
+      15500
+     ],
+     [
+      "UTG",
+      "call",
+      12000
+     ],
+     [
+      "UTG+1",
+      "call",
+      6000
+     ],
+     [
+      "HJ",
+      "call",
+      6000
+     ]
+    ],
+    "flop": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "UTG+1",
+      "bet",
+      20000
+     ],
+     [
+      "HJ",
+      "call",
+      16000
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.sb",
+    "id": "blinds.sb",
+    "about": "only the big blind is given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero to act"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.ante",
+    "id": "blinds.ante",
+    "about": "a tournament hand with no ante said"
+   }
+  ],
+  "notes": "\"BB: unknown 18k\" is a player with no reads and 18k, not an unknown stack. \"Calls for less\" is an all-in call. The 78k average is not a stack. UTG+1 exposed Ah2h mid-hand (not a showdown)."
+ },
+ {
+  "id": "web-a6s-btn-impossible-bb-limp-order",
+  "source": "text",
+  "sourceUrl": "https://www.pokerchipforum.com/threads/how-lucky-did-i-get-1-3.134327/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "impossible-order",
+   "typos",
+   "ambiguous"
+  ],
+  "text": "Playing 1/3 with 600 behind, on the button, 7 handed, A 6 suited. Sm folds, BB limps UTG raises to 30, folds round to me. I read a bluff (bad read) and make it 60, back to him and he calls. Flop A 3 9 rainbow, he bets into me 50, I make it 100, he calls. Turn a 6 for two pair, he jams, I call, and the river comes and I take it all. Did I play it badly?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "blinds": {
+    "sb": 1,
+    "bb": 3
+   },
+   "players": 7,
+   "heroPosition": "BTN",
+   "heroCards": "Ax6x",
+   "stacks": {
+    "BTN": 600
+   },
+   "board": {
+    "flop": "Ax3x9x",
+    "turn": "6x"
+   },
+   "winners": [
+    "BTN"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      30
+     ],
+     [
+      "BTN",
+      "raise",
+      60
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      30
+     ]
+    ],
+    "flop": [
+     [
+      "UTG",
+      "bet",
+      50
+     ],
+     [
+      "BTN",
+      "raise",
+      100
+     ],
+     [
+      "UTG",
+      "call",
+      50
+     ]
+    ],
+    "turn": [
+     [
+      "UTG",
+      "all-in",
+      null
+     ],
+     [
+      "BTN",
+      "call",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "street-open:0",
+     "next:0",
+     "group-seats:0",
+     "pot-mismatch"
+    ],
+    "about": "\"Sm folds, BB limps UTG raises\" is not an order the blinds can act in"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "UTG's stack is never given"
+   }
+  ],
+  "notes": "Owner reading: \"BB limps\" is probably a straddle or a typo: flag it and ask. The case keeps the likeliest reading, a UTG raise; the order is flagged."
+ },
+ {
+  "id": "web-mtt-online-qq-next-to-act-jams",
+  "source": "text",
+  "sourceUrl": "https://www.pokerchipforum.com/threads/how-to-play-qq-on-the-money-bubble.133491/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "online",
+   "relative-seat",
+   "stacks-in-bb",
+   "decision"
+  ],
+  "text": "Online tournament on WPT Gold, ~27BB, about 110th of 210 and 180 get paid. QQ in UTG+1, folds to me, I make it 2.3BB. Next to act is the big stack, who jams 94BB and covers me. Fold and cash, or call?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "heroPosition": "UTG+1",
+   "heroCards": "QxQx",
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "fold"
+     ],
+     [
+      "UTG+1",
+      "raise",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "\"next to act\" is the seat after the hero, which depends on the table size"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ]
+ },
+ {
+  "id": "web-mtt-two-takedowns-cumulative-board-made-hands",
+  "source": "text",
+  "sourceUrl": "https://www.pokerchipforum.com/threads/monster-hand-trap.147062/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "several-hands",
+   "board-repeats",
+   "made-hand-spelling",
+   "stacks-in-bb"
+  ],
+  "text": "Lesson learned: facing a river bet without the nuts, call, don't raise. Two days running I got crippled with a monster.\nTakedown 1: nut flush on the turn vs an aggressive guy, he bet 3.5BB and I just called. River paired, he bet 1BB, I raised to 20BB, he shoved, I called, he had the boat.\nTakedown 2: pocket JJ, flop KQ6. He bets 1.8BB, I call. Turn Q => KQ6Q, he bets 7BB, full pot, I call. River J => KQ6QJ, I fill up with 100BB behind, he has 95BB, pot maybe 21BB. He bets 21BB, I raise to 42BB, he jams, I call. He shows KQ for QQQKK and my JJJQQ is no good. Bust three hands later.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "heroCards": "JxJx",
+   "board": {
+    "flop": "KxQx6x",
+    "turn": "Qx",
+    "river": "Jx"
+   },
+   "otherHands": 1
+  },
+  "expectGaps": [
+   {
+    "kind": "ambiguous",
+    "field": "quickAdd.otherHands",
+    "id": "hand-choice",
+    "about": "the post tells more than one hand"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "neither player's seat is said"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "\"QQQKK\" and \"JJJQQ\" are made hands, not cards. \"KQ6Q => KQ6QJ\" restates the board."
+ },
+ {
+  "id": "web-27td-five-handed-utg-plus-two",
+  "source": "text",
+  "sourceUrl": "https://www.pokerchipforum.com/threads/pahwm-2-7-triple-draw.59475/",
+  "game": "2-7 TD",
+  "tags": [
+   "cash",
+   "limit",
+   "draw",
+   "mixed",
+   "position-conflict",
+   "decision"
+  ],
+  "text": "From our .50/1 mixed game Saturday. Limit triple draw, 5 handed. Stacks don't matter in limit. UTG+1 isn't in the hand.\nUTG is a loose passive rec out for revenge in this game. I'm on the button, solid. My wife is in the SB and likes to mix it up with me. BB is a super LAG who'll open and draw four.\nUTG limps. UTG+2 folds. Hero on the button with Q7643. Hero?",
+  "expect": {
+   "gameType": "2-7 TD",
+   "gameMode": "cash",
+   "blinds": {
+    "sb": 0.25,
+    "bb": 0.5,
+    "bigBet": 1
+   },
+   "players": 5,
+   "heroPosition": "BTN",
+   "heroCards": "Qx7x6x4x3x",
+   "actions": {
+    "predraw": [
+     [
+      "UTG",
+      "call",
+      0.5
+     ],
+     [
+      "UTG+1",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "\"UTG+2 folds\" names a sixth seat at a five-handed table"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "street-open:0",
+     "next:0",
+     "group-seats:0",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero to act"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ]
+ },
+ {
+  "id": "web-plo-strd-on-utg-opens-pot-400",
+  "source": "text",
+  "sourceUrl": "https://www.pokerchipforum.com/threads/pahwm-live-10-20-plo4-from-the-bb.144589/",
+  "game": "PLO",
+  "tags": [
+   "cash",
+   "pot-limit",
+   "straddle",
+   "straddle-utg",
+   "smilie-cards",
+   "stated-pot",
+   "decision"
+  ],
+  "text": "Mid-stakes PLO at Crown: $10/$20 ($40), 8 handed. Hero in the BB is effective at ~$4100.\nUTG is a tight local pro; the SB is a splashy US pro having a good time. I've been drinking with the SB and just rebought, so maybe I look like a fish.\n$40 STRD is on.\nUTG opens to $120, SB calls $120, I have :as: :9s: :9h::th:.\nI call, STRD folds (Pot: $400).\nFlop :js: :9d::3c:. The SB yells \"that's me!\" as the Js comes and pots it for $400. Hero?",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 10,
+    "bb": 20,
+    "straddle": [
+     "utg"
+    ]
+   },
+   "players": 8,
+   "heroPosition": "BB",
+   "heroCards": "As9s9hTh",
+   "effectiveStack": 4100,
+   "board": {
+    "flop": "Js9d3c"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG+1",
+      "raise",
+      120
+     ],
+     [
+      "SB",
+      "call",
+      110
+     ],
+     [
+      "BB",
+      "call",
+      100
+     ],
+     [
+      "UTG",
+      "fold"
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "bet",
+      400
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero facing the pot bet"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "only the effective stack is given"
+   }
+  ],
+  "notes": "The straddler (STRD) is UTG, so the player who \"opens UTG\" before the straddle acts is UTG+1: the $400 pot (3 × 120 + the dead 40) proves they are two players."
+ },
+ {
+  "id": "web-three-handed-holdem-split-question",
+  "source": "text",
+  "sourceUrl": "https://www.pokerchipforum.com/threads/so-we-are-playing-three-handed-holdem.146506/",
+  "game": "LHE",
+  "tags": [
+   "not-a-hand",
+   "split-game",
+   "smilie-cards"
+  ],
+  "text": "Three-handed hold'em: six cards split into three hold'em hands, pitch one after the flop and one after the turn. $3/$6 limit, five at the table, hero in middle position (UTG five-handed) with :ad: :kc: :qd: :jh: :9c: :8c:. Fold? If not, how do I split, and call or raise the big blind?",
+  "expect": {
+   "recordable": false
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.notRecordable",
+    "id": "scope",
+    "about": "not one recordable hand"
+   }
+  ],
+  "notes": "A split decision in a game the replayer does not have."
+ },
+ {
+  "id": "web-mtt-u1-optimist-three-way-allin",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3m7w5uvva4k26",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "fragment",
+   "shorthand",
+   "stacks-in-bb",
+   "ambiguous"
+  ],
+  "text": "Out .8bb deep. I open AQs UTG for 2bb, U+1 (an optimist, I cover him) flats, the HJ shortie jams, I rejam, the optimist calls: my AQs vs his KTo vs AJo. A king on the flop, naturally.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "heroPosition": "UTG",
+   "heroCards": "AxQx",
+   "showdown": {
+    "UTG+1": "KxTx",
+    "HJ": "AxJx"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      null
+     ],
+     [
+      "UTG+1",
+      "call",
+      null
+     ],
+     [
+      "HJ",
+      "all-in",
+      null
+     ],
+     [
+      "UTG",
+      "all-in",
+      null
+     ],
+     [
+      "UTG+1",
+      "call",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "only \"a K flops\" is said of the board"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "\".8bb deep\" is unclear: 80bb, 8bb or 0.8bb"
+   }
+  ],
+  "notes": "\"U+1\" is UTG+1. Owner reading: \".8bb deep\" is ambiguous (80bb, 8bb or 0.8bb) — ask the user for the stack."
+ },
+ {
+  "id": "web-mtt-mr-3bet-t5ttt-matching-king",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3mkkyujsftc2i",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "shorthand",
+   "board-shorthand",
+   "texture",
+   "pot-fractions",
+   "stacks-in-bb"
+  ],
+  "text": "AAAAAA\nUTG MR, ~40bb eff. I 3bet to 7bb on the button with AKo; the BB and the raiser call.\nT5Ttt flop and I hold the matching king. BB X, UTG B50, I jam over it, BB folds, UTG calls with A6s and the flush draw, gets there on the turn, I'm drawing dead and out. Rough day.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "heroPosition": "BTN",
+   "heroCards": "AxKx",
+   "board": {
+    "flop": "Tx5xTx"
+   },
+   "showdown": {
+    "UTG": "Ax6x"
+   },
+   "winners": [
+    "UTG"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      null
+     ],
+     [
+      "BTN",
+      "raise",
+      null
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "call",
+      null
+     ],
+     [
+      "UTG",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "bet",
+      null
+     ],
+     [
+      "BTN",
+      "all-in",
+      null
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.2.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the turn and river are never given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "\"MR\" is a min-raise; \"T5Ttt\" is a two-tone T-5-T flop; \"B50\" is a half-pot bet. The hero's king is the flop's two-tone suit."
+ },
+ {
+  "id": "web-kk-sb-btn-straddle-four-callers-who-held-what",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3lj4g52nwgs2u",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "emoji-suits",
+   "button-straddle",
+   "group-action",
+   "partial-suits",
+   "ambiguous"
+  ],
+  "text": "Rough game, but I won the one big pot. $6 BTN straddle, me in the SB with K♠︎K♣︎, raise to $20, 4 callers. QT6♥︎♥︎ flop: I lead $50, MP all in $150, the CO calls after a while, I jam ($500 eff) and the CO calls. 2♠︎ turn, 5♣︎ river, held up vs AQ and A7♥︎♥︎.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "heroPosition": "SB",
+   "heroCards": "KsKc",
+   "board": {
+    "flop": "QxTx6x",
+    "turn": "2s",
+    "river": "5c"
+   },
+   "winners": [
+    "SB"
+   ],
+   "actions": {
+    "flop": [
+     [
+      "SB",
+      "bet",
+      50
+     ],
+     [
+      "MP",
+      "all-in",
+      150
+     ],
+     [
+      "CO",
+      "call",
+      150
+     ],
+     [
+      "SB",
+      "all-in",
+      450
+     ],
+     [
+      "CO",
+      "call",
+      350
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the four callers are only partly named"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.0.cards.opponents",
+    "id": [
+     "cards",
+     "showdown",
+     "choice"
+    ],
+    "about": "\"vs AQ and A7hh\": which of MP and the CO had which is not said"
+   }
+  ],
+  "flaws": [
+   "seating"
+  ],
+  "notes": "\"QT6♥︎♥︎\" says two hearts, not which two. \"4 callers\" is a group action. A $6 button straddle implies 1/3 blinds but they are not said. The \"$500 eff\" is the stack on the flop, after the preflop raise to 20, so no starting stack is expected."
+ },
+ {
+  "id": "web-mtt-tts-co-kr-cbet-solver-jam",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3lh5bqf2oxs2z",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "shorthand",
+   "checkraise",
+   "stacks-in-bb",
+   "decision"
+  ],
+  "text": "ChipEV training hand, 30BB eff. CO opens 2x and we 3-bet TsTc to 5x; CO calls. Flop As5h2s: our 2.5x cbet gets kr to 5x by the CO and we call. Turn 4s, CO bets 11.3x, and the solver jams for 19.9x total. Why, with little fold equity and behind CO's range? First one I can't piece together.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "heroCards": "TsTc",
+   "board": {
+    "flop": "As5h2s",
+    "turn": "4s"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "CO",
+      "raise",
+      null
+     ],
+     [
+      "hero",
+      "raise",
+      null
+     ],
+     [
+      "CO",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "CO",
+      "check"
+     ],
+     [
+      "hero",
+      "bet",
+      null
+     ],
+     [
+      "CO",
+      "raise",
+      null
+     ],
+     [
+      "hero",
+      "call",
+      null
+     ]
+    ],
+    "turn": [
+     [
+      "CO",
+      "bet",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the hero's seat is not named (only the button acts after the CO post-flop)"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "action:2",
+     "street-open:2",
+     "next:2",
+     "group-seats:2",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero to act"
+   }
+  ],
+  "notes": "\"kr\" is a check-raise; \"2.5x\" and \"5x\" here are sizes in big blinds."
+ },
+ {
+  "id": "web-fragment-3b-a5ss-jam-turn",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3lgmklua7422o",
+  "game": "NLH",
+  "tags": [
+   "fragment",
+   "shorthand",
+   "pot-fractions"
+  ],
+  "text": "Live, with WSOP running on my phone: I 3B A5ss, cbet 50% on the flop, jam the turn, and the guy calls with a 3. What?",
+  "expect": {
+   "gameType": "NLH",
+   "heroCards": "As5s"
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "no board is given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "nobody's seat is said"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ]
+ },
+ {
+  "id": "web-ak-lost-to-qjcc-verbless-sizes",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3lh2fnchylk2e",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "verbless",
+   "result-symbol",
+   "emoji-suits",
+   "implied-actions"
+  ],
+  "text": "$325 eff. Hero HJ $15, SB calls, MP calls. AKT flop: Hero $25, SB $75, Hero all-in, called. 4 turn, 7 river. Hero AK<QJ♣︎♣︎",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "heroPosition": "HJ",
+   "heroCards": "AxKx",
+   "effectiveStack": 325,
+   "board": {
+    "flop": "AxKxTx",
+    "turn": "4x",
+    "river": "7x"
+   },
+   "showdown": {
+    "SB": "QcJc"
+   },
+   "winners": [
+    "SB"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "HJ",
+      "raise",
+      15
+     ],
+     [
+      "SB",
+      "call",
+      null
+     ],
+     [
+      "MP",
+      "call",
+      15
+     ]
+    ],
+    "flop": [
+     [
+      "HJ",
+      "bet",
+      25
+     ],
+     [
+      "SB",
+      "raise",
+      75
+     ],
+     [
+      "HJ",
+      "all-in",
+      285
+     ],
+     [
+      "SB",
+      "call",
+      235
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the SB's check before the hero's bet and MP's flop action are never said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "street-open:0",
+     "next:0",
+     "group-seats:0",
+     "pot-mismatch"
+    ],
+    "about": "MP calls after the SB although MP acts before the hijack"
+   }
+  ],
+  "flaws": [
+   "seating"
+  ],
+  "notes": "\"Hero $15\" and \"SB $75\" have no verbs: an open and a raise. \"AK<QJcc\" means AK lost to QJ of clubs."
+ },
+ {
+  "id": "web-bomb-pot-tt3-verbless",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3lgtih55ces2u",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "bomb-pot",
+   "verbless",
+   "unsupported"
+  ],
+  "text": "$10 bomb pot, $500 eff. TT3 flop: Utg $30, me $70, called. Turn 4: me $75, villain folds. I had T6; he folded T5.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "heroCards": "Tx6x",
+   "effectiveStack": 500,
+   "board": {
+    "flop": "TxTx3x",
+    "turn": "4x"
+   },
+   "winners": [
+    "hero"
+   ],
+   "unsupported": true,
+   "actions": {
+    "flop": [
+     [
+      "UTG",
+      "bet",
+      30
+     ],
+     [
+      "hero",
+      "raise",
+      70
+     ],
+     [
+      "UTG",
+      "call",
+      40
+     ]
+    ],
+    "turn": [
+     [
+      "hero",
+      "bet",
+      75
+     ],
+     [
+      "UTG",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.unsupported",
+    "id": "unsupported",
+    "about": "a format the replayer cannot store"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the hero's seat is not named"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "flaws": [
+   "seating"
+  ],
+  "notes": "A bomb pot: no preflop betting, which the validator reads as everyone folding preflop."
+ },
+ {
+  "id": "web-aa-btn-3bet-emoji-cumulative-river-overbet",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3lgg72qirm62k",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "emoji-suits",
+   "board-repeats",
+   "stated-pot",
+   "decision"
+  ],
+  "text": "How do you play this one?\nStakes $2/5. Me: BTN with A♣️ A♠️. Villain: MP.\nPre ($7): MP to $20, I 3-bet to $75, MP calls.\nFlop ($157) 4♣️ 8♣️ A♦️: check, check.\nTurn ($157) 4♣️ 8♣️ A♦️ 8♠️: MP $100, I call.\nRiver ($357) 4♣️ 8♣️ A♦️ 8♠️ 2♠️: MP bets $500.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "sb": 2,
+    "bb": 5
+   },
+   "heroPosition": "BTN",
+   "heroCards": "AcAs",
+   "board": {
+    "flop": "4c8cAd",
+    "turn": "8s",
+    "river": "2s"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "MP",
+      "raise",
+      20
+     ],
+     [
+      "BTN",
+      "raise",
+      75
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "MP",
+      "call",
+      55
+     ]
+    ],
+    "flop": [
+     [
+      "MP",
+      "check"
+     ],
+     [
+      "BTN",
+      "check"
+     ]
+    ],
+    "turn": [
+     [
+      "MP",
+      "bet",
+      100
+     ],
+     [
+      "BTN",
+      "call",
+      100
+     ]
+    ],
+    "river": [
+     [
+      "MP",
+      "bet",
+      500
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.3.actions",
+    "id": [
+     "action:3",
+     "street-open:3",
+     "next:3",
+     "group-seats:3",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero facing the river bet"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ]
+ },
+ {
+  "id": "web-strdl-akhh-run-twice-scoop",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3lgwt7g2wck2x",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "straddle",
+   "verbless",
+   "stated-pot",
+   "run-it-twice",
+   "checkraise"
+  ],
+  "text": "2/5/10 NLH, 3070 eff\nCO: 50\nHero (Strdl) AKhh: 200\nCO: call\nFlop (407) AcKc7d -- Hero x, V 175, Hero 500, V call\nTurn (1407) 9s -- Hero AI 2370, V call\nRiver 7c/5c -- Hero scoops\nI was mid-text before the hand, checked a flop I always bet, then went nuts. Bad?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "blinds": {
+    "sb": 2,
+    "bb": 5,
+    "straddle": [
+     "utg"
+    ]
+   },
+   "heroPosition": "UTG",
+   "heroCards": "AhKh",
+   "effectiveStack": 3070,
+   "board": {
+    "flop": "AcKc7d",
+    "turn": "9s",
+    "river": "7c"
+   },
+   "winners": [
+    "UTG"
+   ],
+   "unsupported": true,
+   "actions": {
+    "preflop": [
+     [
+      "CO",
+      "raise",
+      50
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "raise",
+      190
+     ],
+     [
+      "CO",
+      "call",
+      150
+     ]
+    ],
+    "flop": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "CO",
+      "bet",
+      175
+     ],
+     [
+      "UTG",
+      "raise",
+      500
+     ],
+     [
+      "CO",
+      "call",
+      325
+     ]
+    ],
+    "turn": [
+     [
+      "UTG",
+      "all-in",
+      2370
+     ],
+     [
+      "CO",
+      "call",
+      2370
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.unsupported",
+    "id": "unsupported",
+    "about": "a format the replayer cannot store"
+   }
+  ],
+  "notes": "\"Strdl\" is the straddler, here the hero. \"River 7c/5c\" is two runouts: only the first is recorded."
+ },
+ {
+  "id": "web-kk-bb-r11-b61-chips-stated-pots",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3kn6wiei65s2k",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "shorthand",
+   "stated-pot",
+   "two-way-size",
+   "verbless",
+   "all-in-call"
+  ],
+  "text": "Hand from tonight, 2/5 6Max. Me in the BB, KsKc.\nPf -- BTN r11 / SB r42 / BB c / BTN c\nFlop (126) Kd 2s 9s -- SB b61 / BB c / BTN f\nTurn (248) adds Qh -- SB 119 / BB r397 / SB c (386)\nRiver (1020) adds 3h",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "blinds": {
+    "sb": 2,
+    "bb": 5
+   },
+   "players": 6,
+   "heroPosition": "BB",
+   "heroCards": "KsKc",
+   "stacks": {
+    "SB": 386
+   },
+   "board": {
+    "flop": "Kd2s9s",
+    "turn": "Qh",
+    "river": "3h"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "BTN",
+      "raise",
+      11
+     ],
+     [
+      "SB",
+      "raise",
+      40
+     ],
+     [
+      "BB",
+      "call",
+      37
+     ],
+     [
+      "BTN",
+      "call",
+      31
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "bet",
+      61
+     ],
+     [
+      "BB",
+      "call",
+      61
+     ],
+     [
+      "BTN",
+      "fold"
+     ]
+    ],
+    "turn": [
+     [
+      "SB",
+      "bet",
+      119
+     ],
+     [
+      "BB",
+      "raise",
+      397
+     ],
+     [
+      "SB",
+      "call",
+      164
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "the hero's own stack is never given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "result",
+    "id": [
+     "result",
+     "showdown"
+    ],
+    "about": "the showdown is not told"
+   }
+  ],
+  "notes": "Every size is in chips (r11, r42), so \"b61\" is 61 chips, and the turn pot (248) proves it. Owner reading: \"SB c (386)\" — an amount in parentheses after a player is that player's STARTING STACK, so the SB calls all in for the 164 left of 386. The stated river pot (1020) then does not match the actions (814): the parse raises a non-blocking pot-mismatch question, which the oracle cannot raise."
+ },
+ {
+  "id": "web-27td-2356x-snow-whap",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3m2utipjn5k24",
+  "game": "2-7 TD",
+  "tags": [
+   "fragment",
+   "draw",
+   "unknown-card",
+   "slang"
+  ],
+  "text": "Love draw games but the beats are wicked. 2-7 triple draw tonight, betting hard on 2356x, caught a K, a 3, another 3, called down by a QLo WHAP. Should've snowed. Might start a 5-card high game.",
+  "expect": {
+   "gameType": "2-7 TD",
+   "heroCards": "2x3x5x6xx"
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "nobody's seat is said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.0.draws",
+    "id": "draw",
+    "about": "the draws are only said as the cards caught"
+   }
+  ],
+  "notes": "\"2356x\" is four cards and one nobody named. \"QLo\" is a queen-low hand. Owner reading: \"WHAP\" is a sound effect — ignored."
+ },
+ {
+  "id": "web-stud8-showing-and-in-hole",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3lbaurdavvv24",
+  "game": "Stud 8",
+  "tags": [
+   "fragment",
+   "stud",
+   "hi-lo",
+   "up-down-words"
+  ],
+  "text": "Love this game. Stud hi-lo with A-4-5 showing and A-4 in the hole. Got a worse two pair to put in tons, then he fills up on 7th. Puke.",
+  "expect": {
+   "gameType": "Stud 8"
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "streets.0.cards.hero",
+    "id": "cards:hero",
+    "about": "the hero's cards are never named"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the opponent is never placed"
+   }
+  ],
+  "notes": "\"Showing\" are up cards and \"in the hole\" down cards, but which up card was the door is not said."
+ },
+ {
+  "id": "web-aa-utg1-3bet-flop-jam-rit-two-losers",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3loplqv3op22g",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "run-it-twice",
+   "all-in",
+   "multiway",
+   "unsupported"
+  ],
+  "text": "Hand #1: UTG goes to $15, I 3-bet from UTG+1 to $50 holding AhAd, the button and UTG call. All of us are $250 effective.\nFlop 9s9h7s: UTG checks, I get my $250 in, the button tanks and calls, UTG snaps.\nTwice: I lose board one to UTG's flush and board two to the button's trip queens.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "heroPosition": "UTG+1",
+   "heroCards": "AhAd",
+   "stacksAll": 250,
+   "board": {
+    "flop": "9s9h7s"
+   },
+   "showdown": {
+    "BTN": "QxQx"
+   },
+   "unsupported": true,
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      15
+     ],
+     [
+      "UTG+1",
+      "raise",
+      50
+     ],
+     [
+      "BTN",
+      "call",
+      50
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      35
+     ]
+    ],
+    "flop": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "UTG+1",
+      "all-in",
+      200
+     ],
+     [
+      "BTN",
+      "call",
+      200
+     ],
+     [
+      "UTG",
+      "call",
+      200
+     ]
+    ]
+   },
+   "winners": [
+    "UTG"
+   ],
+   "pots": [
+    {
+     "name": "board 1",
+     "winners": [
+      "UTG"
+     ]
+    },
+    {
+     "name": "board 2",
+     "winners": [
+      "BTN"
+     ]
+    }
+   ]
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.unsupported",
+    "id": "unsupported",
+    "about": "a format the replayer cannot store"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.2.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "neither runout is given"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "Owner decision G: a winner per pot — UTG wins board 1, the button board 2 (result.pots); result.winners is the first pot's."
+ },
+ {
+  "id": "web-kk-vs-aa-aipf-75-stack",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3lgr3geo6bc2f",
+  "game": "NLH",
+  "tags": [
+   "fragment",
+   "shorthand",
+   "all-in"
+  ],
+  "text": "aipf with KK vs AA against a $75 stack. K on the flop, K on the river, plus a $200 high hand bonus. Fine by me.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "heroCards": "KxKx"
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "nobody's seat is said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "only one card of the flop is named"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "\"aipf\" is all in preflop."
+ },
+ {
+  "id": "web-25nl-ak-vs-kq-aipf-story",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3lgji7cv3ek2k",
+  "game": "NLH",
+  "tags": [
+   "fragment",
+   "story",
+   "online"
+  ],
+  "text": "Three players join the 25NL pool on Party at the same moment, all maniacs mashing the pot button with 60% VPIP. I get it in preflop in a $60 pot with AK vs KQ and a Q comes on the river. They all leave at exactly the same time an hour later.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "heroCards": "AxKx"
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "nobody's seat is said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "only the river queen is named"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ]
+ },
+ {
+  "id": "web-3-handed-aa-lost-to-t4cc-behind",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3lgeh3lgkq22j",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "verbless",
+   "stack-behind",
+   "board-shorthand",
+   "result-symbol"
+  ],
+  "text": "3 handed, $175 eff. Me BU $7, both blinds call. Flop T92dds: checks to me, $12, both call. Turn 4c: checks to me again, $30, SB $65 (with $75 behind), I'm all in, SB calls. River Jd. Hero AA < T4cc.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "players": 3,
+   "heroPosition": "BTN",
+   "heroCards": "AxAx",
+   "stacks": {
+    "BTN": 175,
+    "SB": 159
+   },
+   "board": {
+    "flop": "Td9d2s",
+    "turn": "4c",
+    "river": "Jd"
+   },
+   "showdown": {
+    "SB": "Tc4c"
+   },
+   "winners": [
+    "SB"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "BTN",
+      "raise",
+      7
+     ],
+     [
+      "SB",
+      "call",
+      null
+     ],
+     [
+      "BB",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "BTN",
+      "bet",
+      12
+     ],
+     [
+      "SB",
+      "call",
+      12
+     ],
+     [
+      "BB",
+      "call",
+      12
+     ]
+    ],
+    "turn": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "BTN",
+      "bet",
+      30
+     ],
+     [
+      "SB",
+      "raise",
+      65
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "BTN",
+      "all-in",
+      126
+     ],
+     [
+      "SB",
+      "call",
+      75
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "the BB's stack is never given"
+   },
+   {
+    "kind": "impossible",
+    "field": [
+     "streets.0.cards.opponents",
+     "streets.2.cards.board"
+    ],
+    "id": [
+     "card",
+     "dup"
+    ],
+    "about": "T4cc puts the 4 of clubs in the SB hand, but it is the turn card"
+   }
+  ],
+  "flaws": [
+   "duplicate-card"
+  ],
+  "notes": "\"SB $65 ($75 behind)\": the SB started with 7 + 12 + 65 + 75 = 159. \"T92dds\" is Td 9d 2s. The cards in the post collide: the turn 4c and \"T4cc\"."
+ },
+ {
+  "id": "web-mtt-slow-start-fragments",
+  "source": "text",
+  "sourceUrl": "https://bsky.app/profile/redacted/post/3lsz3eg6zec24",
+  "game": "NLH",
+  "tags": [
+   "not-a-hand",
+   "fragment",
+   "several-hands",
+   "result-symbol"
+  ],
+  "text": "Rough start: AA<K8cc (he hit a straight), JJ < KQ and 99, and my KQ top pair loses to a river flush. Down to 52,400, still over 250 big blinds at 100/200/200.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "recordable": false
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.notRecordable",
+    "id": "scope",
+    "about": "not one recordable hand"
+   }
+  ]
+ },
+ {
+  "id": "web-mtt-ak-lj-raise-bb-leads-range-braces",
+  "source": "text",
+  "sourceUrl": "https://www.tournamentpokeredge.com/forum/mtt-poker-strategy/100-local-monthly-ak-low-spr/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "range-noise",
+   "stated-pot",
+   "board-shorthand",
+   "decision"
+  ],
+  "text": "Local $100 monthly, hyper-turbo, only 18 runners. Final 10, all at one table, top 3 paid.\nI'm in the lojack with 15k (about average) at 400/800, no antes, with AKo. A bad player in EP limps. I raise to 3k, the BB (50% VPIP, covers me) calls, the limper folds.\nFlop J T 5 rainbow [7200 in the pot]. BB bets 4k. Hero?\nShort as I am, my open range is roughly {AQo+, AJs+, KQs, 99+}, so AKo is near the bottom here.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 400,
+    "bb": 800,
+    "ante": 0
+   },
+   "players": 10,
+   "heroPosition": "LJ",
+   "heroCards": "AxKx",
+   "stacks": {
+    "LJ": 15000
+   },
+   "board": {
+    "flop": "JxTx5x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "call",
+      800
+     ],
+     [
+      "LJ",
+      "raise",
+      3000
+     ],
+     [
+      "BB",
+      "call",
+      2200
+     ],
+     [
+      "UTG",
+      "fold"
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "bet",
+      4000
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero facing the bet"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "the BB covers, but by how much is not said"
+   }
+  ],
+  "notes": "\"{AQo+, AJs+, KQs, 99+}\" is a range, never cards."
+ },
+ {
+  "id": "web-mtt-bvb-400-ante-pot-20k-q9o",
+  "source": "text",
+  "sourceUrl": "https://www.tournamentpokeredge.com/forum/mtt-poker-strategy/109-blind-vs-blind-25bb-deep/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "ante-per-player",
+   "stated-pot",
+   "suit-count",
+   "earlier-hand-noise",
+   "blind-vs-blind"
+  ],
+  "text": "Weekly $109 major, soft field, about 90 of 400 left with 60 paid. Blinds 1.75k/3.5k with a 400 ante.\nFolds to the SB who raises to 8.5k. Last orbit he did the same, I 3bet to 22k and he shipped and I folded. This time I just call with Q9o.\nFlop [20k] K Q 5 with two clubs. SB leads 7k, I call.\nTurn [34k] an offsuit 8. Villain rips 70k. I called and he had Q8 for turned two pair. Levelled, or just ran into it?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 1750,
+    "bb": 3500
+   },
+   "anteUnclear": 400,
+   "heroPosition": "BB",
+   "heroCards": "Qx9x",
+   "board": {
+    "flop": "KxQx5x",
+    "turn": "8x"
+   },
+   "showdown": {
+    "SB": "Qx8x"
+   },
+   "winners": [
+    "SB"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "SB",
+      "raise",
+      6750
+     ],
+     [
+      "BB",
+      "call",
+      5000
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "bet",
+      7000
+     ],
+     [
+      "BB",
+      "call",
+      7000
+     ]
+    ],
+    "turn": [
+     [
+      "SB",
+      "all-in",
+      70000
+     ],
+     [
+      "BB",
+      "call",
+      70000
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "ambiguous",
+    "field": "blinds.ante",
+    "id": [
+     "ante-type",
+     "blinds.ante"
+    ],
+    "about": "an ante whose type (per player or big blind ante) is not said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "the hero's stack is never given"
+   }
+  ],
+  "notes": "The 20k flop pot (17k plus about 8 × 400) shows the ante is every player's, but the table size is not said. The previous orbit's 3-bet and shove must not leak in."
+ },
+ {
+  "id": "web-mtt-circuit-a8o-co-jam-earlier-hands",
+  "source": "text",
+  "sourceUrl": "https://www.tournamentpokeredge.com/forum/mtt-poker-strategy/12bb-in-the-cutoff/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "earlier-hand-noise",
+   "stacks-in-bb",
+   "all-in"
+  ],
+  "text": "Day 2 of event 2 at the Potawatomi circuit. Started the day on 17bb, down to 12bb when I picked up A8o in the cutoff. I'd jammed four times in two levels and only won the blinds: AK and AQ under the gun, K6 and KQ suited on the button. With A8o I jam, the button calls with AQ, and I'm out 50th of 1098. Jam right?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "heroPosition": "CO",
+   "heroCards": "Ax8x",
+   "showdown": {
+    "BTN": "AxQx"
+   },
+   "winners": [
+    "BTN"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "CO",
+      "all-in",
+      null
+     ],
+     [
+      "BTN",
+      "call",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "no board is given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "The four earlier jams are other hands, not this one's cards."
+ },
+ {
+  "id": "web-mtt-bay101-a5cc-sb-3bet-he-on-bu",
+  "source": "text",
+  "sourceUrl": "https://www.tournamentpokeredge.com/forum/mtt-poker-strategy/1k-main-event-in-bay-101/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "verbless",
+   "bb-ante",
+   "earlier-hand-noise",
+   "lifetime-winnings-noise"
+  ],
+  "text": "Bay 101 $1K main, Day 1B, 51 left and 26 make Day 2 in the money. Level 800/1600/1600. I have 51K; the villain covers me slightly, a good live pro with $1M+ in lifetime winnings. An orbit ago he min-raised the SB with Q9, I defended QJ and won at showdown.\nHe on BU 3500. I 3bet to 10500 from the SB with A5cc. BB folds, he calls.\nQcKd6s, checks around.\nKc, I bet 8500 into 23K, he calls.\n4s, checks around, he shows T6cc and wins. Should I have bet the river?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 800,
+    "bb": 1600,
+    "ante": 1600
+   },
+   "heroPosition": "SB",
+   "heroCards": "Ac5c",
+   "stacks": {
+    "SB": 51000
+   },
+   "board": {
+    "flop": "QcKd6s",
+    "turn": "Kc",
+    "river": "4s"
+   },
+   "showdown": {
+    "BTN": "Tc6c"
+   },
+   "winners": [
+    "BTN"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "BTN",
+      "raise",
+      3500
+     ],
+     [
+      "SB",
+      "raise",
+      9700
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "BTN",
+      "call",
+      7000
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BTN",
+      "check"
+     ]
+    ],
+    "turn": [
+     [
+      "SB",
+      "bet",
+      8500
+     ],
+     [
+      "BTN",
+      "call",
+      8500
+     ]
+    ],
+    "river": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BTN",
+      "check"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "the villain \"covers by a little\": no number"
+   }
+  ],
+  "notes": "\"He on BU 3500\" is a verbless open. The Q9-vs-QJ hand an orbit ago and the $1M in winnings are noise."
+ },
+ {
+  "id": "web-mtt-qq-ep-at-25bbs-a95r-fold",
+  "source": "text",
+  "sourceUrl": "https://www.tournamentpokeredge.com/forum/mtt-poker-strategy/read-based-fold-is-it-still-too-weak/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "board-shorthand",
+   "stacks-in-bb",
+   "pot-fractions",
+   "decision"
+  ],
+  "text": "Harrah's daily MTT, 35 left and 18 paid. The villain shoved about 20 hands ago and is passive and a bit loose; an orbit back she agonised over calling a 15bb shove with KK.\nI have QQ in EP, stacks @25bbs, and open to 2.2x. She calls on the button, the BB calls.\nFlop A, 9, 5r. The BB checks, I check as well, she bets pot and the BB folds. Hero? (I folded.)",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "heroPosition": "UTG",
+   "heroCards": "QxQx",
+   "board": {
+    "flop": "Ax9x5x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      null
+     ],
+     [
+      "BTN",
+      "call",
+      null
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "BTN",
+      "bet",
+      null
+     ],
+     [
+      "BB",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero facing the bet"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "\"A, 9, 5r\" is a rainbow A-9-5 flop. The earlier KK story is another hand."
+ },
+ {
+  "id": "web-mtt-uk-bb-aks-behind-200k",
+  "source": "text",
+  "sourceUrl": "https://www.tournamentpokeredge.com/forum/mtt-poker-strategy/spot-check-in-live-140-event/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "stack-behind",
+   "bubble",
+   "decision"
+  ],
+  "text": "£140 live event, eight handed, roughly 4 off the bubble. 4k/8k with an 8k BB ante. My stack at the start of the hand is 172k, so 152k behind once the blind and ante are in.\nUTG folds, UTG+1 shoves 32k, folds to the cutoff who re-raises to 120k with about 200k behind (I'm well covered), folds to me with AKs. Re-shove or fold? A call leaves 4BB.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 4000,
+    "bb": 8000,
+    "ante": 8000
+   },
+   "players": 8,
+   "heroPosition": "BB",
+   "heroCards": "AxKx",
+   "stacks": {
+    "BB": 172000,
+    "UTG+1": 32000,
+    "CO": 320000
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "fold"
+     ],
+     [
+      "UTG+1",
+      "all-in",
+      32000
+     ],
+     [
+      "CO",
+      "raise",
+      120000
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "street-open:0",
+     "next:0",
+     "group-seats:0",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero to act"
+   }
+  ],
+  "notes": "The CO's stack is 120k in plus \"about 200k behind\". The hero's 172k is before posting; 152k behind after."
+ },
+ {
+  "id": "web-pokerstars-hh-seats-names-anonymised",
+  "source": "text",
+  "sourceUrl": "https://www.tournamentpokeredge.com/forum/mtt-poker-strategy/pot-odds-to-call-here/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "hand-history",
+   "seat-numbers",
+   "multiway",
+   "decision"
+  ],
+  "text": "Stars tournament hand, $0.45+$0.05 NLHE, level III (25/50), 9-max. Seat #7 is the button.\nSeat 1: PlayerOne (4200 in chips)\nSeat 2: PlayerTwo (1215 in chips)\nSeat 3: PlayerThree (8970 in chips)\nSeat 4: PlayerFour (1550 in chips)\nSeat 5: PlayerFive (4005 in chips)\nSeat 6: PlayerSix (300 in chips)\nSeat 7: PlayerSeven (1390 in chips)\nSeat 8: PlayerEight (1957 in chips)\nSeat 9: Hero (1400 in chips)\nPlayerEight: posts small blind 25\nHero: posts big blind 50\n*** HOLE CARDS ***\nDealt to Hero [Qc Kh]\nPlayerOne: folds\nPlayerTwo: calls 50\nPlayerThree: calls 50\nPlayerFour: calls 50\nPlayerFive: calls 50\nPlayerSix: folds\nPlayerSeven: folds\nPlayerEight: calls 25\nHero: raises 300 to 350\nPlayerTwo: folds\nPlayerThree: calls 300\nPlayerFour: calls 300\nPlayerFive: calls 300\nPlayerEight: folds\n*** FLOP *** [Ah 9s 6d]\nHero: checks\nPlayerThree: checks\nPlayerFour: checks\nPlayerFive: checks\n*** TURN *** [Ah 9s 6d] [Jd]\nHero: checks\nPlayerThree: checks\nPlayerFour: bets 1200 and is all-in\nPlayerFive: folds\nHero: ???\nI'm new to pot odds; could someone show the maths step by step?",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 25,
+    "bb": 50
+   },
+   "players": 9,
+   "heroPosition": "BB",
+   "heroCards": "QcKh",
+   "stacks": {
+    "UTG": 4200,
+    "UTG+1": 1215,
+    "UTG+2": 8970,
+    "LJ": 1550,
+    "HJ": 4005,
+    "CO": 300,
+    "BTN": 1390,
+    "SB": 1957,
+    "BB": 1400
+   },
+   "board": {
+    "flop": "Ah9s6d",
+    "turn": "Jd"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "fold"
+     ],
+     [
+      "UTG+1",
+      "call",
+      50
+     ],
+     [
+      "UTG+2",
+      "call",
+      50
+     ],
+     [
+      "LJ",
+      "call",
+      50
+     ],
+     [
+      "HJ",
+      "call",
+      50
+     ],
+     [
+      "CO",
+      "fold"
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "call",
+      25
+     ],
+     [
+      "BB",
+      "raise",
+      300
+     ],
+     [
+      "UTG+1",
+      "fold"
+     ],
+     [
+      "UTG+2",
+      "call",
+      300
+     ],
+     [
+      "LJ",
+      "call",
+      300
+     ],
+     [
+      "HJ",
+      "call",
+      300
+     ],
+     [
+      "SB",
+      "fold"
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG+2",
+      "check"
+     ],
+     [
+      "LJ",
+      "check"
+     ],
+     [
+      "HJ",
+      "check"
+     ]
+    ],
+    "turn": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG+2",
+      "check"
+     ],
+     [
+      "LJ",
+      "all-in",
+      1200
+     ],
+     [
+      "HJ",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "action:2",
+     "street-open:2",
+     "next:2",
+     "group-seats:2",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero facing the all-in"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.ante",
+    "id": "blinds.ante",
+    "about": "a tournament hand with no ante said"
+   }
+  ],
+  "notes": "A pasted hand history (screen names replaced): seat numbers plus \"Seat #7 is the button\" give every position."
+ },
+ {
+  "id": "web-floor-question-not-a-hand",
+  "source": "text",
+  "sourceUrl": "https://boardgames.stackexchange.com/questions/40197/what-should-happen-if-a-player-requests-the-floorman-after-an-opponent-deliberat",
+  "game": "NLH",
+  "tags": [
+   "not-a-hand",
+   "rules-question"
+  ],
+  "text": "Five players, three fold preflop and two go to the flop. The first player bets 25 and the second calls. The first checks the turn, the second bets 55, the first calls. The first checks the river, the second bets 100, and the first goes all in and shows his cards inside the line. The second player calls the floor. What should happen?",
+  "expect": {
+   "gameType": "NLH",
+   "recordable": false
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.notRecordable",
+    "id": "scope",
+    "about": "not one recordable hand"
+   }
+  ],
+  "notes": "A rules question with players called \"first\" and \"second\", not a hand to replay."
+ },
+ {
+  "id": "web-mtt-kk-utg-4-ways-omc-q6s",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1u7ugof/mtt_question_open_size_with_aa_kk_qq_from_utg1/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "n-ways",
+   "slang",
+   "lifetime-winnings-noise"
+  ],
+  "text": "What do you open AA/KK/QQ to from UTG/+1 early in a live MTT? I default to 3bbs and the table turns into a call center. The other day in a $300 at Encore I open KK to 3bbs UTG, 4 ways to a Q62 rainbow flop. I cbet 4bbs and an OMC (1m+ on the Hendon Mob, nice guy) check-raises all in. I call and he has Q6 of spades.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "heroPosition": "UTG",
+   "heroCards": "KxKx",
+   "board": {
+    "flop": "Qx6x2x"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "\"4 ways\" gives three callers and no seats, the OMC's included"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.2.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the turn and river are never given"
+   }
+  ],
+  "notes": "\"4 ways to a flop\" says four saw it, not who. The Hendon Mob winnings are noise."
+ },
+ {
+  "id": "web-observer-straight-flush-three-way-chop",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1wxsyid/crazy_hand_in_a_tournament_of_my_local_pokerclub/",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "observer",
+   "emoji-suits",
+   "chop",
+   "pot-fractions"
+  ],
+  "text": "My local club tournament had a wild one. UTG opens holding 9♥9♠, a maniac (50% VPIP) calls holding 7♦3♦, and the BB defends 8♦8♥.\nFlop J♦10♦9♦: UTG bets 35% of the pot with bottom set, the maniac shoves the flush, the BB calls with a straight flush draw, UTG calls.\nTurn Q♦ gives the BB the straight flush and he starts celebrating. River K♦ puts a royal on board: chopped three ways. 😂",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "observer": true,
+   "board": {
+    "flop": "JdTd9d",
+    "turn": "Qd",
+    "river": "Kd"
+   },
+   "showdown": {
+    "UTG": "9h9s",
+    "BB": "8d8h"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the maniac's seat is never named"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "flaws": [
+   "seating"
+  ],
+  "notes": "Told by a spectator. The chop is three ways, including a player with no seat."
+ },
+ {
+  "id": "web-bb-3bet-bluff-big-blinds-only-no-cards",
+  "source": "text",
+  "sourceUrl": "https://www.reddit.com/r/poker/comments/1vjj081/how_to_not_tilt/",
+  "game": "NLH",
+  "tags": [
+   "stacks-in-bb",
+   "pot-fractions",
+   "no-hero-cards"
+  ],
+  "text": "Villain opens 3bb, folds to me in the BB. I 3bet as a semi-bluff to 10bb, he calls. Pot ~20.5bb.\nFlop 4cQd3c, I cbet ~12bb, he calls. Pot ~45bb.\nTurn Ts, I bet 2/3 pot, he calls. Pot a bit over 100bb.\nRiver 6h, I jam, he calls with 66. He hit his 4%. How do I not tilt?",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "BB",
+   "board": {
+    "flop": "4cQd3c",
+    "turn": "Ts",
+    "river": "6h"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "streets.0.cards.hero",
+    "id": "cards:hero",
+    "about": "the hero's cards are never named"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the villain's seat is never named"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "Every size is in big blinds and the hero's cards are never said."
+ },
+ {
+  "id": "web-55-sb-straddle-late-position-jam-90-something",
+  "source": "text",
+  "sourceUrl": "https://www.pokerchipforum.com/threads/a-1-2-nlh-hand-what-would-you-have-done-differently.145288/",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "home-game",
+   "straddle",
+   "late-position",
+   "hedged-stack",
+   "side-pot"
+  ],
+  "text": "$1-$2 home game, no rake.\nStacks: me in the SB $425 behind | UTG straddles to $4, $700 behind | late position $90-something behind\nPre: late position makes it $12, I call with pocket 5s hoping the straddler stays, and he calls. $38 in.\nFlop 4 5 6 rainbow, middle set. I check, straddler checks, late position jams his last $78, I call, straddler calls. About $272.\nTurn 10, rainbow still. I bet $100 into the side pot, the straddler jams me in, I crying-call.\nRiver a brick. 7-8 suited for him, the flopped nuts; I'm felted.",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "blinds": {
+    "sb": 1,
+    "bb": 2,
+    "straddle": [
+     "utg"
+    ]
+   },
+   "heroPosition": "SB",
+   "heroCards": "5x5x",
+   "stacks": {
+    "SB": 425
+   },
+   "board": {
+    "flop": "4x5x6x",
+    "turn": "Tx"
+   },
+   "showdown": {
+    "UTG": "7x8x"
+   },
+   "winners": [
+    "UTG"
+   ]
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "\"late position\" names no seat"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.3.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the river is only \"a brick\""
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "the straddler's and the late-position stacks are \"behind\" or \"$90-something\""
+   }
+  ],
+  "notes": "Late position names no single seat, so its actions are left out of the expectations. \"$90-something\" is an estimate."
+ }
+]

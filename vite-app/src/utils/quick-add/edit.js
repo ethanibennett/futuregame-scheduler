@@ -380,6 +380,16 @@ export function applyOp(input, value, gap) {
     case 'setResult':
       hand.result = { ...(hand.result || {}), winners: clone(value.winners || []) };
       return hand;
+    case 'answerQuestion': {
+      // A question the server asked (hand.quickAdd.questions): apply the
+      // chosen reading, then the question is answered and goes.
+      for (const s of (value.sets || [])) setPath(hand, s.path, clone(s.value));
+      if (hand.quickAdd && Array.isArray(hand.quickAdd.questions)) {
+        hand.quickAdd = { ...hand.quickAdd, questions: hand.quickAdd.questions.filter(q => q && q.id !== value.id) };
+        if (!hand.quickAdd.questions.length) delete hand.quickAdd.questions;
+      }
+      return hand;
+    }
     case 'dismiss': {
       const id = value.id || (gap && gap.id);
       if (!id) return hand;
@@ -413,6 +423,9 @@ export function applyFreeValue(input, gap, value) {
   }
   if (!gap || !gap.field || /[*]/.test(gap.field)) return hand;
   const cur = getPath(hand, gap.field);
+  // A field that holds a structure (a street's actions, the blinds) takes no typed
+  // value: that free text is the server's /answer to read, never a string to store.
+  if (cur !== null && typeof cur === 'object') return hand;
   const numericField = typeof cur === 'number' || /(?:startingStack|amount|\.sb|\.bb|\.ante|bigBet|bringIn|betCap|discarded|heroIdx|player)$/.test(gap.field);
   setPath(hand, gap.field, numericField ? toNumberMaybe(value) : value);
   return hand;

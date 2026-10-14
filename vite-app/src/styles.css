@@ -1813,7 +1813,7 @@
          column line at every width — and "DD Mon" is centred in it on both axes (owner rule,
          2026-10-10: a pill's label is centred, not seated). Day and month stay on one shared
          baseline: they are inline runs of one line (.date-break-label), and it is that line's
-         capitals the pill centres (see .date-break-label). */
+         ink the pill centres (see .date-break-label). */
       display: inline-flex;
       height: calc(var(--subrow) * 4);
       box-sizing: border-box;
@@ -1843,16 +1843,14 @@
       font-size: calc(var(--gu) * 2.3);
       line-height: 1;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
-      /* Across, the box is the INK too: Libre Baskerville's figures stand ~0.055em in from their
-         left edge (0 1 2 3: 61 69 50 51 units), where the month's last letter ends at its edge, so
-         the advance the pill centred put the ink ~0.8px right of centre. The far end is padded by
-         that bearing — the same balance as a tracked label's text-indent for its trailing
-         letter-space — so the ink, not the advance, is centred. */
+      /* Across, and above the cap height, the box is made the INK as well: the side bearings at its
+         two ends (the day's first figure, the month's last letter) and the figures' rise above the
+         cap are read from the face and set as this label's padding, inline, in em
+         (utils/ink-balance.js, from DateBreak / BackerPage's MonthBreak). They vary by glyph — one
+         fixed pad left "28 Sep" 0.58px off centre — so nothing here is per date. This pad is only
+         the typical figure's left bearing, for the frame before the measurement lands. */
       padding-right: 0.055em;
     }
-    /* A day with a 7: that figure's flag rises 0.06em above the cap height the trim stops at, so
-       the ink ran above the box by that much and sat ~0.8px high. Its box takes the 7's top. */
-    .date-break-label.has-tall-figure { padding-top: 0.06em; }
     .date-break-label > .date-break-mon { margin-left: calc(var(--gu) * 0.3442); } /* 4px @ 430pt, in g */
     /* The one mark the whole list is scrolled to on mount. --brand exists so
        exactly one thing per screen can claim priority; this is the candidate. */
@@ -1873,6 +1871,8 @@
       font-size: calc(var(--gu) * 2.3);
       font-weight: var(--fw-regular);
       line-height: calc(var(--subrow) * 3);
+      /* Inert in Libre Baskerville (it has neither tnum nor lnum: its figures are proportional
+         and lining as drawn), kept for the fallbacks (Georgia's default figures are old-style). */
       font-variant-numeric: var(--num-tabular);
     }
     .date-break-mon {
@@ -8980,10 +8980,13 @@
     }
 
     /* ── Alerts ── */
-    /* Whole r: 2r lines inside 1.5r of padding a side, the hairline border taken out of the
-       padding, so a one-line alert is a 5r block and whatever follows it stays on the grid. */
+    /* Whole r: 2r lines inside 1.5r of padding a side, so a one-line alert is a 5r block and
+       whatever follows it stays on the grid. The hairline is an inset ring, not a border: a
+       border's width is snapped to whole device pixels (0.13r = 1.07px at r = 8.25px is drawn
+       1px), so the old border taken out of the padding left the alert 0.16px short of 5r, and
+       every date break under My Schedule's "events have a time conflict" sat at y 65.98r. */
     .alert {
-      padding: calc(var(--subrow) * 1.5 - var(--bw-hair)) var(--gu);
+      padding: calc(var(--subrow) * 1.5) var(--gu);
       border-radius: var(--radius-sm);
       font-size: var(--fs-md);
       line-height: calc(var(--subrow) * 2);
@@ -8997,8 +9000,8 @@
        so on the one screen where feedback decides whether the user gets in,
        failure and success were indistinguishable. The app already owned
        semantic colours: the toasts sixty lines below were using them. */
-    .alert-error   { background: var(--danger-bg); border: var(--bw-hair) solid var(--danger); color: var(--danger); }
-    .alert-success { background: var(--ok-bg);     border: var(--bw-hair) solid var(--ok);     color: var(--ok); }
+    .alert-error   { background: var(--danger-bg); box-shadow: inset 0 0 0 var(--bw-hair) var(--danger); color: var(--danger); }
+    .alert-success { background: var(--ok-bg);     box-shadow: inset 0 0 0 var(--bw-hair) var(--ok);     color: var(--ok); }
 
     /* ── Toasts ── */
     .toast-container {
@@ -10959,7 +10962,9 @@
     .cp-btn.active { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); color: var(--accent); background: rgba(160,160,160,0.1); }
     .cp-btn:disabled { opacity: 0.4; cursor: default; }
     /* Two choices across the 28g sub-column: 13g + 2g + 13g. */
-    .cp-btn-pair { display: grid; grid-template-columns: 1fr 1fr; column-gap: var(--subcol); }
+    /* Two whole-g buttons: an even-g pair (the desktop pane) would split into half g each, so the
+       first rounds down to whole g and the second takes the rest (as .font-pick does). */
+    .cp-btn-pair { display: grid; grid-template-columns: round(down, (100% - var(--subcol)) / 2, var(--gu)) minmax(0, 1fr); column-gap: var(--subcol); }
     /* Commit + cancel across the 31g column: 23g + 1g + 7g. */
     .cp-actions { display: grid; grid-template-columns: calc(var(--gu) * 23) 1fr; column-gap: var(--gu); }
     /* A button, so its label is centred in it (owner rule, 2026-10-10), not seated on the cell's

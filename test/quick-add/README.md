@@ -6,10 +6,25 @@ that runs them through the parser and the gaps engine and scores what comes back
 
 ```
 test/quick-add/
-  corpus/*.json   88 cases: nlh-cash, nlh-mtt, omaha, limit-flop, stud, draw, mixed
+  corpus/*.json   266 cases: 88 written for the corpus (nlh-cash, nlh-mtt, omaha,
+                  limit-flop, stud, draw, mixed), 100 paraphrased forum posts
+                  (forum-text.json) and 78 paraphrased video transcripts (spoken.json)
   eval.js         validator + runner + scorer (Node 18+, no dependencies)
+  normalisers.test.js   node --test: the server's deterministic readers and normaliser steps
+  gaps-round2.test.mjs  node --test: the gaps added from the collected corpora
+  hh.test.js            node --test: the hand-history fast path (made-up PokerStars / GG / Full Tilt hands)
   reports/        timestamped .md + .json reports (local output; do not commit)
 ```
+
+### Where the forum and transcript cases come from
+
+`forum-text.json` and `spoken.json` (2026-10-14) were collected from public forum posts
+(Reddit, Pokerchipforum, Bluesky, Tournament Poker Edge, Stack Exchange) and YouTube caption
+tracks. **This repo is public: no raw text is committed.** Every case is a paraphrase that keeps
+the facts of the hand (cards, positions, sizes, actions) and the writing habits that make it hard
+(shorthand, emoji suits, recogniser errors, restatements), with the original's address in
+`sourceUrl`. Screen names in pasted hand histories are replaced. The raw collections stay in the
+collector's scratch space, outside git.
 
 ## Running it
 
@@ -29,6 +44,15 @@ pot-limit maximums, limit bet sizes and the bet cap, stack sizes, and the stud b
 It also confirms that each case's own "oracle" hand scores 100%, which tests the scorer.
 It exits 1 on any error.
 
+**Unit tests**, no API key needed:
+
+**Mac or PC:**
+```bash
+node --test test/quick-add/normalisers.test.js test/quick-add/gaps-round2.test.mjs test/quick-add/hh.test.js
+node test/quick-add/server.test.js
+node test/quick-add/gaps.test.mjs
+```
+
 **Score the gaps engine on its own** (once `vite-app/src/utils/quick-add/gaps.js` exists).
 This feeds `findGaps` a perfect parse built from each case's expectations. Parse scores are
 100% by construction, so the gap numbers measure part A alone:
@@ -39,7 +63,8 @@ node test/quick-add/eval.js --oracle
 ```
 
 **Against a running server.** Use a scratch port with a copy of the DB, never the pm2 app
-on 3001, and an admin user's JWT. Every case is one paid model call, so 88 cases cost 88 calls:
+on 3001, and an admin user's JWT. Every case is one paid model call, so the 266 cases cost 266 calls
+(`--filter web-` or `--filter sp-` runs one collection):
 
 **Mac or PC:**
 ```bash
@@ -132,9 +157,14 @@ Each file is an array of cases:
 }
 ```
 
-- `source`: `text` (typed or pasted) or `speech` (a transcript as the phone's recognizer produces
-  it: numbers spelled out, "three bet", "pocket nines", homophones such as "for" for "four", "for
-  tea" for "forty", "two ten" for "to ten", and little or no punctuation).
+- `source`: `text` (typed or pasted) or `speech` (a transcript as a recognizer produces it:
+  "three bet", "pocket nines", homophones such as "for" for "four", "for tea" for "forty", "two
+  ten" for "to ten", and little or no punctuation). Numbers come both ways: spelled out ("two
+  hundred and ten") and, as Apple's and YouTube's recognizers usually write them, as digits that
+  fuse card ranks ("king 75" = K-7-5, "1087 all clubs", "queen 982 diamonds" = Q-9-8 with two
+  diamonds, "raise 230" = raise to 30). Write new speech cases in both styles.
+- `sourceUrl` (optional): where a paraphrased case came from. `source` already means text or
+  speech, so the address has its own key.
 - `game`: the `HAND_CONFIG` game the hand really is, used for coverage. It is set even when the
   text never says which game; in that case `expect.gameType` is left out.
 - `expect` keys (all optional; list only what the text states):
@@ -152,7 +182,18 @@ Each file is an array of cases:
 | `draws` | `{ "predraw": [["BTN", 1, "Kd", "5c"], ["CO", 2]] }` | `[seat, count, discarded?, new?]`, recorded on the betting round **before** the draw |
 | `studUp` | `{ "@Qh": "Qh7c7sJd" }` | an opponent's up cards from 3rd to 6th street |
 | `showdown` | `{ "UTG": "KcJc" }` | opponents only; stud lists every card shown |
-| `winners` | `["UTG"]` or `{ "refs": ["BTN","BB"], "split": true }` | left out where side pots go to different players |
+| `winners` | `["UTG"]` or `{ "refs": ["BTN","BB"], "split": true }` | the main pot's winners |
+| `pots` | `[{ "name": "board 1", "winners": ["UTG"] }, { "name": "board 2", "winners": ["BTN"] }]` | a winner per pot (side pots, a hand run twice); scored by pot name |
+| `observer` | `true` | the narrator was not in the hand: stored hero-less (`hand.heroless`), no hero question; no `heroPosition` or `heroCards` |
+| `recordable` | `false` | the text is not one recordable hand (a rules question, a story, a montage) |
+| `anteUnclear` | `5000` | an ante said with no type and no pot to settle it; leave `blinds.ante` out |
+| `unsupported` | `true` | a format the replayer cannot store: bomb pot, double board, run it twice, button blind, PLO5/6, short deck |
+| `otherHands` | `3` | how many other hands the text also tells |
+
+The last five are what only the parse can tell. The server carries them in `hand.quickAdd`
+(`notRecordable`, `anteUnclear`, `unsupported`, `otherHands`) and `hand.heroless` (`observer`), the
+oracle hand sets them there, and the gaps engine turns them into questions (`scope`, `ante-type`,
+`unsupported`, `hand-choice`; an observer hand asks nothing about a hero).
 
 Street keys: `preflop flop turn river`; `predraw draw1 draw2 draw3` (triple draw);
 `predraw draw` (single draw); `3rd 4th 5th 6th 7th` (stud). Stud players are `hero` or
@@ -165,8 +206,21 @@ Street keys: `preflop flop turn river`; `predraw draw1 draw2 draw3` (triple draw
   `streets.0.actions` matches `streets.0.actions.3`. `id` is one or more prefixes of the gap
   id (`stack` matches `stack:2`). A case with `expectGaps` counts as incomplete.
 - `flaws`: for incomplete cases that break a rule on purpose (`duplicate-card`, `card-count`,
-  `draw`, `betting`). The validator then reports that class of problem as a warning instead of
-  an error, and fails if the declared flaw is not actually there.
+  `draw`, `betting`, `seating`). The validator then reports that class of problem as a warning
+  instead of an error, and fails if the declared flaw is not actually there. `betting` turns off
+  every betting check for the case, so use it only where the text itself breaks a betting rule
+  (an illegal raise size, a structure the replayer cannot store). `seating` is the narrow one
+  for a text that leaves out WHO acted when or where players sat (a bomb pot's missing preflop,
+  limpers who were never seated): only the problems about whose turn it was are tolerated, and
+  stacks, bet sizes and call amounts are still checked. A blind seat's first preflop amount is
+  `null` when the stakes are not given (the amount is chips added, and the blind it replaces is
+  unknown).
+- An **ambiguous** case (tag `ambiguous`) says in its `expectGaps` which question should fire,
+  with an `id` list that also accepts the question the parse raises (`choice:*`, `board-count:1`,
+  `pot-mismatch:*`, `group-seats:*`, `texture-conflict:*`). In `--oracle` mode those parse-only
+  questions cannot fire, so the patterns also name the plain gap on the same field.
+- With no `players` and an `expectGaps` entry on field `tableSize`, the oracle leaves the table
+  unseated (`quickAdd.positions = 'narrator'`), as a real parse would.
 
 ### Adding a case
 

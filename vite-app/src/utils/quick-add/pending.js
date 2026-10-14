@@ -13,7 +13,7 @@
 // overwritten here (a wrong one is a gap to ask about, not a thing to fix
 // silently).
 
-import { gameConfig, gameCategory } from './game.js';
+import { gameConfig, gameCategory, streetDef } from './game.js';
 import { seatHand, referencedSeats, hasCards, positionMode, DEFAULT_NAME } from './seats.js';
 import { straddles } from './betting.js';
 
@@ -67,6 +67,104 @@ export function insertImplicitFolds(hand) {
   st.actions = out;
 }
 
+/* "Whole table calls", "4 callers", "all others fold" (server expandGroups,
+   2026-10-14): a group action waits in quickAdd.groups — { street, at, action,
+   count? } — until the table is seated, then every seat still to act before
+   the next player named takes it, in turn order. With a count that leaves a
+   choice, seats that play on later go first, then the earliest; the rest fold. */
+function actingOrder(hand, si) {
+  const n = hand.players.length;
+  if (si === 0) {
+    const sl = straddles(hand.players, hand.blinds);
+    const start = sl.length ? (sl[sl.length - 1].seat + 1) % n : 0;
+    return Array.from({ length: n }, (_, k) => (start + k) % n);
+  }
+  if (n === 2) return [1, 0];
+  return [n - 2, n - 1, ...Array.from({ length: n - 2 }, (_, i) => i)];
+}
+export function expandGroups(hand, groups) {
+  const cfg = gameConfig(hand.gameType);
+  /* A count that leaves a choice of seats is a guess, so it is asked, as the server's
+     expandGroups asks (group-seats:*): a partial hand is never guessed silently. Returns
+     the questions raised, for hand.quickAdd.questions. */
+  const questions = [];
+  if (cfg && cfg.isStud) return questions;
+  const n = hand.players.length;
+  const bySt = {};
+  for (const g of groups) {
+    if (!isObj(g) || !Number.isInteger(g.street) || !hand.streets[g.street] || !['call', 'fold', 'check'].includes(g.action)) continue;
+    (bySt[g.street] ||= []).push(g);
+  }
+  const later = new Set();
+  if (Number.isInteger(hand.heroIdx)) later.add(hand.heroIdx);
+  hand.players.forEach((_, i) => { if (hasCards(hand, i)) later.add(i); });
+  for (const si of Object.keys(bySt).map(Number).sort((a, b) => a - b)) {
+    const st = hand.streets[si];
+    const marked = (st.actions || []).slice();
+    bySt[si].sort((x, y) => (y.at ?? 0) - (x.at ?? 0)).forEach(g => {
+      const at = Math.max(0, Math.min(Number.isInteger(g.at) ? g.at : marked.length, marked.length));
+      marked.splice(at, 0, { group: true, action: g.action, count: Number.isInteger(g.count) ? g.count : null });
+    });
+    hand.streets.forEach((s2, k) => { if (k > si) (s2.actions || []).forEach(a => later.add(a.player)); });
+    const folded = new Set(), allIn = new Set();
+    for (let k = 0; k < si; k++) for (const a of (hand.streets[k].actions || [])) {
+      if (a.action === 'fold') folded.add(a.player);
+      if (a.action === 'all-in') allIn.add(a.player);
+    }
+    const order = actingOrder(hand, si);
+    const acted = new Set(), last = {};
+    let agg = si === 0 ? 1 : 0, ptr = 0;
+    const owes = (p) => !folded.has(p) && !allIn.has(p) && (!acted.has(p) || (last[p] ?? -1) < agg);
+    const apply = (p, action) => {
+      // Seats the turn passed over never acted: folded preflop, checked after.
+      const k0 = order.indexOf(p);
+      for (let k = ptr; k0 >= 0 && k < ptr + n; k++) {
+        const q = order[k % n];
+        if (q === p) break;
+        if (!acted.has(q) && owes(q)) { if (si === 0) folded.add(q); else { acted.add(q); last[q] = agg; } }
+      }
+      if (action === 'bet' || action === 'raise' || action === 'all-in') agg++;
+      acted.add(p); last[p] = agg;
+      if (action === 'fold') folded.add(p);
+      if (action === 'all-in') allIn.add(p);
+      const k = order.indexOf(p); if (k >= 0) ptr = k + 1;
+    };
+    const out = [];
+    marked.forEach((a, j) => {
+      if (!a.group) { out.push(a); apply(a.player, a.action); return; }
+      const next = marked.slice(j + 1).find(x => !x.group);
+      const cands = [];
+      for (let k = 0; k < n; k++) {
+        const p = order[(ptr + k) % n];
+        if (next && p === next.player) break;
+        if (owes(p) && !cands.includes(p)) cands.push(p);
+      }
+      let chosen = cands;
+      if (a.count != null && a.count < cands.length) {
+        const pick = cands.filter(p => later.has(p) || marked.slice(j + 1).some(x => !x.group && x.player === p)).slice(0, a.count);
+        for (const p of cands) if (pick.length < a.count && !pick.includes(p)) pick.push(p);
+        chosen = cands.filter(p => pick.includes(p));
+        const names = chosen.map(p => hand.players[p].position || 'a player');
+        const street = String((streetDef(hand.gameType).streets || [])[si] || 'street').toLowerCase();
+        questions.push({
+          id: 'group-seats:' + si + ':' + j, kind: 'ambiguous', field: 'streets.' + si + '.actions',
+          question: a.count + ' player' + (a.count > 1 ? 's' : '') + ' ' + (a.action === 'fold' ? 'folded' : a.action === 'check' ? 'checked' : 'called') + ' on the ' + street + ' without being named; recorded as ' + names.join(', ') + '. Is that right?',
+          options: [{ label: 'Yes', value: { op: 'dismiss' } }],
+          allowFree: true, blocking: false,
+        });
+      }
+      for (const p of cands) {
+        let action = chosen.includes(p) ? a.action : 'fold';
+        if (action === 'call' && agg === 0) action = 'check';
+        out.push({ player: p, action, amount: action === 'fold' || action === 'check' ? 0 : null });
+        apply(p, action);
+      }
+    });
+    st.actions = out;
+  }
+  return questions;
+}
+
 /* Seat the (mutable, already copied) hand at an n-handed table. `remap` is
    edit.js's remapSeats, passed in to keep the modules acyclic. */
 export function seatTable(hand, n, remap) {
@@ -115,6 +213,11 @@ export function seatTable(hand, n, remap) {
     }
     if (Object.keys(flags).length) Object.assign(b, flags, { straddle: true });
     delete qa.straddles;
+  }
+  if (Array.isArray(qa.groups) && qa.groups.length) {
+    const asked = expandGroups(out, qa.groups);
+    if (asked.length) qa.questions = (Array.isArray(qa.questions) ? qa.questions : []).concat(asked);
+    delete qa.groups;
   }
   if (qa.othersFolded) {
     insertImplicitFolds(out);
