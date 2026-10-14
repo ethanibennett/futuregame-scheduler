@@ -42,6 +42,12 @@
 // toAmount / toAmountBB / potFraction, startingStackBB) wait for what they need
 // and are finished by applyAnswer once it is known; with no hero the card slots
 // read as if seat 0 were the hero, and naming the hero moves every card string.
+//
+// What only the parse could tell travels in hand.quickAdd too (2026-10-14):
+// observer, notRecordable, otherHands, unsupported, anteUnclear, groups (group
+// actions waiting for the table to be seated) and questions (ready-made gaps
+// for readings the text gave two ways). rules-quick.js and the ante-type and
+// hero rules read them; see docs/quick-add-hands.md, "Corpus round".
 
 import { gameConfig, gameCategory, isDrawCategory, streetDef, guessGameType } from './game.js';
 import { cardsOf, notationProblem } from './cards.js';

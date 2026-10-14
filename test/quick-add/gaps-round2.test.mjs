@@ -162,3 +162,24 @@ test('a group action waiting for the table size is expanded when it is answered'
   assert.deepEqual(seated.streets[0].actions.map((a) => a.amount), [15, 15, 15, 15, 14, 12]);
   assert.ok(!(seated.quickAdd && seated.quickAdd.groups));
 });
+
+test('cent stakes add up exactly: no "called 0.3, but the price was 0.3"', () => {
+  const h = cash6(0.05, 0.02);
+  h.players.forEach((p) => { p.startingStack = 6.36; });
+  h.streets[0].actions = [A(0, 'fold'), A(1, 'raise', 0.15), A(2, 'raise', 0.45), A(3, 'fold'), A(4, 'fold'), A(5, 'fold'), A(1, 'call', 0.3)];
+  h.streets[1].actions = [A(1, 'bet', 0.6), A(2, 'call', 0.6)];
+  h.streets[2].actions = [A(1, 'check'), A(2, 'bet', 1.04), A(1, 'call', 1.04)];
+  h.streets[3].actions = [A(1, 'check'), A(2, 'check')];
+  h.heroIdx = 1; h.streets.forEach((st) => { st.cards.hero = ''; }); h.streets[0].cards.hero = 'JcJs';
+  h.result = { winners: [{ playerIdx: 1, split: false }] };
+  const g = findGaps(h).filter((x) => /^action:/.test(x.id));
+  assert.deepEqual(g.map((x) => x.question), []);
+});
+
+test('a typed value never overwrites a structure (a street\'s actions, the blinds)', () => {
+  const h = cash6();
+  h.quickAdd = { questions: [{ id: 'pot-mismatch:1', kind: 'impossible', field: 'streets.0.actions', question: 'Pot?', options: [{ label: 'The actions are right', value: { op: 'dismiss' } }], allowFree: true, blocking: false }] };
+  const g = gap(h, 'pot-mismatch:1');
+  const after = applyAnswer(h, g, 'someone called');
+  assert.ok(Array.isArray(after.streets[0].actions) && after.streets[0].actions.length === 6);
+});

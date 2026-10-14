@@ -476,3 +476,12 @@ test('a transcript gets its number words as a reading aid, not a rewrite', () =>
   const t = buildParseRequest({ text: 'he bets twelve hundred', source: 'text', hints: {}, model: 'm' });
   assert.ok(!t.messages[0].content.includes('reading aid') && !t.messages[0].content.includes('= 1200'));
 });
+
+test('a holding pattern the given cards break is asked about on its card slot', () => {
+  const d = flopDraft('Kd8c3h');
+  d.streets[0].cards = [{ player: 0, cards: 'AhQs', suitPattern: 'suited' }];
+  const { hand } = normalizeDraft(d);
+  const q = hand.quickAdd.questions.find((x) => x.id.startsWith('texture-conflict:'));
+  assert.equal(q.field, 'streets.0.cards.hero');
+  assert.equal(hand.streets[0].cards.hero, 'AhQs');
+});

@@ -423,6 +423,9 @@ export function applyFreeValue(input, gap, value) {
   }
   if (!gap || !gap.field || /[*]/.test(gap.field)) return hand;
   const cur = getPath(hand, gap.field);
+  // A field that holds a structure (a street's actions, the blinds) takes no typed
+  // value: that free text is the server's /answer to read, never a string to store.
+  if (cur !== null && typeof cur === 'object') return hand;
   const numericField = typeof cur === 'number' || /(?:startingStack|amount|\.sb|\.bb|\.ante|bigBet|bringIn|betCap|discarded|heroIdx|player)$/.test(gap.field);
   setPath(hand, gap.field, numericField ? toNumberMaybe(value) : value);
   return hand;
