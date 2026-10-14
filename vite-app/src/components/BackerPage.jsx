@@ -23,7 +23,7 @@ import './backer-page.css';
  * Phone first; on a desktop window the same 37g column, centred (.app-shell without is-desktop):
  * this is a page to read, one column wide.
  *
- *   top bar     the wordmark, "your action with Ethan", the notifications pill (8r)
+ *   top bar     the wordmark, "your action with Ethan Bennett", the notifications pill (8r)
  *   hero        the name (display face) and the stakes summary
  *   total       running total, signed and toned, over sessions · hours · opening (a 12r card)
  *   graph       the share over time (BackerChart), with 1M / 3M / YTD / All when history allows
@@ -123,7 +123,9 @@ function TopBar({ push }) {
     <header className="top-bar bp-top">
       <div className="top-bar-title">
         <h1>futurega.me</h1>
-        <small>your action with Ethan</small>
+        {/* The player's full name (owner, 2026-10-14). One player today; when backers belong to other
+            players after the bankroll merge, this comes from the feed. */}
+        <small>your action with Ethan Bennett</small>
       </div>
       {push && <PushPill push={push} />}
     </header>
