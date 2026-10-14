@@ -161,9 +161,15 @@ copied). `test/hh-io/ps-grammar.mjs` holds one regex per construct with the samp
   a tie, are not written. A razz hand with no five unpaired cards is described by its high hand
   **(unverified)**.
 
-**Validation against genuine Stars.** The parser reads 1,452 of the sample hands (the rest are
-games or constructs the model cannot hold — §8); every one replays through the writer's own code to
-Stars' total pot, and on rake-free hands to every player's collects. Re-written by the writer, the
+**Validation against genuine Stars.** Of the 1,657 hands in the 157 Stars-format sample files,
+the parser reads 1,453; every one replays through the writer's own code to Stars' total pot, and on
+rake-free hands to every player's collects. The other 204: 162 `unsupported-feature` (74 NL Omaha
+Hi/Lo, 35 limit 5 Card Draw, 28 an extra big blind posted by a new player, button-blind 6+ Hold'em,
+cash-outs, cancelled hands, run it twice, Courchevel), 13 `unsupported-currency` (play money, INR,
+converted files with no currency), 19 `malformed` (truncated or concatenated files, an empty turn
+card, a five-card flop, other sites' converters), 6 `inconsistent` (Hold'em Manager and converter
+exports whose pots do not add up), 2 `unsupported-game`, 1 `seating` (a 2005 hand with the big blind
+on the button), 1 with no hole cards for the hero. Re-written by the writer, the
 741 rake-free ones match the originals on 98.2% of lines. The differences: cards Stars revealed
 only in the summary (`mucked [..]`) are written as shows; pre-2010 Stars wrote no `doesn't show
 hand` and pre-2006 no `N-max`; bounty seat suffixes are not carried; names lose brackets; a
