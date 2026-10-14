@@ -5,7 +5,7 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-10-13 (from Windows) — see the 2026-10-13 section first. Earlier note: 2026-09-30. The newest section is 2026-09-30, live
+Last updated: 2026-10-14 (from Windows) — see the 2026-10-14 section first. Earlier notes: 2026-10-13, then 2026-09-30, live
 tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
@@ -13,6 +13,30 @@ Below it the 2026-09-25 Schedule grid sweep, then the dated sections back throug
 wsop-console side and verified against both live services.
 
 ---
+
+## 2026-10-14 — Locations live; date pills, Sessions and Trend in their last rounds
+- **Live:** the bankroll **Locations** tab (52e0895: ITM per entry; a mixed room says "won/ITM" and only
+  plain "won" is toned green/red), the venue map (0b0d08e), and build.js reinstalling vite-app deps on
+  Render when the lockfile changes (aeb710b).
+- **Ready to merge after its guards:** the date-pill fix (branch `fix/date-pill`, worktree `date-pill`).
+  Labels centre their INK, read from canvas pixels by `utils/ink-balance.js` (WebKit clamps
+  measureText's bounds to the advance). The controls guard now waits for the layout to settle, which
+  was the cause of the recurring false "10 Oct" failure.
+- **In their final rounds:** springs (agent; then the Set B default, merge, comparison videos), the
+  Sessions tab, the Trend overlays, the parser corpora (100 written + 136 spoken real hands; hardening
+  next), and the queued features (home customization, onboarding, hand-history export). **Ads are
+  PAUSED** (owner, 2026-10-14: "an excellent proof of concept"; memory `ads-paused` has the state of
+  each). Catalogue three's specimens and page are on hold too (it was the biggest spender, 6.4M tokens).
+- **Model policy (owner, 2026-10-14):** where Opus is not needed, delegate to Sonnet or Haiku. Set
+  `model` on every agent; one build plus one check per job (memory `model-delegation`).
+- **Trap: scratch seed tokens expire after 12 h.** `setup.cjs` signs `token.txt` with `expiresIn: '12h'`.
+  A guard run with an expired token silently skips most views and still prints "all N controls on the
+  grid" (21 controls instead of about 600). Check the skipped count and the JWT `exp` before trusting a
+  pass. Every scratchpad token was re-signed for 72 h on 2026-10-14.
+- **Owner answers wanted:** the parser's 47 questions (page in the table below) and the launch plan's
+  7 open questions (its section 16).
+- **Loose end:** `overviewStats().mtt.itm` (bankroll-ledger.js) still counts ITM per event; nothing on
+  screen shows it, but the owner's rule is per entry. Fix after Sessions and Trend merge (same file).
 
 ## 2026-10-13 — Shipped: home, Overview tables, centring sweep, scroll parity; nightly TestFlight
 - **Live on master:** desktop Schedule scrolls like the phone (79a82c3); the mirrored detail-panel motion
@@ -238,6 +262,7 @@ to the account and readable with WebFetch.
 | Graphics backlog | 100 measured graphic upgrades across the whole app, each naming the file and quoting the current value | https://claude.ai/code/artifact/f5f543f9-33b7-44e3-94d6-c9e7779eefcd |
 | Launch plan | Launch on 5 Jan 2027 at the BWPO, free until a 1 Mar paywall, $10,000 in three gates; channels, the twelve ads, policy wording, ASO, tracking, next 10 actions and 7 open questions (2026-10-13) | https://claude.ai/artifact/5k5qVK6Y8cPmzdMXjJEDgW |
 | Variant picker | Ten redesigns of the replayer entry's variant picker (recommended 8+10, fallback 1) (2026-10-13) | https://claude.ai/artifact/Jk96jEaP58rBAsf4eak9ka |
+| Parser questions | 47 questions from the real-hand corpora, tap-to-answer; the answers are in its db collection `answers` (Artifact tool, read_db) (2026-10-14) | https://claude.ai/artifact/9m4sQRQY4JpvcuEZJZR5NR |
 
 To revise one, publish the **same file path** again, or pass its URL as `url`.
 Publishing without the URL creates a second artifact instead of updating.
