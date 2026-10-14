@@ -159,21 +159,27 @@
 
 /* ── Graph ── */
 .bp-chart-block { margin-top: calc(var(--subrow) * 3); }
+/* Every figure on the right ends 1g in, on the session cards' figures (owner, 2026-10-14): 22g | 1g |
+   11g, then 1g. */
 .bp-chart-head, .bp-chart-foot, .bp-section-head {
   display: grid;
-  grid-template-columns: calc(var(--gu) * 23) calc(var(--gu) * 11);
+  grid-template-columns: calc(var(--gu) * 22) calc(var(--gu) * 11);
   column-gap: var(--gu);
+  padding-right: var(--gu);
 }
 .bp-chart-change { text-align: right; }
 .bp-chart-change.is-pos { color: var(--pos); }
 .bp-chart-change.is-neg { color: var(--neg); }
-.bp-chart-foot { grid-template-columns: calc(var(--gu) * 17) calc(var(--gu) * 17); }
+.bp-chart-foot { grid-template-columns: calc(var(--gu) * 16) calc(var(--gu) * 17); }
 .bp-chart {
   position: relative;
   width: calc(var(--gu) * 35);
   height: calc(var(--subrow) * 16);
   margin-top: var(--subrow);
 }
+/* Tap or drag across the plot to read a session (BackerChart); a vertical drag still scrolls. */
+.bp-chart { touch-action: pan-y; cursor: crosshair; }
+.bp-chart:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 .bp-chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .bp-line { fill: none; stroke: var(--text); stroke-width: var(--bw-1); stroke-linejoin: round; }
 .bp-base { stroke: var(--border-strong); stroke-width: var(--bw-hair); }
@@ -192,6 +198,15 @@
   pointer-events: none;
 }
 .bp-dot.is-pos { background: var(--pos); }
+/* The session being read: a hairline down the plot at its step, and its own dot on the step's top. */
+.bp-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: var(--bw-hair) solid var(--text-muted);
+  pointer-events: none;
+}
 .bp-dot.is-neg { background: var(--neg); }
 /* The range: a 35g x 4r strip 1r under the foot, its N segments whole g and flush (as
    bankroll-dashboard.css .bd-seg divides 35g), each a control: label centred both ways. */
@@ -239,7 +254,7 @@
    month's share where the weekday sits. */
 /* styles.css loads after the component sheets, so these out-rank its rules by one class. */
 .bp-month-break .bp-month-pill { width: calc(var(--gu) * 10); }
-.bp-month-break .bp-month-end { width: calc(var(--gu) * 12); }
+.bp-month-break .bp-month-end { width: calc(var(--gu) * 11); margin-right: var(--gu); }
 .bp-month-net { font-variant-numeric: var(--num-tabular); white-space: nowrap; }
 .bp-month-net.is-pos { color: var(--pos); }
 .bp-month-net.is-neg { color: var(--neg); }
@@ -247,6 +262,12 @@
 /* An event card: the room's strip across the top (as the home's Up Next card carries it), then
    two rows on 33g between 1g margins. Exactly 10r; 1r between cards keeps every card on a line. */
 .bp-card {
+  /* The Schedule's card (owner, 2026-10-14): the strip down the left in the first 2g column
+     (styles.css .cal-venue-strip, out of flow in that column), the body in the rest. Three rows,
+     game 4r, room 3r, date 3r: still exactly 10r. */
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--subcol) minmax(0, 1fr);
   height: calc(var(--subrow) * 10);
   margin-bottom: var(--subrow);
   border-radius: var(--radius-sm);
@@ -254,42 +275,17 @@
   box-shadow: var(--elev-1);
   overflow: hidden;
 }
-/* The strip: the room's colour, its name centred both ways (owner, 2026-10-11: venue strip text is
-   centred, not seated). The name's line box is the strip's 3r, so its glyphs never meet the clip;
-   the trailing letter-space is balanced by an equal indent so the INK centres. Unknown rooms get
-   the neutral strip. White on every venue colour, as every venue strip in the app. */
-.bp-strip {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: calc(var(--subrow) * 3);
-  box-sizing: border-box;
-  padding: 0 var(--gu);
-  color: #ffffff;
-  font-family: var(--font-condensed);
-  font-size: var(--fs-2xs);
-  font-weight: var(--fw-bold);
-  letter-spacing: var(--track-caps-lg);
-  text-transform: uppercase;
-  user-select: none;
-}
-.bp-strip.is-neutral { background: var(--border-strong); color: var(--text); }
-.bp-strip-name {
-  display: block;
-  min-width: 0;
-  max-width: 100%;
-  line-height: calc(var(--subrow) * 3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-indent: var(--track-caps-lg);
-}
-.bp-card-body { padding: 0 var(--gu); }
+.bp-card > .bp-strip.is-neutral { background: var(--border-strong); }
+/* The strip is the Schedule's own .cal-venue-strip (styles.css): the room's colour, its short code
+   centred both ways, white. .bp-strip only marks it here; an unknown room gets the neutral colour. */
+.bp-card-body { grid-column: 2; min-width: 0; padding: 0 var(--gu); }
+/* 33g after the 2g strip, less 1g each side: 19g | 1g | 11g. */
 .bp-card-row {
   display: grid;
-  grid-template-columns: calc(var(--gu) * 21) calc(var(--gu) * 11);
+  grid-template-columns: calc(var(--gu) * 19) calc(var(--gu) * 11);
   column-gap: var(--gu);
 }
+.bp-card-row--one { grid-template-columns: minmax(0, 1fr); }
 .bp-card-row > :last-child { text-align: right; }
 .bp-game {
   /* Display face md, baseline on line 3 of 4 (an-val's c). */
@@ -355,7 +351,6 @@
 @media (hover: hover) and (pointer: fine) { .bp-retry:hover { background: var(--brand-hover); } }
 .bp-retry:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 
-.bp-foot { margin-top: calc(var(--subrow) * 3); }
 
 /* ── Loading: the page's blocks at their own sizes, so nothing moves when the feed lands ── */
 .bp-skeleton .skeleton { border-radius: var(--radius-xs); }

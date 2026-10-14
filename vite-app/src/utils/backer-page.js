@@ -221,7 +221,8 @@ export function shareSeries(events, { base = 0, range = 'all', today = null } = 
     const inWindow = !from || String(e.date) >= from;
     if (!inWindow) { run += Number(e.shareCents) || 0; start = run; continue; }
     run += Number(e.shareCents) || 0;
-    points.push({ date: e.date, value: run });
+    // share and game: what the graph shows for a session the backer taps (BackerChart).
+    points.push({ date: e.date, value: run, share: Number(e.shareCents) || 0, game: e.game || null });
   }
   if (!points.length) return null;
   const values = [start, ...points.map((p) => p.value)];

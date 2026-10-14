@@ -8,7 +8,7 @@ import useInkBalance from '../hooks/useInkBalance.js';
 import useThemeChoice from '../hooks/useThemeChoice.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { API_URL } from '../utils/api.js';
-import { VENUE_MAP, getVenueBrandColor } from '../utils/utils.js';
+import { VENUE_MAP, getVenueBrandColor, getVenueInfo, getStripAbbr } from '../utils/utils.js';
 import {
   summarize, groupByMonth, shareSeries, rangeOptions, stripFor, monthLabel, RANGE_NOUN,
   fmtSignedCents, fmtHours, fmtDay, plural, tone, bbStats, eventBb,
@@ -143,16 +143,23 @@ function SessionCard({ e }) {
   const pctText = (Math.round(pct * 100) / 100).toString();
   // The player's bb/hr for this session, when its game names a big blind (utils/bb-hr.js).
   const bb = eventBb(e);
+  // The strip runs down the card's left side, the room's short code in it, as on the Schedule
+  // (owner, 2026-10-14). A room VENUE_MAP doesn't name takes the Schedule's derived code
+  // (getVenueInfo); the full name is the line under the game, so nothing is lost.
+  const abbr = strip.abbr || (strip.name ? getVenueInfo(strip.name).abbr : null) || null;
   return (
     <li className="bp-card">
-      <div className={'bp-strip' + (strip.abbr ? '' : ' is-neutral')}
-        style={strip.abbr ? { background: getVenueBrandColor(strip.abbr) } : undefined}>
-        <span className="bp-strip-name">{strip.label}</span>
+      <div className={'cal-venue-strip bp-strip' + (abbr ? '' : ' is-neutral')} aria-hidden="true"
+        style={abbr ? { background: getVenueBrandColor(abbr) } : undefined}>
+        <span className="venue-strip-abbr">{abbr ? getStripAbbr(abbr) : ''}</span>
       </div>
       <div className="bp-card-body">
         <div className="bp-card-row">
           <span className="an-cell bp-game an-clip" title={e.game || ''}>{e.game || 'Session'}</span>
           <span className={'an-cell bp-share ' + tone(share)}>{fmtSignedCents(share)}</span>
+        </div>
+        <div className="bp-card-row bp-card-row--one">
+          <span className="an-cell an-note an-clip" title={strip.label}>{strip.label}</span>
         </div>
         <div className="bp-card-row">
           <span className="an-cell an-note an-clip">
@@ -341,12 +348,6 @@ export default function BackerPage({ token }) {
       <TopBar push={failed ? null : push} theme={theme} />
       <main className="content-area bp-content">
         {body}
-        <footer className="bp-foot">
-          <p className="an-p">Private link: only someone with this address can see this page, so keep it to yourself.</p>
-          {push.installHint && (
-            <p className="an-p">On iPhone, add this page to your Home Screen (Share, then Add to Home Screen) to get a notification after each session.</p>
-          )}
-        </footer>
       </main>
       {gridOverlay && <GridOverlay showReadout={false} />}
     </div>
