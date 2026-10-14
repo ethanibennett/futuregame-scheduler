@@ -1055,6 +1055,9 @@ export default function DashboardView({
   // render null when they have nothing, and an empty wrapper would still take the column's 2r gap.
   const num = useHomeNumbers({ isAdmin, token, bk, onLog });
   const registered = !!(onLog && canLog);
+  // Whether To log has any row to show (it reports it: HomeToLog renders nothing when nothing waits).
+  // A section that renders nothing is not "directly above" another one, whatever the order says.
+  const [toLogShown, setToLogShown] = useState(true);
   const view = useMemo(() => resolveLayout(layout, { admin: num.admin, registered }), [layout, num.admin, registered]);
   const upNextSection = (
         <div key="upnext" className="dashboard-section">
@@ -1167,6 +1170,7 @@ export default function DashboardView({
         onDeleteTracking={onDeleteTracking}
         onSetPlayed={onSetPlayed}
         onLog={onLog}
+        onShown={setToLogShown}
       />
     ) : null),
     last: () => (onLog ? (
@@ -1181,7 +1185,7 @@ export default function DashboardView({
     period: (column) => (
       <HomePeriod key="period" admin={num.admin} bk={bk} results={trackingData} schedule={mySchedule} updates={myActiveUpdates}
         plans={resolvedPlans} rates={dashRates} currency={dashCurrency} today={todayISO}
-        scopeAbove={bankrollAbovePeriod(column) && num.bankLine ? `All bankrolls · ${num.bankLine.currency}` : null}
+        scopeAbove={bankrollAbovePeriod(column.filter(rendersSomething)) && num.bankLine ? `All bankrolls · ${num.bankLine.currency}` : null}
         showNoise={view.on.has('noise')} showGoals={view.on.has('goals')}
         onOpen={num.onOpenBlock} onOpenGoals={num.onOpenGoals} onOpenNoise={num.onOpenNoise} />
     ),
@@ -1195,6 +1199,9 @@ export default function DashboardView({
     // chart, a 4r figures row, a 3r downswing line in buy-ins; taps open the Overview at 3M.
     // Admins: ledger + rangeWindow('3m'); non-admins: a compact ResultsCurve.
   };
+  // Which of a column's sections take room: To log when something waits, Last result when there is a
+  // way to log, the bankroll line when it has a line. (Up Next and the period block always do.)
+  const rendersSomething = (id) => (id === 'tolog' ? !!onLog && toLogShown : id === 'last' ? !!onLog : id === 'bankroll' ? !!num.bankLine : true);
   const renderColumn = (ids) => ids.map((id) => (SECTIONS[id] ? SECTIONS[id](ids) : null));
 
   // The Edit home control: the main column's last item (the phone's one column, desktop's NOW pane),
