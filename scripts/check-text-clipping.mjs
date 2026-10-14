@@ -690,9 +690,9 @@ function scan(rootSel) {
     }
     if ((await p.locator('.ob-status').innerText()).startsWith('Nothing upcoming')) await setupRun('first-run setup step 3 (nothing matches)', SETUP);
     else console.log('  (first-run setup zero-count line skipped: nothing in this data matched no chip combination)');
-    // Settings' Edit name: the name dialog on the current name.
-    await p.keyboard.press('Escape');
-    await p.waitForTimeout(600);
+    // Settings' Edit name: the name dialog on the current name. Setup is left open and the page
+    // reloaded by openTab, never closed with Esc or Skip: those SAVE the steps already confirmed,
+    // and a guard run must not write a location to the account it signs in as.
     await openTab('Settings').catch(async () => {
       await p.locator('.username-chip').first().click({ timeout: 4000 });
       await p.waitForTimeout(400);

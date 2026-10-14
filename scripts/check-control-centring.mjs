@@ -2332,7 +2332,7 @@ function finalize(c) {
     await also('region picked');
     await next();
     if (!(await exists('.ob-tile[aria-checked="true"]:has-text("Yes")'))) await tap('.ob-tile:has-text("Yes")', 500);
-    if ((await vis('#ob-state').first().inputValue()) !== 'NV') throw new Error('Las Vegas did not answer the state (Nevada)');
+    if ((await vis('#ob-state').first().inputValue()) !== 'NV') throw new Error('Las Vegas did not answer the state (Nevada); savedLocation is ' + await p.evaluate(() => localStorage.getItem('savedLocation')));
     await tap('.ob-check', 400);
     await also('state from the region');
     await back();

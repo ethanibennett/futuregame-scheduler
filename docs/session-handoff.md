@@ -96,6 +96,12 @@ wsop-console side and verified against both live services.
   sql.js while the server is stopped. The grid overlay is admin-only (`ham`, `ham5`, `claude`), so overlay
   screenshots of a FIRST run need `ham5`'s record NULLed too (and a fresh copy per run, since finishing
   writes it).
+- **Trap: never close setup with Esc or Skip in a guard.** Both SAVE the steps already confirmed with Next
+  (that is D5), so a guard that pressed Esc after picking Texas and a state wrote that location to the
+  account it signed in as (PUT /api/user/location, a v2 skipped record) and poisoned every later run
+  (`onboarding-places` then failed: a manual state beats a region's). The clipping guard now leaves setup
+  open and reloads. `scripts/check-text-clipping.mjs` signs in as `ham5` on whatever server it is pointed
+  at, so this would have written to the owner's account on :3001.
 - Guards: `npm run check:controls -- --only onboarding,real-name-prompt,settings-edit-name,auth-register,
   location-dropdown` (`onboarding-places` is a prefix match) and `check:clipping`, whose first-run section
   prints "first-run setup: 8 views measured": anything but 8 means a stage was skipped.
