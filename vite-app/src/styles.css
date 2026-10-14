@@ -4790,6 +4790,43 @@
          1295 - 742 = 553 exactly, which only holds for a stadium. */
       --rail-w: 6.1cqmin;
     }
+    /* The desktop table, placed by what is DRAWN rather than by the plaques (owner bug found
+       2026-10-14: the top seat's hole-card fan was cut off by the window's top, 8 to 17px, at 8 and
+       9-max, at 1280x800, 1440x900 and 1920x1080, for every game).
+
+       The cause is the -6.5% above. It was measured on 2026-09-15 as "the seats 74px from the top and
+       138 from the bottom; lift it until both are 106": the PLAQUES. The ink reaches past them, and
+       not the same distance each way. A top seat's fan stands 0.084 of the table's height above its
+       plaque; the hero's hand name hangs 0.057 below its plaque at the result. Centring the plaques
+       therefore left the table 23px too high at 8-max, 1440x900: the fan 8px over the window's top
+       and 38px of pane spare under the hero's label. The 96cqh height did not reserve the fan's room
+       either.
+
+       Measured in WebKit, at every step of a 6, 8 and 9-max hand, at 1280x800, 1440x900 and 1920x1080
+       (cards, plaques, hand names, button, wagers), as a share of the table's own height down from
+       the box's top:
+         highest ink  0.0258  the top seat's fan (0.0266 at 1920);
+         lowest ink   1.0459  the hero's hand name at the result, 8 and 9-max;
+                      1.0774  the same at 6-max, whose hero sits half a row lower (LANDSCAPE_6).
+       (Not every part of the ink is a share of the table, so the extremes drift by a thousandth or
+       so between sizes.) What is drawn is 1.0518 table heights tall at most, and the slot has to hold
+       THAT. The table is sized to it, leaving about 1r above the fan and 1r under the hero's label at
+       6-max (more under it at 8 and 9-max, whose hero is higher), and lifted by the amount that
+       centres it, -5.2%. Everything on the table is a share of its height, so nothing moves ON the
+       table: its seats, fans, plaques and the springs' landings are the same arithmetic on a table
+       1 to 3.5% smaller. Where the width binds (a window that is not wide for its height, 1024x768
+       or 1100x900) the table is the size it was and only the lift changes.
+
+       Desktop windows only: a phone held sideways keeps the numbers above, being pixel-identical.
+       Keyed on html[data-layout="desktop"] (App sets it from the same hook as .is-desktop) rather
+       than on .app-shell.is-desktop, because a shared replay opened signed out is a bare
+       .app-shell and has the same table. */
+    :root[data-layout="desktop"] .replayer-landscape .replayer-table {
+      --ink-top: 0.0266;
+      --ink-bottom: 1.0775;
+      height: min(calc((100cqh - var(--subrow) * 2) / (var(--ink-bottom) - var(--ink-top))), calc(96cqw / 1.75));
+      transform: translateY(calc((0.5 - (var(--ink-top) + var(--ink-bottom)) / 2) * 100%));
+    }
     /* The hero's fan sits higher up a shorter box in landscape; the block
        steps up two rows to stay out of it. */
     .replayer-landscape .replayer-table-info { top: 59.375%; }   /* row 19 */
