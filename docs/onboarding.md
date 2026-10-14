@@ -143,7 +143,7 @@ Last button: "Show my schedule" (it stays on Home).
 
 | Answer | Stored in | Read by |
 |---|---|---|
-| Location (a point + distance, or a region) | `localStorage.savedLocation`; for an account also `users.saved_location` (`PUT /api/user/location`) | the Schedule list (`TournamentsView` → `matchesLocation`), `CalendarView`, Home's "N events this week near you" (`HomeNothingNext`), the Cash tab's default poll point (`CashLocationPicker`; a point only, not a region) |
+| Location (a point + distance, or a region) | `localStorage.savedLocation`; for an account also `users.saved_location` (`PUT /api/user/location`) | the Schedule list (`TournamentsView` → `matchesLocation`), `CalendarView`, Home's "N events this week near you" (`HomeNothingNext`), the Cash tab's default poll point (`CashLocationPicker`; a point only, not a region), the venue map's distance line (`VenueMapSheet` → `venue-place.js distanceLine`: "48 mi from your location" for setup's Current Location, the first name of a picked city, nothing for a region) |
 | State (`jurisdiction`, `jurisdictionManual`) | the same `savedLocation` blob | which online sites `matchesOnline` treats as available (when "Only sites open in…" is on), and the Online menu's "Available in <state>" label |
 | Online yes/no | `savedFilters.showOnline` (stored only when false) | the Schedule and the Calendar |
 | Only sites open in <state> | `savedFilters.onlyAvailableOnline` (stored only when true) | the Schedule and the Calendar (`matchesOnline`) |
