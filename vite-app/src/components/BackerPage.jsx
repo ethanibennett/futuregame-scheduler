@@ -323,11 +323,8 @@ export default function BackerPage({ token }) {
                 <RangeStrip options={options} value={view.range} onChange={setRange} />
               )} />
 
-            <section className="bp-sessions" aria-labelledby="bp-sessions-h">
-              <div className="bp-section-head">
-                <h3 className="an-cell an-sec" id="bp-sessions-h">Sessions</h3>
-                <span className="an-cell an-note an-num">Newest first</span>
-              </div>
+            {/* No heading row: the month breaks lead straight in (owner, 2026-10-14). */}
+            <section className="bp-sessions" aria-label="Sessions, newest first">
               {months.map((g) => (
                 <div key={g.key} className="bp-month">
                   <MonthBreak g={g} />

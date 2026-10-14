@@ -161,7 +161,7 @@
 .bp-chart-block { margin-top: calc(var(--subrow) * 3); }
 /* Every figure on the right ends 1g in, on the session cards' figures (owner, 2026-10-14): 22g | 1g |
    11g, then 1g. */
-.bp-chart-head, .bp-chart-foot, .bp-section-head {
+.bp-chart-head, .bp-chart-foot {
   display: grid;
   grid-template-columns: calc(var(--gu) * 22) calc(var(--gu) * 11);
   column-gap: var(--gu);
@@ -245,8 +245,6 @@
 
 /* ── Sessions ── */
 .bp-sessions { margin-top: calc(var(--subrow) * 3); }
-.bp-section-head { margin-bottom: var(--subrow); }
-.bp-section-head > .an-note { --h: 3; --p: 1.9574; }   /* an-note, baseline on line 3 of 3 */
 .bp-month + .bp-month { margin-top: var(--subrow); }
 
 /* The month break: the Schedule's date break (styles.css .schedule-date-break: sticky, a 4r pill
