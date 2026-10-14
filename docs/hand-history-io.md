@@ -227,11 +227,25 @@ opponent who mucked at showdown loses his door card in the replayer's own storag
 **The stud layout** (from HandReplayerView.jsx's stud showdown form, `toggleSdCard`, which prepends):
 an opponent's 3rd street holds their hidden cards in front of the door, newest pick first — `h7 h2
 h1 door`; 4th–6th hold one up card each; a card in their 7th-street slot is the 7th down card.
-Stars writes `[h1 h2 door 4th 5th 6th h7]`. The hero's 3rd street is `down down door`. This was
-read from the entry form's code (`opps[oppSlot] = card + (opps[oppSlot] || '')` on 3rd street for
-each showdown pick) and from `quick-add/betting.js` `doorCard` (the door is the LAST card there);
-it was not re-checked by saving a stud showdown through the entry form. Which hidden card is the
-7th is not recorded by that form at all: the writer takes the last one picked.
+Stars writes `[h1 h2 door 4th 5th 6th h7]`. The hero's 3rd street is `down down door`.
+
+**Observed (2026-10-14)**, by saving a heads-up Stud Hi showdown through the entry form on a
+scratch server (Playwright, `GTOEntryView`: hero `2c 3d Kh`, opponent door `Qs`, 4th–7th dealt,
+then the two showdown picks `8s` and then `7d`) and reading it back from `/api/replayer/hands`:
+```
+3rd Street  hero "2c3dKh"  opponents ["7d8sQs"]   <- second pick, first pick, door
+4th Street  hero "4h"      opponents ["Js"]
+5th Street  hero "5h"      opponents ["Ts"]
+6th Street  hero "6h"      opponents ["9s"]
+7th Street  hero "Ah"      opponents ["2s"]       <- the deal step requires a card for every
+                                                     live player on 7th, opponents included
+players: BTN/SB, BB (not "Seat k": the form keeps flop-game labels for stud)
+```
+So the form's 7th-street deal fills an opponent's 7th down card, and the showdown asks only for the
+two first hidden cards (it said "5 known cards, 2 hidden cards remaining"), prepended newest first.
+The writer read that hand as `Jason Blodgett: shows [8s 7d Qs Js Ts 9s 2s]` — h1 h2 in pick order,
+the door, 4th–6th, then the 7th. When no 7th-street card is stored (a quick-add or older save) and
+three hidden cards were picked, the writer takes the last one picked as the 7th.
 
 ## 8. The importer framework
 
