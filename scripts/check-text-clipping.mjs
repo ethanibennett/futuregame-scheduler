@@ -639,9 +639,14 @@ function scan(rootSel) {
 
   // First-run setup (components/OnboardingWizard.jsx), re-opened as the location menu's "Run setup
   // again" does: step 1 (and with city results, where the scratch server reaches Nominatim), step
-  // 2 with Yes, step 3. Its tiles truncate their two lines with an ellipsis. Nothing is finished.
-  // Generous waits: a busy box draws a 1440 x 3 WebKit page at 2-3 frames a second, and a click
-  // waits for the button to be stable across frames.
+  // 2 with Yes, step 3; then step 2 again where it changes what it asks (Europe's one line, the
+  // longest state name in the sites checkbox), the zero-count line, and Settings' "Edit name"
+  // dialog. Its tiles truncate their two lines with an ellipsis. Nothing is finished. Generous
+  // waits: a busy box draws a 1440 x 3 WebKit page at 2-3 frames a second, and a click waits for
+  // the button to be stable across frames. The count of views measured is printed, so a section
+  // that quietly measured nothing cannot read as a pass.
+  let setupViews = 0;
+  const setupRun = async (label, sel) => { await run(label, sel); setupViews++; };
   try {
     await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
     await p.waitForTimeout(3500);
@@ -649,21 +654,55 @@ function scan(rootSel) {
     await p.locator('.modal-content.ob').waitFor({ timeout: 15000 });
     await p.waitForTimeout(600);
     const SETUP = '.modal-content.ob';
-    await run('first-run setup step 1', SETUP);
+    const tap = async (sel, wait = 500) => { await p.locator(sel).filter({ visible: true }).first().click({ timeout: 15000 }); await p.waitForTimeout(wait); };
+    await setupRun('first-run setup step 1', SETUP);
     await p.locator('.ob-search').fill('Austin');
     await p.waitForTimeout(1500);
     for (let i = 0; i < 10 && !(await p.locator('.ob-results .ob-row').count()); i++) await p.waitForTimeout(300);
-    if (await p.locator('.ob-results .ob-row').count()) await run('first-run setup step 1 (search)', SETUP);
+    if (await p.locator('.ob-results .ob-row').count()) await setupRun('first-run setup step 1 (search)', SETUP);
     else console.log('  (first-run setup search results skipped: no results from the geocoder)');
-    await p.locator('.ob-foot button:has-text("Next")').click({ timeout: 15000 });
+    await tap('.ob-foot button:has-text("Next")', 600);
+    await tap('.ob-tile:has-text("Yes")', 400);
+    await setupRun('first-run setup step 2', SETUP);
+    await tap('.ob-foot button:has-text("Next")', 600);
+    await setupRun('first-run setup step 3', SETUP);
+    // Step 2 for Europe, then for Nevada with the longest state name ticked.
+    await tap('.ob-foot button:has-text("Back")', 400);
+    await tap('.ob-foot button:has-text("Back")', 400);
+    await tap('.ob-cell:has-text("Europe")', 400);
+    await tap('.ob-foot button:has-text("Next")', 600);
+    await setupRun('first-run setup step 2 (Europe)', SETUP);
+    await tap('.ob-foot button:has-text("Back")', 400);
+    await tap('.ob-cell:has-text("Las Vegas")', 400);
+    await tap('.ob-foot button:has-text("Next")', 600);
+    await p.locator('#ob-state').selectOption('DC');
+    await p.waitForTimeout(300);
+    if ((await p.locator('.ob-check').getAttribute('aria-checked')) !== 'true') await tap('.ob-check', 300);
+    await setupRun('first-run setup step 2 (District of Columbia)', SETUP);
+    // The zero-count line: chips on Texas that match nothing in the data, where there are some.
+    await tap('.ob-foot button:has-text("Back")', 400);
+    await tap('.ob-cell:has-text("Texas")', 400);
+    await tap('.ob-foot button:has-text("Next")', 500);
+    await tap('.ob-foot button:has-text("Next")', 600);
+    for (const chip of ['$5K+', 'Mixed', 'PLO']) {
+      if ((await p.locator('.ob-status').innerText()).startsWith('Nothing upcoming')) break;
+      await tap('.ob-chip:has-text("' + chip + '")', 500);
+    }
+    if ((await p.locator('.ob-status').innerText()).startsWith('Nothing upcoming')) await setupRun('first-run setup step 3 (nothing matches)', SETUP);
+    else console.log('  (first-run setup zero-count line skipped: nothing in this data matched no chip combination)');
+    // Settings' Edit name: the name dialog on the current name.
+    await p.keyboard.press('Escape');
     await p.waitForTimeout(600);
-    await p.locator('.ob-tile:has-text("Yes")').click({ timeout: 15000 });
-    await p.waitForTimeout(400);
-    await run('first-run setup step 2', SETUP);
-    await p.locator('.ob-foot button:has-text("Next")').click({ timeout: 15000 });
-    await p.waitForTimeout(600);
-    await run('first-run setup step 3', SETUP);
-  } catch (e) { console.log(`  (first-run setup skipped: ${e.message.split('\n')[0]})`); }
+    await openTab('Settings').catch(async () => {
+      await p.locator('.username-chip').first().click({ timeout: 4000 });
+      await p.waitForTimeout(400);
+      await p.getByRole('button', { name: 'Settings', exact: true }).first().click({ timeout: 4000 });
+      await p.waitForTimeout(1800);
+    });
+    await tap('button:has-text("Edit name")', 900);
+    await setupRun('first-run setup name dialog', '.modal-content.ob');
+    console.log(`  first-run setup: ${setupViews} views measured`);
+  } catch (e) { console.log(`  (first-run setup skipped after ${setupViews} views: ${e.message.split('\n')[0]})`); }
 
   // The backer page (/b/<token>, no login: components/BackerPage.jsx), paged through: a full
   // history (then its graph on 1M), a backer with no sessions yet, one session. CHECK_BACKER_TOKENS

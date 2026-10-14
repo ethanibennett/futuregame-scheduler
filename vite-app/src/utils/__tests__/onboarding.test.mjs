@@ -80,6 +80,33 @@ test('answersFrom: online, the sites default, and filter-sheet extras', () => {
   assert.deepEqual(x.gameExtras, ['Razz', 'O8']);
 });
 
+// Launch plan (13 Oct): online events are off until the player says yes in setup.
+test('answersFrom: a first run starts at No online; a re-run shows what is stored', () => {
+  assert.equal(O.answersFrom(null, null, { firstRun: true }).online, false, 'first run, nothing saved: No');
+  assert.equal(O.answersFrom(null, {}, { firstRun: true }).online, false, 'first run, filters saved without the key: No');
+  assert.equal(O.answersFrom(null, { showOnline: false }, { firstRun: true }).online, false);
+  assert.equal(O.answersFrom(null, { showOnline: true }, { firstRun: true }).online, true, 'an explicit stored yes stands');
+  assert.equal(O.answersFrom(null, null, { firstRun: false }).online, true, 're-run, nothing stored: the list shows online today, so Yes');
+  assert.equal(O.answersFrom(null, { showOnline: false }, { firstRun: false }).online, false, 're-run: No stays No');
+});
+
+test('withFirstRunRows: step 2 is always answered on a first run; the sites filter where a state is known', () => {
+  const none = O.answersFrom(null, null, { firstRun: true });
+  assert.deepEqual(O.withFirstRunRows(none, { place: true }), { place: true, online: true }, 'no state: online only');
+  const nv = O.chooseRegion(none, 'lasvegas');
+  assert.deepEqual(O.withFirstRunRows(nv, {}), { online: true, sites: true }, 'a state worked out: the sites filter is answered too');
+  assert.equal(O.sitesApply(nv), true);
+  assert.equal(O.sitesShown(nv), false, 'but its checkbox waits for a Yes');
+  assert.equal(O.sitesApply(O.chooseRegion(none, 'europe')), false, 'abroad: no state, no filter');
+  // What an untouched first run writes: online off, and the sites filter on in Nevada.
+  const rows = O.withFirstRunRows(nv, {});
+  assert.deepEqual(O.filtersFrom(nv, null, rows), { showOnline: false, onlyAvailableOnline: true });
+  assert.deepEqual(O.filtersFrom(none, null, O.withFirstRunRows(none, {})), { showOnline: false });
+  // Tapping Yes writes nothing for online (true is the Schedule's default) and keeps the filter.
+  assert.deepEqual(O.filtersFrom({ ...nv, online: true }, null, rows), { onlyAvailableOnline: true });
+  assert.deepEqual(O.wizardSubset(O.filtersFrom(none, { hideSideEvents: true }, O.withFirstRunRows(none, {}))), { showOnline: false });
+});
+
 // ── filtersFrom ────────────────────────────────────────────────────────────────────────────────
 const PREV = { selectedGames: ['Razz'], mixedOnly: true, siteRules: { acr: { minBuyin: 50 } }, hideSideEvents: true, showOnline: false, buyinRanges: ['0-500'] };
 

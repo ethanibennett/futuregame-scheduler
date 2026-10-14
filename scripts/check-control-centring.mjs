@@ -51,8 +51,10 @@
 // buddy chip's swap sheet, the venue map a Schedule strip and an Up Next banner open, the public
 // shared-schedule page (and a card open on it), the backer
 // page (a full history, no sessions, one session; CHECK_BACKER_TOKENS), first-run setup
-// stage by stage (step 1 refused, located and searching; step 2 with Yes; step 3), the signed-out
-// login / register / forgot / password-reset screens, and the
+// stage by stage (step 1 refused, located and searching; step 2 with Yes; step 3; the places a
+// region, Europe and Everywhere answer and the zero-count line: onboarding-places; a new account's
+// own first run, which starts at "No, live only": real-name-prompt), Settings' "Edit name" dialog,
+// the signed-out login / register / forgot / password-reset screens, and the
 // real-name prompt. A view that does not open is listed as not reached, with why. A dialog's
 // backdrop hides what is under it: a control 90% covered by something that paints is not measured.
 //
@@ -2316,6 +2318,55 @@ function finalize(c) {
       await also('step 3');
     } finally { await ctx.clearPermissions(); }
   }, 0, { noSkip: true });
+  // First-run setup's other answers (re-opened, nothing finished): a region that implies a state
+  // (Las Vegas -> Nevada, with the sites checkbox, ticked), Europe (no state, the non-US line),
+  // Everywhere (the state select at "Not set"), and the zero-count line, where a combination of
+  // chips on Texas matches nothing in the scratch data. docs/onboarding.md.
+  step('onboarding-places', async () => {
+    await p.evaluate(() => window.dispatchEvent(new Event('reopen-onboarding')));
+    await p.waitForTimeout(1000);
+    if (!(await exists('.ob-progress'))) throw new Error('setup did not open');
+    const next = () => tap('.ob-foot button:has-text("Next")', 800);
+    const back = () => tap('.ob-foot button:has-text("Back")', 600);
+    await tap('.ob-cell:has-text("Las Vegas")', 500);
+    await also('region picked');
+    await next();
+    if (!(await exists('.ob-tile[aria-checked="true"]:has-text("Yes")'))) await tap('.ob-tile:has-text("Yes")', 500);
+    if ((await vis('#ob-state').first().inputValue()) !== 'NV') throw new Error('Las Vegas did not answer the state (Nevada)');
+    await tap('.ob-check', 400);
+    await also('state from the region');
+    await back();
+    await tap('.ob-cell:has-text("Europe")', 500);
+    await next();
+    if (!(await exists('.ob-help:has-text("US states only")'))) throw new Error('no non-US line for Europe');
+    await also('Europe');
+    await back();
+    await tap('.ob-cell:has-text("Everywhere")', 500);
+    await next();
+    if ((await vis('#ob-state').first().inputValue()) !== '') throw new Error('Everywhere left a state set');
+    await also('no state');
+    // The longest state name in the checkbox (a label that must not clip).
+    await vis('#ob-state').first().selectOption('DC');
+    await p.waitForTimeout(400);
+    await also('longest state name');
+    await back();
+    await tap('.ob-cell:has-text("Texas")', 500);
+    await next(); await next();
+    const zero = async () => (await vis('.ob-status').first().innerText()).startsWith('Nothing upcoming');
+    for (const chip of ['$5K+', 'Mixed', 'PLO']) {
+      if (await zero()) break;
+      await tap('.ob-chip:has-text("' + chip + '")', 500);
+    }
+    if (await zero()) await also('zero count');
+    else notes.push({ view: 'onboarding-places', note: 'no chip combination on Texas matched nothing in this data: the zero-count line was not measured' });
+  }, 0, { noSkip: true });
+  // Settings' "Edit name": the name dialog opened on the current name, titled "Your name".
+  step('settings-edit-name', async () => {
+    await menu('Settings', 'Settings');
+    await tap('button:has-text("Edit name")', 900);
+    if (!(await exists('.ob-name'))) throw new Error('the name dialog did not open');
+    if (!(await exists('.ob-name .ob-title:has-text("Your name")'))) throw new Error('the dialog is not titled "Your name"');
+  }, 0);
   // Signed out: the login, register and forgot-password screens; with CHECK_FRESH_USER, a
   // password login to an account with no real name (the real-name prompt), then its wizard.
   const signedOut = async () => {
@@ -2369,6 +2420,18 @@ function finalize(c) {
       notes.push({ view: 'real-name-prompt', note: `CHECK_FRESH_USER has a setup record (${JSON.stringify(rec)}): setup not expected after "Later"` });
     }
     await also('after');
+    // The first run's own defaults (nothing is finished): step 2 starts at "No, live only" (online
+    // events are off until the player says yes), then Yes brings the state question.
+    if (await exists('.ob-progress')) {
+      await tap('.ob-foot button:has-text("Next")', 800);
+      const on = await p.evaluate(() => [...document.querySelectorAll('.ob-tile[aria-checked="true"] .ob-tile-title')].map(e => e.textContent).join('|'));
+      if (on !== 'No, live only') throw new Error("a first run's step 2 should start at 'No, live only'; it has: " + (on || 'nothing selected'));
+      await also('first run step 2');
+      await tap('.ob-tile:has-text("Yes")', 600);
+      await also('first run step 2 online');
+      await tap('.ob-foot button:has-text("Next")', 800);
+      await also('first run step 3');
+    }
   }, 0, { signedOut: true, noSkip: true });
 
   if (listOnly) { console.log(views.map(v => v.view).join('\n')); await b.close(); return; }

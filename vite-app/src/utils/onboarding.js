@@ -76,7 +76,9 @@ const countryOf = (code) => (code ? (String(code).toUpperCase() === 'US' ? 'US' 
                 (its label); a region -> that cell; nothing -> Everywhere
      distance   50/100/250 -> that chip; anything else (the menu takes any number) is kept as is
                 and shown as "Now: 30 mi" until a chip is tapped
-     online     showOnline false -> No; anything else -> Yes
+     online     a re-run: showOnline false -> No, anything else -> Yes. A first run starts at No
+                (online events are off until the player says yes: the launch plan); only an explicit
+                stored true makes it Yes
      sites      onlyAvailableOnline as stored; unset -> on for a first run, off for a re-run
      games      NLH / PLO from selectedGames, Mixed from mixedOnly; the filter sheet's other
                 variants are carried as gameExtras ("+2 more set in Filters")
@@ -102,7 +104,7 @@ export function answersFrom(savedLoc, savedFilters, { firstRun = false } = {}) {
     radius: loc.maxDistance ? String(loc.maxDistance) : DEFAULT_RADIUS,
     jurisdiction,
     jurisdictionManual: !!(jurisdiction && loc.jurisdictionManual),
-    online: f.showOnline !== false,
+    online: firstRun ? f.showOnline === true : f.showOnline !== false,
     onlyAvailable: hasOwn(f, 'onlyAvailableOnline') ? !!f.onlyAvailableOnline : !!firstRun,
     games: [
       ...(sel.includes('NLH') ? ['NLH'] : []),
@@ -156,6 +158,15 @@ export function pickState(a, code) {
 
 // The "Only sites open in <state>" checkbox shows only where it can mean something.
 export const sitesShown = (a) => !!(a.online && a.jurisdiction && a.country !== 'other');
+// ...and the filter applies wherever a US state is known, whether or not online is on right now.
+export const sitesApply = (a) => !!(a.jurisdiction && a.country !== 'other');
+
+/* The rows a first run counts as answered by default, whether or not they were touched (launch
+   plan: online events are off until the player says yes, and the state filter is on). Step 2 is
+   always answered, as No unless the player tapped Yes; where a state is known the sites filter is
+   answered too (its default, on), so the Online switch, flipped later, already hides sites that are
+   not open there. */
+export const withFirstRunRows = (a, t) => ({ ...t, online: true, ...(sitesApply(a) ? { sites: true } : {}) });
 
 const isPoint = (a) => a.place && (a.place.kind === 'current' || a.place.kind === 'point');
 

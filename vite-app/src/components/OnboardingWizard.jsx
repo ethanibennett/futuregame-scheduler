@@ -10,7 +10,7 @@ import {
 import {
   SETUP_REGION_ORDER, REGION_LABEL, RADII, GAME_CHIPS, BUYIN_CHIPS, WIZARD_DEFAULTS, ROW_STEP,
   STEP_TITLES, STEP_LEADS, LOCATE_ERRORS,
-  answersFrom, chooseRegion, choosePoint, choosePlace, learnPlace, pickState, sitesShown,
+  answersFrom, chooseRegion, choosePoint, choosePlace, learnPlace, pickState, sitesShown, withFirstRunRows,
   locationFrom, filtersFrom, wizardSubset, countSetup, isLocated, statusLine, showLabel, pushServerOnboarding,
 } from '../utils/onboarding.js';
 
@@ -133,10 +133,11 @@ export default function OnboardingWizard({ token, isGuest = false, tournaments, 
   const toggleGame = (key) => { setA(x => ({ ...x, games: toggleIn(key, x.games) })); touch('games'); };
   const toggleBuyin = (key) => { setA(x => ({ ...x, buyins: toggleIn(key, x.buyins) })); touch('buyins'); };
 
-  /* The rows that count. A first run that shows the sites checkbox counts it as answered (its
-     default is on); everything else counts only once touched. */
+  /* The rows that count. A first run answers step 2 by default (online off, and the sites filter
+     on where a state is known: the launch plan's live-only defaults); everything else counts only
+     once touched. */
   const showSites = sitesShown(a);
-  const rowsFor = useCallback((ans, t) => (firstRun && sitesShown(ans) ? { ...t, sites: true } : t), [firstRun]);
+  const rowsFor = useCallback((ans, t) => (firstRun ? withFirstRunRows(ans, t) : t), [firstRun]);
   const rows = useMemo(() => rowsFor(a, touched), [a, touched, rowsFor]);
 
   // The live count, with the answers as they stand.
@@ -176,18 +177,20 @@ export default function OnboardingWizard({ token, isGuest = false, tournaments, 
     onDone({ applied: true });
   };
   // Skip keeps the steps already confirmed with Next, as they were confirmed; the step on screen
-  // and any after it keep what is saved.
+  // and any after it keep what is saved. Except that a first run never leaves online events on
+  // without a yes: unless Next confirmed step 2, the default (No) is written.
   const skip = useCallback(() => {
     if (closed.current) return;
     closed.current = true;
     const snap = confirmed.current;
+    const t = {};
+    let ans = a;
     if (snap && step > 0) {
-      const t = {};
       for (const [row, st] of Object.entries(ROW_STEP)) if (st < step && snap.rows[row]) t[row] = true;
-      commit(snap.a, t, true);
-    } else {
-      commit(a, {}, true);
+      ans = snap.a;
     }
+    if (firstRun && !t.online) { ans = { ...ans, online: false }; t.online = true; }
+    commit(ans, t, true);
     onDone({ applied: false });
   }, [step, a]); // eslint-disable-line react-hooks/exhaustive-deps
   const next = () => {
