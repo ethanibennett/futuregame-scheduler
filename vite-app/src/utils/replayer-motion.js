@@ -12,11 +12,12 @@
 // only create elements and start animations. (Measuring per element between appends forced a layout
 // per ghost and per card: 11-16 layouts on a press at a 4x CPU throttle.)
 //
-// Flag: localStorage.replayerSprings — '1' Set A "house" (the default on this branch), '2' or
-// 'snappy' Set B, '0' today's code paths unchanged. See utils/spring.js for the springs.
+// Flag: localStorage.replayerSprings — unset: Set B "snappy", the default (owner, 2026-10-13); '1'
+// Set A "house", for an A/B; '2' or 'snappy' Set B; '0' today's code paths unchanged. See
+// utils/spring.js for the springs.
 
 import {
-  SPRING_SETS, spring, springOf, timeTo, keyframes, composeAt, toLinear, prefersReducedMotion,
+  SPRING_SETS, spring, springOf, timeTo, keyframesCached, composeAt, toLinear, prefersReducedMotion,
   channelEnd, cubicBezier,
 } from './spring.js';
 
@@ -80,6 +81,83 @@ export class MotionRegistry {
     this.writeStack = null;
     this.onSettled = null;
     this._dirty = false;
+    /* Each moment's generation: bumped when a moment begins and when everything is finished. Work a
+       moment defers to the frames after its press checks it, so a step back and a step forward
+       again inside that wait (the same step, the same step key) can never build that work twice:
+       the pot was shipped twice, ten chips, after Back then Forward within two frames of a result. */
+    this.gen = 0;
+    this.deferred = new Set();
+  }
+
+  /**
+   * Run `fn` in the frame after the press frame (in its frame callbacks, so what it starts starts
+   * with that frame), if the moment that asked is still the one running: the parts of a moment that
+   * start later than its first frame are built there, not in the frame an old phone can least
+   * afford. At once under an export (the exporter
+   * seeks from the press). `fn(late)` is told how far the moment's clock has run (ms), so what it
+   * starts keeps its place on it. `release` undoes anything that holds the table still until then;
+   * it runs whatever happens to the job (run, flushed, or dropped by finishAll), just before `fn`,
+   * in the same task, so nothing is painted between the hold and the springs that take over.
+   */
+  defer(fn, { frames = 1, release = null } = {}) {
+    if (this.capture || typeof requestAnimationFrame !== 'function') {
+      if (release) release();
+      fn(0);
+      return null;
+    }
+    const job = { gen: this.gen, fn, release, raf: 0, timer: 0, frameAt: null, born: nowMs() };
+    /* How late the work is against the moment's clock, at the frame its animations will start in
+       (it runs in that frame's callbacks, so they start with it): from the moment's first
+       animation's real start, or else from the first frame after the request (the press frame),
+       which is when an animation made in the press would have started. Timed from the task after
+       a frame instead, the work was a part of a frame early and its springs started 8-14ms late. */
+    const late = (ts) => {
+      const now = ts != null ? ts : nowMs();
+      const from = this.momentStart != null ? this.momentStart : job.frameAt != null ? job.frameAt : job.born;
+      return Math.max(0, now - from);
+    };
+    const run = (ts) => {
+      if (!this.deferred.has(job)) return;
+      this.deferred.delete(job);
+      if (job.release) { try { job.release(); } catch (e) { /* never break the replay */ } }
+      if (job.gen !== this.gen) return;
+      try { fn(late(ts)); } catch (e) { /* never break the replay */ }
+    };
+    // frames: how many frames to let by first. From the press, 1 is the frame after the press
+    // frame; from inside a frame's callbacks, 0 is the next frame.
+    const wait = (n) => {
+      job.raf = requestAnimationFrame((ts) => {
+        job.raf = 0;
+        if (job.frameAt == null) job.frameAt = typeof ts === 'number' ? ts : nowMs();
+        if (n > 0) wait(n - 1); else run(typeof ts === 'number' ? ts : null);
+      });
+    };
+    this.deferred.add(job);
+    job.run = run;
+    wait(frames);
+    return job;
+  }
+
+  /** The moment's deferred work, now: the next press takes over a moment still being built, so it
+      is finished building first (its springs then continue from where they are). */
+  flushDeferred() {
+    // Until none is left: a job can defer the next part of its work (the ship: where, then what).
+    for (let pass = 0; pass < 8 && this.deferred.size; pass++) {
+      for (const job of [...this.deferred]) {
+        try { cancelAnimationFrame(job.raf); } catch (e) { /* no rAF */ }
+        clearTimeout(job.timer);
+        job.run();
+      }
+    }
+  }
+
+  _dropDeferred() {
+    for (const job of [...this.deferred]) {
+      try { cancelAnimationFrame(job.raf); } catch (e) { /* no rAF */ }
+      clearTimeout(job.timer);
+      this.deferred.delete(job);
+      if (job.release) { try { job.release(); } catch (e) { /* never break the replay */ } }
+    }
   }
 
   /* ── Running a spring ── */
@@ -91,17 +169,12 @@ export class MotionRegistry {
    * river's extents ran past their step, so they were never seeked at all.
    */
   beginMoment(kind) {
+    this.gen++;
     this.momentKind = kind;
     this.captureNow = 0;
     // When the moment's first animation really started (live): the press frame's end, on the
     // document's clock. Anything built for the moment later keeps the moment's time from it.
     this.momentStart = null;
-  }
-
-  /** How long the running moment has been playing (ms, live), from its first animation's real start. */
-  momentElapsed(fallbackFrom) {
-    const from = this.momentStart != null ? this.momentStart : fallbackFrom;
-    return from != null ? Math.max(0, nowMs() - from) : 0;
   }
 
   /**
@@ -117,7 +190,7 @@ export class MotionRegistry {
     // One channel (or one spring shared by x and y): CSS linear() where supported.
     const single = axis == null && linearForm(channels, prefix, end);
     if (single && supportsLinearEasing()) kf = single;
-    if (!kf) kf = keyframes(channels, { size, prefix, axis, tolPx, end });
+    if (!kf) kf = keyframesCached(channels, { size, prefix, axis, tolPx, end });
     if (!kf) return null;
     this.stop(el);
     let anim;
@@ -302,12 +375,17 @@ export class MotionRegistry {
    * export's still showed a stack doubled at its old place.
    */
   finishAll() {
+    // Work the moment deferred past its press is never built now (a new generation), and whatever
+    // held the table still for it lets go.
+    this.gen++;
+    this._dropDeferred();
     for (let pass = 0; pass < 8 && (this.entries.size || this.ticks.length); pass++) {
       for (const entry of [...this.entries.values()]) this._done(entry);
       for (const t of [...this.ticks].sort((a, b) => (a.base + a.at) - (b.base + b.at))) this._runTick(t);
     }
     this.ticks = [];
     this.pendingPot = 0;
+    this.potFloor = 0;
     this.pendingStacks.clear();
     this.momentKind = null;
     this.momentKey = null;
@@ -414,6 +492,31 @@ function linearForm(channels, prefix, end) {
     keyframes: [{ offset: 0, transform: at(0), easing: L.easing }, { offset: 1, transform: at(1) }],
     delay: a.delay || 0, duration, end: (a.delay || 0) + duration,
   };
+}
+
+/* ── The pot's figure while chips are in flight (pure) ─────────────────────────────────────── */
+
+/**
+ * What the result press sweeps into the pot from each wager on the felt: the wager less what the
+ * showdown hands back to that seat (`uncalled`, the model's whole-hand excess over the second-
+ * highest commitment). Without it the ghosts carried more than the pot gains, and the figure, the
+ * model's pot less what is still in flight, read LESS than before the press: 122K, 117K, 157K,
+ * 197K on the 8-max hand, whose raiser is 5,000 over the caller from preflop.
+ * @param {{seat:number, amount:number}[]} wagers
+ * @param {number[]} uncalled   per seat
+ */
+export function collectAtResult(wagers, uncalled = []) {
+  return wagers.map(w => ({ ...w, amount: Math.max(0, w.amount - Math.max(0, uncalled[w.seat] || 0)) }));
+}
+
+/**
+ * The pot's figure: the model's pot less what is still in flight, never below what the table showed
+ * before the press (`floor`), unless the model's pot is itself lower (an uncalled over-shove going
+ * back to its seat at the result: the figure then reads the pot, at once).
+ */
+export function potShown(displayPot, inFlight = 0, floor = 0) {
+  const v = Math.max(0, displayPot - Math.max(0, inFlight || 0));
+  return Math.max(v, Math.min(displayPot, Math.max(0, floor || 0)));
 }
 
 /* ── Geometry helpers (pure) ───────────────────────────────────────────────────────────────── */
@@ -781,7 +884,8 @@ export function sweepWagers(reg, { set, rate = 1, layer, plan, onArrive }) {
     const channels = [
       { prop: 'x', spring: hand, from: p.ox, to: tx, delay: d, timeScale: rate },
       { prop: 'y', spring: hand, from: p.oy, to: ty, delay: d, timeScale: rate },
-      { prop: 'scale', fn: (t) => { const q = t <= d ? 0 : t === Infinity ? 1 : hand.at((t - d) * rate); return 1 + lift * liftOf(Math.min(1, Math.max(0, q))); }, start: d, end: arrive + fade },
+      { prop: 'scale', fn: (t) => { const q = t <= d ? 0 : t === Infinity ? 1 : hand.at((t - d) * rate); return 1 + lift * liftOf(Math.min(1, Math.max(0, q))); }, start: d, end: arrive + fade,
+        key: 'lift:' + lift + ':' + (p.crosses ? 'held' : 'arc') + ':' + hand.sig + ':' + rate + ':' + d },
       { prop: 'scaleX', spring: flick, from: st.squash[0], to: 1, before: 1, delay: arrive, timeScale: rate },
       { prop: 'scaleY', spring: flick, from: st.squash[1], to: 1, before: 1, delay: arrive, timeScale: rate },
       { prop: 'opacity', ramp: { from: 1, to: 0, delay: arrive, duration: fade } },
@@ -911,49 +1015,72 @@ export function seatLanding(origin, plaque, { cards = [], button = null, covers 
   return { x: best.T.x, y: best.T.y, contact: best.E, edge: best.edge, room: best.room };
 }
 
-/* The flight layer for the ship: nested boxes, each with one evenodd clip (the box minus a set of
-   non-overlapping holes: the plaques and the hands' names, then the hole cards, then the dealer
-   button), so what flies inside is hidden wherever any of them is. The boxes span only the flights'
-   bounding box, not the felt: a clip-path over moving children is a mask the size of its box, and
-   at full size the result press added four table-sized layers (+62% drawn area), which desktop
-   WebKit rasterised at one frame a second. A level whose holes all miss the box is not built. */
+/**
+ * The union of a set of rects as rects that do not overlap: vertical slabs at every x edge, each
+ * slab's covered y spans merged, and a span carried on across slabs while it stays the same. An
+ * evenodd clip fills the overlap of two holes back in, so its holes must not overlap.
+ */
+export function disjointUnion(rects) {
+  const rs = (rects || []).filter(r => r && r.right > r.left && r.bottom > r.top);
+  if (!rs.length) return [];
+  const xs = [...new Set(rs.flatMap(r => [r.left, r.right]))].sort((a, b) => a - b);
+  const out = [];
+  let open = [];
+  for (let i = 0; i < xs.length - 1; i++) {
+    const x1 = xs[i], x2 = xs[i + 1];
+    if (x2 - x1 < 1e-6) continue;
+    const spans = rs.filter(r => r.left <= x1 && r.right >= x2).map(r => [r.top, r.bottom]).sort((a, b) => a[0] - b[0]);
+    const merged = [];
+    for (const s of spans) {
+      const m = merged[merged.length - 1];
+      if (m && s[0] <= m[1]) m[1] = Math.max(m[1], s[1]); else merged.push([s[0], s[1]]);
+    }
+    const next = [];
+    for (const [top, bottom] of merged) {
+      const prev = open.find(o => o.top === top && o.bottom === bottom && o.right === x1);
+      if (prev) { prev.right = x2; next.push(prev); } else { const r = { left: x1, right: x2, top, bottom }; out.push(r); next.push(r); }
+    }
+    open = next;
+  }
+  return out;
+}
+
+/* The flight layer for the ship: ONE box with one evenodd clip (the box minus the plaques and the
+   hands' names, the hole cards and the dealer button, merged into holes that do not overlap), so
+   what flies inside is hidden wherever any of them is. The box spans only the flights' bounding
+   box, not the felt: a clip-path over moving children is a mask the size of its box, and at full
+   size the result press added four table-sized layers (+62% drawn area), which desktop WebKit
+   rasterised at one frame a second. It used to be three nested boxes, one per kind of hole (they
+   overlap each other), each its own mask; merged, it is one. */
 function shipClip(layer, L, B, holes) {
   const pct = (v, o, s) => ((v - o) / s * 100).toFixed(3) + '%';
   const W = Math.max(1, B.right - B.left), H = Math.max(1, B.bottom - B.top);
-  const poly = (rects) => {
+  const inBox = [];
+  for (const set of holes || []) {
+    for (const r of set || []) {
+      if (!r || !(r.right > B.left && r.left < B.right && r.bottom > B.top && r.top < B.bottom)) continue;
+      inBox.push({ left: Math.max(r.left, B.left), right: Math.min(r.right, B.right), top: Math.max(r.top, B.top), bottom: Math.min(r.bottom, B.bottom) });
+    }
+  }
+  const el = document.createElement('div');
+  el.className = 'replayer-ship-clip';
+  el.style.left = pct(B.left, L.left, L.width);
+  el.style.top = pct(B.top, L.top, L.height);
+  el.style.width = (W / L.width * 100).toFixed(3) + '%';
+  el.style.height = (H / L.height * 100).toFixed(3) + '%';
+  const cut = disjointUnion(inBox);
+  if (cut.length) {
     const pts = ['0% 0%', '100% 0%', '100% 100%', '0% 100%', '0% 0%'];
-    for (const r of rects) {
-      const x1 = pct(Math.max(r.left, B.left), B.left, W), x2 = pct(Math.min(r.right, B.right), B.left, W);
-      const y1 = pct(Math.max(r.top, B.top), B.top, H), y2 = pct(Math.min(r.bottom, B.bottom), B.top, H);
+    for (const r of cut) {
+      const x1 = pct(r.left, B.left, W), x2 = pct(r.right, B.left, W);
+      const y1 = pct(r.top, B.top, H), y2 = pct(r.bottom, B.top, H);
       pts.push(`${x1} ${y1}`, `${x2} ${y1}`, `${x2} ${y2}`, `${x1} ${y2}`, `${x1} ${y1}`, '0% 0%');
     }
-    return 'polygon(evenodd, ' + pts.join(', ') + ')';
-  };
-  const meets = (r) => r && r.right > B.left && r.left < B.right && r.bottom > B.top && r.top < B.bottom;
-  const box = (parent, first) => {
-    const el = document.createElement('div');
-    el.className = 'replayer-ship-clip';
-    if (first) {
-      el.style.left = pct(B.left, L.left, L.width);
-      el.style.top = pct(B.top, L.top, L.height);
-      el.style.width = (W / L.width * 100).toFixed(3) + '%';
-      el.style.height = (H / L.height * 100).toFixed(3) + '%';
-    }
-    parent.appendChild(el);
-    return el;
-  };
-  let parent = layer, outer = null;
-  for (const set of holes) {
-    const inBox = (set || []).filter(meets);
-    if (!inBox.length) continue;
-    const el = box(parent, !outer);
-    el.style.clipPath = poly(inBox);
+    el.style.clipPath = 'polygon(evenodd, ' + pts.join(', ') + ')';
     el.style.webkitClipPath = el.style.clipPath;
-    if (!outer) outer = el;
-    parent = el;
   }
-  if (!outer) { outer = box(layer, true); parent = outer; }
-  return { outer, inner: parent, box: { left: B.left, top: B.top, width: W, height: H } };
+  layer.appendChild(el);
+  return { outer: el, inner: el, box: { left: B.left, top: B.top, width: W, height: H } };
 }
 
 /**
@@ -970,15 +1097,17 @@ export function shipStartAfterSweep(set, rate = 1, nWagers = 0) {
 }
 
 /**
- * The pot shipped to the winner on the arm spring: five gold chips per winner (ten at most in all,
- * split pots in parallel), a handful pushed across the felt rather than a file of coins. Each leaves
- * from one of the pile's stacks, 6ms apart, on its own weight (arm, with the mass 1.55, 1.6 or 1.65
- * on the same stiffness and damping ratio, so they land within about 30ms of each other), fanning
- * out to alternate sides and closing up again, lifted over the board and set down a little smaller,
- * stretched along its path while it is fast (in place of the motion blur the ads have), fully opaque
- * from its first frame to its landing. It comes out from under the pile as its stack leaves (the
- * pile empties, onDepart), lands on the plaque's edge nearest the pile (seatLanding) and tucks under
- * it; onArrive is called at each landing, in the order they land.
+ * The pot shipped to the winner on the arm spring: the pile's own chips (five at most per winner,
+ * ten at most in all, split pots in parallel), a handful pushed across the felt rather than a file
+ * of coins. Each is a copy of one chip of the pile (`discs`: where it sits, its colour, its edge
+ * pattern), shown where that chip is as the pile empties (onDepart), so the pot that leaves is the
+ * pile itself: it used to be five gold coins in place of the stacks, the pot changing identity on
+ * its departure frame. They leave 5-6ms apart, each on its own weight (arm, with the mass 1.55, 1.6
+ * or 1.65 on the same stiffness and damping ratio, so they land within about 30ms of each other),
+ * fanning out to alternate sides and closing up again, lifted over the board and set down a little
+ * smaller, stretched along the path while fast (in place of the motion blur the ads have), fully
+ * opaque from the pile to the landing. They land on the plaque's edge nearest the pile
+ * (seatLanding) and tuck under it; onArrive is called at each landing, in the order they land.
  *
  * It flies in the sweep's layer: over the board and the seats, under the pot's figure, the wagers
  * and the button, so it never covers a figure on its way.
@@ -986,9 +1115,12 @@ export function shipStartAfterSweep(set, rate = 1, nWagers = 0) {
  * @param {object} p
  * @param {DOMRect} p.layerRect
  * @param {{x:number,y:number}} p.origin          the pile's centre, client px
- * @param {number[]} [p.starts]                   x offsets of the pile's stacks from its centre
+ * @param {{x:number, y:number, color?:string, pip?:number, z?:number}[]} [p.discs]  the pile's chips:
+ *        offsets of each one's centre from `origin`, its colour and edge pattern, and its paint order
+ *        (the higher chip of a stack is drawn over the one below it). Without colours, gold coins.
+ * @param {number[]} [p.starts]                   (older form) x offsets of the pile's stacks
  * @param {{seat:number, x:number, y:number}[]} p.dests   landings (seatLanding), client px
- * @param {object[][]} p.holes                    clip levels, each a list of non-overlapping boxes
+ * @param {object[][]} p.holes                    what the chips tuck under, as lists of boxes
  * @param {number} p.chipD                        the flying chip's diameter
  * @param {number} p.cardW                        a board card's width (the bow is a share of it)
  * @param {number} [p.tStart]                     when the first chip leaves (ms, already at rate)
@@ -996,18 +1128,22 @@ export function shipStartAfterSweep(set, rate = 1, nWagers = 0) {
  * @param {() => void} [p.onDepart]               the pot leaves the pile (at tStart)
  * @returns {{ end:number, firstArrive:number, lastArrive:Map<number, number> }}
  */
-export function shipPot(reg, { set, rate = 1, layer, layerRect, origin, starts = [0], dests, holes, chipD, cardW, tStart = 0, onArrive, onDepart = null }) {
+export function shipPot(reg, { set, rate = 1, layer, layerRect, origin, discs = null, starts = [0], dests, holes, chipD, cardW, tStart = 0, onArrive, onDepart = null }) {
   const st = stageOf(set);
   const out = { end: 0, firstArrive: Infinity, lastArrive: new Map() };
   if (!dests.length) return out;
-  const per = Math.max(1, Math.min(5, Math.floor(10 / dests.length)));
+  const from = discs && discs.length ? discs : starts.map(x => ({ x, y: 0 }));
+  // One winner takes the pile's own chips, one flight each (the pile has five at most); a split pot
+  // sends each winner a handful of copies.
+  let per = Math.max(1, Math.min(5, Math.floor(10 / dests.length)));
+  if (discs && discs.length && dests.length === 1) per = Math.min(per, discs.length);
   const L = layerRect;
   const fade = st.arrivalFade / rate;
-  /* The flights' bounding box: the pile's stacks, every landing, the widest bow either side, and a
+  /* The flights' bounding box: the pile's chips, every landing, the widest bow either side, and a
      chip at its largest (lifted, stretched) with a pixel to spare. */
   const bowMax = Math.max(...st.shipBows.map(Math.abs)) * st.shipBow * cardW;
   const pad = bowMax + chipD * (1 + st.shipLift) * (1 + st.stretchMax) + 2;
-  const xs = [...starts.map(x => origin.x + x), ...dests.map(d => d.x)], ys = [origin.y, ...dests.map(d => d.y)];
+  const xs = [...from.map(s => origin.x + s.x), ...dests.map(d => d.x)], ys = [...from.map(s => origin.y + s.y), ...dests.map(d => d.y)];
   const bounds = {
     left: Math.max(L.left, Math.min(...xs) - pad), right: Math.min(L.right != null ? L.right : L.left + L.width, Math.max(...xs) + pad),
     top: Math.max(L.top, Math.min(...ys) - pad), bottom: Math.min(L.bottom != null ? L.bottom : L.top + L.height, Math.max(...ys) + pad),
@@ -1024,23 +1160,33 @@ export function shipPot(reg, { set, rate = 1, layer, layerRect, origin, starts =
   let k = 0, firstEntry = null;
   for (const dest of dests) {
     for (let i = 0; i < per; i++) {
-      const sx = starts[i % starts.length] || 0;
+      const src = from[i % from.length] || { x: 0, y: 0 };
+      const sx = src.x || 0, sy = src.y || 0;
       const chip = document.createElement('div');
-      chip.className = 'replayer-flying-chip to-winner is-spring';
+      chip.className = 'replayer-flying-chip to-winner is-spring' + (src.color ? ' is-disc' : '');
       chip.setAttribute('aria-hidden', 'true');
       chip.dataset.fly = String(k++);   // a stable name for a measuring harness; they leave one by one
       chip.style.left = ((origin.x - C.left) / C.width * 100).toFixed(4) + '%';
       chip.style.top = ((origin.y - C.top) / C.height * 100).toFixed(4) + '%';
       chip.style.transform = 'translate(-50%, -50%)';
+      if (src.z != null) chip.style.zIndex = String(src.z);
+      if (src.color) {
+        // The pile's own chip: the same element its stack draws, the same colour and edge pattern.
+        const face = document.createElement('div');
+        face.className = 'replayer-pot-chip-disc';
+        face.style.setProperty('--chip', src.color);
+        if (src.pip != null) face.style.setProperty('--pip-shift', String(src.pip));
+        chip.appendChild(face);
+      }
       clip.inner.appendChild(chip);
       const dx = dest.x - origin.x, dy = dest.y - origin.y;
-      const cx = dx - sx, len = Math.hypot(cx, dy) || 1;
+      const cx = dx - sx, cy = dy - sy, len = Math.hypot(cx, cy) || 1;
       const arm = tierOf(set, st.shipTiers[i % st.shipTiers.length]);
       const d = tStart + (i * st.shipStagger) / rate;
       const arrive = d + timeTo(arm, 0.98) / rate;
       const lift = st.shipLift, shrink = st.shipShrink;
       const bow = st.shipBows[i % st.shipBows.length] * st.shipBow * cardW;
-      const nx = -dy / len, ny = cx / len;
+      const nx = -cy / len, ny = cx / len;
       const prog = (t) => (t <= d ? 0 : t === Infinity ? 1 : arm.at((t - d) * rate));
       // The handful fans out as it leaves and has closed up by three quarters of the way: the bow
       // peaks a quarter of the way (27u(1-u)^2/4, u = q/0.75) and is nothing from there on, so the
@@ -1050,30 +1196,33 @@ export function shipPot(reg, { set, rate = 1, layer, layerRect, origin, starts =
       const arc = (t) => { const u = Math.min(1, prog(t) / 0.75); return bow * 6.75 * u * (1 - u) * (1 - u); };
       // Live, in diameters per 60fps frame: 1 below about 0.6 (the chip reads as itself), up to
       // 1 + stretchMax along the path at about two diameters a frame (the peak is ~3.7).
+      // Under an export: half the distance between two output frames, at most 2.2:1 (at three
+      // diameters the five fused into one opaque gold bar in a 24fps frame).
       const stretch = (t) => {
         if (t <= d || t === Infinity) return 1;
         const v = Math.abs(len * arm.velocityAt((t - d) * rate) * rate);
-        if (fps) return 1 + Math.min(2, 0.5 * (v / fps) / chipD);
+        if (fps) return 1 + Math.min(1.2, 0.5 * (v / fps) / chipD);
         return 1 + st.stretchMax * smoothstep(0.6, 2, v / (60 * chipD));
       };
       const channels = [
         { prop: 'x', spring: arm, from: sx, to: dx, delay: d, timeScale: rate },
-        { prop: 'y', spring: arm, from: 0, to: dy, delay: d, timeScale: rate },
+        { prop: 'y', spring: arm, from: sy, to: dy, delay: d, timeScale: rate },
         { prop: 'x', fn: (t) => nx * arc(t), start: d, end: arrive },
         { prop: 'y', fn: (t) => ny * arc(t), start: d, end: arrive },
         { prop: 'scale', fn: (t) => { const q = prog(t); return (1 + lift * 4 * q * (1 - q)) * (1 + (shrink - 1) * q); }, start: d, end: arrive + fade },
         { prop: 'stretch', fn: stretch, start: d, end: arrive },
-        // Fully opaque from its first frame: it is under its stack, which leaves with it (emptyPile),
-        // so the stack going is the chip appearing. Unseen until then (it waits under a pile that
-        // may not have that stack yet). Gone into the plaque after it lands.
-        { prop: 'opacity', ramp: { from: 0, to: 1, delay: d, duration: 0.5 } },
+        // Shown where its chip of the pile is as the pile empties (tStart: every stack goes then,
+        // emptyPile), so the pile going is the chips appearing, and it waits there until it leaves.
+        // Unseen before (it waits under a pile that may not have that stack yet). Gone into the
+        // plaque after it lands.
+        { prop: 'opacity', ramp: { from: 0, to: 1, delay: tStart, duration: 0.5 } },
         { prop: 'opacity', ramp: { from: 1, to: 0, delay: arrive, duration: fade } },
       ];
       chip.style.opacity = '0';
       alive++;
       const entry = reg.run(chip, {
         channels, size: { w: chipD, h: chipD }, prefix: 'translate(-50%, -50%)',
-        axis: Math.atan2(dy, cx) * 180 / Math.PI, end: arrive + fade, transient: true, onDone,
+        axis: Math.atan2(cy, cx) * 180 / Math.PI, end: arrive + fade, transient: true, onDone,
       });
       out.firstArrive = Math.min(out.firstArrive, arrive);
       out.lastArrive.set(dest.seat, Math.max(out.lastArrive.get(dest.seat) || 0, arrive));
@@ -1103,18 +1252,19 @@ export function shipFirstArrival(set, rate = 1) {
 }
 
 /**
- * The pile empties as the pot leaves it: each stack goes, in a frame (stackOut), as the first shipped
- * chip leaves from under it; the chip is under it and fully opaque, so the stack going is the chip
- * appearing. The pile is drawn shipped from then on (its own style is the end state); a stack still
- * making room keeps moving while it goes.
+ * The pile empties as the pot leaves it: every stack goes at once, in a frame (stackOut), as the
+ * shipped chips are shown where its chips were (shipPot: each flight is a copy of one chip of the
+ * pile, in its place until it leaves), so the pile going is the pot appearing as chips. The pile is
+ * drawn shipped from then on (its own style is the end state); a stack still making room keeps
+ * moving while it goes.
  * @param {{el:Element, size:{w:number,h:number}}[]} p.stacks   left to right
  */
 export function emptyPile(reg, { set, rate = 1, stacks }) {
   const st = stageOf(set);
-  stacks.forEach(({ el, size }, j) => {
+  stacks.forEach(({ el, size }) => {
     const cont = reg.continuation(el, ['opacity']);
     reg.run(el, {
-      channels: [{ prop: 'opacity', ramp: { from: 1, to: 0, delay: (j * st.shipStagger) / rate, duration: (st.stackOut || 16) / rate } }, ...cont],
+      channels: [{ prop: 'opacity', ramp: { from: 1, to: 0, delay: 0, duration: (st.stackOut || 16) / rate } }, ...cont],
       size, tolPx: 0.1,
     });
   });

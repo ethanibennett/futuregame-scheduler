@@ -222,11 +222,14 @@ test('channels: a launch holds `from`, an impulse holds `before`, a ramp is line
 });
 
 test('the flag and the autoplay rate', () => {
-  assert.equal(springSetFor(null), 'A', 'unset: the default on this branch');
-  assert.equal(springSetFor('1'), 'A');
+  assert.equal(springSetFor(null), 'B', 'unset: Set B, the default (owner, 2026-10-13)');
+  assert.equal(springSetFor(''), 'B');
+  assert.equal(springSetFor('1'), 'A', "'1' keeps Set A for an A/B");
+  assert.equal(springSetFor('house'), 'A');
   assert.equal(springSetFor('2'), 'B');
   assert.equal(springSetFor('snappy'), 'B');
   assert.equal(springSetFor('0'), null);
+  assert.equal(springSetFor('off'), null);
   near(rateFor(2000), 1, 1e-12, '0.5x');
   near(rateFor(1000), 1, 1e-12, '1x');
   near(rateFor(500), Math.SQRT2, 1e-12, '2x');

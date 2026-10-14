@@ -7707,8 +7707,18 @@
       visibility: hidden;
       margin-bottom: calc(var(--chip-h) * var(--rest, 0));
     }
-    /* The shipped chip IS the pot, gold, as the CSS flight's chip was; the spring moves it. */
+    /* The shipped chip IS the pot; the spring moves it. */
     .replayer-flying-chip.to-winner.is-spring { animation: none; }
+    /* It is one chip of the pile (shipPot copies each): the pile's own disc in a bare wrapper, the
+       same element, colour and edge pattern its stack draws, not the gold coin the CSS flight is.
+       The pot used to change identity on its departure frame, a 5-chip teal stack replaced by five
+       flat gold coins. The probe the ship sizes its chips by is one too. */
+    .replayer-flying-chip.is-disc {
+      width: auto; height: auto;
+      border: 0; border-radius: 0;
+      background: none; box-shadow: none;
+    }
+    .replayer-flying-chip.is-disc > .replayer-pot-chip-disc { display: block; }
     /* The ship flies inside these: the flights' bounding box (left/top/width/height set by shipPot;
        a nested level fills its parent) with a set of holes cut out (the winners' plaques and their
        hands' names, their hole cards, the dealer button), so a chip that reaches a winner's seat
@@ -7724,9 +7734,33 @@
        (on the seat, not the table: a custom property changed on the table root recomputes the
        style of every element on it, an 80ms frame mid-sweep at a 4x CPU throttle). Only
        into the state; stepping back clears it at once. */
-    .replayer-table[data-springs] .replayer-seat:is(.winner, .split) .replayer-seat-info {
-      transition-delay: var(--spring-ship-arrive, 245ms);
+    /* At the hit: the plaque's own gold (border and rings) starts a frame before the first chip
+       lands and is most of the way there within two frames (--spring-gold-at, the arrival less a
+       frame; the emphatic curve is 90% done at 40% of its time); it was a 200/320ms ease from the
+       landing, a third of the way 100ms after it and still ramping once the chips were gone. Over it
+       a gold glow, a ::after that animates its opacity only (the compositor's), at full by two
+       frames after the landing and fading as the stack settles. */
+    .replayer-table[data-springs] .replayer-seat.ship-hit:is(.winner, .split) .replayer-seat-info {
+      transition-delay: var(--spring-gold-at, var(--spring-ship-arrive, 245ms));
+      transition-duration: var(--dur-fast);
+      transition-timing-function: var(--ease-emphatic);
     }
+    .replayer-table[data-springs] .replayer-seat.ship-hit:is(.winner, .split) .replayer-seat-info::after {
+      content: '';
+      position: absolute;
+      inset: calc(var(--bw-hair) * -1);
+      border-radius: inherit;
+      pointer-events: none;
+      box-shadow: var(--ring-1) rgba(255,215,0,0.55), var(--ring-2) rgba(255,215,0,0.45);
+      opacity: 0;
+      animation: plaqueGoldHit var(--dur-slow) var(--ease-linear) var(--spring-ship-arrive, 245ms) both;
+    }
+    @keyframes plaqueGoldHit {
+      0%   { opacity: 0; }
+      7%   { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    .replayer-table[data-anim-winner="0"] .replayer-seat.ship-hit:is(.winner, .split) .replayer-seat-info::after { animation: none; }
     @media (prefers-reduced-motion: reduce) {
       .replayer-replay .replayer-motion-layer { display: none !important; }
     }

@@ -15,6 +15,7 @@ import {
   prefersReducedMotion as springsReducedMotion,
   dealBoard, yieldBoard, pushOut, planSweep, sweepWagers, shipPot, shipFirstArrival, shipStartAfterSweep,
   settlePile, fadePileOut, emptyPile, seatLanding, clearPush, centreOf, unionRect,
+  collectAtResult, potShown,
 } from '../utils/replayer-motion.js';
 import { SPRING_SETS } from '../utils/spring.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
@@ -5525,8 +5526,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   /* Spring moments (utils/replayer-motion.js, utils/spring.js): the flop deal and spread, the
      turn and river landing, wagers pushed out and swept in, the pot shipped to the winner — one
      house spring family, computed once per moment and played by the compositor as Web Animations.
-     localStorage.replayerSprings: '1' (Set A, the default here), '2' or 'snappy' (Set B), '0'
-     today's code paths unchanged, so a before/after comes from one build. Read at mount and on the
+     localStorage.replayerSprings: unset, Set B "snappy", the default (owner, 2026-10-13); '1' Set A
+     "house", for an A/B; '2' or 'snappy' Set B; '0' today's code paths unchanged, so a
+     before/after comes from one build. Read at mount and on the
      storage event. One registry owns every spring on the table, so a motion interrupted by the
      next step continues from where it is, and a step back, a jump or an export still finishes it. */
   const [springsFlag, setSpringsFlag] = useState(() => readSpringsFlag());
@@ -6217,12 +6219,12 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       if (!last || !last.amount || !prevWagersRef.current.has(pi)) return;
       out.push({ seat: pi, order: first, amount: computePlayerContrib(hand, stepPrev.s, acts, stepPrev.a, pi) });
     });
-    // At the result an over-shove's uncalled excess goes back to its seat, not into the pot.
-    if (motionKind === 'result' && out.length > 1) {
-      const cap = out.map(w => w.amount).sort((a, b) => b - a)[1];
-      out.forEach(w => { w.amount = Math.min(w.amount, cap); });
-    }
-    return out.sort((a, b) => a.order - b.order);
+    /* At the result an over-call's uncalled excess goes back to its seat, not into the pot: each
+       ghost carries its wager less what the showdown hands that seat back (the model's own figure,
+       over the whole hand). Capped at the street's second-largest wager instead, the 8-max hand's
+       5,000 from preflop stayed in a ghost and the pot read 122K, 117K, 157K, 197K. */
+    const swept = motionKind === 'result' ? collectAtResult(out, settled.uncalled) : out;
+    return swept.sort((a, b) => a.order - b.order);
   })() : null;
   /* The pot shipped to each seat it pays, at the result: what that seat's stack gains (the model's
      final figure less what it showed before the press, which never reads below 0 — a shorthand can
@@ -6244,13 +6246,25 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   if (springOn && showResult) {
     if (stepChanged || motion.shipArriveMs == null) {
       motion.shipArriveMs = Math.round((shipPlan && shipPlan.length ? motion.shipStartNow || 0 : 0) + shipFirstArrival(springSet, shipRate));
+      // Whether this result ships the pot (a jump to it does not: its plaques take their gold at
+      // once, with no glow for a hit that never came).
+      motion.shipHit = !!(shipPlan && shipPlan.length);
     }
   } else {
     motion.shipArriveMs = null;
+    motion.shipHit = false;
   }
   const pendingPotNow = !springOn ? 0
     : (motionJumped ? 0 : motion.pendingPot) + (sweepPlan ? sweepPlan.reduce((n, w) => n + w.amount, 0) : 0);
-  const shownPot = Math.max(0, displayPot - pendingPotNow);
+  /* Never below what the table showed before the press (motion.potShown: the last figure drawn or
+     written), while this step's chips are in flight: what the ghosts carry is the model's pot less
+     the pot before the press whenever the model can say so (collectAtResult), and where it cannot
+     (an excess handed back that is more than that seat's wager on the street) the figure holds
+     rather than dips. */
+  const potFloorNow = !springOn || motionJumped ? 0
+    : motionKind ? (motion.potShown || 0)
+    : (motion.pendingPot > 0 ? (motion.potFloor || 0) : 0);
+  const shownPot = potShown(displayPot, pendingPotNow, potFloorNow);
   /* What each stack still has in flight, AS THIS RENDER SAW IT. A snapshot, not a live read: the
      figures this render draws are put back into the DOM after the moment's writes (resyncDigits),
      and read live there they counted the award twice — the registry's, which the writes had just
@@ -6278,9 +6292,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
      redrawn as it will be once that sweep is in (`ahead`: what of it is still in flight), with the
      new stacks no ghost has landed on yet unseen (`hidden`). */
   motion.writePot = (pile) => {
-    const v = Math.max(0, displayPot - motion.pendingPot);
+    const v = potShown(displayPot, motion.pendingPot, motion.pendingPot > 0 ? motion.potFloor : 0);
     const tn = potTextNode();
-    if (tn) { tn.data = fmtChips(v); motion.wroteDigits = true; }
+    if (tn) { tn.data = fmtChips(v); motion.wroteDigits = true; motion.potShown = v; }
     if (pile && motion.setPile && !potLayers.length) motion.setPile(v + (pile.ahead || 0), { hidden: pile.hidden });
   };
   // A winner's stack as the pot lands on it: never below what it showed before the press.
@@ -6687,6 +6701,10 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const boardLayoutRef = useRef(null);
   const boardSlidesRef = useRef(new Map());
   useLayoutEffect(() => {
+    /* A press that comes before the last moment has finished building (its board, its pile or its
+       ship wait for the frame after their press) builds it first, so this one takes it over from
+       where it is: measured here, before anything is read for the new moment. */
+    if (springOn && motionKind && motion.deferred.size) motion.flushDeferred();
     const row = boardRowRef.current;
     const prev = boardLayoutRef.current;
     boardDeltaRef.current = null;
@@ -7673,6 +7691,8 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
         revealRef.current = springReveal;
         prevWagersRef.current = nowWagers;
         committedStepRef.current = { s: streetIdx, a: actionIdx, r: showResult };
+        // The figure this commit draws (an arrival's write moves it on): the next press's floor.
+        motion.potShown = shownPot;
       };
       if (!springOn) { motion.finishAll(); resyncDigits(); record(); return; }
       if (motionJumped) motion.finishAll();
@@ -7731,33 +7751,45 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
          once they are in (planSweep aimed every ghost at it): the stacks that stay make room, the
          new ones hold their places unseen, the ones leaving fade out where they are. The pot's
          digits tick at every landing; the stacks' heights change once, at the first; a new stack
-         fades in under the ghost that lands on it. */
+         fades in under the ghost that lands on it.
+         The ghosts are made in the press (the wagers they copy are gone from this commit); the
+         pile's new row, which starts making room yieldAfterSweep later, is built in the frame after
+         it (motion.defer), so the press frame carries only what its own frame shows. It keeps its
+         place on the moment's clock: its delay is shortened by how late it is built (`late`). */
       const sweep = (plan) => {
         if (!plan) return;
         let ahead = plan.reduce((n, p) => n + p.w.amount, 0);
         motion.pendingPot += ahead;
         const final = plan.final || { colors: [], fresh: [], unclaimed: [] };
         const unseen = new Set(final.fresh.filter(c => !final.unclaimed.includes(c)));
-        if (tracksPile && final.colors.length && motion.setPile && final.colors.join() !== pileColors.join()) {
-          // Measured at the press, in the read pass: nothing here forces a layout.
-          const going = pileKids.filter(el => el.dataset.color && !final.colors.includes(el.dataset.color) && !el.classList.contains('is-pending'));
-          if (going.length) {
-            fadePileOut(motion, {
-              set, rate, layer: sweepLayer, layerRect: L, delay: S.yieldAfterSweep,
-              stacks: going.map(el => ({ el, rect: pileStacks[pileKids.indexOf(el)] })),
-            });
-          }
-          motion.setPile(shownPot, { layout: final.colors, hidden: final.fresh, delay: S.yieldAfterSweep });
-        }
+        let landed = false;
         sweepWagers(motion, {
           set, rate, layer: sweepLayer, plan,
           onArrive: (amount, last, p) => {
+            landed = true;
             motion.pendingPot = Math.max(0, motion.pendingPot - amount);
             ahead = Math.max(0, ahead - amount);
             if (p && p.color) unseen.delete(p.color);
             if (motion.writePot) motion.writePot(tracksPile ? { ahead, hidden: [...unseen] } : null);
           },
         });
+        if (tracksPile && final.colors.length && motion.setPile && final.colors.join() !== pileColors.join()) {
+          // Measured at the press, in the read pass: nothing here forces a layout.
+          const going = pileKids.filter(el => el.dataset.color && !final.colors.includes(el.dataset.color) && !el.classList.contains('is-pending'));
+          const base = shownPot;
+          motion.defer((late) => {
+            // A landing before this ran has drawn the pile itself (a long press frame).
+            if (landed || !motion.setPile) return;
+            const delay = Math.max(0, S.yieldAfterSweep - late * rate);
+            if (going.length) {
+              fadePileOut(motion, {
+                set, rate, layer: sweepLayer, layerRect: L, delay,
+                stacks: going.map(el => ({ el, rect: pileStacks[pileKids.indexOf(el)] })),
+              });
+            }
+            motion.setPile(base, { layout: final.colors, hidden: final.fresh, delay });
+          });
+        }
       };
 
       if (motionKind === 'street') {
@@ -7792,17 +7824,32 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           sweep(plan);
           if (!boardOn || !added.length) return;
           const rectOf = (el) => delta.rects.get(el);
-          if (!stayed.length) {
-            dealBoard(motion, { set, rate, cards: added.map(el => ({ el, rect: rectOf(el) })), tPlace: tBoard(S.place / rate) });
-          } else {
-            const t0 = yieldBoard(motion, {
-              set, rate, street: delta.cards.length >= 5 ? 'river' : 'turn',
-              tYield: tBoard(S.yieldAfterSweep / rate),
-              added: added.map(el => ({ el, rect: rectOf(el) })),
-              stayed: stayed.map(el => ({ el, rect: rectOf(el), from: fromOf(el) })),
-            });
-            motion.lastStreet.yieldAt = t0;
-          }
+          // late: how far the moment's clock has run when the board's springs are made.
+          const startBoard = (late) => {
+            if (!stayed.length) {
+              dealBoard(motion, { set, rate, cards: added.map(el => ({ el, rect: rectOf(el) })), tPlace: Math.max(0, tBoard(S.place / rate) - late) });
+            } else {
+              const t0 = yieldBoard(motion, {
+                set, rate, street: delta.cards.length >= 5 ? 'river' : 'turn',
+                tYield: Math.max(0, tBoard(S.yieldAfterSweep / rate) - late),
+                added: added.map(el => ({ el, rect: rectOf(el) })),
+                stayed: stayed.map(el => ({ el, rect: rectOf(el), from: fromOf(el) })),
+              });
+              motion.lastStreet.yieldAt = t0 + late;
+            }
+          };
+          /* The board starts moving 25-90ms after the press (after the sweep's crossing chips), so its
+             springs are made in the frame after the press, not in it. Until then the board is held as
+             it was seen, in two writes to its own style: a new card unseen, a card that stayed where
+             it was (its slot's shift back). Not when a card is still moving (a fast tap over a running
+             spread): that takes it over from where it is, with its velocity, in the press. */
+          const moving = delta.cards.some(el => motion.state(el));
+          if (moving || motion.capture) { startBoard(0); return; }
+          const held = [];
+          const hold = (el, prop, v) => { held.push([el, prop, el.style[prop]]); el.style[prop] = v; };
+          added.forEach(el => hold(el, 'opacity', '0'));
+          stayed.forEach(el => { const f = fromOf(el); if (Math.abs(f) >= 0.5) hold(el, 'transform', 'translate(' + f.toFixed(2) + 'px, 0px)'); });
+          motion.defer(startBoard, { release: () => held.forEach(([el, prop, v]) => { el.style[prop] = v; }) });
         });
       }
 
@@ -7869,10 +7916,28 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
             return { d, plaque, cards, cardsBox, handName: handName && handName.width ? handName : null, name: name && name.width ? name : null };
           }).filter(Boolean);
           if (!seatsRead.length) return null;
-          // Where the chips leave from: the pile's stacks as they will be once the river has landed.
-          const finalStacks = tracksPile ? potStacksFor(displayPot) : [];
+          /* Where the chips leave from: the pile's own chips as the pile will be once the river has
+             landed, each where it sits in its stack (the row is bottom-aligned; a chip above another
+             shows one edge's depth of it), with its colour and edge pattern, so the pot leaves as
+             itself. Measured off a chip the pile draws now; with no pile, the pot's chips from its
+             figure. */
+          const finalStacks = potStacksFor(displayPot);
           const pitch = tracksPile ? pitchOf() : 0;
-          const starts = finalStacks.length && pitch > 0 ? finalStacks.map((_, j) => (j - (finalStacks.length - 1) / 2) * pitch) : [0];
+          const discEls = tracksPile ? pileKids.map(k => [...k.children]).filter(c => c.length) : [];
+          const d0 = discEls.length ? discEls[0][0].getBoundingClientRect() : null;
+          const two = discEls.find(c => c.length > 1);
+          const edge = two ? two[1].getBoundingClientRect().top - two[0].getBoundingClientRect().top : d0 ? d0.height * (0.236 / 0.96) : 0;
+          const discs = [];
+          finalStacks.forEach((stk, j) => {
+            const c = Math.min(stk.count, 6);
+            for (let q = 0; q < c; q++) {
+              discs.push({
+                x: pitch > 0 ? (j - (finalStacks.length - 1) / 2) * pitch : 0,
+                y: d0 ? (pileRect.bottom - d0.height / 2 - (c - 1 - q) * edge) - pileCentre.y : 0,
+                color: stk.color, pip: pipShift(shownPot + j * 977, q), z: c - q,
+              });
+            }
+          });
           // Where each winner's pot lands: pure arithmetic on what was just read, so it can wait.
           const landings = () => seatsRead.map(s => ({
             seat: s.d.seat, award: s.d.award,
@@ -7881,7 +7946,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
               covers: [s.cardsBox, btn, s.handName].filter(Boolean),
             }),
           }));
-          return { seatsRead, landings, starts, chipD, holes: [plaques, cardBoxes, btn ? [btn] : []], layerRect: L };
+          return { seatsRead, landings, discs, chipD, holes: [plaques, cardBoxes, btn ? [btn] : []], layerRect: L };
         })() : null;
         const tShip = ship ? shipStartAfterSweep(set, rate, plan ? plan.length : 0) : 0;
         motion.lastResult = null;
@@ -7895,31 +7960,26 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
              frame is the one an old phone can least afford, and it carries the sweep already; built
              in one task after it, the ship was a 40-50ms frame at a 4x CPU throttle. Its clock is
              kept: it leaves tShip after the press whenever it is built. Under an export it is built at
-             once (the export seeks from the press). A step taken before it is built (a fast tap, a
-             jump) finishes the moment, and the ship is then never built. */
-          const key = motion.momentKey;
-          const born = performance.now();
-          const defer = !motion.capture && tShip >= 50;
-          const later = (fn) => (defer ? requestAnimationFrame(() => setTimeout(fn, 0)) : fn());
-          later(() => {
-            if (motion.momentKey !== key) return;
+             once (the export seeks from the press). A step taken before it is built finishes the
+             moment (a jump, a step back) and the ship is never built: the work is the moment's
+             generation's (motion.defer), so Back then Forward inside the wait, which comes back to
+             the same step with the same step key, cannot build it twice (it shipped ten chips). */
+          if (motion.capture || tShip < 50) { launch(tShip, ship.landings()); return; }
+          motion.defer(() => {
             const dests = ship.landings();
-            later(() => {
-              if (motion.momentKey !== key) return;
-              // On the sweep's clock (its ghosts started with the press frame), not the press task's.
-              const elapsed = motion.capture ? 0 : motion.momentElapsed(born);
-              launch(Math.max(0, tShip - elapsed), dests);
-            });
+            // The frame after (frames: 0, asked from inside a frame), on the sweep's clock: its
+            // ghosts started with the press frame.
+            motion.defer((late) => launch(Math.max(0, tShip - late), dests), { frames: 0 });
           });
         });
         const launch = (tStart, dests) => {
           motion.lastResult = { tShip: tStart, dests: dests.map(d => ({ seat: d.seat, x: d.x, y: d.y, edge: d.edge, contact: d.contact })) };
           shipPot(motion, {
             set, rate, layer: sweepLayer, layerRect: ship.layerRect, origin: pileCentre,
-            starts: ship.starts, dests, holes: ship.holes, chipD: ship.chipD, cardW, tStart,
+            discs: ship.discs, dests, holes: ship.holes, chipD: ship.chipD, cardW, tStart,
             onDepart: () => {
               motion.pileHeld = false;
-              if (motion.setPile && !potLayers.length) motion.setPile(Math.max(0, displayPot - motion.pendingPot), { shipped: true });
+              if (motion.setPile && !potLayers.length) motion.setPile(potShown(displayPot, motion.pendingPot, motion.pendingPot > 0 ? motion.potFloor : 0), { shipped: true });
             },
             onArrive: (seat, k, n) => {
               /* The chips land within about 30ms of each other, a handful: the stack counts what has
@@ -7941,6 +8001,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       if (motion.momentKey === momentKey) { resyncDigits(); record(); return; }
       motion.beginMoment(motionKind);
       motion.momentKey = momentKey;
+      motion.potFloor = potFloorNow;
       for (const w of writes) w();
       resyncDigits();
       /* Render subtracted what it expected to fly; if nothing could (no layer, no element to copy),
@@ -8550,10 +8611,14 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
             <div key={pi} data-seat={pi} className={`replayer-seat ${seatClass}${isMucked ? ' mucked' : ''}${foldAnimClass}`
               + (pi === replayHeroIdx ? ' is-hero' : '') + (allIn.has(pi) ? ' is-allin' : '')
               + (!isLandscape && pos[0] === gx(CL) ? ' seat-edge-left' : '')
-              + (!isLandscape && pos[0] === gx(CR) ? ' seat-edge-right' : '')}
+              + (!isLandscape && pos[0] === gx(CR) ? ' seat-edge-right' : '')
+              + (springOn && motion.shipHit && (seatClass === 'winner' || seatClass === 'split') ? ' ship-hit' : '')}
               style={{left: (!isLandscape && pos[0] === gx(CL) ? 0 : !isLandscape && pos[0] === gx(CR) ? 100 : pos[0]) + '%', top: pos[1] + '%', ...muckStyle, ...castStyle(pos), ...foldOrigin(pos),
-                // When this winner's plaque takes its gold (the first shipped chip's landing).
-                ...(springOn && motion.shipArriveMs != null && (seatClass === 'winner' || seatClass === 'split') ? { '--spring-ship-arrive': motion.shipArriveMs + 'ms' } : null)}}>
+                /* When this winner's plaque takes its gold: the first shipped chip's landing (the
+                   glow), and a frame before it (the plaque's own border and rings, which then reach
+                   most of their gold within two frames). */
+                ...(springOn && motion.shipHit && motion.shipArriveMs != null && (seatClass === 'winner' || seatClass === 'split')
+                  ? { '--spring-ship-arrive': motion.shipArriveMs + 'ms', '--spring-gold-at': Math.max(0, motion.shipArriveMs - 16) + 'ms' } : null)}}>
               {/* 12: opponent cards were hidden until showResult and then
                   appeared in a single frame — the only card event in the
                   replayer with no motion, at the moment the whole replay has
@@ -8874,7 +8939,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
             remove themselves when they land (utils/replayer-motion.js). Both span the table's
             padding box, so a ghost keeps its wager's own left/top percentages. The probe is an
             unseen flying chip the ship sizes its chips by. */}
-        {springOn && <div className="replayer-flying-chip replayer-chip-probe" aria-hidden="true" />}
+        {springOn && <div className="replayer-flying-chip replayer-chip-probe is-disc" aria-hidden="true"><div className="replayer-pot-chip-disc" /></div>}
         {springOn && <div className="replayer-motion-layer replayer-sweep-layer" ref={sweepLayerRef} aria-hidden="true" />}
 
         {/* Draw discard animations */}

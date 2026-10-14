@@ -107,12 +107,14 @@ export const SPRING_SETS = {
   },
 };
 
-/** The flag's value ('0' | '1' | '2' | 'snappy' | 'house' | anything) to a set id, or null for off. */
+/** The flag's value to a set id, or null for off. Owner, 2026-10-13: Set B ("snappy") is the
+    default, so unset (or anything unrecognised) is B; '1' (or 'a', 'house') keeps Set A for an
+    A/B; '2' or 'snappy' names B; '0' is today's code paths. */
 export function springSetFor(flag) {
-  const v = flag == null ? '1' : String(flag).trim().toLowerCase();
+  const v = flag == null ? '' : String(flag).trim().toLowerCase();
   if (v === '0' || v === 'off' || v === 'false') return null;
-  if (v === '2' || v === 'b' || v === 'snappy') return 'B';
-  return 'A';
+  if (v === '1' || v === 'a' || v === 'house') return 'A';
+  return 'B';
 }
 
 /** Autoplay speed (ms per step) to a time rate: motion never slows below 1x, at most doubles. */
@@ -206,7 +208,10 @@ export function spring({ stiffness, damping, mass = 1, velocity = 0 } = {}) {
       return (peakPct = Math.max(0, best) * 100);
     },
     stiffness: k, damping: c, mass: m, velocity: v0, zeta, w0,
+    // The curve's identity, for the keyframe cache: the same four numbers are the same curve.
+    sig: k + '|' + c + '|' + m + '|' + v0,
     _timeTo: new Map(),
+    _linear: new Map(),
   };
 }
 
@@ -288,6 +293,15 @@ const r4 = (v) => +v.toFixed(4);
  */
 export function toLinear(sp, eps = 0.0015, { reducedMotion } = {}) {
   if (reducedMotion ?? prefersReducedMotion()) return null;
+  // A curve's easing is the same string every time it is asked for: built once per spring (a
+  // push-out and a pile stack asked for it on every press, 240 samples and a simplification each).
+  if (sp._linear && sp._linear.has(eps)) return sp._linear.get(eps);
+  const out = toLinearUncached(sp, eps);
+  if (sp._linear) sp._linear.set(eps, out);
+  return out;
+}
+
+function toLinearUncached(sp, eps) {
   const D = sp.settleMs(0.001);
   const N = 240;
   const ys = Array.from({ length: N + 1 }, (_, i) => (i === N ? 1 : sp.at((i / N) * D)));
@@ -400,6 +414,43 @@ export function transformOf(v, { prefix = '', rotate = false, scale = false, axi
     s += ` scale(${fx(v.scale * v.scaleX, 4)}, ${fx(v.scale * v.scaleY, 4)})`;
   }
   return s;
+}
+
+/* Keyframes are values too: the same channels on the same box are the same keyframes. A moment asks
+   for many that are equal (every card of a row that yields as one, every stack of the pile making
+   the same room, the same table stepped through again, an export seeking a hand it has played), so
+   each is built once and kept, keyed by its curves, its rate and its travel to a thousandth of a
+   pixel, a few hundred at most. A channel computed by a function joins the key only when it names
+   itself (`key`); an element with one that does not is built fresh. */
+const kfCache = new Map();
+const q3 = (v) => (v == null ? '' : String(Math.round(v * 1000) / 1000));
+function channelKey(c) {
+  if (c.fn) return c.key != null ? 'f:' + c.prop + ':' + c.key + ':' + q3(c.start) + ':' + q3(c.end) : null;
+  if (c.ramp) return c.ramp.ease ? null : 'r:' + c.prop + ':' + q3(c.ramp.from) + ':' + q3(c.ramp.to) + ':' + q3(c.ramp.delay) + ':' + q3(c.ramp.duration);
+  if (c.spring && c.spring.sig) {
+    return 's:' + c.prop + ':' + c.spring.sig + ':' + q3(c.from) + ':' + q3(c.to) + ':' + q3(c.delay) + ':' + q3(c.timeScale || 1)
+      + ':' + (c.before === undefined ? '' : q3(c.before));
+  }
+  return null;
+}
+export function keyframesCached(channels, opts = {}) {
+  if (opts.reducedMotion ?? prefersReducedMotion()) return null;
+  if (!channels || !channels.length) return null;
+  const parts = [];
+  for (const c of channels) {
+    const k = channelKey(c);
+    if (k == null) return keyframes(channels, { ...opts, reducedMotion: false });
+    parts.push(k);
+  }
+  const { hz = 120, tolPx = 0.25, size = { w: 40, h: 56 }, prefix = '', axis = null, end = null } = opts;
+  const key = parts.join(';') + '#' + hz + '|' + tolPx + '|' + q3(size.w) + 'x' + q3(size.h) + '|' + prefix + '|' + q3(axis) + '|' + q3(end);
+  let kf = kfCache.get(key);
+  if (kf === undefined) {
+    if (kfCache.size >= 400) kfCache.clear();
+    kf = keyframes(channels, { ...opts, reducedMotion: false });
+    kfCache.set(key, kf);
+  }
+  return kf;
 }
 
 /**

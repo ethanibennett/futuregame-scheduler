@@ -1,5 +1,6 @@
 // Do the replay exports carry the spring moments exactly as the live replayer plays them?
-// Playwright WebKit, the 8-max hand at 402x874 (dpr 2), localStorage.replayerSprings = '1':
+// Playwright WebKit, the 8-max hand at 402x874 (dpr 2), localStorage.replayerSprings = '2' (Set B,
+// the default; --springs 1 checks Set A):
 //   1. The real GIF export and the real video export (Greenscreen). WebKit on Windows has no
 //      MediaRecorder, so a stand-in recorder keeps every frame the exporter paints and how long it is
 //      held. During each export, every motion.seek() the exporter makes (captureStepFrames in
@@ -28,7 +29,7 @@ const opt = (flag, d) => { const i = args.indexOf(flag); return i >= 0 ? args[i 
 const BASE = (args.find(a => /^https?:/.test(a)) || 'http://127.0.0.1:3241').replace(/\/$/, '');
 const OUT = path.resolve(opt('--out', 'replay-export-check'));
 // --springs 0 times the exports without the springs (the comparison stops after the exports).
-const SPRINGS = String(opt('--springs', '1'));
+const SPRINGS = String(opt('--springs', '2'));
 // --time-only: time the two exports and stop (no frames kept, nothing compared).
 const TIME_ONLY = args.includes('--time-only');
 const FF = fs.existsSync('C:/ffmpeg/bin/ffmpeg.exe') ? 'C:/ffmpeg/bin/ffmpeg.exe' : 'ffmpeg';
@@ -183,7 +184,27 @@ console.log('       motion runs', vRuns.map(r => `${r.start}-${r.end}`).join(' '
 // ── 2. The live replayer at the same instants: the turn, the river and the result ──
 const { ctx: lctx, page } = await open({ clock: true });
 const hops = () => page.evaluate(() => new Promise(r => { let n = 0; const ch = new MessageChannel(); ch.port1.onmessage = () => (++n < 6 ? ch.port2.postMessage(0) : r()); ch.port2.postMessage(0); }));
-const forward = async (n) => { for (let i = 0; i < n; i++) { await page.click('button[title="Forward"]'); await hops(); await page.clock.runFor(1500); await hops(); } };
+/* Each press is followed by the page's clock AND real time: the springs run on the document
+   timeline, which is not Playwright's clock, so on a loaded machine a bet's push-out could still be
+   running when the street was pressed, and the live ghost left from the pushed-out pose (the GIF's
+   t=0 frames failed by exactly the push's start offset, 15.97px and 19.25px). Wait until nothing on
+   the table is running, at most 8s. */
+const idle = async () => {
+  for (let i = 0; i < 80; i++) {
+    const busy = await page.evaluate(() => {
+      const t = document.querySelector('.replayer-table');
+      return document.getAnimations().filter(a => {
+        try {
+          const el = a.effect && a.effect.target;
+          return a.playState === 'running' && el && t && t.contains(el) && Number.isFinite(a.effect.getComputedTiming().endTime);
+        } catch (e) { return false; }
+      }).length;
+    });
+    if (!busy) return;
+    await sleep(100);
+  }
+};
+const forward = async (n) => { for (let i = 0; i < n; i++) { await page.click('button[title="Forward"]'); await hops(); await page.clock.runFor(1500); await hops(); await idle(); await hops(); } };
 await forward(PRESSES_BEFORE_TURN);
 // Time stops here: from now on timers fire only when the clock is run (as the motion harness does).
 await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 50);

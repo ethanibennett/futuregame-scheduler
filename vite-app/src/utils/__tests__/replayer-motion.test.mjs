@@ -452,7 +452,7 @@ test('seat landing: half a chip of room from the cards and the button, there and
 
 });
 
-test('the ship: a handful that leaves within 24ms and lands within 35ms, and each stack goes in a frame', () => {
+test('the ship: a handful that leaves within 24ms and lands within 35ms, and the pile goes in a frame, all at once', () => {
   for (const set of ['A', 'B']) {
     const st = SPRING_SETS[set].stage;
     const arr = [0, 1, 2, 3, 4].map(i => i * st.shipStagger + timeToOf(tierSpring(set, st.shipTiers[i]), 0.98));
@@ -463,11 +463,148 @@ test('the ship: a handful that leaves within 24ms and lands within 35ms, and eac
   const reg = new MotionRegistry();
   const els = [fakeEl(), fakeEl(), fakeEl()];
   emptyPile(reg, { set: 'A', stacks: els.map(el => ({ el, size: { w: 12, h: 20 } })) });
-  els.forEach((el, j) => {
+  els.forEach((el) => {
     const a = el.anims[0];
-    assert.ok(Math.abs(a.options.delay - j * SPRING_SETS.A.stage.shipStagger) < 1e-9, 'leaves with its chip');
+    // Every stack at once: the shipped chips are shown where its chips were as it goes.
+    assert.equal(a.options.delay, 0, 'goes as the chips are shown in its place');
     assert.ok(a.options.duration <= 16 + 1e-9, 'in a frame: ' + a.options.duration);
   });
+});
+
+/* ── Round 3 ── */
+import { collectAtResult, potShown, disjointUnion, shipPot } from '../replayer-motion.js';
+
+test('the result press: an over-call\'s excess goes back to its seat, and the pot never reads below what it showed', () => {
+  // The 8-max hand at the river: the pot shows 122,000 (Opp 3 raised to 5,000 and then called
+  // 15,000 more preflop, so the model has them 5,000 over the caller), both wager 40,000, and the
+  // showdown hands Opp 3 back 5,000: the pot is 197,000.
+  const before = 122000, displayPot = 197000;
+  const uncalled = [0, 0, 5000, 0, 0, 0, 0, 0];
+  const swept = collectAtResult([{ seat: 2, amount: 40000 }, { seat: 5, amount: 40000 }], uncalled);
+  assert.deepEqual(swept.map(w => w.amount), [35000, 40000], 'Opp 3 carries 35,000 in');
+  const inFlight = swept.reduce((n, w) => n + w.amount, 0);
+  assert.equal(inFlight, displayPot - before, 'the ghosts carry exactly what the pot gains');
+  // The figure at the press, then after each landing: never below 122,000, never down.
+  let pending = inFlight;
+  const seen = [potShown(displayPot, pending, before)];
+  for (const w of swept) { pending -= w.amount; seen.push(potShown(displayPot, pending, pending > 0 ? before : 0)); }
+  assert.deepEqual(seen, [122000, 157000, 197000]);
+  for (let i = 1; i < seen.length; i++) assert.ok(seen[i] >= seen[i - 1], 'never down: ' + seen.join(' > '));
+  // Without the deduction (both ghosts at 40,000) the floor still holds the figure at 122,000.
+  assert.equal(potShown(displayPot, 80000, before), 122000);
+  assert.equal(potShown(displayPot, 80000, 0), 117000, 'the dip the floor prevents');
+});
+
+test('the result press: a river bet nobody called carries nothing in, and a pot the model shrinks reads at once', () => {
+  // Hero bets 40,000 on the river and is not called: all of it is handed back.
+  const swept = collectAtResult([{ seat: 0, amount: 40000 }], [40000, 0]);
+  assert.equal(swept[0].amount, 0);
+  assert.equal(potShown(60000, 0, 60000), 60000, 'the pot stays as it was');
+  // An over-shove preflop called short: the pot shown before the result (120,000) holds an excess
+  // the showdown hands back (the pot is 40,000). The figure reads the pot, not the floor.
+  assert.equal(potShown(40000, 0, 120000), 40000);
+  // Never more than an uncalled excess is taken off, never below 0.
+  assert.deepEqual(collectAtResult([{ seat: 1, amount: 3000 }], [0, 5000]).map(w => w.amount), [0]);
+});
+
+test('the deferred part of a moment: built once, in the frame after the press, never after a step back', async () => {
+  const frames = [];
+  globalThis.requestAnimationFrame = (fn) => { frames.push(fn); return frames.length; };
+  globalThis.cancelAnimationFrame = () => {};
+  const paint = async () => { const fs = frames.splice(0); fs.forEach(f => f(0)); await new Promise(r => setTimeout(r, 1)); };
+  try {
+    const reg = new MotionRegistry();
+    let built = 0, released = 0;
+    // The result: the ship is deferred past the press. Back (finishAll) inside the wait, then
+    // Forward again, which is the same step: one ship, not two.
+    reg.beginMoment('result');
+    reg.defer(() => { built++; }, { release: () => { released++; } });
+    reg.finishAll();
+    reg.beginMoment('result');
+    reg.defer(() => { built++; });
+    await paint(); await paint();
+    assert.equal(built, 1, 'one ship');
+    assert.equal(released, 1, 'what held the table still let go when the step was taken back');
+    // A press that comes before the last moment has finished building builds it first.
+    let flop = 0;
+    reg.beginMoment('street');
+    reg.defer(() => { flop++; });
+    reg.flushDeferred();
+    reg.beginMoment('action');
+    await paint();
+    assert.equal(flop, 1, 'flushed once, not run again by its frame');
+    // Its clock: the work is told how late it is.
+    let late = null;
+    reg.beginMoment('street');
+    reg.defer((ms) => { late = ms; });
+    await paint();
+    assert.equal(late, null, "not in the press frame");
+    await paint();
+    assert.ok(late != null && late >= 0, 'told how late: ' + late);
+  } finally {
+    delete globalThis.requestAnimationFrame;
+    delete globalThis.cancelAnimationFrame;
+  }
+});
+
+test('the ship\'s clip: holes that overlap are merged into ones that do not', () => {
+  const area = (rs) => rs.reduce((n, r) => n + (r.right - r.left) * (r.bottom - r.top), 0);
+  const plaque = { left: 0, top: 50, right: 100, bottom: 80 }, cards = { left: 20, top: 10, right: 70, bottom: 60 }, btn = { left: -5, top: 45, right: 10, bottom: 60 };
+  const u = disjointUnion([plaque, cards, btn]);
+  // No two overlap, and they cover exactly the union.
+  for (let i = 0; i < u.length; i++) for (let j = i + 1; j < u.length; j++) {
+    const a = u[i], b = u[j];
+    assert.ok(!(a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom), 'disjoint');
+  }
+  // The plaque, the cards above it, the button left of it and its sliver above it.
+  const union = 100 * 30 + 50 * 40 + 5 * 15 + 10 * 5;
+  assert.equal(area(u), union);
+});
+
+test('the ship flies the pile\'s own chips, from where each sits, one per chip', () => {
+  const made = [];
+  const mk = (tag) => {
+    const el = {
+      tag, className: '', children: [], style: { setProperty(k, v) { this[k] = v; } }, dataset: {}, anims: [], parentNode: null,
+      setAttribute() {}, appendChild(c) { c.parentNode = el; el.children.push(c); return c; },
+      removeChild(c) { el.children = el.children.filter(x => x !== c); c.parentNode = null; }, remove() { if (el.parentNode) el.parentNode.removeChild(el); },
+      animate(frames, options) { const a = { frames, options, currentTime: 0, pause() {}, cancel() {} }; el.anims.push(a); return a; },
+    };
+    made.push(el);
+    return el;
+  };
+  globalThis.document = { createElement: mk };
+  try {
+    const reg = new MotionRegistry();
+    reg.capture = true;   // paused, nothing timed
+    const layer = mk('layer');
+    const discs = [
+      { x: -10, y: 4, color: 'T', pip: 0.1, z: 2 }, { x: -10, y: 6, color: 'T', pip: 0.2, z: 1 },
+      { x: 10, y: 6, color: 'O', pip: 0.3, z: 1 },
+    ];
+    shipPot(reg, {
+      set: 'B', layer, layerRect: { left: 0, top: 0, width: 400, height: 800, right: 400, bottom: 800 }, origin: { x: 200, y: 300 },
+      discs, dests: [{ seat: 0, x: 200, y: 700 }], holes: [[{ left: 150, top: 690, right: 250, bottom: 740 }]], chipD: 12, cardW: 40,
+      tStart: 100, onArrive: () => {},
+    });
+    const chips = made.filter(e => /to-winner/.test(e.className));
+    assert.equal(chips.length, 3, 'one flight per chip of the pile');
+    chips.forEach((c, i) => {
+      assert.match(c.className, /is-disc/);
+      const face = c.children[0];
+      assert.equal(face.className, 'replayer-pot-chip-disc');
+      assert.equal(face.style['--chip'], discs[i].color, 'its own colour');
+      assert.equal(c.style.zIndex, String(discs[i].z));
+      // Its first frame is where its chip sits on the pile.
+      const f0 = c.anims[0].frames[0];
+      assert.match(f0.transform, new RegExp('^translate\\(-50%, -50%\\) translate\\(' + discs[i].x + 'px, ' + discs[i].y + 'px\\)'));
+    });
+    // One clip box, not three nested ones.
+    assert.equal(layer.children.length, 1);
+    assert.equal(layer.children[0].children.length, 3);
+  } finally {
+    delete globalThis.document;
+  }
 });
 
 test('settlePile: a stack that moves and appears at once does both on one spring', () => {
