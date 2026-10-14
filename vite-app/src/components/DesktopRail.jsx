@@ -27,6 +27,8 @@ export default function DesktopRail({ current, onChange, isAdmin }) {
   ];
   const secondary = [
     { id: 'social', label: 'Social', icon: Icon.people },
+    // Staking had no way in once Cash took its primary slot (App.jsx's username menu has it too).
+    ...(isAdmin ? [{ id: 'staking', label: 'Staking', icon: Icon.handshake }] : []),
     { id: 'settings', label: 'Settings', icon: Icon.gear },
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: Icon.lock }] : []),
     // The admin alerts' "what this batch added" lists (AdminBatchesView); App opens the newest.

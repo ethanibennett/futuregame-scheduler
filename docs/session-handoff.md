@@ -14,28 +14,61 @@ wsop-console side and verified against both live services.
 
 ---
 
-## 2026-10-14 — Locations live; date pills, Sessions and Trend in their last rounds
-- **Live:** the bankroll **Locations** tab (52e0895: ITM per entry; a mixed room says "won/ITM" and only
-  plain "won" is toned green/red), the venue map (0b0d08e), and build.js reinstalling vite-app deps on
-  Render when the lockfile changes (aeb710b).
-- **Ready to merge after its guards:** the date-pill fix (branch `fix/date-pill`, worktree `date-pill`).
-  Labels centre their INK, read from canvas pixels by `utils/ink-balance.js` (WebKit clamps
-  measureText's bounds to the advance). The controls guard now waits for the layout to settle, which
-  was the cause of the recurring false "10 Oct" failure.
-- **In their final rounds:** the Sessions tab, the Trend overlays, the parser corpora (100 written + 136 spoken real hands; hardening
-  next), and the queued features (home customization, onboarding, hand-history export). **Ads are
-  PAUSED** (owner, 2026-10-14: "an excellent proof of concept"; memory `ads-paused` has the state of
-  each). Catalogue three's specimens and page are on hold too (it was the biggest spender, 6.4M tokens).
-- **Model policy (owner, 2026-10-14):** where Opus is not needed, delegate to Sonnet or Haiku. Set
-  `model` on every agent; one build plus one check per job (memory `model-delegation`).
-- **Trap: scratch seed tokens expire after 12 h.** `setup.cjs` signs `token.txt` with `expiresIn: '12h'`.
-  A guard run with an expired token silently skips most views and still prints "all N controls on the
-  grid" (21 controls instead of about 600). Check the skipped count and the JWT `exp` before trusting a
-  pass. Every scratchpad token was re-signed for 72 h on 2026-10-14.
-- **Owner answers wanted:** the parser's 47 questions (page in the table below) and the launch plan's
-  7 open questions (its section 16).
-- **Loose end:** `overviewStats().mtt.itm` (bankroll-ledger.js) still counts ITM per event; nothing on
-  screen shows it, but the owner's rule is per entry. Fix after Sessions and Trend merge (same file).
+## 2026-10-14 — A day of merges: bankroll, replayer, parser, the roster leak; the bankroll merge begins
+- **Live on master (4a19a4b):**
+  - Bankroll: Locations (ITM per entry), the Trend graph (Total, Tournaments and Cash lines, Fill,
+    gridlines), the Sessions tab, a **Bankroll** footer tab in Social's old slot (it opens Results &
+    Tracking; Social moved to the username menu and the rail's lower group), and a floating **+** on
+    Results and in the dashboard sheet (Tournament result, Cash session, Start live session, Expense or
+    income; a non-admin goes straight to the Log Result form).
+  - Replayer: springs with Set B as the default; PLO5, PLO6, PLO6 8/b, Short Deck and NLO8 as their own
+    games, with "Big Easy" renamed PLO6 8/b everywhere a user sees it and kept as an input alias (the
+    shorthand code BE still decodes).
+  - Quick add: hardened against 100 written and 136 spoken real hands, with the owner's 47 answers
+    (decisions A–I are switches in `lib/quick-add/decisions.js`). **Not run against the live model:**
+    agents have no API key, so a live eval needs the owner.
+  - Date pills centre their ink (`utils/ink-balance.js`), and the controls guard waits for layout to settle.
+  - The bankroll merge's Phase 1 (`money-merge-2026-10` migration, applied on prod 09:44Z; classify and
+    standing engines). It is schema and engines only, and changes nothing users see.
+- **Roster leak closed (owner-approved):**
+  - The dashboard's roster endpoint used to serve every backer's token, phone and email under
+    DASHBOARD_TOKEN, which is compiled into iOS. It now needs ROSTER_TOKEN, a Bearer header set on both
+    Render services only (wsop-console 10716e9, scheduler 38fd609).
+  - Prod sync was verified: "pull from the dashboard ok — 3 record(s) offered".
+  - This box has NO ROSTER_TOKEN, so it no longer mirrors backer credentials. The rows already in
+    poker-tournaments.db remain.
+  - Recommended, not done: rotate DASHBOARD_TOKEN (it sat in Render's request logs for as long as the old
+    sync ran) and decide whether backer links need rotating.
+- **The bankroll merge** (owner, 2026-10-14; memory `bankroll-merge`; spec `docs/bankroll-merge.md`):
+  - futurega.me owns the money, and the dashboard's money screens retire.
+  - The owner answered all 16 questions on the page below. They differ from the defaults on: a manual
+    Notify tap, silent corrections, asking on a standing/series overlap, every game on its own, and
+    backers paying up front.
+  - Render disks keep 7 daily snapshots on all three services.
+  - Phase 2 (backer pages on the new tables, behind a switch) is being built on Sonnet.
+- **TestFlight:** the 04:00 nightly (de93d30) sat queued with no runner because the Mac was asleep. It was
+  cancelled for a manual build of da5afa2 (Bankroll tab + the + button) at the owner's ask, which is queued
+  until the Mac wakes. `.testflight-nightly.json` records it under `manual`.
+- **In flight (Sonnet):**
+  - Edit home: fixing a slow GET that undoes a saved change.
+  - Hand-history export: fixing a shared hand being credited to the viewer, and reusing
+    `lib/quick-add/hh.js`.
+  - Onboarding v2: rebuilding from its spec.
+  - Money merge Phase 2.
+- **Owner questions open:**
+  - Short Deck: does trips beat a straight? The branch has the straight winning; Triton and GG rules
+    rank trips higher; `SHORT_DECK_TRIPS_BEAT_STRAIGHT` plus its tests.
+  - The launch plan's 7 questions (its section 16).
+- **Bugs found, not fixed:**
+  - On desktop at 8/9-max, the replayer's top seat's cards are cut off 8–16px by the window top. This is
+    pre-existing, for every game.
+  - Hi-lo equity pills overlap the board's top edge.
+  - `test/hilo-split-awards.mjs` throws `settled is not defined`, on master too.
+  - `overviewStats().mtt.itm` still counts ITM per event.
+- **Ads PAUSED; catalogue three on hold** (memories `ads-paused`, `model-delegation`).
+- **Trap: scratch seed tokens expire after 12 h** (`setup.cjs`, `expiresIn: '12h'`). An expired token makes
+  a guard skip most views and still print "all N controls on the grid". Check the skipped count. A fresh
+  72 h seed is in `scratchpad/date-pill-merge/seed/`.
 
 ## 2026-10-14 — Replayer springs merged (Set B the default)
 - The flop deal and spread, the turn/river landing, wagers pushed out and swept into the pot, and
@@ -304,6 +337,7 @@ to the account and readable with WebFetch.
 | Launch plan | Launch on 5 Jan 2027 at the BWPO, free until a 1 Mar paywall, $10,000 in three gates; channels, the twelve ads, policy wording, ASO, tracking, next 10 actions and 7 open questions (2026-10-13) | https://claude.ai/artifact/5k5qVK6Y8cPmzdMXjJEDgW |
 | Variant picker | Ten redesigns of the replayer entry's variant picker (recommended 8+10, fallback 1) (2026-10-13) | https://claude.ai/artifact/Jk96jEaP58rBAsf4eak9ka |
 | Parser questions | 47 questions from the real-hand corpora, tap-to-answer; the answers are in its db collection `answers` (Artifact tool, read_db) (2026-10-14) | https://claude.ai/artifact/9m4sQRQY4JpvcuEZJZR5NR |
+| Merge questions | The 16 bankroll-merge calls; answers in its db collection `answers` (2026-10-14) | https://claude.ai/artifact/K7iAcVUaV7ZjQ21U9EyynU |
 
 To revise one, publish the **same file path** again, or pass its URL as `url`.
 Publishing without the URL creates a second artifact instead of updating.

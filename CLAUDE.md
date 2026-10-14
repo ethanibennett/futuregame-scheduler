@@ -189,6 +189,19 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   link dropped (a Home Screen launch must return to the page). `/b/sw.js` and the
   `/api/backer/*` push routes are unchanged. `scripts/seed-backer-demo.js` seeds made-up backers
   into a SCRATCH DB and prints the `CHECK_BACKER_TOKENS` the guards use to visit the page.
+  **Bankroll merge, Phase 2** (`docs/bankroll-merge.md`; code in `lib/backer-surface.js`):
+  - **Delivery is gated.** Push, SMS and the Sunday email go out only where `BACKER_DELIVERY` is on
+    (default: on when `RENDER` is set; `BACKER_DELIVERY=1|0` overrides; a typo is off). This box has
+    neither, so it can never message a backer. Every boot logs `[backers] delivery is ON|OFF`.
+  - **The page's source is a switch, off by default.** `BACKER_PAGE_SOURCE=sql` makes the feed read
+    the `backers` table and standing agreements first, with `console_records` as the fallback for a
+    token no `backers.public_token` owns. Unset, it is the dashboard-era path, byte for byte. Run
+    `GET /api/staking/standing/parity` (owner only) before flipping it: `differ` lists the pages it
+    would change, by backer id, never by token.
+  - **"New link"** is `POST /api/staking/standing/backers/:id/rotate-link`. Until the roster seam
+    retires, a leaked link is best replaced in the dashboard: a later dashboard edit of that backer
+    would send the old token back and the roster sync would rotate it back.
+  - Tests: `npm run test:backers` (surface, rotation, parity), booting on ports 4540-4549.
 
 ## Hazards
 - ⚠️ **Junction hazard**: checking out any pre-carve branch (e.g. `wip/windows-mtt-feed`)
