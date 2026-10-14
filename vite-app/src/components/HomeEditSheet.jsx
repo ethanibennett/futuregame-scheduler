@@ -49,16 +49,31 @@ export default function HomeEditSheet({ layout, set, status = 'synced', ctx, isD
 
   const announce = useCallback((text) => setSay((prev) => (prev === text ? text + SAY_PAD : text)), []);
 
-  // Focus Done on open; Escape closes (or, mid-drag, puts the card back).
+  // Focus Done on open; Escape closes (or, mid-drag, puts the card back); Tab stays inside the sheet
+  // (it is aria-modal: on desktop the home is still on screen behind the scrim, and its Busted /
+  // Cashed buttons would otherwise be one Tab past Show Goals). Same handler as VenueMapSheet's: a
+  // capture-phase keydown that wraps Tab and Shift+Tab between the sheet's first and last visible
+  // control, and pulls focus back in if it ever sits outside.
+  const sheetRef = useRef(null);
   useEffect(() => { doneRef.current && doneRef.current.focus({ preventScroll: true }); }, []);
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key !== 'Escape') return;
-      if (drag.current) { e.preventDefault(); cancelDrag(); return; }
-      onClose();
+      if (e.key === 'Escape') {
+        if (drag.current) { e.preventDefault(); cancelDrag(); return; }
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab' || !sheetRef.current) return;
+      const f = [...sheetRef.current.querySelectorAll('button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')]
+        .filter((el) => el.getClientRects().length > 0);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1], at = document.activeElement;
+      if (!sheetRef.current.contains(at)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && at === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && at === last) { e.preventDefault(); first.focus(); }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
   }, [onClose]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Desktop: dock to the shell's right edge (a g line of the shell, so the sheet's own lines are the
@@ -276,7 +291,7 @@ export default function HomeEditSheet({ layout, set, status = 'synced', ctx, isD
   return createPortal(
     <>
       <div className="an-scrim" onClick={onClose} />
-      <div className="an-sheet he-sheet" role="dialog" aria-modal="true" aria-labelledby="he-title"
+      <div ref={sheetRef} className="an-sheet he-sheet" role="dialog" aria-modal="true" aria-labelledby="he-title"
         style={dock != null ? { left: `calc(var(--gu) * ${dock})`, right: 'auto', marginInline: 0 } : undefined}>
         <header className="an-head">
           <h2 className="an-title-row" id="he-title"><span className="an-cell an-title snap-g">Edit home</span></h2>
