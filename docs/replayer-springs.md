@@ -299,6 +299,10 @@ off vs on, `check-replay-export-motion.mjs --time-only`, runs interleaved, 2026-
 Owner's target, 2026-10-12: about 3x today's export time (round 1 was 4.8x, with every push-out
 seeked and 102 captures).
 
+Round 3, Set B (36 seeked video frames, 19 GIF), on a box at 70-100% CPU from other work: the video
+237.5s against 131.2s with the springs off, run back to back (1.8x); the GIF 153.8s (11.0MB) and
+157.4s (5.8MB) springs off, in runs too far apart to compare by time.
+
 Where a capture's time goes. A WebKit capture took 4.1-4.7s, and 0.6-0.9s of it was the capture
 itself (the same pixels). The rest was modern-screenshot's workaround for a Safari/Firefox bug, in
 which the images nested in the captured SVG (the card faces are svg+xml) are not decoded on the
@@ -349,20 +353,28 @@ to 14.1 (+5.3), river 8.1 to 12.7 (+4.6), result 14.9 to 21.9 (+7.0). Round 3: +
 0.9-1.6, the multiway hand's three ghosts the dearest): the ghosts have to be in the press frame,
 because the wagers they copy are gone from that commit.
 
-**At a 4x CPU throttle, long-animation-frame entries**, with the machine at 85-100% CPU from the
-round's video captures and other sessions, so the wall times are inflated for both flags (a long
-frame is 50ms or more):
+**At a 4x CPU throttle, long-animation-frame entries** (the 4x Edge harness, `probe-perf.mjs` in the
+round's scratch folder; a long frame is 50ms or more; 0 means under 50ms), with the round's other
+jobs idle and the machine at about 70% CPU from other sessions, so the wall times are inflated for
+both flags:
 
 | Press | Springs off: press frame, median / max | Set B | Long frames after the press, off / Set B |
 |---|---|---|---|
-| Flop | 81 / 122ms | 160 / 238ms | 9 of 9 (max 100ms) / 9 of 9 (max 200ms) |
-| Turn | 71 / 103 | 98 / 156 | 6 of 9 / 3 of 9 |
-| River | 56 / 83 | 78 / 132 | 3 of 9 / 4 of 9 |
-| Bet, call | 0-60 / 90-104 | 0-50 / 58-65 | 1 of 18 / 1 of 18 |
-| Result | 165 / 255 | 189 / 255 | 9 of 9 / 9 of 9 (max 275ms) |
+| Flop | 74 / 93ms | 109 / 181ms | 2 of 9 (max 75ms) / 7 of 9 (max 170ms) |
+| Turn | under 50 / 100 | 68 / 83 | 1 of 9 / none |
+| River | 50 / 61 | 65 / 73 | none / none |
+| Bet, call | under 50 / 57-63 | under 50 / 54-62 | none / none |
+| Result | 104 / 183 | 125 / 167 | 5 of 9 (max 99ms) / 7 of 9 (max 139ms) |
+
+The same run with the round's video captures going as well (the machine at 85-100%): flop 81 / 122
+against 160 / 238ms, turn 71 against 98, river 56 against 78, result 165 against 189 (medians).
+Round 2's build, at 4x on a quieter box: flop 62 against 100, result 59 against 82. In these wall
+times round 3's flop press is still about 35ms dearer than today's at 4x and the result about 20ms;
+the traced thread time above is the cleaner measure of what changed.
 
 The frame after the flop's press is where the board's springs and the pile's new row are built now
-(FrameRequestCallback, 10-41ms at 4x); flag `'0'` has a long frame there too, React's own render.
+(FrameRequestCallback, 7-30ms at 4x, a 54-170ms frame in 7 of 9); flag `'0'` has a long frame there
+too in some presses, React's own render.
 The moments are Web Animations on transform and opacity, so once started they run on the compositor
 whatever the main thread does; a long frame after the press delays only what starts in it.
 
@@ -394,6 +406,11 @@ node scripts/capture-replayer-motion.mjs http://127.0.0.1:<port> --out <after> -
 node scripts/capture-replayer-motion.mjs --report --out <after> --against <before>
 node scripts/compare-replayer-motion.mjs --before <before> --after <after> --out <compare>
 ```
+
+Round 3's final set (today against Set B, 2026-10-14) is in `weekly-graphics/replayer-springs/final/`:
+a reel of every moment at 6, 8 and 9-max at 402x874 (@3) and at 1440x900 (@2), each moment at
+8-max on both sizes (real time, then half speed, in one file), and a 3x3 contact sheet per moment
+from the 8-max phone comparison.
 
 Add `--width 1440 --height 900 --seats 8` for desktop. Without `--springs` the harness leaves the
 flag unset, which is Set B, the default; `--springs 1` captures Set A. Keep `--parallel` low on a
