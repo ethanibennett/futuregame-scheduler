@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getVenueInfo, getVenueBrandColor, formatBuyin, parseTournamentTime, getNow } from '../utils/utils.js';
 import { awaitingResults, eventNo, dayName } from '../utils/home.js';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -63,7 +63,7 @@ function Strip({ event, today }) {
 // quiet: the 5g Didn't play column.
 const Gap = ({ quiet = false }) => <span className={'hm-tolog-gap' + (quiet ? ' hm-tolog-gap--quiet' : '')} aria-hidden="true" />;
 
-export default function HomeToLog({ schedule, results, updates, plans = null, today, canLog = true, onAddTracking, onDeleteTracking, onSetPlayed, onLog }) {
+export default function HomeToLog({ schedule, results, updates, plans = null, today, canLog = true, onAddTracking, onDeleteTracking, onSetPlayed, onLog, onShown = null }) {
   const toast = useToast();
   const [all, setAll] = useState(false);                    // "+N more": every row, in place
   const listId = useId();
@@ -161,10 +161,13 @@ export default function HomeToLog({ schedule, results, updates, plans = null, to
     drop(h.id);
   };
 
-  if (!canLog) return null;
   const heldIds = new Set(held.map((x) => x.id));
   const rows = items.filter((x) => !heldIds.has(x.id));
-  if (!rows.length && !held.length) return null;
+  // Whether the section takes any room (Edit home: the period block drops its scope only when the
+  // bankroll line is the section directly above it, and a section that renders nothing is not one).
+  const shownNow = canLog && (rows.length > 0 || held.length > 0);
+  useLayoutEffect(() => { if (onShown) onShown(shownNow); }, [onShown, shownNow]);
+  if (!shownNow) return null;
   // The rows on show, with every held row back at the place it had, so nothing moves under a tap.
   // A held row takes one of the SHOWN places: the section stays its height through the hold, and
   // the next event comes in when the hold ends (it used to come in at once, and everything below

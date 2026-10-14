@@ -21,7 +21,10 @@ import HomeNoiseLine from './HomeNoiseLine.jsx';
 // are refetched whenever the shared summary is (App's useBankrolls refetches it when the results
 // change, and after any bankroll change).
 
-export default function HomePeriod({ admin, bk, results, schedule, updates, plans = null, rates, currency = 'USD', today, scopeAbove = null, onOpen, onOpenGoals, onOpenNoise }) {
+// Edit home (utils/home-layout.js): the noise line and the goals are parts of this block, each
+// with its own switch (showNoise, showGoals); hiding the block hides both. scopeAbove is set by the
+// parent only when the bankroll line renders immediately above this block in the same column.
+export default function HomePeriod({ admin, bk, results, schedule, updates, plans = null, rates, currency = 'USD', today, scopeAbove = null, onOpen, onOpenGoals, onOpenNoise, showNoise = true, showGoals = true }) {
   const summary = admin && bk ? bk.summary : null;
   const allGuide = summary && summary.guide && summary.guide.byKey ? summary.guide.byKey.all : null;
   const goals = useMemo(() => (allGuide && Array.isArray(allGuide.goals) ? allGuide.goals : []), [allGuide]);
@@ -124,8 +127,8 @@ export default function HomePeriod({ admin, bk, results, schedule, updates, plan
           </span>
         ))}
       </button>
-      {admin && <HomeNoiseLine model={model} results={results} currency={currency} bk={bk} onOpen={onOpenNoise} />}
-      {goalRows.length > 0 && (
+      {admin && showNoise && <HomeNoiseLine model={model} results={results} currency={currency} bk={bk} onOpen={onOpenNoise} />}
+      {showGoals && goalRows.length > 0 && (
         <button type="button" className="hm-goals" onClick={onOpenGoals}
           aria-label={`Goals: ${goalRows.map((g) => `${g.label}, ${g.value}, ${g.note}`).join('; ')}. Open them in the bankroll dashboard`}>
           {goalRows.map((g) => (

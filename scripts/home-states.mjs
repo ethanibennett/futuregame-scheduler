@@ -19,6 +19,18 @@
 //   noise-cash      the line about cash: two losing timed sessions this month, big enough to move the
 //           month's net more than its tournaments, and 40 more timed sessions behind them in the
 //           whole ledger, so the hourly rate is judged against its spread (admins)
+//   layout-custom   Edit home (utils/home-layout.js): the phone order Bankroll, Up Next, This month,
+//           Last result, with To log and Signal or noise switched off; on desktop NOW is Up Next,
+//           Last result and NUMBERS Bankroll, This month (the period header states its own scope,
+//           the bankroll line no longer right above it on the phone)
+//   layout-numbers-empty  Bankroll and This month switched off: on desktop the NUMBERS pane is its
+//           3r header and the EDIT prompt
+// The layout states answer GET /api/user/home-layout and clear the cached copy (localStorage
+// homeLayout:u<id>) on the way in and out, so the next view loads the default again.
+// routeHomeLayout: the guards' context-wide answer to /api/user/home-layout. GET is the default
+// home (null) whatever the account saved, so every other view measures the same home on a scratch
+// server and on :3001; PUT (the sheet's changes, Reset) echoes the layout back: the guards never
+// write one.
 
 const day = (off) => {
   const d = new Date();
@@ -26,6 +38,32 @@ const day = (off) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 const TRIP_ID = 990001;
+
+const LAYOUTS = {
+  'layout-custom': { v: 1, sections: [
+    { id: 'bankroll', on: true }, { id: 'upnext', on: true }, { id: 'period', on: true }, { id: 'last', on: true },
+    { id: 'tolog', on: false }, { id: 'noise', on: false }, { id: 'goals', on: true },
+  ] },
+  'layout-numbers-empty': { v: 1, sections: [
+    { id: 'upnext', on: true }, { id: 'tolog', on: true }, { id: 'last', on: true },
+    { id: 'bankroll', on: false }, { id: 'period', on: false }, { id: 'noise', on: true }, { id: 'goals', on: true },
+  ] },
+};
+export const LAYOUT_KINDS = Object.keys(LAYOUTS);
+const clearLayoutCache = (p) => p.evaluate(() => {
+  for (const k of Object.keys(localStorage)) if (k.startsWith('homeLayout:')) localStorage.removeItem(k);
+}).catch(() => {});
+// For a context: GET /api/user/home-layout is the default home; a PUT is echoed back, never
+// written. A page route (stageHome's layout states) wins over this one.
+export async function routeHomeLayout(ctx) {
+  await ctx.route('**/api/user/home-layout', (r) => {
+    if (r.request().method() === 'GET') return r.fulfill({ json: { layout: null } });
+    if (r.request().method() !== 'PUT') return r.fallback();
+    let layout = null;
+    try { layout = JSON.parse(r.request().postData() || '{}').layout ?? null; } catch { layout = null; }
+    return r.fulfill({ json: { layout: layout ? { ...layout, updatedAt: new Date().toISOString() } : null } });
+  });
+}
 
 export async function stageHome(p, kind) {
   const patterns = [];
@@ -88,8 +126,18 @@ export async function stageHome(p, kind) {
       const add = whole ? [...older, ...recent] : recent;
       await r.fulfill({ response: res, json: { ...json, entries: [...add, ...(json.entries || [])].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)) } });
     });
+  } else if (LAYOUTS[kind]) {
+    const layout = LAYOUTS[kind];
+    await clearLayoutCache(p);
+    await on('**/api/user/home-layout', (r) => (r.request().method() === 'GET'
+      ? r.fulfill({ json: { layout } })
+      : r.fallback()));
   } else {
     throw new Error(`unknown home state ${kind}`);
   }
-  return async () => { for (const pt of patterns) await p.unroute(pt).catch(() => {}); };
+  const layoutState = !!LAYOUTS[kind];
+  return async () => {
+    for (const pt of patterns) await p.unroute(pt).catch(() => {});
+    if (layoutState) await clearLayoutCache(p);
+  };
 }

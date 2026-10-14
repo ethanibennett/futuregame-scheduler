@@ -18,7 +18,7 @@ const seatedInitial = (baselineR) => ({
   textBoxTrim: 'trim-both', textBoxEdge: 'cap alphabetic',
 });
 
-export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, contrast, toggleContrast, cardSplay, toggleCardSplay, serifFont, toggleSerifFont, onLogout, onDebugTimeChange, onUpload, uploadError, uploadSuccess, uploadVenue, onUploadVenueChange, shareToken, onGenerateShareToken, onRevokeShareToken, onSendShareRequest, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, shareError, shareSuccess, token, onRefreshTournaments, isAdmin, seasonLabel, isGuest, onEditName }) {
+export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, contrast, toggleContrast, cardSplay, toggleCardSplay, serifFont, toggleSerifFont, onLogout, onDebugTimeChange, onUpload, uploadError, uploadSuccess, uploadVenue, onUploadVenueChange, shareToken, onGenerateShareToken, onRevokeShareToken, onSendShareRequest, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, shareError, shareSuccess, token, onRefreshTournaments, isAdmin, seasonLabel, isGuest, onEditHome = null, onEditName }) {
   const toast = useToast();
   const displayName = useDisplayName();
   const [debugInput, setDebugInput] = useState(getDebugNow());
@@ -224,6 +224,18 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
               ))}
             </div>
           </div>
+          {/* Edit home (HomeEditSheet.jsx, opened by App): the Dashboard's sections, which show and
+              in what order. The same sheet as the home's own Edit home control; guests get neither. */}
+          {onEditHome && (
+            <div className="settings-row settings-namemode settings-home">
+              <div className="settings-namemode-text">
+                <span className="settings-row-label">Home</span>
+                <p className="settings-help">Choose what the Dashboard shows, and in what order</p>
+              </div>
+              <button type="button" className="btn btn-ghost btn-sm settings-btn" aria-label="Edit home: choose and order its sections"
+                onClick={(e) => onEditHome(e.currentTarget)}><span>Edit</span></button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * One frame, 45 glyphs.
+ * One frame, 55 glyphs (45 when the frame was introduced; the paragraph below is that count).
  *
  * Every glyph used to carry its own <svg>, so there was nowhere to enforce a
  * size or a stroke weight from the design system: 37 of 45 are stroked and
@@ -28,6 +28,9 @@ const GLYPHS = {
   // a control's box, where an icon's box is its ink (owner rule 2026-10-10, labels centred).
   arrowLeft: { filled: false, path: (<><line x1="19" y1="12" x2="5" y2="12"/> <polyline points="12 19 5 12 12 5"/></>) },
   chevronDown: { filled: false, path: (<><polyline points="6 9 12 15 18 9"/></>) },
+  chevronUp: { filled: false, path: (<><polyline points="6 15 12 9 18 15"/></>) },
+  // A drag handle (Edit home's rows): 2 x 3 dots, its ink centred on the 24-unit box.
+  grip: { filled: true, path: (<><circle cx="9" cy="6" r="1.6"/> <circle cx="15" cy="6" r="1.6"/> <circle cx="9" cy="12" r="1.6"/> <circle cx="15" cy="12" r="1.6"/> <circle cx="9" cy="18" r="1.6"/> <circle cx="15" cy="18" r="1.6"/></>) },
   warn: { filled: false, path: (<><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/> <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>) },
   clock: { filled: false, path: (<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>) },
   empty: { filled: false, path: (<><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></>) },
