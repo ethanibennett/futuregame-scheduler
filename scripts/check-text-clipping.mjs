@@ -23,9 +23,9 @@
 // below a clipping
 // ancestor's bottom (or starts above its top) is reported. Exits 1 when anything is clipped, so it
 // can gate a deploy. WebKit, because the app ships in WKWebView.
+import { stageHands, SHARED_HAND_CODE } from './hands-states.mjs';
 import { createRequire } from 'node:module';
 import { stageHome } from './home-states.mjs';
-import { stageHands, SHARED_HAND_CODE } from './hands-states.mjs';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
 // Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no

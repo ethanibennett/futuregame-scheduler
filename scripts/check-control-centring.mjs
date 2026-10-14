@@ -144,12 +144,12 @@
 //
 // Exits 1 when any control fails, 2 when nothing could be measured (a view that did not open is
 // reported and skipped). WebKit, because the app ships in WKWebView.
+import { stageHands, SHARED_HAND_CODE } from './hands-states.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { stageHome } from './home-states.mjs';
-import { stageHands, SHARED_HAND_CODE } from './hands-states.mjs';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
 // Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
