@@ -1,8 +1,9 @@
 # Bankroll merge: futurega.me becomes the one money store
 
 Status: **design** (2026-10-14); **Phase 1 built** on `feat/money-merge` (merged), **Phase 2 built**
-on `feat/money-merge-2` (see "Phase 1: as built" and "Phase 2: as built" after the §15 table), not yet
-merged. A buildable spec for moving the dashboard's money
+on `feat/money-merge-2` (merged), **Phase 4 built** in the dashboard repo on `feat/money-export`, not
+yet merged (see "Phase 1: as built", "Phase 2: as built" and "Phase 4: as built" after the §15 table).
+A buildable spec for moving the dashboard's money
 (dashboard.futurega.me, repo `wsop-console`) into this app (futurega.me, repo
 `futuregame-scheduler`), cut into phases small enough for one builder each.
 
@@ -892,6 +893,10 @@ secret set on both Render services.
 
 ### 8.1 Dashboard endpoint (Phase 4, WC)
 
+> **Built.** The exact request and response, and the five places the build differs from the text
+> below (the extra fields, `settings` cut to `startingRoll`, absent blobs omitted, the closed
+> conditions, the delta's margin), are in "Phase 4: as built". Where the two disagree, that section wins.
+
 `GET /api/money-export`, with `Authorization: Bearer <LEDGER_TOKEN>`. The token goes in a header and
 never in the path, so it is not written to access logs.
 - **Auth.** Constant-time check through a generalised `checkSharedToken(token, 'LEDGER_TOKEN')`
@@ -1399,7 +1404,7 @@ backer is told anything twice.
 | 2 | **Rehearsal import.** Fetch → review → commit. The dashboard still owns money and notify. | the reconciliation: fund within its rounding remainder, roll explained to the line; parity route still `differ: []` (pages now read SQL); 3 backer pages opened by hand | **Undo this import** (§8.2): every created row goes, links clear, pages fall back to `console_records` |
 | 3 | **Soak the copy** (a few days, the owner keeps using the dashboard). Nights logged here as well are what the delta's review catches. | nothing to do | as step 2 |
 | 4 | **Freeze dashboard money writes:** `MONEY_WRITES=frozen` on the dashboard (restart, about 1 minute). | a PWA save shows the banner; MCP commit refuses; notify returns 410 | `MONEY_WRITES=open` |
-| 5 | **Delta pull** on futurega.me: fetch → review the new nights, changes and deletions → commit. | the reconciliation against the frozen dashboard: fund within its rounding remainder, roll explained | Undo the delta run (only its rows); then step 4's rollback |
+| 5 | **Delta pull** on futurega.me: fetch (with the 14-day margin of "Phase 4: as built", trap 1) → review the new nights, changes and deletions → commit. | the reconciliation against the frozen dashboard: fund within its rounding remainder, roll explained | Undo the delta run (only its rows); then step 4's rollback |
 | 6 | **Posting on:** `PUT /api/bankrolls/money/cutover { posting:'on', postingSince: today, cutover:'live' }`. Roster sync stands down (`cutover = live`). Standing agreements' `effective_from` = today. *(§1.1 Q1: this enables the Notify action; it does not post on save.)* | log a test result in the app, see the cut preview, save (**nothing posts**), tap Notify, see the event on a backer page, then edit the result and see the page update with no push, then delete it and see it leave the page (check the log, not a backer's phone: use a demo backer created for the test and ended after) | `{ posting:'off', cutover:'imported' }`; every event posted since is listed by `GET /api/staking/standing/:id/events?source=ledger&since=<date>` (per agreement) for review |
 | 7 | **Switch the dashboard's reads:** `MONEY_SOURCE=scheduler` (restart). | `/api/dashboard/:token/summary` roll and fund equal `/api/owner/money`; widget and Cockpit show them; MCP `get_bankroll` matches; MCP `log_session` preview (no commit) shows the cut | `MONEY_SOURCE=dashboard` and `MONEY_WRITES=open`; nights logged on futurega.me since step 6 are listed by `/api/owner/money` (`since`) for re-entry in the dashboard, and their shares stay posted (they are true); do not re-notify those nights from the dashboard |
 | 8 | **Soak** (two weeks). Seams 1 and 3 exist but are idle: notify returns 410, roster sync no-ops. | weekly digest goes out from SQL; no `[roster]` writes in the logs; `freshness.money.ok` stays true | as step 7 |
@@ -1487,7 +1492,7 @@ judgment about money, posting or layout. The model policy (handoff, 2026-10-14) 
 | **1** | sched | **Built** (see "Phase 1: as built" below). Migration `money-merge-2026-10` (§4); `lib/staking/standing.js` + `lib/staking/classify.js` with ported tests; `MOVE_KINDS` and labels; `equipment`/`fees` categories (server, client, tax rules); `affects_balance` in the transactions source and Expenses list; `time_known` in reports; account deletion | — | Sonnet |
 | **2** | sched | **Built** (see "Phase 2: as built" below), behind a switch that ships off (`BACKER_PAGE_SOURCE`). Backer surface on SQL with `console_records` fallback (feed, digest, recipients); name precedence; rotation covers `public_token` + revisions, real-function test; `BACKER_DELIVERY` gate; delivery sweep (dormant: posting off); `backer_tokens` count log; parity route | 1 | Sonnet |
 | **3** | sched | Settlement fixes (§10) + StakingView fields. Owner Q11: the backer pays up front, so `prepaid` is the normal case ("Q11 in §10") | 1 | **Opus** |
-| **4** | WC | `GET /api/money-export` + `checkSharedToken` + tests | — | Sonnet |
+| **4** | WC | **Built** (see "Phase 4: as built" below; dashboard branch `feat/money-export`, not merged). `GET /api/money-export` + `lib/shared-token.js` (`checkSharedToken`, the roster's check generalised) + tests; `LEDGER_TOKEN` declared in `render.yaml`, set by the owner | — | Sonnet |
 | **5** | sched | Import engine: fetch, stage, plan (§5 mapping, §9.1 scoring, §7.1 union, §5.8 opening and reconciliation with a `computeBankroll` port), decisions, commit, undo, delta; owner-only routes | 1, 2 | **Opus** |
 | **6** | sched | Import review UI (§9.3) + seed script + guard steps | 5 | **Opus** (grid seating and guard work has needed judgment on every bankroll tab) |
 | **7** | sched | Standing shares live, to §1.1: the **Notify action** creates a share (Q1: not on save); `syncSharesFor` in every write path only **follows or voids** a posted share (§6.5), silently (Q2); the overlap `ask` (Q7) and where its answer is stored; exclusions, revisions, recalc, drift, preview, cutover state and `PUT /api/bankrolls/money/cutover`, roster sync standing down | 1, 2 | **Opus** |
@@ -1698,6 +1703,192 @@ gives them one), and the parity route lists the pages that would.
 - **Flipping to `sql` changes what the weekly email does** for any backer the parity route lists with
   `digest`, as well as the page. Read `differ` for both.
 
+### Phase 4: as built (2026-10-14, dashboard repo `wsop-console`, branch `feat/money-export`)
+
+Built to §8.1 and the lead's brief. **Dashboard code only; nothing in this repo changed and nothing
+here calls it yet** (Phase 5 does). The route is closed until the owner sets `LEDGER_TOKEN`. Not
+pushed, not deployed, no Render env set by the build.
+
+**What exists** (WC, all under `server/`)
+- **`lib/shared-token.js`** (new): the roster's check, generalised. `checkSharedToken(authorization,
+  name, env)` returns `{ok, via: 'current'|'previous'|null}`; `sharedTokenStatus(name, env)` says
+  whether the door can open and why not; plus `sharedTokenValues`, `bearerToken` and
+  `makeRateLimitedLog`. `lib/roster-token.js` is now a thin wrapper over it with the same exports, so
+  the roster's own 175 assertions pass unchanged. `lib/dashboard-token.js` is untouched.
+- **`lib/money-export.js`** (new): `mount(app, {getDb})` registers the route; `buildExport(db,
+  {since, now})` is the pure reader; `payloadHash`, `parseSince`, `ledgerTokenStatus`,
+  `checkLedgerToken`, `secretInUrl`.
+- **`server.js`**: one `moneyExport.mount(app, { getDb })` after the roster routes, before the
+  `/console` ham gate, and the boot log lines. **`render.yaml`** declares `LEDGER_TOKEN`
+  (`sync: false`). **`CLAUDE.md`** gains seam 4 and the env entry.
+- **Tests**: `money-export.test.js` (129) and `money-export-http.test.js` (267), in the `npm test`
+  chain, which is now 1057 assertions (it was 661). The HTTP suite boots the real server eight times:
+  configured with a rotation in progress; `LEDGER_TOKEN` unset; too short; 31 characters; 32 characters;
+  equal to `DASHBOARD_TOKEN`; equal to `ROSTER_TOKEN`; and a configured one over a 20,000-record
+  database (about 9 MB). Three deliberate breakages (the URL guard off, the header logged, the delta
+  `>=`) each failed the suite.
+
+**The request**
+
+```
+GET https://dashboard.futurega.me/api/money-export
+GET https://dashboard.futurega.me/api/money-export?since=<updated_at in ms>
+Authorization: Bearer <LEDGER_TOKEN>
+```
+
+The token is only ever in the header. `since` is whole milliseconds, up to 15 digits. A trailing slash
+is the same route.
+
+**The response**, `200`, `Content-Type: application/json; charset=utf-8`, `Cache-Control: no-store`, no
+`ETag`, a `Content-Length`. Made-up values:
+
+```json
+{
+  "app": "wsop-console",
+  "version": 1,
+  "exportedAt": "2026-10-20T15:00:00.000Z",
+  "mode": "full",
+  "since": null,
+  "cursor": 1760000123456,
+  "count": 3,
+  "deleted": 1,
+  "counts": { "sessions": 2, "adjustments": 0, "expenses": 0, "backers": 0, "settings": 1 },
+  "localCount": 2,
+  "hash": "<64 hex characters>",
+  "records": [
+    { "store": "sessions", "id": "s1", "data": "{\"id\":\"s1\",\"date\":\"2026-10-01\",\"result\":-100}", "updatedAt": 1760000000000, "deleted": false },
+    { "store": "sessions", "id": "s2", "data": null, "updatedAt": 1760000100000, "deleted": true },
+    { "store": "settings", "id": "app", "data": "{\"id\":\"app\",\"startingRoll\":40000,\"updatedAt\":1760000000000}", "updatedAt": 1760000000000, "deleted": false }
+  ],
+  "local": {
+    "wsop-admin-taxrate": { "value": 30, "updatedAt": 1760000050000, "deleted": false },
+    "wsop-staking":       { "value": [], "updatedAt": 1760000123456, "deleted": false }
+  }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `mode`, `since` | `full` and `null` with no `since`; `delta` and the number echoed with one |
+| `cursor` | the largest `updatedAt` in this answer (records and blobs), or `since` when nothing changed, or `0` for an empty full pull. Pass it as the next `since` (with the margin in trap 1) |
+| `count` | `records.length`, tombstones included. `deleted` is how many of those are tombstones. `counts` is `count` split by store |
+| `localCount` | the number of keys in `local` |
+| `hash` | SHA-256, in hex, of the UTF-8 bytes of `JSON.stringify({ records, local })` over exactly the `records` and `local` sent |
+| `records[]` | sync-protocol shape, sorted by `store` then `id`. `data` is the stored JSON **string**, verbatim, except `settings` (below). A tombstone has `data: null`, `deleted: true` |
+| `local` | `{ value, updatedAt, deleted }` per key, in a fixed order. `value` is the parsed JSON. A deleted key has `value: null, deleted: true`; an unparseable one has `value: null, invalid: true`. **A key with no row is omitted**, so a full pull reads omission as "never set" |
+
+Which data: stores `sessions`, `adjustments`, `expenses`, `backers`, `settings`; blobs
+`wsop-staking`, `wsop-balances`, `wsop-notified-sessions`, `wsop-admin-taxrate`. Nothing else leaves:
+not Health, Oura, HealthKit, lifts, reviews or the checklist, and not the other synced keys (home
+lists, intention, nut shop, presets, admin checklist).
+
+**Errors.** Everything about the credential is `404 {"error":"Not found"}` with `Cache-Control:
+no-store`, so the route does not say whether it exists: no header, a wrong or empty bearer, the Basic
+scheme, the token in the query string or the path, `DASHBOARD_TOKEN`, `ROSTER_TOKEN`,
+`SESSION_LOG_TOKEN`, the ham credential, any method but `GET`, and a closed door. An authenticated
+request with a bad `since` (empty, signed, fractional, repeated, non-numeric) is `400
+{"error":"since must be …"}`. A read failure is `500 {"error":"export failed"}`.
+
+**How the Phase 5 fetch should use it**
+- Send the header, a 15 s timeout (§8.2), and treat anything that is not JSON with `app ===
+  'wsop-console'` and `version === 1` as an error. A `404` means the door is closed or the token
+  differs between the two services, not "no data".
+- Verify before staging: `count === records.length`, the per-store `counts` add up, and
+  `crypto.createHash('sha256').update(JSON.stringify({ records: body.records, local: body.local })).digest('hex') === body.hash`.
+  JSON.stringify of the parsed body reproduces the server's bytes (V8 both sides, and no object key is integer-like, so key order survives).
+- Keep the `cursor` of the last pull a run accepted in `money_import_runs`.
+- A tombstone for a record the importer never saw is ignored. A tombstone for one it did is a
+  "Deleted in the dashboard" item (§9.5).
+
+**Where it differs from the spec, and why**
+1. **The auth check.** §8.1 says "a generalised `checkSharedToken(token, 'LEDGER_TOKEN')` (WC:
+   `lib/dashboard-token.js`'s logic)". It is generalised from `lib/roster-token.js` instead, which is
+   the pattern the brief names: SHA-256 of both sides (the length does not leak), a 32-character
+   minimum, a Bearer-only header, closed when unset. `dashboard-token.js` has a different contract
+   (a path token in a 6 to 64 character shape, and the length leak). So the function takes the
+   `Authorization` header and the env name, and lives in `lib/shared-token.js`.
+2. **`settings` is cut to its money field.** The record becomes `{id, startingRoll, updatedAt}`. The
+   dashboard's `Settings` also holds wake time, caffeine cut-off, a Home-module flag
+   and the last backup time; §5.5 says none of it is money and none is imported. Everything else in
+   every store is verbatim, including a backer's token, phone and email.
+3. **`local` holds the four keys §5.6 maps**, not every `SYNCED_LOCAL_KEYS` entry, and an absent key is
+   omitted rather than defaulted (§8.1's example showed `[]`, `{}` and `30`). A default would be
+   indistinguishable from a real empty list.
+4. **More response fields**: `mode`, `since`, `cursor`, `count`, `deleted`, `localCount`, `hash`.
+   `counts` stays the per-store split §8.1 drew and now includes tombstones.
+5. **Two more ways the door is shut.** (a) `LEDGER_TOKEN` equal to `DASHBOARD_TOKEN` (or its
+   `_PREVIOUS`) is closed, because that value is compiled into the iOS builds and reusing it would put
+   every backer's phone and email behind a secret anyone can lift out of an app; the boot line says
+   so. (b) A request whose URL contains the secret (raw or percent-encoded) is refused even beside a
+   valid header, and the log says to rotate it. A `LEDGER_TOKEN` equal to `ROSTER_TOKEN` or
+   `SESSION_LOG_TOKEN` still works but warns at boot, because the two can then no longer be revoked
+   apart.
+6. **Not built, on purpose**: a rate limit (§8.1 asks for none; §11.1's 60 a minute is for the owner
+   API) and paging (a 20,000-record, 9 MB body is built in about a quarter of a second,
+   far past what one owner's ledger holds).
+
+**The log.** One line per successful pull, counts only:
+`[money-export] served 8 records (sessions 3, adjustments 1, expenses 1, backers 2, settings 1; 2 deleted; 4 local) full cursor=2500 hash=<12 hex> 1234B 5ms via=current`
+(`delta since=<ms>` replaces `full` on a delta). Three more lines, each at most once an hour or ten
+minutes and none with a token or a record: a bearer that did not open the door, a token in a URL, and a
+`via=previous` use ("a consumer has not been rotated yet"). The suite asserts that no secret and no
+record content appears anywhere in the log, and that no Authorization header value does.
+
+**Traps for later phases**
+1. **`updatedAt` is the writing device's clock.** The sync is last-write-wins on client stamps, so a
+   phone that edited offline and syncs later delivers a record older than a cursor Phase 5 already
+   holds, and a strict `since = cursor` delta misses it. The delta is therefore strict by design and
+   Phase 5 must re-pull with a margin: **`since = cursor − 14 days`**, then de-duplicate by `(store,
+   id)` and the record's `data`. §9.5 already does that comparison (`source_updated_at`,
+   `source_hash`), so an unchanged row costs nothing and produces no review item.
+2. **Freeze strands unsynced devices.** Phase 11's frozen sync stores nothing (§13 step 4). Before
+   step 4 the owner opens the PWA on every device while online and lets it sync; otherwise a night
+   still sitting in a phone's IndexedDB is rejected and never reaches step 5's delta.
+3. **`LEDGER_TOKEN` outlives the export.** The owner API (§11.1) uses the same secret. When Phase 13
+   removes `/api/money-export`, leave `LEDGER_TOKEN` on both services, unlike `ROSTER_TOKEN` (§2.2
+   point 10).
+4. **The WSL standby serves the same code.** It must not be given `LEDGER_TOKEN` (nor should the local
+   pm2 `ecosystem.config.cjs`); without it the route is closed there, as designed.
+5. **The hash covers `records` and `local` only.** `counts`, `count`, `cursor` and `exportedAt` are
+   checked separately. `version` is `1`; change it if the shape changes.
+
+**Rollout (owner does 1 to 2; the dashboard deploy is the lead's; nothing below is done yet)**
+
+| # | Step | Where | Safe to stop after |
+|---|---|---|---|
+| 1 | Generate the secret (below). Never in a chat, a repo or a ticket | the owner's machine | yes |
+| 2 | Set **`LEDGER_TOKEN`** to it on the **dashboard** Render service (`futuregame-dashboard`) and on the **futurega.me** Render service | Render env, both services, nowhere else | yes; inert on the old code (this app does not read it until Phase 5) |
+| 3 | Merge `feat/money-export` to the dashboard's `main` (push auto-deploys) | dashboard repo | yes; the boot log says `[money-export] GET /api/money-export is open to LEDGER_TOKEN holders`, or says why it is CLOSED |
+| 4 | Check the door | the owner's terminal | yes |
+| 5 | Phase 5 ships the scheduler's fetch, which sends the header | scheduler | |
+
+Env names: **`LEDGER_TOKEN`** (both services, §11.1), and **`LEDGER_TOKEN_PREVIOUS`** on the dashboard
+only during a rotation (set it to the old value, roll the new one onto both services, then unset it;
+`via=previous` in the log means the scheduler has not caught up). The scheduler needs no other new env
+for this; it already has `DASHBOARD_BASE_URL`. Steps 2 and 3 can swap: a route deployed before its env
+is set is simply closed.
+
+Generate the secret (**Mac or PC**, identical; prints 64 hex characters and nothing else):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Check the door with an empty delta (`since` far in the future returns no records, so no ledger lands in
+the terminal). Put the secret in the shell's environment first, for that window only.
+
+**Mac:**
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $LEDGER_TOKEN" "https://dashboard.futurega.me/api/money-export?since=99999999999999"
+```
+
+**PC (PowerShell):**
+```bash
+curl.exe -s -o NUL -w "%{http_code}\n" -H "Authorization: Bearer $env:LEDGER_TOKEN" "https://dashboard.futurega.me/api/money-export?since=99999999999999"
+```
+
+Expect `200`. The same command with the header removed must print `404`.
+
 Phases 3, 4 and 10 can run in parallel with anything after Phase 1. Phases 5 and 7 can run in
 parallel after Phase 2.
 
@@ -1714,7 +1905,7 @@ amount or `.db` copy, ever.
 | 1 | `test:standing` (new: `node --test test/standing.test.js test/classify.test.js`), `test:money-merge` (new: the migration against the real server, then `test:standing`), `test:transactions`, `test:bankroll-reports`, `test:tax-report`, `test:account` | the 14 ported `backers.test.ts` cases; dated stakes; rounding parity sweep (≤ 1 cent over 10,000 pairs); the `formatOf` table row by row (one key per game, Q8), PLO8 before PLO, Big O before PLO8, the mixes first, 2-7 before NLH; the overlap returning both matches with `ask` (Q7); `correction`/`settlement` move balances and never profit (summary `moved` vs `results`); `affects_balance 0` rows absent from the ledger and present in the Expenses list and tax report; `equipment`/`fees` deducted at 100%; `time_known 0` facts have `hour: null`; account deletion clears every new table and leaves `backer_events` |
 | 2 | `test:backers` (new: `test:backer-surface`, `test:backer-rotation` on the real function, `test:backer-parity` over HTTP), `test:backer-page`, `test:gates`, `test:roster` | feed identical from SQL and from `console_records` for seeded backers of all three §7.1 kinds; rename shows the SQL name; rotation moves all five places or none and refuses a token in use; deliveries skipped without `BACKER_DELIVERY`/`RENDER`; parity route `differ: []` and leaks no token; digest recipients from `notify_email` |
 | 3 | `test:staking-settlement` (new) | §10 point 8 |
-| 4 | WC `server/test/money-export.test.js` (new) | 404 without, with a wrong and with a path token; previous token accepted; deleted rows and the four local keys present; counts right; nothing logged but counts |
+| 4 | WC `server/test/money-export.test.js` (129, unit) and `server/test/money-export-http.test.js` (267, boots the real server eight times), both in `npm test` (1057 in all) | 404 without, with a wrong and with a path or query token (even beside a valid header); previous token accepted; unset, under 32 characters and equal to `DASHBOARD_TOKEN` closed; `DASHBOARD_TOKEN`, `ROSTER_TOKEN`, `SESSION_LOG_TOKEN` and the ham credential refused; deleted rows and the four local keys present; a delta with tombstones and a cursor; hash and count verified; a 20,000-record database; nothing logged but counts |
 | 5 | `test:money-import` (new; a stub dashboard on a second scratch port serves fixtures) | every §5 mapping row; sign-follows-amount; transfer legs and `transfer_id`; fund results in the fund; chat ids verbatim; Personal `stable_id` deterministic; rounding correction and remainder; opening formula with prior deposits and pre-opening results; reconciliation equals a `computeBankroll` port on the fixture; scoring classes on crafted pairs (late-night ±1 day, alias rooms, unequal nets); one-to-one pairing; commit 409 with unanswered pairs; `same-keep`/`same-take`; re-fetch imports nothing; delta changed/deleted/conflict; undo removes exactly the run's rows; another admin gets 403; a non-JSON upstream is an error |
 | 6 | `check:controls`, `check:clipping` (new steps), `vite-app` helper tests for the card model | every control on the grid with its label centred at 402 and 1440; no clipped glyph in a truncated 16g cell; the skipped count is 0 and the seed token is fresh |
 | 7 | `test:standing-live` (new) | Notify posts one result (§1.1 Q1: nothing posts on save); each write path in §6.5 revises or voids a posted share and tells nobody (Q2); the overlap `ask` (Q7); live sessions never post; pre-`effective_from` never posts; overlap rule; exclusions; stake correction re-derives with preview; recalc of a dashboard event; drift lists a feed buy-in change and applies on request; posting off writes nothing; the sweep coalesces three edits into one delivery and survives a restart; a void deletes the event and keeps a revision |
