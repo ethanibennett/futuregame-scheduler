@@ -14,6 +14,8 @@ import {
   isSideEvent,
   matchesLocation,
   matchesOnline,
+  matchesGames,
+  matchesBuyin,
   siteRuleIsEmpty,
 } from '../utils/utils.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
@@ -1210,10 +1212,16 @@ export default function TournamentsView({
     }));
   };
   // Persist location selection across sessions
+  const locationMounted = useRef(false);
   useEffect(() => {
     const { userLocation, locationRegion, maxDistance, locationLabel, jurisdiction, jurisdictionManual } = filters;
     const loc = { userLocation, locationRegion, maxDistance, locationLabel, jurisdiction, jurisdictionManual };
     writeLocalLocation(loc);
+    /* Not on mount: what this view starts from is this browser's copy, and a new browser has
+       none, so pushing it then cleared the account's location before the sync below could read
+       it (the next browser to sign in found nothing to follow). A change made here is pushed; the
+       sync below pushes a local value up to an account that has none. */
+    if (!locationMounted.current) { locationMounted.current = true; return; }
     // Follows the user: localStorage is per-browser, so without this a region
     // picked on the desktop does not exist on the phone.
     pushServerLocation(token, loc);
@@ -1270,6 +1278,37 @@ export default function TournamentsView({
     });
     return () => { cancelled = true; };
   }, [token]);
+
+  /* First-run setup run again while this view is mounted (the location menu's "Run setup
+     again"): it has written storage, and this view's state must take the same answers, or the
+     list would not change until a reload and the next filter toggle would write the old state
+     back over them. The persistence effects above then rewrite storage with what it already
+     holds. `location` is present only when setup decided one (null = everywhere). */
+  useEffect(() => {
+    const onApplied = (e) => {
+      const d = (e && e.detail) || {};
+      setFilters(f => {
+        const next = { ...f };
+        if (Object.prototype.hasOwnProperty.call(d, 'location')) {
+          const l = d.location || {};
+          next.userLocation = l.userLocation || null;
+          next.maxDistance = l.maxDistance || '';
+          next.locationRegion = l.locationRegion || null;
+          next.locationLabel = l.locationLabel || null;
+          next.jurisdiction = l.jurisdiction || null;
+          next.jurisdictionManual = !!l.jurisdictionManual;
+        }
+        if (d.filters) {
+          for (const k of ['selectedGames', 'mixedOnly', 'buyinRanges', 'showOnline', 'onlyAvailableOnline']) {
+            if (Object.prototype.hasOwnProperty.call(d.filters, k)) next[k] = d.filters[k];
+          }
+        }
+        return next;
+      });
+    };
+    window.addEventListener('onboarding-applied', onApplied);
+    return () => window.removeEventListener('onboarding-applied', onApplied);
+  }, []);
 
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const filterToggleRef = useRef(null);
@@ -1498,18 +1537,8 @@ export default function TournamentsView({
               !String(t.event_number).includes(q) &&
               !t.game_variant?.toLowerCase().includes(q)) return false;
         }
-        if (filters.buyinRanges && filters.buyinRanges.length > 0) {
-          const b = Number(t.buyin) || 0;
-          const matchesBuyin = filters.buyinRanges.some(r => {
-            if (r === '0-500') return b < 500;
-            if (r === '500-1500') return b >= 500 && b < 1500;
-            if (r === '1500-5000') return b >= 1500 && b < 5000;
-            if (r === '5000-10000') return b >= 5000 && b <= 10000;
-            if (r === '10000+') return b > 10000;
-            return true;
-          });
-          if (!matchesBuyin) return false;
-        }
+        // Shared with first-run setup's live count (utils/onboarding.js), so the two agree.
+        if (!matchesBuyin(t, filters)) return false;
         if (filters.rakeRanges && filters.rakeRanges.length > 0) {
           if (t.rake_pct == null) return false;
           const r = Number(t.rake_pct);
@@ -1523,12 +1552,7 @@ export default function TournamentsView({
           });
           if (!matchesRake) return false;
         }
-        if (filters.selectedGames.length > 0 || filters.mixedOnly) {
-          const isMixed = t.game_variant !== 'NLH' && t.game_variant !== 'PLO';
-          const matchesGame = filters.selectedGames.length > 0 && filters.selectedGames.includes(t.game_variant);
-          const matchesMixed = filters.mixedOnly && isMixed;
-          if (!matchesGame && !matchesMixed) return false;
-        }
+        if (!matchesGames(t, filters)) return false;
         if (filters.hiddenVenues && filters.hiddenVenues.length > 0 && filters.hiddenVenues.includes(t.venue)) return false;
         // One predicate, shared with the panel that builds the option lists, so
         // the two cannot drift and offer an option the list would refuse.

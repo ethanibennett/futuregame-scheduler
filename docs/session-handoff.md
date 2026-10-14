@@ -103,6 +103,44 @@ wsop-console side and verified against both live services.
   "settled" must wait for the registry too (`entries`, `ticks`, `deferred`), not just
   `getAnimations()`: the ship is built a few frames after the press.
 
+## 2026-10-13 — First-run setup v2 ("onboarding questions refinement"), branch `feat/onboarding-refine`
+- **Built, not merged** (worktree `.claude/worktrees/onboarding`). Spec, the before/after question
+  list word for word, storage and endpoints: `docs/onboarding.md`. Three optional questions
+  (where you play live, online too, what you play) instead of four required ones; a live count;
+  "Use my location" / city search / regions with the state worked out; Skip keeps confirmed steps.
+- **Per account now:** `users.onboarding` (migration `users-onboarding-2026-10` backfills every
+  existing account with `{"v":1,"legacy":true}`, so no old user is asked again);
+  `GET/PUT /api/user/onboarding`; `/api/login` returns `onboarding`; `/api/register` returns a
+  session (Create Account signs you in).
+- **Fixed on the way (docs/onboarding.md §10):** B1 the state stored as "PENNSYLVANIA" (repaired on
+  read), B2 a re-run not reaching a mounted Schedule, B3 Everywhere not clearing the account copy,
+  B4 a re-run wiping siteRules, B10 setup per browser, a location GET/PUT race, and B12: a new
+  browser's first Schedule pushed its empty location on mount and wiped the account's copy, so
+  location never followed an account to a second device (the views now push only a change).
+- **Waiting on Ethan:** the wording (docs/onboarding.md §2) and decisions D1–D13 (§9), all built
+  with their defaults. Settings gained "Edit name".
+- **2026-10-14 update:** master (4a19a4b: Bankroll tab, floating +, Sessions, Trend, venue maps) merged
+  in with three conflicts, all additive. **Launch plan, built in (L1):** online events are off until the
+  player says yes, so a first run starts step 2 at "No, live only" and writes it on finish AND on skip;
+  where a state is known the state filter is written on too. The Schedule's global default
+  (`DEFAULT_FILTERS.showOnline`) is NOT changed: that is the launch plan's separate live-only-defaults job.
+- **Trap: a first-run guard needs an account whose `users.onboarding` is NULL.** The migration marks every
+  account in a seeded DB legacy, so `freshie` (and any seed user) shows no setup until it is NULLed with
+  sql.js while the server is stopped. The grid overlay is admin-only (`ham`, `ham5`, `claude`), so overlay
+  screenshots of a FIRST run need `ham5`'s record NULLed too (and a fresh copy per run, since finishing
+  writes it).
+- **Trap: never close setup with Esc or Skip in a guard.** Both SAVE the steps already confirmed with Next
+  (that is D5), so a guard that pressed Esc after picking Texas and a state wrote that location to the
+  account it signed in as (PUT /api/user/location, a v2 skipped record) and poisoned every later run
+  (`onboarding-places` then failed: a manual state beats a region's). The clipping guard now leaves setup
+  open and reloads. `scripts/check-text-clipping.mjs` signs in as `ham5` on whatever server it is pointed
+  at, so this would have written to the owner's account on :3001.
+- Guards: `npm run check:controls -- --only onboarding,real-name-prompt,settings-edit-name,auth-register,
+  location-dropdown` (`onboarding-places` is a prefix match) and `check:clipping`, whose first-run section
+  prints "first-run setup: 8 views measured": anything but 8 means a stage was skipped.
+- Screenshots (grid overlay on, both sizes): the builder's scratch folders `scratchpad/onboarding/shots/`
+  and `scratchpad/onboarding-v2/shots/`.
+
 ## 2026-10-13 — Shipped: home, Overview tables, centring sweep, scroll parity; nightly TestFlight
 - **Live on master:** desktop Schedule scrolls like the phone (79a82c3); the mirrored detail-panel motion
   (`utils/detail-motion.js`); the centring sweep (490 controls + venue strips, 9b142b5; the guard now
@@ -786,6 +824,14 @@ again. If builds break and no push arrives, check `pm2 list` first.
 ---
 
 ## Traps worth knowing
+
+**Setup state is per account (`users.onboarding`); `localStorage.onboarded` is only a cache.**
+Clearing the flag does not re-run setup for an account that has a record: the next launch asks
+`GET /api/user/onboarding`, adopts the record and sets the flag again. To see setup as a new user,
+use a NEW account (registered after the migration ran, so its column is NULL), or "Run setup
+again" in the location menu. Both guards keep it shut with `onboarded = '1'`; a scratch DB seeded
+by registering accounts on a fresh boot leaves them all NULL (the migration ran before they
+existed), which is why `freshie` reaches setup.
 
 **A PR description can be stale relative to its own branch.** #62's body says
 the runner-persistence question is "still open" — but the second commit on that

@@ -46,6 +46,7 @@
     "test:home": "cd vite-app && node --test src/utils/__tests__/home.test.mjs src/utils/__tests__/home-log.test.mjs src/utils/__tests__/home-period.test.mjs src/utils/__tests__/home-upnext.test.mjs src/utils/__tests__/home-noise.test.mjs src/utils/__tests__/reset-results.test.mjs",
     "test:home-log": "node test/home-log.test.js",
     "test:tracking-reset": "node test/tracking-reset.test.js",
+    "test:onboarding": "node test/onboarding.test.js && cd vite-app && node --test src/utils/__tests__/onboarding.test.mjs",
     "test:backer-page": "node test/backer-page.test.js && cd vite-app && node --test src/utils/__tests__/backer-page.test.mjs",
     "test:standing": "node --test test/standing.test.js test/classify.test.js",
     "test:money-merge": "node test/money-merge.test.js && node --test test/standing.test.js test/classify.test.js",

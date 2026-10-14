@@ -52,8 +52,11 @@
 // reached through a component's onNavigate prop) and its Summary / Backers / Series / settings, a
 // buddy chip's swap sheet, the venue map a Schedule strip and an Up Next banner open, the public
 // shared-schedule page (and a card open on it), the backer
-// page (a full history, no sessions, one session; CHECK_BACKER_TOKENS), the first-run
-// wizard step by step, the signed-out login / register / forgot / password-reset screens, and the
+// page (a full history, no sessions, one session; CHECK_BACKER_TOKENS), first-run setup
+// stage by stage (step 1 refused, located and searching; step 2 with Yes; step 3; the places a
+// region, Europe and Everywhere answer and the zero-count line: onboarding-places; a new account's
+// own first run, which starts at "No, live only": real-name-prompt), Settings' "Edit name" dialog,
+// the signed-out login / register / forgot / password-reset screens, and the
 // real-name prompt. A view that does not open is listed as not reached, with why. A dialog's
 // backdrop hides what is under it: a control 90% covered by something that paints is not measured.
 //
@@ -1325,12 +1328,14 @@ function finalize(c) {
   const ctx = await b.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: DPR });
   const t = listOnly ? '' : token();
   // Signed in as the admin, past the first-run wizard (the onboarding view clears the flag).
-  await ctx.addInitScript(({ t, u }) => {
+  await ctx.addInitScript(({ t, u, overlay }) => {
+    // --overlay screenshots show the grid lines without the cyan numeric readout over them.
+    if (overlay) localStorage.setItem('gridReadout', 'off');
     if (sessionStorage.getItem('guard-signed-out')) return;
     localStorage.setItem('token', t); localStorage.setItem('username', u);
     localStorage.setItem('onboardComplete', '1'); localStorage.setItem('hasOnboarded', 'true');
     if (!sessionStorage.getItem('guard-onboarding')) localStorage.setItem('onboarded', '1');
-  }, { t, u: USER });
+  }, { t, u: USER, overlay });
   // A WebKit page can crash under a long run (a 3x capture of a desktop viewport, view after view);
   // the view loop opens a new one and tries that view again.
   let p = await ctx.newPage();
@@ -2319,24 +2324,100 @@ function finalize(c) {
   for (const [name, sel] of [['summary', 'button:has-text("Summary")'], ['backers', 'button:has-text("Backers")'], ['series', 'button:has-text("+ Series")'], ['settings', 'button:has-text("⚙")']]) {
     step('staking-' + name, async () => { await goView('staking'); await tap('.tab-panel[data-tab="staking"] ' + sel, 1200); }, 1);
   }
-  // The first-run wizard, step by step (re-opened the way the location menu does).
+  // First-run setup, stage by stage (re-opened the way the location menu's "Run setup again"
+  // does; docs/onboarding.md): step 1 as it opens, with "Use my location" refused (no permission:
+  // the error line), located (permission granted at a fixed point: the place named, the distance
+  // chips), and with city results (Nominatim, so only where the scratch server reaches the
+  // internet); step 2, then with Yes (the state select and, once a state is known, the sites
+  // checkbox); step 3 with a game and a buy-in chip on. Nothing is finished or skipped, so nothing
+  // is written. Every option carries .onboarding-option.
   step('onboarding', async () => {
+    const open = async () => {
+      await p.evaluate(() => window.dispatchEvent(new Event('reopen-onboarding')));
+      await p.waitForTimeout(1000);
+      if (!(await exists('.ob-progress'))) throw new Error('setup did not open');
+    };
+    try {
+      await open();
+      await also('step 1');
+      await tap('.ob-tile', 1500);
+      if (!(await exists('.ob-error'))) throw new Error('no error line after a refused "Use my location"');
+      await also('step 1 denied');
+      // WebKit keeps a page's refusal for the life of the page: grant, then a fresh page.
+      await ctx.grantPermissions(['geolocation'], { origin: base });
+      await ctx.setGeolocation({ latitude: 39.9526, longitude: -75.1652 });
+      await p.goto(home, { waitUntil: 'domcontentloaded' });
+      await p.waitForTimeout(3500);
+      await open();
+      // Already allowed: setup locates by itself; tap only if it has not.
+      for (let i = 0; i < 10 && !(await exists('.ob-chip')); i++) await p.waitForTimeout(300);
+      if (!(await exists('.ob-chip'))) await tap('.ob-tile', 3500);
+      if (!(await exists('.ob-chip'))) throw new Error('no distance chips once located');
+      await also('step 1 located');
+      await vis('.ob-search').first().fill('Austin');
+      await p.waitForTimeout(1500);
+      for (let i = 0; i < 10 && !(await exists('.ob-results .ob-row')); i++) await p.waitForTimeout(300);
+      if (await exists('.ob-results .ob-row')) await also('step 1 search');
+      else notes.push({ view: 'onboarding', note: 'no city results (the scratch server could not reach Nominatim): step 1 search not measured' });
+      await tap('.ob-foot button:has-text("Next")', 800);
+      await also('step 2');
+      await tap('.ob-tile:has-text("Yes")', 600);
+      await also('step 2 online');
+      await tap('.ob-foot button:has-text("Next")', 800);
+      await tap('.ob-chip:has-text("NLH")', 300);
+      await tap('.ob-chip:has-text("$500–1.5K")', 600);
+      await also('step 3');
+    } finally { await ctx.clearPermissions(); }
+  }, 0, { noSkip: true });
+  // First-run setup's other answers (re-opened, nothing finished): a region that implies a state
+  // (Las Vegas -> Nevada, with the sites checkbox, ticked), Europe (no state, the non-US line),
+  // Everywhere (the state select at "Not set"), and the zero-count line, where a combination of
+  // chips on Texas matches nothing in the scratch data. docs/onboarding.md.
+  step('onboarding-places', async () => {
     await p.evaluate(() => window.dispatchEvent(new Event('reopen-onboarding')));
     await p.waitForTimeout(1000);
-    if (!(await exists('button:has-text("Skip")'))) throw new Error('the wizard did not open');
-    await also('step 1');
-    for (let i = 2; i <= 6; i++) {
-      // pick something on the step so Next is live
-      const opt = vis('.onboarding-option, [role="radio"], [role="checkbox"], button:has-text("Las Vegas")').first();
-      if (await opt.count()) await opt.click({ timeout: 2000 }).catch(() => {});
-      const next = vis('button:has-text("Next"), button:has-text("Done"), button:has-text("Finish"), button:has-text("Get started")').first();
-      if (!(await next.count())) break;
-      await next.click({ timeout: 3000 }).catch(() => {});
-      await p.waitForTimeout(800);
-      if (!(await exists('button:has-text("Skip")'))) break;
-      await also('step ' + i);
+    if (!(await exists('.ob-progress'))) throw new Error('setup did not open');
+    const next = () => tap('.ob-foot button:has-text("Next")', 800);
+    const back = () => tap('.ob-foot button:has-text("Back")', 600);
+    await tap('.ob-cell:has-text("Las Vegas")', 500);
+    await also('region picked');
+    await next();
+    if (!(await exists('.ob-tile[aria-checked="true"]:has-text("Yes")'))) await tap('.ob-tile:has-text("Yes")', 500);
+    if ((await vis('#ob-state').first().inputValue()) !== 'NV') throw new Error('Las Vegas did not answer the state (Nevada); savedLocation is ' + await p.evaluate(() => localStorage.getItem('savedLocation')));
+    await tap('.ob-check', 400);
+    await also('state from the region');
+    await back();
+    await tap('.ob-cell:has-text("Europe")', 500);
+    await next();
+    if (!(await exists('.ob-help:has-text("US states only")'))) throw new Error('no non-US line for Europe');
+    await also('Europe');
+    await back();
+    await tap('.ob-cell:has-text("Everywhere")', 500);
+    await next();
+    if ((await vis('#ob-state').first().inputValue()) !== '') throw new Error('Everywhere left a state set');
+    await also('no state');
+    // The longest state name in the checkbox (a label that must not clip).
+    await vis('#ob-state').first().selectOption('DC');
+    await p.waitForTimeout(400);
+    await also('longest state name');
+    await back();
+    await tap('.ob-cell:has-text("Texas")', 500);
+    await next(); await next();
+    const zero = async () => (await vis('.ob-status').first().innerText()).startsWith('Nothing upcoming');
+    for (const chip of ['$5K+', 'Mixed', 'PLO']) {
+      if (await zero()) break;
+      await tap('.ob-chip:has-text("' + chip + '")', 500);
     }
+    if (await zero()) await also('zero count');
+    else notes.push({ view: 'onboarding-places', note: 'no chip combination on Texas matched nothing in this data: the zero-count line was not measured' });
   }, 0, { noSkip: true });
+  // Settings' "Edit name": the name dialog opened on the current name, titled "Your name".
+  step('settings-edit-name', async () => {
+    await menu('Settings', 'Settings');
+    await tap('button:has-text("Edit name")', 900);
+    if (!(await exists('.ob-name'))) throw new Error('the name dialog did not open');
+    if (!(await exists('.ob-name .ob-title:has-text("Your name")'))) throw new Error('the dialog is not titled "Your name"');
+  }, 0);
   // Signed out: the login, register and forgot-password screens; with CHECK_FRESH_USER, a
   // password login to an account with no real name (the real-name prompt), then its wizard.
   const signedOut = async () => {
@@ -2373,10 +2454,35 @@ function finalize(c) {
     if (!(await p.getByText(/what's your name|your real name/i).filter({ visible: true }).count())
       && !(await p.locator('input[placeholder="Your real name"]').filter({ visible: true }).count())) throw new Error('the real-name prompt did not show');
     await also('prompt');
-    // The first-run wizard follows it for a new account.
+    // First-run setup follows it for a new account (users.onboarding is NULL): it must open.
     await p.getByRole('button', { name: /later|skip|not now/i }).first().click({ timeout: 2000 }).catch(() => {});
-    await p.waitForTimeout(1200);
+    await p.waitForTimeout(1500);
+    // Unless the account has a setup record (an account older than users.onboarding is backfilled
+    // legacy and is never asked): then setup is not expected, and that is noted.
+    const rec = await p.evaluate(async () => {
+      try {
+        const t = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const r = await fetch('/api/user/onboarding', { headers: { Authorization: 'Bearer ' + t } });
+        return r.ok ? (await r.json()).onboarding : undefined;
+      } catch { return undefined; }
+    });
+    if (!(await exists('.ob-progress'))) {
+      if (rec === null) throw new Error('a new account did not reach first-run setup after "Later"');
+      notes.push({ view: 'real-name-prompt', note: `CHECK_FRESH_USER has a setup record (${JSON.stringify(rec)}): setup not expected after "Later"` });
+    }
     await also('after');
+    // The first run's own defaults (nothing is finished): step 2 starts at "No, live only" (online
+    // events are off until the player says yes), then Yes brings the state question.
+    if (await exists('.ob-progress')) {
+      await tap('.ob-foot button:has-text("Next")', 800);
+      const on = await p.evaluate(() => [...document.querySelectorAll('.ob-tile[aria-checked="true"] .ob-tile-title')].map(e => e.textContent).join('|'));
+      if (on !== 'No, live only') throw new Error("a first run's step 2 should start at 'No, live only'; it has: " + (on || 'nothing selected'));
+      await also('first run step 2');
+      await tap('.ob-tile:has-text("Yes")', 600);
+      await also('first run step 2 online');
+      await tap('.ob-foot button:has-text("Next")', 800);
+      await also('first run step 3');
+    }
   }, 0, { signedOut: true, noSkip: true });
 
   if (listOnly) { console.log(views.map(v => v.view).join('\n')); await b.close(); return; }

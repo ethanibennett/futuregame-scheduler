@@ -3286,6 +3286,17 @@ async function initDatabase() {
       }
     },
     {
+      // First-run setup is the account's, not the browser's (docs/onboarding.md): users.onboarding
+      // is NULL until the account finishes or skips setup, then {"v":2,"at","skipped","filters"}.
+      // Every account that exists when this runs is marked legacy, so no existing user is ever
+      // asked again. Runs once (_applied_migrations), so accounts registered afterwards stay NULL.
+      name: 'users-onboarding-2026-10',
+      fn: () => {
+        try { db.run('ALTER TABLE users ADD COLUMN onboarding TEXT'); } catch (e) { /* already there */ }
+        db.run(`UPDATE users SET onboarding = '{"v":1,"legacy":true}' WHERE onboarding IS NULL`);
+      }
+    },
+    {
       // The bankroll merge (docs/bankroll-merge.md §4): standing agreements, session extras, the
       // import's staging tables, and the additive columns the merge reads. Additive and idempotent,
       // all-or-nothing (one savepoint). See lib/money-merge.js.
@@ -3804,6 +3815,35 @@ app.get('/api/events', (req, res) => {
 
 // API Routes
 
+// users.onboarding (first-run setup, docs/onboarding.md): the stored object, or null for NULL and
+// for anything that does not parse to one.
+function parseOnboarding(raw) {
+  if (raw == null || raw === '') return null;
+  try {
+    const v = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return v && typeof v === 'object' && !Array.isArray(v) ? v : null;
+  } catch (_) { return null; }
+}
+const ONBOARDING_BUYIN_RANGES = new Set(['0-500', '500-1500', '1500-5000', '5000-10000', '10000+']);
+// Setup's five filter keys, each checked for its type; anything else is dropped. Null for a body
+// that is not a filters object.
+function sanitizeOnboardingFilters(f) {
+  if (f == null) return {};
+  if (typeof f !== 'object' || Array.isArray(f)) return null;
+  const out = {};
+  if (Array.isArray(f.selectedGames)) {
+    out.selectedGames = f.selectedGames.filter(g => typeof g === 'string' && g.length > 0 && g.length <= 40).slice(0, 30);
+  } else if (f.selectedGames !== undefined) return null;
+  for (const k of ['mixedOnly', 'showOnline', 'onlyAvailableOnline']) {
+    if (typeof f[k] === 'boolean') out[k] = f[k];
+    else if (f[k] !== undefined) return null;
+  }
+  if (Array.isArray(f.buyinRanges)) {
+    out.buyinRanges = [...new Set(f.buyinRanges.filter(r => ONBOARDING_BUYIN_RANGES.has(r)))];
+  } else if (f.buyinRanges !== undefined) return null;
+  return out;
+}
+
 // User registration
 app.post('/api/register', registerLimit, async (req, res) => {
   try {
@@ -3861,13 +3901,24 @@ app.post('/api/register', registerLimit, async (req, res) => {
       'INSERT INTO users (username, email, password, real_name) VALUES (?, ?, ?, ?)',
       [username, email, hashedPassword, realName.trim()]
     );
+    const idRow = db.exec('SELECT id FROM users WHERE username = ?', [username]);
+    const userId = idRow.length && idRow[0].values.length ? idRow[0].values[0][0] : null;
 
     await saveDatabase();
 
     // Notify admin of new registration
     sendPushToAdmin('New User', `${username} (${realName.trim()}) just registered`).catch(() => {});
 
-    res.status(201).json({ message: 'User created successfully' });
+    // Create Account signs you in: the same session /api/login issues (an older client reads only
+    // the 201 and its message, and asks the user to sign in as before). onboarding is null: a new
+    // account has not been through first-run setup.
+    if (userId == null) return res.status(201).json({ message: 'User created successfully' });
+    const token = jwt.sign({ id: userId, username }, JWT_SECRET, { expiresIn: '90d' });
+    setSessionCookie(res, token);
+    res.status(201).json({
+      message: 'User created successfully',
+      token, username, userId, avatar: null, realName: realName.trim(), handReplayerAccess: false, onboarding: null,
+    });
   } catch (error) {
     if (error.message && error.message.includes('UNIQUE')) {
       return res.status(409).json({ error: 'Username or email already taken' });
@@ -3916,7 +3967,7 @@ app.post('/api/login', loginLimit, async (req, res) => {
     // Bearer auth for the main app is unchanged.
     setSessionCookie(res, token);
 
-    res.json({ token, username: user.username, userId: user.id, avatar: user.avatar || null, realName: user.real_name || null, handReplayerAccess: !!user.hand_replayer_access });
+    res.json({ token, username: user.username, userId: user.id, avatar: user.avatar || null, realName: user.real_name || null, handReplayerAccess: !!user.hand_replayer_access, onboarding: parseOnboarding(user.onboarding) });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed. Please try again.' });
@@ -4829,6 +4880,41 @@ app.put('/api/user/location', authenticateToken, requireRegistered, async (req, 
     db.run('UPDATE users SET saved_location = ? WHERE id = ?', [blob, req.user.id]);
     await saveDatabase();
     res.json({ message: 'Location saved' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
+/* First-run setup, per account (docs/onboarding.md). GET answers whether this account has finished
+   or skipped it — null means never — and what it answered; a guest has no account, so null. PUT
+   records a finish or a skip with setup's five filter keys (location is not duplicated here:
+   saved_location already follows the account). */
+app.get('/api/user/onboarding', authenticateToken, (req, res) => {
+  try {
+    if (!req.user || !req.user.id) return res.json({ onboarding: null });
+    const r = db.exec('SELECT onboarding FROM users WHERE id = ?', [req.user.id]);
+    const raw = r && r[0] && r[0].values[0] ? r[0].values[0][0] : null;
+    res.json({ onboarding: parseOnboarding(raw) });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
+app.put('/api/user/onboarding', authenticateToken, requireRegistered, async (req, res) => {
+  try {
+    const body = req.body || {};
+    // Setup's answers are a few hundred bytes; anything far past that is not a setup answer.
+    if (body.filters != null && Buffer.byteLength(JSON.stringify(body.filters)) > 16 * 1024) return res.status(400).json({ error: 'filters too large' });
+    const filters = sanitizeOnboardingFilters(body.filters);
+    if (!filters) return res.status(400).json({ error: 'filters must be an object of setup answers' });
+    if (Buffer.byteLength(JSON.stringify(filters)) > 2048) return res.status(400).json({ error: 'filters too large' });
+    const onboarding = { v: 2, at: Date.now(), skipped: body.skipped === true, filters };
+    const blob = JSON.stringify(onboarding);
+    db.run('UPDATE users SET onboarding = ? WHERE id = ?', [blob, req.user.id]);
+    await saveDatabase();
+    res.json({ onboarding });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong' });

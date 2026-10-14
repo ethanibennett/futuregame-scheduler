@@ -42,7 +42,7 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
           </div>
           <div className="form-field">
             <label>Password</label>
-            <input type="password" name="password" placeholder={isRegister ? 'Min. 6 characters' : 'Your password'} required minLength="6" autoComplete={isRegister ? 'new-password' : 'current-password'} />
+            <input type="password" name="password" placeholder={isRegister ? 'At least 8 characters' : 'Your password'} required minLength={isRegister ? 8 : 6} autoComplete={isRegister ? 'new-password' : 'current-password'} />
           </div>
           {!isRegister && (
             <label className="auth-keep" style={{display:'flex',alignItems:'center',gap:'var(--space-sm)',fontSize:'calc(var(--gu) * 1.178)',color:'var(--text-muted)',cursor:'pointer'}}>
