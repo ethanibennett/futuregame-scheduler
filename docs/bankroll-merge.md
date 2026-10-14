@@ -1,9 +1,9 @@
 # Bankroll merge: futurega.me becomes the one money store
 
 Status: **design** (2026-10-14); **Phase 1 built** on `feat/money-merge` (merged), **Phase 2 built**
-on `feat/money-merge-2` (merged), **Phase 3 built** on `feat/money-merge-3`, not yet merged, **Phase 4
-built** in the dashboard repo on `feat/money-export`, not yet merged (see "Phase 1: as built" to
-"Phase 4: as built" after the §15 table).
+on `feat/money-merge-2` (merged), **Phase 3 built** on `feat/money-merge-3`, **Phase 4 built** in the
+dashboard repo on `feat/money-export`, **Phase 5 built** on `feat/money-merge-5`, not yet merged (see
+"Phase 1: as built" to "Phase 5: as built" after the §15 table).
 A buildable spec for moving the dashboard's money
 (dashboard.futurega.me, repo `wsop-console`) into this app (futurega.me, repo
 `futuregame-scheduler`), cut into phases small enough for one builder each.
@@ -921,6 +921,10 @@ never in the path, so it is not written to access logs.
 
 ### 8.2 Scheduler routes (Phase 5)
 
+> **Built.** The routes as built (a `GET /` list beside these, the commit's `planHash`, the 409s) and
+> the places the build differs from the text below are in "Phase 5: as built". Where the two
+> disagree, that section wins.
+
 All live under `/api/bankrolls/import/dashboard`. The admin gate applies, and `req.user.id` must
 equal `HAM_OWNER_ID`, so no other admin can pull the owner's data into their account.
 
@@ -1576,7 +1580,7 @@ judgment about money, posting or layout. The model policy (handoff, 2026-10-14) 
 | **2** | sched | **Built** (see "Phase 2: as built" below), behind a switch that ships off (`BACKER_PAGE_SOURCE`). Backer surface on SQL with `console_records` fallback (feed, digest, recipients); name precedence; rotation covers `public_token` + revisions, real-function test; `BACKER_DELIVERY` gate; delivery sweep (dormant: posting off); `backer_tokens` count log; parity route | 1 | Sonnet |
 | **3** | sched | **Built** (see "Phase 3: as built" below). Settlement fixes (§10) + StakingView fields. Owner Q11: the backer pays up front, so `prepaid` is the normal case; the formulas for all nine types, swap and crossbook included, in §10 item 5; the open choices are switches (§17.1) | 1 | **Opus** |
 | **4** | WC | **Built** (see "Phase 4: as built" below; dashboard branch `feat/money-export`, not merged). `GET /api/money-export` + `lib/shared-token.js` (`checkSharedToken`, the roster's check generalised) + tests; `LEDGER_TOKEN` declared in `render.yaml`, set by the owner | — | Sonnet |
-| **5** | sched | Import engine: fetch, stage, plan (§5 mapping, §9.1 scoring, §7.1 union, §5.8 opening and reconciliation with a `computeBankroll` port), decisions, commit, undo, delta; owner-only routes | 1, 2 | **Opus** |
+| **5** | sched | **Built** (see "Phase 5: as built" below). Import engine: fetch, stage, plan (§5 mapping, §9.1 scoring, §7.1 union, §5.8 opening and reconciliation with a `computeBankroll` port), decisions, commit, undo, delta; owner-only routes | 1, 2 | **Opus** |
 | **6** | sched | Import review UI (§9.3) + seed script + guard steps | 5 | **Opus** (grid seating and guard work has needed judgment on every bankroll tab) |
 | **7** | sched | Standing shares live, to §1.1: the **Notify action** creates a share (Q1: not on save); `syncSharesFor` in every write path only **follows or voids** a posted share (§6.5), silently (Q2); the overlap `ask` (Q7) and where its answer is stored; exclusions, revisions, recalc, drift, preview, cutover state and `PUT /api/bankrolls/money/cutover`, roster sync standing down | 1, 2 | **Opus** |
 | **8** | sched | Standing UI in the Staking tab: backers with stakes editor (from today / correct with preview; the game list is `classify.js` `GAMES`, Q8), opening, delivery, copy and rotate link, recorded shares with exclude / recalc / remove; the "Posts to backers" preview line on the result and cash forms and the Notify sheet (with the Q7 ask); guard steps | 7 | Sonnet |
@@ -2087,6 +2091,194 @@ curl.exe -s -o NUL -w "%{http_code}\n" -H "Authorization: Bearer $env:LEDGER_TOK
 
 Expect `200`. The same command with the header removed must print `404`.
 
+### Phase 5: as built (2026-10-14, branch `feat/money-merge-5`)
+
+Built to §5, §7.1, §8.2, §9, the owner's answers in §1.1 and the lead's brief: the import ENGINE and
+its routes, with no UI (Phase 6 builds the review on these routes). Not merged, not deployed. On this
+side the pull is OFF until `LEDGER_TOKEN` is set on the futurega.me Render service.
+
+**What exists** (all in `lib/money-import/`)
+- **`pull.js`**: the server-to-server pull. `ledgerTokenStatus` (off when `LEDGER_TOKEN` is unset,
+  shorter than 32 characters, holds whitespace, or equals `DASHBOARD_TOKEN`), the boot line,
+  `pullExport` (`Authorization: Bearer`, never a URL; 15 s timeout, `MONEY_IMPORT_FETCH_TIMEOUT_MS` for
+  tests; redirects refused; a 404, a non-2xx or a non-JSON answer is an error, never an empty success),
+  `verifyExport` (app and version, `count === records.length`, per-store `counts`, tombstones,
+  `localCount`, and the sha256 `hash` recomputed over exactly what was parsed), `deltaSince` (cursor −
+  14 days).
+- **`map.js`**: the §5 mapping as pure functions: `mapSession` (cash at 12:00 New York, `time_known 0`;
+  tournament as a Personal event with the deterministic `stable_id`), `mapAdjustment` (sign follows the
+  amount, `correction`/`settlement` kinds, transfer legs), `mapExpense` (cents, `affects_balance 0`),
+  `mapBacker` (token verbatim, masked for display), `mapDeal`, `mapLocation`. Each reports the record's
+  exact effect on the dashboard's roll and fund and the rounded effect of what it writes here.
+- **`dashboard-bankroll.js`**: `computeBankroll` (WC:`bankroll.ts`), record by record, so a delta can be
+  reconciled without the whole history.
+- **`score.js`** + **`room-aliases.js`**: §9.1 (roomKey, the four pair kinds, classes, one-to-one). The
+  alias list is a server copy of `VENUE_MAP` (each key and long name to its strip abbreviation); the
+  test fails if it drifts from the client.
+- **`plan.js`**: `buildPlan`, the review list (below).
+- **`reconcile.js`**: §5.8, the dashboard's roll and fund against this app's, explained line by line.
+- **`journal.js`**: every row a commit inserts, changes or removes, with a hash of each row as left.
+- **`apply.js`**: the commit's writes, and `simulate` (the same writes in a savepoint, rolled back).
+- **`index.js`**: the engine (`stage`, `planFor`, `commit`, `undo`, `discard`, `purgePayloads`) and the
+  migration **`money-import-2026-10`**.
+- **`routes.js`**: the HTTP surface, mounted from `server.js` beside the CSV importer.
+- **`server.js`**: the require, the migration (after `staking-settlement-2026-10`), the mount, the boot
+  line, and a 04:40 ET cron that clears payloads.
+- **`lib/bankroll-import.js`**: `refExists` learns `cash_sessions`, `bankroll_transactions`, `backers`,
+  `standing_agreements`, `backer_agreements` and `money_locations` (§5.1), and is exported.
+- **Tests**: `npm run test:money-import` (`test/money-import.test.js`, 57 cases; a stub dashboard,
+  `test/helpers/stub-dashboard.js`, and made-up fixtures, `test/helpers/money-import-fixtures.js`).
+  `test/helpers/scratch-server.js` also scrubs `LEDGER_TOKEN`, `LEDGER_TOKEN_PREVIOUS` and
+  `MONEY_IMPORT_FETCH_TIMEOUT_MS`. `test/money-merge.test.js` knows the Phase 5 columns.
+
+**The routes** (under `/api/bankrolls/import/dashboard`: the `/api/bankrolls` admin gate, then the
+**owner only**, `req.user.id === HAM_OWNER_ID`, else 403; every answer `Cache-Control: no-store`)
+
+| Method | Path | Body | Answer |
+|---|---|---|---|
+| GET | `/` | | `{ pull: { on, why }, runs: [{ id, status, mode, since, cursor, fetchedAt, committedAt, undoneAt, payloadKept, planHash, counts, undecided, undoCount }] }` |
+| POST | `/fetch` | `{ mode?: 'auto'\|'full'\|'delta' }` (auto: a delta from the last committed run, else full) | `{ runId, mode, since, discarded: [runId], plan }`; 503 pull off; 502 refused (closed door, not JSON, failed checks); 504 timeout; 409 a pull already running |
+| GET | `/:runId` | | `{ run, plan, decisions, summary }`; a staged run's plan is rebuilt against the database first |
+| PUT | `/:runId/decisions` | `{ pairs?: { pairId: 'same-keep'\|'same-take'\|'different'\|null }, fillLikely?: 'same-keep'\|'same-take', backers?: { fp: 'new'\|backerId }, slate?: { name: option }, opening?: { amount?, date? }\|null, target?: 'main'\|id, changes?: { itemId: 'apply'\|'keep' }, deletions?: { itemId: 'remove'\|'keep'\|'end' } }` | `{ runId, plan, ignored: [ids] }`; 400 on a value that is not one of the item's options |
+| POST | `/:runId/commit` | `{ planHash }` (the plan the owner reviewed) | `{ ok, runId, summary }`; 400 no planHash; 409 `{ stale }` (not the stored plan, the payload no longer matches its source hash, or the database moved since the plan was read), 409 `{ undecided }`, 409 `{ blocking }` |
+| POST | `/:runId/undo` | `{ expect }` (the typed count) | `{ ok, runId, removed, restored, reinserted, missing }`; 409 `{ expect }` wrong count, 409 `{ later }` a later import is still committed, 409 `{ edited: [{ table, id, why }] }` |
+| DELETE | `/:runId` | | `{ ok, runId }` (a staged run; its payload is cleared) |
+
+**The plan** (JSON, no token, phone or email: masked tokens and booleans) carries `sourceHash` and
+`planHash`; `counts` per kind (`new`, `toReview`, `unchanged`, `changed`, `deleted`, `error`,
+`skipped`); `rows` (every record to write or skip, with the exact rows it becomes, `exact` and
+`rounded`); `pairs` (`id`, `class`, `score`, `parts`, both sides, `same` per field, `netsDiffer`,
+`canTake`, `decision`); `inside`; `backers` (§7.1 kind 1, 2 and 3, `matches`, `default`, `choice`);
+`slate` (deals with their settlement link, slate backers with options, `unlinkedSettlements`);
+`balances`; `settings`; `changes` and `deletions` (a delta); `divergences`; `consistency`; `flags`
+(signs, `other` expenses and their total, unknown online rooms, per-row notes); `errors`; `blocking`;
+`opening` (the figure, its date and its parts); `fund`; `rounding`; `writes` (what the commit would
+create); `reconciliation` (`dashboard`, `before`, `after`, `lines`, `lists`, `unexplained`,
+`fundWithinRemainder`, `provisional` while pairs are unanswered); `undecided`.
+
+**Where it differs from the spec, and why**
+1. **A migration of its own** (`money-import-2026-10`). `money_import_runs` gains `source_hash`, `cursor`,
+   `mode`, `since`, `plan_hash`, `journal`, `state` and `undone_at`; `backer_agreements` gains `notes`
+   (§5.6 asks for "Slate buy-in $X (imported)" there, and the table had no notes column).
+   `money-merge-2026-10` has already run on production, so these could not go in it.
+2. **The commit needs the `planHash` the owner reviewed, and rebuilds the plan before writing.** It
+   refuses (409 `stale`) when the stored plan is not the one sent, when the staged payload no longer
+   hashes to its `source_hash`, or when the rebuilt plan differs (a result logged, a key written, an
+   answer changed since). That is "refuses to run against a plan older than its source hash", read both
+   ways. A rebuild never overwrites the stored plan on refusal, so a blind retry cannot pass unread.
+3. **The reconciliation's "after" is a real commit, rolled back.** The plan runs the commit inside a
+   savepoint and rolls it back, so the figure shown is the figure a commit produces. Its explanation is
+   an identity: every ledger entry and every dashboard record is in exactly one line (`opening`,
+   `onlyHere`, `pairs`, `editedHere`, `rounding`, `skipped`, `deletedThere`), and `unexplained` is what
+   is left (0, asserted). While pairs are unanswered the "after" assumes them the same night, kept here.
+4. **The slate is written before the adjustments** (§9.4 lists it after), so a settled deal's
+   `backer_settlements` row exists when its `settlement` adjustment is written and that row carries
+   `settlement_ref 'bs:<id>'` from the start. A settled deal with no matching adjustment gets no
+   settlement row (listed `unlinked`); an adjustment with no deal stays unlinked (listed). The imported
+   settlement row's snapshot is `{ imported: true, … }` with figures from the deal.
+5. **Undo replays the journal**, not the keys alone. It removes what the run created, puts back what it
+   changed (the same-take figures, the links on `backer_events`, the money settings, a delta's changes)
+   and re-inserts what it removed (a delta's deletions, stale keys), including a hidden rowid, so every
+   table is byte-identical afterwards. It does not reset `sqlite_sequence`: ids are never reused. It
+   refuses, and lists the rows, when a row it wrote now hashes differently, a row it removed is back, or
+   something it did not write points at a row it would remove (an expense tagged to an imported event, a
+   stack update, a posted share). A row the owner has deleted since is not a refusal. Runs undo newest
+   first. §8.2 says "leaves decision='same' targets alone": they are never deleted, but a same-take's
+   figures are put back.
+6. **The rounding correction includes the opening's cents.** The opening deposit is whole dollars, so
+   (computed − written) joins the roll's residue; a clean account then lands within $0.50 of the
+   dashboard's roll (asserted). An opening the owner typed is not counted. A later run's correction is
+   `dash:rounding:<main|fund>:r<runId>`, because `dash:rounding:<main|fund>` is the first run's.
+7. **Fingerprints beyond §5.1**, so a delta can find what an earlier run made:
+   `dash:wsop-staking-series:<hash of the event>` (series), `dash:wsop-staking-backer:<hash of the name>`
+   (a slate backer; `same` when it is a roster or staking backer), `dash:backer-token:<hash>` and
+   `dash:standing-token:<hash>` (a §7.1 kind-3 backer, which has no dashboard id), and
+   `dash:wsop-admin-taxrate`. Tokens never appear in a fingerprint; a kind-3 backer's is an HMAC of the
+   link under the server's own secret, because a plain sha1 of an 8-character token can be searched
+   back to the link by anyone holding a plan.
+8. **The delta's defaults.** "Apply" is offered only for records the import created (decision
+   `imported`); a record matched as `same` keeps the row here (it is the owner's). A change on both sides
+   is a conflict and defaults to keep. A backer deleted in the dashboard defaults to **end** its
+   agreement (§17 Q9), not remove. A token that changed in the dashboard is not applied: rotations
+   belong to the roster sync. A kept change or deletion updates the key's source hash, so the next pull
+   does not ask again. A blob present in a pull is the whole list (a deal or a balance entry missing from
+   it is deleted there); a blob absent from a delta is unchanged.
+9. **The result check applies to tournaments too.** §5.2 states `|result − (cashOut − buyInTotal)| >
+   0.01` for cash; a tournament's net here is `cash − buyin × entries`, the same identity, so a
+   disagreeing MTT is skipped and listed as well.
+10. **Pairing candidates here are the rows no dashboard key names.** A row imported by the CSV importer
+    is still a candidate (it may be the same night from another tracker). Rows in a currency other
+    than USD are not scored.
+11. **An existing staking backer chosen as "same"** keeps its address and number; `notify_email` /
+    `notify_sms` is set only when what is on file is the dashboard's (or nothing was, and the
+    dashboard's is written). Nobody is contacted at an address they did not give for this.
+12. **Expenses are filed under the import target**, like every playing-roll row (§5.8); §5.4 says Main,
+    which is the default target. They are `affects_balance 0`, so no balance moves either way.
+13. **One staged run at a time.** A new fetch discards older staged runs. The payload is cleared on
+    discard, on undo, and 7 days after a commit (the nightly purge); the plan and the journal stay.
+14. **`ONLINE_ROOM` is not extended**: the plan lists `flags.onlineRoomsUnknown` (online sessions whose
+    room the pattern does not know), since no real venue name was seen to add. Their channel is stored
+    explicitly in `session_extras`, so nothing is misclassified meanwhile.
+15. **Extras on the decisions body:** `fillLikely` is the "Same night for all N likely pairs" pill (it
+    fills only unanswered Likely pairs), and `null` clears an answer. `GET /` lists the runs.
+16. **The accepted cursor never moves back.** A run keeps `max(the export's cursor, the last committed
+    run's)`: an empty delta echoes the `since` it was sent (the last cursor less 14 days), and taken as
+    it came every later delta would reach another 14 days into the past.
+
+**Traps for later phases**
+- **Phase 6: the plan hash moves with exchange rates** when an in-roll bankroll is not in USD. A commit
+  then answers 409 `stale` and the UI re-reads the plan (`GET /:runId`); that is the designed flow for
+  any change, so the UI must handle `stale` by reloading, never by retrying the same hash.
+- **Phase 6: `GET /:runId` rebuilds and stores a staged plan** (its hash can change). The commit button
+  must send the `planHash` of the plan on screen.
+- **Undo is blocked by an edited row** and lists it. Putting the row back is not always possible (a
+  route stamps `updated_at`); deleting it is, and then the undo goes through. Phase 6 should say so.
+- **`money_import_runs.journal` holds before-images** of what a commit changed or removed (for a
+  delta's backer change, the old phone and email). No route returns it; it lives in the same database
+  as the backers table and has the same sensitivity.
+- **`effective_from` is the commit's day** (in New York) for every agreement an import creates; Phase 7's
+  cutover moves it to `postingSince`.
+- **The fund is created only when a fund row is written**, and found by `role = 'fund'` afterwards. It
+  is `in_roll 0`, so `GET /api/bankrolls/summary` still lists it beside Main: the roll is Main plus the
+  other `in_roll = 1` bankrolls, never the summary's `all.balance`.
+- **Pull at most once at a time** (409 while one is in flight); the stub test shows a slow dashboard is
+  abandoned at the timeout.
+
+**Rollout: the first real (rehearsal) pull** (§13 steps 0 and 2; owner and lead)
+
+| # | Step | Where | Safe to stop after |
+|---|---|---|---|
+| 1 | Generate the secret, if Phase 4's rollout has not (command below). Never in a chat, a repo or a ticket | the owner's machine | yes |
+| 2 | **`LEDGER_TOKEN`** on the **dashboard** Render service (`futuregame-dashboard`) and on the **futurega.me** Render service, the same value. Nowhere else: not `ecosystem.config.cjs`, not the WSL standby | Render env, both services | yes; inert until both deploys are live |
+| 3 | The dashboard's `feat/money-export` merged and deployed; its boot log says `[money-export] GET /api/money-export is open to LEDGER_TOKEN holders`; check the door (Phase 4's curl, expect 200, and 404 without the header) | dashboard repo, owner's terminal | yes |
+| 4 | Confirm a Render disk snapshot of the futurega.me service (§13 step 0) | Render dashboard | yes |
+| 5 | Merge `feat/money-merge-5` to `master` and push (Render deploys). Boot log: `Migration "money-import-2026-10" applied` and `[money-import] the dashboard pull is available to the owner`. If it says `OFF: …`, the line says why | this repo | yes |
+| 6 | Pull: `POST /api/bankrolls/import/dashboard/fetch` as the owner (the snippet below, until Phase 6's screen). Nothing is written but the staged run | futurega.me, the owner's browser | yes: `DELETE /:runId` discards it |
+| 7 | Read the plan (`GET /:runId`): the pairs, backers, slate, errors, flags, the opening and the reconciliation (`unexplained` must be 0 on both pockets, `fundWithinRemainder` true) | same | yes |
+| 8 | Answer every pair (`PUT /:runId/decisions`), then `POST /:runId/commit` with the `planHash` just read. Check the summary's `reconciliation` again, and `GET /api/staking/standing/parity`: `differ` lists only what the review expected (a name shadowed by an old notify; a backer deleted in the dashboard, whose ended agreement shows no stakes and sends no email) | same | yes: **undo** (step 9) |
+| 9 | If anything is wrong: `POST /:runId/undo` with `{ expect: summary.undoCount }`. Every table is put back | same | — |
+
+Generate the secret (**Mac or PC**, identical; prints 64 hex characters and nothing else):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+The pull and the plan, from the browser's developer console on futurega.me while signed in as the
+owner (**Mac or PC**, the same in any browser; it sends the app's own login token, not `LEDGER_TOKEN`,
+which never leaves the two servers):
+
+```js
+const H = { Authorization: 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' };
+const B = '/api/bankrolls/import/dashboard';
+const f = await (await fetch(B + '/fetch', { method: 'POST', headers: H, body: '{}' })).json();
+console.log(f.runId, f.plan.counts, f.plan.pairs.length, f.plan.reconciliation);
+```
+
+Nothing in this phase sets `BACKER_PAGE_SOURCE`, posts a share or touches `console_records`: every
+`/b/` page is byte-identical after the import (asserted), and the parity route says what the switch
+would change once Phase 7 is ready.
+
 Phases 3, 4 and 10 can run in parallel with anything after Phase 1. Phases 5 and 7 can run in
 parallel after Phase 2.
 
@@ -2134,7 +2326,7 @@ amount or `.db` copy, ever.
 | 2 | `test:backers` (new: `test:backer-surface`, `test:backer-rotation` on the real function, `test:backer-parity` over HTTP), `test:backer-page`, `test:gates`, `test:roster` | feed identical from SQL and from `console_records` for seeded backers of all three §7.1 kinds; rename shows the SQL name; rotation moves all five places or none and refuses a token in use; deliveries skipped without `BACKER_DELIVERY`/`RENDER`; parity route `differ: []` and leaks no token; digest recipients from `notify_email` |
 | 3 | `test:staking-settlement` (new: 39 server cases on ports 4570-4579, then 11 `node --test` cases on the panel's helpers); the guards' new staking settlement views (`scripts/seed-staking-demo.js`) | §10 point 8 |
 | 4 | WC `server/test/money-export.test.js` (129, unit) and `server/test/money-export-http.test.js` (267, boots the real server eight times), both in `npm test` (1057 in all) | 404 without, with a wrong and with a path or query token (even beside a valid header); previous token accepted; unset, under 32 characters and equal to `DASHBOARD_TOKEN` closed; `DASHBOARD_TOKEN`, `ROSTER_TOKEN`, `SESSION_LOG_TOKEN` and the ham credential refused; deleted rows and the four local keys present; a delta with tombstones and a cursor; hash and count verified; a 20,000-record database; nothing logged but counts |
-| 5 | `test:money-import` (new; a stub dashboard on a second scratch port serves fixtures) | every §5 mapping row; sign-follows-amount; transfer legs and `transfer_id`; fund results in the fund; chat ids verbatim; Personal `stable_id` deterministic; rounding correction and remainder; opening formula with prior deposits and pre-opening results; reconciliation equals a `computeBankroll` port on the fixture; scoring classes on crafted pairs (late-night ±1 day, alias rooms, unequal nets); one-to-one pairing; commit 409 with unanswered pairs; `same-keep`/`same-take`; re-fetch imports nothing; delta changed/deleted/conflict; undo removes exactly the run's rows; another admin gets 403; a non-JSON upstream is an error |
+| 5 | `test:money-import` (new, built: 57 cases; a stub dashboard in the test process on a second scratch port serves fixtures; ports 4610-4619) | every §5 mapping row; sign-follows-amount; transfer legs and `transfer_id`; fund results in the fund; chat ids verbatim; Personal `stable_id` deterministic; rounding correction and remainder; opening formula with prior deposits and pre-opening results; reconciliation equals a `computeBankroll` port on the fixture; scoring classes on crafted pairs (late-night ±1 day, alias rooms, unequal nets); one-to-one pairing; commit 409 with unanswered pairs; `same-keep`/`same-take`; re-fetch imports nothing; delta changed/deleted/conflict; undo removes exactly the run's rows; another admin gets 403; a non-JSON upstream is an error |
 | 6 | `check:controls`, `check:clipping` (new steps), `vite-app` helper tests for the card model | every control on the grid with its label centred at 402 and 1440; no clipped glyph in a truncated 16g cell; the skipped count is 0 and the seed token is fresh |
 | 7 | `test:standing-live` (new) | Notify posts one result (§1.1 Q1: nothing posts on save); each write path in §6.5 revises or voids a posted share and tells nobody (Q2); the overlap `ask` (Q7); live sessions never post; pre-`effective_from` never posts; overlap rule; exclusions; stake correction re-derives with preview; recalc of a dashboard event; drift lists a feed buy-in change and applies on request; posting off writes nothing; the sweep coalesces three edits into one delivery and survives a restart; a void deletes the event and keeps a revision |
 | 8 | `check:controls`, `check:clipping` (Standing steps), helper tests | as Phase 6, for the Staking section and the form line |

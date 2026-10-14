@@ -215,6 +215,18 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
     defaults; every boot logs `[staking] settlement rules: …`. The owner's questions are §17.1.
   - Tests: `npm run test:staking-settlement`, booting on ports 4570-4579. The guards' staking
     settlement views need `scripts/seed-staking-demo.js <scratch.db>` first.
+  **Bankroll merge, Phase 5: the dashboard import** (`docs/bankroll-merge.md` "Phase 5: as built";
+  code in `lib/money-import/`): owner-only JSON routes under `/api/bankrolls/import/dashboard` (fetch,
+  plan, decisions, commit, undo, discard); Phase 6 builds the review screen on them.
+  - **The pull is server to server.** `GET DASHBOARD_BASE_URL/api/money-export` with
+    `Authorization: Bearer <LEDGER_TOKEN>`, never in a URL or a log. `LEDGER_TOKEN` is set on exactly
+    the two Render services and **not** in `ecosystem.config.cjs`; unset or under 32 characters, the
+    pull is OFF and every boot logs `[money-import] the dashboard pull is OFF: …`. A pull is checked
+    (count, per-store counts, sha256 hash) before it is staged, and nothing is written on fetch.
+  - **A commit needs the `planHash` the owner reviewed** and refuses (409 `stale`) if the database
+    moved since; one savepoint. **Undo replays the run's journal** and refuses an edited row, listing
+    it. A delta re-pulls from the last cursor less 14 days.
+  - Tests: `npm run test:money-import` (a stub dashboard in the test process), ports 4610-4619.
 
 ## Hazards
 - ⚠️ **Junction hazard**: checking out any pre-carve branch (e.g. `wip/windows-mtt-feed`)
