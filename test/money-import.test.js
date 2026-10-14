@@ -778,7 +778,15 @@ const diffTables = (a, b) => Object.keys({ ...a, ...b }).filter((k) => a[k] !== 
       const f = await api(cs, 'POST', `${BASE}/fetch`, { token: t, body: {} });
       assert.strictEqual(f.status, 200, f.text.slice(0, 300));
       assert.strictEqual(f.json.plan.undecided, 0);
-      const c = await api(cs, 'POST', `${BASE}/${f.json.runId}/commit`, { token: t, body: { planHash: f.json.plan.planHash } });
+      // Q3: the opening deposit is editable in the review, and the edit can be taken back.
+      const ed = await api(cs, 'PUT', `${BASE}/${f.json.runId}/decisions`, { token: t, body: { opening: { amount: 24000, date: '2026-01-31' } } });
+      assert.strictEqual(ed.status, 200, ed.text.slice(0, 300));
+      assert.deepStrictEqual([ed.json.plan.opening.amount, ed.json.plan.opening.date, ed.json.plan.opening.override, ed.json.plan.opening.computed.amount], [24000, '2026-01-31', true, 25000.4]);
+      assert.ok(near(ed.json.plan.reconciliation.after.roll - f.json.plan.reconciliation.after.roll, -1000, 1.01), 'the typed figure is what the roll would get');
+      const back = await api(cs, 'PUT', `${BASE}/${f.json.runId}/decisions`, { token: t, body: { opening: null } });
+      assert.deepStrictEqual([back.json.plan.opening.amount, back.json.plan.opening.override], [25000, false]);
+      assert.strictEqual(back.json.plan.planHash, f.json.plan.planHash, 'taking the edit back is the plan as first read');
+      const c = await api(cs, 'POST', `${BASE}/${f.json.runId}/commit`, { token: t, body: { planHash: back.json.plan.planHash } });
       assert.strictEqual(c.status, 200, c.text.slice(0, 300));
       const fid = c.json.summary.reconciliation.fundId;
       const sum = await api(cs, 'GET', '/api/bankrolls/summary?currency=USD', { token: t });
