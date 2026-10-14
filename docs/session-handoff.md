@@ -618,6 +618,19 @@ to register before anything can be delivered). Three instances, one shape: an en
 read but never declared, and a code path that treats absent as "off" rather than
 "broken".
 
+**Superseded 2026-10-14: seam 3 has its own token.** Everything above about seam 3 and
+`DASHBOARD_TOKEN` is the history. The roster carries every backer's `/b/` token, phone and
+email, and `DASHBOARD_TOKEN` is compiled into the iOS builds, so anyone who extracted it from
+an app could have pulled all of it. The pull now sends a server-only `ROSTER_TOKEN` as
+`Authorization: Bearer` to `GET /api/roster`, and `DASHBOARD_TOKEN` opens nothing there. So
+the probe in the paragraph above no longer proves the roster pull; the proof is
+`[roster] pull from the dashboard ok` in the boot log. The self-disable trap is also
+fixed: without `ROSTER_TOKEN` the sync logs `[roster] ROSTER_TOKEN is not set … OFF` once per
+boot, and each pull is abandoned after 30 s. `ROSTER_TOKEN` lives on the two Render services
+only, never in the local ecosystem file, so this box's sync is deliberately off. CLAUDE.md
+(seam #3) has the rollout order; `npm run test:roster` covers the header, the self-disable and
+the timeout.
+
 **DASHBOARD_TOKEN's blast radius grew, and not on this side.** The same shared
 secret reads this schedule, reads the dashboard payload and roster, renders the
 Windows lock screen — and, since dashboard `bc75c1a`, **sends an APNs push to

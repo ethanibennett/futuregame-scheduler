@@ -111,14 +111,38 @@ This spec decides four things the decisions left open. Each is in §17 with its 
 8. **A standing agreement cannot live in `backer_agreements`.** Its `series_id` is `NOT NULL`
    (`server.js:2041`), and SQLite cannot drop that constraint without rebuilding the table.
 9. **The local pm2 instance runs the backer crons too.** It runs the digest cron
-   (`server.js:14042`) and the roster pull (`:14049`) on this box. It holds a `DASHBOARD_TOKEN`
+   (`server.js:14042`) and ran the roster pull (`:14049`) on this box. It held a `DASHBOARD_TOKEN`
    (CLAUDE.md, dashboard seams). It is quiet today only because notify writes to prod's
    `backer_events`, so its own copy never gains a new row for the digest to send. Once shares are
-   posted wherever a result is saved, deliveries must be gated to prod (§6.7).
-10. **The roster seam is a live credential leak path.** `GET /api/roster/:token` returns every
-    backer's token, phone and email under `DASHBOARD_TOKEN` (WC:`server/server.js:220-237`). That
-    token is compiled into the iOS builds (`DashboardSecret.swift`, per WC:`lib/dashboard-token.js`).
-    Retiring seam 3 closes the path. The new token must never ship in an app.
+   posted wherever a result is saved, deliveries must be gated to prod (§6.7). Since 2026-10-14
+   (point 10) the box has no `ROSTER_TOKEN`, so its roster pull is off; the copy it already holds is
+   still production-sensitive.
+10. **The roster seam WAS a live credential leak path, and is closed ahead of this merge
+    (2026-10-14, branch `fix/roster-token` in both repos).** `GET /api/roster/:token` returned every
+    backer's token, phone and email under `DASHBOARD_TOKEN`, a secret compiled into the iOS builds
+    (`DashboardSecret.swift`, per WC:`lib/dashboard-token.js`) and read by the widget, the screensaver
+    and other seams. Anyone who extracted it from an app could pull every backer's credentials.
+    - **The fix.** A separate, server-only `ROSTER_TOKEN`, sent as `Authorization: Bearer <token>`
+      (never in the URL), compared in constant time, with `ROSTER_TOKEN_PREVIOUS` accepted inbound for
+      rotation (WC:`server/lib/roster-token.js`). The route is now `GET /api/roster` (WC:`server/server.js:217-262`).
+    - **Closed by default.** `ROSTER_TOKEN` unset, or under 32 characters, answers 404 for everyone.
+      `DASHBOARD_TOKEN` no longer unlocks the roster, and the old `/api/roster/:token` route answers 404
+      for every token.
+    - **Who holds it.** Only the two Render services (the dashboard's and this app's). It is never put
+      in an app, the local pm2 `ecosystem.config.cjs`, a repo or a chat. Without it,
+      `syncBackerRoster` logs once that it is off and sends nothing, so the Windows box stops mirroring
+      backer credentials.
+    - **Rollout order.** (1) Generate the secret (the command is in §11.1; it is identical on Mac and
+      PC). (2) Set `ROSTER_TOKEN` on both Render services; it does nothing on the old code. (3) Deploy
+      the dashboard. The leak closes the moment it is live, and the old scheduler's pull logs
+      `HTTP 404` until step 4 while backer pages keep the roster they last synced. (4) Deploy this app;
+      its boot pull sends the header, and the log shows `[roster] pull from the dashboard ok`. (5) On the
+      Windows box, update the checkout and restart its pm2 app (CLAUDE.md, seam #3, has the
+      commands). No `ROSTER_TOKEN` is added to `ecosystem.config.cjs`, so the box logs
+      `ROSTER_TOKEN is not set` once and stops.
+    - **What remains.** The local DB holds the backer tokens mirrored before the fix. Retiring seam 3
+      (Phase 13) removes the route and `syncBackerRoster` altogether: at that point also unset
+      `ROSTER_TOKEN` on both Render services. The new `LEDGER_TOKEN` follows the same rule: never in an app.
 11. **No prod DB backup exists in this repo's code.** The dashboard's device copies were an informal
     backup. Once futurega.me is the only copy, the owner confirms the Render disk snapshots
     (Phase 0).
@@ -1021,7 +1045,8 @@ All in `server.js` `:7394-7700` and `vite-app/src/components/StakingView.jsx`.
 - **Who it acts as.** It acts as `HAM_OWNER_ID` (`server.js:286-311`).
 - **Why not `DASHBOARD_TOKEN`.** That token is in the iOS binaries (§2.2 point 10) and only ever
   reads and buzzes. This API writes money and must be revocable on its own. It is the same
-  reasoning as the dashboard's `SESSION_LOG_TOKEN` (WC:`server/server.js:244-260`).
+  reasoning as the dashboard's `SESSION_LOG_TOKEN` (WC:`server/server.js:244-260`) and as the
+  separate `ROSTER_TOKEN` that closed the roster leak (§2.2 point 10).
 - **Who holds it.** Only the two Render services hold `LEDGER_TOKEN`. It is never put in an app,
   the local pm2 config, a repo or a chat.
 - **Why not cookies.** Both are host-only (§2.2 point 12), so a browser on dashboard.futurega.me
@@ -1195,7 +1220,7 @@ is the one switch §13's steps flip, so a rollback is one call and needs no depl
 | Client money model and math | WC:`app/src/db/backers.ts`, `backerClient.ts`, `engine/bankroll.ts` (the stake ladder `recommendStake` and floors STAY: Today's stake call uses them), the money parts of `engine/analytics.ts` and `engine/csv.ts` |
 | Synced money blobs | the money keys leave `SYNCED_LOCAL_KEYS` (WC:`syncLocal.ts:17-29`); the IndexedDB money stores stop syncing (`idb.ts:160-164`) and are dropped in a later `DB_VERSION` |
 | Notify relay | WC:`server/server.js:478-521` and `test/backer-proxy.test.js` |
-| Roster seam | WC:`server/server.js:220-237` |
+| Roster seam | WC:`server/server.js:217-262` and `server/lib/roster-token.js` (after the `ROSTER_TOKEN` fix; it was `:220-237`, which also moved the WC `server.js` lines cited after it by about +25) |
 | Money export | the Phase 4 endpoint |
 | Server money math | WC:`dashboard.js` roll / fund / peak code, the `wsopFundTarget` default (`:275`) |
 | `console_records` money rows | **kept** read-only as an archive; no code reads them (§17 has no question here: deleting money history gains nothing) |
@@ -1249,7 +1274,7 @@ backer is told anything twice.
 | 6 | **Posting on:** `PUT /api/bankrolls/money/cutover { posting:'on', postingSince: today, cutover:'live' }`. Roster sync stands down (`cutover = live`). Standing agreements' `effective_from` = today. | log a test result in the app, see the cut preview, save, see the event on a backer page, then delete it and see "Removed"; the sweep delivered both (check the log, not a backer's phone: use a demo backer created for the test and ended after) | `{ posting:'off', cutover:'imported' }`; every event posted since is listed by `GET /api/staking/standing/:id/events?source=ledger&since=<date>` (per agreement) for review |
 | 7 | **Switch the dashboard's reads:** `MONEY_SOURCE=scheduler` (restart). | `/api/dashboard/:token/summary` roll and fund equal `/api/owner/money`; widget and Cockpit show them; MCP `get_bankroll` matches; MCP `log_session` preview (no commit) shows the cut | `MONEY_SOURCE=dashboard` and `MONEY_WRITES=open`; nights logged on futurega.me since step 6 are listed by `/api/owner/money` (`since`) for re-entry in the dashboard, and their shares stay posted (they are true); do not re-notify those nights from the dashboard |
 | 8 | **Soak** (two weeks). Seams 1 and 3 exist but are idle: notify returns 410, roster sync no-ops. | weekly digest goes out from SQL; no `[roster]` writes in the logs; `freshness.money.ok` stays true | as step 7 |
-| 9 | **Retire** (Phase 13): seams 1 and 3, the export endpoint, the dashboard's money code, this app's `console_records`, the legacy backer-token routes. | both test suites; the native contract test; a backer page from each source of §7.1 | redeploy the tagged pre-retire commits of both repos (tag them `pre-money-retire` before merging Phase 13) |
+| 9 | **Retire** (Phase 13): seams 1 and 3 (and `ROSTER_TOKEN` on both Render services), the export endpoint, the dashboard's money code, this app's `console_records`, the legacy backer-token routes. | both test suites; the native contract test; a backer page from each source of §7.1 | redeploy the tagged pre-retire commits of both repos (tag them `pre-money-retire` before merging Phase 13) |
 
 Nothing is double-counted at any step:
 - **Money.** Every dashboard row is written once, through a fingerprint, or skipped as a confirmed

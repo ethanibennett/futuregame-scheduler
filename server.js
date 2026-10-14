@@ -540,7 +540,7 @@ app.use('/api/cash', authenticateToken, (req, res) => {
 // Access is gated purely by the unguessable token in the URL; each token sees
 // only its own feed. Registered before the console gate + the SPA catch-all so
 // these win.
-const { checkDashboardToken, outboundDashboardToken, makePreviousTokenWarner } = require('./lib/dashboard-token');
+const { checkDashboardToken, makePreviousTokenWarner } = require('./lib/dashboard-token');
 const { clockForEvent, probeProviders } = require('./lib/live-clocks');
 const bankrolls = require('./lib/bankrolls');
 const bankrollLedger = require('./lib/bankroll-ledger');
@@ -11416,10 +11416,23 @@ async function pushMttFeedToProd() {
 // ── Backer-roster seam (dashboard → scheduler) ──
 // The backer roster (names/stakes) is authored in the standalone dashboard now;
 // our console_records 'backers' store froze at the 2026-08-09 cutover. Pull the
-// current roster over HTTP (DASHBOARD_TOKEN-gated, sync-protocol shape) and
-// LWW-merge it, so /b/:token pages + the weekly digest see new/renamed backers.
-// Runs at boot + hourly (:35); self-disables without DASHBOARD_TOKEN.
+// current roster over HTTP (sync-protocol shape) and LWW-merge it, so /b/:token
+// pages + the weekly digest see new/renamed backers.
+//
+// The roster is every backer's /b/ token, phone and email, so it is gated by a
+// SERVER-ONLY ROSTER_TOKEN sent as `Authorization: Bearer <token>` — never in the
+// URL, and never DASHBOARD_TOKEN, which is compiled into the iOS builds. Set on
+// exactly two Render services (this one and the dashboard's) and NOT in the local
+// pm2 ecosystem, so the Windows box does not mirror backer credentials. Runs at
+// boot + hourly (:35); without ROSTER_TOKEN it self-disables and says so once.
 const DASHBOARD_BASE_URL = process.env.DASHBOARD_BASE_URL || 'https://dashboard.futurega.me';
+// A dashboard that accepts the connection and then goes quiet must not leave a
+// pull hanging: the fetch (headers AND body) is abandoned after this long, the
+// failure is logged, and the next :35 tick tries again. Env override is for tests.
+const ROSTER_FETCH_TIMEOUT_MS = Number(process.env.ROSTER_FETCH_TIMEOUT_MS) > 0
+  ? Number(process.env.ROSTER_FETCH_TIMEOUT_MS) : 30000;
+let rosterOffLogged = false; // the "ROSTER_TOKEN not set" line is said once per boot, not hourly
+let rosterPullHealthy = false; // log a good pull on the transition to healthy, not every hour
 /* Move a backer's page from one token to another.
  *
  * A backer's token is a CAPABILITY — it is the whole of the authentication on
@@ -11478,15 +11491,34 @@ function rotateBackerToken(oldToken, newToken) {
 }
 
 async function syncBackerRoster() {
-  // Always the CURRENT value — see lib/dashboard-token.js on why outbound never
-  // falls back to the previous one.
-  const token = outboundDashboardToken();
-  if (!token) return;
+  // Always the CURRENT value: ROSTER_TOKEN_PREVIOUS exists only on the dashboard,
+  // for inbound checks, so a rotation always moves forward (same rule as
+  // lib/dashboard-token.js). Trimmed because a pasted env value often carries a
+  // trailing newline, which fetch would reject as an invalid header.
+  const token = String(process.env.ROSTER_TOKEN || '').trim();
+  if (!token) {
+    /* Absent is "off", but silently off is how this seam has gone dead before
+       (backer pages kept rendering a frozen roster and looked healthy), so say
+       it. Once per boot: this runs hourly. DASHBOARD_TOKEN deliberately does NOT
+       enable it any more. */
+    if (!rosterOffLogged) {
+      rosterOffLogged = true;
+      console.warn('[roster] ROSTER_TOKEN is not set — backer roster sync is OFF (backer pages keep the roster they last synced). Set it on the production Render service; it is deliberately absent from the local pm2 ecosystem.');
+    }
+    return;
+  }
   try {
-    const res = await fetch(`${DASHBOARD_BASE_URL}/api/roster/${token}`);
+    const res = await fetch(`${DASHBOARD_BASE_URL.replace(/\/+$/, '')}/api/roster`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      signal: AbortSignal.timeout(ROSTER_FETCH_TIMEOUT_MS),
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const body = await res.json();
     const records = Array.isArray(body && body.records) ? body.records : [];
+    if (!rosterPullHealthy) {
+      rosterPullHealthy = true;
+      console.log(`[roster] pull from the dashboard ok — ${records.length} record(s) offered`);
+    }
     let changed = 0;
     let rotated = 0;
     for (const r of records) {
@@ -11537,7 +11569,9 @@ async function syncBackerRoster() {
       console.log(`[roster] backer roster synced from dashboard: ${changed} row(s) updated`);
     }
   } catch (err) {
-    console.error('[roster] backer roster sync failed:', err.message);
+    rosterPullHealthy = false;
+    const why = err && err.name === 'TimeoutError' ? `timed out after ${ROSTER_FETCH_TIMEOUT_MS} ms` : (err && err.message);
+    console.error('[roster] backer roster sync failed:', why);
   }
 }
 
