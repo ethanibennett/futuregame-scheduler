@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import Icon from './Icon.jsx';
+import useInkBalance from '../hooks/useInkBalance.js';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DOW = ['Su','M','Tu','W','Th','F','Sa'];
@@ -40,10 +41,13 @@ export default function DateBreak({
   const monthAbbr = MONTHS[d.getMonth()];
   const dayOfWeek = DOW[d.getDay()];
   const collapsible = collapsed !== null && typeof onToggle === 'function';
+  // "DD Mon" centred on its ink, whatever the figures and the month (utils/ink-balance.js).
+  const labelRef = useRef(null);
+  useInkBalance(labelRef, [dayNum, monthAbbr]);
 
   const pill = (
     <span className="date-break-pill">
-      <span className={`date-break-label${dayNum.includes('7') ? ' has-tall-figure' : ''}`}>
+      <span className="date-break-label" ref={labelRef}>
         <b className="date-break-day">{dayNum}</b>
         <span className="date-break-mon">{monthAbbr}</span>
       </span>
