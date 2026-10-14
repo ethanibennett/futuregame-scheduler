@@ -50,6 +50,7 @@ import { checkActions } from './actions.js';
 import { gameRules, structureRules, blindRules, playerRules, heroRules, positionRules, stackRules } from './rules-setup.js';
 import { heroCardRules, cardRules, opponentCardRules, boardRules, studCardRules } from './rules-cards.js';
 import { drawRules, showdownRules } from './rules-late.js';
+import { quickRules } from './rules-quick.js';
 import { compareKeys, num } from './common.js';
 import { resolvePending } from './pending.js';
 
@@ -94,6 +95,7 @@ function foldScan(hand, before) {
    and how far the hand got: the previews below re-run this on a copy. */
 function collect(hand, changed, dismissed, input) {
   const out = [];
+  quickRules(hand, out, dismissed);
   gameRules(hand, out);
   structureRules(input, changed, hand, out);
   const env = buildEnv(hand, dismissed);

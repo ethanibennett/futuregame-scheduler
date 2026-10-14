@@ -333,8 +333,14 @@ const EXPECT_KEYS = new Set([
   'gameType', 'gameMode', 'currency', 'blinds', 'players', 'heroPosition', 'heroCards',
   'heroStreetCards', 'stacks', 'stacksAll', 'effectiveStack', 'board', 'actions', 'draws',
   'studUp', 'showdown', 'winners',
+  // What only the parse can tell (hand.quickAdd, 2026-10-14): the narrator was not in the
+  // hand; the text is not one recordable hand; an ante of unstated type; a format the
+  // replayer cannot store; other hands told alongside.
+  'observer', 'recordable', 'anteUnclear', 'unsupported', 'otherHands',
 ]);
-const CASE_KEYS = new Set(['id', 'source', 'game', 'text', 'expect', 'expectGaps', 'flaws', 'tags', 'notes', '_file', '_index']);
+/* sourceUrl: where a paraphrased case came from (the corpus never carries the raw
+   text of a forum post or a video; `source` is already text|speech). */
+const CASE_KEYS = new Set(['id', 'source', 'sourceUrl', 'game', 'text', 'expect', 'expectGaps', 'flaws', 'tags', 'notes', '_file', '_index']);
 const BLIND_KEYS = new Set(['sb', 'bb', 'ante', 'bringIn', 'bigBet', 'straddle']);
 const ACTIONS = new Set(['fold', 'check', 'call', 'bet', 'raise', 'all-in', 'bring-in']);
 const GAP_KINDS = new Set(['missing', 'ambiguous', 'impossible']);
@@ -413,6 +419,14 @@ function validateCase(c, seenIds) {
     }
   }
   if (ex.players != null && (!Number.isInteger(ex.players) || ex.players < 2 || ex.players > 10)) E('players must be 2..10');
+  if (c.sourceUrl != null && !(typeof c.sourceUrl === 'string' && /^https?:\/\/\S+$/.test(c.sourceUrl))) E('sourceUrl must be an http(s) URL');
+  if (ex.observer != null && ex.observer !== true) E('observer, when given, is true');
+  if (ex.observer && (ex.heroPosition || ex.heroCards)) E('an observer hand has no hero position or hero cards');
+  if (ex.recordable != null && ex.recordable !== false) E('recordable, when given, is false');
+  if (ex.anteUnclear != null && !(isNum(ex.anteUnclear) && ex.anteUnclear > 0)) E('anteUnclear must be the ante as said (a positive number)');
+  if (ex.anteUnclear != null && ex.blinds && ex.blinds.ante != null) E('anteUnclear is for an ante whose type is not known: leave blinds.ante out');
+  if (ex.unsupported != null && ex.unsupported !== true) E('unsupported, when given, is true');
+  if (ex.otherHands != null && !(Number.isInteger(ex.otherHands) && ex.otherHands >= 1)) E('otherHands is the number of other hands told');
   if (c.expectGaps != null) {
     if (!Array.isArray(c.expectGaps)) E('expectGaps must be an array');
     else c.expectGaps.forEach((g, i) => {
@@ -1032,6 +1046,13 @@ function buildOracleHand(c, v) {
   }
   const w = ex.winners;
   const result = w ? { winners: winnerRefs(w).map(r => ({ playerIdx: idxOf(r), split: !Array.isArray(w) && !!w.split })) } : null;
+  const quickAdd = {};
+  if (ex.observer) quickAdd.observer = true;
+  if (ex.recordable === false) quickAdd.notRecordable = true;
+  if (isNum(ex.anteUnclear)) quickAdd.anteUnclear = ex.anteUnclear;
+  if (ex.unsupported) quickAdd.unsupported = ['a format the replayer cannot store'];
+  if (ex.otherHands) quickAdd.otherHands = Array.from({ length: ex.otherHands }, (_, i) => 'another hand ' + (i + 1));
+  if (b && isNum(ex.anteUnclear)) b.ante = ex.anteUnclear;
   return {
     gameType: ex.gameType || null,
     gameMode: ex.gameMode || null,
@@ -1041,6 +1062,7 @@ function buildOracleHand(c, v) {
     heroIdx,
     streets,
     result,
+    ...(Object.keys(quickAdd).length ? { quickAdd } : {}),
   };
 }
 
@@ -1153,6 +1175,15 @@ function scoreCase(c, v, hand) {
     }
   }
   if (ex.players != null) F('players', 'table', ex.players, ctx.n || null, ctx.n === ex.players);
+  const hq = H.quickAdd && typeof H.quickAdd === 'object' ? H.quickAdd : {};
+  if (ex.observer) F('observer', 'hero', true, hq.observer === true ? true : null, hq.observer === true);
+  if (ex.recordable === false) F('recordable', 'table', false, hq.notRecordable ? false : null, !!hq.notRecordable);
+  if (isNum(ex.anteUnclear)) F('anteUnclear', 'stakes', ex.anteUnclear, isNum(hq.anteUnclear) ? hq.anteUnclear : null, numEq(hq.anteUnclear, ex.anteUnclear));
+  if (ex.unsupported) F('unsupported', 'table', true, Array.isArray(hq.unsupported) && hq.unsupported.length ? true : null, Array.isArray(hq.unsupported) && hq.unsupported.length > 0);
+  if (ex.otherHands) {
+    const got = Array.isArray(hq.otherHands) ? hq.otherHands.length : 0;
+    F('otherHands', 'table', ex.otherHands, got || null, got >= 1);
+  }
   if (ex.heroPosition != null) {
     const got = ctx.heroIdx >= 0 ? (ctx.players[ctx.heroIdx] || {}).position || ctx.labels[ctx.heroIdx] : null;
     F('heroPosition', 'hero', ex.heroPosition, got, ctx.heroIdx >= 0 && ctx.resolve(ex.heroPosition) === ctx.heroIdx);

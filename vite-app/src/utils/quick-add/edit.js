@@ -380,6 +380,16 @@ export function applyOp(input, value, gap) {
     case 'setResult':
       hand.result = { ...(hand.result || {}), winners: clone(value.winners || []) };
       return hand;
+    case 'answerQuestion': {
+      // A question the server asked (hand.quickAdd.questions): apply the
+      // chosen reading, then the question is answered and goes.
+      for (const s of (value.sets || [])) setPath(hand, s.path, clone(s.value));
+      if (hand.quickAdd && Array.isArray(hand.quickAdd.questions)) {
+        hand.quickAdd = { ...hand.quickAdd, questions: hand.quickAdd.questions.filter(q => q && q.id !== value.id) };
+        if (!hand.quickAdd.questions.length) delete hand.quickAdd.questions;
+      }
+      return hand;
+    }
     case 'dismiss': {
       const id = value.id || (gap && gap.id);
       if (!id) return hand;

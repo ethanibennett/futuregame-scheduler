@@ -65,6 +65,32 @@ function limpAmount(hand) {
   return null;
 }
 
+/* Small blinds that are really played with a big blind, best first, never 0
+   (2026-10-14: a 0.25 big blind offered 0/0.25 first, and 25 offered 12/25 but
+   not 10/25). The big blind itself is always offered too: 5/5 and 2/2 are
+   spread. Anything else falls back to half the big blind. */
+const SB_LADDER = {
+  0.02: [0.01], 0.04: [0.02], 0.05: [0.02], 0.1: [0.05], 0.2: [0.1], 0.25: [0.1], 0.4: [0.2], 0.5: [0.25],
+  1: [0.5], 2: [1], 3: [1, 2], 4: [2], 5: [2, 3], 6: [3], 8: [4], 10: [5], 16: [8], 20: [10], 25: [10],
+  30: [15], 40: [20], 50: [25], 60: [30], 100: [50],
+};
+export function smallBlindOptions(bb) {
+  const opts = (SB_LADDER[bb] || [Math.round(bb / 2 * 100) / 100]).filter(v => v > 0);
+  if (!opts.includes(bb)) opts.push(bb);
+  return opts;
+}
+
+/* Every stated size is in big blinds and no money or chips are given: the
+   hand can be recorded in big blinds. */
+function sizedInBigBlinds(hand) {
+  const players = hand.players || [];
+  const stackBB = players.some(p => p && num(p.startingStackBB) > 0);
+  const chips = players.some(p => p && num(p.startingStack) > 0);
+  const actsBB = (hand.streets || []).some(st => (st.actions || []).some(a => a && num(a.toAmountBB) > 0));
+  const actsChips = (hand.streets || []).some(st => (st.actions || []).some(a => a && (num(a.amount) > 0 || num(a.toAmount) > 0)));
+  return (stackBB || actsBB) && !chips && !actsChips;
+}
+
 export function blindRules(hand, env, out) {
   const cfg = env.cfg;
   if (!cfg || env.category === 'ofc') return;
@@ -78,10 +104,12 @@ export function blindRules(hand, env, out) {
     const limp = limpAmount(hand);
     if (limp) guesses.push(limp);
     const sbMissing = !env.isStud && !(sb > 0);
+    if (sbMissing && sizedInBigBlinds(hand)) guesses.unshift(1);
     const options = [...new Set(guesses)].map(v => {
       if (sbMissing) {
         const s = v / 2;
-        return { label: fmt(s) + '/' + fmt(v), value: { op: 'setMany', sets: [{ path: 'blinds.sb', value: s }, { path: 'blinds.bb', value: v }] } };
+        const label = v === 1 && sizedInBigBlinds(hand) ? 'Record it in big blinds (0.5/1)' : fmt(s) + '/' + fmt(v);
+        return { label, value: { op: 'setMany', sets: [{ path: 'blinds.sb', value: s }, { path: 'blinds.bb', value: v }] } };
       }
       return { label: env.isStud ? fmt(v) + '/' + fmt(v * 2) : fmt(sb) + '/' + fmt(v), value: { op: 'set', path: 'blinds.bb', value: v } };
     });
@@ -96,10 +124,7 @@ export function blindRules(hand, env, out) {
   }
   if (!env.isStud) {
     if (b.sb == null || !(sb >= 0) || typeof b.sb !== 'number') {
-      const half = bb / 2;
-      const opts = [];
-      if (Number.isInteger(half)) opts.push(half);
-      else { opts.push(Math.floor(half)); opts.push(half); }
+      const opts = smallBlindOptions(bb);
       out.push(makeGap({
         id: 'blinds.sb', kind: 'missing', field: 'blinds.sb',
         question: 'What was the small blind? (The big blind was ' + fmt(bb) + '.)',
@@ -111,6 +136,19 @@ export function blindRules(hand, env, out) {
         id: 'blinds.sb', kind: 'impossible', field: 'blinds.sb',
         question: 'The small blind (' + fmt(sb) + ') is bigger than the big blind (' + fmt(bb) + '). Swap them?',
         options: [{ label: fmt(bb) + '/' + fmt(sb), value: { op: 'setMany', sets: [{ path: 'blinds.sb', value: bb }, { path: 'blinds.bb', value: sb }] } }],
+        allowFree: true, blocking: true,
+      }, key(1)));
+    } else if (sb > 0 && sb < bb / 10) {
+      /* "6/12k" read as 6 and 12,000: no game is played like that. The two
+         readings put both numbers at one scale (2026-10-14). */
+      const k = [1000, 100, 10, 1e6].find(f => sb * f <= bb && sb * f >= bb / 10) || 1000;
+      out.push(makeGap({
+        id: 'blinds.scale', kind: 'impossible', field: 'blinds.sb',
+        question: 'A small blind of ' + fmt(sb) + ' with a big blind of ' + fmt(bb) + ' is not a game anyone plays. Which was it?',
+        options: [
+          { label: fmt(sb * k) + '/' + fmt(bb), value: { op: 'set', path: 'blinds.sb', value: sb * k } },
+          { label: fmt(sb) + '/' + fmt(bb / k), value: { op: 'set', path: 'blinds.bb', value: bb / k } },
+        ],
         allowFree: true, blocking: true,
       }, key(1)));
     }
@@ -131,6 +169,27 @@ export function blindRules(hand, env, out) {
     }, key(2)));
   }
   const qa = hand.quickAdd || {};
+  /* An ante nobody called a big blind ante or a per-player ante, smaller than
+     the big blind: whose was it? The server marks it (quickAdd.anteUnclear)
+     and keeps it as a big blind ante meanwhile (2026-10-14: web-022's 5,000
+     ante at 20k/40k was every player's, as its stated pot proves). */
+  const unclear = num(qa.anteUnclear);
+  if (!env.isStud && unclear > 0 && !env.dismissed.has('ante-type')) {
+    const n = hand.players.length;
+    const seated = !(qa.positions === 'narrator');
+    const per = seated
+      ? { op: 'setMany', sets: [{ path: 'blinds.ante', value: unclear * n }, { path: 'quickAdd.anteUnclear', value: null }] }
+      : { op: 'setMany', sets: [{ path: 'blinds.ante', value: null }, { path: 'quickAdd.antePerPlayer', value: unclear }, { path: 'quickAdd.anteUnclear', value: null }] };
+    const one = { op: 'setMany', sets: [{ path: 'blinds.ante', value: unclear }, { path: 'quickAdd.anteUnclear', value: null }] };
+    const perOpt = { label: 'Every player posted ' + fmt(unclear) + (seated ? ' (' + fmt(unclear * n) + ' in all)' : ''), value: per };
+    const oneOpt = { label: 'One big blind ante of ' + fmt(unclear), value: one };
+    out.push(makeGap({
+      id: 'ante-type', kind: 'ambiguous', field: 'blinds.ante',
+      question: 'Did every player post the ' + fmt(unclear) + ' ante, or was it one big blind ante?',
+      options: unclear <= bb / 4 ? [perOpt, oneOpt] : [oneOpt, perOpt],
+      allowFree: true, blocking: false,
+    }, key(2)));
+  }
   const potPending =hand.streets.some(st => (st.actions || []).some(a => a && a.amount == null && a.potFraction != null));
   if (b.ante == null && !(qa.antePerPlayer != null && !env.isStud)) {
     // A size said as a fraction of the pot cannot be worked out without the ante.
@@ -217,13 +276,32 @@ export function heroRules(hand, out) {
   const orderIdx = [];
   if (named >= 0) orderIdx.push(named);
   for (let i = 0; i < n; i++) if (i !== named) orderIdx.push(i);
+  const label = (i) => playerName(hand, i) + (hand.players[i] && hand.players[i].position && hand.players[i].position !== playerName(hand, i) ? ' (' + hand.players[i].position + ')' : '');
+  /* A hand the narrator watched has no true answer to "which player were
+     you?" (2026-10-14: 22 of the collected stories). The replayer still
+     shows the hand from one seat, so the question becomes whose seat to
+     follow; the hand keeps quickAdd.observer so it is not asked again. */
+  const observer = !!(hand.quickAdd && hand.quickAdd.observer);
+  if (observer) {
+    // Follow the player who went furthest: a winner, else whoever acted last.
+    const winners = (hand.result && Array.isArray(hand.result.winners)) ? hand.result.winners.map(w => w && w.playerIdx).filter(i => isIdx(i, n)) : [];
+    let lastActor = -1;
+    for (const st of hand.streets || []) for (const a of (st.actions || [])) if (a && isIdx(a.player, n) && a.action !== 'fold') lastActor = a.player;
+    const first = winners.length ? winners[0] : lastActor;
+    const order = (first >= 0 ? [first] : []).concat(orderIdx.filter(i => i !== first));
+    out.push(makeGap({
+      id: 'hero', kind: 'missing', field: 'heroIdx',
+      question: 'You weren\u2019t in this hand. Whose seat should the replay follow?',
+      options: order.map(i => ({ label: label(i), value: { op: 'setHero', heroIdx: i } })),
+      allowFree: true, blocking: true,
+    }, [STAGE.hero]));
+    return false;
+  }
   out.push(makeGap({
     id: 'hero', kind: 'missing', field: 'heroIdx',
     question: 'Which player were you?',
-    options: orderIdx.map(i => ({
-      label: playerName(hand, i) + (hand.players[i] && hand.players[i].position && hand.players[i].position !== playerName(hand, i) ? ' (' + hand.players[i].position + ')' : ''),
-      value: { op: 'setHero', heroIdx: i },
-    })),
+    options: orderIdx.map(i => ({ label: label(i), value: { op: 'setHero', heroIdx: i } }))
+      .concat([{ label: 'I wasn\u2019t in this hand', value: { op: 'set', path: 'quickAdd.observer', value: true } }]),
     allowFree: true, blocking: true,
   }, [STAGE.hero]));
   return false;
