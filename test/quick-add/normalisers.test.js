@@ -485,3 +485,141 @@ test('a holding pattern the given cards break is asked about on its card slot', 
   assert.equal(q.field, 'streets.0.cards.hero');
   assert.equal(hand.streets[0].cards.hero, 'AhQs');
 });
+
+/* ── review fixes (2026-10-14): number words in a row, spoken stakes, limit stakes ─ */
+
+test('number words: two numbers said in a row are never joined into one', () => {
+  const nw = (t) => S.numberWords(t).text;
+  // Each of these was one wrong number before (204, 408, 1,503,000, 501,000, 3,000, 60,000, 102).
+  assert.equal(nw('two hundred four hundred'), '200 400');
+  assert.equal(nw('four hundred eight hundred'), '400 800');
+  assert.equal(nw('fifteen hundred three thousand'), '1500 3000');
+  assert.equal(nw('five hundred one thousand'), '500 1000');
+  assert.equal(nw('one thousand two thousand'), '1000 2000');
+  assert.equal(nw('twenty thousand forty thousand'), '20000 40000');
+  assert.equal(nw('one hundred two hundred'), '100 200');
+  // "fifty one hundred" is 5,100 or the stakes 50/100: not certain, so not rewritten.
+  assert.equal(nw('fifty one hundred'), 'fifty one hundred');
+  assert.equal(nw('ten twenty'), 'ten twenty');
+  assert.equal(nw('fifteen thirty'), 'fifteen thirty');
+  // One number stays one number.
+  assert.equal(nw('two hundred fifty thousand'), '250000');
+  assert.equal(nw('two thousand five hundred'), '2500');
+  assert.equal(nw('two million five hundred thousand'), '2500000');
+  assert.equal(nw('two and a half k'), '2500');
+  assert.equal(nw('twenty six handed'), '20 six handed');
+});
+
+/* The spoken form of a chip count, the way a recogniser writes it (thousands as
+   "thousand", never "k"), to test each corpus case's stakes. */
+function spoken(n) {
+  const U = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+  const T = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+  const below100 = (x) => (x < 20 ? U[x] : T[Math.floor(x / 10)] + (x % 10 ? ' ' + U[x % 10] : ''));
+  const below1000 = (x) => (x >= 100 ? U[Math.floor(x / 100)] + ' hundred' + (x % 100 ? ' ' + below100(x % 100) : '') : below100(x));
+  if (n >= 1000) return below1000(Math.floor(n / 1000)) + ' thousand' + (n % 1000 ? ' ' + below1000(n % 1000) : '');
+  return below1000(n);
+}
+
+test('every speech case: its stakes said aloud give its blinds, or nothing', () => {
+  const fs = require('node:fs'), path = require('node:path');
+  const dir = path.join(__dirname, 'corpus');
+  let checked = 0;
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json'))) {
+    for (const c of JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))) {
+      const b = c.expect && c.expect.blinds;
+      if (c.source !== 'speech' || !b || !Number.isInteger(b.sb) || !Number.isInteger(b.bb) || b.bb < b.sb) continue;
+      const phrase = spoken(b.sb) + ' ' + spoken(b.bb);
+      const allowed = new Set([b.sb, b.bb]);
+      for (const cv of S.numberWords(phrase).conversions) assert.ok(allowed.has(cv.to), `${c.id}: "${phrase}" read as ${cv.to}`);
+      const st = S.spokenStakes(phrase);
+      assert.ok(st === null || (st.sb === b.sb && st.bb === b.bb && st.numbers.length === 2), `${c.id}: "${phrase}" as stakes ${st && st.numbers}`);
+      checked++;
+    }
+  }
+  assert.ok(checked >= 20, 'checked ' + checked);
+});
+
+test('spoken stakes: pairs of numbers, and what is not stakes', () => {
+  const st = (t) => { const r = S.spokenStakes(t); return r && r.numbers; };
+  assert.deepEqual(st('ten twenty'), [10, 20]);
+  assert.deepEqual(st('fifteen thirty'), [15, 30]);
+  assert.deepEqual(st('one two'), [1, 2]);
+  assert.deepEqual(st('two five'), [2, 5]);
+  assert.deepEqual(st('fifty one hundred'), [50, 100]);
+  assert.deepEqual(st('five hundred one thousand'), [500, 1000]);
+  assert.deepEqual(st('one thousand two thousand'), [1000, 2000]);
+  assert.deepEqual(st('twenty thousand forty thousand'), [20000, 40000]);
+  assert.deepEqual(st('the blinds are ten and twenty'), [10, 20]);
+  assert.deepEqual(st('6/12k'), [6000, 12000]);
+  assert.equal(st('two hundred'), null);          // one number is an amount, not stakes
+  assert.equal(st('forty'), null);
+  assert.equal(st('twenty ten'), null);           // not rising
+  assert.equal(S.spokenAmount('ten twenty'), null);
+  assert.equal(S.spokenAmount('fifteen thirty'), null);
+  assert.equal(S.spokenAmount('twelve fifty'), null);
+  assert.equal(S.spokenAmount('one fifty'), 150);
+  assert.equal(S.spokenAmount('fifty one hundred'), 5100);
+  assert.equal(S.spokenAmount('fifty one hundred', { strict: true }), null);
+  assert.equal(S.spokenAmount('15 hundred'), 1500);
+  assert.equal(S.spokenAmount('500 eff'), 500);
+  assert.equal(S.spokenAmount('a buck fifty'), 1.5);
+  assert.equal(S.spokenAmount('two and a half k'), 2500);
+});
+
+test('answering "what were the blinds?" aloud never stores a joined number', () => {
+  const ask = (field, text, hand = {}) => fastAnswerOps(hand, { field }, text);
+  const sbbb = (a, b) => [{ op: 'set', path: 'blinds.sb', value: a }, { op: 'set', path: 'blinds.bb', value: b }];
+  assert.deepEqual(ask('blinds.bb', 'ten twenty'), sbbb(10, 20));
+  assert.deepEqual(ask('blinds.bb', 'fifteen thirty'), sbbb(15, 30));
+  assert.deepEqual(ask('blinds.bb', 'fifty one hundred'), sbbb(50, 100));
+  assert.deepEqual(ask('blinds.bb', 'five hundred one thousand'), sbbb(500, 1000));
+  assert.deepEqual(ask('blinds.bb', 'one thousand two thousand'), sbbb(1000, 2000));
+  assert.deepEqual(ask('blinds.bb', '6/12k'), sbbb(6000, 12000));
+  assert.deepEqual(ask('blinds.bb', 'twenty'), [{ op: 'set', path: 'blinds.bb', value: 20 }]);
+  assert.deepEqual(ask('blinds.bb', '2000'), [{ op: 'set', path: 'blinds.bb', value: 2000 }]);
+  // Never one stored number for two said; fixed-limit and three-number stakes go to the model.
+  assert.equal(ask('blinds.ante', 'ten twenty'), null);
+  assert.equal(ask('blinds.bb', 'four eight', { gameType: "Limit Hold'em" }), null);
+  assert.equal(ask('blinds.bb', 'twenty forty forty'), null);
+  assert.equal(ask('players.1.startingStack', 'one fifty')[0].value, 150);   // "one fifty" is still 150 for a stack
+});
+
+test('limit stakes in the stakes text name the bets, not the blinds', () => {
+  const draft = (gameType, stakes) => D({
+    gameType, gameMode: 'cash', tableSize: 3, blinds: { sb: null, bb: null, ante: 0, stakes },
+    players: [{ position: 'BTN', isHero: true, startingStack: 500 }, { position: 'SB', startingStack: 500 }, { position: 'BB', startingStack: 500 }],
+    streets: [],
+  });
+  const td = normalizeDraft(draft('2-7 Triple Draw', '1224'), { source: 'speech' }).hand.blinds;
+  assert.deepEqual([td.sb, td.bb, td.bigBet], [6, 12, 24]);
+  const lhe = normalizeDraft(draft("Limit Hold'em", '4/8')).hand.blinds;
+  assert.deepEqual([lhe.sb, lhe.bb, lhe.bigBet], [2, 4, 8]);
+  const stud = normalizeDraft(draft('Stud Hi', '10/20')).hand.blinds;
+  assert.equal(stud.bb, 10); assert.equal(stud.bigBet, 20); assert.ok(stud.sb == null);
+  // No-limit stakes are still the blinds.
+  const nl = normalizeDraft(draft('NLH', '6/12k')).hand.blinds;
+  assert.deepEqual([nl.sb, nl.bb], [6000, 12000]);
+});
+
+test('limit stakes from sizes: the first flop bet, not a raise that may be a 3-bet', () => {
+  const draft = (preflop, flop) => D({
+    gameType: "Limit Hold'em", gameMode: 'cash', tableSize: 2, blinds: { sb: null, bb: null, ante: 0 },
+    players: [{ position: 'BTN', isHero: true, startingStack: 500 }, { position: 'BB', startingStack: 500 }],
+    streets: [{ name: 'Preflop', actions: preflop }, { name: 'Flop', board: '7s8d2c', actions: flop }],
+  });
+  const r = normalizeDraft(draft(
+    [{ player: 1, action: 'raise', toAmount: 12 }, { player: 0, action: 'call' }],
+    [{ player: 1, action: 'bet', toAmount: 4 }, { player: 0, action: 'call' }]));
+  assert.deepEqual([r.hand.blinds.sb, r.hand.blinds.bb, r.hand.blinds.bigBet], [2, 4, 8]);
+  const g = normalizeDraft(draft([{ player: 1, action: 'raise', toAmount: 12 }, { player: 0, action: 'call' }], []));
+  assert.equal(g.hand.blinds.bb, 6);
+  assert.ok(g.notes.some((n) => /guess/.test(n)), g.notes.join(' | '));
+});
+
+test('a repeated card is not a hand: the fast answer path refuses it', () => {
+  assert.equal(S.spokenCards('ace king with the ace of spades'), null);
+  assert.equal(fastAnswerOps({}, { field: 'streets.0.cards.hero' }, 'ace king with the ace of spades'), null);
+  assert.equal(fastAnswerOps({}, { field: 'streets.0.cards.hero' }, 'AhAh'), null);
+  assert.deepEqual(fastAnswerOps({}, { field: 'streets.1.cards.board' }, 'Jh3s2h Jh3s2h'), [{ op: 'set', path: 'streets.1.cards.board', value: 'Jh3s2h' }]);
+});
