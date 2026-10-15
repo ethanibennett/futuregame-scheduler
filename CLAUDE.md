@@ -227,6 +227,19 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
     moved since; one savepoint. **Undo replays the run's journal** and refuses an edited row, listing
     it. A delta re-pulls from the last cursor less 14 days.
   - Tests: `npm run test:money-import` (a stub dashboard in the test process), ports 4610-4619.
+  **Bankroll merge, Phase 6: the import review** (`docs/bankroll-merge.md` "Phase 6: as built"; code in
+  `vite-app/src/components/BankrollImportDashboard.jsx` + `utils/bankroll-import-dashboard.js`):
+  Bankroll › Dashboard › Import, "From the dashboard app", owner only (it hides itself on the routes'
+  403). Fetch, the review (pairs, backers, slate, balances, a delta's changes and deletions, the
+  opening, the reconciliation, errors, flags), answers saved as given, Import behind a confirm step that
+  names every table, Undo behind the typed row count. **A 409 `stale` reloads the plan and highlights
+  what moved; the same hash is never resent.** Seed a scratch DB with
+  `scripts/seed-money-import-demo.js` (server stopped; refuses `poker-tournaments.db`); for the guards'
+  walk (`check:controls` / `check:clipping` `bankroll-import-dashboard`, which imports, undoes and
+  fetches again) serve `scripts/money-import-stub-dashboard.js` and boot the scratch server with its
+  `LEDGER_TOKEN` + `DASHBOARD_BASE_URL` + `CONSOLE_OWNER_USER_ID`. Tests: `npm run test:money-import`
+  (engine + helpers) and `npm run test:money-import-review` (WebKit, ports 4620-4639; needs the built
+  app). Trap: innerText reads `an-sec` headings in capitals, so Playwright matches must ignore case.
 
 ## Hazards
 - ⚠️ **Junction hazard**: checking out any pre-carve branch (e.g. `wip/windows-mtt-feed`)

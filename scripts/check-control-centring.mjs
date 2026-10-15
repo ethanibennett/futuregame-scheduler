@@ -1904,6 +1904,111 @@ function finalize(c) {
   }, 4);
   step('bankroll-backers-empty', () => backersTab({ status: 200, json: { backers: [] } }), 0);
   step('bankroll-backers-refused', () => backersTab({ status: 403, json: { error: 'Forbidden' } }), 0);
+  // The dashboard import's review (Bankroll › Dashboard › Import › From the dashboard app;
+  // docs/bankroll-merge.md §9.3). Owner only, so the server's CONSOLE_OWNER_USER_ID must be the
+  // guard's account, with a STAGED run on it: scripts/seed-money-import-demo.js on the scratch
+  // database (the owner's rows here, so there are pairs, and a staged run), then the server booted
+  // with LEDGER_TOKEN and DASHBOARD_BASE_URL at scripts/money-import-stub-dashboard.js so a fetch
+  // works. The walk ANSWERS every pair, opens the confirm steps, IMPORTS, UNDOES (refused once by a
+  // row edited through the app's own route, then through) and fetches again, so the same run is
+  // back for the next size; with the pull off the later views are reported as not reached at the
+  // second size. Never against :3001.
+  const importOpen = async () => {
+    await dash('Import');
+    await p.locator('.an-sheet .bid').first().waitFor({ timeout: 8000 });
+    await p.waitForTimeout(600);
+  };
+  const importReview = async () => {
+    await importOpen();
+    await p.locator('.an-sheet .bid-review').first().waitFor({ timeout: 8000 });
+  };
+  const importSaved = async () => {
+    await p.waitForFunction(() => ![...document.querySelectorAll('.an-sheet .bid-state')].some((s) => /Saving/.test(s.textContent)), null, { timeout: 60000 });
+    await p.waitForTimeout(500);
+  };
+  // Every pair answered (the Likely ones filled, each Possible one's first answer), so Import opens.
+  const importAnswered = async () => {
+    await importReview();
+    const fill = p.locator('.an-sheet .bid-group button:has-text("Fill the likely ones")');
+    if (await fill.count() && await fill.first().isEnabled()) { await fill.first().click({ force: overlay }); await p.waitForTimeout(300); }
+    for (const seg of await p.locator('.an-sheet .bid-pair-seg').all()) {
+      if (await seg.locator('[aria-checked="true"]').count()) continue;
+      await seg.locator('[role="radio"]').first().click({ force: overlay });
+      await p.waitForTimeout(150);
+    }
+    await importSaved();
+  };
+  const sheetTo = async (sel) => {
+    await p.evaluate((s) => { const el = document.querySelector(s); if (el) el.scrollIntoView({ block: 'center' }); }, sel);
+    await p.waitForTimeout(400);
+  };
+  const sheetTop = async () => { await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; }); await p.waitForTimeout(300); };
+  step('bankroll-import-dashboard', importOpen, 1);
+  step('bankroll-import-dashboard-review', importReview, 14);
+  // A pair card tapped open (its long values whole), then Import's confirm step and Discard's.
+  step('bankroll-import-dashboard-confirm', async () => {
+    await importAnswered();
+    await p.locator('.an-sheet .bid-pair .bid-pair-fields').first().click({ force: overlay });
+    await p.waitForTimeout(400);
+    await sheetTo('.an-sheet .bid-pair');
+    await run('bankroll-import-dashboard-confirm (a pair open)');
+    await click('.an-sheet .bid-commit .bk-btn--brand', 600);
+    await sheetTo('.an-sheet .bid-confirm');
+    await run('bankroll-import-dashboard-confirm (import)');
+    await scrollMain(2);
+    await click('.an-sheet .bid-confirm button:has-text("Cancel")', 400);
+    await click('.an-sheet .bid-commit button:has-text("Discard")', 600);
+    await sheetTo('.an-sheet .bid-confirm');
+    await run('bankroll-import-dashboard-confirm (discard)');
+    await click('.an-sheet .bid-confirm button:has-text("Keep")', 400);
+  }, 0, { selfRun: true });
+  // The import done: its summary paged; Undo's typed-count form; the undo refused by a row edited
+  // since (each row with where it lives and Open in Results); that row deleted and the undo
+  // through; then a fetch, so the run is back.
+  step('bankroll-import-dashboard-imported', async () => {
+    await importAnswered();
+    await click('.an-sheet .bid-commit .bk-btn--brand', 600);
+    await click('.an-sheet .bid-confirm .bk-btn--brand', 1500);
+    await p.locator('.an-sheet .bid-summary').first().waitFor({ timeout: 90000 });
+    await p.waitForTimeout(600);
+    await sheetTop();
+    await run('bankroll-import-dashboard-imported');
+    await scrollMain(6);
+    // A cash session the import wrote (the fixtures' Wynn night), edited through the app's own
+    // route: what blocks the undo.
+    const edited = await p.evaluate(async () => {
+      const h = { Authorization: `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' };
+      const list = await fetch('/api/cash-sessions', { headers: h }).then((r) => r.json()).catch(() => null);
+      const rows = list && Array.isArray(list.sessions) ? list.sessions : [];
+      const row = rows.find((s) => Object.values(s).some((v) => typeof v === 'string' && /wynn/i.test(v)));
+      if (!row) return null;
+      const r = await fetch(`/api/cash-sessions/${row.id}`, { method: 'PUT', headers: h, body: JSON.stringify({ notes: 'guard: edited after the import' }) });
+      return r.ok ? row.id : null;
+    });
+    await click('.an-sheet button:has-text("Undo this import")', 600);
+    const label = await p.locator('.an-sheet form.bid-confirm .bk-field-label').first().innerText();
+    await p.locator('.an-sheet form.bid-confirm input').fill((label.match(/\d[\d,]*/) || [''])[0].replace(/,/g, ''));
+    await sheetTo('.an-sheet form.bid-confirm');
+    await run('bankroll-import-dashboard-imported (undo form)');
+    await scrollMain(1);
+    await click('.an-sheet form.bid-confirm button[type="submit"]', 1500);
+    if (edited != null) {
+      await p.locator('.an-sheet .bid-undo-err').first().waitFor({ timeout: 60000 });
+      await sheetTo('.an-sheet .bid-undo-err');
+      await run('bankroll-import-dashboard-imported (undo refused)');
+      await scrollMain(1);
+      await p.evaluate((id) => fetch(`/api/cash-sessions/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }), edited);
+      await click('.an-sheet form.bid-confirm button[type="submit"]', 1500);
+    } else notes.push({ view: 'bankroll-import-dashboard-imported', note: 'no imported Wynn cash session to edit, so the refused undo was not measured' });
+    await p.locator('.an-sheet .bid-summary').waitFor({ state: 'detached', timeout: 60000 });
+    await sheetTop();
+    await run('bankroll-import-dashboard-imported (undone)');
+    const again = p.locator('.an-sheet .bid button:has-text("Fetch from the dashboard")').first();
+    if (await again.isEnabled()) {
+      await again.click({ force: overlay });
+      await p.locator('.an-sheet .bid-review').first().waitFor({ timeout: 90000 }).catch(() => {});
+    } else notes.push({ view: 'bankroll-import-dashboard-imported', note: 'the pull is off, so the run was not fetched again: the review views need a fresh seed before the next size' });
+  }, 0, { selfRun: true });
   // Reports: the filter bar, the report picker and a table; then its filter sheet (over the
   // dashboard) with a filter on, so selected and disabled chips are both measured.
   step('bankroll-reports', () => dash('Reports'), 3);

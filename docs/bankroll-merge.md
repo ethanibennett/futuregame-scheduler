@@ -2,8 +2,8 @@
 
 Status: **design** (2026-10-14); **Phase 1 built** on `feat/money-merge` (merged), **Phase 2 built**
 on `feat/money-merge-2` (merged), **Phase 3 built** on `feat/money-merge-3`, **Phase 4 built** in the
-dashboard repo on `feat/money-export`, **Phase 5 built** on `feat/money-merge-5`, not yet merged (see
-"Phase 1: as built" to "Phase 5: as built" after the §15 table).
+dashboard repo on `feat/money-export`, **Phase 5 built** on `feat/money-merge-5` (merged), **Phase 6 built** on `feat/money-merge-6`, not yet merged (see
+"Phase 1: as built" to "Phase 6: as built" after the §15 table).
 A buildable spec for moving the dashboard's money
 (dashboard.futurega.me, repo `wsop-console`) into this app (futurega.me, repo
 `futuregame-scheduler`), cut into phases small enough for one builder each.
@@ -977,7 +977,7 @@ taken first, one to one.
 ### 9.2 Other review items
 
 - **Backers.**
-  - One card per §7.1 backer: name, masked token (first 2 characters and `••••••`), stakes summary,
+  - One card per §7.1 backer: name, masked token (`••••` and its last 4 characters; Phase 6), stakes summary,
     opening, delivery, source (live roster, deleted in the dashboard, or history only).
   - The choice is **New backer** or **Same as `<existing staking backer>`**, offered when the names
     match case-insensitively. Default New.
@@ -1581,7 +1581,7 @@ judgment about money, posting or layout. The model policy (handoff, 2026-10-14) 
 | **3** | sched | **Built** (see "Phase 3: as built" below). Settlement fixes (§10) + StakingView fields. Owner Q11: the backer pays up front, so `prepaid` is the normal case; the formulas for all nine types, swap and crossbook included, in §10 item 5; the open choices are switches (§17.1) | 1 | **Opus** |
 | **4** | WC | **Built** (see "Phase 4: as built" below; dashboard branch `feat/money-export`, not merged). `GET /api/money-export` + `lib/shared-token.js` (`checkSharedToken`, the roster's check generalised) + tests; `LEDGER_TOKEN` declared in `render.yaml`, set by the owner | — | Sonnet |
 | **5** | sched | **Built** (see "Phase 5: as built" below). Import engine: fetch, stage, plan (§5 mapping, §9.1 scoring, §7.1 union, §5.8 opening and reconciliation with a `computeBankroll` port), decisions, commit, undo, delta; owner-only routes | 1, 2 | **Opus** |
-| **6** | sched | Import review UI (§9.3) + seed script + guard steps | 5 | **Opus** (grid seating and guard work has needed judgment on every bankroll tab) |
+| **6** | sched | **Built** (see "Phase 6: as built" below). Import review UI (§9.3) + seed script + guard steps | 5 | **Opus** (grid seating and guard work has needed judgment on every bankroll tab) |
 | **7** | sched | Standing shares live, to §1.1: the **Notify action** creates a share (Q1: not on save); `syncSharesFor` in every write path only **follows or voids** a posted share (§6.5), silently (Q2); the overlap `ask` (Q7) and where its answer is stored; exclusions, revisions, recalc, drift, preview, cutover state and `PUT /api/bankrolls/money/cutover`, roster sync standing down | 1, 2 | **Opus** |
 | **8** | sched | Standing UI in the Staking tab: backers with stakes editor (from today / correct with preview; the game list is `classify.js` `GAMES`, Q8), opening, delivery, copy and rotate link, recorded shares with exclude / recalc / remove; the "Posts to backers" preview line on the result and cash forms and the Notify sheet (with the Q7 ask); guard steps | 7 | Sonnet |
 | **9** | sched | Owner API (§11.2-11.3, ported `normalizeSession` + tests) and deep links (§11.5) | 1, 7 | Sonnet |
@@ -2281,6 +2281,83 @@ would change once Phase 7 is ready.
 
 Phases 3, 4 and 10 can run in parallel with anything after Phase 1. Phases 5 and 7 can run in
 parallel after Phase 2.
+
+### Phase 6: as built (2026-10-14, branch `feat/money-merge-6`)
+
+Built to §9.3 on the Phase 5 routes, with no change to what the engine writes. Not merged, not
+deployed; the pull stays OFF until `LEDGER_TOKEN` is set (Phase 5's rollout table).
+
+**The screen** (`vite-app/src/components/BankrollImportDashboard.jsx`, `bankroll-import-dashboard.css`;
+the pure parts in `vite-app/src/utils/bankroll-import-dashboard.js`): Bankroll › Dashboard › Import,
+a section "From the dashboard app" above Import and export. It shows only to the owner: it reads
+`GET /api/bankrolls/import/dashboard` on mount and hides itself on a 403 (no `can_import_dashboard` flag
+was added to `GET /api/bankrolls`; the routes' own gate is the one source of truth).
+- **Status**: whether the pull is on and, when off, the server's reason; **Fetch from the dashboard**
+  (17g × 5r, disabled while the pull is off); the past fetches as 4r rows.
+- **Review** of the staged run, grouped as the plan groups it: the totals (Dashboard roll / Roll after
+  import, Dashboard fund / Fund after import, each with "here now" and the difference), the counts
+  table (New / To review per store), the pairs (Likely first, then by score; each a 35g card with both
+  sides' Date, Room, Game, In → out, Result in words and colour, Hours, a "=" between fields that
+  agree, the score's reason, and a three-way answer: Same keep / Same take / Different, Take disabled
+  with the server's reason), **Fill the likely ones** (unanswered Likely pairs only), the backers (New
+  or Same as a name match; a link already owned is locked to its owner), the slate deals and their
+  backer answers, the balances, Changed / Deleted in the dashboard (a delta; Apply / Keep mine /
+  Remove / End it), the opening deposit (amount and date editable, Q3, with the formula and "Use the
+  computed figure"), the reconciliation (the identity line by line, "Unexplained (must be $0)" and the
+  lists behind each line), Not imported, and For your information (signs, other expenses, unknown
+  online rooms, pairs inside the dashboard, divergences, notify consistency).
+- **Answers save as they are given**: debounced 600 ms, one PUT at a time, merged while in flight;
+  the group's head reads Saving… / Saved / Not saved. A refused answer is dropped and the plan read
+  again. Nothing is written to the ledger before Import (Q4).
+- **Import** (17g × 5r) opens only with every pair answered, nothing blocking and the reconciliation
+  balanced; its reasons are listed above it and named by `aria-describedby`. The confirm step names
+  every table the import creates, changes and removes (`plan.writes.tables`, new in Phase 5's engine:
+  `journal.tableCounts`) and the count Undo will ask for. **A 409 `stale` reads the plan again and
+  highlights what moved** (`diffPlans`: pair, backer, slate, change, deletion, opening, reconciliation,
+  errors, counts, writes); the same hash is never sent again by itself. Discard has its own confirm.
+- **Imported**: the summary (what was written, per table; the rounding; the after-import
+  reconciliation) and **Undo this import** (11g × 5r, danger) behind the typed row count. An undo refused
+  for an edited row lists each row with where it lives and, for a cash session or a tournament result,
+  **Open in Results**; the note says deleting the row (not putting it back) lets the undo through.
+- Layout as the other bankroll tabs: 35g content, every box whole g × whole r, every baseline on an r
+  line, controls on the grid with centred labels, truncating cells with the sheet's descender room.
+  Tokens only.
+
+**Engine additions** (small, all in `lib/money-import/`): `journal.tableCounts` (the per-table counts
+the confirm step and the summary show, keys sorted so the plan hash is stable), carried as
+`plan.writes.tables` and `summary.tables`; `plan.deletions[].was` (what a deleted record was, so the
+review can name it); `maskToken` now shows the LAST four characters (`••••Kq2V`), the part a pasted
+`/b/` link is recognised by, two for a link under eight (§9.2 first said the first two).
+
+**Seed and guards**
+- `scripts/seed-money-import-demo.js <scratch.db> [--owner <id>] [--delta]` writes the owner's rows
+  here and a STAGED run of the Phase 5 fixtures through the engine itself (every card kind), with
+  `--delta` a committed first import and a staged delta. The server must be stopped, and `JWT_SECRET`
+  must be the scratch server's (a link-only backer's fingerprint is keyed by it). It refuses
+  `poker-tournaments.db` by name.
+- `scripts/money-import-stub-dashboard.js [--port] [--token] [--delta]` serves the same fixtures as the
+  dashboard's export, so a scratch server with `LEDGER_TOKEN` and `DASHBOARD_BASE_URL` at it can Fetch.
+- `check:controls` and `check:clipping` gained `bankroll-import-dashboard` (the review, a pair card
+  open, the confirm steps, the import done, the undo form, the undo refused by a row edited through
+  the app's route, the undo through, then a fetch so the run is back for the next size). The world:
+  the owner's account (`CONSOLE_OWNER_USER_ID`) on a scratch server, the seed, the stub. Without the
+  stub the later views are reported as not reached at the second size.
+
+**Tests**: `npm run test:money-import` (the engine's 57, then 20 `node --test` cases on the review's
+helpers); `npm run test:money-import-review` (18 cases, WebKit, the real server and engine against the
+stub dashboard on ports 4620-4629: the pull off, the 403, fetch, every answer saved, the stale 409 and
+its highlight, the confirm step, the commit and its $0 reconciliation, the undo refused by an edited
+row and through after its delete with every table byte for byte, a delta, both undone newest first;
+`MIR_SHOTS=<dir>` saves each state with the grid overlay on). Both need the built app.
+
+**Traps**
+- **innerText reads a heading in capitals** (`an-sec` is `text-transform: uppercase`), so a Playwright
+  match on "Review: fetch" must ignore case. The review test's `waitText` does.
+- **The guard walk mutates its run** (answers, import, undo, fetch again). Never point it at :3001.
+- **Forty paragraphs drift 0.05r.** `an-p`'s two fractional pads each floor to a 1/64 px layout unit in
+  WebKit, so every paragraph is 1/64 px short; a view with this many lands the section below it off
+  its r line (the CSV buttons, 402). `.bid .an-p` pads a whole r below and pushes the baseline with a
+  transform instead. Any other long prose view will meet the same.
 
 ### Backers view (read-only), ahead of Phase 8 (2026-10-14, branch `feat/backers-view`)
 

@@ -8,6 +8,7 @@ import { goalProgress, ledgerToCsv, fmtRule } from '../utils/bankroll-ledger.js'
 import BankrollFab from './BankrollFab.jsx';
 import BankrollOverview from './BankrollOverview.jsx';
 import BankrollImport from './BankrollImport.jsx';
+import BankrollImportDashboard from './BankrollImportDashboard.jsx';
 import BankrollReports from './BankrollReports.jsx';
 import BankrollSessions from './BankrollSessions.jsx';
 import BankrollLocations from './BankrollLocations.jsx';
@@ -358,6 +359,9 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
                   onSave={savePrefs} saving={saving} currency={currency} />
               )}
 
+              {/* The dashboard import's review (owner only: hidden on a 403), above the CSV import. */}
+              {tab === 'data' && <BankrollImportDashboard bk={bk} onClose={onClose}
+                onChanged={() => { setVersion((v) => v + 1); bk.refresh(); }} />}
               {tab === 'data' && <section className="bd-section" aria-labelledby="bd-data">
                 <h3 className="an-cell an-sec" id="bd-data">Import and export</h3>
                 <p className="an-p">Export: every ledger entry of {b ? b.name : 'every bankroll'} with its running balance, as CSV.
