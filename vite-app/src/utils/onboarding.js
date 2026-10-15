@@ -45,7 +45,7 @@ export const BUYIN_CHIPS = [
 ];
 // The five savedFilters keys setup writes, at TournamentsView's DEFAULT_FILTERS values. A key at
 // its default is not stored, as TournamentsView's own persistence does.
-export const WIZARD_DEFAULTS = { selectedGames: [], mixedOnly: false, buyinRanges: [], showOnline: true, onlyAvailableOnline: false };
+export const WIZARD_DEFAULTS = { selectedGames: [], mixedOnly: false, buyinRanges: [], showOnline: false, onlyAvailableOnline: true };   // live-only defaults, 2026-10-15
 export const WIZARD_KEYS = Object.keys(WIZARD_DEFAULTS);
 // Which step each answer row belongs to: Skip saves only the steps already confirmed with Next.
 export const ROW_STEP = { place: 0, radius: 0, state: 1, online: 1, sites: 1, games: 2, buyins: 2 };
@@ -292,7 +292,9 @@ export function pushServerOnboarding(token, body) {
 export function adoptServerOnboarding(rec) {
   if (!rec || rec.v !== 2 || !rec.filters || typeof rec.filters !== 'object') return false;
   if (readLocalFilters()) return false;
-  const out = wizardSubset(rec.filters);
+  // A record from before the live-only defaults (no liveDefaults) left out the then-defaults:
+  // online on, the state filter off. Read it that way, so a Yes from back then still shows online.
+  const out = wizardSubset(rec.liveDefaults ? rec.filters : { showOnline: true, onlyAvailableOnline: false, ...rec.filters });
   if (!Object.keys(out).length) return false;
   writeLocalFilters(out);
   if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {

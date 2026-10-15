@@ -2491,6 +2491,12 @@ function finalize(c) {
     await vis('.bp-session.open .cal-detail-notes').first().waitFor({ timeout: 4000 });
   }, 0, { noSkip: true });
   step('backer-page-empty', () => backer(1), 0, { noSkip: true });
+  // futurega.me/live, the landing page the ads link to (no login; 2026-10-15), paged to its foot.
+  step('live-page', async () => {
+    await p.goto(base + '/live' + (overlay ? '?gridOverlay=1' : ''), { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(1500);
+    await vis('.lp-figure').first().waitFor({ timeout: 8000 });
+  }, 2, { noSkip: true });
   step('backer-page-one', () => backer(2), 0, { noSkip: true });
   // A saved card's buddy chip opens the swap sheet; Results' share menu opens the series wrap-up.
   step('swap-modal', async () => {

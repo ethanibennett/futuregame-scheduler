@@ -873,6 +873,70 @@ function serveIndex(req, res) {
 }
 app.get('/', serveIndex);
 
+// ── futurega.me/live: the live-only landing page (launch plan, action 3; 2026-10-15) ──
+// What ads link to: the app shell (vite-app LivePage.jsx), with its own title and description for
+// link previews. It names no online room and no data source (Meta, Google and Apple all treat a page
+// that promotes online rooms as online gambling). Its counts come from /api/public/live-summary.
+const LIVE_TITLE = "futurega.me · Your whole poker calendar";
+const LIVE_DESC = "Every live poker series near you, in each room's own time. Plan for bagging and busting, see where your crew is playing, and keep your results beside the plan.";
+function serveLive(req, res) {
+  let html;
+  try { html = require('fs').readFileSync(path.join(__dirname, 'public-vite', 'index.html'), 'utf8'); }
+  catch (err) { console.error('Live page: no app shell (public-vite/index.html):', err.message); return res.status(503).send('Unavailable'); }
+  html = html.replace(/<title>[^<]*<\/title>/, `<title>${LIVE_TITLE}</title>`)
+    .replace('</head>', `<meta name="description" content="${LIVE_DESC}">
+`
+      + `<meta property="og:title" content="${LIVE_TITLE}">
+<meta property="og:description" content="${LIVE_DESC}">
+`
+      + `<meta property="og:url" content="https://futurega.me/live">
+<meta property="og:type" content="website">
+`
+      + `<meta name="build-version" content="${BUILD_VERSION}">
+</head>`);
+  res.set('Cache-Control', 'no-cache');
+  res.type('html').send(html);
+}
+app.get('/live', serveLive);
+
+// The landing page's figures: live events in the next 30 days (not online, not a Day 2 restart, not
+// a player's Personal day), the series they belong to and the rooms. Public and cached ten minutes.
+// appStore is the store link's parts once the app is listed (APP_STORE_ID and the campaign provider
+// token APP_STORE_PT, both unset until launch); the page adds the ad's campaign (?ct=) to it.
+let liveSummaryCache = null;
+app.get('/api/public/live-summary', (req, res) => {
+  try {
+    const now = Date.now();
+    if (!liveSummaryCache || now - liveSummaryCache.at > 10 * 60e3) {
+      const from = new Date(now).toISOString().slice(0, 10);
+      const to = new Date(now + 30 * 864e5).toISOString().slice(0, 10);
+      // Event dates are stored as text ("October 16, 2026"), so the window is applied here, by day.
+      const q = db.exec(`SELECT date, venue, property FROM tournaments
+        WHERE COALESCE(is_online, 0) = 0 AND venue != 'Personal' AND COALESCE(is_restart, 0) = 0`);
+      let events = 0;
+      const seriesSet = new Set(), roomSet = new Set();
+      for (const [date, venue, property] of (q[0] ? q[0].values : [])) {
+        const ms = Date.parse(`${date} 12:00 UTC`);
+        if (!Number.isFinite(ms)) continue;
+        const day = new Date(ms).toISOString().slice(0, 10);
+        if (day < from || day > to) continue;
+        events += 1;
+        seriesSet.add(venue);
+        if (property && String(property).trim()) roomSet.add(String(property).trim());
+      }
+      const series = seriesSet.size, rooms = roomSet.size;
+      liveSummaryCache = { at: now, body: { from, to, events, series, rooms } };
+    }
+    const id = String(process.env.APP_STORE_ID || '').trim(), pt = String(process.env.APP_STORE_PT || '').trim();
+    const appStore = /^\d{6,12}$/.test(id) && /^[A-Za-z0-9]{3,32}$/.test(pt) ? { id, pt } : null;
+    res.set('Cache-Control', 'public, max-age=600');
+    res.json({ ...liveSummaryCache.body, appStore });
+  } catch (e) {
+    console.error('[live-summary]', e.message);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
 // Hendon Mob lookup — resolve via DuckDuckGo, redirect user straight to Hendon Mob
 const hendonCache = new Map();
 const hendonWinningsCache = new Map();
@@ -5041,7 +5105,10 @@ app.put('/api/user/onboarding', authenticateToken, requireRegistered, async (req
     const filters = sanitizeOnboardingFilters(body.filters);
     if (!filters) return res.status(400).json({ error: 'filters must be an object of setup answers' });
     if (Buffer.byteLength(JSON.stringify(filters)) > 2048) return res.status(400).json({ error: 'filters too large' });
-    const onboarding = { v: 2, at: Date.now(), skipped: body.skipped === true, filters };
+    // liveDefaults: written under the live-only defaults (2026-10-15), where an absent showOnline means
+    // OFF and an absent onlyAvailableOnline means ON. A record without it was written when they meant
+    // the opposite, and the device reads it that way (vite-app utils/onboarding.js adoptServerOnboarding).
+    const onboarding = { v: 2, at: Date.now(), skipped: body.skipped === true, filters, liveDefaults: true };
     const blob = JSON.stringify(onboarding);
     db.run('UPDATE users SET onboarding = ? WHERE id = ?', [blob, req.user.id]);
     await saveDatabase();

@@ -1115,6 +1115,21 @@ function scan(rootSel) {
     }
   }
 
+  // futurega.me/live, the ads' landing page (2026-10-15), from the top to its foot.
+  if (on('live-page')) {
+    try {
+      await p.goto(base + '/live', { waitUntil: 'domcontentloaded' });
+      await p.locator('.lp-figure').first().waitFor({ timeout: 8000 });
+      await p.waitForTimeout(1200);
+      for (let k = 0; k < 4; k++) {
+        await run(`live page${k ? ` (scrolled ${k})` : ''}`, '.bp-shell');
+        const moved = await p.evaluate((h) => { const sc = document.querySelector('.lp-content'); const b = sc.scrollTop; sc.scrollTop += Math.round(h * 0.7); return sc.scrollTop !== b; }, H);
+        if (!moved) break;
+        await p.waitForTimeout(300);
+      }
+    } catch (e) { console.log(`  (live page skipped: ${e.message.split('\n')[0]})`); }
+  }
+
   const uniq = [...new Map(found.map(f => [f.view.split(' (')[0] + f.text + f.host, f])).values()];
   console.log(`scanned ${scanned.size} views${args.includes('--verbose') ? ': ' + [...scanned].join(', ') : ''}`);
   if (uniq.length) {

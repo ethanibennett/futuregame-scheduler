@@ -272,7 +272,7 @@ function SettlementBar() {
   return (
     <div className="late-reg-wrap bp-settle" aria-label={`Settlement in ${c.text}, Sunday at noon Eastern`}>
       <div className="late-reg-label-row">
-        <span className="late-reg-label open">Until settlement</span>
+        <span className="late-reg-label open">Settle</span>
         <span className="late-reg-sep" />
         <span className="late-reg-time open">{c.text}</span>
       </div>

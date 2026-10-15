@@ -639,8 +639,8 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
       // Must match TournamentsView's DEFAULT_FILTERS: the two views filter the same
       // tournaments from the same array, and a field present in one and absent in the
       // other produces two different lists from identical data.
-      showOnline: savedFilters.showOnline !== false,
-      onlyAvailableOnline: !!savedFilters.onlyAvailableOnline,
+      showOnline: savedFilters.showOnline === true,
+      onlyAvailableOnline: savedFilters.onlyAvailableOnline !== false,
       siteRules: savedFilters.siteRules || {},
       maxDistance: savedLoc.maxDistance || '',
       userLocation: savedLoc.userLocation || null,

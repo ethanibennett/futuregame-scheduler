@@ -1,0 +1,72 @@
+/* futurega.me/live (LivePage.jsx), on the backer page's shell (backer-page.css: the 37g column, the
+   top bar, the theme button, .an-clip's painted room). Every size in g and r; baselines seated with
+   an-cell's p = 2(k - h/2 - c), c the face's own (see backer-page.css's header). From the content's top:
+   3r, the title (display 2xl in a 3r row, baseline on line 3), 2r, the lede (an-p, 2r lines), 3r, the
+   figures card (15r), 3r, the features (a 2r heading and an an-p note each, 1r apart), 3r, the
+   buttons (35g x 5r, 1r apart), 3r, the foot. */
+.lp-title {
+  --h: 3; --p: 0.7514;
+  margin-top: calc(var(--subrow) * 3);
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-regular);
+  letter-spacing: var(--track-display);
+  color: var(--text);
+}
+.lp-lede { margin-top: calc(var(--subrow) * 2); color: var(--text); }
+.lp-nowrap { white-space: nowrap; }
+
+/* The figures: the running total card's shape. Label r3, the figure r9 (3r over it), the note r13
+   (2r over it), then 2r: 15r. */
+.lp-card {
+  margin-top: calc(var(--subrow) * 3);
+  height: calc(var(--subrow) * 15);
+  box-sizing: border-box;
+  padding: 0 var(--gu);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--elev-1);
+}
+.lp-figure {
+  --h: 3; --p: 0.7514;
+  margin-top: calc(var(--subrow) * 3);
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  color: var(--text);
+  font-variant-numeric: var(--num-tabular);
+  white-space: nowrap;
+}
+.lp-card .an-note { margin-top: calc(var(--subrow) * 2); }
+
+.lp-features { margin: calc(var(--subrow) * 3) 0 0; padding: 0; list-style: none; }
+.lp-feature + .lp-feature { margin-top: var(--subrow); }
+.lp-ft {
+  /* Univers Condensed sm, baseline on line 2 of 2 (the stakes line's c). */
+  --h: 2; --p: 0.6978;
+  font-family: var(--font-condensed);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+}
+
+/* The buttons: whole 35g x 5r boxes, the label centred in them (.ctl), the rule for every control. */
+.lp-ctas { margin-top: calc(var(--subrow) * 3); display: grid; row-gap: var(--subrow); }
+.lp-cta {
+  box-sizing: border-box;
+  width: calc(var(--gu) * 35);
+  height: calc(var(--subrow) * 5);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border-strong);
+}
+.lp-cta.is-primary { background: var(--brand); color: var(--on-brand); box-shadow: none; }
+.lp-cta:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.lp-soon { text-align: center; }
+.lp-foot { margin-top: calc(var(--subrow) * 3); }

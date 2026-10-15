@@ -22,6 +22,7 @@ import ForgotPasswordForm from './components/ForgotPasswordForm.jsx';
 import ResetPasswordForm from './components/ResetPasswordForm.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import GridOverlay from './components/GridOverlay.jsx';
+import LivePage from './components/LivePage.jsx';
 import DesktopRail from './components/DesktopRail.jsx';
 import DesktopEventDetail from './components/DesktopEventDetail.jsx';
 import useDesktopLayout from './hooks/useDesktopLayout.js';
@@ -47,7 +48,7 @@ import SkeletonDashboard from './components/SkeletonDashboard.jsx';
 import SkeletonSchedule from './components/SkeletonSchedule.jsx';
 import RealNamePrompt from './components/RealNamePrompt.jsx';
 import OnboardingWizard from './components/OnboardingWizard.jsx';
-import { hasOnboarded, markOnboarded, clearOnboarded, readLocalLocation, readLocalFilters } from './utils/location-prefs.js';
+import { hasOnboarded, markOnboarded, clearOnboarded, readLocalLocation, readLocalFilters, migrateLiveOnlyDefaults } from './utils/location-prefs.js';
 import { fetchServerOnboarding, adoptServerOnboarding } from './utils/onboarding.js';
 import NotificationsPanel from './components/NotificationsPanel.jsx';
 import SwapModal from './components/SwapModal.jsx';
@@ -186,6 +187,10 @@ function landMySchedule() {
   const groupAbsTop = todayEl.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop;
   c.scrollTop = Math.max(0, groupAbsTop - stickyH);
 }
+
+// Before any view reads the saved filters: a browser that used the app before keeps its online
+// choices when the live-only defaults arrive (utils/location-prefs.js).
+migrateLiveOnlyDefaults();
 
 const APP_ADMIN_USERNAMES = ['ham', 'ham5', 'claude'];   // mirrors server.js APP_ADMIN_USERNAMES
 const EVENT_EDITOR_USERNAMES = ['ham', 'ham5'];          // mirrors the server's write allowlist
@@ -2549,7 +2554,11 @@ function App() {
 
 // The entry point: a backer link renders its page alone (components/BackerPage.jsx), so App's
 // hooks (the session, the schedule fetches, push for admins) never run for it.
+// futurega.me/live: the live-only landing page the ads link to (launch plan; server.js serveLive).
+const IS_LIVE_PAGE = window.location.pathname.replace(/[/]+$/, '') === '/live';
+
 export default function Root() {
   if (BACKER_TOKEN) return <BackerPage token={BACKER_TOKEN} />;
+  if (IS_LIVE_PAGE) return <LivePage />;
   return <App />;
 }

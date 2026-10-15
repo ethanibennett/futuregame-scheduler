@@ -312,17 +312,15 @@ export function nextSettlement(nowMs) {
   if (q.h !== 12) next += (12 - q.h) * 3600e3;
   return next;
 }
-/** { leftMs, pct (0-100, the share of the week still to run), text ("2 days, 4 hours" / "3 hours, 5 minutes") }. */
+/** { leftMs, pct (0-100, the share of the week still to run, exact to Sunday noon), days, text }.
+ *  The text counts whole calendar days in New York, not hours (owner, 2026-10-15): Saturday is
+ *  "1 day" at any hour, Monday "6 days", Sunday morning "Today", Sunday after noon "7 days". */
 export function settlementCountdown(nowMs) {
   const next = nextSettlement(nowMs);
   const leftMs = Math.max(0, next - nowMs);
   const pct = Math.min(100, Math.max(0, (leftMs / SETTLE_WEEK_MS) * 100));
-  const totalMin = Math.floor(leftMs / 60000);
-  const d = Math.floor(totalMin / 1440), h = Math.floor((totalMin % 1440) / 60), m = totalMin % 60;
-  const unit = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
-  const parts = [];
-  if (d > 0) parts.push(unit(d, 'day'));
-  if (h > 0) parts.push(unit(h, 'hour'));
-  if (d === 0) parts.push(unit(m, 'minute'));
-  return { next, leftMs, pct, text: parts.join(', ') };
+  const p = etParts(nowMs);
+  const days = p.dow === 0 ? (p.h < 12 ? 0 : 7) : 7 - p.dow;
+  const text = days === 0 ? 'Today' : `${days} day${days === 1 ? '' : 's'}`;
+  return { next, leftMs, pct, days, text };
 }

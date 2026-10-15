@@ -98,13 +98,14 @@ test('withFirstRunRows: step 2 is always answered on a first run; the sites filt
   assert.equal(O.sitesApply(nv), true);
   assert.equal(O.sitesShown(nv), false, 'but its checkbox waits for a Yes');
   assert.equal(O.sitesApply(O.chooseRegion(none, 'europe')), false, 'abroad: no state, no filter');
-  // What an untouched first run writes: online off, and the sites filter on in Nevada.
+  // An untouched first run: online off and the sites filter on in Nevada, both the Schedule's
+  // defaults since the live-only defaults (2026-10-15), so nothing is stored.
   const rows = O.withFirstRunRows(nv, {});
-  assert.deepEqual(O.filtersFrom(nv, null, rows), { showOnline: false, onlyAvailableOnline: true });
-  assert.deepEqual(O.filtersFrom(none, null, O.withFirstRunRows(none, {})), { showOnline: false });
-  // Tapping Yes writes nothing for online (true is the Schedule's default) and keeps the filter.
-  assert.deepEqual(O.filtersFrom({ ...nv, online: true }, null, rows), { onlyAvailableOnline: true });
-  assert.deepEqual(O.wizardSubset(O.filtersFrom(none, { hideSideEvents: true }, O.withFirstRunRows(none, {}))), { showOnline: false });
+  assert.deepEqual(O.filtersFrom(nv, null, rows), {});
+  assert.deepEqual(O.filtersFrom(none, null, O.withFirstRunRows(none, {})), {});
+  // Tapping Yes stores online (no longer the default); the filter stays on, the default.
+  assert.deepEqual(O.filtersFrom({ ...nv, online: true }, null, rows), { showOnline: true });
+  assert.deepEqual(O.wizardSubset(O.filtersFrom(none, { hideSideEvents: true }, O.withFirstRunRows(none, {}))), {});
 });
 
 // ── filtersFrom ────────────────────────────────────────────────────────────────────────────────
@@ -126,7 +127,7 @@ test('filtersFrom: defaults deleted; extras dropped only when the games row is t
   const out = O.filtersFrom({ ...a, games: ['NLH'], online: true, buyins: [] }, PREV, { games: true, online: true, buyins: true });
   assert.deepEqual(out.selectedGames, ['NLH'], 'Razz dropped once the row is touched');
   assert.equal('mixedOnly' in out, false, 'mixedOnly false is the default: deleted');
-  assert.equal('showOnline' in out, false, 'showOnline true is the default: deleted');
+  assert.equal(out.showOnline, true, 'showOnline true is a Yes, no longer the default: kept');
   assert.equal('buyinRanges' in out, false, 'no chips is the default: deleted');
   assert.deepEqual(out.siteRules, PREV.siteRules);
   const none = O.filtersFrom({ ...a, games: [] }, PREV, { games: true });
@@ -139,7 +140,8 @@ test('filtersFrom: $5K+ writes and removes both top bands', () => {
   assert.deepEqual(O.filtersFrom({ ...a, buyins: ['low', 'roller'] }, {}, { buyins: true }).buyinRanges, ['0-500', '5000-10000', '10000+']);
   const off = O.filtersFrom({ ...a, buyins: ['low'] }, { buyinRanges: ['0-500', '5000-10000', '10000+'] }, { buyins: true });
   assert.deepEqual(off.buyinRanges, ['0-500']);
-  assert.deepEqual(O.filtersFrom({ ...a, onlyAvailable: true }, {}, { sites: true }), { onlyAvailableOnline: true });
+  assert.deepEqual(O.filtersFrom({ ...a, onlyAvailable: true }, {}, { sites: true }), {}, 'the state filter on is the default');
+  assert.deepEqual(O.filtersFrom({ ...a, onlyAvailable: false }, {}, { sites: true }), { onlyAvailableOnline: false });
 });
 
 // ── locationFrom and the state ─────────────────────────────────────────────────────────────────
@@ -288,10 +290,14 @@ test('adoptServerOnboarding: seeds a device with no filters, never one with its 
   store.clear(); events.length = 0;
   const rec = { v: 2, at: 1, skipped: false, filters: { selectedGames: ['NLH'], showOnline: true, buyinRanges: ['0-500'] } };
   assert.equal(O.adoptServerOnboarding(rec), true);
-  assert.deepEqual(JSON.parse(store.get('savedFilters')), { selectedGames: ['NLH'], buyinRanges: ['0-500'] }, 'defaults left out');
+  // A record from before the live-only defaults is read under the old ones: online on, the state filter off.
+  assert.deepEqual(JSON.parse(store.get('savedFilters')), { selectedGames: ['NLH'], showOnline: true, onlyAvailableOnline: false, buyinRanges: ['0-500'] }, 'an old record keeps its meaning');
   assert.equal(events.length, 1);
   assert.equal(events[0].type, 'onboarding-applied');
   assert.equal('location' in events[0].detail, false, 'a filters-only adoption leaves the location alone');
+  store.clear();
+  assert.equal(O.adoptServerOnboarding({ ...rec, liveDefaults: true, filters: { selectedGames: ['NLH'] } }), true);
+  assert.deepEqual(JSON.parse(store.get('savedFilters')), { selectedGames: ['NLH'] }, 'a new record: absent means the new defaults');
   store.set('savedFilters', JSON.stringify({ hideSideEvents: true }));
   assert.equal(O.adoptServerOnboarding(rec), false);
   assert.deepEqual(JSON.parse(store.get('savedFilters')), { hideSideEvents: true });

@@ -14,6 +14,12 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-15 (night) — Launch plan action 3: live-only defaults and futurega.me/live
+- **Live-only defaults:** a NEW browser starts with online events off and "available in my state" on (`DEFAULT_FILTERS` and setup's `WIZARD_DEFAULTS` both flipped; CalendarView matches). Any browser with earlier use (saved filters or location, finished setup) has its old online choices written down once first (`migrateLiveOnlyDefaults`, location-prefs.js, called at App.jsx load), so current testers see no change. "Clear all" keeps the online choices. Server setup records now carry `liveDefaults: true`; an older record is read under the old defaults, so a Yes from before still shows online.
+- **futurega.me/live:** `LivePage.jsx` (+ `utils/live-page.js`, `live-page.css`) on the backer page's shell: title, lede, the next 30 days' live counts (`GET /api/public/live-summary`: not online, not restarts, not Personal; cached 10 min; 1,236 events / 71 series / 62 rooms on 15 Oct), five features, the buttons, 21+ and 1-800-GAMBLER. No online room, data source or venue named. The App Store button appears once `APP_STORE_ID` + `APP_STORE_PT` (campaign provider token) are set on Render, and carries `?ct=`; until then "On iPhone and iPad from 5 January." Android visitors get "Open the web app". First touch kept in `localStorage.acqSource` for growth measurement. Guards: `live-page` in check:controls and check:clipping.
+- **Settle bar:** label "Settle", whole New York days (Saturday "1 day" all day, Sunday morning "Today", Sunday from noon "7 days"); the bar stays exact to Sunday noon.
+- **Owner to do:** the official App Store badge artwork (Apple's marketing tools) can replace the text button once the app is listed; set `APP_STORE_ID` and `APP_STORE_PT` then.
+
 ## 2026-10-15 (latest) — Backer page round two: subheadings, settlement bar, admin grid
 - **Cards:** the "Notes" label is gone; bb/hr sits under the share and its percentage; hours read "6h" (the shared `fmtHours`, so the owner's Backers tab too); 1r more above the notes in an open card.
 - **Subheading:** the line under the game is no longer the room. It is the session's own `subtitle` (new column on `tracking_entries` and `cash_sessions`, added at boot when missing), typed as "Subheading" in the result form (Results) and the cash session form; 60 characters, one line; the feed carries it only when set. No subheading = no second line.

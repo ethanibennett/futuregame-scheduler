@@ -1107,14 +1107,17 @@ const DEFAULT_FILTERS = {
   hideSideEvents: false, hiddenMonths: [], ladiesOnly: false, seniorsOnly: false,
   mixedOnly: false, dateFrom: '', dateTo: '',
   maxDistance: '', userLocation: null, locationRegion: null, locationLabel: null,
-  // Online play is shown by default. It is deliberately NOT a location field: an online
-  // event has no place, so every location filter would otherwise hide all of it.
-  showOnline: true,
+  // Live only by default (launch plan, 2026-10-15): online play shows once the player says yes,
+  // in setup or the Online menu. A browser that used the app before keeps its choice
+  // (location-prefs.js migrateLiveOnlyDefaults). It is deliberately NOT a location field: an
+  // online event has no place, so every location filter would otherwise hide all of it.
+  showOnline: false,
   /* "Available in <state>": only online rooms that can serve the user's
      jurisdiction. Set from the Online menu (2026-09-30; it was dark from 09-25
      when its filter-row checkbox was removed) and persisted with the other
-     online choices. matchesOnline ignores it while no jurisdiction is known. */
-  onlyAvailableOnline: false,
+     online choices. matchesOnline ignores it while no jurisdiction is known. On by default
+     (launch plan, 2026-10-15): a room that cannot serve the player's state stays out of the list. */
+  onlyAvailableOnline: true,
   /* Two-letter state code, or null. A standing fact about the user rather than
      a filter, which is why it survives "Clear all" alongside the location. */
   jurisdiction: null,
@@ -1209,6 +1212,11 @@ export default function TournamentsView({
       locationLabel: f.locationLabel,
       jurisdiction: f.jurisdiction,
       jurisdictionManual: f.jurisdictionManual,
+      // The online choices are standing answers too (setup asks them), not one look at the list:
+      // "Clear all" must not turn online play back on for someone who said live only.
+      showOnline: f.showOnline,
+      onlyAvailableOnline: f.onlyAvailableOnline,
+      siteRules: f.siteRules,
     }));
   };
   // Persist location selection across sessions

@@ -47,7 +47,7 @@
     "test:home-log": "node test/home-log.test.js",
     "test:home-layout": "node test/home-layout.test.js",
     "test:tracking-reset": "node test/tracking-reset.test.js",
-    "test:onboarding": "node test/onboarding.test.js && cd vite-app && node --test src/utils/__tests__/onboarding.test.mjs",
+    "test:onboarding": "node test/onboarding.test.js && cd vite-app && node --test src/utils/__tests__/onboarding.test.mjs src/utils/__tests__/live-only-defaults.test.mjs",
     "test:backer-page": "node test/backer-page.test.js && node test/backer-notes.test.js && cd vite-app && node --test src/utils/__tests__/backer-page.test.mjs src/utils/__tests__/theme.test.mjs",
     "test:standing": "node --test test/standing.test.js test/classify.test.js",
     "test:money-merge": "node test/money-merge.test.js && node --test test/standing.test.js test/classify.test.js",
@@ -69,7 +69,8 @@
     "test:owner-api": "node test/owner-api.test.js && cd vite-app && node --test src/utils/__tests__/deep-links.test.mjs",
     "test:money-homes": "node test/money-homes.test.js && cd vite-app && node --test src/utils/__tests__/money-homes.test.mjs",
     "test:standing-payouts": "node test/standing-payouts.test.js",
-    "test:notify-tap": "node test/notify-tap.test.js"
+    "test:notify-tap": "node test/notify-tap.test.js",
+    "test:live-page": "cd vite-app && node --test src/utils/__tests__/live-page.test.mjs src/utils/__tests__/live-only-defaults.test.mjs"
   },
   "keywords": [],
   "author": "",
