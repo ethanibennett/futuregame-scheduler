@@ -2477,10 +2477,16 @@ function finalize(c) {
   };
   step('backer-page', async () => {
     await backer(0);
-    await vis('.bp-card').first().waitFor({ timeout: 8000 });
+    await vis('.bp-session').first().waitFor({ timeout: 8000 });
     await also('all');
     await click('.bp-seg button:has-text("1M")', 700);
   }, 7, { noSkip: true });
+  // A session card opened, its figures and the owner's notes (owner, 2026-10-15); the seed puts notes on the newest.
+  step('backer-page-notes', async () => {
+    await backer(0);
+    await tap('.bp-session .cal-event-bar', 700);
+    await vis('.bp-session.open .cal-detail-notes').first().waitFor({ timeout: 4000 });
+  }, 0, { noSkip: true });
   step('backer-page-empty', () => backer(1), 0, { noSkip: true });
   step('backer-page-one', () => backer(2), 0, { noSkip: true });
   // A saved card's buddy chip opens the swap sheet; Results' share menu opens the series wrap-up.

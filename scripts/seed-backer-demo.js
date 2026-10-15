@@ -77,8 +77,22 @@ function sessionsFor(b, seed) {
 }
 
 /** Writes the demo backers into an open sql.js Database. Returns { full, empty, one, two } tokens. */
+// The owner's notes on three of the full history's sessions (the newest, the third, the fifth), so
+// the page's cards that open (owner, 2026-10-15) can be looked at: a cash session each, linked by
+// the share's ref as a Notify tap links it. One is long and runs over lines.
+const DEMO_NOTES = new Map([
+  [0, 'Good lineup, two regs and a lot of tourists.'],
+  [2, 'Game broke at 3am.\nStarted the night stuck two buy-ins, got it back in one pot against the seat 4 regular when my nut flush held on a paired river.'],
+  [4, 'Short session, left for the 7pm tournament.'],
+]);
+const hasCol = (db, table, col) => {
+  const r = db.exec(`PRAGMA table_info(${table})`);
+  return !!(r[0] && r[0].values.some((v) => v[1] === col));
+};
+
 function seedBackerDemo(db) {
   const now = Date.now();
+  const linkNotes = hasCol(db, 'backer_events', 'ref_table') && hasCol(db, 'cash_sessions', 'notes');
   const tokens = {};
   BACKERS.forEach((b, n) => {
     tokens[b.key] = b.token;
@@ -89,11 +103,18 @@ function seedBackerDemo(db) {
     db.run('DELETE FROM backer_public WHERE token = ?', [b.token]);
     const rows = sessionsFor(b, 20261013 + n * 7919);
     if (rows.length) db.run('INSERT INTO backer_public (token, name, updated_at) VALUES (?, ?, ?)', [b.token, b.name, now]);
-    for (const s of rows) {
+    rows.forEach((s, k) => {
       db.run(`INSERT INTO backer_events (id, token, session_id, ts, date, game, venue, hours, session_result_cents, pct, share_cents)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [`${b.token}:${s.id}`, b.token, s.id, s.ts, s.date, s.game, s.venue, s.hours, s.resultCents, s.pct, s.shareCents]);
-    }
+      const note = b.key === 'full' && linkNotes ? DEMO_NOTES.get(rows.length - 1 - k) : null;
+      if (note) {
+        db.run(`INSERT INTO cash_sessions (user_id, started_at, session_date, room, game, notes, created_at)
+                VALUES (0, ?, ?, ?, ?, ?, ?)`, [new Date(s.ts).toISOString(), s.date, s.venue, s.game, note, new Date(now).toISOString()]);
+        const id = db.exec('SELECT last_insert_rowid()')[0].values[0][0];
+        db.run("UPDATE backer_events SET ref_table = 'cash_sessions', ref_id = ? WHERE id = ?", [id, `${b.token}:${s.id}`]);
+      }
+    });
   });
   return tokens;
 }

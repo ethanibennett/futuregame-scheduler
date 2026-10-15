@@ -1099,6 +1099,18 @@ function scan(rootSel) {
           await p.waitForTimeout(400);
           await run('backer page, full history (1M)', '.bp-shell');
         }
+        if (i === 0) {
+          // The first six session cards open, notes and all (owner, 2026-10-15), from the top.
+          if (await r1.count()) await p.locator('.bp-seg button:has-text("All")').first().click({ timeout: 4000 }).catch(() => {});
+          await p.evaluate(() => { document.querySelector('.bp-content').scrollTop = 0; for (const c of [...document.querySelectorAll('.bp-session .cal-event-bar')].slice(0, 6)) c.click(); });
+          await p.waitForTimeout(400);
+          for (let k = 0; k < 4; k++) {
+            await run(`backer page, notes open${k ? ` (scrolled ${k})` : ''}`, '.bp-shell');
+            const moved = await p.evaluate((h) => { const sc = document.querySelector('.bp-content'); const b = sc.scrollTop; sc.scrollTop += Math.round(h * 0.7); return sc.scrollTop !== b; }, H);
+            if (!moved) break;
+            await p.waitForTimeout(300);
+          }
+        }
       } catch (e) { console.log(`  (backer page, ${names[i]} skipped: ${e.message.split('\n')[0]})`); }
     }
   }

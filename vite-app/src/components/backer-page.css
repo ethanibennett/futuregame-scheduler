@@ -281,6 +281,16 @@
   overflow: hidden;
 }
 .bp-card > .bp-strip.is-neutral { background: var(--border-strong); }
+/* A session card is the Schedule's own event card (owner, 2026-10-15: "as close to the schedule card
+   as possible, just swapping out information"): CalendarEventRow's markup and classes, styled by
+   styles.css, so its grid, type and opening are the Schedule's. Only what differs is here: the 2r gap
+   the owner set between cards, the share's colour where the buy-in's grey goes, and the notes keeping
+   the owner's line breaks. */
+.bp-cards > .cal-event-row.bp-session { margin-bottom: calc(var(--subrow) * 2); }
+.bp-session .bp-amt.is-pos, .bp-session .bp-bb.is-pos { color: var(--pos); }
+.bp-session .bp-amt.is-neg, .bp-session .bp-bb.is-neg { color: var(--neg); }
+.bp-session .bp-mini .bp-notes-hint { margin-left: auto; text-align: right; color: var(--text-muted); }
+.bp-session .bp-detail-notes { white-space: pre-line; overflow-wrap: anywhere; }
 /* The strip is the Schedule's own .cal-venue-strip (styles.css): the room's colour, its short code
    centred both ways, white. .bp-strip only marks it here; an unknown room gets the neutral colour. */
 .bp-card-body { grid-column: 2; min-width: 0; padding: 0 var(--gu); }

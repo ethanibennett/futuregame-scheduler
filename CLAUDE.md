@@ -199,6 +199,12 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   itself gained nothing, and the parity tests still compare it byte for byte. The owner's Backers tab
   shows the same figure from `played` on `GET /api/staking/standing/backers`. Definition, units and
   owner questions: `docs/bankrolls.md` "bb/hr".
+  **Session cards are the Schedule's card** (owner, 2026-10-15): `SessionCard` renders CalendarEventRow's
+  markup and classes (date and hours as the time, the share as the buy-in, the game as the title with the
+  room as its stage line, bb/hr as the late-reg line) and opens like it, to the figures and the owner's
+  **notes**: the feed carries `notes` from the result a share points at (`backer_events.ref_table/ref_id`),
+  only when there are any (importer lines excluded), so a page without notes is byte for byte unchanged.
+  `npm run test:backer-page` holds it; the guards' `backer-page-notes` views open cards from the seed.
   **Bankroll merge, Phase 2** (`docs/bankroll-merge.md`; code in `lib/backer-surface.js`):
   - **Delivery is gated.** Push, SMS and the Sunday email go out only where `BACKER_DELIVERY` is on
     (default: on when `RENDER` is set; `BACKER_DELIVERY=1|0` overrides; a typo is off). This box has

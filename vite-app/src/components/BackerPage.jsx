@@ -133,8 +133,13 @@ function TopBar({ push, theme }) {
   );
 }
 
-/** One session, as an event card: the room's strip, then the game and the share, the date and
- *  hours and what the share is of. Not interactive (the strip carries no action here). */
+/** One session, as the Schedule's event card (owner, 2026-10-15: "as close to the schedule card as
+ *  possible, just swapping out information"). The same markup and classes as CalendarEventRow, so
+ *  it is the same card on the same grid: the room's strip down the left (its full name when open),
+ *  the date and hours where the start time goes, the backer's share where the buy-in goes and what
+ *  it is a share of where the guarantee goes, the game as the title with the room under it as a
+ *  flight's stage line, and the bb/hr where the late-reg line goes. A tap opens it like the
+ *  Schedule's: the session's figures in the detail grid, then the owner's notes in the notes line. */
 function SessionCard({ e }) {
   const strip = stripFor(e.venue, VENUE_MAP);
   const share = Number(e.shareCents) || 0;
@@ -143,30 +148,96 @@ function SessionCard({ e }) {
   const pctText = (Math.round(pct * 100) / 100).toString();
   // The player's bb/hr for this session, when its game names a big blind (utils/bb-hr.js).
   const bb = eventBb(e);
-  // The strip runs down the card's left side, the room's short code in it, as on the Schedule
-  // (owner, 2026-10-14). A room VENUE_MAP doesn't name takes the Schedule's derived code
-  // (getVenueInfo); the full name is the line under the game, so nothing is lost.
+  // A room VENUE_MAP doesn't name takes the Schedule's derived code (getVenueInfo).
   const abbr = strip.abbr || (strip.name ? getVenueInfo(strip.name).abbr : null) || null;
+  const notes = typeof e.notes === 'string' ? e.notes.trim() : '';
+  const [open, setOpen] = useState(false);
+  const toggle = () => setOpen((v) => !v);
+  // The notes line seated on the grid however many lines it wraps to, as CalendarEventRow seats
+  // its own: the cell is 2r + 3r per extra line, measured after layout.
+  const notesCellRef = useRef(null);
+  useLayoutEffect(() => {
+    const cell = notesCellRef.current;
+    if (!open || !cell) return;
+    const p = cell.firstElementChild;
+    if (!p) return;
+    cell.style.minHeight = '';
+    const r = parseFloat(getComputedStyle(cell).minHeight) / 2;
+    if (!r) return;
+    cell.style.minHeight = '0px';
+    const lines = Math.max(1, Math.round((p.getBoundingClientRect().height - 1.2 * r) / (3 * r)) + 1);
+    cell.style.minHeight = `calc(var(--subrow) * ${2 + (lines - 1) * 3})`;
+  }, [open, notes]);
   return (
-    <li className="bp-card">
-      <div className={'cal-venue-strip bp-strip' + (abbr ? '' : ' is-neutral')} aria-hidden="true"
-        style={abbr ? { background: getVenueBrandColor(abbr) } : undefined}>
+    <li className={'cal-event-row bp-session' + (open ? ' open' : '')}>
+      <div className={'cal-venue-strip' + (abbr ? '' : ' is-neutral')} aria-hidden="true" onClick={toggle}
+        style={{ background: abbr ? getVenueBrandColor(abbr) : 'var(--border-strong)', color: '#ffffff', cursor: 'pointer' }}>
         <span className="venue-strip-abbr">{abbr ? getStripAbbr(abbr) : ''}</span>
+        {open && <span className="venue-strip-full">{(strip.name && getVenueInfo(strip.name).longName) || strip.name || strip.label}</span>}
       </div>
-      <div className="bp-card-body">
-        <div className="bp-card-row">
-          <span className="an-cell bp-game an-clip" title={e.game || ''}>{e.game || 'Session'}</span>
-          <span className={'an-cell bp-share ' + tone(share)}>{fmtSignedCents(share)}</span>
+      <div className="cal-event-row-content">
+        <div className="cal-event-bar" onClick={toggle} role="button" tabIndex={0} aria-expanded={open}
+          onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle(); } }}>
+          <div className="cal-bar-row1">
+            <span className="cal-event-time">{fmtDay(e.date)} · {fmtHours(e.hours)}</span>
+            <span className="cal-event-money">
+              <span className={'cal-event-buyin bp-amt ' + tone(share)}>{fmtSignedCents(share)}</span>
+              <span className="cal-event-gtd">{pctText}% of {fmtSignedCents(result)}</span>
+            </span>
+          </div>
+          <div className="cal-bar-row2">
+            <span className="cal-event-name" title={e.game || ''}>
+              <span className="cal-event-base">{e.game || 'Session'}</span>
+              <span className="cal-event-stage">{strip.label}</span>
+            </span>
+          </div>
+          {bb && !open && (
+            <div className="mini-late-reg bp-mini">
+              <span className={'mini-late-reg-time bp-bb ' + bb.tone}>{bb.text}</span>
+              {notes && <span className="mini-late-reg-time bp-notes-hint">Notes</span>}
+            </div>
+          )}
+          {!bb && notes && !open && (
+            <div className="mini-late-reg bp-mini">
+              <span className="mini-late-reg-time bp-notes-hint">Notes</span>
+            </div>
+          )}
         </div>
-        <div className="bp-card-row bp-card-row--one">
-          <span className="an-cell an-note an-clip" title={strip.label}>{strip.label}</span>
+        <div className={'cal-event-chevron' + (open ? ' open' : '')} onClick={toggle}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </div>
-        <div className="bp-card-row">
-          <span className="an-cell an-note an-clip">
-            {fmtDay(e.date)} · {fmtHours(e.hours)}
-            {bb && <>{' · '}<span className={'bp-bb ' + bb.tone}>{bb.text}</span></>}
-          </span>
-          <span className="an-cell an-note an-num">{pctText}% of {fmtSignedCents(result)}</span>
+        <div className={'cal-event-detail-wrap' + (open ? ' open' : '')} onClick={() => setOpen(false)}>
+          <div className="cal-event-detail-inner">
+            <div className="cal-event-detail">
+              <div className="cal-detail-grid">
+                <div className="cal-detail-item">
+                  <span className="cal-detail-label">Session</span>
+                  <span className={'cal-detail-value bp-amt ' + tone(result)}>{fmtSignedCents(result)}</span>
+                </div>
+                <div className="cal-detail-item">
+                  <span className="cal-detail-label">Your piece</span>
+                  <span className="cal-detail-value">{pctText}%</span>
+                </div>
+                <div className="cal-detail-item">
+                  <span className="cal-detail-label">Hours</span>
+                  <span className="cal-detail-value">{fmtHours(e.hours)}</span>
+                </div>
+                {bb && (
+                  <div className="cal-detail-item">
+                    <span className="cal-detail-label">Win rate</span>
+                    <span className={'cal-detail-value bp-bb ' + bb.tone}>{bb.text}</span>
+                  </div>
+                )}
+              </div>
+              {notes && (
+                <div className="cal-detail-notes-cell" ref={notesCellRef}>
+                  <p className="cal-detail-notes bp-detail-notes">{notes}</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </li>

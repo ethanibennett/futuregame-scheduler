@@ -14,6 +14,12 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-15 (later) — Backer page: session cards are the Schedule's card, and open to the notes
+- **Owner asks:** the cards "should expand like in the schedule to reveal the notes I've added", and be "as close to the schedule card as possible, just swapping out information".
+- **Built:** `SessionCard` (components/BackerPage.jsx) is CalendarEventRow's markup: strip (the room's long name when open), date · hours as the time, the share as the buy-in with "20% of +$479" as the guarantee, game as the title with the room as its stage line, bb/hr (and a "Notes" hint) as the late-reg line, chevron. Open: Session, Your piece, Hours, Win rate in the detail grid, then the notes in the Schedule's italic notes line (line breaks kept).
+- **Feed:** `buildFeed` (lib/backer-surface.js) adds `notes` from the linked tracking entry or cash session, only when non-empty, never "Imported from the dashboard" / "Logged from chat". Parity suites unchanged; new `test/backer-notes.test.js` in `test:backer-page`.
+- **Guards:** `scripts/seed-backer-demo.js` now puts notes on the full history's three newest sessions; `check:controls` step `backer-page-notes` and a "notes open" clipping pass. Both clean, phone and desktop.
+
 ## 2026-10-15 — Short Deck asks the room's rule; three answers in
 - **Short Deck:** choosing it in the replayer asks whether trips beat a straight (rooms differ). The answer is stored on the hand (`hand.tripsBeatStraight`), ranks it through `gameEvalFor` (utils/poker-engine.js), and travels in share links as code `SKT` (plain `SK` keeps the default). Per-device default in `localStorage.shortDeckTripsBeatStraight`. Guard step `hands-short-deck-rule`.
 - **Answered:** the third number in "1/2/5" is a straddle (as built); crossbook is a bet (the default). Both questions closed in the docs.
