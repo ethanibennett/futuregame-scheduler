@@ -32,7 +32,8 @@ wsop-console side and verified against both live services.
 - **Done (09:00-, after a 6.5-hour idle the owner rightly called out):** 29 + the turn ring itself: `.replayer-seat.active-turn` was styled in August but no code ever set it, so a replay never showed who acts next. The next action's player now gets it until the showdown (`turnIdx`, HandReplayerView.jsx), with one aqua pulse as the turn lands (starts at opacity 0, so exports never show it; reduced motion drops it). That also makes idea 33's reasoning true: aqua fill = whose turn.
 - **Superseded by the springs (checked against docs/replayer-springs.md):** 25 (the pot ticks up as each wager lands), 28 (the flop is one gesture, turn/river single placements), 31 (chips squash on arrival), 36 (the pot ships to the winner on the arm spring).
 - **Done:** 41 (the inspect panel in the plaque's material with a notch to its seat; street labels ivory, not aqua; the label column fits PREFLOP so every row aligns; the open seat rises above its neighbours). **Already true / not wanted:** 16 (card backs are a user setting with a near-black design), 20 (one formatter; the 100,000 compact threshold is a recorded choice).
-- **Still open:** lighting 9-13, 15; motion 30; structure 5, 18, 32, 35, 37, 38, 42, 45-47, 49, 50.
+- **Done:** 42 (the street in the level line, inside the captured element, so exports say which street). **Moot:** 45 (radius and plaques are both capped in r).
+- **Still open:** lighting 9-13, 15; motion 30; structure 5, 18, 32, 35, 37, 38, 46, 47, 49, 50.
 - **Guard note:** at 1280x800 `button.game-fave-btn "2-7 TD"` measures ink dx -0.76 (0.75 limit), untouched by this batch.
 
 ## 2026-10-15 (night, last) — Launch plan action 8 drafted; privacy docs caught up; actions 6 held
