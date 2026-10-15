@@ -8798,8 +8798,11 @@
       padding-top: var(--space-2xs);
       border-top: var(--bw-hair) solid rgba(255,255,255,0.12);
     }
+    /* Catalogue three, idea 17 (2026-10-15): one numeral face on the felt. The pot, the stacks, the
+       bets and the level line are condensed; the side pots were the last figures in the display face,
+       two numeral systems a few pixels apart. They take the pot's face. */
     .replayer-side-pot {
-      font-family: var(--font-display);
+      font-family: var(--font-condensed);
       font-size: var(--fs-2xs); font-weight: var(--fw-bold);
       font-variant-numeric: var(--num-tabular);
       color: rgba(255,255,255,0.82);

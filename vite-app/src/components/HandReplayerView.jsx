@@ -6635,9 +6635,12 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     const next = currentActions[actionIdx + 1];
     const weight = { fold: -0.35, check: -0.3, call: 0, bet: 0.35, raise: 0.5, 'all-in': 1 };
     const actBeat = next ? (weight[next.action] ?? 0) * speed : 0;
-    const allowance = rSettings.animateDeal
-      ? (resultBreak ? 700 : streetBreak ? 650 : 0)
-      : 0;
+    /* Catalogue three, idea 26 (2026-10-15): the river's last action stepped straight into the reveal,
+       so the strongest moment of a replay had no pause. One held beat before the showdown (--dur-beat,
+       1200ms at 1x, scaled by speed like the rest), whether or not the deal animates. Exports step the
+       replay themselves (stepForward below), so this never lengthens a video. */
+    const HELD_BEAT_MS = 1200;
+    const allowance = (rSettings.animateDeal && streetBreak ? 650 : 0) + (resultBreak ? HELD_BEAT_MS : 0);
     const t = setTimeout(() => stepForwardRef.current?.(),
       Math.max(120, speed + actBeat + allowance * scale));
     return () => clearTimeout(t);
