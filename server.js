@@ -4626,7 +4626,9 @@ app.post('/api/live-clocks', authenticateToken, async (req, res) => {
     const lat = Number(e.lat), lng = Number(e.lng);
     const coords = Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
     try {
-      const { clock, answered } = await clockForEvent(row, coords);
+      // The event's start (the client's own parse of date + time in the room's zone) tells flights of
+      // one event apart on Bravo, which numbers them alike (lib/live-clocks.js matchBravoClock).
+      const { clock, answered } = await clockForEvent(row, coords, Number(e.startMs));
       const now = Date.now();
       if (clock && clock.state === 'ended') {
         clocks[id] = { state: 'ended', endedAt: markClockEnded(id, now) };

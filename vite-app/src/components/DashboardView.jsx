@@ -559,7 +559,7 @@ export default function DashboardView({
         return !!e.clock_ref && s - t < 6 * 60 * 60 * 1000;
       })
       .slice(0, 40)
-      .map(e => { const c = getVenueCoords(e.venue, e.property); return { id: e.id, lat: c?.lat, lng: c?.lng }; }));
+      .map(e => { const c = getVenueCoords(e.venue, e.property); return { id: e.id, lat: c?.lat, lng: c?.lng, startMs: parseTournamentTime(e) }; }));
   }, [whatsNextEvents, nowMinute, demoStates]);
   // Shared poller (utils/live-clocks.js): a schedule card showing the same event costs nothing more.
   const liveClocks = useLiveClocks(clockTargetsKey ? JSON.parse(clockTargetsKey) : [], clockTargetsKey);

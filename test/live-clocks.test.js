@@ -90,3 +90,21 @@ eq('no Updated means no correction', Math.round(normalizePaClock(running, Date.p
 eq('level from LevelName when LevelLevel is absent', normalizePaClock({ ...running, LevelLevel: null }, Date.parse('2026-09-29T22:20:00Z')).level, 2);
 
 console.log(`live-clocks.test.js — ${passed} assertions passed`);
+
+// ── Flights (2026-10-15): one event number, two flights; the event's start tells them apart ──
+{
+  const at = Date.parse('2026-10-15T17:08:00Z');                 // 13:08 ET
+  const morning = { TName: 'Lions of the East', ClockState: 'R', LevelCurrent: '6', LevelTotalSecs: '1800', LevelRemainingSecs: '1799', WebTime: '2026-10-15T17:07:32' };
+  const am = Date.parse('2026-10-15T14:15:00Z'), pm = Date.parse('2026-10-15T21:15:00Z');   // 10:15 AM / 5:15 PM ET
+  const ev = { event_number: 'PA-1-20261015', event_name: 'NLH Lions of the East - Flight C' };
+  eq('the morning flight keeps its running clock', matchBravoClock(ev, [morning], { startMs: am, now: at })?.TName, 'Lions of the East');
+  eq('the evening flight, hours before its start, gets none', matchBravoClock(ev, [morning], { startMs: pm, now: at }), null);
+  // 18:30 ET: both flights running, the morning one at level 17, the evening one at level 3.
+  const later = Date.parse('2026-10-15T22:30:00Z');
+  const am17 = { ...morning, LevelCurrent: '17', WebTime: '2026-10-15T22:29:50' };
+  const pm3 = { ...morning, LevelCurrent: '3', LevelRemainingSecs: '900', WebTime: '2026-10-15T22:29:50' };
+  eq('two flights running: the evening one takes the younger clock', matchBravoClock(ev, [am17, pm3], { startMs: pm, now: later })?.LevelCurrent, '3');
+  eq('two flights running: the morning one takes the older clock', matchBravoClock(ev, [am17, pm3], { startMs: am, now: later })?.LevelCurrent, '17');
+  eq('a lone clock begun hours before this flight is an earlier flight', matchBravoClock(ev, [am17], { startMs: pm, now: later }), null);
+  eq('without a start, the old behaviour', matchBravoClock(ev, [morning])?.TName, 'Lions of the East');
+}

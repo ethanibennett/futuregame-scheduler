@@ -29,7 +29,7 @@ function emit() { for (const l of listeners) l(); }
 async function pollOnce() {
   if (inFlight) { again = true; return; }
   if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-  const list = [...registry].map(([id, v]) => ({ id, lat: v.lat, lng: v.lng }));
+  const list = [...registry].map(([id, v]) => ({ id, lat: v.lat, lng: v.lng, ...(Number.isFinite(v.startMs) ? { startMs: v.startMs } : {}) }));
   if (!list.length) return;
   inFlight = true;
   try {
@@ -71,7 +71,8 @@ export function registerClock(id, coords) {
   const cur = registry.get(id);
   if (cur) cur.n++;
   else {
-    registry.set(id, { n: 1, lat: coords?.lat, lng: coords?.lng });
+    // startMs: the event's start, which tells flights of one event apart on Bravo (server side).
+    registry.set(id, { n: 1, lat: coords?.lat, lng: coords?.lng, startMs: coords?.startMs });
     // A newly shown event gets its answer now, not up to 15 s later; a burst of cards mounting
     // together is coalesced into one request.
     clearTimeout(kickTimer);

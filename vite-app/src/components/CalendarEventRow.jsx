@@ -627,7 +627,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
     && startMsForClock <= Date.now() && Date.now() - startMsForClock < 18 * 60 * 60 * 1000;
   useEffect(() => {
     if (!clockCandidate) return undefined;
-    return registerClock(tournament.id, getVenueCoords(tournament.venue, tournament.property));
+    return registerClock(tournament.id, { ...getVenueCoords(tournament.venue, tournament.property), startMs: startMsForClock });
   }, [clockCandidate, tournament.id]);
   const clockStore = useClockStore();
   const live = clockCandidate ? liveView(clockStore[tournament.id]) : null;
