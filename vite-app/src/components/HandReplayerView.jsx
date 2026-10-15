@@ -8229,6 +8229,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       '--cast-x': (dx / len * reach * 3.2).toFixed(1) + 'px',
       '--cast-y': (1.2 + Math.max(-0.4, dy / len) * reach * 3.4).toFixed(1) + 'px',
       '--cast-blur': (3 + reach * 4).toFixed(1) + 'px',
+      // 46: how far down the ring the seat sits, 0 at the top row and 1 at the bottom, for the
+      // horizon scale in styles.css (.replayer-seat).
+      '--seat-depth': Math.min(1, Math.max(0, (pos[1] - 12) / 76)).toFixed(3),
     };
   };
 
