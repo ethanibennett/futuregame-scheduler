@@ -23,3 +23,10 @@ test('topSources: most first, ties by name', () => {
   assert.equal(topSources({}), '');
   assert.equal(weekLabel('2026-10-12'), 'Oct 12');
 });
+
+test('firstWeekLine: the first-week rates and saves per activated account', async () => {
+  const { firstWeekLine } = await import('../growth-report.js');
+  assert.equal(firstWeekLine({ totals: { signups: 0 } }), '');
+  assert.equal(firstWeekLine({ totals: { signups: 4, activated7: 2, savesFirst7: 7, onboarded7: 3, results7: 1, shared7: 1, followed7: 0 } }),
+    'First week: set up 75% · logged a result 25% · shared 25% · sent a buddy request 0% · 3.5 saves per activated account');
+});

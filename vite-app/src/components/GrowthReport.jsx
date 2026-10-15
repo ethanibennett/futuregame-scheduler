@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { API_URL } from '../utils/api.js';
-import { growthRows, topSources } from '../utils/growth-report.js';
+import { growthRows, topSources, firstWeekLine } from '../utils/growth-report.js';
 import './analytics.css';
 
 /*
@@ -63,6 +63,7 @@ export default function GrowthReport({ token }) {
           </table>
         </div>
       )}
+      {firstWeekLine(report) && <p className="an-p">{firstWeekLine(report)}</p>}
       {sources && <p className="an-p">Sources: {sources}</p>}
     </section>
   );

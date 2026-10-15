@@ -32,3 +32,18 @@ test('rememberSource keeps the first touch only', () => {
   const s = JSON.parse(m.get('acqSource'));
   assert.equal(s.ct, 'meta-m1'); assert.equal(s.ref, 'l.instagram.com'); assert.equal(s.landing, 'live');
 });
+
+test('captureLanding: tags or an outside referrer, first path segment only, never a backer page', async () => {
+  const { captureLanding, landingTags } = await import('../live-page.js');
+  const mk = () => { const m = new Map(); return { m, store: { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, v) } }; };
+  assert.deepEqual(landingTags('?utm_source=meta&utm_campaign=2701-midatl&fbclid=abc&ct=bad tag'), { utm_source: 'meta', utm_campaign: '2701-midatl' });
+  let a = mk();
+  assert.equal(captureLanding('', '', '/', a.store), false, 'a plain visit keeps nothing');
+  assert.equal(captureLanding('?utm_source=meta', '', '/shared/abc123secret', a.store), true);
+  const s = JSON.parse(a.m.get('acqSource'));
+  assert.equal(s.landing, 'shared'); assert.equal(s.utm_source, 'meta'); assert.ok(!JSON.stringify(s).includes('abc123secret'));
+  assert.equal(captureLanding('?utm_source=x', '', '/', a.store), false, 'first touch only');
+  a = mk();
+  assert.equal(captureLanding('?utm_source=meta', 'https://l.instagram.com/', '/b/DemoSam7Kq2Vx', a.store), false, 'never on a backer page');
+  assert.equal(a.m.size, 0);
+});

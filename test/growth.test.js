@@ -18,6 +18,7 @@ const t = (name, fn) => { fn(); passed += 1; console.log('  ok  ', name); };
   const db = new SQL.Database();
   growth.migrate(db);
   growth.migrate(db); // idempotent
+  db.run('CREATE TABLE user_schedules (user_id INTEGER, tournament_id INTEGER, added_at TEXT)');
 
   t('cleanSource keeps known fields and drops the rest', () => {
     assert.deepStrictEqual(growth.cleanSource({ ct: 'meta-m1', landing: 'live', ref: 'L.Instagram.com', heard: 'friend', platform: 'ios', evil: 'x' }),
@@ -37,6 +38,14 @@ const t = (name, fn) => { fn(); passed += 1; console.log('  ok  ', name); };
   growth.touchDay(db, 1, nov9 + 8 * DAY);   // D7
   growth.touchDay(db, 1, nov9 + 30 * DAY);  // D30
   growth.touchDay(db, 2, nov9 + DAY + 20 * DAY); // neither window
+  // Account 1: three saves in its first week and one after; it finished setup, logged a result, shared.
+  const sql = (ms) => new Date(ms).toISOString().replace('T', ' ').slice(0, 19);
+  for (const d of [0, 2, 5, 9]) db.run('INSERT INTO user_schedules VALUES (1, ?, ?)', [d, sql(nov9 + d * DAY + 3600e3)]);
+  growth.recordOnce(db, 1, 'onboarded', null, nov9 + 60e3);
+  growth.recordOnce(db, 1, 'result_logged', null, nov9 + 3 * DAY);
+  growth.recordOnce(db, 1, 'share_sent', null, nov9 + 4 * DAY);
+  growth.recordOnce(db, 2, 'followed', null, nov9 + 30 * DAY);   // too late for the 7-day count
+  growth.recordSignup(db, 5, { utm_source: 'meta', utm_campaign: '2701-midatl', fbclid: 'x' }, nov9 + 3 * DAY);
   // Week of Mon 21 Dec: one sign-up, too young for D7.
   growth.recordSignup(db, 4, { src: 'reddit' }, Date.UTC(2026, 11, 22, 10));
 
@@ -56,11 +65,15 @@ const t = (name, fn) => { fn(); passed += 1; console.log('  ok  ', name); };
     const r = growth.report(db, { now: NOW, weeks: 13 });
     assert.deepStrictEqual(r.weeks.map((w) => w.week), ['2026-12-21', '2026-11-09']);
     const [dec, nov] = r.weeks;
-    assert.deepStrictEqual({ ...nov, sources: undefined }, { week: '2026-11-09', signups: 3, activated7: 1, d7: 1, d30: 1, d7Ready: 3, d30Ready: 3, sources: undefined });
-    assert.deepStrictEqual(nov.sources, { 'meta-m1': 1, friend: 1, unknown: 1 });
+    const pick = (w, ks) => Object.fromEntries(ks.map((k) => [k, w[k]]));
+    assert.deepStrictEqual(pick(nov, ['week', 'signups', 'activated7', 'd7', 'd30', 'd7Ready', 'd30Ready']), { week: '2026-11-09', signups: 4, activated7: 1, d7: 1, d30: 1, d7Ready: 4, d30Ready: 4 });
+    assert.deepStrictEqual(pick(nov, ['onboarded7', 'results7', 'shared7', 'followed7', 'savesFirst7']), { onboarded7: 1, results7: 1, shared7: 1, followed7: 0, savesFirst7: 3 });
+    assert.deepStrictEqual(nov.sources, { 'meta-m1': 1, friend: 1, unknown: 1, 'meta/2701-midatl': 1 }, 'UTM source/campaign when no ct');
     assert.strictEqual(dec.d7Ready, 0, 'nine days old: no D7 yet');
     assert.deepStrictEqual(dec.sources, { reddit: 1 });
-    assert.strictEqual(r.totals.signups, 4);
+    assert.strictEqual(r.totals.signups, 5);
+    const five = JSON.parse(db.exec('SELECT data FROM growth_events WHERE user_id = 5')[0].values[0][0]);
+    assert.deepStrictEqual(five, { utm_source: 'meta', utm_campaign: '2701-midatl' }, 'no click id kept');
   });
 
   t('mondayOf: a Sunday belongs to the week before', () => {

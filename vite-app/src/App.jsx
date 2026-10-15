@@ -24,6 +24,7 @@ import BottomNav from './components/BottomNav.jsx';
 import GridOverlay from './components/GridOverlay.jsx';
 import LivePage from './components/LivePage.jsx';
 import { noteReviewMoment } from './utils/review-prompt.js';
+import { captureLanding } from './utils/live-page.js';
 import DesktopRail from './components/DesktopRail.jsx';
 import DesktopEventDetail from './components/DesktopEventDetail.jsx';
 import useDesktopLayout from './hooks/useDesktopLayout.js';
@@ -192,6 +193,8 @@ function landMySchedule() {
 // Before any view reads the saved filters: a browser that used the app before keeps its online
 // choices when the live-only defaults arrive (utils/location-prefs.js).
 migrateLiveOnlyDefaults();
+// How this browser first arrived, from any page with a campaign tag or another site's link (growth).
+captureLanding(window.location.search, document.referrer, window.location.pathname);
 
 /* Where a sign-up came from (launch plan, growth measurement): the first touch this browser kept
    (the landing page's ?ct=, utils/live-page.js), the web app's ?src=, the platform and the form's
@@ -203,7 +206,11 @@ function signupSource(heard) {
   try { src = new URLSearchParams(window.location.search).get('src'); } catch { src = null; }
   const native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
   const platform = native ? (window.Capacitor.getPlatform ? window.Capacitor.getPlatform() : 'ios') : 'web';
-  return { ct: first.ct || undefined, landing: first.landing || undefined, ref: first.ref || undefined, src: src || undefined, heard: heard || undefined, platform };
+  return {
+    ct: first.ct || undefined, landing: first.landing || undefined, ref: first.ref || undefined, src: src || first.src || undefined,
+    utm_source: first.utm_source, utm_medium: first.utm_medium, utm_campaign: first.utm_campaign, utm_content: first.utm_content,
+    heard: heard || undefined, platform,
+  };
 }
 
 const APP_ADMIN_USERNAMES = ['ham', 'ham5', 'claude'];   // mirrors server.js APP_ADMIN_USERNAMES

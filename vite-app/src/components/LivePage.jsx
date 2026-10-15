@@ -3,7 +3,7 @@ import ThemeButton from './ThemeButton.jsx';
 import GridOverlay from './GridOverlay.jsx';
 import useThemeChoice from '../hooks/useThemeChoice.js';
 import { API_URL } from '../utils/api.js';
-import { campaignFrom, rememberSource, storeLink, webLink, liveFigures } from '../utils/live-page.js';
+import { campaignFrom, storeLink, webLink, liveFigures, captureLanding } from '../utils/live-page.js';
 import './backer-page.css';
 import './live-page.css';
 
@@ -29,7 +29,7 @@ export default function LivePage() {
   const android = useMemo(() => /Android/i.test(navigator.userAgent || ''), []);
   const [sum, setSum] = useState(null);
   useEffect(() => {
-    rememberSource(ct, document.referrer);
+    captureLanding(window.location.search, document.referrer, '/live');
     let on = true;
     fetch(`${API_URL}/public/live-summary`).then((r) => (r.ok ? r.json() : null)).then((d) => { if (on) setSum(d); }).catch(() => {});
     return () => { on = false; };

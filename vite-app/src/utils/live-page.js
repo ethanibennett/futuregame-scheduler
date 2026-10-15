@@ -42,3 +42,38 @@ export function rememberSource(ct, referrer, store = (typeof localStorage !== 'u
     return true;
   } catch { return false; }
 }
+
+/** The campaign tags on any landing (launch plan §13): ct, src and utm_source / medium / campaign /
+ *  content, each a plain tag. Click ids (fbclid, gclid) are left alone on purpose: they only matter if
+ *  sent back to an ad platform. Returns {} when the URL carries none. */
+export function landingTags(search) {
+  const out = {};
+  try {
+    const q = new URLSearchParams(search || '');
+    for (const k of ['ct', 'src', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content']) {
+      const v = q.get(k);
+      if (v && /^[A-Za-z0-9._-]{1,40}$/.test(v)) out[k] = v;
+    }
+  } catch { /* no URL */ }
+  return out;
+}
+
+/** First touch from any page: kept once, only when the URL carries a campaign tag or another site sent
+ *  the visitor (so a plain return visit never overwrites how someone first arrived). */
+export function captureLanding(search, referrer, pathname, store = (typeof localStorage !== 'undefined' ? localStorage : null)) {
+  try {
+    if (!store || store.getItem('acqSource')) return false;
+    const tags = landingTags(search);
+    let ref = null;
+    try { ref = referrer ? new URL(referrer).hostname : null; } catch { ref = null; }
+    if (ref && typeof location !== 'undefined' && ref === location.hostname) ref = null;
+    if (!Object.keys(tags).length && !ref) return false;
+    // Only the first path segment: deeper segments can be credentials (a backer page's /b/<token>, a
+    // /shared/<token> schedule link), and a backer page is not an acquisition landing at all.
+    const first = String(pathname || '/').split('/').filter(Boolean)[0] || '';
+    if (first === 'b') return false;
+    const landing = first.replace(/[^a-z0-9]+/gi, '-').slice(0, 30) || 'home';
+    store.setItem('acqSource', JSON.stringify({ ...tags, ct: tags.ct || null, landing, ref, at: Date.now() }));
+    return true;
+  } catch { return false; }
+}

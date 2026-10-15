@@ -24,6 +24,16 @@ export function growthRows(report) {
   }));
 }
 
+/** The first-week line under the table: set up, logged a result, shared, sent a buddy request (as a
+ *  share of sign-ups) and saves per activated account. '' with no sign-ups. */
+export function firstWeekLine(report) {
+  const t = report && report.totals;
+  if (!t || !t.signups) return '';
+  const p = (n) => `${Math.round((n / t.signups) * 100)}%`;
+  const saves = t.activated7 ? (Math.round((t.savesFirst7 / t.activated7) * 10) / 10).toString() : '—';
+  return `First week: set up ${p(t.onboarded7 || 0)} · logged a result ${p(t.results7 || 0)} · shared ${p(t.shared7 || 0)} · sent a buddy request ${p(t.followed7 || 0)} · ${saves} saves per activated account`;
+}
+
 /** "meta-m1 4 · friend 2 · reddit 1": the sources across the report, most first, at most `n`. */
 export function topSources(report, n = 6) {
   const src = (report && report.totals && report.totals.sources) || {};

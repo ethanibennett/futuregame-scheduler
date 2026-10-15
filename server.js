@@ -5149,6 +5149,7 @@ app.put('/api/user/onboarding', authenticateToken, requireRegistered, async (req
     const onboarding = { v: 2, at: Date.now(), skipped: body.skipped === true, filters, liveDefaults: true };
     const blob = JSON.stringify(onboarding);
     db.run('UPDATE users SET onboarding = ? WHERE id = ?', [blob, req.user.id]);
+    try { growth.recordOnce(db, req.user.id, 'onboarded'); } catch (e) { console.error('[growth] onboarded:', e.message); }   // growth: finished setup (lib/growth.js)
     await saveDatabase();
     res.json({ onboarding });
   } catch (error) {
@@ -5217,6 +5218,7 @@ app.post('/api/share-request', authenticateToken, requireRegistered, async (req,
       "INSERT INTO share_requests (from_user_id, to_user_id, status) VALUES (?, ?, 'pending')",
       [req.user.id, target.id]
     );
+    try { growth.recordOnce(db, req.user.id, 'followed'); } catch (e) { console.error('[growth] followed:', e.message); }   // growth: first buddy request
     await saveDatabase();
     res.json({ message: `Request sent to ${username}` });
   } catch (error) {
@@ -6234,6 +6236,7 @@ app.get('/api/share-token', authenticateToken, (req, res) => {
 // Generate share token
 app.post('/api/share-token', authenticateToken, requireRegistered, async (req, res) => {
   try {
+    try { growth.recordOnce(db, req.user.id, 'share_sent'); } catch (e) { console.error('[growth] share_sent:', e.message); }   // growth: took the schedule's share link (saved with the next write)
     const stmt = db.prepare('SELECT token FROM share_tokens WHERE user_id = ?');
     stmt.bind([req.user.id]);
     let existing = null;
@@ -6439,6 +6442,7 @@ app.post('/api/tracking', authenticateToken, requireRegistered, async (req, res)
         [req.user.id, tournamentId, numEntries || 1, cashed ? 1 : 0, finishPlace || null, cashAmount || 0, notes || null]
       );
       const newId = db.exec('SELECT last_insert_rowid()')[0].values[0][0];
+      try { growth.recordOnce(db, req.user.id, 'result_logged'); } catch (e) { console.error('[growth] result_logged:', e.message); }   // growth: first result logged
       if (bk.set) db.run('UPDATE tracking_entries SET bankroll_id = ? WHERE user_id = ? AND tournament_id = ?', [bk.value, req.user.id, tournamentId]);
       if (subtitle !== undefined) db.run('UPDATE tracking_entries SET subtitle = ? WHERE id = ? AND user_id = ?', [cashSessions.cleanSubtitle(subtitle), newId, req.user.id]);
       await saveDatabase();
