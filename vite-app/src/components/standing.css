@@ -1,0 +1,103 @@
+/* ══ Standing agreements (the Staking tab › Standing; docs/bankroll-merge.md Phase 8) ═══════════
+   components/StandingView.jsx. sd- prefixed. The Backers block's recipe (backer-notify.css): every
+   single line of text is a .sd-t block, --h r tall with its baseline --b r down (padding-top = --b r
+   - 1cap over a cap..baseline trimmed line), truncating with its descenders' room from a bottom pad
+   cancelled by an equal negative margin; a sentence that wraps is a .sd-text, 3r a line, 2r to its
+   first baseline and 1r under its last. Inputs and selects are .staking-field (styles.css: 2r label,
+   1r, 5r field). Buttons are boxes on the grid with centred labels (.sd-btn, --w g by 5r).
+
+     intro       .sd-text
+     form        .staking-field rows; two fields side by side 16g | 1g | 16g; the stakes editor's
+                 rows: game 13g | where 9g | % 6g | ✕ 4g, 1g apart; + Stake 8g; Save 9g | Cancel 8g
+     drift       title 4r, .sd-text, lines: text (fr) | Apply 7g, 5r
+     card        name (fr) | running 10g, 4r; three .sd-line of 3r; 1r; actions 5r (7 | 7 | 8 | 8 |
+                 4g, 1g apart = 38g: on the phone's 35g the row wraps, each button whole g); cards
+                 1r apart, a hairline ring
+     editor      the stakes rows; the segment From today | Correct, 10g each; .sd-text; the preview
+                 lines 3r; Preview/Save 9g | Cancel 8g
+     shares      when 6g | what (fr) | share 10g, 4r; detail across 3r; actions 5r (Exclude 8g,
+                 Recalculate 11g, Remove 8g); 1r; a hairline                                   */
+
+.sd { padding-bottom: calc(var(--subrow) * 4); }
+.sd-t {
+  --sd-desc: 0.4em;
+  display: block; box-sizing: border-box; min-width: 0;
+  margin: 0 0 calc(-1 * var(--sd-desc));
+  height: calc(var(--subrow) * var(--h, 3) + var(--sd-desc));
+  padding: calc(var(--subrow) * var(--b, 2) - 1cap) 0 var(--sd-desc);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-box-trim: trim-both; text-box-edge: cap alphabetic;
+  font-size: var(--fs-xs); color: var(--text-muted);
+}
+.sd .is-pos { color: var(--pos); }
+.sd .is-neg { color: var(--neg); }
+.sd-text {
+  display: block; margin: 0;
+  padding: calc(var(--subrow) * 2 - 1cap) 0 var(--subrow);
+  font-size: var(--fs-xs); line-height: calc(var(--subrow) * 3); color: var(--text-muted);
+  overflow-wrap: anywhere;
+  text-box-trim: trim-both; text-box-edge: cap alphabetic;
+}
+.sd-text strong { color: var(--text); font-weight: var(--fw-bold); }
+.sd-text--err { color: var(--neg); }
+.sd-text--warn { color: var(--warn); }
+.sd-text--muted { color: var(--text-muted); }
+.sd-sec { --h: 4; --b: 3; font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: var(--fs-sm); color: var(--text); }
+.sd-line { --h: 3; --b: 2; font-variant-numeric: var(--num-tabular); }
+
+/* ── Buttons (the Backers block's .bn-btn) ── */
+.sd-actions { display: flex; flex-wrap: wrap; gap: var(--gu); margin-top: var(--subrow); }
+.sd-btn {
+  display: grid; align-items: center; flex: 0 0 auto;
+  width: calc(var(--gu) * var(--w, 8)); height: calc(var(--subrow) * 5); min-height: 0;
+  box-sizing: border-box; margin: 0; padding: 0; border: 0; border-radius: var(--radius);
+  background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text); font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.sd-btn > span { display: block; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+.sd-btn > span > svg { display: block; width: calc(var(--gu) * 2); height: calc(var(--gu) * 2); margin: 0 auto; }   /* the remove ✕ as the app's icon: its ink centres, a glyph's sat 1px low */
+.sd-btn--brand { background: var(--brand); color: var(--on-brand); box-shadow: none; }
+.sd-btn--warn { background: var(--warn-bg); color: var(--warn); box-shadow: inset 0 0 0 var(--bw-1) var(--warn); }
+.sd-btn--ghost { background: transparent; }
+.sd-btn--seg.is-on { background: var(--brand-quiet); color: var(--brand-ink, var(--brand)); box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); }
+.sd-btn:disabled { opacity: var(--state-disabled); cursor: not-allowed; }
+.sd-btn:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+.sd-seg { display: flex; gap: var(--gu); margin-top: var(--subrow); }
+
+/* ── The form and the stakes editor ── */
+.sd-form, .sd-editor, .sd-confirm { display: flex; flex-direction: column; margin-top: var(--subrow); padding-top: var(--subrow); box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
+.sd-two { display: grid; grid-template-columns: calc(var(--gu) * 16) calc(var(--gu) * 16); column-gap: var(--gu); }
+.sd-stakes { display: flex; flex-direction: column; }
+.sd-stake-row { display: grid; grid-template-columns: calc(var(--gu) * 13) calc(var(--gu) * 9) calc(var(--gu) * 6) calc(var(--gu) * 4); column-gap: var(--gu); align-items: end; }
+.sd-stake-row .sd-btn { margin-bottom: var(--space-md); }   /* the field's own bottom margin, so the ✕ sits on the input's row */
+.sd .staking-field { margin-bottom: var(--subrow); }
+
+/* ── Drift ── */
+.sd-drift { margin-top: calc(var(--subrow) * 2); }
+.sd-drift-line { display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 7); column-gap: var(--gu); align-items: start; padding-bottom: var(--subrow); }
+.sd-drift-line .sd-btn { margin-top: calc(var(--subrow) * -1); }
+
+/* ── Cards ── */
+.sd-cards, .sd-events { list-style: none; margin: calc(var(--subrow) * 2) 0 0; padding: 0; }
+.sd-card {
+  display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 10); column-gap: var(--gu);
+  padding: 0 var(--gu) var(--subrow); margin-bottom: var(--subrow);
+  border-radius: var(--radius); background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+}
+.sd-card.is-ended { opacity: var(--state-disabled); }
+.sd-name { --h: 4; --b: 3; grid-column: 1; font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: var(--fs-sm); color: var(--text); }
+.sd-running { --h: 4; --b: 3; grid-column: 2; text-align: right; font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: var(--fs-md); font-variant-numeric: var(--num-tabular); color: var(--text); }
+.sd-card > .sd-line, .sd-card > .sd-card-act, .sd-card > .sd-editor, .sd-card > .sd-events, .sd-card > .sd-confirm, .sd-card > .sd-t { grid-column: 1 / -1; }
+.sd-card-act { display: flex; flex-wrap: wrap; gap: var(--gu); row-gap: var(--subrow); padding-top: var(--subrow); }
+
+/* ── Shares ── */
+.sd-event {
+  display: grid; grid-template-columns: calc(var(--gu) * 6) minmax(0, 1fr) calc(var(--gu) * 10); column-gap: var(--gu);
+  padding-bottom: var(--subrow); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border);
+}
+.sd-ev-when { --h: 4; --b: 3; grid-column: 1; font-variant-numeric: var(--num-tabular); }
+.sd-ev-what { --h: 4; --b: 3; grid-column: 2; color: var(--text); }
+.sd-ev-share { --h: 4; --b: 3; grid-column: 3; text-align: right; font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: var(--fs-sm); font-variant-numeric: var(--num-tabular); color: var(--text); }
+.sd-ev-detail { --h: 3; --b: 2; grid-column: 1 / -1; font-variant-numeric: var(--num-tabular); }
+.sd-ev-act { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--gu); row-gap: var(--subrow); padding-top: var(--subrow); }

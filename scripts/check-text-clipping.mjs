@@ -4,7 +4,7 @@
 //   node scripts/check-text-clipping.mjs [baseUrl] [--width 402] [--height 874] [--only "bankroll,home"]
 //   (--only runs the passes whose name starts with one of those words: schedule, home, venue-map,
 //   hands, bankroll-dashboard, bankroll-locations, bankroll-backers, bankroll-import-dashboard, cash, bankroll-fab,
-//   expenses, results-notify, cash-notify, results-reset, staking-settlement, backer-page; --verbose names the views a run scanned. A pass that skips itself
+//   expenses, results-notify, cash-notify, results-reset, staking-settlement, staking-standing, backer-page; --verbose names the views a run scanned. A pass that skips itself
 //   says so, and the "scanned N views" line before the verdict counts the ones that ran.)
 //   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME as check-control-centring.mjs)
 //
@@ -1012,6 +1012,64 @@ function scan(rootSel) {
     } catch (e) { console.log(`  (${label} skipped: ${e.message.split('\n')[0]})`); }
   }
 
+  // The Staking tab's Standing view (Phase 8), the controls guard's walk: the list, the add form
+  // with a new backer, a card's stakes editor with its correction preview, a card's shares, the New
+  // link and Delivery confirms. Long names, stakes lines and share details truncate. Needs
+  // scripts/seed-standing-demo.js on the scratch database; skipped and said otherwise.
+  if (on('staking-standing')) try {
+    const label = 'staking standing';
+    const reachStaking = async () => {
+      await openTab('Dashboard');
+      const reached = await p.evaluate(() => {
+        for (const el of document.querySelectorAll('.tab-panel *, .dk-rail *')) {
+          const k = Object.keys(el).find(k => k.startsWith('__reactFiber'));
+          if (!k) continue;
+          for (let f = el[k]; f; f = f.return) if (f.memoizedProps && typeof f.memoizedProps.onNavigate === 'function') { f.memoizedProps.onNavigate('staking'); return true; }
+        }
+        return false;
+      });
+      if (!reached) throw new Error('no onNavigate to reach staking');
+      await p.waitForTimeout(1800);
+      await p.locator('.tab-panel[data-tab="staking"] button:has-text("Standing")').first().click({ timeout: 4000 });
+      await p.locator('.sd').first().waitFor({ timeout: 8000 });
+      await p.waitForTimeout(800);
+    };
+    const scan = async (name) => {
+      await run(name, '.sd');
+      for (let i = 1; i < 12; i++) {
+        const moved = await p.evaluate((h) => {
+          let sc = document.querySelector('.sd');
+          while (sc && !(/(auto|scroll)/.test(getComputedStyle(sc).overflowY) && sc.scrollHeight > sc.clientHeight + 1)) sc = sc.parentElement;
+          if (!sc) return false;
+          const before = sc.scrollTop; sc.scrollTop += Math.round(h * 0.7); return sc.scrollTop !== before;
+        }, H);
+        if (!moved) break;
+        await p.waitForTimeout(300);
+        await run(`${name} (scrolled ${i})`, '.sd');
+      }
+    };
+    const card = '.sd-card:has-text("Demo Standing Sam")';
+    await reachStaking();
+    if (!(await p.locator(card).count())) throw new Error('no seeded card (scripts/seed-standing-demo.js)');
+    await scan(label);
+    await p.locator('.sd .create-group-submit:has-text("+ Add")').first().click({ timeout: 4000 });
+    await p.locator('.sd-form select').first().selectOption('new');
+    await p.waitForTimeout(500);
+    await scan(`${label}, add form`);
+    await reachStaking();
+    await p.locator(`${card} button:has-text("Stakes")`).first().click({ timeout: 4000 });
+    await p.locator('.sd-editor [role="radio"]:has-text("Correct")').first().click({ timeout: 4000 });
+    await p.locator('.sd-editor button:has-text("Preview")').first().click({ timeout: 4000 });
+    await p.locator('.sd-editor button:has-text("Confirm")').first().waitFor({ timeout: 6000 });
+    await p.waitForTimeout(400);
+    await scan(`${label}, stakes editor`);
+    await reachStaking();
+    await p.locator(`${card} button:has-text("Shares")`).first().click({ timeout: 4000 });
+    await p.locator('.sd-event').first().waitFor({ timeout: 8000 });
+    await p.locator(`${card} button:has-text("New link")`).first().click({ timeout: 4000 });
+    await p.waitForTimeout(500);
+    await scan(`${label}, shares and link`);
+  } catch (e) { console.log(`  (staking standing skipped: ${e.message.split('\n')[0]})`); }
   // The backer page (/b/<token>, no login: components/BackerPage.jsx), paged through: a full
   // history (then its graph on 1M), a backer with no sessions yet, one session. CHECK_BACKER_TOKENS
   // (full,empty,one) names made-up backers on a scratch server (scripts/seed-backer-demo.js prints

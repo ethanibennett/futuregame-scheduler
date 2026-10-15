@@ -14,8 +14,16 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-14 (later) — Bankroll merge Phase 8: the standing UI, on `feat/money-merge-8`
+- **Built** (worktree `.claude/worktrees/money-merge-8`): the Staking tab's Standing view, the Notify
+  block's Q7 ask (Both / Series only), "Posts to backers" under the result and cash forms. Spec: "Phase 8:
+  as built"; CLAUDE.md has the block. Phase 7 is merged (7e9bc1c).
+- **Verified:** `test:standing-live` (18 + 6 helper cases); the guards' `staking-standing*` and the
+  guards at 402 and 1440: all Standing controls on the grid, no clipped text. The Notify views were NOT re-measured here (the scratch world lacks their staged results); their confirm row only gained two buttons of the recipe that passed before.
+- **Next:** Phase 9 (the owner API and deep links), Phase 10 (money homes).
+
 ## 2026-10-14 (late) — Bankroll merge Phase 7: standing shares live, on `feat/money-merge-7`
-- **Built, tested, NOT merged** (worktree `.claude/worktrees/money-merge-7`, made by hand because the app
+- **Built, tested, merged as 7e9bc1c** (worktree `.claude/worktrees/money-merge-7`, made by hand because the app
   cannot create one from the Mac's remote view: it mangles the Windows path). Spec: "Phase 7: as built";
   CLAUDE.md has the block. 18 cases in `test:standing-live`; notify tap, backers, money-import and standing
   suites still pass. Server only: Phase 8 draws the UI.
