@@ -801,7 +801,7 @@ function ChipStack({ amount }) {
     // discs advancing 5px apiece. On the felt that read as coins with daylight
     // between them rather than as a stack, so both are reverted: one column,
     // 18x6, overlapped to a 2px advance.
-    <div className="chip-stack-visual" style={{ display:'inline-flex', flexDirection:'column', alignItems:'center', marginRight:'calc(var(--subrow) * 0.375)', verticalAlign:'middle' }}>
+    <div className="chip-stack-visual" style={{ '--stack-n': chips.length, display:'inline-flex', flexDirection:'column', alignItems:'center', marginRight:'calc(var(--subrow) * 0.375)', verticalAlign:'middle' }}>
       {chips.map((color, i) => (
         /* Size, radius and overlap all live in .chip-disc now, shared with
            the pot's chips — these were two drawings of one object. Only the
@@ -1317,7 +1317,7 @@ function PotChipVisual({ amount }) {
   return (
     <div className="replayer-pot-chips">
       {stacks.slice(0, 5).map((stack, i) => (
-        <div key={i} className="replayer-pot-chip-stack">
+        <div key={i} className="replayer-pot-chip-stack" style={{ '--stack-n': Math.min(stack.count, 6) }}>
           {Array.from({ length: Math.min(stack.count, 6) }, (_, j) => (
             /* The TOP chip paints last, over the ones beneath it — a stack
                hides all but an edge of each chip below. The bet chips already
@@ -1429,7 +1429,8 @@ function PotChipLive({ amount, motion, set, shipped = false }) {
     <div className={'replayer-pot-chips' + (isShipped ? ' is-shipped' : '')} ref={rowRef}>
       {stacks.map((stack, i) => (
         <div key={stack.color} data-color={stack.color}
-          className={'replayer-pot-chip-stack' + (hidden && hidden.includes(stack.color) ? ' is-pending' : '')}>
+          className={'replayer-pot-chip-stack' + (hidden && hidden.includes(stack.color) ? ' is-pending' : '')}
+          style={{ '--stack-n': Math.min(stack.count, 6) }}>
           {Array.from({ length: Math.min(stack.count, 6) }, (_, j) => (
             <div key={j} className="replayer-pot-chip-disc"
               style={{ '--chip': stack.color, '--pip-shift': pipShift(amount + i * 977, j),

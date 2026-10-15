@@ -1240,7 +1240,7 @@
           rgba(0,0,0,0.55) 100%);
       background-position: calc(var(--pip-shift, 0) * var(--disc-w)) 0, 0 0;
       background-repeat: repeat-x, no-repeat;
-      box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.35);
+      box-shadow: 0 calc(var(--subrow) * 0.0625) calc(var(--subrow) * 0.0625) rgba(0,0,0,0.35);
     }
     /* The top face, inset by the notch depth so the rim marks show around it
        as a ring — the chip's most legible feature at the size these render.
@@ -5346,9 +5346,17 @@
          function now: the same angle, the same blur ratio, alpha scaled by
          how far above the felt the object sits. --cast-x/-y/-blur come from
          the seat's own position (see castStyle in HandReplayerView). */
-      --cast-x: 0;
+      --cast-x: calc(var(--subrow) * 0);   /* a LENGTH: idea 11 multiplies it, and calc(0 * n) is a number, which drop-shadow refuses */
       --cast-y: calc(var(--subrow) * 0.25);
       --cast-blur: calc(var(--subrow) * 0.5);
+      /* 11: the cast is the SAME function for every object, of one input: --lift, how far above
+         the felt the object's top sits, in board-card thicknesses. Offset and blur scale with it
+         and the alpha falls as it rises (a higher object's shadow spreads and thins), so a hole
+         card (0.6) sits tight and dark, the dealer button (1.4) floats a little, and a chip stack
+         rises with its chip count (0.4 + 0.3 per chip) instead of every disc casting the same
+         small shadow and the stack hovering. Each object sets --lift; the formula is in the
+         .cast-lift rules below. */
+      --lift: 1;
 
       /* 52: --plaque-bevel is the app's shared PANEL shadow, so on the felt
          the seat plaques floated at the height of a modal — which is most of
@@ -5845,7 +5853,7 @@
     .replayer-board-area .card-row img {
       height: var(--card-h);
       filter: drop-shadow(0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.72))
-              drop-shadow(var(--cast-x) var(--cast-y) var(--cast-blur) rgba(var(--shadow-rgb, 0, 0, 0), 0.38));   /* felt-tinted (idea 15) */
+              drop-shadow(calc(var(--cast-x) * var(--lift)) calc(var(--cast-y) * var(--lift)) calc(var(--cast-blur) * var(--lift)) rgba(var(--shadow-rgb, 0, 0, 0), calc(0.42 / (0.6 + var(--lift) * 0.4))));   /* felt-tinted (idea 15); lift (idea 11) */
       /* No lit-edge ring (owner, 2026-10-11): a box-shadow follows the <img>'s BOX, not the
          card's rounded artwork inside it, so it drew a pale square frame around every card. */
     }
@@ -6046,7 +6054,8 @@
          the table lit from the side — and there are two to ten of them in
          every frame — while the board two rules up, the felt's own inset and
          the rail's highlight all said the light is above and in front. */
-      filter: drop-shadow(var(--cast-x) calc(var(--cast-y) * 0.6) calc(var(--cast-blur) * 0.6) rgba(var(--shadow-rgb, 0, 0, 0), 0.5));
+      --lift: 0.6;   /* idea 11: a card lying on the felt, lower than the board's (which sit on the cloth's nap) */
+      filter: drop-shadow(calc(var(--cast-x) * var(--lift)) calc(var(--cast-y) * var(--lift)) calc(var(--cast-blur) * var(--lift)) rgba(var(--shadow-rgb, 0, 0, 0), calc(0.42 / (0.6 + var(--lift) * 0.4))));
       /* no white outline around the card (owner, 2026-10-11) */
     }
     /* 31.4px = 44 x (180/252), matching the faces they sit beside. */
@@ -6102,10 +6111,11 @@
       align-items: center;
       justify-content: center;
       z-index: var(--z-dealer);
+      --lift: 1.4;   /* idea 11: a thick puck */
       border: var(--bw-1) solid #b9a884;
       box-shadow:
         0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.5),
-        var(--cast-x) var(--cast-y) var(--cast-blur) rgba(var(--shadow-rgb, 0, 0, 0), 0.4),
+        calc(var(--cast-x) * var(--lift)) calc(var(--cast-y) * var(--lift)) calc(var(--cast-blur) * var(--lift)) rgba(var(--shadow-rgb, 0, 0, 0), calc(0.42 / (0.6 + var(--lift) * 0.4))),
         inset 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(255,255,255,0.6),
         inset 0 calc(var(--subrow) * -0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.12);
       pointer-events: none;
@@ -8233,6 +8243,13 @@
       min-height: calc(var(--disc-w, calc(var(--subrow) * 2)) * 1.1);
     }
     .replayer-pot-chip-stack { display:flex; flex-direction:column; align-items:center; }
+    /* 11: the stack casts ONE shadow, from its height, rather than each disc its own. The discs
+       keep only their contact line (the groove where one chip meets the next). */
+    .chip-stack-visual,
+    .replayer-pot-chip-stack {
+      --lift: calc(0.4 + var(--stack-n, 1) * 0.3);
+      filter: drop-shadow(calc(var(--cast-x) * var(--lift)) calc(var(--cast-y) * var(--lift)) calc(var(--cast-blur) * var(--lift)) rgba(var(--shadow-rgb, 0, 0, 0), calc(0.42 / (0.6 + var(--lift) * 0.4))));
+    }
     /* A cell of the row, not a block above it. Above the row the stacks were
        the pot's whole vertical footprint — they are what put the row 3.6% of
        the table height below where `top` said, and what reached the top seat's
@@ -16097,7 +16114,7 @@
          natural 19r height. Define the same set here, against this box. */
       container-type: size;
       --z-felt: 1; --z-mark: 2; --z-strip: 3; --z-seat: 4; --z-board: 5; --z-sweep: 6; --z-pot: 7; --z-bet: 8; --z-dealer: 9; --z-flight: 10;
-      --cast-x: 0; --cast-y: calc(var(--subrow) * 0.25); --cast-blur: calc(var(--subrow) * 0.5);
+      --cast-x: calc(var(--subrow) * 0); --cast-y: calc(var(--subrow) * 0.25); --cast-blur: calc(var(--subrow) * 0.5);
       --plate-bevel:
         0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.55),
         inset 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.16),
