@@ -6309,7 +6309,7 @@
        than one the room recorded, and it is the quietest thing on the felt,
        so it goes light. */
     /* 39: the supporting chips are support. */
-    .replayer-range-label, .replayer-bet-sizing, .replayer-spr-badge {
+    .replayer-range-label, .replayer-bet-sizing {
       font-weight: var(--fw-regular);
     }
     .replayer-seat-action {
@@ -7790,23 +7790,9 @@
       font-family: var(--font-condensed); margin-top: var(--space-xs);
     }
 
-    /* ── SPR Badge (on felt, near pot) ── */
-    .replayer-spr-badge {
-      /* 25: top:29% is the pot eyebrow's row. Below the plaque instead. */
-      position:absolute; left:50%; top:38%; transform:translate(-50%,-50%);
-      z-index:2; font-size: var(--fs-2xs); font-family: var(--font-condensed);
-      color:rgba(255,255,255,0.7); background:rgba(0,0,0,0.35);
-      padding: var(--nudge-1) var(--space-sm); border-radius: var(--r-object); white-space:nowrap;
-      letter-spacing: var(--track-tight);
-    }
-    /* ── Pot Odds Badge (on felt, near pot) ── */
-    .replayer-pot-odds-badge {
-      position:absolute; right:15%; top:35%; transform:translate(50%,-50%);
-      z-index:3; font-size: var(--fs-2xs); font-family: var(--font-condensed); font-weight: var(--fw-bold);
-      color:#60a5fa; background:rgba(59,130,246,0.15);
-      border:var(--bw-hair) solid rgba(59,130,246,0.3);
-      padding: var(--nudge-1) var(--space-sm); border-radius:var(--radius-sm); white-space:nowrap;
-    }
+    /* Catalogue three, idea 4 (2026-10-15): the free-floating SPR and pot-odds badges (top:38%,
+       right:15% top:35%) are gone from the felt: SPR is plain text in the pot's own cell
+       (.replayer-spr) and pot odds sit under the table (.replayer-pot-odds). Their rules were dead. */
     /* ── Bet Sizing Label ── */
     .replayer-bet-sizing {
       font-size: var(--fs-2xs); font-family: var(--font-condensed); color:rgba(255,255,255,0.6);
