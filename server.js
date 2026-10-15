@@ -563,6 +563,7 @@ const backerSurface = require('./lib/backer-surface');
 // The Notify tap: a result's backer shares, sent by the owner's tap and followed silently after
 // (lib/staking/notify.js; docs/bankroll-merge.md "Notify tap").
 const notifyTap = require('./lib/staking/notify');
+const standingLive = require('./lib/staking/live');
 // Every write to a result runs this after its own write and before the save: a result some backer
 // was notified of carries its shares with it (owner Q2: nobody is told), a deleted one voids them.
 // A result nobody notified costs one indexed lookup and is never touched. A failure here is logged
@@ -617,7 +618,9 @@ app.get('/api/backer/:token/feed', (req, res) => {
     // exactly as before) or 'sql' (the backers table, console_records as the fallback). The
     // history is backer_events either way. docs/bankroll-merge.md §7.6; check
     // GET /api/staking/standing/parity before flipping it.
-    const feed = backerSurface.buildFeed(db, token, { source: backerSurface.pageSource() });
+    // After the money cutover (standing_live cutover 'live', §11.4) the SQL source is the only one:
+    // a token no backers row owns is not served from the old roster any more.
+    const feed = backerSurface.buildFeed(db, token, { source: backerSurface.pageSource(), strict: backerSurface.pageSource() === 'sql' && standingLive.cutoverLive(db) });
     res.set('Cache-Control', 'no-store');
     res.json(feed);
   } catch (err) {
@@ -3382,6 +3385,12 @@ async function initDatabase() {
         const added = moneyImport.migrate(db);
         console.log(`Money import: ${added.length} column(s) added`);
       }
+    },
+    {
+      // Phase 7 of the bankroll merge: where the owner's Q7 answer and a per-backer exclusion live
+      // (standing_result_answers). Additive, one savepoint. lib/staking/live.js.
+      name: standingLive.MIGRATION_NAME,
+      fn: () => { standingLive.migrate(db); console.log('Standing shares live: answers table ready'); }
     },
   ];
 
@@ -10097,7 +10106,7 @@ app.put('/api/tournaments/:id', authenticateToken, requireRegistered, async (req
     }
     // Is this row owned by the watcher? If so the edit needs recording as an override, or the
     // next ingest silently reverts it — which is exactly what made the editor look broken.
-    const ownerStmt = db.prepare('SELECT id, stable_id, source_pdf FROM tournaments WHERE id = ?');
+    const ownerStmt = db.prepare('SELECT id, stable_id, source_pdf, venue FROM tournaments WHERE id = ?');
     ownerStmt.bind([id]);
     const target = ownerStmt.step() ? ownerStmt.getAsObject() : null;
     ownerStmt.free();
@@ -10158,6 +10167,17 @@ app.put('/api/tournaments/:id', authenticateToken, requireRegistered, async (req
       recorded++;
     }
     if (recorded > 0) console.log(`[overrides] recorded ${recorded} field(s) for ${key}`);
+    // A Personal event is the owner's own row: a buy-in, date, game or channel change moves its
+    // results' nets, so any notified shares follow (silently; lib/staking/notify.js). A feed row's
+    // edit is not an owner write (§6.5): the drift report lists it instead.
+    if (target.venue === 'Personal' && ['buyin', 'date', 'game_variant', 'is_online'].some((f) => f in changedFields)) {
+      const teStmt = db.prepare('SELECT id FROM tracking_entries WHERE tournament_id = ?');
+      const entries = [];
+      teStmt.bind([id]);
+      while (teStmt.step()) entries.push(teStmt.getAsObject().id);
+      teStmt.free();
+      if (entries.length) followShares('tracking_entries', entries);
+    }
     await saveDatabase();
     // Return updated tournament
     const stmt = db.prepare('SELECT * FROM tournaments WHERE id = ?');
@@ -11426,7 +11446,14 @@ function rotateBackerToken(oldToken, newToken) {
   return backerSurface.rotateBackerToken(db, oldToken, newToken);
 }
 
+let rosterStoodDownLogged = false;
 async function syncBackerRoster() {
+  // After the money cutover (§11.4, cutover 'live') this app owns the roster: the sync stands down
+  // and says so once per boot.
+  if (standingLive.cutoverLive(db)) {
+    if (!rosterStoodDownLogged) { rosterStoodDownLogged = true; console.log('[roster] the money cutover is live: the roster sync has stood down (this app owns the backers now)'); }
+    return;
+  }
   // Always the CURRENT value: ROSTER_TOKEN_PREVIOUS exists only on the dashboard,
   // for inbound checks, so a rotation always moves forward (same rule as
   // lib/dashboard-token.js). Trimmed because a pasted env value often carries a
