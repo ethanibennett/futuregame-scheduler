@@ -31,7 +31,7 @@ export function normaliseList(data) {
       openingCents: num(a.openingCents), openingNote: text(a.openingNote) || null,
       stakes: (Array.isArray(a.stakes) ? a.stakes : []).map((s) => ({ id: num(s.id), format: text(s.format), channel: text(s.channel) || 'any', pct: num(s.pct), validFrom: text(s.validFrom), validTo: text(s.validTo) || null, inForce: !!s.inForce })),
       inForce: text(a.inForce),
-      sharesCount: num(a.sharesCount), sharesCents: num(a.sharesCents), runningCents: num(a.runningCents),
+      sharesCount: num(a.sharesCount), sharesCents: num(a.sharesCents), paidCents: num(a.paidCents), runningCents: num(a.runningCents),
       delivery: { sms: !!(a.delivery && a.delivery.sms), email: !!(a.delivery && a.delivery.email) },
     })),
   };
@@ -60,7 +60,7 @@ export function agreementView(a, { thisYear, today } = {}) {
     status,
     tone: a.status === 'ended' ? 'is-muted' : '',
     stakes: current.length ? a.inForce || current.map((s) => `${fmtPct(s.pct)} ${s.format}`).join(' · ') : 'No stakes in force',
-    money: `${plural(a.sharesCount, 'share')} · ${fmtSignedCents(a.sharesCents)}` + (a.openingCents ? ` · opening ${fmtSignedCents(a.openingCents)}` : ''),
+    money: `${plural(a.sharesCount, 'share')} · ${fmtSignedCents(a.sharesCents)}` + (a.openingCents ? ` · opening ${fmtSignedCents(a.openingCents)}` : '') + (a.paidCents ? ` · paid ${fmtSignedCents(-a.paidCents)}` : ''),
     running: fmtSignedCents(a.runningCents),
     runningTone: tone(a.runningCents),
     link: a.backer.hasLink ? `Link ${a.backer.link || ''}`.trim() : 'No link yet',
@@ -103,6 +103,25 @@ export function toStakesBody(rows, mode, confirm = false) {
   const c = cleanStakes(rows);
   if (c.error) return { error: c.error };
   return { body: { mode: mode === 'correct' ? 'correct' : 'from-today', stakes: c.stakes, ...(confirm ? { confirm: true } : {}) } };
+}
+
+/**
+ * A payout form -> POST /:id/payments body, or { error }. direction 'out' = the player paid the
+ * backer (+ cents), 'in' = the backer paid the player (− cents). Whole dollars, as the ledger keeps it.
+ */
+export function toPaymentBody({ amount, direction, paidOn, note }) {
+  const n = Number(String(amount == null ? '' : amount).replace(/[$,\s]/g, ''));
+  if (!Number.isFinite(n) || n <= 0) return { error: 'Enter how much changed hands.' };
+  if (!Number.isInteger(n)) return { error: 'A payout is in whole dollars.' };
+  const body = { amountCents: (direction === 'in' ? -1 : 1) * n * 100 };
+  if (paidOn) body.paidOn = paidOn;
+  if (text(note).trim()) body.note = text(note).trim().slice(0, 200);
+  return { body };
+}
+/** One payout as a line: "Oct 14 · You paid · −$500" (the backer's total goes down when they are paid). */
+export function paymentView(p, { thisYear } = {}) {
+  const out = num(p.amountCents) > 0;
+  return { key: p.id, when: fmtShort(p.paidOn, thisYear), what: (out ? 'You paid' : 'They paid you') + (p.note ? ` · ${p.note}` : ''), amount: fmtSignedCents(-num(p.amountCents)), tone: tone(-num(p.amountCents)) };
 }
 
 /** The correction's preview: "2 shares change: −$155 in all for this backer". */

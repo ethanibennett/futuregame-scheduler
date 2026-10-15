@@ -110,8 +110,11 @@ export function summarize(feed) {
   const total = Number.isFinite(Number(f.cumulativeCents)) ? Math.round(Number(f.cumulativeCents)) : opening + shown;
   const sessions = Number.isFinite(Number(f.sessions)) ? Number(f.sessions) : events.length;
   const hours = Number.isFinite(Number(f.hours)) ? Number(f.hours) : events.reduce((a, e) => a + (Number(e.hours) || 0), 0);
-  const base = total - shown;
-  return { total, sessions, hours, opening, base, complete: sessions <= events.length && base === opening };
+  // Payouts (Phase 14) lower the total but are not shares: the curve is the shares, so its base
+  // adds them back.
+  const paid = Math.round(Number(f.paidCents) || 0);
+  const base = total + paid - shown;
+  return { total, sessions, hours, opening, paid, base, complete: sessions <= events.length && base === opening };
 }
 
 // ── bb/hr, the player's ────────────────────────────────────────────────────────────────────

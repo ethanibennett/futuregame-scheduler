@@ -14,6 +14,18 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-14 (end) — Bankroll merge Phase 14: standing payouts, merged
+- **Live on master:** payouts to and from standing backers (the Standing card's Payouts), their
+  settlement in the ledger, and the running total net of them on every surface. Spec: "Phase 14: as built".
+- **Verified:** `test:standing-payouts` (5), the page and Standing helpers, `test:backers` with the
+  byte-for-byte parity, `test:backer-page`, `test:standing-live`; the Standing guards at both sizes.
+- **The merge, what is left:** Phase 11 is the dashboard repo (wsop-console: its adapter onto
+  `/api/owner/*`), then the cutover (12) and the retire (13), which need the owner and LEDGER_TOKEN set
+  on both Render services. Everything in this repo's share of the merge is built.
+- **Open:** "Edit home renders a blank screen" was not reproduced (local build at 402 and 1440 renders the
+  sheet; futurega.me serves the same bundle). Likely the Mac app's older TestFlight build; tonight's 04:00
+  nightly ships master.
+
 ## 2026-10-14 (last) — Bankroll merge Phase 10: money homes, merged
 - **Live on master:** the WSOP fund as a bankroll Role with target and pace, "Where the money is" in the
   Overview, the tax report's set-aside line. Spec: "Phase 10: as built"; CLAUDE.md has the block.

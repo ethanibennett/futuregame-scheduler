@@ -5,6 +5,7 @@ import Icon from './Icon.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
 import {
   normaliseList, stakeWords, agreementView, toCreateBody, toStakesBody, correctionText, eventView, driftView, stateLine, fmtPct,
+  toPaymentBody, paymentView,
 } from '../utils/standing-ui.js';
 import './standing.css';
 
@@ -219,6 +220,72 @@ function Shares({ api, a, owner, onChanged }) {
   );
 }
 
+/**
+ * Payouts (Phase 14): money that changed hands with this backer. Each lowers (or, from the backer,
+ * raises) their running total and writes a settlement into Main. The list, newest first, each with
+ * Remove; then the form: amount, who paid, the day, a note.
+ */
+function Payouts({ api, a, onChanged }) {
+  const toast = useToast();
+  const [data, setData] = useState(null);
+  const [f, setF] = useState({ amount: '', direction: 'out', paidOn: getToday(), note: '' });
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(async () => { const r = await api('GET', `/staking/standing/${a.id}/payments`); setData(r.status === 200 ? r.data : { payments: [] }); }, [api, a.id]);
+  useEffect(() => { load(); }, [load]);
+  const add = async () => {
+    const r = toPaymentBody(f);
+    if (r.error) { toast.error(r.error); return; }
+    setBusy(true);
+    const res = await api('POST', `/staking/standing/${a.id}/payments`, r.body);
+    setBusy(false);
+    if (res.status !== 201) { toast.error(res.data.error || 'Could not record it.'); return; }
+    setF({ ...f, amount: '', note: '' });
+    await load(); onChanged();
+  };
+  const remove = async (id) => {
+    setBusy(true);
+    const res = await api('DELETE', `/staking/standing/payments/${id}`);
+    setBusy(false);
+    if (res.status !== 200) { toast.error(res.data.error || 'Could not remove it.'); return; }
+    await load(); onChanged();
+  };
+  const y = thisYear();
+  return (
+    <div className="sd-confirm" role="group" aria-label={`Payouts with ${a.backer.name}`}>
+      {!data ? <p className="sd-t sd-line">Loading…</p> : !data.payments.length ? <p className="sd-t sd-line">No payouts recorded.</p> : (
+        <ul className="sd-events">
+          {data.payments.map((p) => {
+            const v = paymentView(p, { thisYear: y });
+            return (
+              <li key={v.key} className="sd-event">
+                <span className="sd-t sd-ev-when">{v.when}</span>
+                <span className="sd-t sd-ev-what" title={v.what}>{v.what}</span>
+                <span className={'sd-t sd-ev-share ' + v.tone}>{v.amount}</span>
+                <div className="sd-ev-act"><Btn w={8} tone="ghost" disabled={busy} onClick={() => remove(p.id)}>Remove</Btn></div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <div className="sd-two">
+        <label className="staking-field"><span>Amount ($)</span><input type="number" inputMode="numeric" min="1" step="1" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></label>
+        <label className="staking-field"><span>Who paid</span>
+          <select value={f.direction} onChange={(e) => setF({ ...f, direction: e.target.value })}>
+            <option value="out">I paid them</option>
+            <option value="in">They paid me</option>
+          </select>
+        </label>
+      </div>
+      <div className="sd-two">
+        <label className="staking-field"><span>Day</span><input type="date" value={f.paidOn} onChange={(e) => setF({ ...f, paidOn: e.target.value })} /></label>
+        <label className="staking-field"><span>Note</span><input type="text" maxLength={200} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="Venmo, cash…" /></label>
+      </div>
+      <p className="sd-text">It lowers {a.backer.name}&rsquo;s running total on their page and records a settlement in Main.</p>
+      <div className="sd-actions"><Btn w={9} tone="brand" disabled={busy} onClick={add}>{busy ? 'Saving…' : 'Record'}</Btn></div>
+    </div>
+  );
+}
+
 function Card({ api, a, formats, channels, owner, reload }) {
   const toast = useToast();
   const [open, setOpen] = useState(null); // 'stakes' | 'shares' | 'end' | 'link' | 'delivery'
@@ -262,14 +329,16 @@ function Card({ api, a, formats, channels, owner, reload }) {
         <div className="sd-card-act">
           <Btn w={7} onClick={() => setOpen(open === 'stakes' ? null : 'stakes')}>Stakes</Btn>
           <Btn w={7} onClick={() => setOpen(open === 'shares' ? null : 'shares')}>Shares</Btn>
+          <Btn w={8} onClick={() => setOpen(open === 'payouts' ? null : 'payouts')}>Payouts</Btn>
           <Btn w={8} onClick={() => setOpen(open === 'delivery' ? null : 'delivery')}>Delivery</Btn>
           <Btn w={8} onClick={() => setOpen(open === 'link' ? null : 'link')}>New link</Btn>
           <Btn w={4} tone="ghost" title="End this agreement" onClick={() => setOpen(open === 'end' ? null : 'end')}>End</Btn>
         </div>
       )}
-      {a.status === 'ended' && <div className="sd-card-act"><Btn w={7} onClick={() => setOpen(open === 'shares' ? null : 'shares')}>Shares</Btn></div>}
+      {a.status === 'ended' && <div className="sd-card-act"><Btn w={7} onClick={() => setOpen(open === 'shares' ? null : 'shares')}>Shares</Btn><Btn w={8} onClick={() => setOpen(open === 'payouts' ? null : 'payouts')}>Payouts</Btn></div>}
       {open === 'stakes' && <StakesEditor api={api} a={a} formats={formats} channels={channels} onDone={() => { setOpen(null); reload(); }} />}
       {open === 'shares' && <Shares api={api} a={a} owner={owner} onChanged={reload} />}
+      {open === 'payouts' && <Payouts api={api} a={a} onChanged={reload} />}
       {open === 'end' && (
         <div className="sd-confirm">
           <p className="sd-text">End {v.name}&rsquo;s agreement today? Past shares stay on the page; nothing new posts to it.</p>

@@ -2544,6 +2544,11 @@ function finalize(c) {
     await tap(`${standingCard('Demo Standing Sam')} button:has-text("New link")`, 500);
     await tap(`${standingCard('Demo Standing Sam')} button:has-text("Delivery")`, 500);
   }, 1);
+  // A card's payouts (Phase 14): the list with Remove and the form (amount, who paid, day, note).
+  step('staking-standing-payouts', async () => {
+    await standing();
+    await tap(`${standingCard('Demo Standing Sam')} button:has-text("Payouts")`, 1200);
+  }, 2);
   // First-run setup, stage by stage (re-opened the way the location menu's "Run setup again"
   // does; docs/onboarding.md): step 1 as it opens, with "Use my location" refused (no permission:
   // the error line), located (permission granted at a fixed point: the place named, the distance
