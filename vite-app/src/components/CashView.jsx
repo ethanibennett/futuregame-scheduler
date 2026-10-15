@@ -21,7 +21,6 @@ const UNIVERS = "var(--font-condensed, 'Univers Condensed', 'Univers', sans-seri
 // rather than to font + literal padding, so heights land on the grid.
 const CTRL_H = 'calc(var(--subrow) * 4)';
 const CHIP_H = 'calc(var(--subrow) * 3)';
-const SOURCE_LABEL = { bravo: 'Bravo', pokeratlas: 'PokerAtlas' };
 const HIDDEN_KEY = 'cashHiddenVariants'; // persisted set of variant labels to hide
 
 // How long a game has been open = the length of its current unbroken run. The
@@ -412,17 +411,16 @@ export default function CashView({ token, onModeChange }) {
                   <div style={{ background: color, color: '#fff', textAlign: 'center', padding: 'var(--space-sm) calc(var(--subrow) * 1.75)', fontFamily: UNIVERS, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, fontSize: 'calc(var(--gu) * 1.208)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {v.name}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-md)', padding: 'var(--space-sm) calc(var(--subrow) * 1.75)', borderBottom: 'var(--bw-hair) solid var(--border, #2a2a2a)' }}>
-                    <span style={{ fontSize: 'calc(var(--gu) * 0.884)', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', border: 'var(--bw-hair) solid var(--border,#333)', borderRadius: 'calc(var(--subrow) * 0.625)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)' }}>
-                      {SOURCE_LABEL[v.source] || v.source}
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--space-md)', padding: 'var(--space-sm) calc(var(--subrow) * 1.75)', borderBottom: 'var(--bw-hair) solid var(--border, #2a2a2a)' }}>
+                    {/* No data source is named anywhere in the app (owner, 2026-10-15: no agreement with either
+                        provider, so keep them quiet). Only the freshness line remains, at the right. */}
                     <span style={{ fontSize: 'calc(var(--gu) * 0.972)', color: 'var(--text-muted, #888)', whiteSpace: 'nowrap' }}>
                       {v.ok === false ? 'poll failed' : v.ok === null ? 'no data yet' : (ago(v.lastPollTs) || '')}
                     </span>
                   </div>
 
                   {v.ok === false ? (
-                    <div style={{ padding: 'var(--space-ml) calc(var(--subrow) * 1.75)', color: 'var(--text-muted,#888)', fontSize: 'calc(var(--gu) * 1.149)' }}>Couldn’t read this room’s feed{v.error ? ` (${v.error})` : ''}.</div>
+                    <div style={{ padding: 'var(--space-ml) calc(var(--subrow) * 1.75)', color: 'var(--text-muted,#888)', fontSize: 'calc(var(--gu) * 1.149)' }}>Couldn’t read this room’s feed.</div>
                   ) : running.length === 0 && interest.length === 0 ? (
                     <div style={{ padding: 'var(--space-ml) calc(var(--subrow) * 1.75)', color: 'var(--text-muted,#888)', fontSize: 'calc(var(--gu) * 1.149)' }}>Nothing running.</div>
                   ) : (
