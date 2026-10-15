@@ -69,6 +69,14 @@ async function main() {
       annotations = await ghJson(['api', `repos/${REPO}/check-runs/${c.job}/annotations`]);
     } catch { /* absent annotations are a legitimate input — the predicate handles it */ }
 
+    // GitHub stops keeping a job's steps after a while (2026-10-15: the August jobs read steps: [] while
+    // this morning's read 10). The predicate needs the steps, and the live watchdog only ever reads
+    // fresh runs, so an aged-out case says nothing about it: skip it, as an unreadable one is.
+    if (!Array.isArray(job.steps) || job.steps.length === 0) {
+      console.log(`  SKIP  ${c.job}  ${c.what} — GitHub no longer keeps this job's steps`);
+      continue;
+    }
+
     const { sleepKill, reason } = isSleepKill(job, annotations);
     const ok = sleepKill === c.expect;
     if (!ok) failures++;

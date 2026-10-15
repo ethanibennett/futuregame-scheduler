@@ -262,12 +262,13 @@ test('sign as drawn: a figure that shows as 0 has no sign and no colour', () => 
 });
 
 test('open state: Summary and Sessions open by default; saved booleans win; junk is ignored', () => {
-  assert.deepEqual(parseOpen(null), { summary: true, sessions: true, games: false, rooms: false, bankroll: false, periods: false });
+  // Phase 10 (2026-10-14) added a seventh section, money ('Where the money is'), closed by default.
+  assert.deepEqual(parseOpen(null), { summary: true, sessions: true, games: false, rooms: false, bankroll: false, periods: false, money: false });
   assert.deepEqual(parseOpen('{"games":true,"summary":false,"nope":true,"rooms":"yes"}'),
-    { summary: false, sessions: true, games: true, rooms: false, bankroll: false, periods: false });
+    { summary: false, sessions: true, games: true, rooms: false, bankroll: false, periods: false, money: false });
   assert.deepEqual(parseOpen('not json'), parseOpen(null));
   assert.deepEqual(parseOpen('[1,2]'), parseOpen(null));
-  assert.equal(SECTIONS.length, 6);
+  assert.equal(SECTIONS.length, 7);
 });
 
 test('scope: the figures name, format and fetch by the ledger in hand, stale until it is the one asked for', () => {
