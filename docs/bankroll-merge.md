@@ -5,7 +5,7 @@ on `feat/money-merge-2` (merged), **Phase 3 built** on `feat/money-merge-3` (mer
 dashboard repo on `feat/money-export` (merged and deployed, closed until LEDGER_TOKEN), **Phase 5 built** on
 `feat/money-merge-5` (merged; the pull is off until LEDGER_TOKEN) (see "Phase 1: as built" to "Phase 5: as
 built" after the §15 table). **The Notify tap is built ahead of Phase 7** on `feat/notify-tap` (merged; "Notify
-tap (built ahead of Phase 7)", after the Backers view). **Phase 6 built** on `feat/money-merge-6` (merged), **Phase 7 built** on `feat/money-merge-7` (merged), **Phase 8 built** on `feat/money-merge-8` (not yet merged; "Phase 8: as built").
+tap (built ahead of Phase 7)", after the Backers view). **Phase 6 built** on `feat/money-merge-6` (merged), **Phase 7 built** on `feat/money-merge-7` (merged), **Phase 8 built** on `feat/money-merge-8` (merged), **Phase 9 built** on `feat/money-merge-9` (merged; "Phase 9: as built").
 A buildable spec for moving the dashboard's money
 (dashboard.futurega.me, repo `wsop-console`) into this app (futurega.me, repo
 `futuregame-scheduler`), cut into phases small enough for one builder each.
@@ -1587,7 +1587,7 @@ judgment about money, posting or layout. The model policy (handoff, 2026-10-14) 
 | **6** | sched | **Built** (see "Phase 6: as built" below). Import review UI (§9.3) + seed script + guard steps | 5 | **Opus** (grid seating and guard work has needed judgment on every bankroll tab) |
 | **7** | sched | **Built** (see "Phase 7: as built" below). Standing shares live, to §1.1: the **Notify action** creates a share (Q1: not on save); `syncSharesFor` in every write path only **follows or voids** a posted share (§6.5), silently (Q2); the overlap `ask` (Q7) and where its answer is stored; exclusions, revisions, recalc, drift, preview, cutover state and `PUT /api/bankrolls/money/cutover`, roster sync standing down. **Part built ahead** ("Notify tap (built ahead of Phase 7)" below): the Notify action, the silent follow and void in every result write path, revisions, and a Q7 ask that is a confirm. Phase 7 keeps its `fg-` event ids, and still owes: where the Q7 answer is stored, exclusions, recalc, drift, the money_settings / cutover gate, and the roster sync standing down | 1, 2 | **Opus** |
 | **8** | sched | **Built** (see "Phase 8: as built" below). Standing UI in the Staking tab: backers with stakes editor (from today / correct with preview; the game list is `classify.js` `GAMES`, Q8), opening, delivery, copy and rotate link, recorded shares with exclude / recalc / remove; the "Posts to backers" preview line on the result and cash forms and the Notify sheet (with the Q7 ask); guard steps | 7 | Sonnet |
-| **9** | sched | Owner API (§11.2-11.3, ported `normalizeSession` + tests) and deep links (§11.5) | 1, 7 | Sonnet |
+| **9** | sched | **Built** (see "Phase 9: as built" below). Owner API (§11.2-11.3, ported `normalizeSession` + tests) and deep links (§11.5) | 1, 7 | Sonnet |
 | **10** | sched | Money homes: fund bankroll target and progress (bankroll manager field + an Overview line), "Where's the money" (a seventh Overview section: locations, total, drift against the roll), tax set-aside line in the tax report | 1 | Sonnet |
 | **11** | WC | Dashboard adapter (§12.1): `money-source`, flags, summary/series/MCP/PWA store, Today log sheet, frozen sync and relay, Money tab links, fund target from the feed; contract and adapter tests | 9, 4 | Sonnet build, **Opus** review of the summary adapter |
 | **12** | both | Cutover (§13 steps 2-8), run by the lead with the owner | 1-11 | **Opus** + owner |
@@ -2493,6 +2493,50 @@ need the guard account as `CONSOLE_OWNER_USER_ID` and `BACKER_PAGE_SOURCE=sql`.
 **Not built, on purpose**: a copy of an existing link (the list masks it; the Backers tab in the
 bankroll dashboard shows the live links); editing an agreement's opening after the fact (PUT /:id
 exists; the card has no field for it yet).
+
+### Phase 9: as built (2026-10-14, branch `feat/money-merge-9`)
+
+**The owner API** (`lib/owner-api/`; §11.1 to §11.3): `GET /api/owner/money` and
+`POST /api/owner/sessions/log`, behind `Authorization: Bearer <LEDGER_TOKEN>` (`LEDGER_TOKEN_PREVIOUS`
+accepted inbound) through the new `lib/shared-token.js` (`checkSharedToken`, constant time; `lib/dashboard-token.js`
+is a wrapper over it now). 404 on a mismatch, a token in a query string, or an unset token (under 32
+characters counts as unset); 503 while the owner is unresolved; 60 a minute per IP (express-rate-limit);
+`Cache-Control: no-store`. It acts as `HAM_OWNER_ID`. The boot line says `[owner-api] /api/owner/* is OFF:
+LEDGER_TOKEN is not set` or `is open to LEDGER_TOKEN holders`.
+- **`/money`**: the roll (the in_roll bankrolls, the fund excluded), the fund (`role = 'fund'`: saved,
+  target, target date, first activity), `rollPeak` (the highest running roll over the whole ledger),
+  the bankrolls with `inRoll`/`isFund`, and every ended cash session and tournament result newest first
+  in the dashboard's session shape (format and channel from classify, extras included, non-USD converted
+  at the server's rates, `isWsopFund` by bankroll). Live sessions are absent. `?since=` keeps rows dated
+  OR created on or after the day; the totals are whole-ledger. Everything comes from `bankroll-ledger.js`
+  (`collect`, `runningBalances`, `summarise`), never re-summed.
+- **`/sessions/log`**: `{ session, commit }` or the flat form. `lib/owner-api/session-log.js` is the
+  dashboard's `normalizeSession` PORTED VERBATIM (the format keys, `MAX_MONEY`, `MAX_HOURS`, the ET day
+  default, the refusal of a `result` that disagrees with cash-out minus buy-in, the `chat-<sha1>` id);
+  the rows are the import's own mapping (`money-import/map.js` `mapSession`): a cash session with
+  `time_known 0` started at 12:00 New York, or a Personal tournament + entry, plus `session_extras`
+  (`origin 'chat'`). The fingerprint is the id in `bankroll_import_keys`: the same session told twice
+  updates one row (`replacesExisting: true`), a kind change is a 409. `isWsopFund` lands in the fund
+  (Main when none exists yet, noted), else `money_settings.defaultBankroll`. The preview (the default)
+  writes nothing and returns `summary`, `notes`, `rollBefore`/`rollAfter` and `backerCuts` from the
+  standing engine; the commit writes in one savepoint, runs `follow` on the row, saves, and answers 201
+  (200 on an update) with `committed`, `ref` and the ledger's real `rollAfter`.
+
+**Deep links** (`vite-app/src/utils/deep-links.js`; §11.5): `#bankroll/<tab>` (the bankroll dashboard
+on that tab; `import` is the Import tab), `#results/tournaments`, `#results/cash`, `#staking`,
+`#staking/standing`, `#expenses` (Results), `#tax` (the tax report). Read at load and on hashchange,
+acted on once an admin is signed in, then cleared with `replaceState`. Anyone else lands on the home.
+`#h/` hand links and `#reset` are untouched.
+
+**Tests**: `npm run test:owner-api` (13 cases, ports 4690-4699: the ported refusals, the token check,
+503/404, the totals against `/api/bankrolls/summary`, the fund flag, the live session absent, `since`,
+the preview that writes nothing with the cuts, the commit once, the same facts twice updating one row,
+a changed figure following, the kind-change 409, an MTT into the fund, 429 at 61) and the deep-link
+parser's cases.
+
+**Where it differs from the spec**: no MCP relay was touched (the dashboard's adapter is Phase 11);
+`#expenses` opens Results (the Expenses & Income list is under it); `rollPeak` is over the roll
+bankrolls' running total in USD at today's rates.
 
 ### Backers view (read-only), ahead of Phase 8 (2026-10-14, branch `feat/backers-view`)
 
