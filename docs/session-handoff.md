@@ -14,6 +14,13 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-15 (night, replayer) — Catalogue three resumed ("Fifty ways to quiet the table")
+- **Source:** https://claude.ai/artifact/MAjgSxmsn2vaMMt6t1oCRb (50 ideas, read 2026-08-31). Done directly, not by agents (token budget).
+- **Done (batch 1):** 2 (both dead `potCollect` keyframes and the orphan `neonPulse` deleted), 6 (watermark a flat ivory, no blend; the light themes keep their dark mark), 33 (the play button is a ghost, play and pause alike, so the brand fill means only the active turn), 14 (matte dealer button), 27 (a fold's plaque settles at its cards' pace and curve), 34 (a muck keeps its plaque's colour). Also deleted: every `.replayer-chip-delta` rule (rendered nowhere).
+- **Moot in today's code:** 39 (the chip delta is not rendered), 40 (undealt cards are not drawn, so nothing is ambiguous). **Likely superseded by springs, to confirm:** 28, 31, 36. **Skipped:** 19 (the pot labels' caps: the owner set them at half the figure's height). **Owner decisions:** 1 (retire three themes), 3 (felt colour picker to swatches), 43, 48.
+- **Next:** 26 (held beat before the showdown reveal), 17 (one numeral face on the felt; re-run the overlap check), 4 (SPR and pot odds off the felt), then 10, 11, 16, 29 and the rest.
+- **Guard note:** at 1280x800 `button.game-fave-btn "2-7 TD"` measures ink dx -0.76 (0.75 limit), untouched by this batch.
+
 ## 2026-10-15 (night, last) — Launch plan action 8 drafted; privacy docs caught up; actions 6 held
 - **App Store listing:** `docs/app-store-listing.md`, paste-ready: name, subtitle, both keyword sets, categories, age rating, promo text, description (guardrail-clean, no Mac, no provider, no online room), What's New, review notes rewritten for ACR staying, the screenshot list, and what to do after approval. **Owner to supply:** privacy policy CHECK answers (then publish `/privacy`), a support email (`/support`), the review demo account, and the Hands decision (plan action 2).
 - **Privacy docs:** inventory §10b, the policy draft §8 and the App Privacy labels (Usage Data: Product Interaction now Yes, linked, Analytics, not tracking) cover the growth measurement. Account deletion now clears `growth_events` and `user_days` (test:account covers them).

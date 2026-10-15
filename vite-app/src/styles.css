@@ -1972,7 +1972,7 @@
     .staking-pnl-pos, .staking-pnl-neg,
     .replayer-bet-chip, .replayer-equity-pct,
     .replayer-split-share,
-    .replayer-seat-stack, .replayer-pot-display, .replayer-chip-delta,
+    .replayer-seat-stack, .replayer-pot-display,
     .late-reg-time, .mini-late-reg-time, .countdown-pill {
       font-variant-numeric: var(--num-tabular);
     }
@@ -5946,8 +5946,10 @@
        elevation, so a player who is out of the hand still cast the same
        shadow and still sat at the same height as the ones still in it.
        Height is the strongest depth cue available and it was saying nothing. */
-    .replayer-seat.folded .replayer-seat-info,
-    .replayer-seat.mucked .replayer-seat-info {
+    /* Catalogue three, idea 34 (2026-10-15): a muck is not a fold. A fold leaves the hand and greys
+       the seat; a muck at showdown is a choice not to show by someone still in it, so the plaque keeps
+       its colour and only the cards go (the .mucked cards rule below). */
+    .replayer-seat.folded .replayer-seat-info {
       filter: grayscale(1) brightness(0.62);
       transform: scale(0.88);
       /* Shrink away from the table's centre (set per seat: foldOrigin). */
@@ -5955,7 +5957,9 @@
       box-shadow:
         0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.4),
         inset 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.06);
-      transition: filter var(--dur-snap), transform var(--dur-snap), box-shadow var(--dur-snap);
+      /* Idea 27: the plaque settles at the pace and on the curve its cards leave on (.replayer-seat-
+         cards: --dur-slow, --ease-out), one event at one speed; it was --dur-snap on the default curve. */
+      transition: filter var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out), box-shadow var(--dur-slow) var(--ease-out);
     }
 
     .replayer-seat-cards {
@@ -6079,7 +6083,10 @@
       width: var(--dealer-d);
       height: var(--dealer-d);
       border-radius: var(--radius-circle);
-      background: linear-gradient(145deg, #f3ead6 0%, #e6dabf 45%, #d8caab 100%);
+      /* Catalogue three, idea 14 (2026-10-15): matte clay, the gradient's middle stop flat. A real
+         button is a flat disc with a bevelled rim; the 145deg three-stop gradient did a bevel's job
+         and made it the shiniest object on the table. The bevel (the insets below) stays. */
+      background: #e6dabf;
       color: #3a3020;
       /* The D is Univers Bold (DealerGlyph), not the condensed cut: a single
          capital on a ROUND disc wants a round letter, and the condensed D is
@@ -6301,14 +6308,6 @@
     /* Was 400. Under two weights a delta is a figure the app derived rather
        than one the room recorded, and it is the quietest thing on the felt,
        so it goes light. */
-    .replayer-chip-delta {
-      font-family: var(--font-condensed);
-      font-size: clamp(7px, 2.8cqmin, 34px);
-      font-weight: var(--fw-regular);
-      font-variant-numeric: var(--num-tabular);
-      letter-spacing: 0;
-      line-height: 1.2;
-    }
     /* 39: the supporting chips are support. */
     .replayer-range-label, .replayer-bet-sizing, .replayer-spr-badge {
       font-weight: var(--fw-regular);
@@ -6745,12 +6744,16 @@
        exactly the themes that chose a deep brand); #3cc8e0 is 8.25:1, with a
        dark ink at 9.06:1 on it. The pause glyph was 2.2:1 (light), 1.3:1
        (cloudy) and 1.2:1 (hc light) on the wash; now 6.24:1 (8.57:1 hc). */
+    /* Catalogue three, idea 33 (2026-10-15): the play button was FILLED with the brand, the same colour
+       as the active-turn ring (.replayer-seat.active-turn), and the brighter of the two, on the control
+       the eye is not meant to rest on. It is a ghost now, play and pause alike: a brand glyph in a brand
+       hairline, so the brand fill means one thing at the table, whose turn it is. */
     .replayer-controls .replayer-play-btn {
       width:calc(var(--subrow) * 4.75); height:calc(var(--subrow) * 4.75);
-      background: var(--brand-on-dark);
-      border-color: var(--brand-on-dark);
-      color: var(--on-brand-on-dark);
-      box-shadow: 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.75) rgba(0,0,0,0.5), inset 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.28);
+      background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+      border-color: var(--brand-line-on-dark);
+      color: var(--brand-on-dark);
+      box-shadow: 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.75) rgba(0,0,0,0.5);
     }
     .replayer-controls .replayer-play-btn.is-playing {
       background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
@@ -6760,7 +6763,7 @@
     /* :not(.is-playing): this hover used to fill the PAUSE button with the
        brand too, under its brand-coloured glyph, so the glyph vanished. */
     @media (hover: hover) and (pointer: fine) {
-      .replayer-controls .replayer-play-btn:not(.is-playing):hover { background: var(--brand-on-dark); border-color: var(--brand-on-dark); }
+      .replayer-controls .replayer-play-btn:not(.is-playing):hover { background: linear-gradient(180deg, rgba(255,255,255,0.2), rgba(255,255,255,0.08)); border-color: var(--brand-on-dark); }
     }
     /* The app ring is the theme brand (cloudy's is about 2.1:1 on the
        capsule), and high contrast swaps it for --n-8, near-black in hc light.
@@ -7197,7 +7200,7 @@
       padding: 0; isolation: isolate;
     }
     :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >.replayer-play-btn,
-    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >.replayer-play-btn:hover { height: calc(var(--subrow) * 6); background: none; color: var(--on-brand-on-dark); }
+    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >.replayer-play-btn:hover { height: calc(var(--subrow) * 6); background: none; color: var(--brand-on-dark); }
     :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >.replayer-play-btn.is-playing { color: var(--brand-on-dark); }
     :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >button::before {
       content: ''; position: absolute; z-index: -1;
@@ -7210,8 +7213,8 @@
     }
     :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >.replayer-play-btn::before {
       width: calc(var(--subrow) * 6); height: calc(var(--subrow) * 6);
-      background: var(--brand-on-dark);
-      box-shadow: 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.75) rgba(0,0,0,0.5), inset 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.28), inset 0 0 0 var(--bw-hair) var(--brand-on-dark);
+      background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+      box-shadow: 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.75) rgba(0,0,0,0.5), inset 0 0 0 var(--bw-hair) var(--brand-line-on-dark);
     }
     :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >.replayer-play-btn.is-playing::before {
       background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
@@ -7693,11 +7696,6 @@
     }
 
 
-    @keyframes neonPulse {
-      0%,100% { box-shadow:0 0 0 calc(var(--subrow) * 0.25) rgba(0,229,255,0.3), 0 0 calc(var(--subrow) * 2.5) rgba(0,229,255,0.1); }
-      50% { box-shadow:0 0 0 calc(var(--subrow) * 0.25) rgba(0,229,255,0.6), 0 0 calc(var(--subrow) * 3.75) rgba(0,229,255,0.2); }
-    }
-    .replayer-table.theme-neon-vegas .replayer-table-felt { /* neonPulse replaced by neonGlowPulse on ::before — see above */ }
 
     /* ── Theme: Vintage ── */
     .replayer-table.theme-vintage .replayer-table-felt {
@@ -7825,14 +7823,8 @@
     .replayer-range-medium { background:rgba(59,130,246,0.2); color:#60a5fa; }
     .replayer-range-speculative { background:rgba(156,163,175,0.2); color:#9ca3af; }
     .replayer-range-passive { background:rgba(34,197,94,0.2); color:#4ade80; }
-    /* ── Running Chip Count ── */
-    .replayer-chip-delta {
-      font-size: var(--fs-2xs); font-family: var(--font-condensed); font-weight: var(--fw-bold);
-      margin-top:0; text-align:center;
-    }
-    .replayer-chip-delta.positive { color:#4ade80; }
-    .replayer-chip-delta.negative { color:#f87171; }
-    .replayer-chip-delta.neutral { color:var(--text-muted); }
+    /* (Catalogue three, 2026-10-15: the running chip-count delta, .replayer-chip-delta, is rendered
+       nowhere any more; its rules here and below were deleted.) */
     /* ── Equity Display at Showdown ── */
     .replayer-equity-bar-wrap {
       position:absolute; left:50%; bottom:calc(var(--subrow) * -0.5); transform:translateX(-50%);
@@ -7945,13 +7937,6 @@
     .replayer-bet-chip.animate-chips { animation: none; }
 
     /* ── Pot Collection Animation (chips slide to winner) ── */
-    @keyframes potCollect {
-      0% { opacity:1; transform:translate(-50%,-50%) scale(1); }
-      100% { opacity:0; transform:translate(calc(-50% + var(--win-dx,0)),calc(-50% + var(--win-dy,0))) scale(0.3); }
-    }
-    .replayer-pot-display.anim-pot-collect {
-      animation:potCollect var(--dur-slow) var(--ease-leave) forwards;
-    }
 
     /* ── The winner sequence ──
        68: the whole celebration was one simultaneous effect — a border glow
@@ -8465,22 +8450,23 @@
          nothing is behind it.
          Size scales with the table rather than sitting at a fixed --fs-md,
          which held 15px whether the table was 382px wide or 1400. */
-      mix-blend-mode: overlay;
-      opacity: 0.26;
+      /* Catalogue three, idea 6 (2026-10-15): a flat ivory, no blend. It was overlay at 0.26, which
+         needed multiply for two themes and a third override to survive an export; a blend is also a
+         compositing pass on the iOS path for the one element in every GIF, video and still. */
+      opacity: 0.2;
       font-family: var(--font-display);
       font-size: clamp(15px, 6.3cqw, 46px);
       line-height: 1;
       letter-spacing: var(--track-wordmark);
       font-weight: var(--fw-bold);
-      color: #fff;
+      color: #fff6e6;
       white-space: nowrap;
       pointer-events: none;
     }
     .replayer-table.theme-minimalist .replayer-watermark,
     .replayer-table.theme-vintage .replayer-watermark {
-      mix-blend-mode: multiply;
       color: #3a3050;
-      opacity: 0.30;
+      opacity: 0.22;
     }
 
 
@@ -8491,8 +8477,7 @@
        been dead since the day it was written. The three originals up at 3271
        now carry everything; only the states are left down here. */
 
-    .replayer-chip-delta.positive { color: var(--ok); }
-    .replayer-chip-delta.negative { color: var(--danger); }
+
 
 
     /* 22: the 10-max layout puts three seats on the top edge at 30/50/70%.
@@ -8529,10 +8514,9 @@
        potCollect keyframe — a slide toward the winner with a shrink and a
        fade — never ran, so at showdown the pot pill just sat there while the
        winner shimmered. It leaves the felt now, which is what a pot does. */
-    @keyframes potCollect {
-      0%   { opacity:1; transform:translate(-50%,-50%) scale(1); }
-      100% { opacity:0; transform:translate(-50%,-50%) scale(0.55); }
-    }
+    /* Catalogue three, idea 2 (2026-10-15): two @keyframes potCollect lived here and above, the later
+       silently winning; no class played either (.anim-pot-collect was never set, .anim-collect is
+       animation:none below). Both deleted. */
     .replayer-pot-display.anim-collect {
       /* No collect either. It faded the pot to 0.55 and held there, then the
          class dropped 700ms later and snapped it back to full — the pot shrank
@@ -8618,7 +8602,6 @@
        wherever it crosses the background. The PNG share path already drew a
        proper one at 30%; the captured one matches it now. */
     .replayer-table[data-capturing="1"] .replayer-watermark {
-      mix-blend-mode: normal !important;
       opacity: 0.32 !important;
       color: #fff !important;
       text-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) rgba(0,0,0,0.55);
