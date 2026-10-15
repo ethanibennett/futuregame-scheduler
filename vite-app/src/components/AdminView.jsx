@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import GrowthReport from './GrowthReport.jsx';
 import { API_URL } from '../utils/api.js';
 
 export default function AdminView({ token, onNavigate }) {
@@ -98,6 +99,7 @@ return (
           </button>
         )}
       </div>
+      <GrowthReport token={token} />
       <input
         type="text"
         placeholder="Filter by username, name, or email..."

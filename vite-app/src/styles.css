@@ -18041,3 +18041,9 @@
       overflow: visible;
       line-height: 1;
     }
+
+/* The Admin screen's growth table (GrowthReport.jsx, 2026-10-15): the heading and the sources line are
+   analytics.css roles; 3r between the block and the users' filter below. */
+.growth-report { margin-bottom: calc(var(--subrow) * 3); }
+.growth-report .an-p { white-space: normal; }
+.growth-report .an-sec { margin-bottom: var(--subrow); }

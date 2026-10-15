@@ -35,7 +35,7 @@ wsop-console side and verified against both live services.
 
 ## 2026-10-15 (night, later) — Launch plan action 5: first-party growth measurement
 - **Built:** `lib/growth.js` + hooks: sign-ups record their source (first touch `acqSource`, `?src=`, platform, and the new optional "How did you hear about us?" on the sign-up form); the first save to My Schedule records `activated` once; every signed-in day writes `user_days`. `GET /api/admin/growth?weeks=13` returns the weekly cohorts (activated within 7 days, D7 and D30 once old enough, sources). Accounts made before this have no signup event and are left out of the cohorts rather than guessed.
-- **Not yet:** a screen for the report (JSON only for now) and the weekly scorecard's email; native attribution (AdServices, SKAdNetwork) is action 6.
+- **Screen (2026-10-15 morning):** Admin → Growth, last 13 weeks (`GrowthReport.jsx`, `utils/growth-report.js`): week, new sign-ups, activated, D7, D30, and the top sources. **Not yet:** the weekly scorecard's email; native attribution (AdServices, SKAdNetwork) is action 6.
 
 ## 2026-10-15 (night) — Launch plan action 3: live-only defaults and futurega.me/live
 - **Live-only defaults:** a NEW browser starts with online events off and "available in my state" on (`DEFAULT_FILTERS` and setup's `WIZARD_DEFAULTS` both flipped; CalendarView matches). Any browser with earlier use (saved filters or location, finished setup) has its old online choices written down once first (`migrateLiveOnlyDefaults`, location-prefs.js, called at App.jsx load), so current testers see no change. "Clear all" keeps the online choices. Server setup records now carry `liveDefaults: true`; an older record is read under the old defaults, so a Yes from before still shows online.
