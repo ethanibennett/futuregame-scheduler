@@ -385,7 +385,7 @@ const diffTables = (a, b) => Object.keys({ ...a, ...b }).filter((k) => a[k] !== 
       const histFp = Object.keys(b).find((k) => k.startsWith('dash:backer-token:'));
       assert.deepStrictEqual(Object.keys(b).sort(), [histFp, 'dash:backers:b-gone', 'dash:backers:b-lee', 'dash:backers:b-mo', 'dash:backers:b-sam'].sort());
       assert.notStrictEqual(histFp, 'dash:backer-token:' + M.sha1(fx.TOKEN.hist).slice(0, 16), "a link-only backer's fingerprint is a keyed hash, not sha1 of the link");
-      assert.deepStrictEqual([b['dash:backers:b-sam'].token, b['dash:backers:b-sam'].stakes, b['dash:backers:b-sam'].openingCents, b['dash:backers:b-sam'].agreement], ['Sa••••••', '20% PLO · 10% NLH (live)', 12550, 'active']);
+      assert.deepStrictEqual([b['dash:backers:b-sam'].token, b['dash:backers:b-sam'].stakes, b['dash:backers:b-sam'].openingCents, b['dash:backers:b-sam'].agreement], ['••••ok01', '20% PLO · 10% NLH (live)', 12550, 'active']);
       assert.deepStrictEqual(b['dash:backers:b-sam'].delivery, { sms: false, email: true });
       assert.deepStrictEqual([b['dash:backers:b-gone'].source, b['dash:backers:b-gone'].agreement, b['dash:backers:b-gone'].openingCents], ['deleted-in-dashboard', 'ended', 4000]);
       const hist = b[histFp];

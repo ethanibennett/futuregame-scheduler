@@ -114,7 +114,7 @@ function seedHere(db, uid) {
   run(db, 'INSERT INTO tracking_entries (user_id, tournament_id, num_entries, cashed, finish_place, cash_amount, notes) VALUES (?, ?, 2, 0, NULL, 0, NULL)', [uid, ids.feedT]);
   ids.feedE = lastId(db);
   run(db, `INSERT INTO tournaments (stable_id, event_number, event_name, date, time, buyin, game_variant, venue, property, uploaded_by, source_pdf)
-    VALUES (?, '', 'Live! $400 NLH', '2026-08-20', '', 400, 'NLH', 'Personal', 'Live! Casino Philadelphia', ?, 'bankroll-import')`, [`PERSONAL-${uid}-imp-1`, uid]);
+    VALUES (?, '', 'Live! $400 NLH', '2026-08-20', '', 400, 'NLH', 'Personal', 'Live! Casino Philadelphia', ?, 'bankroll-import')`, [`PERSONAL-${uid}-imp-fixture-1`, uid]);
   ids.persT = lastId(db);
   run(db, 'INSERT INTO tracking_entries (user_id, tournament_id, num_entries, cashed, finish_place, cash_amount, notes) VALUES (?, ?, 1, 1, 3, 1900, NULL)', [uid, ids.persT]);
   ids.persE = lastId(db);

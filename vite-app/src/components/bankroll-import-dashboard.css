@@ -1,0 +1,306 @@
+/* ==================================================================
+   Bankroll › Import › From the dashboard app (BETA; the owner only) —
+   BankrollImportDashboard.jsx, the review of the dashboard import
+   (docs/bankroll-merge.md §9.3, Phase 6). bid- prefixed.
+
+   Built on analytics.css (the sheet and its type roles: an-cell, a
+   whole-r box whose one line is pushed down by --p so its baseline
+   lands on an r line, p = 2(k - h/2 - c), c measured per face and size
+   in WebKit), the dashboard's controls (styles.css bk-btn 5r, bk-seg-btn
+   5r, bk-field 3r label over a 4r input) and the Locations tab's card
+   and pager (bankroll-locations.css bl-name, bl-meta, bl-stats,
+   bl-pager, bl-more 11g x 4r, bl-count). Every measurement is g or r;
+   every box is whole g by whole r; every baseline sits on an r line
+   (the c values below are analytics.css's: Univers Condensed xs .5213,
+   sm .6511, md .7175 (from bl-name's measured p), the display face md
+   .7160). Controls are boxes on the grid with their labels centred
+   both ways (owner rule 2026-10-10). Truncating cells take the sheet's
+   descender room (.bd-sheet .an-clip: 1r of padding below, cancelled by
+   the margin), never overflow-y: visible.
+
+   Content is 35g (the 37g sheet less 1g a side); a card's is 33g.
+     section     an-sec 3r, 1r; an-p prose (2m + 1 r a block)
+     status      an-p pull line; Fetch 17g x 5r, 2r below; an-p alerts
+     group       4r above; head 3r: title (an-sec, the rest) | save state
+                 11g (Univers Condensed xs, line 3 of 3, right); 1r below
+     totals      an-stats: 2 x 17g + 1g, 7r cells (label 2r, figure 3r,
+                 note 2r), 2r above
+     counts      an-table, 2r above: 3r head, 4r rows: what 21g | New 7g |
+                 To review 7g
+     cards       35g, 1r apart, 2r below what they follow; 1g inside a side,
+                 1r below. A PAIR card:
+                   4r    the date (Univers Condensed md bold, line 3) | the
+                         Likely / Possible pill, 3r tall, 1r down, whole g
+                         (snap-g), its label centred
+                   2r    the reason (an-note, line 2)
+                   3r    "Dashboard" 16g | 1g | "futurega.me" 16g (an-lbl, line 3)
+                   n x 3r  the fields: dashboard 16g | "=" 1g when the same |
+                         futurega.me 16g (Univers Condensed sm, line 3; the
+                         result in the display face md, line 3); tapped open,
+                         a long value wraps 3r a line, first baseline unmoved
+                   1r, then the answer: 5r segments 10g | 1g | 11g | 1g | 10g,
+                         each face two 2r lines (the answer over what it does)
+                   a note (an-p) when Take is off, 1r above
+                 A BACKER card: name 3r (bl-name) | the link's last four
+                   (Univers Condensed sm, line 3, right); the source 2r
+                   (bl-meta); 1r; stakes • opening • delivery 4r (bl-stats,
+                   a hairline above); 1r; "Import as" 3r over a 4r select,
+                   33g; 1r below
+                 A CHANGE / DELETION card: title 4r (an-td) | detail; 2r
+                   note; 1r; 5r segments (16g | 1g | 16g, or 10 / 11 / 10g)
+     rows        4r rows, a hairline below (bid-row1: 19 | 7 | 9g, dated:
+                 7 | 19 | 9g); bid-row2 7r: 4r (17 | 9 | 9g) over 2r (an-note)
+                 and 1r
+     opening     an-p; 2 x 17g fields (3r label over a 4r input), 2r above;
+                 "Use the computed figure" 17g x 5r; the formula an-p
+     reconcile   a warning box (a danger ring around an an-p) when it does
+                 not balance; an-table: 3r head, 4r rows: what 17g | Roll
+                 9g | Fund 9g; an-p; each list: an-lbl 3r then dated rows
+     commit      the reasons (an-p); Import 17g x 5r | Discard 8g x 5r, 1g
+                 apart; the confirm step 2r below, under a hairline, 1r in:
+                 an-sec 3r, an-p, the per-table counts (3r head, 4r rows:
+                 what 26g | rows 9g), the buttons
+     summary     an-p; the per-table counts; the reconciliation; Undo 11g x
+                 5r (danger); its typed-count form (17g field); an undo's
+                 refusal: 6r rows: what 12g | where 12g | Open in Results
+                 11g x 4r, 1r in from the top
+     past runs   4r rows: #3 Imported 14g | rows and when 21g
+   ================================================================== */
+
+.bid :is(h4, h5) { margin: 0; }
+/* A paragraph's two fractional pads (an-p: 0.4787r over, 0.5213r under) each floor to a 1/64 px
+   layout unit in WebKit, so every an-p is 1/64 px short, and this review's forty-odd lose 0.05r by
+   its foot, where the CSV section's buttons then sit off their r line (the controls guard at 402).
+   Here the pad below is the whole r and the baseline push is a transform, which layout never
+   rounds: each paragraph is lines x 2r + 1r, exactly. */
+.bid .an-p { padding-top: 0; padding-bottom: var(--subrow); transform: translateY(calc(var(--subrow) * 0.4787)); }
+.bid p.an-cell { margin: 0; }
+.bid > .an-sec { margin-bottom: var(--subrow); }
+.bid-w11 { width: calc(var(--gu) * 11); }
+.bid-w17 { width: calc(var(--gu) * 17); }
+.bid .bk-btn[aria-disabled="true"] { opacity: var(--state-disabled); cursor: not-allowed; }
+.bid .bk-seg-btn[aria-disabled="true"] { opacity: var(--state-disabled); cursor: not-allowed; }
+.bid .bd-actions + .an-p { margin-top: var(--subrow); }
+.bid-alert strong { color: var(--neg); }
+
+/* ── Groups and their heads ─────────────────────────────────────── */
+.bid-review, .bid-summary { margin-top: calc(var(--subrow) * 4); }
+.bid-group { margin-top: calc(var(--subrow) * 4); }
+.bid-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 11);
+  align-items: start;
+  height: calc(var(--subrow) * 3);
+  margin-bottom: var(--subrow);
+}
+.bid-state {
+  --h: 3; --p: 1.9574;                 /* Univers Condensed xs, baseline on line 3 of 3 */
+  font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text-muted);
+  text-align: right;
+}
+.bid-state.is-err { color: var(--neg); }
+
+/* ── Totals and counts ──────────────────────────────────────────── */
+.bid-totals { margin-top: calc(var(--subrow) * 2); }
+.bid-totals .an-note.an-pos { color: var(--pos); }
+.bid-totals .an-note.an-neg { color: var(--neg); }
+.bid-counts { margin-top: calc(var(--subrow) * 2); }
+.bid-cols-counts { grid-template-columns: calc(var(--gu) * 21) calc(var(--gu) * 7) calc(var(--gu) * 7); }
+
+/* ── Cards ──────────────────────────────────────────────────────── */
+.bid-cards { list-style: none; margin: calc(var(--subrow) * 2) 0 0; padding: 0; }
+.bid-card {
+  position: relative;
+  padding: 0 var(--gu) var(--subrow);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.bid-card + .bid-card { margin-top: var(--subrow); }
+/* The card's edge, drawn over its contents (Locations' bl-item::after). */
+.bid-card::after {
+  content: ''; position: absolute; inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  pointer-events: none;
+}
+.bid-card.is-changed::after { box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); }
+.bid-card-note { margin-top: var(--subrow); }
+
+/* A pair: the head, the reason, the column heads, the fields, the answer. */
+.bid-pair-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--gu);
+  align-items: start;
+  height: calc(var(--subrow) * 4);
+}
+.bid-pair-date {
+  /* Univers Condensed md bold, baseline on line 3 of 4: bl-name's measured c (p 1.565 on line 3
+     of 3) on a 4r box, p = 2(3 - 2 - 0.7175). */
+  --h: 4; --p: 0.565;
+  font-family: var(--font-condensed); font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--text);
+  font-variant-numeric: var(--num-tabular);
+}
+.bid-pair-kind { font-weight: var(--fw-regular); color: var(--text-muted); }
+/* Likely / Possible: a content-sized pill (snap-g rounds its width up to whole g), 3r tall, 1r down
+   the 4r head; its caps label centred both ways, the tracking after the last letter balanced by an
+   equal pad before the first (bd-sp-name's recipe). */
+.bid-pill {
+  display: flex; align-items: center; justify-content: center;
+  box-sizing: border-box;
+  height: calc(var(--subrow) * 3); margin-top: var(--subrow);
+  padding-left: var(--track-caps);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  text-transform: uppercase; letter-spacing: var(--track-caps); white-space: nowrap;
+  color: var(--text-muted);
+}
+.bid-pill.is-likely { background: var(--brand-quiet); color: var(--brand-ink, var(--brand)); }
+.bid-reason { display: block; }
+.bid-pair-cols, .bid-pair-row {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 16) var(--gu) calc(var(--gu) * 16);
+  align-items: start;
+}
+.bid-pair-cols { grid-template-columns: calc(var(--gu) * 16) calc(var(--gu) * 16); column-gap: var(--gu); height: calc(var(--subrow) * 3); }
+.bid-pair-row { min-height: calc(var(--subrow) * 3); }
+.bid-v {
+  --h: 3; --p: 1.6978;                 /* Univers Condensed sm, baseline on line 3 of 3 */
+  font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text);
+  font-variant-numeric: var(--num-tabular);
+}
+.bid-v.bid-v-money {
+  --p: 1.568;                          /* the display face md, baseline on line 3 of 3 (an-val) */
+  font-family: var(--font-display); font-size: var(--fs-md);
+}
+.bid-v.an-pos { color: var(--pos); }
+.bid-v.an-neg { color: var(--neg); }
+.bid-eq {
+  --h: 3; --p: 1.6978;
+  font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text-muted);
+  text-align: center;
+}
+/* Tapped open: every long value whole, 3r a line. With a 3r line box the line's own leading gives
+   all but p/2 of the push, so the padding is p/2 and an equal negative margin below keeps each
+   cell n x 3r (Locations' open card name). */
+.bid-pair.is-open .bid-v {
+  height: auto;
+  white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere;
+  line-height: calc(var(--subrow) * 3);
+  padding-top: calc(var(--subrow) * var(--p) / 2);
+  padding-bottom: 0;
+  margin-bottom: calc(var(--subrow) * var(--p) / -2);
+}
+.bid-pair-seg { margin-top: var(--subrow); }
+
+/* Segments: whole-g buttons in a card's 33g. Three: 10 | 11 | 10g (the middle answer is the
+   longest), 1g apart; two: 16 | 16g. */
+.bid-seg { display: grid; column-gap: var(--gu); }
+.bid-seg[data-n="3"] { grid-template-columns: calc(var(--gu) * 10) calc(var(--gu) * 11) calc(var(--gu) * 10); }
+.bid-seg[data-n="2"] { grid-template-columns: calc(var(--gu) * 16) calc(var(--gu) * 16); }
+.bid-seg[data-n="1"] { grid-template-columns: calc(var(--gu) * 16); }
+.bid-seg .bk-seg-btn { width: 100%; }
+/* A two-line face (the answer over what it does): two 2r lines, centred in the 5r box. */
+.bk-seg-btn.bid-opt > .bid-opt-face { display: flex; flex-direction: column; align-items: center; min-width: 0; overflow: visible; }
+.bid-opt-face > span {
+  display: block; max-width: 100%;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: calc(var(--subrow) * 2);
+  text-align: center;
+}
+.bid-opt-top { font-size: var(--fs-sm); font-weight: var(--fw-bold); }
+.bid-opt-sub { font-size: var(--fs-xs); font-weight: var(--fw-regular); }
+.bid-item-seg { margin-top: var(--subrow); }
+
+/* A backer: Locations' card head with the link's end at the right, then the answer. */
+.bid-backer-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--gu);
+  align-items: start;
+}
+.bid-token {
+  --h: 3; --p: 1.6978;                 /* Univers Condensed sm, baseline on line 3 of 3 */
+  font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text-muted);
+  font-variant-numeric: var(--num-tabular); text-align: right;
+}
+.bid-backer .bl-meta { display: block; }
+.bid-backer-stats { display: block; margin-top: var(--subrow); }
+.bid-card-fields { grid-template-columns: calc(var(--gu) * 16) calc(var(--gu) * 16); margin-top: var(--subrow); }
+
+/* A change or a deletion. */
+.bid-item-head {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 20) calc(var(--gu) * 13);
+  align-items: start;
+}
+.bid-item-title { font-weight: var(--fw-bold); }
+.bid-item .an-note { display: block; }
+
+/* ── Rows ───────────────────────────────────────────────────────── */
+.bid-rows { list-style: none; margin: var(--subrow) 0 0; padding: 0; }
+.bid-rows > li {
+  display: grid; align-items: start;
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
+}
+.bid-row1 { grid-template-columns: calc(var(--gu) * 19) calc(var(--gu) * 7) calc(var(--gu) * 9); height: calc(var(--subrow) * 4); }
+.bid-row1.bid-row-dated { grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 19) calc(var(--gu) * 9); }
+.bid-row1.bid-row-note { grid-template-columns: calc(var(--gu) * 9) calc(var(--gu) * 26); }
+.bid-row2 {
+  grid-template-columns: calc(var(--gu) * 17) calc(var(--gu) * 9) calc(var(--gu) * 9);
+  grid-template-rows: calc(var(--subrow) * 4) calc(var(--subrow) * 2) var(--subrow);
+  height: calc(var(--subrow) * 7);
+}
+.bid-row2 > :nth-child(4) { grid-column: 1; grid-row: 2; }
+.bid-row2 > .bid-row2-wide { grid-column: 2 / 4; grid-row: 2; }
+.bid-row2 > .bid-row2-span { grid-column: 2 / 4; grid-row: 1; }
+.bid-row2 > .bid-row2-full { grid-column: 1 / 4; grid-row: 2; }
+.bid-rows > li.is-changed { background: var(--brand-quiet); }
+.bid-row-run { grid-template-columns: calc(var(--gu) * 14) calc(var(--gu) * 21); height: calc(var(--subrow) * 4); }
+.bid-pager { margin-top: var(--subrow); }
+
+/* ── The opening deposit ────────────────────────────────────────── */
+.bid .bk-field.is-changed .bk-field-label { color: var(--brand-ink, var(--brand)); }
+.bid-formula { margin-top: var(--subrow); }
+
+/* ── The reconciliation ─────────────────────────────────────────── */
+.bid-cols-rec { grid-template-columns: calc(var(--gu) * 17) calc(var(--gu) * 9) calc(var(--gu) * 9); }
+.bid .an-row.is-line .an-td:first-child { padding-left: var(--gu); }
+.bid .an-row.is-clear.is-line .an-td:first-child { padding-left: 0; }
+.bid .an-row.is-bad .an-td { color: var(--neg); font-weight: var(--fw-bold); }
+.bid-warn {
+  margin-bottom: var(--subrow);
+  padding: 0 var(--gu);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 var(--bw-1) var(--danger);
+}
+.bid-warn strong { color: var(--danger); }
+.bid-reclist { margin-top: calc(var(--subrow) * 2); }
+.bid .an-table + .an-p { margin-top: var(--subrow); }
+
+/* ── Commit, confirm, summary, undo ─────────────────────────────── */
+.bid-reason-line strong { color: var(--text); }
+.bid-confirm {
+  margin-top: calc(var(--subrow) * 2);
+  padding-top: var(--subrow);
+  box-shadow: inset 0 var(--bw-hair) 0 var(--brand-line);
+}
+.bid-confirm > .an-sec { margin-bottom: var(--subrow); }
+.bid-confirm > .an-sec:focus { outline: none; }
+.bid-confirm > .an-sec:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.bid-confirm .an-table { margin-top: var(--subrow); }
+.bid-confirm .an-table + .an-table { margin-top: calc(var(--subrow) * 2); }
+.bid-cols-w { grid-template-columns: calc(var(--gu) * 26) calc(var(--gu) * 9); }
+.bid-summary .an-table { margin-top: var(--subrow); }
+.bid-summary .an-table + .an-table { margin-top: calc(var(--subrow) * 2); }
+.bid-undo { margin-top: calc(var(--subrow) * 2); }
+.bid-undo-err { margin-top: calc(var(--subrow) * 2); }
+.bid-rows > li.bid-row-edit {
+  grid-template-columns: calc(var(--gu) * 12) calc(var(--gu) * 12) calc(var(--gu) * 11);
+  height: calc(var(--subrow) * 6);
+  padding-top: var(--subrow);
+  box-sizing: border-box;
+}
+.bid-row-edit .an-note { --h: 4; --p: 0.9574; }   /* Univers Condensed xs, baseline on line 3 of 4 */
+.bid-open { width: 100%; }

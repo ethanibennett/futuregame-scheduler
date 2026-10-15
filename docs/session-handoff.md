@@ -5,7 +5,7 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-10-14 (from Windows) — see the 2026-10-14 section first. Earlier notes: 2026-10-13, then 2026-09-30, live
+Last updated: 2026-10-14, night (from Windows) — see the night section first, then the evening one. Earlier notes: 2026-10-13, then 2026-09-30, live
 tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
@@ -13,6 +13,24 @@ Below it the 2026-09-25 Schedule grid sweep, then the dated sections back throug
 wsop-console side and verified against both live services.
 
 ---
+
+## 2026-10-14 (night) — Bankroll merge Phase 6: the import review, merged
+- **Live on master:** Bankroll › Dashboard › Import › "From the dashboard app", owner only (hidden on
+  the routes' 403). Nothing changes for anyone else, and on futurega.me the pull stays OFF until
+  `LEDGER_TOKEN` is set on both Render services (the Phase 5 rollout table in `docs/bankroll-merge.md`).
+  Spec: "Phase 6: as built"; CLAUDE.md has the block.
+- **Verified:** `test:money-import` (57 engine + 20 helper cases), `test:money-import-review` (18, WebKit,
+  end to end against the stub dashboard), `check:controls` and `check:clipping` `--only
+  bankroll-import-dashboard` at 402 and 1440 (all 90/93 controls on the grid, no clipped text, 6 views
+  each) on a scratch server seeded with `scripts/seed-money-import-demo.js` and
+  `scripts/money-import-stub-dashboard.js`.
+- **Trap found: forty paragraphs drift 0.05r.** `an-p`'s two fractional pads each floor to a 1/64 px
+  layout unit, so a long prose view lands what follows it off the grid. The review pads a whole r below
+  and pushes the baseline with a transform (`.bid .an-p`). Any other long prose view will meet it.
+- **Trap: innerText reads `an-sec` headings in capitals**, so a Playwright match on a heading must ignore
+  case (the review test's `waitText` does).
+- **Next for the merge:** the owner sets `LEDGER_TOKEN` (Phase 0), the rehearsal pull through this screen,
+  then Phase 7 (standing shares live) and Phase 8 (the Staking UI). `fix/replayer-hilo-pills` stays paused.
 
 ## 2026-10-14 (evening) — Where things stand; TOKEN BUDGET RULES
 - **Read memory `model-delegation` (the token budget) first.** The owner burned half a 4x week in two days.
@@ -30,7 +48,7 @@ wsop-console side and verified against both live services.
   - Bankroll merge phases 1–5 (Phase 5's pull is OFF until LEDGER_TOKEN is set on both Render services,
     which needs the owner's OK), and the dashboard's money export (deployed CLOSED).
 - **Paused branches (resume only when the owner asks):**
-  - `feat/money-merge-6`: the import review UI, part built.
+  - ~~`feat/money-merge-6`~~: merged (the night section).
   - `fix/replayer-hilo-pills`: the hi-lo pills, plus the sideways-phone top seat. It was waiting on whole-r
     pills and a single-row landscape layout.
 - **Owner questions open:**
