@@ -49,7 +49,10 @@ export function combinations(arr, k) {
    - three of a kind versus a straight is the one rule rooms disagree on. The setting here is the
      brief's: only the flush moves, so a straight still beats three of a kind, which is also what
      the odds say (6,120 straights against 16,128 sets). A room that ranks three of a kind higher
-     is one flag away: SHORT_DECK_TRIPS_BEAT_STRAIGHT (the owner's call, not settled here).
+     is one flag away. Rooms really do differ (owner, 2026-10-15: "it is different on different
+     sites and venues"), so the rule is the HAND's: choosing Short Deck asks, the answer is stored as
+     hand.tripsBeatStraight, and gameEvalFor(gameType, hand) hands the evaluators that rule. A hand
+     with no answer keeps this default.
    evalHigh5, bestHighHand and friends take these as an optional `rules` argument, so the
    52-card game is untouched when it is left out. */
 export const SHORT_DECK_TRIPS_BEAT_STRAIGHT = false;
@@ -58,6 +61,17 @@ export const SHORT_DECK_RULES = Object.freeze({
   flushBeatsFullHouse: true,
   tripsBeatStraight: SHORT_DECK_TRIPS_BEAT_STRAIGHT,
 });
+
+/**
+ * A game's eval config for one hand: GAME_EVAL's, plus the hand's own Short Deck rule when it has
+ * one (hand.tripsBeatStraight, set by the question the replayer asks on choosing Short Deck). Every
+ * caller that ranks a hand takes its config from here, never GAME_EVAL directly.
+ */
+export function gameEvalFor(gameType, hand) {
+  const cfg = GAME_EVAL[gameType];
+  if (!cfg || cfg.method !== 'short' || !hand || typeof hand.tripsBeatStraight !== 'boolean') return cfg;
+  return { ...cfg, rules: { ...SHORT_DECK_RULES, tripsBeatStraight: hand.tripsBeatStraight } };
+}
 
 // Score a 5-card high hand. Returns { cat, score, name }
 export function evalHigh5(cards, rules) {
@@ -239,7 +253,7 @@ export function bestOmahaLow(hole, board) {
 export function bestHighFor(cfg, hole, board) {
   if (cfg.method === 'omaha') return bestOmahaHigh(hole, board || []);
   const all = board && board.length ? hole.concat(board) : hole;
-  return bestHighHand(all, cfg.method === 'short' ? SHORT_DECK_RULES : undefined);
+  return bestHighHand(all, cfg.rules || (cfg.method === 'short' ? SHORT_DECK_RULES : undefined));
 }
 
 /* The 8-or-better low of a hi-lo game: Omaha again plays exactly two hole cards. Returns null, or
@@ -309,8 +323,8 @@ export const GAME_EVAL = {
 };
 
 // Evaluate a multi-way showdown
-export function evaluateShowdown(gameType, playerHands, boardCards) {
-  const cfg = GAME_EVAL[gameType];
+export function evaluateShowdown(gameType, playerHands, boardCards, hand) {
+  const cfg = gameEvalFor(gameType, hand);
   if (!cfg || playerHands.length === 0) return [];
 
   var evals = playerHands.map(function(ph) {
@@ -538,8 +552,8 @@ export function computePotAwards(layers, options) {
   return { awards: awards, unassigned: unassigned };
 }
 
-export function evaluateHand(game, heroCards, opponentCards, boardCards) {
-  const cfg = GAME_EVAL[game];
+export function evaluateHand(game, heroCards, opponentCards, boardCards, hand) {
+  const cfg = gameEvalFor(game, hand);
   if (!cfg) return null;
 
   const heroAll = boardCards.length ? [...heroCards, ...boardCards] : heroCards;

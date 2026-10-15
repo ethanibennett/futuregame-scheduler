@@ -2361,6 +2361,13 @@ function finalize(c) {
     await tap('.game-fave-btn:has-text("PLO")', 600);
     await tap('button:has-text("Create ")', 1500);
   }, 1);
+  // Choosing Short Deck asks the room's rule (ShortDeckRuleDialog.jsx): the question and its two answers.
+  step('hands-short-deck-rule', async () => {
+    await nav('Hands');
+    await tap('.game-tab-btn:has-text("Hold")', 600);
+    await tap('.game-check-row:has(.game-check-row-label:text-is("Short Deck"))', 900);
+    if (!(await exists('.sdr'))) throw new Error('no Short Deck rule question');
+  }, 0);
   // The admin's Hands tools (the second footer row): each view as it renders against this server
   // (without a solver, its error and empty states).
   for (const [id, label] of [['solver', 'Solver'], ['solver-trainer', 'Solver Trainer'], ['watch-solver', 'Watch Solver'], ['trainer', 'Trainer'], ['3-way', '3-Way']]) {

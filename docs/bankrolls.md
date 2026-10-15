@@ -892,6 +892,7 @@ PLO", "4/8 LHE", "PLO MTT"): the big blind and the unit are read from it, the ne
 
 1. **A third number** (`1/2/5`, `5/5/10`): taken as a straddle or an ante, so the blind is the second
    number. If it means something else (a bring-in, a second blind), say what it should divide by.
+   **Answered (owner, 2026-10-15): the third number is a straddle.** As built; nothing changes.
 2. **A bare `2/5` with no game**: read as no-limit (unit bb). Say if bare stakes should instead leave the
    session out until a game is named.
 3. **"Mixed" with no NL/PL named**: read as limit (BB). Mixed games at big-bet stakes would need NL or PL

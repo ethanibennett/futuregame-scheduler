@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal, flushSync } from 'react-dom';
+import ShortDeckRuleDialog from './ShortDeckRuleDialog.jsx';
 import Icon from './Icon.jsx';
 import { API_URL, SITE_URL } from '../utils/api.js';
 import { HAND_CONFIG, HAND_CONFIG_DEFAULT, getGamePills, haptic, getVariantStrip, canonicalGameType, canonicalHand } from '../utils/utils.js';
-import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL,
+import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL, gameEvalFor,
          bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestBadugiHand,
          computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot,
          seatOrderFromButton } from '../utils/poker-engine.js';
@@ -3710,9 +3711,9 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             if (playerHands.length === 1) {
               setHand(prev => ({ ...prev, result: { ...prev.result, winners: [{ playerIdx: playerHands[0].idx, split: false }] } }));
             } else if (playerHands.length > 1) {
-              let winners = evaluateShowdown(hand.gameType, playerHands, boardParsed);
+              let winners = evaluateShowdown(hand.gameType, playerHands, boardParsed, hand);
               // Add hi/lo split labels for hilo games
-              const _ec = GAME_EVAL[hand.gameType];
+              const _ec = gameEvalFor(hand.gameType, hand);
               if (_ec && _ec.type === 'hilo' && winners.some(w => w.split)) {
                 const _hs = {}; const _ls = {};
                 playerHands.forEach(ph => {
@@ -4479,6 +4480,15 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   const [handIsShared, setHandIsShared] = useState(!!initialHand);
   const [showHhExport, setShowHhExport] = useState(false);
   const [selectedGameType, setSelectedGameType] = useState('NLH');
+  // Short Deck's disputed rule (owner, 2026-10-15): asked when the game is chosen, kept per device
+  // as the next default, and stored on each new hand (hand.tripsBeatStraight).
+  const [sdTrips, setSdTrips] = useState(() => { try { const v = localStorage.getItem('shortDeckTripsBeatStraight'); return v === '1' ? true : v === '0' ? false : null; } catch { return null; } });
+  const [sdAsk, setSdAsk] = useState(false);
+  const chooseSdRule = (v) => {
+    setSdTrips(v);
+    try { localStorage.setItem('shortDeckTripsBeatStraight', v ? '1' : '0'); } catch { /* private mode */ }
+    setSdAsk(false);
+  };
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [isPublic, setIsPublic] = useState(false);
@@ -4641,6 +4651,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 
   const handleGameSelect = (game) => {
     setSelectedGame(game);
+    if (game === 'Short Deck') setSdAsk(true);
     if (defaultStructure[game]) setBettingStructure(defaultStructure[game]);
     const map = structureGameMap[defaultStructure[game] || 'No Limit'];
     if (map && map[game]) setSelectedGameType(map[game]);
@@ -4835,6 +4846,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       setCurrentHand(hand);
     } else {
       const hand = createEmptyHand(selectedGameType, heroName);
+      if (hand.gameType === 'Short Deck') hand.tripsBeatStraight = sdTrips === true;
       const isRazzGame = RAZZ_VARIANTS.includes(selectedGame);
       if (studAction && isRazzGame) hand.gameType = 'Action ' + hand.gameType;
       if (studSuper && selectedCategory === 'Stud') hand.gameType = 'Super ' + hand.gameType;
@@ -5227,6 +5239,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
           </button>
         )}
       </div>
+      {sdAsk && <ShortDeckRuleDialog value={sdTrips} onChoose={chooseSdRule} onClose={() => setSdAsk(false)} />}
       {showHhExport && createPortal(
         <HandHistoryExportSheet rows={hands} heroName={heroName} toast={toast} onClose={() => setShowHhExport(false)} />,
         document.body
@@ -5752,7 +5765,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const gameCfg = HAND_CONFIG[hand.gameType] || HAND_CONFIG_DEFAULT;
   const category = getGameCategory(hand.gameType);
   const streetDef = getStreetDef(hand.gameType);
-  const gameEval = GAME_EVAL[hand.gameType];
+  const gameEval = gameEvalFor(hand.gameType, hand);
   const isHiLo = gameEval && (gameEval.type === 'hilo' || gameEval.type === 'split-badugi');
   const totalStreets = hand.streets.length;
   const currentStreet = hand.streets[streetIdx];
@@ -6110,7 +6123,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
         let winHandName = '';
         const pCards = w.playerIdx === replayHeroIdx ? heroCards : (opponentCards[w.playerIdx] || '');
         if (pCards && pCards !== 'MUCK') {
-          const cfg = GAME_EVAL[hand.gameType];
+          const cfg = gameEvalFor(hand.gameType, hand);
           if (cfg) {
             const parsed = parseCardNotation(pCards).filter(c => c.suit !== 'x');
             const board = category === 'community' ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
@@ -6150,7 +6163,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       const oRaw = parseCardNotation(opponentCards[pi]);
       if (oRaw.length < (gameCfg.isStud ? 5 : gameCfg.heroCards)) continue;
       const oEval = gameCfg.isStud ? oRaw.filter(c => c.suit !== 'x') : assignNeutralSuits(oRaw, usedKeys, boardSuits);
-      const ev = evaluateHand(hand.gameType, hEval, oEval, bCards);
+      const ev = evaluateHand(hand.gameType, hEval, oEval, bCards, hand);
       if (ev && ev.result) results.push({ index: pi, ...ev });
       oEval.forEach(c => { if (c.suit !== 'x') usedKeys.push(c.rank + c.suit); });
     }
@@ -6194,7 +6207,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
      Read from the cards where they are all known, the same authority potAwards
      prefers, and fall back to the stored Hi/Lo flags when somebody mucked. */
   const hiLoHalves = useMemo(() => {
-    const cfg = GAME_EVAL[hand.gameType];
+    const cfg = gameEvalFor(hand.gameType, hand);
     if (!showResult || !cfg || cfg.type !== 'hilo') return null;
     const contesting = hand.players.map((_, pi) => pi).filter(pi => !folded.has(pi));
     const board = category === 'community' ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
@@ -6237,7 +6250,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     if (!winners.length) return null;
     const contesting = hand.players.map((_, pi) => pi).filter(pi => !folded.has(pi));
     const layers = reconcileLayersToPot(allPotLayers, settled.contested, contesting);
-    const cfg = GAME_EVAL[hand.gameType];
+    const cfg = gameEvalFor(hand.gameType, hand);
 
     /* Each pot layer is decided among ITS OWN eligible players, from the cards.
        A side pot is won by the best hand of the seats in for it — which is not
@@ -6775,7 +6788,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     if (!showResult || folded.has(playerIdx)) return null;
     const pCards = playerIdx === replayHeroIdx ? heroCards : (opponentCards[playerIdx] || '');
     if (!pCards) return null;
-    const cfg = GAME_EVAL[hand.gameType];
+    const cfg = gameEvalFor(hand.gameType, hand);
     if (!cfg) return null;
     const parsed = parseCardNotation(pCards).filter(c => c.suit !== 'x');
     if (parsed.length < (gameCfg.heroCards || 2)) return null;

@@ -1,0 +1,23 @@
+/* The Short Deck rule question (ShortDeckRuleDialog.jsx). Inside the shared 35g modal's 31g content
+   box: the h3 (3r) and the lead (2r lines, 2r after) are styles.css's; then two answers, each a
+   31g x 5r box with its two-line face centred both ways (owner rule 2026-10-10: a control's label is
+   centred, not seated), 1r apart. Tokens only; every measure in g or r. */
+.sdr-choices { display: grid; grid-template-columns: calc(var(--gu) * 31); row-gap: var(--subrow); }
+.sdr-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: calc(var(--gu) * 31); height: calc(var(--subrow) * 5);
+  box-sizing: border-box; margin: 0; padding: 0; border: 0;
+  border-radius: var(--radius);
+  background: var(--surface2);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text);
+  font-family: var(--font-condensed);
+  cursor: pointer;
+}
+.sdr-btn.is-on { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); color: var(--brand-ink, var(--brand)); }
+.sdr-btn:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+.sdr-face { display: flex; flex-direction: column; align-items: center; }
+.sdr-face > span { display: block; line-height: calc(var(--subrow) * 2); white-space: nowrap; }
+.sdr-top { font-size: var(--fs-sm); font-weight: var(--fw-bold); }
+.sdr-sub { font-size: var(--fs-xs); color: var(--text-muted); }
+.sdr-btn.is-on .sdr-sub { color: inherit; }

@@ -2868,7 +2868,7 @@ setting, not a rebuild. None changes a series already settled.
 
 | # | Question | Built (the default) | The other answer, and how to get it |
 |---|---|---|---|
-| Q15 | **Crossbook: a bet or a swap?** | **A bet on who does better**, on net results: the worse result pays its percentage of the difference (10% each, me +4,000, them −500: they pay me $450). The old code read it as a swap, which pays **the other way**. | A swap: `crossbookMode: 'swap'`. Cashes instead of net results: `crossbookBasis: 'cash'` |
+| Q15 | **Crossbook: a bet or a swap?** **Answered (owner, 2026-10-15): a bet**, which is the default (`crossbookMode: 'bet'`); nothing changes. | **A bet on who does better**, on net results: the worse result pays its percentage of the difference (10% each, me +4,000, them −500: they pay me $450). The old code read it as a swap, which pays **the other way**. | A swap: `crossbookMode: 'swap'`. Cashes instead of net results: `crossbookBasis: 'cash'` |
 | Q16 | **Swap: of winnings or of net results?** | **Winnings** (cashes after tips); no buy-in changes hands. | Net results, buy-ins shared: `swapBasis: 'net'` |
 | Q17 | **Profit share: of the series' net, or of each winning event?** | **The series' net**, never below 0 (a −1,000 and a +1,400 at 10% pay $40). The old code paid each winning event ($140). | `profitShareBasis: 'event'` |
 | Q18 | **Budget cap: is the whole budget sent up front, and how is the event that crosses it shared?** | **The cap is prepaid**, so the unused part is refunded; the crossing event is shared **pro rata** (200 left of a 500 piece = 40% of it). | Only what was used: `prepaid: {"budget_capped": "used"}`. Back an event only if it fits whole: `budgetCrossing: 'exclude'` |

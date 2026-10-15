@@ -22,6 +22,11 @@ export const GAME_CODES = {
 
 export const GAME_CODES_REV = {};
 Object.keys(GAME_CODES).forEach(function(k) { GAME_CODES_REV[GAME_CODES[k]] = k; });
+/* Short Deck where trips beat a straight (the room's rule, asked when the game is chosen) travels as
+   its own code, so a link replays the hand the way that room ranked it. 'SK' stays the default rule,
+   so every link made before carries on meaning what it meant. */
+const SHORT_DECK_TRIPS_CODE = 'SKT';
+GAME_CODES_REV[SHORT_DECK_TRIPS_CODE] = 'Short Deck';
 
 const ACTION_CHARS = { 'fold':'f', 'check':'x', 'call':'c', 'bet':'b', 'raise':'r', 'all-in':'a', 'bring-in':'i' };
 const ACTION_CHARS_REV = {};
@@ -69,6 +74,7 @@ export function encodeHand(hand) {
   var parts = [];
 
   var gameCode = GAME_CODES[canonicalGameType(hand.gameType)] || hand.gameType;
+  if (gameCode === 'SK' && hand.tripsBeatStraight === true) gameCode = SHORT_DECK_TRIPS_CODE;
   var n = hand.players.length;
   var numChar = n === 10 ? 'T' : String(n);
   var heroChar = hand.heroIdx != null ? hand.heroIdx.toString(16).toUpperCase() : '0';
@@ -471,6 +477,7 @@ export function decodeHand(str) {
 
   return {
     gameType: gameType,
+    ...(chosen === SHORT_DECK_TRIPS_CODE ? { tripsBeatStraight: true } : chosen === 'SK' ? { tripsBeatStraight: false } : {}),
     players: players,
     feltColor: feltColor,
     feltBright: feltBright,

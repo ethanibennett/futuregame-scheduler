@@ -14,6 +14,11 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-15 — Short Deck asks the room's rule; three answers in
+- **Short Deck:** choosing it in the replayer asks whether trips beat a straight (rooms differ). The answer is stored on the hand (`hand.tripsBeatStraight`), ranks it through `gameEvalFor` (utils/poker-engine.js), and travels in share links as code `SKT` (plain `SK` keeps the default). Per-device default in `localStorage.shortDeckTripsBeatStraight`. Guard step `hands-short-deck-rule`.
+- **Answered:** the third number in "1/2/5" is a straddle (as built); crossbook is a bet (the default). Both questions closed in the docs.
+- **Still open:** the launch plan's 7 (listed in this session's chat; the artifact is the source).
+
 ## 2026-10-15 — The cutover is done
 - **Live:** LEDGER_TOKEN on both Render services; the owner ran the import on futurega.me; MONEY_SOURCE=scheduler on futuregame-dashboard. The dashboard summary reads futurega.me (checked: roll $26,462, freshness.money ok). Dashboard main is ad62960 (Phase 11, merged).
 - **Open:** no WSOP fund bankroll on futurega.me yet, so the dashboard shows the fund at $0 against its old $50k default; the owner sets it in Manage bankrolls (Role: the WSOP fund, $65,000 by 2027-05-03).

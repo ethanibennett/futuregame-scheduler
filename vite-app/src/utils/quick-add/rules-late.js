@@ -255,7 +255,7 @@ function evaluatedWinners(hand, env, live) {
   if (!hands.length) return null;
   if (hands.length === 1) return [{ playerIdx: hands[0].idx, split: false }];
   try {
-    const w = evaluateShowdown(hand.gameType, hands, board);
+    const w = evaluateShowdown(hand.gameType, hands, board, hand);
     return w && w.length ? w : null;
   } catch (e) {
     return null;

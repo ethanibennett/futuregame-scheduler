@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseCardNotation as P, GAME_EVAL, SHORT_DECK_RULES, SHORT_DECK_TRIPS_BEAT_STRAIGHT,
+  parseCardNotation as P, GAME_EVAL, SHORT_DECK_RULES, SHORT_DECK_TRIPS_BEAT_STRAIGHT, gameEvalFor,
   evalHigh5, bestHighHand, bestHighFor, bestLow8For, evaluateShowdown, evaluateHand,
 } from '../poker-engine.js';
 
@@ -164,6 +164,19 @@ test('Short Deck: three of a kind against a straight is a single switch, set to 
   assert.ok(short('As6d7h8c9s').score > short('Ks7d7h7cQs').score, 'straight over three of a kind');
   const flipped = { ...SHORT_DECK_RULES, tripsBeatStraight: true };
   assert.ok(evalHigh5(P('Ks7d7h7cQs'), flipped).score > evalHigh5(P('As6d7h8c9s'), flipped).score, 'the flag reverses them');
+});
+
+test("Short Deck: the hand carries its room's rule (the question asked when the game is chosen)", () => {
+  // As 9d makes A-6-7-8-9; Kh Qh with the board's two kings makes trip kings.
+  const board = P('6c7h8sKdKc');
+  const hands = players('As9d', 'KhQh');
+  assert.deepEqual(evaluateShowdown('Short Deck', hands, board, { tripsBeatStraight: false }), [{ playerIdx: 0, split: false }], 'the straight wins by the usual rule');
+  assert.deepEqual(evaluateShowdown('Short Deck', hands, board, { tripsBeatStraight: true }), [{ playerIdx: 1, split: false }], 'trips win where the room ranks them higher');
+  assert.deepEqual(evaluateShowdown('Short Deck', hands, board, {}), [{ playerIdx: 0, split: false }], 'a hand with no answer keeps the default');
+  assert.equal(gameEvalFor('Short Deck', { tripsBeatStraight: true }).rules.tripsBeatStraight, true);
+  assert.equal(gameEvalFor('Short Deck', { tripsBeatStraight: true }).rules.flushBeatsFullHouse, true, 'the other Short Deck rules stay');
+  assert.equal(gameEvalFor('NLH', { tripsBeatStraight: true }), GAME_EVAL.NLH, 'other games ignore it');
+  assert.equal(gameEvalFor('Short Deck', null), GAME_EVAL['Short Deck']);
 });
 
 test('Short Deck: the best five of seven, with the ace playing low', () => {

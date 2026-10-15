@@ -102,6 +102,17 @@ test('PLO5, PLO6, PLO6 8/b, NLO8 and Short Deck: own config, own link code, and 
   assert.ok(!Object.entries(U.HAND_CONFIG).some(([g, c]) => c.shortDeck && g !== 'Short Deck'));
 });
 
+test("a Short Deck link carries the room's rule: SKT when trips beat a straight, SK otherwise", () => {
+  const trips = { ...hand('Short Deck', 'AhKd', 'Jh7d6c3s2h'), tripsBeatStraight: true };
+  const encT = SH.encodeHand(trips);
+  assert.ok(encT.startsWith('SKT30.'), encT.slice(0, 7));
+  const decT = SH.decodeHand(encT);
+  assert.deepEqual([decT.gameType, decT.tripsBeatStraight, decT.players.length], ['Short Deck', true, 3]);
+  const plain = SH.decodeHand(SH.encodeHand(hand('Short Deck', 'AhKd', 'Jh7d6c3s2h')));
+  assert.deepEqual([plain.gameType, plain.tripsBeatStraight], ['Short Deck', false]);
+  assert.equal(SH.decodeHand(SH.encodeHand(hand('NLH', 'AhKd', 'Jh7d6c3s2h'))).tripsBeatStraight, undefined, 'other games carry nothing');
+});
+
 test('the new codes do not eat a player count: 8-handed PLO6 is still PLO6, not NLO8 or PLO6 8/b', () => {
   assert.equal(SH.decodeHand('P683.100-200.-.-.').gameType, 'PLO6');
   assert.equal(SH.decodeHand('P683.100-200.-.-.').players.length, 8);
