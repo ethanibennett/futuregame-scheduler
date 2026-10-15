@@ -14,6 +14,15 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-14 (last) — Bankroll merge Phase 10: money homes, merged
+- **Live on master:** the WSOP fund as a bankroll Role with target and pace, "Where the money is" in the
+  Overview, the tax report's set-aside line. Spec: "Phase 10: as built"; CLAUDE.md has the block.
+- **Verified:** `test:money-homes` (5 + 2); the controls guard on the Overview, the manager and the tax
+  report at both sizes; the new rows by screenshot with the grid overlay.
+- **Also today:** the backer page's month pill one size down, 2r under it and between cards (owner).
+- **Next in the merge:** Phase 11 is the dashboard repo's adapter (wsop-console), then the cutover (12,
+  with the owner) and the retire (13). Those need LEDGER_TOKEN set and the owner present.
+
 ## 2026-10-14 (latest) — Bankroll merge Phase 9: the owner API and deep links, merged
 - **Live on master:** `/api/owner/money` and `/api/owner/sessions/log` behind LEDGER_TOKEN (OFF on every
   server until the token is set; the boot line says), the deep links. Spec: "Phase 9: as built".

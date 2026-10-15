@@ -294,6 +294,12 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   mapping with the id as its `bankroll_import_keys` fingerprint (told twice = one row). Deep links
   `#bankroll/<tab>`, `#results/…`, `#staking/standing`, `#tax` (`utils/deep-links.js`, admins only).
   Tests: `npm run test:owner-api` (ports 4690-4699).
+  **Bankroll merge, Phase 10: money homes** (`docs/bankroll-merge.md` "Phase 10: as built";
+  `lib/money-homes.js`): the WSOP fund is a bankroll's Role (Manage bankrolls: target and day; one fund
+  per player, outside the roll), shown with its pace in the Overview's Bankroll section; "Where the money
+  is", a seventh Overview section of counted places against the ledger; the tax report's set-aside line
+  (`money_settings.taxSetAsidePct`, default 30). `GET /api/bankrolls/money/homes`, `PUT …/locations`,
+  `PUT …/settings`. Tests: `npm run test:money-homes` (ports 4710-4719).
 
 ## Hazards
 - ⚠️ **Junction hazard**: checking out any pre-carve branch (e.g. `wip/windows-mtt-feed`)

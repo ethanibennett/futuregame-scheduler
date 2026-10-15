@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { API_URL } from '../utils/api.js';
+import { normaliseHomes } from '../utils/money-homes.js';
 import { CURRENCY_CONFIG, formatCurrencyAmount } from '../utils/utils.js';
 import {
   RANGES, RANGE_NOUN, rangeWindow, within, balanceSeries, chartSpan,
@@ -56,6 +58,20 @@ export function Segmented({ options, value, onChange, label, className = '', btn
 }
 
 export default function BankrollOverview({ d, risk, bk, bkKey, currency: asked, today, fmtDate, onClose }) {
+  // Phase 10: the fund's target and pace, where the money sits, the drift (lib/money-homes.js).
+  const [homes, setHomes] = useState(null);
+  const [homesVersion, setHomesVersion] = useState(0);
+  useEffect(() => {
+    let live = true;
+    fetch(`${API_URL}/bankrolls/money/homes`, { headers: { Authorization: `Bearer ${bk.token}` } })
+      .then((r) => (r.ok ? r.json() : null)).then((j) => { if (live) setHomes(normaliseHomes(j)); }).catch(() => { if (live) setHomes(null); });
+    return () => { live = false; };
+  }, [bk.token, d, homesVersion]);
+  const saveLocations = async (locations) => {
+    const r = await fetch(`${API_URL}/bankrolls/money/locations`, { method: 'PUT', headers: { Authorization: `Bearer ${bk.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ locations }) });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Could not save');
+    setHomesVersion((v) => v + 1);
+  };
   // The ledger in hand's bankroll and currency (they lag the chip by a round trip), and its money.
   const sc = ledgerScope(d, { key: bkKey, currency: asked, bankrolls: bk.bankrolls });
   const currency = sc.currency;
@@ -148,7 +164,7 @@ export default function BankrollOverview({ d, risk, bk, bkKey, currency: asked, 
       {/* The figures: collapsible Cash | Tournaments | Total tables (Summary, Sessions, Games, Rooms,
           Bankroll, By month / By year) — BankrollOverviewTables.jsx. */}
       <BankrollOverviewTables d={d} risk={risk} range={range} today={today} bk={bk} bkKey={bkKey}
-        currency={asked} fmtDate={fmtDate} />
+        currency={asked} fmtDate={fmtDate} homes={homes} onSaveLocations={saveLocations} />
 
       <section className="bd-section" aria-labelledby="bd-recent">
         <h3 className="an-cell an-sec" id="bd-recent">Latest sessions</h3>

@@ -30,6 +30,7 @@ export const SECTIONS = [
   { key: 'rooms', label: 'Rooms', open: false },
   { key: 'bankroll', label: 'Bankroll', open: false },
   { key: 'periods', label: 'By month', open: false },
+  { key: 'money', label: 'Where the money is', open: false },
 ];
 export const OPEN_STORE_KEY = 'bankrollOverviewOpen';
 

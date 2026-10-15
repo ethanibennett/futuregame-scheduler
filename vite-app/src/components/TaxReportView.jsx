@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import './TaxReportView.css';
 import { API_URL } from '../utils/api.js';
+import { setAsideView } from '../utils/money-homes.js';
 import { getToday, nativeCurrency, getVenueInfo } from '../utils/utils.js';
 import { buildTaxReport, availableYears, defaultTaxYear } from '../utils/tax-report.js';
 import {
@@ -88,6 +89,7 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
   const [entries, setEntries] = useState(null);
   const [error, setError] = useState(null);
   const [rates, setRates] = useState(null);
+  const [taxPct, setTaxPct] = useState(30);
   const [year, setYear] = useState(() => defaultTaxYear(getToday()));
   const [basis, setBasis] = useState('gross');
   const [busy, setBusy] = useState('');
@@ -106,6 +108,8 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
       .then((j) => { if (live) setTransactions(j.transactions || []); })
       .catch(() => {});
     fetch(`${API_URL}/exchange-rates`).then((r) => r.json()).then((j) => { if (live) setRates(j.rates || null); }).catch(() => {});
+    // Phase 10: the set-aside rate (money_settings.taxSetAsidePct, the dashboard's 30% default).
+    fetch(`${API_URL}/bankrolls/money/homes`, { headers: { Authorization: 'Bearer ' + token } }).then((r) => (r.ok ? r.json() : null)).then((j) => { if (live && j) setTaxPct(j.taxSetAsidePct); }).catch(() => {});
     return () => { live = false; };
   }, [token]);
 
@@ -137,6 +141,7 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
 
   const t = report.totals;
   const f = report.filing[basis];
+  const setAside = setAsideView(t.net, taxPct, usd);
   const months = report.months.filter((m) => m.sessions);
   const roomOf = (s) => (s.online ? `Online · ${s.site}` : (s.room || getVenueInfo(s.venue).longName || s.venue));
   const placeOf = (s) => [shortDate(s.date), roomOf(s), s.location].filter(Boolean).join(' · ');
@@ -171,6 +176,7 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
             <Row label="Gross winnings (cashes)" value={usd(t.grossWinnings)} />
             <Row label="Total buy-ins (wagers)" value={usd(t.totalBuyins)} />
             <Row label="Net" value={signedUsd(t.net)} cls={signClass(t.net)} />
+            <Row label={setAside.label} value={setAside.value} />
             <Row label="Sessions · cashes" value={`${t.sessions} · ${t.cashes}`} />
             <Row label="Winning sessions, net" value={usd(t.sessionWinnings)} />
             <Row label="Losing sessions, net" value={usd(t.sessionLosses)} />

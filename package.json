@@ -67,6 +67,7 @@
     "test:money-import-review": "node test/money-import-review.test.js",
     "test:standing-live": "node test/standing-live.test.js && cd vite-app && node --test src/utils/__tests__/standing-ui.test.mjs",
     "test:owner-api": "node test/owner-api.test.js && cd vite-app && node --test src/utils/__tests__/deep-links.test.mjs",
+    "test:money-homes": "node test/money-homes.test.js && cd vite-app && node --test src/utils/__tests__/money-homes.test.mjs",
     "test:notify-tap": "node test/notify-tap.test.js"
   },
   "keywords": [],
