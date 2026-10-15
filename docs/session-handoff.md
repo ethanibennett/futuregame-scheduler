@@ -14,6 +14,12 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-15 (13:07 ET) — Mid-Atlantic clock check: the room's real clock comes through
+- **Bravo, while afternoon events ran:** a live clock at Borgata, Live! Philadelphia, Parx, Maryland Live! and MGM National Harbor (1 each). None at Harrah's AC or Horseshoe Baltimore (none at 00:25 either). Wind Creek Bethlehem is not on Bravo.
+- **Through the app** (local server, POST /api/live-clocks): Borgata and Parx, the two rooms with events in today's feed, both returned running Bravo clocks (level 6 with blinds and antes).
+- **For Ad 2 (launch plan):** "The room's real clock" holds in the Mid-Atlantic cut for Borgata, Live! Philadelphia, Parx, Maryland Live! and MGM National Harbor; film it on a Borgata or Parx event. Not Harrah's AC, Horseshoe Baltimore or Wind Creek.
+- **Caveat found:** Borgata's 5:15 PM Lions of the East flight (not yet started) was matched to the morning flight's running clock: Bravo matching is by event, not flight. The dashboard only asks after an event's start, so it is hidden today, but two flights of one event running at once could show the wrong one. Worth a fix in lib/live-clocks.js (match the flight's start time too) when two overlap.
+
 ## 2026-10-15 (morning) — App Store purchases on the account; Admin growth screen; catalogue three cont.
 - **Apple billing, server side:** `lib/billing/apple.js` verifies StoreKit 2 transactions and App Store Server Notifications v2 against Apple Root CA - G3 (downloaded from apple.com, fingerprint checked), maps product ids to plans, ties purchases to accounts by `appAccountToken`, and keeps the `subscriptions` row current on renewal, grace, expiry, refund and revocation (idempotent by notificationUUID). Replaces the logging-only webhook. Tests: `test:apple-billing` (8), `test:account` (22, covers `apple_notifications`). **Owner:** create the six products and set the notification URL (`docs/app-store-listing.md`, "In-app purchases"). **Mac:** the StoreKit plugin.
 - **Paywall switch:** `GET /api/subscription` now carries `paywallLive` and `features` (lib/billing/features.js, MONETIZATION-PLAN.md §6 as written); `PAYWALL_LIVE=1` turns gating on, unset = every feature open (today). `hooks/useSubscription.js` reads it (has, limit), unused until screens gate. **Owner, before 1 March:** §6 gates conflict detection behind Pro while the launch plan leads every ad with the clash check; decide which wins. StoreKit plugin handed to the Mac (issue #279).
