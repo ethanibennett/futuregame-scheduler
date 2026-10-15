@@ -5479,11 +5479,71 @@
         );
       background-color: var(--rail-color, #6b5b8a);
       border: none;
+      /* 12: the same two lamps as the gradient above, as a function of the rail's outward normal
+         (conic angles: 0 = up, clockwise): 0.32 x cos^2 from 335deg plus 0.26 x cos^2 from 155deg,
+         x 1.2 - 0.16, white above zero and black below. A conic around a semicircle's centre IS
+         its normal, so the ends take this directly; a straight run has ONE normal and takes one
+         value of it. */
+      --rail-spec:
+        rgba(255,255,255,0.155) 0deg, rgba(255,255,255,0.065) 15deg, rgba(0,0,0,0.034) 30deg,
+        rgba(0,0,0,0.115) 45deg, rgba(0,0,0,0.157) 60deg, rgba(0,0,0,0.151) 75deg,
+        rgba(0,0,0,0.104) 90deg, rgba(0,0,0,0.031) 105deg, rgba(255,255,255,0.049) 120deg,
+        rgba(255,255,255,0.116) 135deg, rgba(255,255,255,0.15) 150deg, rgba(255,255,255,0.143) 165deg,
+        rgba(255,255,255,0.096) 180deg, rgba(255,255,255,0.023) 195deg, rgba(0,0,0,0.057) 210deg,
+        rgba(0,0,0,0.124) 225deg, rgba(0,0,0,0.158) 240deg, rgba(0,0,0,0.148) 255deg,
+        rgba(0,0,0,0.091) 270deg, rgba(0,0,0,0.001) 285deg, rgba(255,255,255,0.098) 300deg,
+        rgba(255,255,255,0.179) 315deg, rgba(255,255,255,0.221) 330deg, rgba(255,255,255,0.212) 345deg,
+        rgba(255,255,255,0.155) 360deg;
+      container: rail / size;   /* its ::before sizes the ends in cqw / cqh of the rail itself */
       box-shadow:
         0 calc(var(--subrow) * 0.25) 0 rgba(255,255,255,0.12) inset,
         0 calc(var(--subrow) * -0.25) 0 rgba(255,255,255,0.08) inset,
         0 0 calc(var(--subrow) * 1.5) rgba(0,0,0,0.22) inset,
         0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) rgba(0,0,0,0.15);
+    }
+    /* 12: the specular broken at the corners. One 155deg gradient run round a stadium gave its
+       semicircular ends a highlight they cannot have: a straight run faces ONE way along its whole
+       length, and only the ends turn through the light. So on the default oval the straight runs
+       take one value each (their normal's), and each end a conic around its own centre. The ends
+       are min(W, H)/2 deep, which a background cannot know about its own box, so the light is a
+       ::before sized in the rail's container units; the inset shading moves to ::after to stay on
+       top of it. Landscape turns the stadium on its side (the container's orientation, not a
+       literal, so both are right). The round table takes the conic whole; the octagon keeps the
+       linear pass, since its faces are lit by the felt's own conic. */
+    .replayer-table:not(:has(.shape-round, .shape-octagon)) .replayer-table-rail {
+      background-image: none;
+      box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) rgba(0,0,0,0.15);
+    }
+    .replayer-table:not(:has(.shape-round, .shape-octagon)) .replayer-table-rail::before,
+    .replayer-table:not(:has(.shape-round, .shape-octagon)) .replayer-table-rail::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+    }
+    .replayer-table:not(:has(.shape-round, .shape-octagon)) .replayer-table-rail::before {
+      background:
+        conic-gradient(at 50% 100%, var(--rail-spec)) top / 100% 50cqw no-repeat,
+        conic-gradient(at 50% 0%, var(--rail-spec)) bottom / 100% 50cqw no-repeat,
+        linear-gradient(90deg, rgba(0,0,0,0.091) 50%, rgba(0,0,0,0.104) 50%) center / 100% calc(100% - 100cqw) no-repeat;   /* the straight runs only: under an end it would add to the conic */
+    }
+    @container rail (orientation: landscape) {
+      .replayer-table:not(:has(.shape-round, .shape-octagon)) .replayer-table-rail::before {
+        background:
+          conic-gradient(at 100% 50%, var(--rail-spec)) left / 50cqh 100% no-repeat,
+          conic-gradient(at 0% 50%, var(--rail-spec)) right / 50cqh 100% no-repeat,
+          linear-gradient(180deg, rgba(255,255,255,0.155) 50%, rgba(255,255,255,0.096) 50%) center / calc(100% - 100cqh) 100% no-repeat;
+      }
+    }
+    .replayer-table:not(:has(.shape-round, .shape-octagon)) .replayer-table-rail::after {
+      box-shadow:
+        0 calc(var(--subrow) * 0.25) 0 rgba(255,255,255,0.12) inset,
+        0 calc(var(--subrow) * -0.25) 0 rgba(255,255,255,0.08) inset,
+        0 0 calc(var(--subrow) * 1.5) rgba(0,0,0,0.22) inset;
+    }
+    .replayer-table:has(.shape-round) .replayer-table-rail {
+      background-image: conic-gradient(var(--rail-spec));
     }
     /* The table's outer edge was a 1px/3px drop against a near-black page,
        which is next to invisible — so the silhouette dissolved exactly where
