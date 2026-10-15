@@ -14,8 +14,9 @@
                note 2r, 2r foot
      graph     3r gap, head 3r (label | the range's change), 1r, the 35g x 16r plot, foot 2r
                (first date and start | last date and now), then the range strip 4r after 1r
-     sessions  3r gap, head 3r, 1r, then per month: the date break (4r pill + 1r) and its cards,
-               each 35g x 10r (strip 3r, row 4r, row 2r, 1r foot) with 1r between
+     sessions  3r gap, head 3r, 1r, then per month: the date break (4r pill + 2r) and its cards,
+               each 35g x 10r (strip 3r, row 4r, row 2r, 1r foot) with 2r between (owner,
+               2026-10-14: 1r more under the pill and between cards; months stay 2r apart)
      foot      3r gap, prose on 2r lines
    Baselines: an-cell's p = 2(k - h/2 - c), k the line the baseline sits on, c the face's
    baseline-below-centre in r MEASURED in Playwright WebKit (analytics.css lists the condensed
@@ -245,13 +246,19 @@
 
 /* ── Sessions ── */
 .bp-sessions { margin-top: calc(var(--subrow) * 3); }
-.bp-month + .bp-month { margin-top: var(--subrow); }
+.bp-month + .bp-month { margin-top: 0; }   /* the last card's 2r is the gap */
 
 /* The month break: the Schedule's date break (styles.css .schedule-date-break: sticky, a 4r pill
    then 1r, the count on the pill's line), with the month's name where the day number sits and the
    month's share where the weekday sits. */
 /* styles.css loads after the component sheets, so these out-rank its rules by one class. */
+.bp-month-break { padding-bottom: calc(var(--subrow) * 2); }   /* 2r to the first card (owner, 2026-10-14) */
 .bp-month-break .bp-month-pill { width: calc(var(--gu) * 10); }
+/* The month's name and year one step smaller than the Schedule's day pill (owner, 2026-10-14): the
+   display face at xl and sm; the pill stays 4r x 10g and its label centred (useInkBalance). */
+.bp-month-break .date-break-label { font-size: var(--fs-xl); }   /* the line's own font: its cap-edge trim is what the pill centres */
+.bp-month-break .date-break-day { font-size: var(--fs-xl); }
+.bp-month-break .date-break-mon { font-size: var(--fs-sm); }
 .bp-month-break .bp-month-end { width: calc(var(--gu) * 11); margin-right: var(--gu); }
 .bp-month-net { font-variant-numeric: var(--num-tabular); white-space: nowrap; }
 .bp-month-net.is-pos { color: var(--pos); }
@@ -267,7 +274,7 @@
   display: grid;
   grid-template-columns: var(--subcol) minmax(0, 1fr);
   height: calc(var(--subrow) * 10);
-  margin-bottom: var(--subrow);
+  margin-bottom: calc(var(--subrow) * 2);   /* 2r between cards (owner, 2026-10-14) */
   border-radius: var(--radius-sm);
   background: var(--surface);
   box-shadow: var(--elev-1);
