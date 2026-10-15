@@ -4,6 +4,7 @@ import { FirstRun } from './EmptyState.jsx';
 import ShareMenu from './ShareMenu.jsx';
 import WrapUpViewer from './WrapUpViewer.jsx';
 import { API_URL } from '../utils/api.js';
+import { tournamentPreviewQuery } from '../utils/standing-ui.js';
 import {
   getVenueInfo, normaliseDate, getToday, getNow, currencySymbol, nativeCurrency,
   CURRENCY_CONFIG, formatCurrencyAmount, convertAmount, isPOYEligible,
@@ -32,6 +33,7 @@ const TaxReportView = lazy(() => import('./TaxReportView.jsx'));
 const ExpensesSection = lazy(() => import('./Expenses.jsx'));
 // The Backers block on a result's edit form (the Notify tap), the owner's only: lazy likewise.
 const BackerNotify = lazy(() => import('./BackerNotify.jsx'));
+const PostsToBackers = lazy(() => import('./PostsToBackers.jsx'));
 
 // ── Tracking Entry Form ─────────────────────────────────────
 // isNew with isEdit: a NEW result for one known event (the home's To log), so no event picker,
@@ -40,7 +42,7 @@ const BackerNotify = lazy(() => import('./BackerNotify.jsx'));
 // submit becomes Replace it (onSubmit's second argument, { replace: true }).
 // notify: { token, refId } on an admin's edit of a saved result, for the Backers block under the
 // form (components/BackerNotify.jsx: the saved result's backer shares and the Notify tap).
-function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialValues, tournamentLabel, entryForPOY, onSubmit, onCancel, isEdit, isNew = false, bankrolls, conflict = null, notify = null }) {
+function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, existingEntryIds, initialValues, tournamentLabel, entryForPOY, onSubmit, onCancel, isEdit, isNew = false, bankrolls, conflict = null, notify = null }) {
   const [tournamentId, setTournamentId] = useState(initialValues?.tournamentId || '');
   const [numEntries, setNumEntries] = useState(initialValues?.numEntries || 1);
   const [cashed, setCashed] = useState(initialValues?.cashed || false);
@@ -179,6 +181,16 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
         <button type="button" className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 6)',padding:0}} onClick={onCancel}>Cancel</button>
       </div>
 
+      {/* The owner's cut of what is typed, before it is saved (Phase 8): the server's own figures;
+          nothing posts here. Anyone else gets nothing. */}
+      {previewToken && (
+        <Suspense fallback={null}>
+          <PostsToBackers token={previewToken} query={tournamentPreviewQuery({
+            tournament: tournaments.find((t) => String(t.id) === String(tournamentId)), numEntries, cashed, cashAmount,
+            currency: (() => { const t = tournaments.find((x) => String(x.id) === String(tournamentId)); return t ? nativeCurrency(t.venue) : 'USD'; })(),
+          })} />
+        </Suspense>
+      )}
       {/* Backers (the owner's): the SAVED result's shares and the Notify tap. Nothing posts on
           save; the block draws nothing for any other account. */}
       {notify && (
@@ -225,6 +237,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
         onCancel={onCancelEdit}
         isEdit
         notify={notifyToken ? { token: notifyToken, refId: entry.id } : null}
+        previewToken={notifyToken}
       />
     );
   }
@@ -656,6 +669,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
 
       {pendingFormId && pendingEvent && (
         <TrackingEntryForm
+          previewToken={isAdmin ? token : null}
           tournaments={tournaments}
           mySchedule={mySchedule}
           existingEntryIds={existingEntryIds}
@@ -694,6 +708,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
 
       {showAddForm && (
         <TrackingEntryForm
+          previewToken={isAdmin ? token : null}
           tournaments={tournaments}
           mySchedule={mySchedule}
           existingEntryIds={existingEntryIds}

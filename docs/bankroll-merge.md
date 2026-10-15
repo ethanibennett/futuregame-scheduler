@@ -5,7 +5,7 @@ on `feat/money-merge-2` (merged), **Phase 3 built** on `feat/money-merge-3` (mer
 dashboard repo on `feat/money-export` (merged and deployed, closed until LEDGER_TOKEN), **Phase 5 built** on
 `feat/money-merge-5` (merged; the pull is off until LEDGER_TOKEN) (see "Phase 1: as built" to "Phase 5: as
 built" after the §15 table). **The Notify tap is built ahead of Phase 7** on `feat/notify-tap` (merged; "Notify
-tap (built ahead of Phase 7)", after the Backers view). **Phase 6 built** on `feat/money-merge-6` (merged), **Phase 7 built** on `feat/money-merge-7` (not yet merged; "Phase 7: as built").
+tap (built ahead of Phase 7)", after the Backers view). **Phase 6 built** on `feat/money-merge-6` (merged), **Phase 7 built** on `feat/money-merge-7` (merged), **Phase 8 built** on `feat/money-merge-8` (not yet merged; "Phase 8: as built").
 A buildable spec for moving the dashboard's money
 (dashboard.futurega.me, repo `wsop-console`) into this app (futurega.me, repo
 `futuregame-scheduler`), cut into phases small enough for one builder each.
@@ -1586,7 +1586,7 @@ judgment about money, posting or layout. The model policy (handoff, 2026-10-14) 
 | **5** | sched | **Built** (see "Phase 5: as built" below). Import engine: fetch, stage, plan (§5 mapping, §9.1 scoring, §7.1 union, §5.8 opening and reconciliation with a `computeBankroll` port), decisions, commit, undo, delta; owner-only routes | 1, 2 | **Opus** |
 | **6** | sched | **Built** (see "Phase 6: as built" below). Import review UI (§9.3) + seed script + guard steps | 5 | **Opus** (grid seating and guard work has needed judgment on every bankroll tab) |
 | **7** | sched | **Built** (see "Phase 7: as built" below). Standing shares live, to §1.1: the **Notify action** creates a share (Q1: not on save); `syncSharesFor` in every write path only **follows or voids** a posted share (§6.5), silently (Q2); the overlap `ask` (Q7) and where its answer is stored; exclusions, revisions, recalc, drift, preview, cutover state and `PUT /api/bankrolls/money/cutover`, roster sync standing down. **Part built ahead** ("Notify tap (built ahead of Phase 7)" below): the Notify action, the silent follow and void in every result write path, revisions, and a Q7 ask that is a confirm. Phase 7 keeps its `fg-` event ids, and still owes: where the Q7 answer is stored, exclusions, recalc, drift, the money_settings / cutover gate, and the roster sync standing down | 1, 2 | **Opus** |
-| **8** | sched | Standing UI in the Staking tab: backers with stakes editor (from today / correct with preview; the game list is `classify.js` `GAMES`, Q8), opening, delivery, copy and rotate link, recorded shares with exclude / recalc / remove; the "Posts to backers" preview line on the result and cash forms and the Notify sheet (with the Q7 ask); guard steps | 7 | Sonnet |
+| **8** | sched | **Built** (see "Phase 8: as built" below). Standing UI in the Staking tab: backers with stakes editor (from today / correct with preview; the game list is `classify.js` `GAMES`, Q8), opening, delivery, copy and rotate link, recorded shares with exclude / recalc / remove; the "Posts to backers" preview line on the result and cash forms and the Notify sheet (with the Q7 ask); guard steps | 7 | Sonnet |
 | **9** | sched | Owner API (§11.2-11.3, ported `normalizeSession` + tests) and deep links (§11.5) | 1, 7 | Sonnet |
 | **10** | sched | Money homes: fund bankroll target and progress (bankroll manager field + an Overview line), "Where's the money" (a seventh Overview section: locations, total, drift against the roll), tax set-aside line in the tax report | 1 | Sonnet |
 | **11** | WC | Dashboard adapter (§12.1): `money-source`, flags, summary/series/MCP/PWA store, Today log sheet, frozen sync and relay, Money tab links, fund target from the feed; contract and adapter tests | 9, 4 | Sonnet build, **Opus** review of the summary adapter |
@@ -2439,6 +2439,60 @@ now stored (Q7). Server only; the Staking UI is Phase 8. Code: `lib/staking/live
   `backers` row the import has not created yet loses name and stakes on the page. Import first.
 - **`PUT /api/tournaments/:id` on a Personal row now reaches the shares.** A tool that mass-edits
   Personal events will revise notified shares (silently, with revisions) as it goes.
+
+### Phase 8: as built (2026-10-14, branch `feat/money-merge-8`)
+
+The standing UI on Phase 7's routes. Three pieces, all in the vite app, plus two small server additions.
+
+**The Standing view** (`vite-app/src/components/StandingView.jsx`, `standing.css`, the pure parts in
+`utils/standing-ui.js`): the Staking tab's header gains **Standing** beside Backers. It lists the
+player's standing agreements as cards (name | running total; "Since Jan 1 · 30% NLH (live)"; the
+shares' count and total and the opening; the link's last four and the delivery flags) with their
+actions: **Stakes** (the editor: game from the engine's own key list, where, %; **From today** closes
+the open rows the day before and keeps every past share, **Correct** edits in place and shows the
+correction preview, "2 shares change: −$155 in all for this backer", before Confirm), **Shares** (the
+backer's recorded shares with their revisions count; the owner gets **Exclude** on a ledger share and
+**Recalculate** / **Remove** on a dashboard-era one), **Delivery** (texts to a number, the weekly email
+to an address; blank turns one off), **New link** (a confirm, then the new link shown once with Copy),
+**End** (a confirm). **+ Add** opens the form: an existing staking backer or **New backer…** (name,
+phone, email; the minted link is shown once), starts, opening, the stakes rows. The owner also sees the
+money state line and, when there is any, **Moved underneath**: the drift report with Apply per result.
+- Every figure is the server's; the view sends references and the stakes as typed. No token or event
+  id is shown; a new link is shown once.
+- Layout: the Backers block's recipe (every text line a `.sd-t` block, whole g × whole r, baselines
+  on r lines; buttons `.sd-btn` with centred labels, --w g × 5r; inputs the Staking tab's own
+  `.staking-field`).
+
+**The Notify block's Q7 ask** (`BackerNotify.jsx`, `utils/standing-ui.js` `confirmActions`): a
+series-flagged backer's Notify now opens **Both** (sends the standing share and stores `standing`:
+no more flag) | **Series only** (stores `series`: no standing share on this result, ever, and the
+backer leaves the block) | Cancel. A dashboard-sent night still asks **Send anyway**.
+
+**"Posts to backers"** (`PostsToBackers.jsx`): under the tournament result form (add and edit) and
+the cash session form, for the figures as typed: "Posts to backers: +$350 (35%), +$100 (10%). Nothing
+posts until you tap Notify on the saved result." Debounced 400 ms through
+`GET /api/staking/standing/preview`; the owner only (anyone else gets a 403 and sees nothing); a cash
+form with no cash-out yet draws nothing. The query builders are `tournamentPreviewQuery` (the
+tournament's buy-in × entries against the cash, in its venue's currency) and `cashPreviewQuery` (the
+net after tips and expenses, Q12).
+
+**Server additions**: `GET /api/staking/standing` carries `formats` (the engine's stake keys with
+labels, Q8) and `channels`, so the editor lists exactly what a stake may name; the unsaved preview
+takes `currency` (converted at the server's rate) and `room` (a cash session's channel by the room).
+
+**Seed and guards**: `scripts/seed-standing-demo.js <scratch.db> [--owner <id>]` (three backers with
+links, three agreements, four shares including a dashboard-era one and one adrift, a Personal event
+and a cash session; refuses `poker-tournaments.db`). `check:controls` gained `staking-standing`,
+`-add`, `-stakes`, `-shares` and `-link`; `check:clipping` the pass `staking-standing` (the list, the
+add form, the stakes editor with its preview, the shares with the link confirm). The owner's boxes
+need the guard account as `CONSOLE_OWNER_USER_ID` and `BACKER_PAGE_SOURCE=sql`.
+
+**Tests**: `npm run test:standing-live` now also runs the 6 `node --test` cases on the view's helpers
+(`vite-app/src/utils/__tests__/standing-ui.test.mjs`).
+
+**Not built, on purpose**: a copy of an existing link (the list masks it; the Backers tab in the
+bankroll dashboard shows the live links); editing an agreement's opening after the fact (PUT /:id
+exists; the card has no field for it yet).
 
 ### Backers view (read-only), ahead of Phase 8 (2026-10-14, branch `feat/backers-view`)
 

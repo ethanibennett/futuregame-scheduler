@@ -2508,6 +2508,42 @@ function finalize(c) {
       await tap('.tab-panel[data-tab="staking"] .group-segment-btn:has-text("Settlement")', 1800);
     }, 3);
   }
+  // The Staking tab's Standing view (components/StandingView.jsx; docs/bankroll-merge.md Phase 8):
+  // the list of agreements with their actions and, as the owner, the money state and the drift box;
+  // the add form with a new backer (every field); a card's stakes editor in Correct mode with its
+  // preview up; a card's recorded shares with Exclude, Recalculate and Remove; the New link confirm.
+  // Needs scripts/seed-standing-demo.js on the scratch database (and the guard account as
+  // CONSOLE_OWNER_USER_ID for the owner's boxes); a view that finds no card is reported.
+  const standing = async () => {
+    await goView('staking');
+    await tap('.tab-panel[data-tab="staking"] button:has-text("Standing")', 1500);
+    await p.locator('.sd').first().waitFor({ timeout: 8000 });
+  };
+  const standingCard = (name) => `.sd-card:has-text("${name}")`;
+  step('staking-standing', standing, 2);
+  step('staking-standing-add', async () => {
+    await standing();
+    await tap('.sd .create-group-submit:has-text("+ Add")', 600);
+    await p.locator('.sd-form select').first().selectOption('new');
+    await p.waitForTimeout(400);
+  }, 2);
+  step('staking-standing-stakes', async () => {
+    await standing();
+    await tap(`${standingCard('Demo Standing Sam')} button:has-text("Stakes")`, 600);
+    await tap('.sd-editor [role="radio"]:has-text("Correct")', 400);
+    await tap('.sd-editor button:has-text("Preview")', 1500);
+    await p.locator('.sd-editor button:has-text("Confirm")').first().waitFor({ timeout: 6000 });
+  }, 2);
+  step('staking-standing-shares', async () => {
+    await standing();
+    await tap(`${standingCard('Demo Standing Sam')} button:has-text("Shares")`, 1200);
+    await p.locator('.sd-event').first().waitFor({ timeout: 8000 });
+  }, 2);
+  step('staking-standing-link', async () => {
+    await standing();
+    await tap(`${standingCard('Demo Standing Sam')} button:has-text("New link")`, 500);
+    await tap(`${standingCard('Demo Standing Sam')} button:has-text("Delivery")`, 500);
+  }, 1);
   // First-run setup, stage by stage (re-opened the way the location menu's "Run setup again"
   // does; docs/onboarding.md): step 1 as it opens, with "Use my location" refused (no permission:
   // the error line), located (permission granted at a fixed point: the place named, the distance

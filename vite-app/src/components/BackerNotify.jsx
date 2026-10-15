@@ -5,6 +5,7 @@ import { useToast } from '../contexts/ToastContext.jsx';
 import {
   normalise, rowView, blockTitle, emptyText, footNote, sentToast,
 } from '../utils/backer-notify.js';
+import { confirmActions } from '../utils/standing-ui.js';
 import './backer-notify.css';
 
 /**
@@ -63,12 +64,15 @@ export default function BackerNotify({ token, refTable, refId }) {
 
   // Sends ONE backer's share: every other unsent backer goes in skip, so the server's own rules
   // (idempotency, the flags, delivery) are unchanged. confirm sends it despite its flag.
-  const sendOne = async (key, confirm = false) => {
+  // extra: the confirm's own body: { confirm: true } sends despite the flag; { answers } stores the
+  // owner's Q7 answer (Phase 8): 'standing' sends it and stops the flag, 'series' keeps the backer
+  // off this result for good (the server drops them from the block).
+  const sendOne = async (key, extra = null) => {
     if (busy || !block) return;
     const skip = block.backers.filter((x) => x.status !== 'sent' && x.key !== key).map((x) => x.key);
     setBusy(true);
     try {
-      const { status, data } = await call({ preview: false, skip, ...(confirm ? { confirm: true } : {}) });
+      const { status, data } = await call({ preview: false, skip, ...(extra || {}) });
       if (status === 409 && data && data.needsConfirm) {
         setBlock(normalise(data));
         setConfirmKey(key);
@@ -77,7 +81,8 @@ export default function BackerNotify({ token, refTable, refId }) {
       if (status !== 200) { toast.error((data && data.error) || 'Notify failed. Try again.'); return; }
       setBlock(normalise(data));
       setConfirmKey(null);
-      toast.success(sentToast(data));
+      const series = extra && extra.answers && Object.values(extra.answers).includes('series');
+      toast.success(series ? 'Series only: no standing share for this result.' : sentToast(data));
     } catch (_) {
       toast.error('Notify failed. Check the connection and try again.');
     } finally { setBusy(false); }
@@ -104,9 +109,11 @@ export default function BackerNotify({ token, refTable, refId }) {
                   {r.warnings.map((w) => <span key={w} className="bn-t bn-warn" title={w}>{w}</span>)}
                   {b.status !== 'sent' && (confirmKey === r.key ? (
                     <div className="bn-row-act" role="group" aria-label={`Confirm before sending to ${r.name}`}>
-                      <button type="button" className="bn-btn bn-btn--warn" style={{ '--w': 11 }} disabled={busy} onClick={() => sendOne(r.key, true)}>
-                        <span>{busy ? 'Sending…' : 'Send anyway'}</span>
-                      </button>
+                      {confirmActions(b).map((a) => (
+                        <button key={a.label} type="button" className={'bn-btn' + (a.tone ? ' bn-btn--' + a.tone : '')} style={{ '--w': a.w }} disabled={busy} title={a.title} onClick={() => sendOne(r.key, a.body)}>
+                          <span>{busy ? 'Sending…' : a.label}</span>
+                        </button>
+                      ))}
                       <button type="button" className="bn-btn" style={{ '--w': 8 }} disabled={busy} onClick={() => setConfirmKey(null)}>
                         <span>Cancel</span>
                       </button>

@@ -37,6 +37,8 @@ import { useTick } from './CashLive.jsx';
 import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
 // The Backers block (the Notify tap), the owner's only: on a session's page and its edit screen.
 import BackerNotify from './BackerNotify.jsx';
+import PostsToBackers from './PostsToBackers.jsx';
+import { cashPreviewQuery } from '../utils/standing-ui.js';
 
 const money = (v, cur) => formatCurrencyAmount(Math.round(v || 0), cur || 'USD');
 const signed = (v, cur) => (v > 0 ? '+' : '') + money(v, cur);
@@ -186,6 +188,7 @@ function SessionForm({ bk, rooms, sessions, session, onSave, onCancel, busy, tok
         {!more && <Btn w={13} h={4} onClick={() => setMore(true)}>Bankroll, tips, more</Btn>}
         <p className={'cs-t cs-form-net' + tone(net || 0)}>{net == null ? '' : `${signed(net, currency || bankrollCurrency)}${h || times ? ` · ${formatHours(h || hoursBetweenTimes(start, end) || 0)}` : ''}`}</p>
       </div>
+      {token && <PostsToBackers token={token} query={cashPreviewQuery({ date: day, room, game, stakes, buyIn, cashOut, tips, expenses, currency: currency || bankrollCurrency })} />}
       <div className="cs-actions">
         <Btn kind="brand" w={11} disabled={!ok || busy} onClick={submit}>{s ? 'Save' : 'Add session'}</Btn>
         <Btn w={8} onClick={onCancel}>Cancel</Btn>

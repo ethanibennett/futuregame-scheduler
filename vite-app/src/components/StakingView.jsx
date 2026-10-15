@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import { FirstRun } from './EmptyState.jsx';
+import StandingView from './StandingView.jsx';
 import { API_URL } from '../utils/api.js';
 import { formatBuyin, parseTournamentTime } from '../utils/utils.js';
 import { BACKER_TYPE_LABELS, fmtSettle, canMarkPaid, showFinalize, typeLine, owedLine, settlementLines, inputsBody, missingPartner, paidLine, totalsLine, isMutual } from '../utils/staking-settlement.js';
@@ -241,6 +242,10 @@ export default function StakingView({ token, tournaments, mySchedule }) {
     return <StakingSettings token={token} tournaments={tournaments} onBack={() => setSubView('list')} />;
   }
 
+  if (subView === 'standing') {
+    return <StandingView token={token} backers={backers} onBack={() => { setSubView('list'); fetchBackers(); }} />;
+  }
+
   if (subView === 'backers') {
     return <BackerManager token={token} backers={backers} fetchBackers={fetchBackers} onBack={() => setSubView('list')} />;
   }
@@ -272,6 +277,7 @@ export default function StakingView({ token, tournaments, mySchedule }) {
         onSelect={s => { setActiveSeriesId(s.id); setSubView('detail'); }}
         onCreate={() => { setEditSeries(null); setShowSeriesForm(true); }}
         onBackers={() => setSubView('backers')}
+        onStanding={() => setSubView('standing')}
         onBackerSummary={() => setSubView('backerSummary')}
         onSettings={() => setSubView('settings')}
       />
@@ -290,7 +296,7 @@ export default function StakingView({ token, tournaments, mySchedule }) {
 
 // ── Series List ────────────────────────────────────────────
 
-function StakingSeriesList({ series, loading, onSelect, onCreate, onBackers, onBackerSummary, onSettings }) {
+function StakingSeriesList({ series, loading, onSelect, onCreate, onBackers, onStanding, onBackerSummary, onSettings }) {
   if (loading) return <div style={{textAlign:'center',padding:'calc(var(--subrow) * 5)',color:'var(--text-muted)'}}>Loading&hellip;</div>;
 
   return (
@@ -305,6 +311,7 @@ function StakingSeriesList({ series, loading, onSelect, onCreate, onBackers, onB
               ink centres. The ring an inset shadow: a border would take room from the label. */}
           <button className="create-group-submit snap-g" style={{fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 4)',lineHeight:1,padding:'0 var(--gu)',margin:0,flexShrink:0,textIndent:'var(--track-caps)',background:'transparent',color:'var(--accent)',border:0,boxShadow:'inset 0 0 0 var(--bw-hair) var(--accent)'}} onClick={onBackerSummary}>Summary</button>
           <button className="create-group-submit snap-g" style={{fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 4)',lineHeight:1,padding:'0 var(--gu)',margin:0,flexShrink:0,textIndent:'var(--track-caps)',background:'transparent',color:'var(--accent)',border:0,boxShadow:'inset 0 0 0 var(--bw-hair) var(--accent)'}} onClick={onBackers}>Backers</button>
+          <button className="create-group-submit snap-g" style={{fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 4)',lineHeight:1,padding:'0 var(--gu)',margin:0,flexShrink:0,textIndent:'var(--track-caps)',background:'transparent',color:'var(--accent)',border:0,boxShadow:'inset 0 0 0 var(--bw-hair) var(--accent)'}} onClick={onStanding}>Standing</button>
           <button className="create-group-submit snap-g" style={{fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 4)',lineHeight:1,padding:'0 var(--gu)',margin:0,flexShrink:0,textIndent:'var(--track-caps)'}} onClick={onCreate}>+ Series</button>
         </div>
       </div>

@@ -280,6 +280,13 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   create with a minted link, update, stakes from-today / correct with preview, delivery, events) and
   the unsaved-result preview. Every write path follows a notified share silently, the Personal-row
   admin edit and the import's undo included. Tests: `npm run test:standing-live` (ports 4680-4689).
+  **Bankroll merge, Phase 8: the standing UI** (`docs/bankroll-merge.md` "Phase 8: as built"): the Staking
+  tab's **Standing** view (`components/StandingView.jsx`, `standing.css`, `utils/standing-ui.js`): the
+  agreements with Stakes (from today / correct with preview), Shares (exclude, recalc, remove), Delivery,
+  New link, End, + Add (an existing or a new backer, minted a link shown once); the owner's money state
+  and drift box. The Notify block's series flag asks Both / Series only (stored). "Posts to backers" under
+  the result and cash forms (`PostsToBackers.jsx`, the owner only). Seed: `scripts/seed-standing-demo.js`;
+  guards `staking-standing*` (controls) and `staking-standing` (clipping).
 
 ## Hazards
 - ⚠️ **Junction hazard**: checking out any pre-carve branch (e.g. `wip/windows-mtt-feed`)
