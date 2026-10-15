@@ -232,12 +232,7 @@ wsop-console side and verified against both live services.
   - Short Deck: does trips beat a straight? The branch has the straight winning; Triton and GG rules
     rank trips higher; `SHORT_DECK_TRIPS_BEAT_STRAIGHT` plus its tests.
   - The launch plan's 7 questions (its section 16).
-- **Bugs found, not fixed:**
-  - On desktop at 8/9-max, the replayer's top seat's cards are cut off 8–16px by the window top. This is
-    pre-existing, for every game.
-  - Hi-lo equity pills overlap the board's top edge.
-  - `test/hilo-split-awards.mjs` throws `settled is not defined`, on master too.
-  - `overviewStats().mtt.itm` still counts ITM per event.
+- **Bugs found then (status checked 2026-10-15):** the desktop top-seat cut-off is fixed (85a3c41, merged); the hi-lo pills overlapping the board wait on the owner-parked `fix/replayer-hilo-pills`; `test:hilo` runs again (d26eccd); ITM counts per entry (since 2026-10-13).
 - **Ads PAUSED; catalogue three on hold** (memories `ads-paused`, `model-delegation`).
 - **Trap: scratch seed tokens expire after 12 h** (`setup.cjs`, `expiresIn: '12h'`). An expired token makes
   a guard skip most views and still print "all N controls on the grid". Check the skipped count. A fresh
@@ -1230,14 +1225,11 @@ a browser. Worth eyeballing the felt, the settings sheet and one export first.
   the outer `HandReplayerView`. Optional chaining does not save an *undeclared*
   identifier, so every GIF export's completion toast has thrown a ReferenceError
   since f701013 (2026-05-19). Fixed in this branch.
-- The whole saved-hands API block is registered **twice** in `server.js` (~7168
-  and ~7292). Express serves the first; the second is dead. Spawned as its own
-  task, not fixed here.
+- The saved-hands API block was registered twice in `server.js`; checked 2026-10-15, once now.
 - `/api/hands` is not the endpoint the replayer calls — it uses
   `/api/replayer/hands`, which spreads the entire `hand_data` blob into every
   list row. Anything the picker needs is already client-side.
-- esbuild reports one `Unexpected "@media"` CSS warning in `styles.css`. It
-  predates this work (reproduced against `fd45213`) and is still unexplained.
+- The esbuild `Unexpected "@media"` CSS warning is gone (no CSS warnings in the build, 2026-10-15).
 
 **Catalogue two — published:** https://claude.ai/code/artifact/2ab02148-2c58-4adc-a456-7c6c09f70545
 100 craft items with 100 live before/after specimens built from the replayer's
