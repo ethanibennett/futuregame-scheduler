@@ -45,7 +45,7 @@ function TravelDayPicker({ onSave, onCancel }) {
   const selectStyle = {
     padding: 0, fontSize: 'calc(var(--gu) * 1.252)', borderRadius: 'calc(var(--subrow) * 0.75)',
     border: 'var(--bw-hair) solid var(--border)', background: 'var(--surface)',
-    color: 'var(--text)', outline: 'none', cursor: 'pointer',
+    color: 'var(--text)', cursor: 'pointer',
     WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none',
     textAlign: 'center', boxSizing: 'border-box', margin: 0,
     width: 'calc(var(--gu) * 4)', height: 'calc(var(--subrow) * 4)', flex: '0 0 auto'
@@ -56,14 +56,14 @@ function TravelDayPicker({ onSave, onCancel }) {
     <div>
       <div style={labelStyle}>{label}</div>
       <div style={{display:'flex', gap:0, alignItems:'center'}}>
-        <select value={hour} onChange={e => onHour(Number(e.target.value))} style={selectStyle}>
+        <select value={hour} onChange={e => onHour(Number(e.target.value))} className="focus-inset" style={selectStyle}>
           {hours.map(h => <option key={h} value={h}>{h}</option>)}
         </select>
         <span style={{color:'var(--text-muted)', fontWeight:700, width:'var(--gu)', textAlign:'center', flex:'0 0 auto'}}>:</span>
-        <select value={minute} onChange={e => onMinute(Number(e.target.value))} style={selectStyle}>
+        <select value={minute} onChange={e => onMinute(Number(e.target.value))} className="focus-inset" style={selectStyle}>
           {minutes.map(m => <option key={m} value={m}>{String(m).padStart(2,'0')}</option>)}
         </select>
-        <select value={amPm} onChange={e => onAmPm(e.target.value)} style={{...selectStyle, width:'calc(var(--gu) * 5)', marginLeft:'var(--gu)'}}>
+        <select value={amPm} onChange={e => onAmPm(e.target.value)} className="focus-inset" style={{...selectStyle, width:'calc(var(--gu) * 5)', marginLeft:'var(--gu)'}}>
           <option value="AM">AM</option>
           <option value="PM">PM</option>
         </select>
@@ -82,7 +82,7 @@ function TravelDayPicker({ onSave, onCancel }) {
       </div>
       <div style={{marginBottom:'calc(var(--subrow) * 2)'}}>
         <div style={labelStyle}>Date</div>
-        <input ref={dateRef} type="date" value={date} onChange={e => setDate(e.target.value)}
+        <input ref={dateRef} type="date" className="focus-inset" value={date} onChange={e => setDate(e.target.value)}
           // iOS WKWebView frequently fails to open the native date picker
           // for `<input type="date">` inside a fixed-position overlay. Force
           // it with showPicker() — the click handler still counts as a user
@@ -92,7 +92,7 @@ function TravelDayPicker({ onSave, onCancel }) {
           style={{
             padding:'0 calc(var(--subrow) * 1.25)', fontSize:'calc(var(--gu) * 1.252)', borderRadius:'calc(var(--subrow) * 0.75)',
             border:'var(--bw-hair) solid var(--border)', background:'var(--surface)',
-            color:'var(--text)', outline:'none', width:'100%', boxSizing:'border-box',
+            color:'var(--text)', width:'100%', boxSizing:'border-box',
             height:'calc(var(--subrow) * 4)', margin:0
           }}
         />

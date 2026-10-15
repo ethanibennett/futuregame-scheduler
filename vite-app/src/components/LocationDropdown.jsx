@@ -95,8 +95,8 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
       <div style={{padding:'var(--subrow) var(--gu)'}}>
         <div style={{display:'flex',gap:'calc(var(--subrow) * 0.75)',alignItems:'center',height:'calc(var(--subrow) * 4)',marginBottom: geoLoading || geoResults.length > 0 ? 'var(--subrow)' : 0}}>
           <input type="text" value={geoQuery} onChange={e => onQueryChange(e.target.value)}
-            placeholder="City or postal code..." autoFocus
-            style={{flex:1,height:'calc(var(--subrow) * 4)',boxSizing:'border-box',padding:'0 calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',background:'var(--bg)',color:'var(--text)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius)',outline:'none',minWidth:0}} />
+            placeholder="City or postal code..." autoFocus className="focus-inset"
+            style={{flex:1,height:'calc(var(--subrow) * 4)',boxSizing:'border-box',padding:'0 calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',background:'var(--bg)',color:'var(--text)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius)',minWidth:0}} />
           <input type="number" value={radius}
             onChange={e => {
               setRadius(e.target.value);
@@ -210,7 +210,7 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
             <span style={{textTransform:'none',letterSpacing:0}}>· from location</span>
           )}
         </label>
-        <select id="jurisdiction-select" value={filters.jurisdiction || ''}
+        <select id="jurisdiction-select" className="focus-inset" value={filters.jurisdiction || ''}
           onChange={e => {
             const v = e.target.value || null;
             setFilters(f => ({ ...f, jurisdiction: v, jurisdictionManual: !!v }));
@@ -218,7 +218,7 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
           style={{
             display:'block',width:'100%',height:'calc(var(--subrow) * 4)',boxSizing:'border-box',padding:'0 calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',background:'var(--bg)',
             color:'var(--text)',border:'var(--bw-hair) solid var(--border)',
-            borderRadius:'var(--radius)',outline:'none',
+            borderRadius:'var(--radius)',
           }}>
           <option value="">Not set</option>
           {US_STATES.map(([code, name]) => (

@@ -187,7 +187,7 @@ the snap is a judgment call with a visible result, and wants eyes on it first.
 - [ ] `!important` sweep — 55 sites, each its own specificity question
 - [ ] Stylesheet split into modules
 - [x] Motion: the five `transition: all` declarations are gone (checked 2026-10-15; only comments mention them)
-- [ ] `:focus-visible` ring audit
+- [x] `:focus-visible` ring audit (2026-10-15): every stylesheet `outline: none` puts a ring back (inset, on a `::before`, or `:focus-within` on the bar) or sits on a programmatic, non-control focus target (tabindex -1). Six form controls had an INLINE `outline: none`, which beats every stylesheet rule, so no ring at all: the travel-day and edit-form inputs (CalendarEventRow), the location search and state select (LocationDropdown), and the travel-day date and time pickers (ScheduleView). They now take `.focus-inset`. Known and deliberate: a selected event row draws one ring, the selection, and its bar and strip draw none while selected.
 
 Three font spellings are deliberately still literal. `'Univers'` and
 `'Univers Condensed'` carry no fallback, and `'Univers', sans-serif` lacks the
