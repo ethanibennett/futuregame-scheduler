@@ -105,7 +105,7 @@ there are no transactions (Inv §10). **Flips to Yes** (Linked, AF) when IAP or 
 
 ### Usage Data
 Product Interaction: **Yes** since 2026-10-15 (Linked to the user, Analytics; not Tracking).
-Advertising Data: **No**. Other Usage Data: **No**.
+Advertising Data: **Yes once the app posts its Apple Ads token** (Linked, Analytics; not Tracking): the campaign, ad group and keyword ids of the Apple Ads ad behind an install (Inv §10b, lib/attribution.js). Until that native call ships it stays **No**. Other Usage Data: **No**.
 The server's own growth measurement (Inv §10b) records the days an account is active and when it
 first saved an event, plus where the sign-up came from (an ad campaign tag, the referring site's
 host, or the sign-up form's "How did you hear about us?"). It stays on the operator's server; no
