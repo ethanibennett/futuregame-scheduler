@@ -150,6 +150,8 @@ cron `server.js:13028`). The backer page loads fonts from **Google Fonts**
 - Deletion: both tables are cleared with the account (`DELETE /api/account`, server.js), like the
   rest of the account's rows.
 
+- Added 2026-10-15: `growth_events` kinds onboarded, result_logged, share_sent, followed (once each) and apple_ads (the Apple Ads campaign, ad group and keyword ids Apple's attribution API returns for an install the user's own app reports; no device id). `attribution_postbacks`: Apple's anonymous SKAdNetwork / AdAttributionKit postback copies, linked to no one. UTM tags (utm_source/medium/campaign/content) join the sign-up source; ad click ids are not kept.
+
 ## 11. Device storage (no cookies besides the session cookie)
 
 - Cookie: `fg_session` only, httpOnly, Secure, SameSite=Lax, 90 days (`server.js:226-237`).

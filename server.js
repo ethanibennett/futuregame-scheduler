@@ -549,6 +549,7 @@ const bankrollImport = require('./lib/bankroll-import');
 const cashSessions = require('./lib/cash-sessions');
 const growth = require('./lib/growth');
 const appleBilling = require('./lib/billing/apple');
+const attribution = require('./lib/attribution');   // SKAdNetwork / AdAttributionKit postback copies, Apple Ads (launch plan §13)
 const billingFeatures = require('./lib/billing/features');   // what each plan unlocks; PAYWALL_LIVE off = all open   // App Store purchases on the account (launch plan, action 10)   // first-party growth measurement (launch plan, action 5)
 const bankrollTransactions = require('./lib/bankroll-transactions');
 const { validateHomeLayout, parseStoredHomeLayout } = require('./lib/home-layout');
@@ -906,6 +907,41 @@ app.get('/live', serveLive);
 // a player's Personal day), the series they belong to and the rooms. Public and cached ten minutes.
 // appStore is the store link's parts once the app is listed (APP_STORE_ID and the campaign provider
 // token APP_STORE_PT, both unset until launch); the page adds the ad's campaign (?ct=) to it.
+// Install postback copies (lib/attribution.js): Apple posts them here when Info.plist names this domain
+// (NSAdvertisingAttributionReportEndpoint; AttributionCopyEndpoint for AdAttributionKit). Anonymous by
+// design. Public, so capped at 60 a minute per address; anything that is not a postback is a 400.
+const postbackHits = new Map();
+function postbackRoute(kind) {
+  return async (req, res) => {
+    const ip = req.ip || 'x', minute = Math.floor(Date.now() / 60000), key = ip + ':' + minute;
+    const n = (postbackHits.get(key) || 0) + 1;
+    postbackHits.set(key, n);
+    if (postbackHits.size > 5000) postbackHits.clear();
+    if (n > 60) return res.status(429).end();
+    try {
+      attribution.storePostback(db, kind, req.body);
+      await saveDatabase();
+      res.status(200).end();
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  };
+}
+app.post(['/.well-known/skadnetwork/report-attribution', '/.well-known/skadnetwork/report-attribution/'], postbackRoute('skadnetwork'));
+app.post(['/.well-known/appattribution/report-attribution', '/.well-known/appattribution/report-attribution/'], postbackRoute('adattributionkit'));
+// Apple Ads: the app posts AAAttribution.attributionToken() after sign-in; the campaign is recorded once.
+app.post('/api/growth/apple-ads', authenticateToken, requireRegistered, async (req, res) => {
+  try {
+    const r = await attribution.resolveAppleAds(db, growth, req.user.id, req.body && req.body.token);
+    if (r.recorded) await saveDatabase();
+    res.json({ ok: true, attribution: r.attribution });
+  } catch (e) {
+    if (/bad token/.test(e.message)) return res.status(400).json({ error: 'token required' });
+    console.error('[apple-ads]', e.message);
+    res.status(502).json({ error: 'Apple did not answer' });
+  }
+});
+
 // The hand parser's live eval, run by the server with its own key (lib/admin-eval.js): app admins only.
 // POST starts one run (409 while one runs, 503 without ANTHROPIC_API_KEY); GET is its status and report.
 const adminEval = require('./lib/admin-eval');
@@ -1296,6 +1332,7 @@ async function initDatabase() {
   `);
   growth.migrate(db);   // growth_events + user_days (lib/growth.js), every boot, idempotent
   appleBilling.migrate(db);   // users.app_account_token + apple_notifications (lib/billing/apple.js)
+  attribution.migrate(db);    // attribution_postbacks (lib/attribution.js)
   // The line under the game on a backer's session card (owner, 2026-10-15): a result's and a cash
   // session's own `subtitle`, typed in their forms. Checked every boot, so any database gets it.
   for (const t of ['tracking_entries', 'cash_sessions']) {
