@@ -548,7 +548,8 @@ const bankrollManagement = require('./lib/bankroll-management');
 const bankrollImport = require('./lib/bankroll-import');
 const cashSessions = require('./lib/cash-sessions');
 const growth = require('./lib/growth');
-const appleBilling = require('./lib/billing/apple');   // App Store purchases on the account (launch plan, action 10)   // first-party growth measurement (launch plan, action 5)
+const appleBilling = require('./lib/billing/apple');
+const billingFeatures = require('./lib/billing/features');   // what each plan unlocks; PAYWALL_LIVE off = all open   // App Store purchases on the account (launch plan, action 10)   // first-party growth measurement (launch plan, action 5)
 const bankrollTransactions = require('./lib/bankroll-transactions');
 const { validateHomeLayout, parseStoredHomeLayout } = require('./lib/home-layout');
 const moneyMerge = require('./lib/money-merge');
@@ -14021,8 +14022,11 @@ function getActiveSubscriptionRow(userId) {
   return rows[0];
 }
 
+// paywallLive and features (lib/billing/features.js): the server says what the plan unlocks, so every
+// client agrees; with PAYWALL_LIVE off (until 1 March) every feature is open whatever the plan.
 function subscriptionToClient(row) {
-  if (!row) return { tier: 'free', status: 'free', renewsAt: null, trial: null };
+  const extra = (tier) => ({ paywallLive: billingFeatures.paywallLive(), features: billingFeatures.featuresFor(tier) });
+  if (!row) return { tier: 'free', status: 'free', renewsAt: null, trial: null, ...extra('free') };
   const trialDaysLeft = row.trial_ends_at ? Math.max(0, Math.ceil((row.trial_ends_at - Date.now()) / 86400000)) : null;
   return {
     tier: row.tier,
@@ -14033,6 +14037,7 @@ function subscriptionToClient(row) {
     trial: row.status === 'trial' && row.trial_ends_at
       ? { endsAt: new Date(row.trial_ends_at).toISOString(), remainingDays: trialDaysLeft }
       : null,
+    ...extra(row.tier),
   };
 }
 

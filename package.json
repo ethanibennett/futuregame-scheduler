@@ -72,7 +72,7 @@
     "test:notify-tap": "node test/notify-tap.test.js",
     "test:live-page": "cd vite-app && node --test src/utils/__tests__/live-page.test.mjs src/utils/__tests__/live-only-defaults.test.mjs",
     "test:growth": "node test/growth.test.js",
-    "test:apple-billing": "node test/apple-billing.test.js"
+    "test:apple-billing": "node test/apple-billing.test.js && node test/billing-features.test.js"
   },
   "keywords": [],
   "author": "",
