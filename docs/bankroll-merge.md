@@ -5,7 +5,7 @@ on `feat/money-merge-2` (merged), **Phase 3 built** on `feat/money-merge-3` (mer
 dashboard repo on `feat/money-export` (merged and deployed, closed until LEDGER_TOKEN), **Phase 5 built** on
 `feat/money-merge-5` (merged; the pull is off until LEDGER_TOKEN) (see "Phase 1: as built" to "Phase 5: as
 built" after the §15 table). **The Notify tap is built ahead of Phase 7** on `feat/notify-tap` (merged; "Notify
-tap (built ahead of Phase 7)", after the Backers view). **Phase 6 built** on `feat/money-merge-6` (merged), **Phase 7 built** on `feat/money-merge-7` (merged), **Phase 8 built** on `feat/money-merge-8` (merged), **Phase 9 built** on `feat/money-merge-9` (merged; "Phase 9: as built").
+tap (built ahead of Phase 7)", after the Backers view). **Phase 6 built** on `feat/money-merge-6` (merged), **Phase 7 built** on `feat/money-merge-7` (merged), **Phase 8 built** on `feat/money-merge-8` (merged), **Phase 9 built** on `feat/money-merge-9` (merged), **Phase 10 built** on `feat/money-merge-10` (merged; "Phase 10: as built").
 A buildable spec for moving the dashboard's money
 (dashboard.futurega.me, repo `wsop-console`) into this app (futurega.me, repo
 `futuregame-scheduler`), cut into phases small enough for one builder each.
@@ -1588,7 +1588,7 @@ judgment about money, posting or layout. The model policy (handoff, 2026-10-14) 
 | **7** | sched | **Built** (see "Phase 7: as built" below). Standing shares live, to §1.1: the **Notify action** creates a share (Q1: not on save); `syncSharesFor` in every write path only **follows or voids** a posted share (§6.5), silently (Q2); the overlap `ask` (Q7) and where its answer is stored; exclusions, revisions, recalc, drift, preview, cutover state and `PUT /api/bankrolls/money/cutover`, roster sync standing down. **Part built ahead** ("Notify tap (built ahead of Phase 7)" below): the Notify action, the silent follow and void in every result write path, revisions, and a Q7 ask that is a confirm. Phase 7 keeps its `fg-` event ids, and still owes: where the Q7 answer is stored, exclusions, recalc, drift, the money_settings / cutover gate, and the roster sync standing down | 1, 2 | **Opus** |
 | **8** | sched | **Built** (see "Phase 8: as built" below). Standing UI in the Staking tab: backers with stakes editor (from today / correct with preview; the game list is `classify.js` `GAMES`, Q8), opening, delivery, copy and rotate link, recorded shares with exclude / recalc / remove; the "Posts to backers" preview line on the result and cash forms and the Notify sheet (with the Q7 ask); guard steps | 7 | Sonnet |
 | **9** | sched | **Built** (see "Phase 9: as built" below). Owner API (§11.2-11.3, ported `normalizeSession` + tests) and deep links (§11.5) | 1, 7 | Sonnet |
-| **10** | sched | Money homes: fund bankroll target and progress (bankroll manager field + an Overview line), "Where's the money" (a seventh Overview section: locations, total, drift against the roll), tax set-aside line in the tax report | 1 | Sonnet |
+| **10** | sched | **Built** (see "Phase 10: as built" below). Money homes: fund bankroll target and progress (bankroll manager field + an Overview line), "Where's the money" (a seventh Overview section: locations, total, drift against the roll), tax set-aside line in the tax report | 1 | Sonnet |
 | **11** | WC | Dashboard adapter (§12.1): `money-source`, flags, summary/series/MCP/PWA store, Today log sheet, frozen sync and relay, Money tab links, fund target from the feed; contract and adapter tests | 9, 4 | Sonnet build, **Opus** review of the summary adapter |
 | **12** | both | Cutover (§13 steps 2-8), run by the lead with the owner | 1-11 | **Opus** + owner |
 | **13** | both | Retire (§12.2, §7.3, §7.4) and CLAUDE.md / docs (§14), after a two-week soak; tag `pre-money-retire` first | 12 | Sonnet |
@@ -2537,6 +2537,40 @@ parser's cases.
 **Where it differs from the spec**: no MCP relay was touched (the dashboard's adapter is Phase 11);
 `#expenses` opens Results (the Expenses & Income list is under it); `rollPeak` is over the roll
 bankrolls' running total in USD at today's rates.
+
+### Phase 10: as built (2026-10-14, branch `feat/money-merge-10`)
+
+**Money homes** (`lib/money-homes.js`, `vite-app/src/utils/money-homes.js`): the three places the
+dashboard's money screens had and this app lacked.
+- **The WSOP fund.** Manage bankrolls gains a **Role** field: part of the roll, set aside (not in the
+  roll), or **the WSOP fund**, which brings **Target** and **By**. `PUT /api/bankrolls/:id` takes `role`
+  (`'fund'` | null; naming one fund clears the role on any other), `inRoll`, `targetAmount` and
+  `targetDate`; the list carries `role`, `in_roll`, `target_amount` and `target_date`. The Overview's
+  Bankroll section gains three rows: the fund ("$6,500 of $65.0k", "10% · by May 3, 2027"), **Pace**
+  (what a month must add to land the target on its day, On track / Behind) and **So far** (what a
+  month has added since the fund's first entry). Months are averages (365.25 / 12 days).
+- **Where the money is**, a seventh Overview section (closed by default, its scope "as last
+  counted"): each place and its amount, **In all**, and **Against the ledger** (the places less the
+  roll and the fund; "Adds up" within half a dollar). **Edit** opens a row per place with + Place;
+  Save replaces the set (`PUT /api/bankrolls/money/locations`, `money_locations`, at most 50).
+  Other currencies are listed and left out of the total.
+- **The tax set-aside.** The tax report's totals gain "Set aside for tax (30%)": that share of the
+  year's net when it is a profit. The rate is `money_settings.taxSetAsidePct` (default 30, the
+  dashboard's `wsop-admin-taxrate`), set with `PUT /api/bankrolls/money/settings` (which also takes
+  `defaultBankroll`, where the owner API's logged sessions land).
+- `GET /api/bankrolls/money/homes` (admins, their own) answers all of it from the ledger
+  (`lib/owner-api` `money` without the sessions): `fund` with its `pace`, `locations`,
+  `locationsTotal`, `roll`, `wsopFund`, `drift`, `taxSetAsidePct`, `defaultBankroll`.
+
+**Tests**: `npm run test:money-homes` (5 server cases on ports 4710-4719: the pace arithmetic, the
+fund's role and target and the one-fund rule, homes from the ledger, the places replaced and the
+drift, the settings and their refusals; then 2 helper cases). Guards: `check:controls --only
+bankroll-dashboard,bankrolls,results-tax` at 402 and 1440 (all on the grid); the new rows were checked
+in screenshots with the grid overlay, since the clipping pass reads the Overview with its sections
+closed.
+
+**Not built**: a "Set aside" figure on the Overview (the tax report holds it); a UI for the rate (the
+route exists; the dashboard's 30% is the default).
 
 ### Backers view (read-only), ahead of Phase 8 (2026-10-14, branch `feat/backers-view`)
 

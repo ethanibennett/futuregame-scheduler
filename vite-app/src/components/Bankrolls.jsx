@@ -79,6 +79,11 @@ function BankrollEditor({ b, bal, bk, onDone, toast }) {
   const [name, setName] = useState(b.name);
   const [start, setStart] = useState(String(b.starting_balance || 0));
   const [currency, setCurrency] = useState(b.currency);
+  // Phase 10: the WSOP fund (one per player, outside the roll) and its target.
+  const [isFund, setIsFund] = useState(b.role === 'fund');
+  const [target, setTarget] = useState(b.target_amount == null ? '' : String(b.target_amount));
+  const [targetDate, setTargetDate] = useState(b.target_date || '');
+  const [inRoll, setInRoll] = useState(b.in_roll !== 0);
   const run = async (fn, ok) => { try { await fn(); if (ok) toast.success(ok); onDone(); } catch (e) { toast.error(e.message); } };
   return (
     <div className="bk-editor">
@@ -97,9 +102,18 @@ function BankrollEditor({ b, bal, bk, onDone, toast }) {
                 {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>
+            <Field label="Role">
+              <select value={isFund ? 'fund' : inRoll ? 'roll' : 'aside'} onChange={(e) => { setIsFund(e.target.value === 'fund'); setInRoll(e.target.value === 'roll'); }}>
+                <option value="roll">Part of the roll</option>
+                <option value="aside">Set aside (not in the roll)</option>
+                <option value="fund">The WSOP fund</option>
+              </select>
+            </Field>
+            {isFund && <Field label="Target"><input type="number" inputMode="numeric" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="65000" /></Field>}
+            {isFund && <Field label="By"><input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} /></Field>}
           </div>
           <div className="bk-actions">
-            <Btn kind="brand" onClick={() => run(() => bk.update(b.id, { name, startingBalance: Number(start) || 0, currency }), 'Saved')}>Save</Btn>
+            <Btn kind="brand" onClick={() => run(() => bk.update(b.id, { name, startingBalance: Number(start) || 0, currency, role: isFund ? 'fund' : null, inRoll: isFund ? false : inRoll, targetAmount: isFund && target !== '' ? Number(target) : null, targetDate: isFund && targetDate ? targetDate : null }), 'Saved')}>Save</Btn>
             <Btn onClick={() => run(() => bk.update(b.id, { archived: !b.archived }), b.archived ? 'Restored' : 'Archived')}>{b.archived ? 'Restore' : 'Archive'}</Btn>
             <Btn kind="danger" disabled={b.entry_count > 0 || b.adjustment_count > 0 || b.transaction_count > 0}
               title={b.entry_count || b.adjustment_count || b.transaction_count ? 'Has results or transactions: archive it instead' : undefined}

@@ -7,6 +7,7 @@ import {
   fmtMoney, moneySign, fmtPct, fmtCount, fmtHours, fmtRatio, DASH,
 } from '../utils/bankroll-overview.js';
 import { Glyph } from './Icon.jsx';
+import { fundView, driftView } from '../utils/money-homes.js';
 import './bankroll-overview-tables.css';
 
 /**
@@ -87,7 +88,7 @@ function Head3() {
   );
 }
 
-export default function BankrollOverviewTables({ d, risk: riskIn, range, today, bk, bkKey, currency: asked, fmtDate }) {
+export default function BankrollOverviewTables({ d, risk: riskIn, range, today, bk, bkKey, currency: asked, fmtDate, homes = null, onSaveLocations = null }) {
   const [open, setOpen] = useState(readOpen);
   const toggle = (k) => setOpen((o) => { const n = { ...o, [k]: !o[k] }; saveOpen(n); return n; });
   // The bankroll and currency of the ledger in hand, which lag the chip by one round trip.
@@ -126,6 +127,7 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
   const rooms = useMemo(() => (facts.list ? groupTable(facts.list, 'room', t.window) : null), [facts.list, t.window]);
 
   const S = t.summary, X = t.sessions, B = t.bankroll;
+  const mUsd = (v) => fmtMoney(v, CURRENCY_CONFIG.USD);
   const scopeOf = (x) => `${RANGE_TEXT[range] || range} · ${x.name}`;
   const scope = scopeOf(sc), factsScope = scopeOf(fsc);
   const periodsLabel = t.bucket === 'year' ? 'By year' : 'By month';
@@ -148,7 +150,10 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
     rooms: { text: rooms ? (rooms.named ? plural(rooms.named, 'room') : DASH) : '…' },
     bankroll: { text: m(B.balance), v: Math.min(0, moneySign(B.balance)), toned: true },
     periods: { text: t.periods.length ? plural(t.periods.length, t.bucket) : DASH },
+    // Phase 10: the places the money sits, against the ledger (USD, the ledger's own currency).
+    money: homes ? { text: homes.locations.length ? mUsd(homes.locationsTotal) : 'Not listed', v: homes.locations.length ? -Math.abs(Math.round(homes.drift)) : 0, toned: homes.locations.length > 0 } : { text: '…' },
   };
+  const fund = homes && homes.fund ? fundView(homes.fund, mUsd, fmtDate) : null;
 
   // Below the peak and the drawdown only count when they draw as at least one whole unit.
   const below = moneySign(B.below) > 0 ? B.below : 0;
@@ -238,11 +243,16 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
           <BRow label="Deposits & withdrawals" text={sm(B.moved)} />
           {/* A probability, not money: never green / red. */}
           <BRow label="Risk of ruin" note={ror.note} text={ror.text} />
+          {/* Phase 10: the fund's target and pace (the bankroll with role 'fund'; Manage bankrolls sets it). */}
+          {fund && <BRow label={fund.label} note={fund.note} text={fund.text} />}
+          {fund && fund.pace && <BRow label="Pace" note={fund.pace.note} text={fund.pace.text} v={fund.pace.tone} />}
+          {fund && fund.soFar && <BRow label="So far" note={fund.soFar.note} text={fund.soFar.text} />}
         </div>
         <p className="an-p ovt-note">The peak is the highest the balance has ever been; the drawdown is the deepest fall
           from a peak inside the range. Risk of ruin is explained under Rules.</p>
       </>
     ),
+    money: homes ? <MoneyPlaces homes={homes} money={mUsd} onSave={onSaveLocations} /> : <p className="an-p ovt-note">Loading…</p>,
     periods: t.periods.length ? (
       <div className="ovt-table" role="table" aria-label={`${periodsLabel}, ${scope}`}>
         <div role="row" className="ovt-thead ovt-c4">
@@ -279,7 +289,7 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
                 <span className="ovt-chev" aria-hidden="true"><Glyph name="chevronDown" /></span>
                 <span className="ovt-title">
                   <span className="ovt-name">{label}</span>
-                  <span className="ovt-scope">{isFacts ? factsScope : scope}</span>
+                  <span className="ovt-scope">{sec.key === 'money' ? 'as last counted' : isFacts ? factsScope : scope}</span>
                 </span>
                 <span className={'ovt-headline' + (h.toned && h.v != null ? tone(h.v) : '')} aria-hidden={isOpen ? 'true' : undefined}>{h.text}</span>
               </button>
@@ -292,6 +302,57 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
         );
       })}
     </div>
+  );
+}
+
+/**
+ * "Where the money is" (Phase 10; lib/money-homes.js): each place and its amount, the total, and the
+ * drift against the ledger's roll plus fund. Edit opens a row per place (name | amount) with + Place
+ * and Save; the set is replaced whole. Rows are the Bankroll block's (BRow); the editor's fields are
+ * the dashboard's bk-field (3r label over a 4r input).
+ */
+function MoneyPlaces({ homes, money, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [rows, setRows] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const drift = driftView(homes, money);
+  const start = () => { setRows(homes.locations.length ? homes.locations.map((l) => ({ id: l.id, name: l.name, amount: String(l.amount) })) : [{ name: '', amount: '' }]); setErr(''); setEditing(true); };
+  const save = async () => {
+    const clean = rows.filter((r) => r.name.trim() || r.amount !== '').map((r) => ({ id: r.id, name: r.name.trim(), amount: Number(r.amount) || 0 }));
+    setBusy(true); setErr('');
+    try { await onSave(clean); setEditing(false); } catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  const set = (i, patch) => setRows(rows.map((r, k) => (k === i ? { ...r, ...patch } : r)));
+  return (
+    <>
+      <div className="ovt-table" role="table" aria-label="Where the money is">
+        {homes.locations.map((l) => <BRow key={l.id} label={l.name} note={l.currency !== 'USD' ? l.currency : undefined} text={l.currency === 'USD' ? money(l.amount) : `${l.amount.toLocaleString('en-US')} ${l.currency}`} />)}
+        {homes.locations.length > 0 && <BRow label="In all" note={homes.foreign ? 'USD places only' : undefined} text={money(homes.locationsTotal)} />}
+        <BRow label="Against the ledger" note={drift.note} text={drift.text} v={drift.tone} />
+      </div>
+      {editing ? (
+        <div className="bk-fields bd-fields bd-block ovt-places-edit">
+          {rows.map((r, i) => (
+            <React.Fragment key={i}>
+              <label className="bk-field"><span className="bk-field-label">Place</span><input value={r.name} maxLength={60} onChange={(e) => set(i, { name: e.target.value })} placeholder="Safe, Parx cage, bank…" /></label>
+              <label className="bk-field"><span className="bk-field-label">Amount (USD)</span><input type="number" inputMode="decimal" step="1" value={r.amount} onChange={(e) => set(i, { amount: e.target.value })} /></label>
+            </React.Fragment>
+          ))}
+          {err && <p className="an-p ovt-note" role="alert">{err}</p>}
+          <div className="bd-actions ovt-places-act">
+            <button type="button" className="bk-btn bk-w8" onClick={() => setRows([...rows, { name: '', amount: '' }])}><span>+ Place</span></button>
+            <button type="button" className="bk-btn bk-btn--brand bk-w8" disabled={busy} onClick={save}><span>{busy ? 'Saving…' : 'Save'}</span></button>
+            <button type="button" className="bk-btn bk-w8" disabled={busy} onClick={() => setEditing(false)}><span>Cancel</span></button>
+          </div>
+        </div>
+      ) : (
+        <div className="bd-actions ovt-places-act">
+          <button type="button" className="bk-btn bk-w8" onClick={start} disabled={!onSave}><span>{homes.locations.length ? 'Edit' : 'Add places'}</span></button>
+        </div>
+      )}
+      <p className="an-p ovt-note">Where the cash physically sits, as you last counted it. The ledger is the truth; this is the check that the places add up to it.</p>
+    </>
   );
 }
 

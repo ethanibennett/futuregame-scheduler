@@ -565,6 +565,7 @@ const backerSurface = require('./lib/backer-surface');
 const notifyTap = require('./lib/staking/notify');
 const standingLive = require('./lib/staking/live');
 const ownerApi = require('./lib/owner-api');
+const moneyHomes = require('./lib/money-homes');
 // Every write to a result runs this after its own write and before the save: a result some backer
 // was notified of carries its shares with it (owner Q2: nobody is told), a deleted one voids them.
 // A result nobody notified costs one indexed lookup and is never touched. A failure here is logged
@@ -6822,9 +6823,16 @@ require('./lib/staking/standing-routes').mountRoutes(app, {
 // The owner API (docs/bankroll-merge.md §11; lib/owner-api): what the dashboard app reads and
 // writes once this app owns the money, behind LEDGER_TOKEN (never a cookie). Off until the token is
 // set on both Render services; the boot line says which.
+const ledgerSourcesLoaded = require('./lib/bankroll-ledger').loadSources();
 ownerApi.mountRoutes(app, {
   getDb: () => db, saveDatabase, getOwnerId: () => HAM_OWNER_ID, getRates: fetchExchangeRates,
-  loaded: require('./lib/bankroll-ledger').loadSources(), followShares,
+  loaded: ledgerSourcesLoaded, followShares,
+});
+// Money homes (Phase 10, lib/money-homes.js): the fund's target and pace, "Where's the money", the tax
+// set-aside rate, for the bankroll dashboard and the tax report. The signed-in admin's own.
+moneyHomes.mountRoutes(app, {
+  getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, getRates: fetchExchangeRates,
+  loaded: ledgerSourcesLoaded, todayET: () => backerSurface.todayET(),
 });
 console.log(ownerApi.checkLedgerToken('x').why === 'unset'
   ? '[owner-api] /api/owner/* is OFF: LEDGER_TOKEN is not set (the dashboard app cannot read the money or log a session here)'
