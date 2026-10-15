@@ -21,8 +21,11 @@ import AuthScreen from './components/AuthScreen.jsx';
 import ForgotPasswordForm from './components/ForgotPasswordForm.jsx';
 import ResetPasswordForm from './components/ResetPasswordForm.jsx';
 import BottomNav from './components/BottomNav.jsx';
-import GridOverlay from './components/GridOverlay.jsx';
-import LivePage from './components/LivePage.jsx';
+// Loaded on demand (2026-10-15): pages and panels most sessions never open, kept out of the main bundle.
+const GridOverlay = lazy(() => import('./components/GridOverlay.jsx'));      // admins, with the grid on
+const LivePage = lazy(() => import('./components/LivePage.jsx'));            // /live has its own entry; this is the fallback
+const BackerPage = lazy(() => import('./components/BackerPage.jsx'));        // /b/<token> only
+const OnboardingWizard = lazy(() => import('./components/OnboardingWizard.jsx'));   // first run, or a re-run from Settings
 import { noteReviewMoment } from './utils/review-prompt.js';
 import { captureLanding } from './utils/live-page.js';
 import DesktopRail from './components/DesktopRail.jsx';
@@ -42,14 +45,11 @@ import SocialView from './components/SocialView.jsx';
 import LiveUpdatePanel from './components/LiveUpdatePanel.jsx';
 import { LiveCashBar } from './components/CashLive.jsx';
 import BankrollFab from './components/BankrollFab.jsx';
-import ScheduleExportModal from './components/ScheduleExportModal.jsx';
 import SharedScheduleView from './components/SharedScheduleView.jsx';
-import BackerPage from './components/BackerPage.jsx';
 import { backerTokenFromPath } from './utils/backer-page.js';
 import SkeletonDashboard from './components/SkeletonDashboard.jsx';
 import SkeletonSchedule from './components/SkeletonSchedule.jsx';
 import RealNamePrompt from './components/RealNamePrompt.jsx';
-import OnboardingWizard from './components/OnboardingWizard.jsx';
 import { hasOnboarded, markOnboarded, clearOnboarded, readLocalLocation, readLocalFilters, migrateLiveOnlyDefaults } from './utils/location-prefs.js';
 import { fetchServerOnboarding, adoptServerOnboarding } from './utils/onboarding.js';
 import NotificationsPanel from './components/NotificationsPanel.jsx';
@@ -2461,7 +2461,7 @@ function App() {
           one at a time rather than seeing two stacked modals. A first run that
           finishes lands on the Schedule it just set up; a re-run stays put. */}
       {showOnboarding && !showRealNamePrompt && !editingName && (
-        <OnboardingWizard
+        <Suspense fallback={null}><OnboardingWizard
           token={token}
           isGuest={isGuest}
           tournaments={tournaments}
@@ -2470,7 +2470,7 @@ function App() {
             setShowOnboarding(false);
             if (res && res.applied && onboardingFirstRun) setCurrentView('tournaments');
           }}
-        />
+        /></Suspense>
       )}
 
       {showNotifications && (
@@ -2569,7 +2569,7 @@ function App() {
       {/* Admin-only layout grid: a faint overlay of the real content grid plus a
           floating toggle, so alignment can be checked live and layout fixes made
           by eye. Gated on isAdmin; state persists in localStorage. */}
-      {isAdmin && gridOverlay && <GridOverlay showReadout={gridReadout} />}
+      {isAdmin && gridOverlay && <Suspense fallback={null}><GridOverlay showReadout={gridReadout} /></Suspense>}
     </div>
     </DisplayNameProvider>
   );
@@ -2581,7 +2581,7 @@ function App() {
 const IS_LIVE_PAGE = window.location.pathname.replace(/[/]+$/, '') === '/live';
 
 export default function Root() {
-  if (BACKER_TOKEN) return <BackerPage token={BACKER_TOKEN} />;
-  if (IS_LIVE_PAGE) return <LivePage />;
+  if (BACKER_TOKEN) return <Suspense fallback={null}><BackerPage token={BACKER_TOKEN} /></Suspense>;
+  if (IS_LIVE_PAGE) return <Suspense fallback={null}><LivePage /></Suspense>;
   return <App />;
 }

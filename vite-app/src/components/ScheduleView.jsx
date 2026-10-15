@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, useLayoutEffect, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
 import DateBreak from './DateBreak.jsx';
 import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
-import ScheduleExportModal from './ScheduleExportModal.jsx';
+// The export sheet loads when it is opened (2026-10-15), not with the Schedule.
+const ScheduleExportModal = lazy(() => import('./ScheduleExportModal.jsx'));
 import { FirstRun } from './EmptyState.jsx';
 import {
   getVenueInfo, normaliseDate, getToday, fmtShortDate, formatBuyin, currencySymbol,
@@ -523,7 +524,7 @@ export default function ScheduleView({
       </div>
       )}
 
-      {showExportModal && <ScheduleExportModal events={sorted} onClose={() => setShowExportModal(false)} />}
+      {showExportModal && <Suspense fallback={null}><ScheduleExportModal events={sorted} onClose={() => setShowExportModal(false)} /></Suspense>}
       <div ref={fabContainerRef} />
     </div>
   );

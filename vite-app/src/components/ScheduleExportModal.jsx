@@ -338,7 +338,9 @@ export default function ScheduleExportModal({ events, onClose }) {
               </button>
             </div>
             {/* Centred, so snap-place sets it on the grid; the button whole g wide. */}
-            <div className="snap-place" style={{ display: 'flex', width: 'max-content', margin: 'calc(var(--subrow) * 1.5) auto 0' }}>
+            {/* 2r over it, not 1.5: the sheet is anchored to the window's foot, so a half-r gap set its top
+                and every control in it half an r off the grid (2026-10-15). */}
+            <div className="snap-place" style={{ display: 'flex', width: 'max-content', margin: 'calc(var(--subrow) * 2) auto 0' }}>
               <button className="btn btn-ghost btn-sm snap-g" onClick={onClose}>Cancel</button>
             </div>
           </>
