@@ -54,7 +54,8 @@ wsop-console side and verified against both live services.
   - **46:** `scale` 0.92 (top row) to 1.0 (bottom) by `--seat-depth` from castStyle. The origin is each seat's anchor, so edge seats keep their 1g to the screen edge. Nothing grows. **Owner check:** a scaled plaque's text leaves the r grid.
   - **Moot or decided:** 5 (already one fixed-height `.replayer-under`; the banner and its twin are gone), 30 (the springs spec: "nothing plays backwards"), 32 (the empty state is a list row matching the skeleton, per 78/81; a felt there would bring back the reflow).
   - **Taste:** 35 (ALL-IN shows only where the figure would be 0).
-- **Guard note:** at 1280x800 `button.game-fave-btn "2-7 TD"` measures ink dx -0.76 (0.75 limit), untouched by this batch.
+- **Guard note, closed:** `button.game-fave-btn "2-7 TD"` (ink dx -0.76 at 1280x800) is fixed by `text-indent: var(--track-caps)`. Re-run 2026-10-15 late: hands-games and the hands-entry views, 162 controls, 0 failing.
+- **Focus-ring audit done** (design-tokens checklist). Six form controls had an inline `outline: none` and no ring at all; they now take `.focus-inset`. Pushed as 4ec083a.
 
 ## 2026-10-15 (night, last) — Launch plan action 8 drafted; privacy docs caught up; actions 6 held
 - **App Store listing:** `docs/app-store-listing.md`, paste-ready: name, subtitle, both keyword sets, categories, age rating, promo text, description (guardrail-clean, no Mac, no provider, no online room), What's New, review notes rewritten for ACR staying, the screenshot list, and what to do after approval. **Owner to supply:** privacy policy CHECK answers (then publish `/privacy`), a support email (`/support`), the review demo account, and the Hands decision (plan action 2).
