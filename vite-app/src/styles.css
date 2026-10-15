@@ -1041,12 +1041,13 @@
 
     .dash-undo-x::after,
     .dash-unbag-x::after,
-    .top-bar-actions .btn-icon::after {
+    .top-bar-actions .btn-icon::after,
+    .bp-top .btn-icon::after {
       content: '';
       position: absolute;
       inset: calc(var(--subrow) * -1);
     }
-    .dash-undo-x, .dash-unbag-x, .top-bar-actions .btn-icon { position: relative; }
+    .dash-undo-x, .dash-unbag-x, .top-bar-actions .btn-icon, .bp-top .btn-icon { position: relative; }
 
 
     /* Skeleton geometry that predicts the real card, so hand-off does not
@@ -2366,12 +2367,16 @@
          centre at 3.93r, half a pixel above the grid line. */
       position: absolute; left: 50%; top: calc(var(--subrow) * 4); transform: translate(-50%, -50%); margin-left: 0;
     }
-    .top-bar-actions .btn-icon {
+    /* The backer page's top bar (BackerPage.jsx) carries the same theme button, so it shares this
+       rule: one definition of the icon button, 3g x 4r, the icon centred in it. */
+    .top-bar-actions .btn-icon,
+    .bp-top .btn-icon {
       width: calc(var(--gu) * 3); height: calc(var(--subrow) * 4); min-width: calc(var(--gu) * 3);
       padding: 0; display: flex; align-items: center; justify-content: center;
       border-radius: var(--radius-circle);
     }
-    .top-bar-actions .btn-icon svg { width: calc(var(--subrow) * 2.125); height: calc(var(--subrow) * 2.125); }
+    .top-bar-actions .btn-icon svg,
+    .bp-top .btn-icon svg { width: calc(var(--subrow) * 2.125); height: calc(var(--subrow) * 2.125); }
     /* Avatar + display-name chip — always pinned to the far right of the bar.
        On iOS this stays in normal flex flow even after the action icons get
        lifted out to the Dynamic Island. */
@@ -10672,15 +10677,13 @@
        push a text track off its r-line. */
 
     .cal-month-row {
-      /* [picker 4g] 2g [prev 3g | 2g | current 13g | 2g | next 3g] 2g [list 4g]
-         = 4+2+23+2+4 = 35g, so every edge is a valid line: 1|5, 7|10, 12|25,
-         27|30, 32|36. The side buttons get 3g because 6g and 11g are not lines:
-         between the 5g picker edge and the 12g current edge the only whole
-         button on valid lines with a gap either side is 7g-10g. 3g still holds
-         the widest short month (MAR, 2.56g incl. its trailing track). */
+      /* Each button sits over the date buttons below it (owner, 2026-10-14), on their 6g
+         pitch (5g button + 1g gap): picker = MON, prev = TUE, the month = WED + THU,
+         next = FRI, list = SAT. [5g] 1g [prev 5g | 1g | month 11g | 1g | next 5g] 1g [5g]
+         = 35g on the phone. */
       display: grid;
-      grid-template-columns: calc(var(--gu) * 4) 1fr calc(var(--gu) * 4);
-      column-gap: calc(var(--gu) * 2);
+      grid-template-columns: calc(var(--gu) * 5) 1fr calc(var(--gu) * 5);
+      column-gap: var(--gu);
       height: calc(var(--subrow) * 4);
       margin: 0;
       overflow: hidden;
@@ -10689,12 +10692,12 @@
 
     .cal-month-row-buttons {
       display: grid;
-      grid-template-columns: calc(var(--gu) * 3) calc(var(--gu) * 13) calc(var(--gu) * 3);
-      column-gap: calc(var(--gu) * 2);
-      /* Centred to the nearest whole g: on a wider (desktop) row the middle cell is an even
-         number of g, and a plain centre put the 23g group half a g off its lines. */
+      grid-template-columns: calc(var(--gu) * 5) calc(var(--gu) * 11) calc(var(--gu) * 5);
+      column-gap: var(--gu);
+      /* Centred to the nearest date: on a wider (desktop) row the group still starts on a
+         date button's edge, a whole 6g pitch in. */
       justify-content: start;
-      margin-left: round(down, (100% - var(--gu) * 23) / 2, var(--gu));
+      margin-left: round(down, (100% - var(--gu) * 23) / 2, var(--gu) * 6);
       height: calc(var(--subrow) * 4);
     }
 
@@ -10733,6 +10736,8 @@
         color: var(--text);
       }
     }
+    /* In the month row the two icon buttons are a date button wide (5g), over MON and SAT. */
+    .cal-month-row > .cal-month-icon-btn { width: calc(var(--gu) * 5); }
     .cal-month-icon-btn svg { width: calc(var(--subrow) * 2.25); height: calc(var(--subrow) * 2.25); }
     /* Today icon (crosshairs) needs a tighter glyph — its native viewBox
        fills nearly the entire box. Trim a hair so it visually matches

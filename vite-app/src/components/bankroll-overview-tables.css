@@ -15,7 +15,9 @@
                      on the 35g column), no rules between them
      columns         Summary, Sessions, By month: label 11g | 3 x 8g
                      Games, Rooms: label 11g | played 5g | hours 4g |
-                     rate 7g | total 8g
+                     rate 7g | total 8g; their cash block (bb/hr beside
+                     $/h): label 8g | played 4g | hours 4g | $/h 6g |
+                     bb/hr 5g | total 8g
                      Bankroll: label 11g | note 16g | value 8g
                      Right edges (from the sheet's left, 1g padding): 20 |
                      28 | 36g in the 3 x 8g tables; 17 | 21 | 28 | 36g in
@@ -153,6 +155,11 @@
 .ovt-row:nth-child(odd of .ovt-row) { background: var(--ovt-zebra); }
 .ovt-c4 { grid-template-columns: minmax(calc(var(--gu) * 11), 1fr) repeat(3, var(--col)); }
 .ovt-c5 { grid-template-columns: minmax(calc(var(--gu) * 11), 1fr) calc(var(--gu) * 5) calc(var(--gu) * 4) calc(var(--gu) * 7) var(--col); }
+/* The cash block of Games and Rooms: bb/hr (5g) beside $/h, the label column giving up the room.
+   A row holding both units runs onto a second 4r line, the big-bet figure under the big-blind one. */
+.ovt-c6 { grid-template-columns: minmax(calc(var(--gu) * 8), 1fr) calc(var(--gu) * 4) calc(var(--gu) * 4) calc(var(--gu) * 6) calc(var(--gu) * 5) var(--col); }
+.ovt-row.is-2 { height: calc(var(--subrow) * 8); }
+.ovt-bb2 { grid-row: 2; grid-column: 5; }
 .ovt-cb { grid-template-columns: minmax(calc(var(--gu) * 11), 1fr) calc(var(--gu) * 16) var(--col); }
 .ovt-span2 { grid-column: span 2; }
 .ovt-span3 { grid-column: span 3; }

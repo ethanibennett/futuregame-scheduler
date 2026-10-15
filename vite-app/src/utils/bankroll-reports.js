@@ -4,7 +4,9 @@
 // tab draws — one row per group with its count, profit and a rate — and the whole-g bar layout.
 //
 // Rate, per report (one kind for the whole table, so the column means one thing):
-//   every played fact a cash session   → hourly   profit / hours
+//   every played fact a cash session   → hourly   profit / hours (and bb/hr beside it: each
+//                                         session's net over its own big blind, over the hours;
+//                                         { bb, BB } per row, utils/bb-hr.js)
 //   every played fact a tournament     → ROI      profit / cost (cost-weighted, as lib/analytics.js)
 //   both                               → average  profit / count
 //   expense categories                 → share    the row's share of the money in the table
@@ -12,6 +14,7 @@
 // has no room, game, stake or start time.
 
 import { WEEKDAYS, DAYPARTS, hourLabel, monthLabel, BUYIN_BANDS } from './bankroll-filters.js';
+import { bbAccumulator } from './bb-hr.js';
 
 const PLAYED = ['tournament', 'cash'];
 
@@ -78,8 +81,9 @@ function rateOf(kind, g) {
 
 /**
  * One report over prepared, filtered facts.
- * → { key, label, rateKind, rows: [{ key, label, n, count, profit, played, hours, cost, rate, share?, best, worst }],
- *     total: { n, profit, played, hours, cost, rate }, missing, empty }
+ * → { key, label, rateKind, rows: [{ key, label, n, count, profit, played, hours, cost, rate, bbhr, share?, best, worst }],
+ *     total: { n, profit, played, hours, cost, rate, bbhr }, missing, empty }
+ * bbhr is { bb, BB } (utils/bb-hr.js): the cash sessions' blinds per hour, each unit null when none qualifies.
  * n counts sessions + events (expenses are not "played"), count every row; profit includes expenses where the
  * report reads them (Month); played is the games' part alone, which the rate is built on.
  */
@@ -90,7 +94,7 @@ export function buildReport(facts, reportKey) {
   const rateKind = rep.key === 'category' ? 'share' : rateKindFor(use);
   const groups = new Map();
   let missing = 0;
-  const blank = () => ({ n: 0, count: 0, profit: 0, played: 0, hours: 0, cost: 0 });
+  const blank = () => ({ n: 0, count: 0, profit: 0, played: 0, hours: 0, cost: 0, bb: bbAccumulator() });
   const total = blank();
   for (const f of use) {
     const k = rep.group(f);
@@ -103,7 +107,11 @@ export function buildReport(facts, reportKey) {
       if (f.kind !== 'expenses') {
         t.n++;
         t.played += f.profit || 0;
-        if (f.kind === 'cash') t.hours += f.hours || 0;
+        if (f.kind === 'cash') {
+          t.hours += f.hours || 0;
+          // bb/hr: the net in the session's OWN money (native_profit) over the big blind in its stakes.
+          t.bb.add({ game: f.game, stakes: f.stakes, net: f.native_profit == null ? null : Number(f.native_profit), hours: f.hours });
+        }
         if (f.kind === 'tournament') t.cost += f.cost || 0;
       }
     }
@@ -113,8 +121,9 @@ export function buildReport(facts, reportKey) {
   else if (rep.key === 'category') rows.sort((a, b) => Math.abs(b.profit) - Math.abs(a.profit) || a.label.localeCompare(b.label));
   else rows.sort((a, b) => b.n - a.n || a.label.localeCompare(b.label));
   const moneyIn = rows.reduce((s, r) => s + Math.abs(r.profit), 0);
-  rows = rows.map(({ order, ...r }) => ({
+  rows = rows.map(({ order, bb, ...r }) => ({
     ...r,
+    bbhr: bb.result(),
     rate: rateKind === 'share' ? (moneyIn > 0 ? Math.abs(r.profit) / moneyIn : null) : rateOf(rateKind, r),
     best: false, worst: false,
   }));
@@ -124,9 +133,10 @@ export function buildReport(facts, reportKey) {
     rows.forEach((r, i) => { if (r.profit > rows[hi].profit) hi = i; if (r.profit < rows[lo].profit) lo = i; });
     if (rows[hi].profit !== rows[lo].profit) { rows[hi].best = true; rows[lo].worst = true; }
   }
+  const { bb: totalBb, ...totalRest } = total;
   return {
     key: rep.key, label: rep.label, rateKind, rows, missing, empty: rows.length === 0,
-    total: { ...total, rate: rateKind === 'share' ? null : rateOf(rateKind, total) },
+    total: { ...totalRest, bbhr: totalBb.result(), rate: rateKind === 'share' ? null : rateOf(rateKind, total) },
   };
 }
 
@@ -140,15 +150,16 @@ export function reportAvailability(facts) {
 /**
  * The headline figures over prepared, filtered facts.
  * net: everything (expenses included). Tournaments: events, bullets, cost, profit, roi, itm.
- * Cash: sessions, hours, profit, hourly. Expenses: rows, net (income less spend).
+ * Cash: sessions, hours, profit, hourly, bbhr ({ bb, BB }, null with no cash). Expenses: rows, net (income less spend).
  */
 export function summaryStats(facts) {
   const s = {
     net: 0, played: 0,
     tournament: { n: 0, bullets: 0, cost: 0, profit: 0, cashes: 0, roi: null },
-    cash: { n: 0, hours: 0, profit: 0, hourly: null, wins: 0 },
+    cash: { n: 0, hours: 0, profit: 0, hourly: null, wins: 0, bbhr: null },
     expenses: { n: 0, net: 0 },
   };
+  const bb = bbAccumulator();
   for (const f of facts) {
     const p = f.profit || 0;
     s.net += p;
@@ -157,6 +168,7 @@ export function summaryStats(facts) {
       s.played++;
     } else if (f.kind === 'cash') {
       const c = s.cash; c.n++; c.hours += f.hours || 0; c.profit += p; if (p > 0) c.wins++;
+      bb.add({ game: f.game, stakes: f.stakes, net: f.native_profit == null ? null : Number(f.native_profit), hours: f.hours });
       s.played++;
     } else {
       s.expenses.n++; s.expenses.net += p;
@@ -164,6 +176,7 @@ export function summaryStats(facts) {
   }
   s.tournament.roi = s.tournament.cost > 0 ? s.tournament.profit / s.tournament.cost : null;
   s.cash.hourly = s.cash.hours > 0 ? s.cash.profit / s.cash.hours : null;
+  if (s.cash.n) s.cash.bbhr = bb.result();
   return s;
 }
 

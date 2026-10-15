@@ -30,10 +30,13 @@ import {
   sessionHourly, sessionDefaults, hoursBetweenTimes, endTimeAfter, instantsFromHours, parseHours, hoursInput,
   swingSeries, swingSummary, chartPath,
 } from '../utils/cash-sessions.js';
+import { cashBbGroups, bbColumn, bbFigures, bbBasis, unitLabel } from '../utils/bb-hr.js';
 import useLiveCashSession, { setLiveSession } from '../hooks/useLiveCashSession.js';
 import { useResultsFocus, clearResultsFocus, revealInScroller } from '../hooks/useResultsFocus.js';
 import { useTick } from './CashLive.jsx';
 import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
+// The Backers block (the Notify tap), the owner's only: on a session's page and its edit screen.
+import BackerNotify from './BackerNotify.jsx';
 
 const money = (v, cur) => formatCurrencyAmount(Math.round(v || 0), cur || 'USD');
 const signed = (v, cur) => (v > 0 ? '+' : '') + money(v, cur);
@@ -116,7 +119,7 @@ function Chart({ points, x = 't', className = '', label, empty }) {
 }
 
 // ── Add / edit a finished session ───────────────────────────────────────────
-function SessionForm({ bk, rooms, sessions, session, onSave, onCancel, busy }) {
+function SessionForm({ bk, rooms, sessions, session, onSave, onCancel, busy, token }) {
   const s = session || null;
   const d = useMemo(() => sessionDefaults(sessions), []); // eslint-disable-line react-hooks/exhaustive-deps
   const [day, setDay] = useState(s ? s.session_date : localDay());
@@ -187,6 +190,8 @@ function SessionForm({ bk, rooms, sessions, session, onSave, onCancel, busy }) {
         <Btn kind="brand" w={11} disabled={!ok || busy} onClick={submit}>{s ? 'Save' : 'Add session'}</Btn>
         <Btn w={8} onClick={onCancel}>Cancel</Btn>
       </div>
+      {/* Editing a finished session: its saved shares and the Notify tap (nothing posts on save). */}
+      {s && !s.live && token && <BackerNotify token={token} refTable="cash_sessions" refId={s.id} />}
     </section>
   );
 }
@@ -318,14 +323,19 @@ function LiveScreen({ session, stacks, skew, busy, onStack, onUnstack, onRebuy, 
 
 // ── Stats: label-left, value-right ──────────────────────────────────────────
 const BREAKDOWNS = [['byStakes', 'Stakes'], ['byGame', 'Game'], ['byRoom', 'Room']];
-function Stats({ stats }) {
+function Stats({ stats, sessions }) {
   const [by, setBy] = useState('byStakes');
+  // bb/hr (utils/bb-hr.js) from the sessions themselves: each session's net over its own big blind.
+  const bb = useMemo(() => cashBbGroups(sessions), [sessions]);
   if (!stats || !stats.sessions) return <p className="cs-t cs-note">No finished sessions yet.</p>;
   const o = stats.overall, cur = stats.currency;
   const winPct = stats.sessions ? Math.round((o.wins / stats.sessions) * 100) : 0;
+  const bbFigs = bbFigures(bb.overall);
   const rows = [
     ['Net', signed(o.net, cur), o.net],
     ['Per hour', perHour(o.hourly, cur), o.hourly],
+    // One row per unit that qualifies (bb first; BB only when limit sessions do), else one dash.
+    ...(bbFigs.length ? bbFigs : [null]).map((f) => (f ? [f.label, f.text, f.tone] : [unitLabel('bb'), '—', 0])),
     ['Hours', formatHours(o.hours)],
     ['Sessions', String(stats.sessions)],
     ['Won · lost', `${o.wins} · ${o.losses} (${winPct}%)`],
@@ -338,6 +348,9 @@ function Stats({ stats }) {
     ['Tips, costs', money(o.tips + o.expenses, cur)],
   ];
   const groups = stats[by] || [];
+  const bbBy = bb[{ byStakes: 'stakes', byGame: 'game', byRoom: 'room' }[by]];
+  const none = { bb: null, BB: null };
+  const col = bbColumn(groups.map((g) => bbBy.get(g.key) || none));
   return (
     <section className="cs-stats" aria-label="Cash stats">
       <div className="cs-kv2">
@@ -359,15 +372,23 @@ function Stats({ stats }) {
         <span className="cs-t">Hours</span>
         <span className="cs-t">Net</span>
         <span className="cs-t">Per hour</span>
+        <span className="cs-t">{col.label}</span>
       </div>
-      {groups.map((g) => (
-        <div key={g.key} className="cs-brow">
-          <span className="cs-t">{g.label}</span>
-          <span className="cs-t">{formatHours(g.hours)}</span>
-          <span className={'cs-t' + tone(g.net)}>{signed(g.net, cur)}</span>
-          <span className={'cs-t' + tone(g.hourly || 0)}>{g.hourly == null ? '—' : signed(g.hourly, cur)}</span>
-        </div>
-      ))}
+      {groups.map((g) => {
+        const res = bbBy.get(g.key) || none;
+        const lines = col.lines(res);
+        return (
+          <div key={g.key} className={'cs-brow' + (lines.length > 1 ? ' is-2' : '')}>
+            <span className="cs-t">{g.label}</span>
+            <span className="cs-t">{formatHours(g.hours)}</span>
+            <span className={'cs-t' + tone(g.net)}>{signed(g.net, cur)}</span>
+            <span className={'cs-t' + tone(g.hourly || 0)}>{g.hourly == null ? '—' : signed(g.hourly, cur)}</span>
+            {lines.map((l, i) => (
+              <span key={i} className={'cs-t' + (i ? ' cs-bb2' : '') + tone(l.tone)} title={l.unit ? bbBasis(res[l.unit]) : undefined}>{l.text}</span>
+            ))}
+          </div>
+        );
+      })}
     </section>
   );
 }
@@ -431,7 +452,7 @@ function SessionList({ sessions, stats, onOpen }) {
 }
 
 // ── One session ─────────────────────────────────────────────────────────────
-function SessionDetail({ s, stacks, bk, busy, confirm, onConfirm, onDelete }) {
+function SessionDetail({ s, stacks, bk, busy, confirm, onConfirm, onDelete, token }) {
   const cur = s.currency;
   const hourly = sessionHourly(s);
   const bankroll = (bk.bankrolls.find((b) => b.id === s.bankroll_id) || { name: s.bankroll_id === BANKROLL_MAIN ? 'Main' : '—' }).name;
@@ -472,6 +493,7 @@ function SessionDetail({ s, stacks, bk, busy, confirm, onConfirm, onDelete }) {
       </div>
       <h3 className="cs-t cs-sec-title">Notes</h3>
       <p className={'cs-notes' + (s.notes ? '' : ' is-empty')}>{s.notes || 'No notes. Edit to add some.'}</p>
+      {token && <BackerNotify token={token} refTable="cash_sessions" refId={s.id} />}
       {confirm && (
         <div className="cs-confirm">
           <p className="cs-t cs-note">Delete this session? This cannot be undone.</p>
@@ -648,7 +670,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
     body = shown === 'start'
       ? <StartForm bk={bk} rooms={rooms} sessions={ended} busy={busy} onStart={start} onCancel={() => go('list')} />
       : editId && !current ? null
-        : <SessionForm key={editId || 'add'} bk={bk} rooms={rooms} sessions={ended} session={current} busy={busy}
+        : <SessionForm key={editId || 'add'} bk={bk} rooms={rooms} sessions={ended} session={current} busy={busy} token={token}
           onSave={(b) => save(b, editId)} onCancel={() => go(editId ? { detail: editId } : 'list')} />;
   } else if (detailId && current) {
     fabAway = false;
@@ -660,7 +682,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
         <Btn kind="danger" w={7} h={4} onClick={() => setConfirmDelete(true)}>Delete</Btn>
       </>
     );
-    body = <SessionDetail s={current} stacks={stacksOf(current.id)} bk={bk} busy={busy} confirm={confirmDelete}
+    body = <SessionDetail s={current} stacks={stacksOf(current.id)} bk={bk} busy={busy} confirm={confirmDelete} token={token}
       onConfirm={setConfirmDelete} onDelete={() => remove(current.id)} />;
   } else {
     focus = false;
@@ -681,7 +703,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
           ))}
         </div>
         {live && <LiveRow session={live} skew={skew} onOpen={() => go('live')} />}
-        {tab === 'stats' ? <Stats stats={stats} /> : (
+        {tab === 'stats' ? <Stats stats={stats} sessions={sessions} /> : (
           <>
             <Summary stats={stats} />
             {loaded && !ended.length && (

@@ -8,6 +8,8 @@
  *   { ts, date: 'YYYY-MM-DD', game, venue, hours, sessionResultCents, pct, shareCents }
  */
 
+import { bbHourly, sessionBbHr, bbFigures, fmtBbHr, bbTone } from './bb-hr.js';
+
 // The token is the backer's whole authentication; the server holds the same pattern
 // (server.js BACKER_TOKEN_RE): short base62 codes and the legacy 32-hex ones.
 export const BACKER_TOKEN_RE = /^[A-Za-z0-9]{6,64}$/;
@@ -112,6 +114,44 @@ export function summarize(feed) {
   return { total, sessions, hours, opening, base, complete: sessions <= events.length && base === opening };
 }
 
+// ── bb/hr, the player's ────────────────────────────────────────────────────────────────────
+// Worked out in the browser from what the feed already carries: each event's `game` is the whole
+// text ("2/5 NLH", "5/5/10 PLO", "4/8 LHE", "NLH MTT"), the big blind is read from it, the result is
+// the PLAYER's session result (not the backer's share), the length is `hours`. Nothing is added to
+// the feed. A tournament line has no blind in it and is left out, like any session whose text names
+// none. See utils/bb-hr.js and docs/bankrolls.md "bb/hr".
+const asRow = (e) => ({
+  game: e && e.game, stakes: e && e.game,
+  net: e && e.sessionResultCents != null && e.sessionResultCents !== '' && Number.isFinite(Number(e.sessionResultCents)) ? Number(e.sessionResultCents) / 100 : null,
+  hours: e && e.hours,
+});
+
+/** The player's bb/hr over the events: { bb, BB } (each null when no session qualifies). */
+export function playerBbHr(events) {
+  return bbHourly((events || []).map(asRow));
+}
+
+/** One session's rate: { unit, rate, ... } or null (no blind in the text, or under a quarter hour). */
+export function eventBbHr(e) {
+  return sessionBbHr(asRow(e));
+}
+
+/** One session line's rate as the card shows it: { text: "+12.3 bb/hr", tone: 'is-pos'|'is-neg'|'' } or null. */
+export function eventBb(e) {
+  const r = eventBbHr(e);
+  if (!r) return null;
+  const t = bbTone(r.rate);
+  return { text: fmtBbHr(r.rate, r.unit), tone: t > 0 ? 'is-pos' : t < 0 ? 'is-neg' : '' };
+}
+
+/** The same figures as the page's stats line shows them: [{ unit, text, full, tone: 'is-pos'|'is-neg'|'', basis }]. */
+export function bbStats(events) {
+  const res = playerBbHr(events);
+  return bbFigures(res).map((f) => ({
+    unit: f.unit, text: f.text, full: f.full, tone: f.tone > 0 ? 'is-pos' : f.tone < 0 ? 'is-neg' : '', n: res[f.unit].n, hours: f.hours,
+  }));
+}
+
 /** Sessions grouped by calendar month, newest month first and newest session first inside it,
  *  each with the month's share and hours: [{ key: 'YYYY-MM', events, shareCents, hours }]. */
 export function groupByMonth(events) {
@@ -181,7 +221,8 @@ export function shareSeries(events, { base = 0, range = 'all', today = null } = 
     const inWindow = !from || String(e.date) >= from;
     if (!inWindow) { run += Number(e.shareCents) || 0; start = run; continue; }
     run += Number(e.shareCents) || 0;
-    points.push({ date: e.date, value: run });
+    // share and game: what the graph shows for a session the backer taps (BackerChart).
+    points.push({ date: e.date, value: run, share: Number(e.shareCents) || 0, game: e.game || null });
   }
   if (!points.length) return null;
   const values = [start, ...points.map((p) => p.value)];

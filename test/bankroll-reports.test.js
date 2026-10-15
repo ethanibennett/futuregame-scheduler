@@ -115,6 +115,16 @@ function addTx(db, o) {
       [550, 5.5, '2026-10-02T23:00:00.000Z', '2/5', 'Parx', false, null]);
     assert.deepStrictEqual([c[1].profit, c[1].online, c[1].bankroll], [-150, true, STAKED]);
   });
+  await test('cash: native_profit is the net in the session own currency (the bb/hr numerator), profit the converted one', () => {
+    const c = facts().filter((x) => x.type === 'cash');
+    assert.deepStrictEqual([c[0].native_profit, c[1].native_profit], [550, -150]);
+    const d3 = scratchDb(SQL);
+    // EUR 1/2, 4 h, EUR 200 net after EUR 10 of tips: profit converts at 0.8 EUR per USD (to 250), native stays 200.
+    addCash(d3, { date: '2026-10-02', start: '2026-10-02T18:00:00.000Z', end: '2026-10-02T22:00:00.000Z', room: 'Dublin', game: 'NLH', stakes: '1/2', buyIn: 200, cashOut: 410, tips: 10, currency: 'EUR' });
+    const e = reports.collectFacts(d3, 1, { currency: 'USD', rates: RATES }).filter((x) => x.type === 'cash')[0];
+    assert.deepStrictEqual([e.native_currency, e.native_profit, e.profit, e.stakes, e.game, e.hours], ['EUR', 200, 250, '1/2', 'NLH', 4]);
+    d3.close();
+  });
   await test('cash, time_known = 0 (money merge): the fact carries no start instant, so no hour of day can be derived; length and net survive', () => {
     const d2 = scratchDb(SQL);
     // what the 'money-merge-2026-10' migration adds to cash_sessions

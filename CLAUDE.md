@@ -187,8 +187,18 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   `Root` before any login; arithmetic in `utils/backer-page.js`): the server serves the app shell
   to valid tokens only, `no-store` + `noindex` + `Referrer-Policy: no-referrer`, with the manifest
   link dropped (a Home Screen launch must return to the page). `/b/sw.js` and the
-  `/api/backer/*` push routes are unchanged. `scripts/seed-backer-demo.js` seeds made-up backers
+  `/api/backer/*` push routes are unchanged. **Theme** (owner, 2026-10-14): the top bar carries the
+  app's own theme button (`ThemeButton`; dark, dusk, light, cloudy; `hooks/useThemeChoice.js`, shared with
+  `App.jsx`, so one device has one preference, `localStorage['theme']`). With nothing stored the page
+  follows the device's scheme and writes nothing; the first press is a choice. Contrast always follows the
+  device. Cloudy darkens the page's green and red (`backer-page.css`). `index.html`'s head script applies a
+  stored theme before first paint. `scripts/seed-backer-demo.js` seeds made-up backers
   into a SCRATCH DB and prints the `CHECK_BACKER_TOKENS` the guards use to visit the page.
+  The page shows the player's **bb/hr** (BB/hr for limit games; owner, 2026-10-14) in the total card and
+  on each session line, worked out in the browser from the feed's events with `utils/bb-hr.js` — the feed
+  itself gained nothing, and the parity tests still compare it byte for byte. The owner's Backers tab
+  shows the same figure from `played` on `GET /api/staking/standing/backers`. Definition, units and
+  owner questions: `docs/bankrolls.md` "bb/hr".
   **Bankroll merge, Phase 2** (`docs/bankroll-merge.md`; code in `lib/backer-surface.js`):
   - **Delivery is gated.** Push, SMS and the Sunday email go out only where `BACKER_DELIVERY` is on
     (default: on when `RENDER` is set; `BACKER_DELIVERY=1|0` overrides; a typo is off). This box has
@@ -201,7 +211,28 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   - **"New link"** is `POST /api/staking/standing/backers/:id/rotate-link`. Until the roster seam
     retires, a leaked link is best replaced in the dashboard: a later dashboard edit of that backer
     would send the old token back and the roster sync would rotate it back.
-  - Tests: `npm run test:backers` (surface, rotation, parity), booting on ports 4540-4549.
+  - **The Notify tap** (built ahead of Phase 7; `lib/staking/notify.js`, `components/BackerNotify.jsx`).
+    The owner sends a saved result's backer shares from a tournament result's edit form or a cash
+    session's page, through `POST /api/staking/standing/notify` (owner only; the client sends
+    `{ refTable, refId }`, never a figure).
+    - **A manual tap (Q1):** nothing posts on save. A second tap on an unchanged result sends nothing.
+    - **Where the shares come from:** the stakes of the roster in `console_records`, plus, under
+      `BACKER_PAGE_SOURCE=sql`, the `backers` rows that own a link.
+    - **What is recorded:** `backer_events` rows with `source='ledger'` and id
+      `<token>:fg-te-<id>` / `fg-cs-<id>`, born delivered, so the sweep never resends them. Delivery
+      goes through the gated senders.
+    - **Every result write path calls `followShares`:** a notified result's shares follow an edit
+      and are voided on delete, silently (Q2), with a revision row each time.
+    - **The dashboard overlap:** a share the dashboard already sent that backer on that date, or a
+      series agreement on the event for a backer of the same name (Q7), needs a second confirm.
+      The dashboard's own Notify does NOT check this app's shares, so notify a night from one app
+      only.
+    - Spec: `docs/bankroll-merge.md` "Notify tap".
+    - Tests: `npm run test:notify-tap` (ports 4600-4609, also in `test:backers`). The guard views
+      `results-notify*` and `cash-notify*` are staged by `scripts/notify-states.mjs`, which never
+      lets a tap through.
+  - Tests: `npm run test:backers` (surface, rotation, parity, the Backers view, the Notify tap),
+    booting on ports 4540-4549 and 4600-4609.
   **Bankroll merge, Phase 3: series settlement** (`docs/bankroll-merge.md` §10; code in
   `lib/staking/settlement.js` and `settlement-routes.js`; the panel's logic in
   `vite-app/src/utils/staking-settlement.js`):
@@ -248,6 +279,16 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   old branches. Recovery: `git -C D:\projects\futuregame-solver checkout -- .`, then
   `New-Item -ItemType Junction -Path D:\projects\scheduler\solver -Target D:\projects\futuregame-solver\solver`.
 - `poker-tournaments.db` is untracked runtime state owned by the pm2 app. Never commit it.
+- ⚠️ **Scratch servers leak.** Every server test and guard run boots its own `server.js -r
+  ./test/stub-solver-preload.js`; an agent cut off mid-run, a shell job killed at its time limit, or a
+  test that dies before its teardown leaves that copy running, each holding a whole DB in memory. On
+  2026-10-14, 53 of them had piled up (RAM at 86%), which made later guards crash and re-run. **After any
+  test or guard work, kill them** (the pm2 app is never started with the stub, so it is untouched):
+
+  **PC (PowerShell):**
+  ```bash
+  Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -match 'stub-solver-preload' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+  ```
 - The MTT-feed mirror reconciles deletions: the push carries `feedVenues` (the series we
   still hold) and the receiver prunes feed rows outside it. Pruning **never** touches a row
   referenced by `user_schedules`, `tracking_entries`, `live_updates`, `schedule_conditions`,

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CURRENCY_CONFIG } from '../utils/utils.js';
 import { RANGES } from '../utils/bankroll-ledger.js';
+import { bbFigures, bbColumn, bbBasis, unitLabel } from '../utils/bb-hr.js';
 import {
   SECTIONS, OPEN_STORE_KEY, parseOpen, overviewTables, groupTable, ledgerScope, sameScope,
   fmtMoney, moneySign, fmtPct, fmtCount, fmtHours, fmtRatio, DASH,
@@ -15,8 +16,10 @@ import './bankroll-overview-tables.css';
  * chevron, and when closed its headline figure on the right):
  *   Summary   buy-ins, cash-outs, tips & costs, net, expenses & income, total result (= the hero's
  *             profit), money moved, the balance change
- *   Sessions  sessions / events, bullets, hours and $/h (cash), ROI (tournaments), won % / ITM,
- *             averages, biggest win and loss
+ *   Sessions  sessions / events, bullets, hours, $/h and bb/hr (cash), ROI (tournaments), won % / ITM,
+ *             averages, biggest win and loss. bb/hr (utils/bb-hr.js) is a row of its own under $/h:
+ *             "bb/hr" for no-limit and pot-limit sessions, a second row "BB/hr" only when limit
+ *             sessions qualify, "—" when none does; the two units are never added
  *   Games, Rooms   one row per game / room, cash and tournaments apart (report facts)
  *   Bankroll  balance, all-time peak, below it, deepest drawdown in the range, money moved, risk
  *   By month (By year for All)
@@ -47,10 +50,10 @@ const RANGE_TEXT = { ...Object.fromEntries(RANGES), all: 'All time' };
 const plural = (n, word) => `${fmtCount(n)} ${word}${n === 1 ? '' : 's'}`;
 
 // A figure cell: right-aligned, tabular; green / red only when it is signed money.
-function Fig({ v, text, toned, title, bold }) {
+function Fig({ v, text, toned, title, bold, cls }) {
   return (
     <span role="cell" title={title}
-      className={'an-cell an-td an-num an-clip ovt-fig' + (toned && v != null ? tone(v) : '') + (bold ? ' is-strong' : '')}>
+      className={'an-cell an-td an-num an-clip ovt-fig' + (toned && v != null ? tone(v) : '') + (bold ? ' is-strong' : '') + (cls ? ' ' + cls : '')}>
       {text}
     </span>
   );
@@ -151,6 +154,19 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
   const below = moneySign(B.below) > 0 ? B.below : 0;
   const dd = B.drawdown && moneySign(B.drawdown.amount) > 0 ? B.drawdown : null;
 
+  // bb/hr: one row per unit that has qualifying sessions (bb first); "—" on one bb/hr row when none does.
+  // A figure is toned by the sign it is drawn with ({ v } carries -1 / 0 / 1 into the same classes as money).
+  const bbFigs = bbFigures(X.cash.bbhr);
+  const bbRows = (bbFigs.length ? bbFigs : [null]).map((fg) => {
+    const tot = fg ? bbFigures(X.total.bbhr).find((x) => x.unit === fg.unit) : null;
+    const cell = (f) => (f ? { v: f.tone, text: f.text, toned: true, title: bbBasis(f) } : { text: DASH });
+    return (
+      <Row3 key={fg ? fg.unit : 'bb'} label={fg ? fg.label : unitLabel('bb')}
+        title={fg && fg.unit === 'BB' ? 'Limit games, in big bets won per hour' : 'Big blinds won per hour: the net of each session over its own big blind'}
+        cells={[cell(fg), { text: DASH }, cell(tot)]} />
+    );
+  });
+
   const extreme = (x) => (x ? { v: x.amount, text: sm(x.amount), toned: true, title: `${x.label}, ${fmtDate(x.date)}` } : { text: DASH });
 
   const body = {
@@ -189,6 +205,7 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
           <Row3 label="Hours" cells={[{ text: fmtHours(X.cash.hours) }, { text: fmtHours(X.tournaments.hours) }, { text: fmtHours(X.total.hours) }]} />
           <Row3 label={perHour} cells={[
             { v: X.cash.hourly, text: sm(X.cash.hourly), toned: true }, { text: DASH }, { v: X.total.hourly, text: sm(X.total.hourly), toned: true }]} />
+          {bbRows}
           <Row3 label="ROI" cells={[{ text: DASH }, { text: fmtPct(X.tournaments.roi, { sign: true }) }, { text: fmtPct(X.total.roi, { sign: true }) }]} />
           <Row3 label="Won % / ITM" title="Cash: winning sessions. Tournaments: cashes per entry (re-entries count), as in Analytics."
             cells={[{ text: fmtPct(X.cash.won) }, { text: fmtPct(X.tournaments.won) }, { text: fmtPct(X.total.won) }]} />
@@ -202,7 +219,9 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
           <Row3 label="Biggest win" cells={[extreme(X.cash.best), extreme(X.tournaments.best), extreme(X.total.best)]} />
           <Row3 label="Biggest loss" cells={[extreme(X.cash.worst), extreme(X.tournaments.worst), extreme(X.total.worst)]} />
         </div>
-        <p className="an-p ovt-note">Hours and {perHour} are cash only: a tournament result carries no playing time. ROI is
+        <p className="an-p ovt-note">Hours, {perHour} and bb/hr are cash only: a tournament result carries no playing time.
+          bb/hr is each session&apos;s net over its own big blind, over the hours; a session with no readable big blind in its
+          stakes is left out, and limit games are counted in big bets (BB/hr), never added to the big blinds. ROI is
           tournaments only. Hands are not recorded, so there is no {cfg.symbol}/100.</p>
       </>
     ),
@@ -289,44 +308,60 @@ function BRow({ label, note, text, v }) {
 }
 
 // Games / Rooms: cash sessions and tournaments in their own blocks (a cash rate is per hour, a
-// tournament's is ROI), each led by a head row keyed to its column colour.
+// tournament's is ROI), each led by a head row keyed to its column colour. The cash block carries
+// bb/hr beside $/h (utils/bb-hr.js bbColumn): a row with both units, which is rare, runs onto a
+// second 4r line for the big-bet figure (.is-2), so the two are never read as one.
 function Groups({ data, status, dim, scope, sm, perHour }) {
   if (!data) {
     return <p className="an-p ovt-note">{status === 'error' ? `The ${dim === 'game' ? 'games' : 'rooms'} could not load.` : 'Loading…'}</p>;
   }
   if (data.empty) return <p className="an-p ovt-note">No tournaments or cash sessions in this range.</p>;
   const what = dim === 'game' ? 'Game' : 'Room';
-  const block = (rows, type) => rows.length > 0 && (
-    <div className="ovt-table ovt-group" role="table" aria-label={`${what}s, ${type === 'cash' ? 'cash' : 'tournaments'}, ${scope}`}>
-      <div role="row" className="ovt-thead ovt-c5">
-        <span role="columnheader" className={'an-cell an-lbl an-lbl-3b ovt-th is-key ' + (type === 'cash' ? 'is-cash' : 'is-tourn')}>
-          <span>{type === 'cash' ? 'Cash' : 'Tournaments'}</span>
-        </span>
-        <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>{type === 'cash' ? 'Sessions' : 'Events'}</span></span>
-        <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>Hours</span></span>
-        <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span className={type === 'cash' ? 'ovt-unit' : undefined}>{type === 'cash' ? perHour : 'ROI'}</span></span>
-        <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>Total</span></span>
-      </div>
-      {rows.map((r) => (
-        <div key={r.key} role="row" className="ovt-row ovt-c5">
-          <span role="rowheader" className={'an-cell an-td an-clip ovt-lab' + (r.label == null ? ' is-muted' : '')} title={r.label || undefined}>
-            {r.label == null ? 'Not recorded' : r.label}
+  const block = (rows, type) => {
+    if (rows.length === 0) return false;
+    const cash = type === 'cash';
+    const col = cash ? bbColumn(rows.map((r) => r.bbhr)) : null;
+    return (
+      <div className="ovt-table ovt-group" role="table" aria-label={`${what}s, ${cash ? 'cash' : 'tournaments'}, ${scope}`}>
+        <div role="row" className={'ovt-thead ' + (cash ? 'ovt-c6' : 'ovt-c5')}>
+          <span role="columnheader" className={'an-cell an-lbl an-lbl-3b ovt-th is-key ' + (cash ? 'is-cash' : 'is-tourn')}>
+            <span>{cash ? 'Cash' : 'Tournaments'}</span>
           </span>
-          <Fig text={fmtCount(r.n)} />
-          <Fig text={fmtHours(r.hours)} />
-          {type === 'cash'
-            ? <Fig v={r.rate} text={sm(r.rate)} toned />
-            : <Fig text={fmtPct(r.rate, { sign: true })} />}
-          <Fig v={r.total} text={sm(r.total)} toned bold />
+          <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>{cash ? 'Sessions' : 'Events'}</span></span>
+          <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>Hours</span></span>
+          <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span className={cash ? 'ovt-unit' : undefined}>{cash ? perHour : 'ROI'}</span></span>
+          {cash && <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span className="ovt-unit">{col.label}</span></span>}
+          <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>Total</span></span>
         </div>
-      ))}
-    </div>
-  );
+        {rows.map((r) => {
+          const lines = cash ? col.lines(r.bbhr) : null;
+          return (
+            <div key={r.key} role="row" className={'ovt-row ' + (cash ? 'ovt-c6' : 'ovt-c5') + (lines && lines.length > 1 ? ' is-2' : '')}>
+              <span role="rowheader" className={'an-cell an-td an-clip ovt-lab' + (r.label == null ? ' is-muted' : '')} title={r.label || undefined}>
+                {r.label == null ? 'Not recorded' : r.label}
+              </span>
+              <Fig text={fmtCount(r.n)} />
+              <Fig text={fmtHours(r.hours)} />
+              {cash
+                ? <Fig v={r.rate} text={sm(r.rate)} toned />
+                : <Fig text={fmtPct(r.rate, { sign: true })} />}
+              {cash && <Fig v={lines[0].tone} text={lines[0].text} toned title={lines[0].unit ? bbBasis(r.bbhr[lines[0].unit]) : undefined} />}
+              <Fig v={r.total} text={sm(r.total)} toned bold />
+              {lines && lines.length > 1 && (
+                <Fig key="bb2" v={lines[1].tone} text={lines[1].text} toned cls="ovt-bb2" title={bbBasis(r.bbhr[lines[1].unit])} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
   return (
     <>
       {block(data.cash, 'cash')}
       {block(data.tournament, 'tournament')}
-      <p className="an-p ovt-note">Sorted by total. Hours are cash only: a tournament result carries no playing time.</p>
+      <p className="an-p ovt-note">Sorted by total. Hours are cash only: a tournament result carries no playing time.
+        bb/hr is each cash session&apos;s net over its own big blind, over the hours; a session with no readable big blind is left out.</p>
     </>
   );
 }

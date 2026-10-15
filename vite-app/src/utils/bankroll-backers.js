@@ -10,9 +10,12 @@
  *
  *   { backers: [{ id, name, stakes, openingCents, cumulativeCents, sessions, hours,
  *                 shares: [{ date, game, venue, hours, sessionResultCents, pct, shareCents }],
+ *                 played: [[game, hours, sessionResultCents], ...]   every event the page holds,
  *                 delivery: { sms, email }, link }] }
+ * `played` is for bb/hr alone (bbItems below): the player's blinds per hour over the same events
+ * the backer's page works it out from, with the page's own function (backer-page.js bbStats).
  */
-import { fmtCents, fmtSignedCents, fmtHours, fmtShort, plural, tone } from './backer-page.js';
+import { fmtCents, fmtSignedCents, fmtHours, fmtShort, plural, tone, bbStats } from './backer-page.js';
 
 export { fmtCents, fmtSignedCents, fmtHours, fmtShort, plural };
 
@@ -52,6 +55,7 @@ export function normalise(data) {
       date: text(s.date), game: text(s.game), venue: text(s.venue), hours: num(s.hours),
       sessionResultCents: num(s.sessionResultCents), pct: num(s.pct), shareCents: num(s.shareCents),
     })),
+    played: (Array.isArray(b.played) ? b.played : []).filter((p) => Array.isArray(p)).map((p) => [text(p[0]), num(p[1]), num(p[2])]),
     delivery: { sms: !!(b.delivery && b.delivery.sms), email: !!(b.delivery && b.delivery.email) },
     link: /^https:\/\//.test(text(b.link)) ? text(b.link) : '',
   }));
@@ -70,6 +74,19 @@ export function statItems(b) {
     { key: 'hours', text: fmtHours(b.hours) },
     { key: 'opening', text: `Opening ${fmtCents(b.openingCents)}` },
   ];
+}
+
+/**
+ * The card's second stats line: the player's bb/hr (BB/hr for limit games) over the backer's cash
+ * sessions, as the backer's page shows it. [{ key, text ("+3.4 bb/hr"), tone (' an-pos' | ' an-neg' | '') }];
+ * empty when no session names its big blind and has hours (no line is drawn, nothing is zero).
+ */
+export function bbItems(b) {
+  const events = ((b && b.played) || []).map(([game, hours, sessionResultCents]) => ({ game, hours, sessionResultCents }));
+  return bbStats(events).map((f) => ({
+    key: 'bb-' + f.unit, text: f.full, tone: f.tone === 'is-pos' ? ' an-pos' : f.tone === 'is-neg' ? ' an-neg' : '',
+    label: `${f.text} ${f.unit === 'BB' ? 'big bets' : 'big blinds'} per hour over ${f.n} ${f.n === 1 ? 'session' : 'sessions'}`,
+  }));
 }
 
 /** Whether texts and the weekly email are set up, in the words the card shows (and the longer

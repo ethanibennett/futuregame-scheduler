@@ -20,6 +20,8 @@
                    4r      hairline, then the stats line (Univers Condensed sm, the     |   the meta's line
                            tables' size), baseline on its line 3                       |
                    1r      bottom padding
+                 (a room with cash whose sessions name their big blind has a second 4r stats line
+                 under the first, bb/hr and BB/hr: 15r)
                  so the name's caps start about 1.6r down, and the stats' baseline sits on line 9:
                  3r under the hairline, 2r above the card's foot.
                  Columns inside 1g a side: name (the rest) | 1g | total (its own width rounded up
@@ -143,6 +145,11 @@
   font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text);
   font-variant-numeric: var(--num-tabular);
 }
+/* The second stats line (bb/hr, BB/hr): a room with cash whose sessions name their big blind. The same
+   4r line, seated the same (baseline on line 3), without a second hairline; the card grows by its 4r. */
+.bl-stats-bb { box-shadow: none; }
+.bl-card.has-bb { height: calc(var(--subrow) * 15); }
+.bl-item.is-open .bl-card.has-bb { height: auto; }
 .bl-sep { color: var(--text-muted); }
 .bl-stat.an-pos { color: var(--pos); }
 .bl-stat.an-neg { color: var(--neg); }

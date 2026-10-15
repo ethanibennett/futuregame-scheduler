@@ -1,15 +1,17 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
 import GridOverlay from './GridOverlay.jsx';
+import ThemeButton from './ThemeButton.jsx';
 import BackerChart from './BackerChart.jsx';
 import useBackerPush from '../hooks/useBackerPush.js';
 import useInkBalance from '../hooks/useInkBalance.js';
+import useThemeChoice from '../hooks/useThemeChoice.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { API_URL } from '../utils/api.js';
-import { VENUE_MAP, getVenueBrandColor } from '../utils/utils.js';
+import { VENUE_MAP, getVenueBrandColor, getVenueInfo, getStripAbbr } from '../utils/utils.js';
 import {
   summarize, groupByMonth, shareSeries, rangeOptions, stripFor, monthLabel, RANGE_NOUN,
-  fmtSignedCents, fmtHours, fmtDay, plural, tone,
+  fmtSignedCents, fmtHours, fmtDay, plural, tone, bbStats, eventBb,
 } from '../utils/backer-page.js';
 import './backer-page.css';
 
@@ -23,37 +25,31 @@ import './backer-page.css';
  * Phone first; on a desktop window the same 37g column, centred (.app-shell without is-desktop):
  * this is a page to read, one column wide.
  *
- *   top bar     the wordmark, "your action with Ethan Bennett", the notifications pill (8r)
+ *   top bar     the wordmark, "your action with Ethan Bennett", the notifications pill and the theme
+ *               button (8r)
  *   hero        the name (display face) and the stakes summary
- *   total       running total, signed and toned, over sessions · hours · opening (a 12r card)
+ *   total       running total, signed and toned, over sessions · hours · the player's bb/hr (BB/hr for
+ *               limit games; computed here from the feed's events, utils/bb-hr.js) · opening (a 12r card)
  *   graph       the share over time (BackerChart), with 1M / 3M / YTD / All when history allows
  *   sessions    month breaks in the Schedule's date-break language, sticky, each session an event
- *               card: the room's strip, the game, the date and hours, the result and the share
+ *               card: the room's strip, the game, the date, hours and bb/hr, the result and the share
  *
- * Themes: there are no settings here, so the page follows the device (prefers-color-scheme,
- * prefers-contrast), set before first paint by index.html's head script and kept in step below.
+ * Themes: the top bar carries the app's own theme button (ThemeButton, hooks/useThemeChoice.js: dark,
+ * dusk, light, cloudy, stored as localStorage['theme'] like the app's, so one device has one
+ * preference). With nothing stored the page follows the device (prefers-color-scheme); contrast
+ * always follows the device (prefers-contrast). Both are set before first paint by index.html's head
+ * script and kept in step by the hook and by useDeviceContrast below.
  * Arithmetic and formatting: utils/backer-page.js (tested). Layout: backer-page.css.
  */
 
-const THEME_META = { dark: '#111111', light: '#f5f5f5' };
-
-function useDeviceTheme() {
+function useDeviceContrast() {
   useLayoutEffect(() => {
     const root = document.documentElement;
-    const mq = (q) => (window.matchMedia ? window.matchMedia(q) : { matches: false, addEventListener() {}, removeEventListener() {} });
-    const light = mq('(prefers-color-scheme: light)');
-    const more = mq('(prefers-contrast: more)');
-    const apply = () => {
-      const theme = light.matches ? 'light' : 'dark';
-      root.setAttribute('data-theme', theme);
-      root.setAttribute('data-contrast', more.matches ? 'high' : 'normal');
-      const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', THEME_META[theme]);
-    };
+    const more = window.matchMedia ? window.matchMedia('(prefers-contrast: more)') : { matches: false, addEventListener() {}, removeEventListener() {} };
+    const apply = () => root.setAttribute('data-contrast', more.matches ? 'high' : 'normal');
     apply();
-    light.addEventListener('change', apply);
     more.addEventListener('change', apply);
-    return () => { light.removeEventListener('change', apply); more.removeEventListener('change', apply); };
+    return () => more.removeEventListener('change', apply);
   }, []);
 }
 
@@ -118,7 +114,7 @@ function PushPill({ push }) {
   );
 }
 
-function TopBar({ push }) {
+function TopBar({ push, theme }) {
   return (
     <header className="top-bar bp-top">
       <div className="top-bar-title">
@@ -127,7 +123,12 @@ function TopBar({ push }) {
             players after the bankroll merge, this comes from the feed. */}
         <small>your action with Ethan Bennett</small>
       </div>
-      {push && <PushPill push={push} />}
+      {/* The pill and the theme button, right-aligned on the 1g margin and centred on the bar's 4r
+          line; the button is last, so it holds still when the pill comes and goes. */}
+      <div className="bp-top-actions">
+        {push && <PushPill push={push} />}
+        <ThemeButton theme={theme.theme} nextThemeLabel={theme.nextThemeLabel} onToggle={theme.toggleTheme} />
+      </div>
     </header>
   );
 }
@@ -140,19 +141,31 @@ function SessionCard({ e }) {
   const result = Number(e.sessionResultCents) || 0;
   const pct = Number(e.pct) || 0;
   const pctText = (Math.round(pct * 100) / 100).toString();
+  // The player's bb/hr for this session, when its game names a big blind (utils/bb-hr.js).
+  const bb = eventBb(e);
+  // The strip runs down the card's left side, the room's short code in it, as on the Schedule
+  // (owner, 2026-10-14). A room VENUE_MAP doesn't name takes the Schedule's derived code
+  // (getVenueInfo); the full name is the line under the game, so nothing is lost.
+  const abbr = strip.abbr || (strip.name ? getVenueInfo(strip.name).abbr : null) || null;
   return (
     <li className="bp-card">
-      <div className={'bp-strip' + (strip.abbr ? '' : ' is-neutral')}
-        style={strip.abbr ? { background: getVenueBrandColor(strip.abbr) } : undefined}>
-        <span className="bp-strip-name">{strip.label}</span>
+      <div className={'cal-venue-strip bp-strip' + (abbr ? '' : ' is-neutral')} aria-hidden="true"
+        style={abbr ? { background: getVenueBrandColor(abbr) } : undefined}>
+        <span className="venue-strip-abbr">{abbr ? getStripAbbr(abbr) : ''}</span>
       </div>
       <div className="bp-card-body">
         <div className="bp-card-row">
           <span className="an-cell bp-game an-clip" title={e.game || ''}>{e.game || 'Session'}</span>
           <span className={'an-cell bp-share ' + tone(share)}>{fmtSignedCents(share)}</span>
         </div>
+        <div className="bp-card-row bp-card-row--one">
+          <span className="an-cell an-note an-clip" title={strip.label}>{strip.label}</span>
+        </div>
         <div className="bp-card-row">
-          <span className="an-cell an-note an-clip">{fmtDay(e.date)} · {fmtHours(e.hours)}</span>
+          <span className="an-cell an-note an-clip">
+            {fmtDay(e.date)} · {fmtHours(e.hours)}
+            {bb && <>{' · '}<span className={'bp-bb ' + bb.tone}>{bb.text}</span></>}
+          </span>
           <span className="an-cell an-note an-num">{pctText}% of {fmtSignedCents(result)}</span>
         </div>
       </div>
@@ -210,7 +223,8 @@ function Skeleton() {
 }
 
 export default function BackerPage({ token }) {
-  useDeviceTheme();
+  useDeviceContrast();
+  const theme = useThemeChoice({ followDevice: true });
   const shellRef = useRef(null);
   useScrollbarAllowance(shellRef);
   const toast = useToast();
@@ -242,7 +256,8 @@ export default function BackerPage({ token }) {
     const options = rangeOptions(events, today);
     const r = options.some(([k]) => k === range) ? range : 'all';
     const series = shareSeries(events, { base: sum.base, range: r, today });
-    return { events, sum, options, range: r, series, months: groupByMonth(events) };
+    // The player's bb/hr over the sessions the page holds (the newest 200), from the feed as it is.
+    return { events, sum, options, range: r, series, months: groupByMonth(events), bbs: bbStats(events) };
   }, [feed, range, today]);
 
   useEffect(() => {
@@ -262,7 +277,7 @@ export default function BackerPage({ token }) {
   } else if (!view) {
     body = <Skeleton />;
   } else {
-    const { events, sum, options, series, months } = view;
+    const { events, sum, options, series, months, bbs } = view;
     const name = feed.name || 'Your action';
     const baseNote = view.range !== 'all' ? 'start' : !sum.complete ? 'carried in' : sum.opening ? 'opening' : 'start';
     const label = view.range === 'all' ? 'Your share' : `Your share, ${RANGE_NOUN[view.range]}`;
@@ -278,9 +293,20 @@ export default function BackerPage({ token }) {
             <div className="an-cell an-lbl an-lbl-3">Running total</div>
             <div className={'an-cell bp-total-val ' + tone(sum.total)}>{fmtSignedCents(sum.total)}</div>
             <div className="an-cell an-note an-clip">
-              {events.length > 0
-                ? `${plural(sum.sessions, 'session')} · ${fmtHours(sum.hours)}${sum.opening ? ` · opening ${fmtSignedCents(sum.opening)}` : ''}`
-                : `Opening balance · no sessions yet`}
+              {events.length > 0 ? (
+                <>
+                  {`${plural(sum.sessions, 'session')} · ${fmtHours(sum.hours)}`}
+                  {/* The player's bb/hr (BB/hr for limit games), over the cash sessions that name a big blind. */}
+                  {bbs.map((f) => (
+                    <React.Fragment key={f.unit}>
+                      {' · '}
+                      <span className={'bp-bb ' + f.tone}
+                        title={`${plural(f.n, 'session')}, ${fmtHours(f.hours)}${sum.sessions > events.length ? `; the newest ${events.length} of ${sum.sessions}` : ''}`}>{f.full}</span>
+                    </React.Fragment>
+                  ))}
+                  {sum.opening ? ` · opening ${fmtSignedCents(sum.opening)}` : ''}
+                </>
+              ) : `Opening balance · no sessions yet`}
             </div>
           </section>
         )}
@@ -297,11 +323,8 @@ export default function BackerPage({ token }) {
                 <RangeStrip options={options} value={view.range} onChange={setRange} />
               )} />
 
-            <section className="bp-sessions" aria-labelledby="bp-sessions-h">
-              <div className="bp-section-head">
-                <h3 className="an-cell an-sec" id="bp-sessions-h">Sessions</h3>
-                <span className="an-cell an-note an-num">Newest first</span>
-              </div>
+            {/* No heading row: the month breaks lead straight in (owner, 2026-10-14). */}
+            <section className="bp-sessions" aria-label="Sessions, newest first">
               {months.map((g) => (
                 <div key={g.key} className="bp-month">
                   <MonthBreak g={g} />
@@ -319,15 +342,9 @@ export default function BackerPage({ token }) {
 
   return (
     <div className="app-shell bp-shell" ref={shellRef}>
-      <TopBar push={failed ? null : push} />
+      <TopBar push={failed ? null : push} theme={theme} />
       <main className="content-area bp-content">
         {body}
-        <footer className="bp-foot">
-          <p className="an-p">Private link: only someone with this address can see this page, so keep it to yourself.</p>
-          {push.installHint && (
-            <p className="an-p">On iPhone, add this page to your Home Screen (Share, then Add to Home Screen) to get a notification after each session.</p>
-          )}
-        </footer>
       </main>
       {gridOverlay && <GridOverlay showReadout={false} />}
     </div>

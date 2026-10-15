@@ -560,6 +560,29 @@ const stakingSettlement = require('./lib/staking/settlement');
 const STAKING_RULES = stakingSettlement.resolveRules(process.env.STAKING_SETTLEMENT_RULES || null);
 // The backer surface (feed, digest, delivery gate and sweep, link rotation): lib/backer-surface.js.
 const backerSurface = require('./lib/backer-surface');
+// The Notify tap: a result's backer shares, sent by the owner's tap and followed silently after
+// (lib/staking/notify.js; docs/bankroll-merge.md "Notify tap").
+const notifyTap = require('./lib/staking/notify');
+// Every write to a result runs this after its own write and before the save: a result some backer
+// was notified of carries its shares with it (owner Q2: nobody is told), a deleted one voids them.
+// A result nobody notified costs one indexed lookup and is never touched. A failure here is logged
+// and never fails the write it follows. The log names the result, never a backer or a token.
+function followShares(table, ids) {
+  let owned = null;
+  for (const raw of ids) {
+    const id = Number(raw);
+    if (!Number.isSafeInteger(id) || id <= 0) continue;
+    try {
+      if (ids.length > 1) { owned = owned || notifyTap.refsWithShares(db, table); if (!owned.has(id)) continue; }
+      const r = notifyTap.follow(db, { table, id }, { rates: exchangeRateCache.rates || FALLBACK_RATES });
+      if (r.revised || r.voided) {
+        console.log(`[backers] ${table} #${id} changed after its backers were notified: ${r.revised} share(s) followed it, ${r.voided} voided. Nobody was told.`);
+      }
+    } catch (err) {
+      console.error(`[backers] could not carry ${table} #${id}'s shares with it:`, err && err.message);
+    }
+  }
+}
 const { fmtSignedCents, fmtHours, escapeHtml } = backerSurface;
 const warnPreviousDashboardToken = makePreviousTokenWarner();
 
@@ -4800,9 +4823,17 @@ app.delete('/api/personal-event/:id', authenticateToken, requireRegistered, asyn
       return res.status(404).json({ error: 'Personal event not found' });
     }
 
+    // Its results stay behind with no event row, so they leave every list and the ledger: any of
+    // them some backer was notified of voids its shares (silently), as a deleted result does.
+    const orphanStmt = db.prepare('SELECT id FROM tracking_entries WHERE tournament_id = ?');
+    const orphans = [];
+    orphanStmt.bind([id]);
+    while (orphanStmt.step()) orphans.push(orphanStmt.getAsObject().id);
+    orphanStmt.free();
     db.run('DELETE FROM schedule_conditions WHERE tournament_id = ? AND user_id = ?', [id, req.user.id]);
     db.run('DELETE FROM user_schedules WHERE tournament_id = ? AND user_id = ?', [id, req.user.id]);
     db.run("DELETE FROM tournaments WHERE id = ? AND venue = 'Personal'", [id]);
+    followShares('tracking_entries', orphans);
 
     await saveDatabase();
     res.json({ message: 'Personal event deleted' });
@@ -6198,7 +6229,11 @@ bankrolls.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, r
   require('./lib/money-import/routes').mountRoutes(app, { ...deps, getOwnerId: () => HAM_OWNER_ID, getDashboardBaseUrl: () => DASHBOARD_BASE_URL });
 }
 // ── Cash game sessions (beta, app admins) ── lib/cash-sessions.js. /api/cash-sessions, not /api/cash (the watcher proxy).
-cashSessions.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, currencies: SUPPORTED_CURRENCIES, getRates: fetchExchangeRates });
+cashSessions.mountRoutes(app, {
+  getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, currencies: SUPPORTED_CURRENCIES, getRates: fetchExchangeRates,
+  // An edit, end or delete of a session some backer was notified of carries its shares (silently).
+  onResultChanged: (id) => followShares('cash_sessions', [id]),
+});
 // Expenses, income and trips (same beta gate) — lib/bankroll-transactions.js. After the line above.
 bankrollTransactions.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, currencies: SUPPORTED_CURRENCIES });
 // Reports: one fact per result / session / expense with its room, game, stakes, start and length,
@@ -6264,6 +6299,7 @@ app.post('/api/tracking', authenticateToken, requireRegistered, async (req, res)
         [numEntries || 1, cashed ? 1 : 0, finishPlace || null, cashAmount || 0, notes || null, existing.id, req.user.id]
       );
       if (bk.set) db.run('UPDATE tracking_entries SET bankroll_id = ? WHERE id = ? AND user_id = ?', [bk.value, existing.id, req.user.id]);
+      followShares('tracking_entries', [existing.id]); // a notified result's shares follow it, silently
       await saveDatabase();
       broadcastToBuddies(req.user.id, 'buddy-tracking', { buddyId: req.user.id, username: req.user.username, tournamentId });
       res.json({ message: 'Entry updated' });
@@ -6301,6 +6337,7 @@ app.put('/api/tracking/:entryId', authenticateToken, requireRegistered, async (r
       [numEntries || 1, cashed ? 1 : 0, finishPlace || null, cashAmount || 0, notes || null, entryId, req.user.id]
     );
     if (bk.set) db.run('UPDATE tracking_entries SET bankroll_id = ? WHERE id = ? AND user_id = ?', [bk.value, entryId, req.user.id]);
+    followShares('tracking_entries', [owned.id]); // a notified result's shares follow it, silently
     await saveDatabase();
     res.json({ message: 'Entry updated' });
   } catch (error) {
@@ -6313,6 +6350,8 @@ app.delete('/api/tracking/:entryId', authenticateToken, requireRegistered, async
   try {
     const { entryId } = req.params;
     db.run('DELETE FROM tracking_entries WHERE id = ? AND user_id = ?', [entryId, req.user.id]);
+    // Only when a row of the caller's went: its notified shares are voided (nobody is told).
+    if (db.getRowsModified() > 0) followShares('tracking_entries', [entryId]);
     await saveDatabase();
     res.json({ message: 'Entry removed' });
   } catch (error) {
@@ -6370,7 +6409,14 @@ app.delete('/api/tracking', authenticateToken, requireRegistered, async (req, re
     // Only touch the DB when there is something to remove, so a no-op reset
     // does not rewrite the database file.
     if (count > 0) {
+      // The ids first: a deleted result some backer was notified of voids its shares (silently).
+      const goneStmt = db.prepare(visibleRows);
+      const gone = [];
+      goneStmt.bind([req.user.id, ...bk.params]);
+      while (goneStmt.step()) gone.push(goneStmt.getAsObject().id);
+      goneStmt.free();
       db.run(`DELETE FROM tracking_entries WHERE user_id = ? AND id IN (${visibleRows})`, [req.user.id, req.user.id, ...bk.params]);
+      followShares('tracking_entries', gone);
       await saveDatabase();
     }
     res.json({ message: 'Results deleted', count, scope });
@@ -6752,6 +6798,15 @@ const stakingLimiter = rateLimit({
 require('./lib/staking/standing-routes').mountRoutes(app, {
   getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, requireRegistered, limiter: stakingLimiter,
   getOwnerId: () => HAM_OWNER_ID,
+  // The Notify tap (POST /api/staking/standing/notify): a non-USD result converts at these rates,
+  // and a recorded share is told to its backer through the gated senders below (lib/staking/notify.js
+  // calls this only where delivery is on; the senders check the gate again).
+  getRates: fetchExchangeRates,
+  deliverShare: async ({ token, sms, messages }) => {
+    const push = await sendBackerPush(token, messages.title, messages.body, `/b/${token}`);
+    const text = sms ? await sendBackerSms(sms, messages.sms) : 'none';
+    return { push, sms: text };
+  },
 });
 
 // ── Validation: check total action sold for a tournament doesn't exceed 100% ──

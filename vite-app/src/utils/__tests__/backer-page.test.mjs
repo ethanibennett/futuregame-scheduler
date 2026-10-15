@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   BACKER_TOKEN_RE, backerTokenFromPath, fmtCents, fmtSignedCents, tone, fmtHours, plural, fmtDay, fmtShort,
   monthLabel, chronological, newestFirst, summarize, groupByMonth, rangeFrom, rangeOptions, shareSeries,
-  stepGeometry, stripFor, ONLINE_ROOM,
+  stepGeometry, stripFor, ONLINE_ROOM, playerBbHr, bbStats, eventBb,
 } from '../backer-page.js';
 
 const ev = (date, shareCents, extra = {}) => ({ date, shareCents, ts: Date.parse(date + 'T20:00:00Z'), hours: 4, sessionResultCents: shareCents * 5, pct: 20, game: '5/5/10 PLO', venue: 'Borgata', ...extra });
@@ -169,4 +169,69 @@ test('strips: the room as logged, the curated colour when the venue list knows i
   assert.equal(stripFor(null, map).abbr, null);
   for (const r of ['ACR', 'GGPoker', 'PokerStars', 'BetMGM', 'ClubWPT', 'Phenom']) assert.ok(ONLINE_ROOM.test(r), r);
   for (const r of ['Borgata', 'Parx Casino', 'Bellagio', "Harrah's Philadelphia"]) assert.ok(!ONLINE_ROOM.test(r), r);
+});
+
+// ── bb/hr, the player's (utils/bb-hr.js) ──────────────────────────────────────────────────────
+test('bb/hr: the player\'s, over the sessions whose game names a big blind, from the feed\'s own fields', () => {
+  const events = [
+    ev('2026-10-01', 4000, { game: '2/5 NLH', hours: 4, sessionResultCents: 50000 }),    // +$500 at BB 5 = +100 bb
+    ev('2026-10-02', -1000, { game: '1/2 PLO', hours: 2, sessionResultCents: -20000 }),   // -$200 at BB 2 = -100 bb
+    ev('2026-10-03', 900, { game: 'PLO MTT', hours: 6, sessionResultCents: 450000 }),     // a tournament: no blind, out
+    ev('2026-10-04', 100, { game: '5/5/10 PLO', hours: 5, sessionResultCents: 25000 }),   // BB 5 (the second number): +$250 = +50 bb
+  ];
+  const [s] = bbStats(events);
+  assert.equal(s.unit, 'bb');
+  assert.equal(s.text, '+4.5');                       // (100 - 100 + 50) bb / 11 h
+  assert.equal(s.full, '+4.5 bb/hr');
+  assert.equal(s.tone, 'is-pos');
+  assert.equal(s.n, 3);
+  assert.equal(playerBbHr(events).BB, null);
+  assert.equal(bbStats(events).length, 1);
+});
+
+test('bb/hr: limit games are in big bets, shown beside the big blinds and never added to them', () => {
+  const events = [
+    ev('2026-10-01', 0, { game: '2/5 NLH', hours: 5, sessionResultCents: 25000 }),        // +50 bb / 5 h = 10
+    ev('2026-10-02', 0, { game: '4/8 LHE', hours: 4, sessionResultCents: 8000 }),         // +10 BB / 4 h = 2.5
+  ];
+  assert.deepEqual(bbStats(events).map((s) => [s.unit, s.full, s.tone]), [['bb', '+10.0 bb/hr', 'is-pos'], ['BB', '+2.5 BB/hr', 'is-pos']]);
+});
+
+test('bb/hr: nothing qualifying is no stat at all (never 0): tournaments, no blind in the text, no hours', () => {
+  assert.deepEqual(bbStats([]), []);
+  assert.deepEqual(bbStats(null), []);
+  assert.deepEqual(bbStats([ev('2026-10-01', 0, { game: 'NLH MTT', sessionResultCents: 9000 }), ev('2026-10-02', 0, { game: 'NLH', sessionResultCents: 9000 })]), []);
+  assert.deepEqual(bbStats([ev('2026-10-01', 0, { game: '2/5 NLH', hours: 0, sessionResultCents: 9000 })]), []);
+  assert.deepEqual(bbStats([ev('2026-10-01', 0, { game: '2/5 NLH', hours: null, sessionResultCents: 9000 })]), []);
+  assert.deepEqual(bbStats([ev('2026-10-01', 0, { game: '2/5 NLH', hours: 4, sessionResultCents: null })]), [], 'an unknown result is not a break-even one');
+});
+
+test('bb/hr: a losing player reads red with a true minus; a break-even one reads 0.0, unsigned and uncoloured', () => {
+  const [lose] = bbStats([ev('2026-10-01', 0, { game: '2/5 NLH', hours: 5, sessionResultCents: -25000 })]);
+  assert.equal(lose.full, '−10.0 bb/hr');
+  assert.equal(lose.tone, 'is-neg');
+  const [flat] = bbStats([ev('2026-10-01', 0, { game: '2/5 NLH', hours: 5, sessionResultCents: 0 })]);
+  assert.equal(flat.full, '0.0 bb/hr');
+  assert.equal(flat.tone, '');
+});
+
+test('bb/hr: the result is the PLAYER\'s, not the backer\'s share', () => {
+  // A 20% backer's share is $100 of a $500 result; the player's rate uses the $500.
+  const [s] = bbStats([ev('2026-10-01', 10000, { game: '2/5 NLH', hours: 4, pct: 20, sessionResultCents: 50000 })]);
+  assert.equal(s.text, '+25.0');
+});
+
+test('bb/hr per session line: a game that names its blind, a quarter hour or more', () => {
+  assert.deepEqual(eventBb(ev('2026-10-01', 0, { game: '2/5 NLH', hours: 4, sessionResultCents: 50000 })), { text: '+25.0 bb/hr', tone: 'is-pos' });
+  assert.deepEqual(eventBb(ev('2026-10-01', 0, { game: '4/8 LHE', hours: 4, sessionResultCents: -3200 })), { text: '−1.0 BB/hr', tone: 'is-neg' });
+  assert.equal(eventBb(ev('2026-10-01', 0, { game: 'PLO MTT', hours: 4, sessionResultCents: 50000 })), null);
+  assert.equal(eventBb(ev('2026-10-01', 0, { game: '2/5 NLH', hours: 0.1, sessionResultCents: 50000 })), null);
+  assert.equal(eventBb(null), null);
+});
+
+test('bb/hr: the feed is not touched (the parity tests compare it byte for byte): the figure is a function of what it carries', () => {
+  const feed = { events: [ev('2026-10-01', 0, { game: '2/5 NLH', hours: 4, sessionResultCents: 50000 })] };
+  const before = JSON.stringify(feed);
+  bbStats(feed.events); eventBb(feed.events[0]); summarize(feed);
+  assert.equal(JSON.stringify(feed), before);
 });

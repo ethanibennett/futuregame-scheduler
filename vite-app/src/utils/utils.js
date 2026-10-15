@@ -2092,11 +2092,8 @@ export function formatLiveUpdate(u) {
 }
 
 // ── Theme constants ──
-export const THEME_ORDER = ['dark', 'dusk', 'light', 'cloudy'];
-export const isDarkTheme = (t) => t === 'dark' || t === 'dusk';
-export const THEME_ICON = { dark: 'moon', dusk: 'sunset', light: 'sun', cloudy: 'cloud' };
-export const THEME_LABEL = { dark: 'Dark', dusk: 'Dusk', light: 'Light', cloudy: 'Cloudy' };
-export const THEME_META = { dark: '#111111', dusk: '#0d1525', light: '#f5f5f5', cloudy: '#cbcbcb' };
+// Defined in theme.js (pure, so node can test it, and shared with the backer page); re-exported here.
+export { THEME_ORDER, isDarkTheme, THEME_ICON, THEME_LABEL, THEME_META } from './theme.js';
 
 // Display-font options. SERIF_FONTS is every value that still resolves to real
 // CSS (helvetica keeps its [data-serif] rules but is not in the toggle cycle);

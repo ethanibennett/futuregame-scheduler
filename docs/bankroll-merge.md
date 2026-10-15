@@ -1,9 +1,11 @@
 # Bankroll merge: futurega.me becomes the one money store
 
 Status: **design** (2026-10-14); **Phase 1 built** on `feat/money-merge` (merged), **Phase 2 built**
-on `feat/money-merge-2` (merged), **Phase 3 built** on `feat/money-merge-3`, **Phase 4 built** in the
-dashboard repo on `feat/money-export`, **Phase 5 built** on `feat/money-merge-5` (merged), **Phase 6 built** on `feat/money-merge-6`, not yet merged (see
-"Phase 1: as built" to "Phase 6: as built" after the §15 table).
+on `feat/money-merge-2` (merged), **Phase 3 built** on `feat/money-merge-3` (merged), **Phase 4 built** in the
+dashboard repo on `feat/money-export` (merged and deployed, closed until LEDGER_TOKEN), **Phase 5 built** on
+`feat/money-merge-5` (merged; the pull is off until LEDGER_TOKEN) (see "Phase 1: as built" to "Phase 5: as
+built" after the §15 table). **The Notify tap is built ahead of Phase 7** on `feat/notify-tap` (merged; "Notify
+tap (built ahead of Phase 7)", after the Backers view). **Phase 6 built** on `feat/money-merge-6` (not yet merged; "Phase 6: as built").
 A buildable spec for moving the dashboard's money
 (dashboard.futurega.me, repo `wsop-console`) into this app (futurega.me, repo
 `futuregame-scheduler`), cut into phases small enough for one builder each.
@@ -792,6 +794,7 @@ from a fresh derivation. A feed buy-in change is the usual cause. Each line has 
 | POST | `/exclusions` | `{ agreementId \| 'all', ref: 'te:12' }`; DELETE to undo |
 | POST | `/events/:eventId/recalc` · DELETE `/events/:eventId` | §6.6 |
 | GET | `/preview?…` | cuts for an unsaved result |
+| POST | `/notify` | **built ahead of Phase 7, owner only**: `{ refTable, refId, preview, confirm?, skip? }`, one SAVED result's Backers block and the tap (see "Notify tap" after §15) |
 | GET | `/drift` · POST `/drift/:eventId/apply` | §6.6 |
 
 ---
@@ -1582,7 +1585,7 @@ judgment about money, posting or layout. The model policy (handoff, 2026-10-14) 
 | **4** | WC | **Built** (see "Phase 4: as built" below; dashboard branch `feat/money-export`, not merged). `GET /api/money-export` + `lib/shared-token.js` (`checkSharedToken`, the roster's check generalised) + tests; `LEDGER_TOKEN` declared in `render.yaml`, set by the owner | — | Sonnet |
 | **5** | sched | **Built** (see "Phase 5: as built" below). Import engine: fetch, stage, plan (§5 mapping, §9.1 scoring, §7.1 union, §5.8 opening and reconciliation with a `computeBankroll` port), decisions, commit, undo, delta; owner-only routes | 1, 2 | **Opus** |
 | **6** | sched | **Built** (see "Phase 6: as built" below). Import review UI (§9.3) + seed script + guard steps | 5 | **Opus** (grid seating and guard work has needed judgment on every bankroll tab) |
-| **7** | sched | Standing shares live, to §1.1: the **Notify action** creates a share (Q1: not on save); `syncSharesFor` in every write path only **follows or voids** a posted share (§6.5), silently (Q2); the overlap `ask` (Q7) and where its answer is stored; exclusions, revisions, recalc, drift, preview, cutover state and `PUT /api/bankrolls/money/cutover`, roster sync standing down | 1, 2 | **Opus** |
+| **7** | sched | Standing shares live, to §1.1: the **Notify action** creates a share (Q1: not on save); `syncSharesFor` in every write path only **follows or voids** a posted share (§6.5), silently (Q2); the overlap `ask` (Q7) and where its answer is stored; exclusions, revisions, recalc, drift, preview, cutover state and `PUT /api/bankrolls/money/cutover`, roster sync standing down. **Part built ahead** ("Notify tap (built ahead of Phase 7)" below): the Notify action, the silent follow and void in every result write path, revisions, and a Q7 ask that is a confirm. Phase 7 keeps its `fg-` event ids, and still owes: where the Q7 answer is stored, exclusions, recalc, drift, the money_settings / cutover gate, and the roster sync standing down | 1, 2 | **Opus** |
 | **8** | sched | Standing UI in the Staking tab: backers with stakes editor (from today / correct with preview; the game list is `classify.js` `GAMES`, Q8), opening, delivery, copy and rotate link, recorded shares with exclude / recalc / remove; the "Posts to backers" preview line on the result and cash forms and the Notify sheet (with the Q7 ask); guard steps | 7 | Sonnet |
 | **9** | sched | Owner API (§11.2-11.3, ported `normalizeSession` + tests) and deep links (§11.5) | 1, 7 | Sonnet |
 | **10** | sched | Money homes: fund bankroll target and progress (bankroll manager field + an Overview line), "Where's the money" (a seventh Overview section: locations, total, drift against the roll), tax set-aside line in the tax report | 1 | Sonnet |
@@ -2363,7 +2366,8 @@ row and through after its delete with every table byte for byte, a delta, both u
 
 The owner manages backers on the dashboard app, and none showed in the futurega.me web app. This
 shows them now, from data this app already holds and with no new table. **Read-only: no edit, no
-Notify.** Editing stays on the dashboard app until Phase 8 moves it here.
+Notify.** Editing stays on the dashboard app until Phase 8 moves it here. (A result's shares are sent
+from the result itself: see "Notify tap (built ahead of Phase 7)" below.)
 
 - **Route.** `GET /api/staking/standing/backers` (`lib/staking/standing-routes.js`), under the
   `/api/staking` admin gate and **owner only** (`HAM_OWNER_ID`, as `parity`): another admin gets 403.
@@ -2388,6 +2392,167 @@ Notify.** Editing stays on the dashboard app until Phase 8 moves it here.
   `/api/backer/:token/feed` for the same token under both settings of the switch;
   `vite-app/src/utils/__tests__/bankroll-backers.test.mjs`. Guard views: `bankroll-backers*` in
   `scripts/check-control-centring.mjs`, the `bankroll-backers` pass in `scripts/check-text-clipping.mjs`.
+
+### Notify tap (built ahead of Phase 7) (2026-10-14, branch `feat/notify-tap`)
+
+The owner asked for it on 2026-10-14: "Add the notify tap to admin accounts only." The owner sends a
+result's backer shares from futurega.me, as the dashboard app's Sessions edit sheet does
+(WC:`app/src/screens/BackersUI.tsx` `BackerNotify`). This is the part of Phase 7 that creates a share
+and the follow that keeps it true, built to §1.1. **Not merged, not deployed.** Editing backers stays
+on the dashboard app.
+
+**What exists**
+- **The route.** `POST /api/staking/standing/notify` (`lib/staking/standing-routes.js`), under the
+  `/api/staking` admin gate and **owner only** (`HAM_OWNER_ID`, as `parity` and `backers`). No session
+  gets 401. An ordinary user and another admin get 403. Another user's result gets 404, and so does
+  one that does not exist. A live cash session gets 409, `live: true`. A bad `refTable` or `refId`
+  gets 400. Only the commit is rate limited (the staking limiter), because the preview runs whenever
+  an edit form opens.
+  - Body: `{ refTable: 'tracking_entries' | 'cash_sessions', refId, preview, confirm?, skip? }`.
+    `preview` defaults to true. The client sends a reference and **never a figure**. A
+    `shareCents` or `pct` in the body is ignored, and the tests prove it.
+  - The answer (the Backers block): `{ result: { refTable, refId, kind, date, game, venue, hours,
+    currency, nativeCents, resultCents, rate, format, channel }, backers: [{ key, name, pct,
+    shareCents, resultCents, status: 'new' | 'sent', sentAt, sentShareCents, updated, warnings }],
+    pending, sent, needsConfirm, state: 'none' | 'preview' | 'partial' | 'sent', rosterSize,
+    delivery: 'on' | 'off' }`, and after a commit also `{ sentNow, already, results: [{ key, name,
+    pushed, subs, sms }] }`.
+  - **No token, no event id and no phone number is ever in it.** A backer is named by `key`: the
+    roster record's id, or `b<backers.id>`.
+- **`lib/staking/notify.js`.** It holds `readResult`, `stakedBackers`, `buildBlock` / `preview`,
+  `commitWrite`, `deliver`, `follow` and `refsWithShares`.
+- **Who is staked.** The backers whose page this app serves:
+  - **The synced roster.** These are `console_records`, `store = 'backers'`, `deleted = 0`; the first
+    live record for a token wins, as for the page. Each brings the dashboard's undated stakes, its
+    `delivery.sms` and its `opening`.
+  - **Under `BACKER_PAGE_SOURCE=sql`,** every `backers` row of the owner's that owns a
+    `public_token`. Each brings its standing agreements with their dated stakes and exclusions, its
+    `notify_sms` with a phone, and the agreements' openings. Such a row decides for its own token, as
+    `buildFeed` does.
+- **The figures.** All of them come from `lib/staking/classify.js` and `lib/staking/standing.js`.
+  - The result is classified exactly (Q8). `resultCuts` picks the stake (`matchStake`: exact game 2,
+    exact channel 1), and `shareCents` gives the share.
+  - `resultCents` is the result's net in USD cents. A tournament's net is the ledger's,
+    `cash − buy-in × bullets`. A cash session's net is after tips and session expenses (Q12):
+    `cash-out − buy-in − tips − expenses`.
+  - Another currency is converted with `usdCents` at the server's cached rate, and the answer
+    carries `currency`, `nativeCents` and `rate`.
+  - The game reads the dashboard's way: "NLH MTT" for a tournament, "2/5 NLH" for a cash game. A game
+    `classify.js` calls `other` keeps its own words ("LHE MTT").
+- **The event.** Each share is a `backer_events` row:
+  - the id is `<token>:<session>`, with the session `fg-te-<id>` or `fg-cs-<id>`;
+  - `source = 'ledger'`, with `ref_table` and `ref_id` set, and `agreement_id` and `stake_id` for a
+    standing backer;
+  - the page's fields: `date`, `game`, `venue`, `hours`, `session_result_cents`, `pct`, `share_cents`;
+  - `notified_share_cents` and `notified_at` set at the tap;
+  - and a `post` row in `backer_event_revisions`, whose `note` holds the basis as JSON (format,
+    channel, date, currency, rate, native cents). `backer_public` takes the name, as the relay does.
+- **The tap.** It records the shares of every staked backer not yet sent this result, in one
+  savepoint, and saves. Then it delivers through the gated `sendBackerPush` and `sendBackerSms`,
+  once per backer, with the relay's own wording (`shareMessages`).
+  - Where delivery is off, `deliver` is never called and the answer says `delivery: 'off'`.
+  - Everything is saved before anyone is messaged, so a crash mid-delivery cannot lead to a second
+    send.
+  - **A second tap on an unchanged result writes and sends nothing** and answers `already: true`.
+- **Overlap with the dashboard.** A new share is **flagged** when the same backer already has a
+  dashboard-era share (`source = 'dashboard'`, a session id not starting with `fg-`) on the result's
+  date. The preview shows it on that backer's row.
+- **Q7.** A new share is also flagged when the result's tournament is in an active series agreement
+  (a `backer_event_status` row) whose backer has the **same name** (case and spaces ignored), or
+  the same `backers.id`. The series `backers` are not linked to the roster's backers yet; **the real
+  link comes with the import** (Phase 5 gives each a `public_token`), and then this is by id alone.
+- **The confirm.** A commit that would send a flagged share answers **409** (`needsConfirm`) and
+  writes nothing until the owner chooses:
+  - `confirm: true`: "Send anyway" sends them all;
+  - `skip: [keys]`: "Send the others" sends only the unflagged; the flagged stay "Not sent" and are
+    asked about again (Q7's answer is not stored yet);
+  - Cancel sends nothing.
+- **Follow-ups, silent (Q2).** `follow(db, ref)` runs after every write to a result, before the save:
+  - `PUT /api/tracking/:id`, the `POST /api/tracking` upsert of an existing entry,
+    `DELETE /api/tracking/:id`, and the bulk `DELETE /api/tracking`;
+  - the Personal-event delete, whose orphaned results leave every list;
+  - and the cash-session edit, end and delete (`lib/cash-sessions.js`, `deps.onResultChanged`).
+  - A result with no ledger share costs one indexed lookup and is never touched.
+  - **A notified result that changed** has each share re-derived (a `revise` revision, `revised_at`
+    set), keeping the pct and the exchange rate it was sent at.
+  - **A notified result that is gone** has its shares voided: the event is deleted, so the page's
+    running total drops, and a `void` revision is kept.
+  - `notified_*` is never touched: it is what the backer was told, and the block shows "Updated"
+    where `share_cents` has moved from it.
+  - Nothing is sent. The log names the result and the counts, never a backer or a token.
+- **UI.** `components/BackerNotify.jsx` (`backer-notify.css`, `utils/backer-notify.js`) shows the
+  SAVED result. It sits under a tournament result's edit form (TrackingView, admins, lazy) and on a
+  cash session's page and edit screen (CashSessions).
+  - It has a title ("Backers · NLH MTT"), a row per backer (name, share, "20% of +$1,240 · Not sent"
+    or "Sent Oct 14", plus "· Updated" once moved), one line per warning, and a note on what the tap
+    does where it is.
+  - Notify (13g × 5r) sends the shares not sent yet.
+  - The confirm is its own row: Send anyway (11g) | Send the others (12g) | Cancel (8g), 33g in all.
+  - No stake matched: "No backers staked in Razz MTT."
+  - **Any answer but a 200** (another admin, a live session) **draws nothing**, as does an account
+    with no backers at all.
+- **Tests.**
+  - `test/notify-tap.test.js` (`npm run test:notify-tap`, also in `test:backers`; ports 4600-4609,
+    26 cases). Web push and Twilio are stubbed by `test/stub-delivery-preload.js`, which logs every
+    attempt and lets nothing leave the machine, and the push and SMS settings get made-up values so
+    only `BACKER_DELIVERY` decides.
+  - It covers the gate and owner scoping, preview and commit, idempotency, an edit (silent, with a
+    revision) and a delete (void) after the tap, the overlap and series confirms and "Send the
+    others", the cash net after tips, a EUR result, none staked, and the page and Backers view after
+    the tap. It shows no push or SMS attempted under `BACKER_DELIVERY=0`, and exactly one per backer
+    under `=1`. It also covers `BACKER_PAGE_SOURCE=sql` and, in process, the kept rate and a
+    reclassification void.
+  - `vite-app/src/utils/__tests__/backer-notify.test.mjs` tests the wording.
+- **Guards.** `check-control-centring.mjs` has the views `results-notify`, `-sent`, `-warning`,
+  `-none`, `cash-notify`, `-sent`, `-warning` and `cash-notify-edit`. `check-text-clipping.mjs` has
+  passes `results-notify` and `cash-notify` (previewed, sent, warning, none, long). The previewed
+  state is the server's real answer. The rest are staged by `scripts/notify-states.mjs`, which
+  answers the block's request in the page and refuses any commit, so **no guard ever notifies
+  anyone**.
+
+**Where it differs from the spec, and why**
+1. **Event ids are `fg-te-<id>` / `fg-cs-<id>`, not §6.5's `te:<id>`.** That is the brief's choice.
+   The dashboard's session ids are UUIDs and `chat-<sha1>`, and neither can start with `fg-`. Phase 7
+   keeps these ids, because the rows exist once the tap is used.
+2. **It is not gated by `money_settings.posting` or the cutover state**, which §1.1 Q1 has gating the
+   Notify action. Nothing sets `posting` before Phase 7, and the owner asked for the tap now. The
+   double-posting the cutover order prevents is covered, while both apps can notify, by the overlap
+   confirm, in one direction only (see the first trap). Phase 7 adds the gate with the cutover.
+3. **Delivery happens at the tap, not by the sweep.** The rows are born with `notified_*` set, and
+   the sweep takes only `notified_at IS NULL` (and only with posting on), so it never sends one of
+   these, before or after an edit.
+4. **The roster's stakes go through Q8's exact-game match.** The dashboard's own Notify matched by
+   its families. So a roster stake of "PLO" no longer covers PLO5, PLO6 or Big O, and "Mixed" covers
+   only a result that reads as a plain mix (HORSE and the N-game mixes are games of their own). The
+   preview shows exactly who matched before anything is sent.
+5. **`follow` keeps the pct and the rate a share was sent at.**
+   - It re-matches only when the game or channel changes, or the date for a backer whose stakes are
+     dated. It voids, with cause `reclassified`, when no stake covers the result any more.
+   - A share follows the result, not the exchange rate, and a roster backer's later stake edits never
+     rewrite a night already sent. The basis lives in the revision's `note`, because `backer_events`
+     has no column for it.
+6. **The overlap is the same date and the same backer.** A second session that night (a tournament
+   and a cash game) is flagged too; "Send anyway" is the right answer then.
+7. **A tournament's hours** are `session_extras.hours`, else 0 (the page shows none, the push says
+   "0h"). A cash session's come from its start and end.
+8. **What it does not follow.** The admin event editor (`PUT /api/tournaments/:id`) and the feed are
+   not owner writes (§6.5), so they do not follow. The drift report is still Phase 7.
+
+**Not built, on purpose:** exclusions, recalc, drift, storing the Q7 answer, the posting and cutover
+gate, the roster sync standing down, and §6.5's "Posts to backers" line on an UNSAVED form (the block
+reads the saved result).
+
+**Traps and things the owner should know**
+- **Both apps can notify the same night, and only one of them checks.** The tap flags a share the
+  dashboard already sent that date. The dashboard's Notify knows nothing of this app's shares: its
+  `wsop-notified-sessions` is its own, and the relay inserts under its own session id. So a night
+  notified here first and then from the dashboard would reach the backer twice, and count twice on
+  their page. **Once the tap is in use, notify each night from one app only;** the clean rule is
+  this app for everything logged here.
+- **Notify on the Windows box records into the box's own database** and messages nobody (delivery
+  is off there, and the block says so). A backer's real page is production's, so tap on futurega.me.
+- **Delete a notified result only when it should leave the backer's page too.** The shares are
+  voided silently, and only re-logging and tapping again puts them back.
 
 ---
 

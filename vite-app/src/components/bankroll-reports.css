@@ -13,7 +13,7 @@
      bar        Filters 8g | 1g | summary 17g | 1g | Clear 8g, 5r
      picker     3 x 11g chips, 4r, 1r between rows
      table      13g | 4g | 9g | 9g; head 3r, rows 5r (4r text, 1r bar),
-                total 4r
+                total 4r; a per-hour table 12g | 3g | 7g | 7g | 6g with bb/hr
      filters    chips 4r in 4 x 8g, 3 x 11g or 2 x 17g, 1g / 1r gaps
    ================================================================== */
 
@@ -39,6 +39,14 @@
 /* Table. The head reuses .an-row.is-head (3r, hairline); rows are 5r: the text line in the top 4r,
    the bar in the 1r under it. */
 .br-cols { grid-template-columns: calc(var(--gu) * 13) calc(var(--gu) * 4) calc(var(--gu) * 9) calc(var(--gu) * 9); }
+/* A per-hour table (every row cash): bb/hr beside Per hour, 12g | 3g | 7g | 7g | 6g. A row holding both
+   units runs onto a second 4r line (the big-bet figure under the big-blind one); its bar moves down. */
+.br-cols-bb { grid-template-columns: calc(var(--gu) * 12) calc(var(--gu) * 3) calc(var(--gu) * 7) calc(var(--gu) * 7) calc(var(--gu) * 6); }
+.br-unit { text-transform: none; }
+.br-row.is-2 { grid-template-rows: calc(var(--subrow) * 4) calc(var(--subrow) * 4) var(--subrow); height: calc(var(--subrow) * 9); }
+.br-row.is-2 .br-track { grid-row: 3; }
+.br-total.is-2 { height: calc(var(--subrow) * 8); }
+.br-bb2 { grid-row: 2; grid-column: 5; }
 .br-table { margin-top: var(--subrow); }
 .br-table + .an-p { margin-top: var(--subrow); }
 .br-row {

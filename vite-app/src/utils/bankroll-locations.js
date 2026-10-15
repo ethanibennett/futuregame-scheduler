@@ -10,6 +10,10 @@
 //   entries   cash sessions + tournament BULLETS (a re-entry is an entry, as the trackers count)
 //   hours     cash hours only (a tournament fact has no length); null when the room has no cash
 //   hourly    cash profit / cash hours
+//   bbhr      cash only: { bb, BB } (utils/bb-hr.js), each session's net over its own big blind,
+//             over the hours of the sessions that have one; limit games in big bets (BB), never
+//             added to the big blinds. null for a room with no cash at all, a unit null when no
+//             session of that kind qualifies. The card's own second stats line.
 //   roi       tournament profit / tournament cost (buy-ins, re-entries included)
 //   won       per ENTRY, over the same entries the card counts (owner, 2026-10-13: the app's one
 //             ITM rule — lib/analytics.js, the Analytics tab, the Overview's Sessions table):
@@ -25,6 +29,8 @@
 //                                       no break-even line at 50%.
 //   total     every result, in the display currency (the facts are already converted)
 
+import { bbAccumulator, bbFigures, bbBasis } from './bb-hr.js';
+
 export const MINUS = '−';
 export const SORTS = [['result', 'Result'], ['entries', 'Entries'], ['hours', 'Hours'], ['name', 'Name']];
 const SORT_KEYS = new Set(SORTS.map((s) => s[0]));
@@ -37,7 +43,7 @@ const inWindow = (date, from, to) => (!from || date >= from) && (!to || date <= 
 
 /**
  * Group prepared facts by room. `from` / `to` (YYYY-MM-DD, inclusive, null = open) bound the dates.
- * → [{ key, label, total, entries, hours, hourly, roi, won, wonKind, format, currencies, kinds,
+ * → [{ key, label, total, entries, hours, hourly, bbhr, roi, won, wonKind, format, currencies, kinds,
  *      cash: { n, hours, profit, wins }, tournament: { n, bullets, cost, profit, cashes }, results }]
  * in no particular order (sortLocations orders them). `results` are the room's facts, newest first.
  */
@@ -52,7 +58,7 @@ export function buildLocations(facts, { from = null, to = null } = {}) {
         key, label: key ? String(f.room).trim() : NO_ROOM_LABEL, total: 0,
         cash: { n: 0, hours: 0, profit: 0, wins: 0 },
         tournament: { n: 0, bullets: 0, cost: 0, profit: 0, cashes: 0 },
-        live: 0, online: 0, cur: new Map(), results: [],
+        live: 0, online: 0, cur: new Map(), results: [], bb: bbAccumulator(),
       };
       groups.set(key, g);
     }
@@ -61,6 +67,8 @@ export function buildLocations(facts, { from = null, to = null } = {}) {
     if (f.kind === 'cash') {
       const c = g.cash;
       c.n++; c.hours += Number(f.hours) > 0 ? Number(f.hours) : 0; c.profit += p; if (p > 0) c.wins++;
+      // bb/hr: the net in the session's OWN money (native_profit) over its own big blind.
+      g.bb.add({ game: f.game, stakes: f.stakes, net: f.native_profit == null ? null : Number(f.native_profit), hours: f.hours });
     } else {
       const t = g.tournament;
       const bullets = Number(f.bullets) > 0 ? Number(f.bullets) : 1;
@@ -86,6 +94,7 @@ export function buildLocations(facts, { from = null, to = null } = {}) {
       key: g.key, label: g.label, total: g.total, entries,
       hours: c.n ? c.hours : null,
       hourly: c.hours > 0 ? c.profit / c.hours : null,
+      bbhr: c.n ? g.bb.result() : null,
       roi: t.n && t.cost > 0 ? t.profit / t.cost : null,
       won, wonKind,
       format: g.live && g.online ? 'mixed' : g.online ? 'online' : 'live',
@@ -201,6 +210,19 @@ export function statItems(loc, cur) {
       tone: w.judged ? (loc.won >= 0.5 ? 1 : -1) : 0 });
   }
   return out;
+}
+
+/**
+ * The card's second stats line, for a room with cash: bb/hr (and BB/hr for limit games) when some
+ * session has a readable big blind and hours — [{ key, text ("+3.4 bb/hr"), tone, label }], bb
+ * first. Empty (no line drawn) otherwise, as a room without cash hours draws no $/h. The cash part
+ * only: a tournament has no big blind.
+ */
+export function bbItems(loc) {
+  return bbFigures(loc && loc.bbhr).map((f) => ({
+    key: 'bb-' + f.unit, text: f.full, tone: f.tone,
+    label: `${f.text} ${f.unit === 'BB' ? 'big bets' : 'big blinds'} per hour, over ${bbBasis(loc.bbhr[f.unit])}`,
+  }));
 }
 
 /**

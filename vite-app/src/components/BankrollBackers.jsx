@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { API_URL } from '../utils/api.js';
 import { getToday } from '../utils/utils.js';
 import {
-  normalise, displayName, stakesLine, statItems, deliveryText, shareRow, moreLine, listSummary, toneClass,
+  normalise, displayName, stakesLine, statItems, bbItems, deliveryText, shareRow, moreLine, listSummary, toneClass,
   fmtSignedCents, plural,
 } from '../utils/bankroll-backers.js';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -16,7 +16,8 @@ import './bankroll-backers.css';
  * The owner's backers, which until the bankroll merge's Phase 8 are managed on the dashboard app
  * and showed nowhere in this one. One card per backer, in the Locations card's anatomy
  * (bankroll-locations.css): the name, the stakes in force under it, the running total at the right
- * (green up, red down), then one line of sessions, hours and the opening balance. Under the card,
+ * (green up, red down), then one line of sessions, hours and the opening balance, and under it the
+ * player's bb/hr (BB/hr for limit games) over those sessions when they name a big blind. Under the card,
  * Copy link and Open page (the backer's /b/ page), and whether texts and the weekly email are set
  * up. Tap the card for the last ten shares, newest first.
  *
@@ -25,8 +26,8 @@ import './bankroll-backers.css';
  * page shows; nothing is added up or rounded here (utils/bankroll-backers.js only words it). The
  * server never sends a phone number or an address, only whether each is on file.
  *
- * No edits and no Notify: adding, editing and notifying backers stays on the dashboard app until
- * the merge moves it here.
+ * No edits and no Notify here: a result's shares are sent from that result (components/BackerNotify.jsx,
+ * the Notify tap); adding and editing backers stays on the dashboard app until the merge moves it here.
  *
  * Layout (35g content; bankroll-backers.css lists every row): the card as Locations' (11r), an
  * actions row of 6r (a 1r gap, 4r buttons, a 1r gap), and an open card's share rows of 7r.
@@ -55,11 +56,13 @@ function BackerCard({ b, open, onToggle, thisYear, onCopy }) {
   const id = 'bb-shares-' + b.id.replace(/[^\w-]+/g, '-');
   const name = displayName(b);
   const items = statItems(b);
+  // The player's bb/hr (BB/hr for limit games) over this backer's sessions, as their page shows it.
+  const bbs = bbItems(b);
   const delivery = deliveryText(b.delivery);
   const more = moreLine(b);
   return (
     <li className={'bl-item bb-item' + (open ? ' is-open' : '')}>
-      <button type="button" className="bl-card" aria-expanded={open} aria-controls={open ? id : undefined} onClick={onToggle}>
+      <button type="button" className={'bl-card' + (bbs.length ? ' has-bb' : '')} aria-expanded={open} aria-controls={open ? id : undefined} onClick={onToggle}>
         <span className="bl-head">
           <span className={'an-cell bl-name an-clip' + (b.name ? '' : ' is-none')} title={name}>{name}</span>
           <span className="an-cell bl-meta an-clip" title={stakesLine(b)}>{stakesLine(b)}</span>
@@ -75,6 +78,16 @@ function BackerCard({ b, open, onToggle, thisYear, onCopy }) {
             </React.Fragment>
           ))}
         </span>
+        {bbs.length > 0 && (
+          <span className="an-cell bl-stats bl-stats-bb an-clip">
+            {bbs.map((it, i) => (
+              <React.Fragment key={it.key}>
+                {i > 0 && <span className="bl-sep" aria-hidden="true">{' • '}</span>}
+                <span className={'bl-stat' + it.tone} aria-label={it.label}>{it.text}</span>
+              </React.Fragment>
+            ))}
+          </span>
+        )}
       </button>
       <div className="bl-pager bb-actions">
         <button type="button" className="bk-btn bl-more" disabled={!b.link} onClick={() => onCopy(b)}
@@ -151,8 +164,8 @@ export default function BankrollBackers({ bk }) {
     <section className="bd-section bl-locations bb-backers" aria-labelledby="bb-title">
       <h3 className="an-cell an-sec" id="bb-title">Backers</h3>
       <p className="an-p bb-note">
-        Read-only. Add, edit and notify backers on the dashboard app until the bankroll merge moves that here.
-        Each card shows what that backer's page shows.
+        Read-only. Notify a result's backers from its edit form; add and edit backers on the dashboard app
+        until the bankroll merge moves that here. Each card shows what that backer's page shows.
       </p>
 
       {state.status === 'error' && (

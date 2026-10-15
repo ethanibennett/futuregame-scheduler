@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { stepGeometry, fmtSignedCents, fmtShort } from '../utils/backer-page.js';
 
 /**
@@ -16,6 +16,10 @@ import { stepGeometry, fmtSignedCents, fmtShort } from '../utils/backer-page.js'
  *   - No text inside the plot: every label sits in a whole-r row above or below it, seated on its
  *     line (the head row and the foot row; analytics.css an-cell).
  *
+ *   - Tap, drag or hover across the plot to read one session (owner, 2026-10-14): the head row then
+ *     names it (date · game) and shows its result, and a hairline and a dot mark its step. The
+ *     arrow keys do the same; Escape, a tap elsewhere or the pointer leaving puts the range back.
+ *
  * The SVG's units are the grid's: x in g (35, the content width), y in r (the plot's height), so
  * the dot is placed in g and r with no conversion.
  */
@@ -24,13 +28,40 @@ const H = 16;
 
 export default function BackerChart({ series, label, today, baseNote = 'start', control = null }) {
   const thisYear = today ? Number(String(today).slice(0, 4)) : null;
+  const plotRef = useRef(null);
+  const [sel, setSel] = useState(null);   // the index of the session being read, or null
+  useEffect(() => { setSel(null); }, [series]);
+  // A tap anywhere else lets go of the session.
+  useEffect(() => {
+    if (sel == null) return undefined;
+    const off = (ev) => { if (plotRef.current && !plotRef.current.contains(ev.target)) setSel(null); };
+    document.addEventListener('pointerdown', off);
+    return () => document.removeEventListener('pointerdown', off);
+  }, [sel]);
   if (!series) return null;
+  const n = series.points.length;
+  const pick = (ev) => {
+    const box = plotRef.current && plotRef.current.getBoundingClientRect();
+    if (!box || !box.width) return;
+    setSel(Math.min(n - 1, Math.max(0, Math.floor(((ev.clientX - box.left) / box.width) * n))));
+  };
+  const onKey = (ev) => {
+    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+      ev.preventDefault();
+      const step = ev.key === 'ArrowLeft' ? -1 : 1;
+      setSel((i) => (i == null ? (step < 0 ? n - 1 : 0) : Math.min(n - 1, Math.max(0, i + step))));
+    } else if (ev.key === 'Escape') setSel(null);
+  };
   const geo = stepGeometry(series, { w: W, h: H, inset: 1 });
   const d = geo.line.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(3)},${y.toFixed(3)}`).join(' ');
   // Close the area along the baseline.
   const area = `${d} L${W},${geo.baseY.toFixed(3)} L0,${geo.baseY.toFixed(3)} Z`;
   const up = series.change > 0 ? 'is-pos' : series.change < 0 ? 'is-neg' : '';
   const [dx, dy] = geo.last;
+  const p = sel != null ? series.points[sel] : null;
+  // The step's top: the line's vertex after the session's jump (stepGeometry pushes two per session).
+  const [sx, sy] = p ? geo.line[2 + 2 * sel] : [0, 0];
+  const pTone = p ? (p.share > 0 ? 'is-pos' : p.share < 0 ? 'is-neg' : '') : '';
   const aria = `${label}: from ${fmtSignedCents(series.start)} on ${fmtShort(series.first, thisYear)} to ${fmtSignedCents(series.end)} `
     + `on ${fmtShort(series.last, thisYear)}, over ${series.n} ${series.n === 1 ? 'session' : 'sessions'}; `
     + `high ${fmtSignedCents(series.hi)}, low ${fmtSignedCents(series.lo)}`;
@@ -38,10 +69,23 @@ export default function BackerChart({ series, label, today, baseNote = 'start', 
   return (
     <div className="bp-chart-block">
       <div className="bp-chart-head">
-        <span className="an-cell an-sec an-clip">{label}</span>
-        <span className={'an-cell an-val bp-chart-change ' + up}>{fmtSignedCents(series.change)}</span>
+        {p ? (
+          <>
+            <span className="an-cell an-sec an-clip">{fmtShort(p.date, thisYear)} · {p.game || 'Session'}</span>
+            <span className={'an-cell an-val bp-chart-change ' + pTone}>{fmtSignedCents(p.share)}</span>
+          </>
+        ) : (
+          <>
+            <span className="an-cell an-sec an-clip">{label}</span>
+            <span className={'an-cell an-val bp-chart-change ' + up}>{fmtSignedCents(series.change)}</span>
+          </>
+        )}
       </div>
-      <div className="bp-chart">
+      <div className="bp-chart" ref={plotRef} tabIndex={0}
+        aria-label={`${label}: tap or use the arrow keys to read each session`}
+        onPointerDown={pick} onPointerMove={(ev) => { if (ev.pointerType === 'mouse' || ev.buttons) pick(ev); }}
+        onPointerLeave={(ev) => { if (ev.pointerType === 'mouse') setSel(null); }}
+        onKeyDown={onKey}>
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={aria}>
           <defs>
             <clipPath id="bp-above"><rect x="0" y="0" width={W} height={geo.baseY} /></clipPath>
@@ -54,6 +98,13 @@ export default function BackerChart({ series, label, today, baseNote = 'start', 
         </svg>
         <span className={'bp-dot ' + up} aria-hidden="true"
           style={{ left: `calc(var(--gu) * ${dx.toFixed(4)})`, top: `calc(var(--subrow) * ${dy.toFixed(4)})` }} />
+        {p && (
+          <>
+            <span className="bp-mark" aria-hidden="true" style={{ left: `calc(var(--gu) * ${sx.toFixed(4)})` }} />
+            <span className={'bp-dot ' + pTone} aria-hidden="true"
+              style={{ left: `calc(var(--gu) * ${sx.toFixed(4)})`, top: `calc(var(--subrow) * ${sy.toFixed(4)})` }} />
+          </>
+        )}
       </div>
       <div className="bp-chart-foot">
         <span className="an-cell an-note an-clip">{fmtShort(series.first, thisYear)} · {baseNote} {fmtSignedCents(series.start)}</span>
