@@ -8926,10 +8926,25 @@
       min-width: calc(var(--subrow) * 16.5); max-width: calc(var(--subrow) * 23.75);
       padding: var(--space-xs) var(--space-sm);
       border-radius: var(--r-object);
-      background: linear-gradient(180deg, rgba(28,24,40,0.98), rgba(12,10,17,0.98));
-      border: var(--bw-hair) solid rgba(255,255,255,0.16);
-      box-shadow: 0 calc(var(--subrow) * 0.75) calc(var(--subrow) * 2.25) rgba(0,0,0,0.6);
+      /* Catalogue three, idea 41 (2026-10-15): the plaque's own material (.replayer-seat-info: the flat
+         ground, the 0.22 hairline, the bevel) and a notch up to the seat it was opened from, so it reads
+         as part of the thing tapped rather than a tooltip from another app. */
+      background: rgba(14,12,19,0.93);
+      border: var(--bw-hair) solid rgba(255,255,255,0.22);
+      box-shadow: var(--plate-bevel), 0 calc(var(--subrow) * 0.75) calc(var(--subrow) * 2.25) rgba(0,0,0,0.6);
       text-align: left;
+    }
+    /* The seat whose line is open rises above its neighbours (every seat is on --z-seat, so a later seat
+       covered an earlier one's panel; 2026-10-15). */
+    .replayer-seat:has(.replayer-seat-line) { z-index: var(--z-flight); }
+    .replayer-seat-line::before {
+      content: '';
+      position: absolute; left: 50%; top: calc(var(--subrow) * -0.35);
+      width: calc(var(--subrow) * 0.7); height: calc(var(--subrow) * 0.7);
+      transform: translateX(-50%) rotate(45deg);
+      background: rgba(14,12,19,0.93);
+      border-left: var(--bw-hair) solid rgba(255,255,255,0.22);
+      border-top: var(--bw-hair) solid rgba(255,255,255,0.22);
     }
     .replayer-seat-line-row {
       display: flex; gap: var(--space-xs);
@@ -8939,9 +8954,12 @@
       line-height: 1.45;
     }
     .replayer-seat-line-street {
-      flex: 0 0 calc(var(--subrow) * 4.25);
+      /* 6r fits PREFLOP in tracked caps; at 4.25r it overflowed and pushed that row's actions right of
+         every other street's (2026-10-15). */
+      flex: 0 0 calc(var(--subrow) * 6);
       letter-spacing: var(--track-caps); text-transform: uppercase;
-      color: var(--brand-on-dark);
+      /* Ivory, not the brand: aqua means one thing at the table, whose turn it is (idea 33). */
+      color: rgba(242,239,230,0.55);
     }
 
     /* ── Table shapes ── */
