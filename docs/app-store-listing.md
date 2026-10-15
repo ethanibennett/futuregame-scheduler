@@ -143,6 +143,26 @@ Preview videos (886 x 1920, 30 fps, 15 to 30 s, app footage only, overlays allow
 calendar" 25 s, "Late reg" 15 s, "Replayer" 15 s if Hands opens. Cut from the ads once ad work resumes
 (paused 2026-10-14).
 
+## In-app purchases (for the 1 March paywall)
+
+Create these in App Store Connect (prices from MONETIZATION-PLAN.md; the server maps them in
+`lib/billing/apple.js` DEFAULT_PRODUCTS, overridable with `APPLE_PRODUCTS` on Render):
+
+| Product id | Type | Plan |
+|---|---|---|
+| app.futurega.me.pro.monthly | Auto-renewable | Pro, $7.99 a month |
+| app.futurega.me.pro.annual | Auto-renewable | Pro, $49.99 a year (founding $39.99 until 15 Apr) |
+| app.futurega.me.pro.summer | Non-renewing | Pro Summer Pass, $18.99, ends 1 August |
+| app.futurega.me.proplus.monthly | Auto-renewable | Pro+, $14.99 a month |
+| app.futurega.me.proplus.annual | Auto-renewable | Pro+, $99.99 a year |
+| app.futurega.me.proplus.summer | Non-renewing | Pro+ for the summer, $34.99, ends 1 August |
+
+Then, in App Store Connect, App Information, App Store Server Notifications: version 2, production and
+sandbox URL `https://futurega.me/api/subscription/apple/webhook`. The server side is built and tested
+(`npm run test:apple-billing`); the app side (a StoreKit 2 plugin that asks
+`GET /api/subscription/apple/account-token`, buys with that appAccountToken and posts
+`Transaction.jwsRepresentation` to `POST /api/subscription/apple/verify`) is Mac work.
+
 ## After approval
 
 - Set `APP_STORE_ID` and `APP_STORE_PT` (App Store Connect campaign provider token) on the Render

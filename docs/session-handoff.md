@@ -14,6 +14,11 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-15 (morning) — App Store purchases on the account; Admin growth screen; catalogue three cont.
+- **Apple billing, server side:** `lib/billing/apple.js` verifies StoreKit 2 transactions and App Store Server Notifications v2 against Apple Root CA - G3 (downloaded from apple.com, fingerprint checked), maps product ids to plans, ties purchases to accounts by `appAccountToken`, and keeps the `subscriptions` row current on renewal, grace, expiry, refund and revocation (idempotent by notificationUUID). Replaces the logging-only webhook. Tests: `test:apple-billing` (8), `test:account` (22, covers `apple_notifications`). **Owner:** create the six products and set the notification URL (`docs/app-store-listing.md`, "In-app purchases"). **Mac:** the StoreKit plugin.
+- **Admin → Growth** shows the weekly cohorts. **Replayer:** the turn ring works (it never had); game picker labels centred on their ink.
+- **Scheduled:** a one-shot at 13:07 ET today reruns the Mid-Atlantic clock check while afternoon events run. A recurring no-downtime resume was refused by the permission classifier; the owner can start one with /loop.
+
 ## 2026-10-15 (night, replayer) — Catalogue three resumed ("Fifty ways to quiet the table")
 - **Source:** https://claude.ai/artifact/MAjgSxmsn2vaMMt6t1oCRb (50 ideas, read 2026-08-31). Done directly, not by agents (token budget).
 - **Done (batch 1):** 2 (both dead `potCollect` keyframes and the orphan `neonPulse` deleted), 6 (watermark a flat ivory, no blend; the light themes keep their dark mark), 33 (the play button is a ghost, play and pause alike, so the brand fill means only the active turn), 14 (matte dealer button), 27 (a fold's plaque settles at its cards' pace and curve), 34 (a muck keeps its plaque's colour). Also deleted: every `.replayer-chip-delta` rule (rendered nowhere).

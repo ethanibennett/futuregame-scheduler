@@ -317,6 +317,13 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   (`backerCumulativeCents`), and the feed carries `paidCents` only when there are any. The Standing card's
   Payouts. Tests: `npm run test:standing-payouts` (ports 4730-4739).
 
+- **App Store purchases** (launch plan, action 10; `lib/billing/apple.js`): Apple's signed transactions and
+  Server Notifications v2 are verified offline against Apple Root CA - G3 (`lib/billing/AppleRootCA-G3.cer`)
+  and written to `subscriptions` (source `apple`, one row per original transaction), so a plan bought in
+  the app holds on the web. A purchase is tied to the account by `users.app_account_token`.
+  `GET /api/subscription/apple/account-token`, `POST /api/subscription/apple/verify`, `POST
+  /api/subscription/apple/webhook`. Product ids: `docs/app-store-listing.md`. Test: `npm run
+  test:apple-billing` (a TEST ONLY chain in `test/fixtures/apple-test-chain`).
 - **Growth measurement** (launch plan, action 5; `lib/growth.js`): `growth_events` (`signup` with its
   source: the browser's first touch from futurega.me/live `?ct=`, the web app's `?src=`, the platform and
   the sign-up form's "How did you hear about us?"; `activated` = the first event saved to My Schedule,

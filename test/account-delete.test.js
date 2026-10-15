@@ -270,7 +270,7 @@ const check = (label, fn) => { fn(); pass++; console.log('  ok   ' + label); };
     bankroll_transactions: ['user_id'], bankroll_trips: ['user_id'],
     standing_agreements: ['user_id'], session_extras: ['user_id'], money_locations: ['user_id'],
     money_settings: ['user_id'], money_import_runs: ['user_id'],
-    growth_events: ['user_id'], user_days: ['user_id'],
+    growth_events: ['user_id'], user_days: ['user_id'], apple_notifications: ['user_id'],
   };
   check('no row anywhere still points at the deleted user', () => {
     const left = [];

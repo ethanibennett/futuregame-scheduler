@@ -547,7 +547,8 @@ const bankrollLedger = require('./lib/bankroll-ledger');
 const bankrollManagement = require('./lib/bankroll-management');
 const bankrollImport = require('./lib/bankroll-import');
 const cashSessions = require('./lib/cash-sessions');
-const growth = require('./lib/growth');   // first-party growth measurement (launch plan, action 5)
+const growth = require('./lib/growth');
+const appleBilling = require('./lib/billing/apple');   // App Store purchases on the account (launch plan, action 10)   // first-party growth measurement (launch plan, action 5)
 const bankrollTransactions = require('./lib/bankroll-transactions');
 const { validateHomeLayout, parseStoredHomeLayout } = require('./lib/home-layout');
 const moneyMerge = require('./lib/money-merge');
@@ -1279,6 +1280,7 @@ async function initDatabase() {
     )
   `);
   growth.migrate(db);   // growth_events + user_days (lib/growth.js), every boot, idempotent
+  appleBilling.migrate(db);   // users.app_account_token + apple_notifications (lib/billing/apple.js)
   // The line under the game on a backer's session card (owner, 2026-10-15): a result's and a cash
   // session's own `subtitle`, typed in their forms. Checked every boot, so any database gets it.
   for (const t of ['tracking_entries', 'cash_sessions']) {
@@ -4285,7 +4287,7 @@ function deleteUserAccount(userId) {
                      'cash_session_stacks', 'cash_sessions', 'bankroll_transactions', 'bankroll_trips', 'bankroll_adjustments', 'bankrolls',
                      'bankroll_prefs', 'bankroll_import_keys',
                      'session_extras', 'money_locations', 'money_settings', 'money_import_runs',
-                     'growth_events', 'user_days']) {   // growth measurement (lib/growth.js) goes with the account
+                     'growth_events', 'user_days', 'apple_notifications']) {   // growth (lib/growth.js) and App Store notices go with the account
       run(t, `DELETE FROM ${t} WHERE user_id = ?`, [uid]);
     }
     run('shared_hands', 'DELETE FROM shared_hands WHERE uploaded_by = ?', [uid]);
@@ -14099,13 +14101,48 @@ app.post('/api/subscription/grant', authenticateToken, requireRegistered, async 
 // Provider webhooks (skeletons — verification + signature checks come
 // during the Apple/Stripe integration phase). They live here so the route
 // surface exists from day one and the frontend can wire to stable URLs.
+// App Store purchases (lib/billing/apple.js; 2026-10-15). The app asks for the account's token before a
+// purchase and passes it to StoreKit (Product.purchase(options: [.appAccountToken(uuid)])), then reports
+// the signed transaction; Apple's own notifications keep the row current after that. Every payload is
+// verified against Apple Root CA - G3 before anything is written.
+app.get('/api/subscription/apple/account-token', authenticateToken, requireRegistered, async (req, res) => {
+  try {
+    const token = appleBilling.accountToken(db, req.user.id);
+    await saveDatabase();
+    res.json({ appAccountToken: token });
+  } catch (e) {
+    console.error('[apple] account-token:', e.message);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+app.post('/api/subscription/apple/verify', authenticateToken, requireRegistered, async (req, res) => {
+  const signed = req.body && req.body.signedTransaction;
+  if (typeof signed !== 'string' || signed.length > 16384) return res.status(400).json({ error: 'signedTransaction required' });
+  try {
+    appleBilling.verifyPurchase(db, req.user.id, signed);
+    await saveDatabase();
+    res.json(subscriptionToClient(getActiveSubscriptionRow(req.user.id)));
+  } catch (e) {
+    if (e instanceof appleBilling.AppleVerifyError) return res.status(400).json({ error: `Purchase not accepted: ${e.message}` });
+    console.error('[apple] verify:', e.message);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+// App Store Server Notifications v2: a bad signature gets 400 (Apple retries); anything verified gets
+// 200, a repeat included, so Apple stops sending it.
 app.post('/api/subscription/apple/webhook', express.json({ limit: '256kb' }), async (req, res) => {
-  // TODO: verify signedPayload JWS with Apple's root certs (per Apple docs
-  // for App Store Server Notifications v2), then upsert a row keyed by
-  // originalTransactionId. For now, accept-and-log so the endpoint URL is
-  // stable for App Store Connect's notification config.
-  console.log('[apple webhook]', JSON.stringify(req.body)?.slice(0, 500));
-  res.json({ ok: true });
+  const signed = req.body && req.body.signedPayload;
+  if (typeof signed !== 'string') return res.status(400).json({ error: 'signedPayload required' });
+  try {
+    const r = appleBilling.handleNotification(db, signed);
+    if (!r.duplicate) await saveDatabase();
+    console.log(`[apple] notification ${r.type}${r.subtype ? '/' + r.subtype : ''}${r.duplicate ? ' (repeat)' : ''}${r.userId ? '' : ' (no account matched)'}`);
+    res.json({ ok: true });
+  } catch (e) {
+    if (e instanceof appleBilling.AppleVerifyError) { console.error('[apple] notification refused:', e.message); return res.status(400).json({ error: 'not verified' }); }
+    console.error('[apple] notification:', e.message);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
 });
 
 app.post('/api/subscription/stripe/webhook', express.raw({ type: 'application/json', limit: '256kb' }), async (req, res) => {
