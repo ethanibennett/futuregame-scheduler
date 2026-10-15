@@ -2973,6 +2973,10 @@
     .game-tab-bar { display:grid; grid-template-columns: round(100% * 8 / 35, var(--gu)) repeat(3, round(100% * 7 / 35, var(--gu))) minmax(0, 1fr); height: calc(var(--subrow) * 3); background:var(--surface2); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border); }
     .game-tab-btn { display:grid; align-items:center; justify-items:center; min-width:0; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; background:transparent; color:var(--text-muted); cursor:pointer; box-shadow: inset 0 calc(var(--subrow) * -0.25) 0 transparent; transition:color var(--dur-fast),box-shadow var(--dur-fast); }
     .game-tab-btn.active { color:var(--accent2); font-weight: var(--fw-bold); box-shadow: inset 0 calc(var(--subrow) * -0.25) 0 var(--accent2); }
+    /* Caps tracking adds its space after the LAST letter too, so a centred label's ink sat half a
+       tracking left of the box's centre ("2-7 TD" measured -0.76px at 1280, the guard allows 0.75).
+       The same space before the first letter makes it symmetric (2026-10-15). */
+    .game-fave-btn, .game-tab-btn { text-indent: var(--track-caps); }
     /* 4r row, label baseline one r above the bottom (row top + 3r). Left padding = 2g
        minus the 2px indicator border, so the label starts on the 3g line; right padding
        2g ends it on 34g. */
