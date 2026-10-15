@@ -885,7 +885,10 @@ const LIVE_TITLE = "futurega.me · Your whole poker calendar";
 const LIVE_DESC = "Every live poker series near you, in each room's own time. Plan for bagging and busting, see where your crew is playing, and keep your results beside the plan.";
 function serveLive(req, res) {
   let html;
-  try { html = require('fs').readFileSync(path.join(__dirname, 'public-vite', 'index.html'), 'utf8'); }
+  // The landing page's own small build (vite-app/src/live-main.jsx -> public-vite/live.html), about a
+  // fifth of the app's JavaScript; the app shell (which also renders /live) if a build lacks it.
+  const shell = require('fs').existsSync(path.join(__dirname, 'public-vite', 'live.html')) ? 'live.html' : 'index.html';
+  try { html = require('fs').readFileSync(path.join(__dirname, 'public-vite', shell), 'utf8'); }
   catch (err) { console.error('Live page: no app shell (public-vite/index.html):', err.message); return res.status(503).send('Unavailable'); }
   html = html.replace(/<title>[^<]*<\/title>/, `<title>${LIVE_TITLE}</title>`)
     .replace('</head>', `<meta name="description" content="${LIVE_DESC}">

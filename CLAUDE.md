@@ -8,7 +8,11 @@ sessions opened here own scheduler work.
 - **Frontend**: Vite + React app in `vite-app/` → builds to `public-vite/` (served by the
   server, and wrapped by Capacitor for iOS/Android — see `capacitor.config.json` webDir).
   The legacy single-file `public/index.html` era is dead; its final tree is preserved on
-  branch `wip/windows-mtt-feed`.
+  branch `wip/windows-mtt-feed`. **Two pages since 2026-10-15:** the app (`index.html`, `src/main.jsx`) and
+  futurega.me/live, the ads' landing page (`live.html`, `src/live-main.jsx`, about a fifth of the app's JS).
+  `live.html` is generated from `index.html` by `vite-app/scripts/make-live-html.mjs`, which `vite.config.js`
+  runs on every start (gitignored; edit index.html, never live.html). Anything the landing page needs
+  must be imported by it: it does not get the app's CSS or code.
 - **Desktop layout**: any window >= 1024px wide (browser, iPad app, Mac app) gets a side rail +
   2 panes (Schedule = list | right pane, the selected event on top and My Schedule under it;
   the third column was dropped 2026-10-10; the two panes sit 2g apart on the background, 2026-10-13) on the SAME g as the phone (g stays 430px/37; panes

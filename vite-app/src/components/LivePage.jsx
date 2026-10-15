@@ -4,6 +4,7 @@ import GridOverlay from './GridOverlay.jsx';
 import useThemeChoice from '../hooks/useThemeChoice.js';
 import { API_URL } from '../utils/api.js';
 import { campaignFrom, storeLink, webLink, liveFigures, captureLanding } from '../utils/live-page.js';
+import './analytics.css';   // an-cell / an-p / an-lbl: the landing page's own build does not get them from the app
 import './backer-page.css';
 import './live-page.css';
 

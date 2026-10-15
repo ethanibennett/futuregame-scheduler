@@ -1,5 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { resolve } from 'node:path';
+import { writeLiveHtml } from './scripts/make-live-html.mjs';
+
+// futurega.me/live's page, generated from index.html whenever Vite starts (scripts/make-live-html.mjs).
+writeLiveHtml();
 
 export default defineConfig({
   plugins: [react()],
@@ -41,5 +46,10 @@ export default defineConfig({
   build: {
     outDir: '../public-vite',
     emptyOutDir: true,
+    // Two pages: the app, and futurega.me/live, the ads' landing page, with its own small entry
+    // (src/live-main.jsx; live.html is generated from index.html by scripts/make-live-html.mjs).
+    rollupOptions: {
+      input: { main: resolve(__dirname, 'index.html'), live: resolve(__dirname, 'live.html') },
+    },
   },
 });

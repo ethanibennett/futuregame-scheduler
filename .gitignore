@@ -164,3 +164,6 @@ test/quick-add/reports/*
 !test/quick-add/reports/.gitkeep
 weekly-graphics/
 hh-samples/
+
+# Generated from vite-app/index.html before each build (vite-app/scripts/make-live-html.mjs)
+vite-app/live.html

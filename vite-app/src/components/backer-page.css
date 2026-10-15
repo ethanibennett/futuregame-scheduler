@@ -173,7 +173,9 @@
 .bp-settle .late-reg-bar-fill { background: var(--text-muted); }
 /* The admin grid toggle (owner, 2026-10-15): the app's floating "#", at the window's foot here, where
    there is no tab bar to clear. */
-.bp-shell .bp-grid-toggle { bottom: calc(var(--sa-b) + var(--subrow) * 2); }
+/* Its top on an r line at any window height: the window's leftover fraction of r goes under it, as the
+   app's --nav-snap does for the tab bar. */
+.bp-shell .bp-grid-toggle { bottom: calc(mod(100dvh - var(--sa-t) - var(--sa-b), var(--subrow)) + var(--sa-b) + var(--subrow) * 2); }
 .bp-total-val.is-pos { color: var(--pos); }
 .bp-total-val.is-neg { color: var(--neg); }
 
