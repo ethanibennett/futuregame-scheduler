@@ -490,7 +490,10 @@ function scan(cfg) {
     while (sc && !isScroller.has(sc)) sc = sc.parentElement;
     if (!sc) return false;
     const want = sc.getBoundingClientRect().top + sc.clientTop + parseFloat(s.top);
-    return Math.abs(a.getBoundingClientRect().top - want) < 0.5;
+    // A stuck sticky never sits BELOW its line; one in flow can land a fraction of a px under it and
+    // is not stuck (a backer page month break 0.4px under it read 0.05r off, 2026-10-15).
+    const d = a.getBoundingClientRect().top - want;
+    return d > -0.5 && d < 0.05;
   };
   const layoutOffset = (el) => {
     let dy = 0, dx = 0, skip = false;

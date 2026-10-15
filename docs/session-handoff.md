@@ -14,6 +14,14 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-15 (latest) — Backer page round two: subheadings, settlement bar, admin grid
+- **Cards:** the "Notes" label is gone; bb/hr sits under the share and its percentage; hours read "6h" (the shared `fmtHours`, so the owner's Backers tab too); 1r more above the notes in an open card.
+- **Subheading:** the line under the game is no longer the room. It is the session's own `subtitle` (new column on `tracking_entries` and `cash_sessions`, added at boot when missing), typed as "Subheading" in the result form (Results) and the cash session form; 60 characters, one line; the feed carries it only when set. No subheading = no second line.
+- **Total card:** 1r more between "Running total" and the figure; a settlement bar at its foot (the Schedule's late-reg block): "Until settlement" and a countdown to Sunday 12:00 New York time, draining over the week; clock changes handled (tests). Card 19r.
+- **Elsewhere:** the graph's "Your share" reads "Balance"; the backer's name is one size smaller (2xl to xl, baseline re-seated, measured on line 4).
+- **Admin grid:** a device signed in to the app as an admin (token in localStorage) gets the "#" toggle on backer pages; backers never see it.
+- **Guard fix:** `check:controls` read an in-flow sticky 0.4px under its stuck line as stuck and dropped the scroll; the stuck test is one-sided now. The demo seed's notes are opt-in (`seedBackerDemo(db, { notes: true })`, on from the CLI) so the parity tests keep the plain seed.
+
 ## 2026-10-15 (later) — Backer page: session cards are the Schedule's card, and open to the notes
 - **Owner asks:** the cards "should expand like in the schedule to reveal the notes I've added", and be "as close to the schedule card as possible, just swapping out information".
 - **Built:** `SessionCard` (components/BackerPage.jsx) is CalendarEventRow's markup: strip (the room's long name when open), date · hours as the time, the share as the buy-in with "20% of +$479" as the guarantee, game as the title with the room as its stage line, bb/hr (and a "Notes" hint) as the late-reg line, chevron. Open: Session, Your piece, Hours, Win rate in the detail grid, then the notes in the Schedule's italic notes line (line breaks kept).

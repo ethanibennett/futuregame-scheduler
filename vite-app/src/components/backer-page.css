@@ -115,10 +115,11 @@
 /* ── Hero ── */
 .bp-hero { margin-top: calc(var(--subrow) * 2); }
 .bp-name {
-  /* Display face 2xl, baseline on line 4 of 5 (c measured: see the header). */
-  --h: 5; --p: 0.7514;
+  /* Display face xl, one step down from 2xl (owner, 2026-10-15: "really big"); still 5r with the
+     baseline on line 4. c scales with the size (2xl's 1.1243 x xl/2xl = 0.9444), so p = 1.1112. */
+  --h: 5; --p: 1.1112;
   font-family: var(--font-display);
-  font-size: var(--fs-2xl);
+  font-size: var(--fs-xl);
   font-weight: var(--fw-regular);
   letter-spacing: var(--track-display);
   color: var(--text);
@@ -150,6 +151,20 @@
   color: var(--text);
   font-variant-numeric: var(--num-tabular);
 }
+/* The settlement bar at the card's foot (owner, 2026-10-15): the Schedule card's late-reg block, 1r
+   pad + 2r label row + 1r + a 1r bar = 5r after the note's line, then 2r to the card's edge: the card
+   grows by those 5r, 1r over the divider, and the 1r under its label: 12r + 5r + 1r + 1r = 19r. Muted throughout; the week running out is not an alarm. */
+.bp-total:has(.bp-settle) { height: calc(var(--subrow) * 19); }
+.bp-settle { margin-top: var(--subrow); }   /* 1r between the stats line and the divider */
+/* 1r more between "Running total" and the figure (owner, 2026-10-15); the card grows by it. */
+.bp-total .bp-total-val { margin-top: var(--subrow); }
+.bp-settle .late-reg-label-row { margin-bottom: var(--subrow); }
+.bp-settle .late-reg-bar-bg { height: var(--subrow); }
+.bp-settle .late-reg-label, .bp-settle .late-reg-time { color: var(--text-muted); }
+.bp-settle .late-reg-bar-fill { background: var(--text-muted); }
+/* The admin grid toggle (owner, 2026-10-15): the app's floating "#", at the window's foot here, where
+   there is no tab bar to clear. */
+.bp-shell .bp-grid-toggle { bottom: calc(var(--sa-b) + var(--subrow) * 2); }
 .bp-total-val.is-pos { color: var(--pos); }
 .bp-total-val.is-neg { color: var(--neg); }
 
@@ -289,7 +304,16 @@
 .bp-cards > .cal-event-row.bp-session { margin-bottom: calc(var(--subrow) * 2); }
 .bp-session .bp-amt.is-pos, .bp-session .bp-bb.is-pos { color: var(--pos); }
 .bp-session .bp-amt.is-neg, .bp-session .bp-bb.is-neg { color: var(--neg); }
-.bp-session .bp-mini .bp-notes-hint { margin-left: auto; text-align: right; color: var(--text-muted); }
+/* bb/hr under the share and what it is of (owner, 2026-10-15): row 2's money column, a 2r cell at the
+   top of the row so its trimmed baseline sits on the title's line (r8), 2r under the percentage on r6,
+   the way the Schedule's accolades sit under its guarantee. */
+.bp-session .bp-bb-cell {
+  grid-column: 2; align-self: start; justify-self: end;
+  display: grid; align-items: end; justify-items: end;
+  height: calc(var(--subrow) * 2);
+}
+/* A little more room over the notes in an open card (owner, 2026-10-15): 1r more than the Schedule's. */
+.bp-session .cal-detail-notes-cell { margin-top: var(--subrow); }
 .bp-session .bp-detail-notes { white-space: pre-line; overflow-wrap: anywhere; }
 /* The strip is the Schedule's own .cal-venue-strip (styles.css): the room's colour, its short code
    centred both ways, white. .bp-strip only marks it here; an unknown room gets the neutral colour. */

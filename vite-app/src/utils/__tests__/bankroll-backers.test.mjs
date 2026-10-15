@@ -45,9 +45,9 @@ test('names and stakes: a record with no name or no stakes in force gets a stand
 });
 
 test('statItems: sessions, hours and the opening, worded as the backer\'s page words them', () => {
-  assert.deepEqual(statItems(B()).map((i) => i.text), ['40 sessions', '212.5 h', 'Opening $500']);
-  assert.deepEqual(statItems(B({ sessions: 1, hours: 5, openingCents: -25000 })).map((i) => i.text), ['1 session', '5 h', 'Opening −$250']);
-  assert.deepEqual(statItems(B({ sessions: 0, hours: 0, openingCents: 0 })).map((i) => i.text), ['0 sessions', '0 h', 'Opening $0']);
+  assert.deepEqual(statItems(B()).map((i) => i.text), ['40 sessions', '212.5h', 'Opening $500']);
+  assert.deepEqual(statItems(B({ sessions: 1, hours: 5, openingCents: -25000 })).map((i) => i.text), ['1 session', '5h', 'Opening −$250']);
+  assert.deepEqual(statItems(B({ sessions: 0, hours: 0, openingCents: 0 })).map((i) => i.text), ['0 sessions', '0h', 'Opening $0']);
   assert.deepEqual(statItems(B({ sessions: 1234 })).map((i) => i.text)[0], '1,234 sessions');
 });
 
@@ -71,10 +71,10 @@ test('deliveryText: each of the four states, and the long form a screen reader g
 
 test('shareRow: date (the year only when it is not this one), hours, game, venue, the cut and what it was a cut of', () => {
   const r = shareRow(SHARE, 2026);
-  assert.deepEqual(r, { date: 'Oct 12', hours: '8 h', game: '5/5/10 PLO', venue: 'Bellagio', share: '−$240', shareTone: ' an-neg', of: '20% of −$1,200' });
+  assert.deepEqual(r, { date: 'Oct 12', hours: '8h', game: '5/5/10 PLO', venue: 'Bellagio', share: '−$240', shareTone: ' an-neg', of: '20% of −$1,200' });
   assert.equal(shareRow({ ...SHARE, date: '2025-10-12' }, 2026).date, 'Oct 12, 2025');
   const win = shareRow({ ...SHARE, hours: 6.5, sessionResultCents: 84000, pct: 12.5, shareCents: 10500 }, 2026);
-  assert.deepEqual([win.hours, win.share, win.shareTone, win.of], ['6.5 h', '+$105', ' an-pos', '12.5% of +$840']);
+  assert.deepEqual([win.hours, win.share, win.shareTone, win.of], ['6.5h', '+$105', ' an-pos', '12.5% of +$840']);
   const bare = shareRow({ date: '2026-01-02', game: '', venue: '', hours: 0, sessionResultCents: 0, pct: 10, shareCents: 0 }, 2026);
   assert.deepEqual([bare.game, bare.venue, bare.hours, bare.share, bare.shareTone, bare.of], ['Session', '', '', '$0', '', '10% of $0']);
 });

@@ -85,14 +85,16 @@ const DEMO_NOTES = new Map([
   [2, 'Game broke at 3am.\nStarted the night stuck two buy-ins, got it back in one pot against the seat 4 regular when my nut flush held on a paired river.'],
   [4, 'Short session, left for the 7pm tournament.'],
 ]);
+// The owner's subheadings on the same sessions (the line under the game, 2026-10-15); the middle one has none.
+const DEMO_SUBTITLES = new Map([[0, 'Main game, table 4'], [4, 'Before the 7pm']]);
 const hasCol = (db, table, col) => {
   const r = db.exec(`PRAGMA table_info(${table})`);
   return !!(r[0] && r[0].values.some((v) => v[1] === col));
 };
 
-function seedBackerDemo(db) {
+function seedBackerDemo(db, { notes = false } = {}) {   // notes: the guards' notes and subheadings (the CLI turns them on; the parity tests keep the plain seed)
   const now = Date.now();
-  const linkNotes = hasCol(db, 'backer_events', 'ref_table') && hasCol(db, 'cash_sessions', 'notes');
+  const linkNotes = notes && hasCol(db, 'backer_events', 'ref_table') && hasCol(db, 'cash_sessions', 'notes');
   const tokens = {};
   BACKERS.forEach((b, n) => {
     tokens[b.key] = b.token;
@@ -112,6 +114,8 @@ function seedBackerDemo(db) {
         db.run(`INSERT INTO cash_sessions (user_id, started_at, session_date, room, game, notes, created_at)
                 VALUES (0, ?, ?, ?, ?, ?, ?)`, [new Date(s.ts).toISOString(), s.date, s.venue, s.game, note, new Date(now).toISOString()]);
         const id = db.exec('SELECT last_insert_rowid()')[0].values[0][0];
+        const sub = DEMO_SUBTITLES.get(rows.length - 1 - k);
+        if (sub && hasCol(db, 'cash_sessions', 'subtitle')) db.run('UPDATE cash_sessions SET subtitle = ? WHERE id = ?', [sub, id]);
         db.run("UPDATE backer_events SET ref_table = 'cash_sessions', ref_id = ? WHERE id = ?", [id, `${b.token}:${s.id}`]);
       }
     });
@@ -132,7 +136,7 @@ if (require.main === module) {
   (async () => {
     const SQL = await require('sql.js')();
     const db = new SQL.Database(fs.readFileSync(file));
-    const tokens = seedBackerDemo(db);
+    const tokens = seedBackerDemo(db, { notes: true });
     fs.writeFileSync(file, Buffer.from(db.export()));
     console.log(`CHECK_BACKER_TOKENS=${tokens.full},${tokens.empty},${tokens.one},${tokens.two}`);
   })().catch((e) => { console.error(e); process.exit(1); });

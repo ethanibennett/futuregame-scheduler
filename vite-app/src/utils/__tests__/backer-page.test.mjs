@@ -38,10 +38,10 @@ test('money: whole dollars, signed with a true minus, zero unsigned and untoned'
 });
 
 test('hours, counts, dates', () => {
-  assert.equal(fmtHours(4.5), '4.5 h');
-  assert.equal(fmtHours(5), '5 h');
-  assert.equal(fmtHours(201.04), '201 h');
-  assert.equal(fmtHours(undefined), '0 h');
+  assert.equal(fmtHours(4.5), '4.5h');
+  assert.equal(fmtHours(5), '5h');
+  assert.equal(fmtHours(201.04), '201h');
+  assert.equal(fmtHours(undefined), '0h');
   assert.equal(plural(1, 'session'), '1 session');
   assert.equal(plural(1200, 'session'), '1,200 sessions');
   assert.equal(fmtDay('2026-10-11'), 'Sun, Oct 11');
@@ -238,4 +238,20 @@ test('bb/hr: the feed is not touched (the parity tests compare it byte for byte)
   const before = JSON.stringify(feed);
   bbStats(feed.events); eventBb(feed.events[0]); summarize(feed);
   assert.equal(JSON.stringify(feed), before);
+});
+
+// The settlement bar (owner, 2026-10-15): Sundays at noon, New York time, across both clock changes.
+test('settlementCountdown counts down to Sunday noon Eastern', async () => {
+  const { settlementCountdown, SETTLE_WEEK_MS } = await import('../backer-page.js');
+  const at = (iso) => settlementCountdown(Date.parse(iso));
+  assert.equal(new Date(at('2026-10-15T05:10:00Z').next).toISOString(), '2026-10-18T16:00:00.000Z');
+  assert.equal(at('2026-10-15T05:10:00Z').text, '3 days, 10 hours');
+  assert.equal(at('2026-10-18T15:59:00Z').text, '1 minute');
+  const noon = at('2026-10-18T16:00:00Z');
+  assert.equal(new Date(noon.next).toISOString(), '2026-10-25T16:00:00.000Z', 'at noon exactly, the next week');
+  assert.equal(noon.pct, 100);
+  assert.equal(noon.leftMs, SETTLE_WEEK_MS);
+  assert.equal(new Date(at('2026-10-31T12:00:00Z').next).toISOString(), '2026-11-01T17:00:00.000Z', 'noon EST after the fall change');
+  assert.equal(new Date(at('2026-03-05T12:00:00Z').next).toISOString(), '2026-03-08T16:00:00.000Z', 'noon EDT after the spring change');
+  assert.equal(at('2026-10-18T13:30:00Z').text, '2 hours, 30 minutes');
 });

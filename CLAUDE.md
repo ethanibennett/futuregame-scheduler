@@ -205,6 +205,11 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   **notes**: the feed carries `notes` from the result a share points at (`backer_events.ref_table/ref_id`),
   only when there are any (importer lines excluded), so a page without notes is byte for byte unchanged.
   `npm run test:backer-page` holds it; the guards' `backer-page-notes` views open cards from the seed.
+  The line under the game is the session's own **subheading** (`subtitle` on `tracking_entries` and
+  `cash_sessions`, added at every boot if missing; "Subheading" in the result and cash forms; the feed
+  carries it only when set). bb/hr sits under the share; hours read "6h". The total card ends in a
+  **settlement bar** counting down to Sunday noon Eastern (`settlementCountdown`). A device signed in to
+  the app as an admin gets the app's "#" grid toggle on the page (shared `localStorage.gridOverlay`).
   **Bankroll merge, Phase 2** (`docs/bankroll-merge.md`; code in `lib/backer-surface.js`):
   - **Delivery is gated.** Push, SMS and the Sunday email go out only where `BACKER_DELIVERY` is on
     (default: on when `RENDER` is set; `BACKER_DELIVERY=1|0` overrides; a typo is off). This box has

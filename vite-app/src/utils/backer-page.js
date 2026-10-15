@@ -51,7 +51,7 @@ export function tone(cents) {
 /** Hours to one decimal, a whole number without its ".0": 4.5 -> "4.5 h", 5 -> "5 h". */
 export function fmtHours(h) {
   const v = Math.round((Number(h) || 0) * 10) / 10;
-  return (Number.isInteger(v) ? String(v) : v.toFixed(1)) + ' h';
+  return (Number.isInteger(v) ? String(v) : v.toFixed(1)) + 'h';   // "6h", no space (owner, 2026-10-15)
 }
 
 export const plural = (n, one, many = one + 's') => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
@@ -289,4 +289,40 @@ export function stripFor(venue, venueMap = {}) {
   const label = !name ? 'Room not given'
     : online && !/online/i.test(name) ? `${name} · Online` : name;
   return { name, label, abbr, online };
+}
+
+// ── Settlement countdown (owner, 2026-10-15): "we settle on Sundays at noon", Eastern. The total
+// card's bar runs from one settlement to the next, like the Schedule's late-reg bar.
+const SETTLE_TZ = 'America/New_York';
+export const SETTLE_WEEK_MS = 7 * 24 * 3600e3;
+function etParts(ms) {
+  const f = new Intl.DateTimeFormat('en-US', { timeZone: SETTLE_TZ, weekday: 'short', hour: 'numeric', minute: 'numeric', second: 'numeric', hourCycle: 'h23' });
+  const o = {};
+  for (const p of f.formatToParts(new Date(ms))) o[p.type] = p.value;
+  return { dow: DOW.indexOf(o.weekday), h: Number(o.hour) % 24, m: Number(o.minute), s: Number(o.second) };
+}
+/** The next Sunday 12:00 in New York after `nowMs` (exactly noon counts as settled: the next one). */
+export function nextSettlement(nowMs) {
+  const p = etParts(nowMs);
+  let since = (((p.dow * 24 + p.h - 12) * 60 + p.m) * 60 + p.s) * 1000;   // wall-clock time since Sunday noon
+  if (since < 0) since += SETTLE_WEEK_MS;
+  let next = nowMs - (((nowMs % 1000) + 1000) % 1000) + (SETTLE_WEEK_MS - since);
+  // A clock change in the week moves the wall clock an hour: put it back on noon.
+  const q = etParts(next);
+  if (q.h !== 12) next += (12 - q.h) * 3600e3;
+  return next;
+}
+/** { leftMs, pct (0-100, the share of the week still to run), text ("2 days, 4 hours" / "3 hours, 5 minutes") }. */
+export function settlementCountdown(nowMs) {
+  const next = nextSettlement(nowMs);
+  const leftMs = Math.max(0, next - nowMs);
+  const pct = Math.min(100, Math.max(0, (leftMs / SETTLE_WEEK_MS) * 100));
+  const totalMin = Math.floor(leftMs / 60000);
+  const d = Math.floor(totalMin / 1440), h = Math.floor((totalMin % 1440) / 60), m = totalMin % 60;
+  const unit = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  const parts = [];
+  if (d > 0) parts.push(unit(d, 'day'));
+  if (h > 0) parts.push(unit(h, 'hour'));
+  if (d === 0) parts.push(unit(m, 'minute'));
+  return { next, leftMs, pct, text: parts.join(', ') };
 }

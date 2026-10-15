@@ -140,6 +140,8 @@ function SessionForm({ bk, rooms, sessions, session, onSave, onCancel, busy, tok
   const [currency, setCurrency] = useState(s ? s.currency : '');
   const [tags, setTags] = useState(s ? s.tags.join(', ') : '');
   const [notes, setNotes] = useState(s && s.notes ? s.notes : '');
+  // The line under the game on a backer's session card (owner, 2026-10-15).
+  const [subtitle, setSubtitle] = useState(s && s.subtitle ? s.subtitle : '');
   const bankrollCurrency = (bk.bankrolls.find((b) => b.id === bankroll) || { currency: 'USD' }).currency;
   const [more, setMore] = useState(!!(s && (s.rebuys || s.tips || s.expenses || s.tags.length || s.currency !== bankrollCurrency)));
   // Length by end time OR by hours: typing either fills in the other.
@@ -154,7 +156,7 @@ function SessionForm({ bk, rooms, sessions, session, onSave, onCancel, busy, tok
     ...times, date: day, room, venueSlug: slugForRoom(room, rooms) || (s && s.room === room ? s.venue_slug : (room === d.room ? d.venueSlug : null)),
     game, stakes, buyIn: Number(buyIn), rebuys: Number(rebuys) || 0, cashOut: Number(cashOut),
     tips: amountOrUndefined(tips) ?? 0, expenses: amountOrUndefined(expenses) ?? 0,
-    bankroll, currency: currency || bankrollCurrency, tags: parseTagInput(tags), notes,
+    bankroll, currency: currency || bankrollCurrency, tags: parseTagInput(tags), notes, subtitle: subtitle.trim() || null,
   });
   return (
     <section className="cs-form" aria-label={s ? 'Edit session' : 'Add a session'}>
@@ -168,6 +170,7 @@ function SessionForm({ bk, rooms, sessions, session, onSave, onCancel, busy, tok
         <Field label="Room" wide><RoomInput value={room} onChange={setRoom} rooms={rooms} /></Field>
         <Field label="Game"><GameSelect value={game} onChange={setGame} /></Field>
         <Field label="Stakes"><input value={stakes} maxLength={20} placeholder="e.g. 2/5" onChange={(e) => setStakes(e.target.value)} /></Field>
+        <Field label="Subheading" wide><input value={subtitle} maxLength={60} placeholder="Under the game on backer pages" onChange={(e) => setSubtitle(e.target.value)} /></Field>
         <Field label="Notes" wide note><Notes value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
         {more && (
           <>

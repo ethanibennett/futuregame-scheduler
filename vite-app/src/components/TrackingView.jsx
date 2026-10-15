@@ -49,6 +49,8 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
   const [finishPlace, setFinishPlace] = useState(initialValues?.finishPlace || '');
   const [cashAmount, setCashAmount] = useState(initialValues?.cashAmount || '');
   const [notes, setNotes] = useState(initialValues?.notes || '');
+  // The line under the game on a backer's session card (owner, 2026-10-15).
+  const [subtitle, setSubtitle] = useState(initialValues?.subtitle || '');
   const [totalFieldSize, setTotalFieldSize] = useState(initialValues?.totalEntries || '');
   const [showLfg, setShowLfg] = useState(false);
   const [bankrollId, setBankrollId] = useState(initialValues?.bankrollId || 'main'); // beta: only sent when `bankrolls` is
@@ -83,6 +85,7 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
       finishPlace: cashed && finishPlace ? parseInt(finishPlace) : null,
       cashAmount: cashed && cashAmount ? parseInt(cashAmount) : 0,
       notes: notes || null,
+      subtitle: subtitle.trim() || null,
       totalFieldSize: totalFieldSize ? parseInt(totalFieldSize) : null,
       ...(bankrolls ? { bankrollId } : {})
     }, conflict ? { replace: true } : undefined);
@@ -159,6 +162,14 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
       {bankrolls && <BankrollPicker bankrolls={bankrolls} value={bankrollId} onChange={setBankrollId} />}
 
       <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
+        <label>Subheading (optional)</label>
+        <input type="text" value={subtitle} maxLength={60} onChange={e => setSubtitle(e.target.value)}
+          placeholder="Under the game on backer pages"
+          style={{padding:'var(--space-ml) var(--space-lg)',border:'var(--bw-1) solid var(--border)',borderRadius:'var(--radius-sm)',
+            background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.325)',width:'100%'}} />
+      </div>
+
+      <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
         <label>Notes (optional)</label>
         <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
           placeholder="Optional notes about this session"
@@ -227,6 +238,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
           finishPlace: entry.finish_place,
           cashAmount: entry.cash_amount,
           notes: entry.notes,
+          subtitle: entry.subtitle,
           totalEntries: entry.total_entries,
           bankrollId: entry.bankroll_id ?? 'main'
         }}

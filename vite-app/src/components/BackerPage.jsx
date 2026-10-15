@@ -11,7 +11,7 @@ import { API_URL } from '../utils/api.js';
 import { VENUE_MAP, getVenueBrandColor, getVenueInfo, getStripAbbr } from '../utils/utils.js';
 import {
   summarize, groupByMonth, shareSeries, rangeOptions, stripFor, monthLabel, RANGE_NOUN,
-  fmtSignedCents, fmtHours, fmtDay, plural, tone, bbStats, eventBb,
+  fmtSignedCents, fmtHours, fmtDay, plural, tone, bbStats, eventBb, settlementCountdown,
 } from '../utils/backer-page.js';
 import './backer-page.css';
 
@@ -41,6 +41,21 @@ import './backer-page.css';
  * script and kept in step by the hook and by useDeviceContrast below.
  * Arithmetic and formatting: utils/backer-page.js (tested). Layout: backer-page.css.
  */
+
+/* The admin-only layout grid (owner, 2026-10-15), as the app has it: shown to a device signed in to
+   the app as an admin (the app's own token, read here only to decide whether to offer the overlay;
+   mirrors App.jsx tokenUsername and APP_ADMIN_USERNAMES), on and off with the app's own setting
+   (localStorage gridOverlay), and ?gridOverlay=1 still forces it for anyone (the guards). */
+const APP_ADMIN_USERNAMES = ['ham', 'ham5', 'claude'];
+function deviceIsAppAdmin() {
+  try {
+    const tok = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+    const part = tok.split('.')[1];
+    if (!part) return false;
+    const claims = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/')));
+    return !!claims && !claims.isGuest && typeof claims.username === 'string' && APP_ADMIN_USERNAMES.includes(claims.username.toLowerCase());
+  } catch { return false; }
+}
 
 function useDeviceContrast() {
   useLayoutEffect(() => {
@@ -151,6 +166,7 @@ function SessionCard({ e }) {
   // A room VENUE_MAP doesn't name takes the Schedule's derived code (getVenueInfo).
   const abbr = strip.abbr || (strip.name ? getVenueInfo(strip.name).abbr : null) || null;
   const notes = typeof e.notes === 'string' ? e.notes.trim() : '';
+  const subtitle = typeof e.subtitle === 'string' ? e.subtitle.trim() : '';
   const [open, setOpen] = useState(false);
   const toggle = () => setOpen((v) => !v);
   // The notes line seated on the grid however many lines it wraps to, as CalendarEventRow seats
@@ -186,22 +202,24 @@ function SessionCard({ e }) {
             </span>
           </div>
           <div className="cal-bar-row2">
+            {/* The game as the title; the owner's subheading for the session under it, as a flight's
+                stage line, typed in the result's or the session's form (owner, 2026-10-15). */}
             <span className="cal-event-name" title={e.game || ''}>
-              <span className="cal-event-base">{e.game || 'Session'}</span>
-              <span className="cal-event-stage">{strip.label}</span>
+              {subtitle ? (
+                <>
+                  <span className="cal-event-base">{e.game || 'Session'}</span>
+                  <span className="cal-event-stage">{subtitle}</span>
+                </>
+              ) : (e.game || 'Session')}
             </span>
+            {/* bb/hr under the share and what it is of (owner, 2026-10-15), in the money column on
+                the title's line, as the Schedule's accolades sit under its guarantee. */}
+            {bb && (
+              <span className="bp-bb-cell">
+                <span className={'cal-event-gtd bp-bb ' + bb.tone}>{bb.text}</span>
+              </span>
+            )}
           </div>
-          {bb && !open && (
-            <div className="mini-late-reg bp-mini">
-              <span className={'mini-late-reg-time bp-bb ' + bb.tone}>{bb.text}</span>
-              {notes && <span className="mini-late-reg-time bp-notes-hint">Notes</span>}
-            </div>
-          )}
-          {!bb && notes && !open && (
-            <div className="mini-late-reg bp-mini">
-              <span className="mini-late-reg-time bp-notes-hint">Notes</span>
-            </div>
-          )}
         </div>
         <div className={'cal-event-chevron' + (open ? ' open' : '')} onClick={toggle}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
@@ -241,6 +259,27 @@ function SessionCard({ e }) {
         </div>
       </div>
     </li>
+  );
+}
+
+/** The time until settlement (owner, 2026-10-15: "we settle on Sundays at noon"), at the foot of the
+ *  running total card: the Schedule's late-reg bar (styles.css .late-reg-*), its label and countdown on
+ *  one 2r row and the bar under it, draining from a full week to empty at Sunday noon, Eastern. */
+function SettlementBar() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const id = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(id); }, []);
+  const c = settlementCountdown(now);
+  return (
+    <div className="late-reg-wrap bp-settle" aria-label={`Settlement in ${c.text}, Sunday at noon Eastern`}>
+      <div className="late-reg-label-row">
+        <span className="late-reg-label open">Until settlement</span>
+        <span className="late-reg-sep" />
+        <span className="late-reg-time open">{c.text}</span>
+      </div>
+      <div className="late-reg-bar-bg">
+        <div className="late-reg-bar-fill open" style={{ width: `${c.pct}%` }} />
+      </div>
+    </div>
   );
 }
 
@@ -304,9 +343,13 @@ export default function BackerPage({ token }) {
   const [failed, setFailed] = useState(false);
   const [range, setRange] = useState('all');
   const today = useMemo(todayISO, []);
-  const gridOverlay = useMemo(() => {
+  const isAdmin = useMemo(deviceIsAppAdmin, []);
+  const forcedGrid = useMemo(() => {
     try { return new URLSearchParams(window.location.search).get('gridOverlay') === '1'; } catch { return false; }
   }, []);
+  const [adminGrid, setAdminGrid] = useState(() => { try { return localStorage.getItem('gridOverlay') === 'on'; } catch { return false; } });
+  const gridOverlay = forcedGrid || (isAdmin && adminGrid);
+  const toggleGrid = () => setAdminGrid((g) => { const next = !g; try { localStorage.setItem('gridOverlay', next ? 'on' : 'off'); } catch { /* private mode */ } return next; });
 
   const load = useCallback(() => {
     setFailed(false);
@@ -351,7 +394,7 @@ export default function BackerPage({ token }) {
     const { events, sum, options, series, months, bbs } = view;
     const name = feed.name || 'Your action';
     const baseNote = view.range !== 'all' ? 'start' : !sum.complete ? 'carried in' : sum.opening ? 'opening' : 'start';
-    const label = view.range === 'all' ? 'Your share' : `Your share, ${RANGE_NOUN[view.range]}`;
+    const label = view.range === 'all' ? 'Balance' : `Balance, ${RANGE_NOUN[view.range]}`;
     body = (
       <>
         <div className="bp-hero">
@@ -380,6 +423,7 @@ export default function BackerPage({ token }) {
                 </>
               ) : `Opening balance · no sessions yet`}
             </div>
+            <SettlementBar />
           </section>
         )}
 
@@ -419,6 +463,10 @@ export default function BackerPage({ token }) {
         {body}
       </main>
       {gridOverlay && <GridOverlay showReadout={false} />}
+      {isAdmin && (
+        <button type="button" className={'grid-dev-toggle bp-grid-toggle' + (adminGrid ? ' is-on' : '')}
+          title={`${adminGrid ? 'Hide' : 'Show'} layout grid (admin)`} aria-pressed={adminGrid} onClick={toggleGrid}>#</button>
+      )}
     </div>
   );
 }

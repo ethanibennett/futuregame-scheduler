@@ -1201,6 +1201,12 @@ async function initDatabase() {
       UNIQUE(user_id, tournament_id)
     )
   `);
+  // The line under the game on a backer's session card (owner, 2026-10-15): a result's and a cash
+  // session's own `subtitle`, typed in their forms. Checked every boot, so any database gets it.
+  for (const t of ['tracking_entries', 'cash_sessions']) {
+    const info = db.exec(`PRAGMA table_info(${t})`);
+    if (info[0] && !info[0].values.some((v) => v[1] === 'subtitle')) db.run(`ALTER TABLE ${t} ADD COLUMN subtitle TEXT`);
+  }
 
   db.run(`
     CREATE TABLE IF NOT EXISTS schedule_permissions (
@@ -6290,7 +6296,7 @@ app.get('/api/tracking', authenticateToken, (req, res) => {
 
 app.post('/api/tracking', authenticateToken, requireRegistered, async (req, res) => {
   try {
-    const { tournamentId, numEntries, cashed, finishPlace, cashAmount, notes } = req.body;
+    const { tournamentId, numEntries, cashed, finishPlace, cashAmount, notes, subtitle } = req.body;
     const checkStmt = db.prepare('SELECT id FROM tournaments WHERE id = ?');
     checkStmt.bind([tournamentId]);
     const exists = checkStmt.step();
@@ -6317,6 +6323,7 @@ app.post('/api/tracking', authenticateToken, requireRegistered, async (req, res)
         [numEntries || 1, cashed ? 1 : 0, finishPlace || null, cashAmount || 0, notes || null, existing.id, req.user.id]
       );
       if (bk.set) db.run('UPDATE tracking_entries SET bankroll_id = ? WHERE id = ? AND user_id = ?', [bk.value, existing.id, req.user.id]);
+      if (subtitle !== undefined) db.run('UPDATE tracking_entries SET subtitle = ? WHERE id = ? AND user_id = ?', [cashSessions.cleanSubtitle(subtitle), existing.id, req.user.id]);
       followShares('tracking_entries', [existing.id]); // a notified result's shares follow it, silently
       await saveDatabase();
       broadcastToBuddies(req.user.id, 'buddy-tracking', { buddyId: req.user.id, username: req.user.username, tournamentId });
@@ -6328,6 +6335,7 @@ app.post('/api/tracking', authenticateToken, requireRegistered, async (req, res)
       );
       const newId = db.exec('SELECT last_insert_rowid()')[0].values[0][0];
       if (bk.set) db.run('UPDATE tracking_entries SET bankroll_id = ? WHERE user_id = ? AND tournament_id = ?', [bk.value, req.user.id, tournamentId]);
+      if (subtitle !== undefined) db.run('UPDATE tracking_entries SET subtitle = ? WHERE id = ? AND user_id = ?', [cashSessions.cleanSubtitle(subtitle), newId, req.user.id]);
       await saveDatabase();
       broadcastToBuddies(req.user.id, 'buddy-tracking', { buddyId: req.user.id, username: req.user.username, tournamentId });
       res.status(201).json({ message: 'Entry tracked', id: newId });
@@ -6341,7 +6349,7 @@ app.post('/api/tracking', authenticateToken, requireRegistered, async (req, res)
 app.put('/api/tracking/:entryId', authenticateToken, requireRegistered, async (req, res) => {
   try {
     const { entryId } = req.params;
-    const { numEntries, cashed, finishPlace, cashAmount, notes } = req.body;
+    const { numEntries, cashed, finishPlace, cashAmount, notes, subtitle } = req.body;
     const checkStmt = db.prepare('SELECT id, bankroll_id FROM tracking_entries WHERE id = ? AND user_id = ?');
     checkStmt.bind([entryId, req.user.id]);
     const owned = checkStmt.step() ? checkStmt.getAsObject() : null;
@@ -6355,6 +6363,7 @@ app.put('/api/tracking/:entryId', authenticateToken, requireRegistered, async (r
       [numEntries || 1, cashed ? 1 : 0, finishPlace || null, cashAmount || 0, notes || null, entryId, req.user.id]
     );
     if (bk.set) db.run('UPDATE tracking_entries SET bankroll_id = ? WHERE id = ? AND user_id = ?', [bk.value, entryId, req.user.id]);
+    if (subtitle !== undefined) db.run('UPDATE tracking_entries SET subtitle = ? WHERE id = ? AND user_id = ?', [cashSessions.cleanSubtitle(subtitle), entryId, req.user.id]);
     followShares('tracking_entries', [owned.id]); // a notified result's shares follow it, silently
     await saveDatabase();
     res.json({ message: 'Entry updated' });
