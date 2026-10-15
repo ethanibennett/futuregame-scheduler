@@ -22,7 +22,9 @@ wsop-console side and verified against both live services.
 - **Done since:** 4 (the floating SPR and pot-odds badge rules were dead: SPR is text in the pot cell, pot odds sit under the table; deleted).
 - **Already true in today's code:** 22 (the level block sits in a bordered pill), 44 (badge offsets are in r, not px).
 - **Owner's taste, not done:** 21 (drop "Pot" with one pot: the owner chose POT inline), 23 (ALL-IN light and wide: today's heavy badge is deliberate, "the one action that should stop you"), 24 (the hand name in the display face on the felt).
-- **Still open:** lighting 9-13, 15, 16; motion 25, 29, 30 (and confirm 28/31/36 against the springs); structure 5, 18, 20, 32, 35, 37, 38, 41, 42, 45-47, 49, 50. Each is a visible change best reviewed in screenshots a few at a time.
+- **Done (09:00-, after a 6.5-hour idle the owner rightly called out):** 29 + the turn ring itself: `.replayer-seat.active-turn` was styled in August but no code ever set it, so a replay never showed who acts next. The next action's player now gets it until the showdown (`turnIdx`, HandReplayerView.jsx), with one aqua pulse as the turn lands (starts at opacity 0, so exports never show it; reduced motion drops it). That also makes idea 33's reasoning true: aqua fill = whose turn.
+- **Superseded by the springs (checked against docs/replayer-springs.md):** 25 (the pot ticks up as each wager lands), 28 (the flop is one gesture, turn/river single placements), 31 (chips squash on arrival), 36 (the pot ships to the winner on the arm spring).
+- **Still open:** lighting 9-13, 15, 16; motion 30; structure 5, 18, 20, 32, 35, 37, 38, 41, 42, 45-47, 49, 50.
 - **Guard note:** at 1280x800 `button.game-fave-btn "2-7 TD"` measures ink dx -0.76 (0.75 limit), untouched by this batch.
 
 ## 2026-10-15 (night, last) — Launch plan action 8 drafted; privacy docs caught up; actions 6 held

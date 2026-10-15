@@ -6028,6 +6028,15 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     });
     return out;
   }, [hand, streetIdx, actionIdx, folded, stacks]);
+  /* Whose turn it is (catalogue three, ideas 29 and 33; 2026-10-15): the player of the next action on
+     this street, until the showdown. The ring's styles (.replayer-seat.active-turn) were written in
+     August but nothing ever set the class, so a replay never said who acts next. -1 between streets
+     and at the result. */
+  const turnIdx = (() => {
+    if (showResult) return -1;
+    const next = currentActions[actionIdx + 1];
+    return next && !folded.has(next.player) ? next.player : -1;
+  })();
 
   /* Tournament rule: once a player is all-in and no betting is left, every
      live hand is tabled before the runout. So in a tournament hand (not cash),
@@ -8801,6 +8810,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                name grows inward. pos still drives the shadow and the fold origin. */
             <div key={pi} data-seat={pi} className={`replayer-seat ${seatClass}${isMucked ? ' mucked' : ''}${foldAnimClass}`
               + (pi === replayHeroIdx ? ' is-hero' : '') + (allIn.has(pi) ? ' is-allin' : '')
+              + (pi === turnIdx ? ' active-turn' : '')
               + (!isLandscape && pos[0] === gx(CL) ? ' seat-edge-left' : '')
               + (!isLandscape && pos[0] === gx(CR) ? ' seat-edge-right' : '')
               + (springOn && motion.shipHit && (seatClass === 'winner' || seatClass === 'split') ? ' ship-hit' : '')}

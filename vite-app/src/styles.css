@@ -6178,6 +6178,25 @@
         var(--ring-1) rgba(60,200,224,0.55),
         var(--ring-2) rgba(60,200,224,0.40);
     }
+    /* Catalogue three, idea 29 (2026-10-15): the turn's ARRIVAL is the event worth a motion, not the
+       state of having it. One aqua ring leaves the plaque and fades as the turn lands, once (the class
+       is re-applied per seat, so it plays per turn), then the static ring above holds. Nothing on this
+       table loops. It starts at opacity 0, so an export, which pauses animations at their first frame,
+       never shows it; reduced motion drops it. */
+    .replayer-seat.active-turn .replayer-seat-info::before {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      box-shadow: 0 0 0 var(--bw-1) rgba(60,200,224,0.7);
+      opacity: 0;
+      animation: replayerTurnArrive var(--dur-slow) var(--ease-out) 1;
+    }
+    @keyframes replayerTurnArrive {
+      0%   { opacity: 0; transform: scale(1); }
+      15%  { opacity: 0.9; }
+      100% { opacity: 0; transform: scale(1.14); }
+    }
     .replayer-seat.winner .replayer-seat-info {
       border-color: #eab308;
       box-shadow: var(--plate-bevel),
@@ -8548,7 +8567,8 @@
     .replayer-action-badge-outer { animation: none; }
     @media (prefers-reduced-motion: reduce) {
       .replayer-action-badge-outer,
-      .replayer-pot-display.anim-collect { animation: none; }
+      .replayer-pot-display.anim-collect,
+      .replayer-seat.active-turn .replayer-seat-info::before { animation: none; }
     }
 
 
