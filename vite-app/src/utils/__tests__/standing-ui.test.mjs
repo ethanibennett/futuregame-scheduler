@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   normaliseList, stakeWords, agreementView, toCreateBody, toStakesBody, correctionText, eventView, driftView, stateLine,
-  tournamentPreviewQuery, cashPreviewQuery, toQueryString, confirmActions,
+  tournamentPreviewQuery, cashPreviewQuery, toQueryString, confirmActions, toPaymentBody, paymentView,
 } from '../standing-ui.js';
 
 const formats = [{ key: 'all', label: 'Every game' }, { key: 'PLO', label: 'PLO' }, { key: 'NLH', label: 'NLH' }];
@@ -68,6 +68,16 @@ test('the preview queries for unsaved results', () => {
     { kind: 'cash', date: '2026-10-08', game: 'NLH', room: 'Parx', resultCents: '70000', currency: 'USD' });
   assert.equal(cashPreviewQuery({ cashOut: '' }), null);
   assert.equal(toQueryString({ a: 'x y', b: '', c: '1' }), 'a=x%20y&c=1');
+});
+test('a payout: the body and the line; the agreement\'s money line names what was paid', () => {
+  assert.deepEqual(toPaymentBody({ amount: '$1,500', direction: 'out', paidOn: '2026-10-14', note: ' cash ' }).body, { amountCents: 150000, paidOn: '2026-10-14', note: 'cash' });
+  assert.deepEqual(toPaymentBody({ amount: '200', direction: 'in' }).body, { amountCents: -20000 });
+  assert.equal(toPaymentBody({ amount: '0' }).error, 'Enter how much changed hands.');
+  assert.equal(toPaymentBody({ amount: '12.50' }).error, 'A payout is in whole dollars.');
+  assert.deepEqual(paymentView({ id: 1, amountCents: 150000, paidOn: '2026-10-14', note: 'cash' }, { thisYear: 2026 }), { key: 1, when: 'Oct 14', what: 'You paid · cash', amount: '−$1,500', tone: 'is-neg' });
+  assert.equal(paymentView({ id: 2, amountCents: -20000, paidOn: '2026-10-01' }, { thisYear: 2026 }).what, 'They paid you');
+  const a = normaliseList({ agreements: [{ ...raw.agreements[0], paidCents: 50000 }] }).agreements[0];
+  assert.equal(agreementView(a, { thisYear: 2026, today: '2026-10-14' }).money, '2 shares · +$1,150 · opening +$126 · paid −$500');
 });
 test('the Q7 ask: a series overlap offers Both or Series only; a dashboard night offers Send anyway', () => {
   const s = confirmActions({ key: 'b7', warnings: [{ kind: 'series', series: ['Fall'] }] });

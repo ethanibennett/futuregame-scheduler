@@ -566,6 +566,7 @@ const notifyTap = require('./lib/staking/notify');
 const standingLive = require('./lib/staking/live');
 const ownerApi = require('./lib/owner-api');
 const moneyHomes = require('./lib/money-homes');
+const standingPayouts = require('./lib/staking/payouts');
 // Every write to a result runs this after its own write and before the save: a result some backer
 // was notified of carries its shares with it (owner Q2: nobody is told), a deleted one voids them.
 // A result nobody notified costs one indexed lookup and is never touched. A failure here is logged
@@ -3394,6 +3395,11 @@ async function initDatabase() {
       name: standingLive.MIGRATION_NAME,
       fn: () => { standingLive.migrate(db); console.log('Standing shares live: answers table ready'); }
     },
+    {
+      // Phase 14 of the bankroll merge: standing payouts (lib/staking/payouts.js). Additive.
+      name: standingPayouts.MIGRATION_NAME,
+      fn: () => { standingPayouts.migrate(db); console.log('Standing payouts: table ready'); }
+    },
   ];
 
   for (const mig of dataMigrations) {
@@ -4152,6 +4158,7 @@ function deleteUserAccount(userId) {
     // Standing agreements reference backers (FK): exclusions and stakes, then the agreements.
     const sa = inList(standing);
     run('standing_exclusions', `DELETE FROM standing_exclusions WHERE agreement_id IN (${sa})`, []);
+    run('standing_payments', `DELETE FROM standing_payments WHERE agreement_id IN (${sa})`, []);
     run('standing_stakes', `DELETE FROM standing_stakes WHERE agreement_id IN (${sa})`, []);
     run('standing_agreements', `DELETE FROM standing_agreements WHERE id IN (${sa})`, []);
     run('backers', 'UPDATE backers SET app_user_id = NULL WHERE app_user_id = ?', [uid]);
@@ -6828,6 +6835,8 @@ ownerApi.mountRoutes(app, {
   getDb: () => db, saveDatabase, getOwnerId: () => HAM_OWNER_ID, getRates: fetchExchangeRates,
   loaded: ledgerSourcesLoaded, followShares,
 });
+// Standing payouts (Phase 14, lib/staking/payouts.js): the player's own, under the /api/staking gate.
+standingPayouts.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, requireRegistered, limiter: stakingLimiter, todayET: () => backerSurface.todayET() });
 // Money homes (Phase 10, lib/money-homes.js): the fund's target and pace, "Where's the money", the tax
 // set-aside rate, for the bankroll dashboard and the tax report. The signed-in admin's own.
 moneyHomes.mountRoutes(app, {

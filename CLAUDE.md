@@ -300,6 +300,11 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   is", a seventh Overview section of counted places against the ledger; the tax report's set-aside line
   (`money_settings.taxSetAsidePct`, default 30). `GET /api/bankrolls/money/homes`, `PUT …/locations`,
   `PUT …/settings`. Tests: `npm run test:money-homes` (ports 4710-4719).
+  **Bankroll merge, Phase 14: standing payouts** (`docs/bankroll-merge.md` "Phase 14: as built";
+  `lib/staking/payouts.js`): a payout to or from a standing backer, with its settlement adjustment
+  (`'sp:<id>'`); a backer's running total is shares + opening − payouts everywhere
+  (`backerCumulativeCents`), and the feed carries `paidCents` only when there are any. The Standing card's
+  Payouts. Tests: `npm run test:standing-payouts` (ports 4730-4739).
 
 ## Hazards
 - ⚠️ **Junction hazard**: checking out any pre-carve branch (e.g. `wip/windows-mtt-feed`)

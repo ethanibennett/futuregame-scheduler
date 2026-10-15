@@ -5,7 +5,7 @@ on `feat/money-merge-2` (merged), **Phase 3 built** on `feat/money-merge-3` (mer
 dashboard repo on `feat/money-export` (merged and deployed, closed until LEDGER_TOKEN), **Phase 5 built** on
 `feat/money-merge-5` (merged; the pull is off until LEDGER_TOKEN) (see "Phase 1: as built" to "Phase 5: as
 built" after the §15 table). **The Notify tap is built ahead of Phase 7** on `feat/notify-tap` (merged; "Notify
-tap (built ahead of Phase 7)", after the Backers view). **Phase 6 built** on `feat/money-merge-6` (merged), **Phase 7 built** on `feat/money-merge-7` (merged), **Phase 8 built** on `feat/money-merge-8` (merged), **Phase 9 built** on `feat/money-merge-9` (merged), **Phase 10 built** on `feat/money-merge-10` (merged; "Phase 10: as built").
+tap (built ahead of Phase 7)", after the Backers view). **Phase 6 built** on `feat/money-merge-6` (merged), **Phase 7 built** on `feat/money-merge-7` (merged), **Phase 8 built** on `feat/money-merge-8` (merged), **Phase 9 built** on `feat/money-merge-9` (merged), **Phase 10 built** on `feat/money-merge-10` (merged), **Phase 14 built** on `feat/money-merge-14` (merged; "Phase 14: as built"). What is left needs the dashboard repo (11) or the owner and LEDGER_TOKEN (12, 13).
 A buildable spec for moving the dashboard's money
 (dashboard.futurega.me, repo `wsop-console`) into this app (futurega.me, repo
 `futuregame-scheduler`), cut into phases small enough for one builder each.
@@ -1592,7 +1592,7 @@ judgment about money, posting or layout. The model policy (handoff, 2026-10-14) 
 | **11** | WC | Dashboard adapter (§12.1): `money-source`, flags, summary/series/MCP/PWA store, Today log sheet, frozen sync and relay, Money tab links, fund target from the feed; contract and adapter tests | 9, 4 | Sonnet build, **Opus** review of the summary adapter |
 | **12** | both | Cutover (§13 steps 2-8), run by the lead with the owner | 1-11 | **Opus** + owner |
 | **13** | both | Retire (§12.2, §7.3, §7.4) and CLAUDE.md / docs (§14), after a two-week soak; tag `pre-money-retire` first | 12 | Sonnet |
-| **14** | sched | *(optional, §17 Q10)* Standing payouts: `standing_payments` (id, agreement_id, amount_cents signed, paid_on, note), each writing a `settlement` adjustment (`settlement_ref 'sp:<id>'`); feed `paidCents`, running total = shares + opening − payouts | 7, 8 | Sonnet |
+| **14** | sched | **Built** (see "Phase 14: as built" below). *(optional, §17 Q10)* Standing payouts: `standing_payments` (id, agreement_id, amount_cents signed, paid_on, note), each writing a `settlement` adjustment (`settlement_ref 'sp:<id>'`); feed `paidCents`, running total = shares + opening − payouts | 7, 8 | Sonnet |
 
 ### Phase 1: as built (2026-10-14, branch `feat/money-merge`)
 
@@ -2571,6 +2571,28 @@ closed.
 
 **Not built**: a "Set aside" figure on the Overview (the tax report holds it); a UI for the rate (the
 route exists; the dashboard's 30% is the default).
+
+### Phase 14: as built (2026-10-14, branch `feat/money-merge-14`)
+
+**Standing payouts** (owner Q10; `lib/staking/payouts.js`): money that changes hands with a standing
+backer. A payout row (`standing_payments`: agreement, signed `amount_cents` with + = the player paid
+the backer, the day, a note; migration `standing-payouts-2026-10`) and ONE `settlement` adjustment in
+the chosen USD bankroll (Main by default), `settlement_ref 'sp:<id>'`, written and removed together in
+one savepoint. A settlement moves the balance and is never profit. Whole dollars, like a series
+settlement.
+- **The running total** is shares + opening − payouts everywhere at once: `backerCumulativeCents`
+  subtracts them, so the backer's page, the push wording, the weekly digest and the Standing list
+  agree. The feed carries `paidCents` only when there are payouts, so every page without one is byte
+  for byte what it was (the parity tests still pass). The page's total card adds "· paid −$500"; its
+  curve is the shares, so its base adds the payouts back.
+- **Routes** (the player's own): `GET` / `POST /api/staking/standing/:id/payments`, `DELETE
+  /api/staking/standing/payments/:paymentId`.
+- **UI**: the Standing card's **Payouts** (an ended agreement keeps it): the payouts newest first with
+  Remove, then amount, who paid, the day and a note, and Record. The card's money line adds "paid".
+- **Tests**: `npm run test:standing-payouts` (5 cases, ports 4730-4739); the backer-page and Standing
+  helper tests gained theirs; `test:backers` (parity included), `test:backer-page` and
+  `test:standing-live` still pass. Guards: `staking-standing*` with the new `-payouts` view, every
+  control on the grid at 402 and 1440, no clipped text.
 
 ### Backers view (read-only), ahead of Phase 8 (2026-10-14, branch `feat/backers-view`)
 

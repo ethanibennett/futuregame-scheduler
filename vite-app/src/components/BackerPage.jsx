@@ -305,6 +305,7 @@ export default function BackerPage({ token }) {
                     </React.Fragment>
                   ))}
                   {sum.opening ? ` · opening ${fmtSignedCents(sum.opening)}` : ''}
+                  {sum.paid ? ` · paid ${fmtSignedCents(-sum.paid)}` : ''}
                 </>
               ) : `Opening balance · no sessions yet`}
             </div>
