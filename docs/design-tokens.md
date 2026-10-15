@@ -186,7 +186,7 @@ the snap is a judgment call with a visible result, and wants eyes on it first.
 - [ ] **Reviewed:** primary actions onto `--brand`
 - [ ] `!important` sweep — 55 sites, each its own specificity question
 - [ ] Stylesheet split into modules
-- [ ] Motion: the five `transition: all` declarations onto `--dur-*`/`--ease-*`
+- [x] Motion: the five `transition: all` declarations are gone (checked 2026-10-15; only comments mention them)
 - [ ] `:focus-visible` ring audit
 
 Three font spellings are deliberately still literal. `'Univers'` and
