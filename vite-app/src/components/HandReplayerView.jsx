@@ -8325,6 +8325,14 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
         style={(() => {
           const s = { ...(potContrast || {}) };
           s['--card-overlap'] = String((Number(rSettings.cardOverlap ?? 52) || 0) / 100);
+          /* Catalogue three, idea 15 (2026-10-15): on coloured cloth a shadow takes the cloth's colour.
+             The felt's shade stop, darkened, as an r,g,b triple the cast shadows use in rgba() (no
+             color-mix: the video exporter cannot parse it). Named themes keep black (no triple). */
+          if (rSettings.theme === 'default') {
+            const st = feltStops(feltColor, rSettings.feltBright);
+            const m = st && /rgb\((\d+),(\d+),(\d+)\)/.exec(st.shade);
+            if (m) s['--shadow-rgb'] = [m[1], m[2], m[3]].map((v) => Math.round(Number(v) * 0.45)).join(', ');
+          }
           if (rSettings.cardBack === 'custom') {
             // Same derivation as the felt below, and for the same reason.
             const m = String(rSettings.cardBackColor || '').match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);

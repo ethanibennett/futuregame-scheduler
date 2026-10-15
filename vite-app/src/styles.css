@@ -5845,7 +5845,7 @@
     .replayer-board-area .card-row img {
       height: var(--card-h);
       filter: drop-shadow(0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.72))
-              drop-shadow(var(--cast-x) var(--cast-y) var(--cast-blur) rgba(0,0,0,0.38));
+              drop-shadow(var(--cast-x) var(--cast-y) var(--cast-blur) rgba(var(--shadow-rgb, 0, 0, 0), 0.38));   /* felt-tinted (idea 15) */
       /* No lit-edge ring (owner, 2026-10-11): a box-shadow follows the <img>'s BOX, not the
          card's rounded artwork inside it, so it drew a pale square frame around every card. */
     }
@@ -6046,7 +6046,7 @@
          the table lit from the side — and there are two to ten of them in
          every frame — while the board two rules up, the felt's own inset and
          the rail's highlight all said the light is above and in front. */
-      filter: drop-shadow(var(--cast-x) calc(var(--cast-y) * 0.6) calc(var(--cast-blur) * 0.6) rgba(0,0,0,0.5));
+      filter: drop-shadow(var(--cast-x) calc(var(--cast-y) * 0.6) calc(var(--cast-blur) * 0.6) rgba(var(--shadow-rgb, 0, 0, 0), 0.5));
       /* no white outline around the card (owner, 2026-10-11) */
     }
     /* 31.4px = 44 x (180/252), matching the faces they sit beside. */
@@ -6105,7 +6105,7 @@
       border: var(--bw-1) solid #b9a884;
       box-shadow:
         0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.5),
-        var(--cast-x) var(--cast-y) var(--cast-blur) rgba(0,0,0,0.4),
+        var(--cast-x) var(--cast-y) var(--cast-blur) rgba(var(--shadow-rgb, 0, 0, 0), 0.4),
         inset 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(255,255,255,0.6),
         inset 0 calc(var(--subrow) * -0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.12);
       pointer-events: none;
@@ -6389,7 +6389,10 @@
          3.0cqmin is that same 11.50px at the 402x874 reference the rest of the
          felt is calibrated against. */
       font-size: clamp(8px, 3.0cqmin, 24px); font-weight: var(--fw-bold);
-      color:#eab308; font-family: var(--font-condensed);
+      /* Catalogue three, idea 24 (2026-10-15): the display face. It is the one string on the table that
+         is prose ("Two Pair, Aces and Kings"), the sentence the replay builds to, and it was set in the
+         label face like a badge. The figures stay condensed (idea 17). */
+      color:#eab308; font-family: var(--font-display); font-weight: var(--fw-regular);
       /* The hand name at showdown is the payoff moment, and it was rendered in
          event-card chrome - so in the light theme the winner's hand was a
          white sticker on purple cloth. Same argument the felt pass made for
