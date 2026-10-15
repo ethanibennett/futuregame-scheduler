@@ -14,6 +14,11 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-15 — The cutover is done
+- **Live:** LEDGER_TOKEN on both Render services; the owner ran the import on futurega.me; MONEY_SOURCE=scheduler on futuregame-dashboard. The dashboard summary reads futurega.me (checked: roll $26,462, freshness.money ok). Dashboard main is ad62960 (Phase 11, merged).
+- **Open:** no WSOP fund bankroll on futurega.me yet, so the dashboard shows the fund at $0 against its old $50k default; the owner sets it in Manage bankrolls (Role: the WSOP fund, $65,000 by 2027-05-03).
+- **Not done, by choice:** Phase 13 (deleting the dashboard's own money screens). The money is a tracker (memory money-is-a-tracker); leave them unless asked.
+
 ## 2026-10-14 (close) — Phase 11 pushed; the cutover made plain
 - **Dashboard repo:** `feat/money-source` (ad62960) is pushed, NOT merged: the dashboard reads its money
   from futurega.me behind `MONEY_SOURCE=scheduler`, off by default. Merging deploys the dashboard; the
