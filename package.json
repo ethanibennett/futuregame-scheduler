@@ -65,6 +65,7 @@
     "test:springs": "cd vite-app && node --test src/utils/__tests__/spring.test.mjs src/utils/__tests__/replayer-motion.test.mjs",
     "check:fonts": "python scripts/check-font-metrics.py",
     "test:money-import-review": "node test/money-import-review.test.js",
+    "test:standing-live": "node test/standing-live.test.js",
     "test:notify-tap": "node test/notify-tap.test.js"
   },
   "keywords": [],

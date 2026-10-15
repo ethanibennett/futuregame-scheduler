@@ -14,6 +14,15 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-14 (late) — Bankroll merge Phase 7: standing shares live, on `feat/money-merge-7`
+- **Built, tested, NOT merged** (worktree `.claude/worktrees/money-merge-7`, made by hand because the app
+  cannot create one from the Mac's remote view: it mangles the Windows path). Spec: "Phase 7: as built";
+  CLAUDE.md has the block. 18 cases in `test:standing-live`; notify tap, backers, money-import and standing
+  suites still pass. Server only: Phase 8 draws the UI.
+- **Decision to know:** unset posting is ON (the owner wanted the tap before the cutover); the cutover
+  runbook should set `posting: 'off'` on this side until its step 6.
+- **Next:** merge when the owner says so; Phase 8 (the Staking UI on these routes).
+
 ## 2026-10-14 (night) — Bankroll merge Phase 6: the import review, merged
 - **Live on master:** Bankroll › Dashboard › Import › "From the dashboard app", owner only (hidden on
   the routes' 403). Nothing changes for anyone else, and on futurega.me the pull stays OFF until

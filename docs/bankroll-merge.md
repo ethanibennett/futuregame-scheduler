@@ -5,7 +5,7 @@ on `feat/money-merge-2` (merged), **Phase 3 built** on `feat/money-merge-3` (mer
 dashboard repo on `feat/money-export` (merged and deployed, closed until LEDGER_TOKEN), **Phase 5 built** on
 `feat/money-merge-5` (merged; the pull is off until LEDGER_TOKEN) (see "Phase 1: as built" to "Phase 5: as
 built" after the §15 table). **The Notify tap is built ahead of Phase 7** on `feat/notify-tap` (merged; "Notify
-tap (built ahead of Phase 7)", after the Backers view). **Phase 6 built** on `feat/money-merge-6` (not yet merged; "Phase 6: as built").
+tap (built ahead of Phase 7)", after the Backers view). **Phase 6 built** on `feat/money-merge-6` (merged), **Phase 7 built** on `feat/money-merge-7` (not yet merged; "Phase 7: as built").
 A buildable spec for moving the dashboard's money
 (dashboard.futurega.me, repo `wsop-console`) into this app (futurega.me, repo
 `futuregame-scheduler`), cut into phases small enough for one builder each.
@@ -1585,7 +1585,7 @@ judgment about money, posting or layout. The model policy (handoff, 2026-10-14) 
 | **4** | WC | **Built** (see "Phase 4: as built" below; dashboard branch `feat/money-export`, not merged). `GET /api/money-export` + `lib/shared-token.js` (`checkSharedToken`, the roster's check generalised) + tests; `LEDGER_TOKEN` declared in `render.yaml`, set by the owner | — | Sonnet |
 | **5** | sched | **Built** (see "Phase 5: as built" below). Import engine: fetch, stage, plan (§5 mapping, §9.1 scoring, §7.1 union, §5.8 opening and reconciliation with a `computeBankroll` port), decisions, commit, undo, delta; owner-only routes | 1, 2 | **Opus** |
 | **6** | sched | **Built** (see "Phase 6: as built" below). Import review UI (§9.3) + seed script + guard steps | 5 | **Opus** (grid seating and guard work has needed judgment on every bankroll tab) |
-| **7** | sched | Standing shares live, to §1.1: the **Notify action** creates a share (Q1: not on save); `syncSharesFor` in every write path only **follows or voids** a posted share (§6.5), silently (Q2); the overlap `ask` (Q7) and where its answer is stored; exclusions, revisions, recalc, drift, preview, cutover state and `PUT /api/bankrolls/money/cutover`, roster sync standing down. **Part built ahead** ("Notify tap (built ahead of Phase 7)" below): the Notify action, the silent follow and void in every result write path, revisions, and a Q7 ask that is a confirm. Phase 7 keeps its `fg-` event ids, and still owes: where the Q7 answer is stored, exclusions, recalc, drift, the money_settings / cutover gate, and the roster sync standing down | 1, 2 | **Opus** |
+| **7** | sched | **Built** (see "Phase 7: as built" below). Standing shares live, to §1.1: the **Notify action** creates a share (Q1: not on save); `syncSharesFor` in every write path only **follows or voids** a posted share (§6.5), silently (Q2); the overlap `ask` (Q7) and where its answer is stored; exclusions, revisions, recalc, drift, preview, cutover state and `PUT /api/bankrolls/money/cutover`, roster sync standing down. **Part built ahead** ("Notify tap (built ahead of Phase 7)" below): the Notify action, the silent follow and void in every result write path, revisions, and a Q7 ask that is a confirm. Phase 7 keeps its `fg-` event ids, and still owes: where the Q7 answer is stored, exclusions, recalc, drift, the money_settings / cutover gate, and the roster sync standing down | 1, 2 | **Opus** |
 | **8** | sched | Standing UI in the Staking tab: backers with stakes editor (from today / correct with preview; the game list is `classify.js` `GAMES`, Q8), opening, delivery, copy and rotate link, recorded shares with exclude / recalc / remove; the "Posts to backers" preview line on the result and cash forms and the Notify sheet (with the Q7 ask); guard steps | 7 | Sonnet |
 | **9** | sched | Owner API (§11.2-11.3, ported `normalizeSession` + tests) and deep links (§11.5) | 1, 7 | Sonnet |
 | **10** | sched | Money homes: fund bankroll target and progress (bankroll manager field + an Overview line), "Where's the money" (a seventh Overview section: locations, total, drift against the roll), tax set-aside line in the tax report | 1 | Sonnet |
@@ -2361,6 +2361,84 @@ row and through after its delete with every table byte for byte, a delta, both u
   WebKit, so every paragraph is 1/64 px short; a view with this many lands the section below it off
   its r line (the CSV buttons, 402). `.bid .an-p` pads a whole r below and pushes the baseline with a
   transform instead. Any other long prose view will meet the same.
+
+### Phase 7: as built (2026-10-14, branch `feat/money-merge-7`)
+
+Built to §15 row 7, §6.5 to §6.10 and §11.4 under the owner's answers (§1.1): a share is created only
+by the Notify tap (Q1), a correction tells nobody (Q2), a standing/series overlap asks and the answer is
+now stored (Q7). Server only; the Staking UI is Phase 8. Code: `lib/staking/live.js`, the routes in
+`lib/staking/standing-routes.js`, small additions to `lib/staking/notify.js`.
+
+**What exists**
+- **The money state** (`money_settings` per owner: `posting`, `cutover`, `postingSince`) and its switch,
+  `GET`/`PUT /api/bankrolls/money/cutover` (owner only). **Unset posting is ON**: the owner asked for the
+  tap before the cutover, so only an explicit `posting: 'off'` refuses a commit (409, `posting: 'off'`;
+  the preview carries `posting` and `cutover`). Turning posting on with `postingSince` moves
+  `effective_from` to it on every agreement an import created (`bankroll_import_keys`
+  `standing_agreements`); hand-made agreements keep their date. `cutover: 'live'` stands the roster
+  sync down (one log line per boot) and stops the feed's `console_records` fallback (`buildFeed`
+  `strict`): a token no `backers` row owns is served with no name and no stakes.
+- **The Q7 answer** lives in the new table `standing_result_answers` (token, result → `series` |
+  `standing` | `excluded`; migration `standing-live-2026-10`). The tap's body takes
+  `answers: { key: 'series' | 'standing' }`: `series` keeps that backer's standing share off the result
+  for good (the block lists it under `skipped`), `standing` sends it and stops the flag. Neither is
+  asked again. "Both" is `standing`: the series side is the settlement's.
+- **Exclusions**: `POST` / `DELETE /api/staking/standing/exclusions` `{ refTable, refId, key }`. Exclude
+  writes the answer `excluded`, a `standing_exclusions` row per standing agreement (what `resultCuts`
+  reads) and voids a posted share (cause `exclude`). Undo removes the first two; nothing is re-posted.
+- **Recalc / remove** of a dashboard-era share the import linked to a result:
+  `POST /api/staking/standing/events/recalc` and `/events/remove` `{ refTable, refId, key }`. Recalc makes
+  it a ledger share at its OWN recorded pct from the result as it is now (a `recalc` revision, basis
+  kept); remove deletes it (`void`, cause `owner-remove`). `notified_*` stays what the backer was told.
+- **Drift**: `GET /api/staking/standing/drift` lists the ledger shares a fresh derivation would change
+  (a feed edit moved a buy-in; feed and admin edits of feed rows are not owner writes). Nothing is
+  applied by itself; `POST /drift/apply { refTable, refId }` follows that result (cause `drift`).
+  `notify.follow` is now `planFollow` (the plan, nothing written) plus `follow` (applies it, with a
+  `cause`), so the report and the write cannot disagree.
+- **Every write path follows**: the tap's set (tracking PUT / POST upsert / DELETE / bulk DELETE, the
+  Personal-event delete, the cash edit, end and delete), plus the **admin editor on a Personal row**
+  (`PUT /api/tournaments/:id` when buy-in, date, game or channel changes) and the **money import's undo**
+  (the shares of the rows it removes are voided). Silent, with a revision, every time.
+- **The agreements' routes** (§6.10), scoped to `req.user.id`: `GET /api/staking/standing` (each
+  agreement with its stakes, the stakes in force, the shares' count and total, the running total, the
+  delivery flags and the link's last four characters), `POST /` (`backerId` or `newBacker`; a new backer
+  is minted a link with `newToken`, an existing one without a link gets one; one active agreement per
+  backer, 409), `PUT /:id` (`effectiveTo`, `status`, `openingCents`, `openingNote`; ending without a date
+  ends today), `POST /:id/stakes` (`mode: 'from-today'` closes the open rows the day before and opens
+  the new ones; `mode: 'correct'` replaces them in place and re-derives every share the agreement has
+  whose pct changes, cause `stake-correction`, after a preview `{ affected, count, totalDeltaCents }`
+  that writes nothing until `confirm: true`), `PUT /backers/:backerId/delivery` (`sms` / `email`: a
+  value turns the flag on and stores it, null turns it off), `GET /:id/events` (`?source=`, `?since=`;
+  each share with its revisions, no event id).
+- **The unsaved-result preview**: `GET /api/staking/standing/preview?kind=&date=&game=&online=&resultCents=&tournamentId=`
+  → the cuts and the line "Posts to backers: +$350 (35%), +$100 (10%)". Owner only.
+- **Tests**: `npm run test:standing-live` (18 cases, ports 4680-4689, `BACKER_PAGE_SOURCE=sql`,
+  `BACKER_DELIVERY=0` and the delivery stub: nothing can leave the machine, and the last case proves
+  nothing tried). The notify tap's 26 cases, `test:backers`, `test:money-import` and `test:standing`
+  still pass.
+
+**Where it differs from the spec, and why**
+1. **Unset posting is on.** §1.1 Q1 has `money_settings.posting` gating the tap, and §13 turns it on
+   at the cutover; the owner asked for the tap on 2026-10-14, before any cutover, so the gate refuses
+   only an explicit `off`. The cutover runbook (§13) should set `posting: 'off'` on this side until its
+   step 6, then `on` with `postingSince`.
+2. **The Q7 answer is stored by token, not by agreement**, because a roster backer (no `backers` row
+   yet) has no agreement to key it on, and the tap must answer for both kinds.
+3. **"Both" is not a third value.** This app records a standing share or not; the series agreement is
+   settled by Phase 3 either way.
+4. **The sweep stays idle.** The tap delivers inline and writes `notified_*`, so the §6.7 sweep (which
+   takes `notified_at IS NULL`) never fires for a tap's share; §16 row 7's "sweep coalesces three edits"
+   has nothing to coalesce under Q2 (a correction sends nothing). Not tested, by design.
+5. **A feed row's admin edit does not follow** (the Notify tap section's choice stands); the drift
+   report catches it. A Personal row's does, because it is the owner's own.
+6. **No UI.** The "Posts to backers" line, the stakes editor and the exclusion, recalc and drift
+   actions have their routes; Phase 8 draws them.
+
+**Traps**
+- **The feed's roster fallback is gone the moment `cutover` is `live`.** A dashboard-era backer whose
+  `backers` row the import has not created yet loses name and stakes on the page. Import first.
+- **`PUT /api/tournaments/:id` on a Personal row now reaches the shares.** A tool that mass-edits
+  Personal events will revise notified shares (silently, with revisions) as it goes.
 
 ### Backers view (read-only), ahead of Phase 8 (2026-10-14, branch `feat/backers-view`)
 

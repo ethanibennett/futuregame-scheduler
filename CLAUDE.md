@@ -271,6 +271,15 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   `LEDGER_TOKEN` + `DASHBOARD_BASE_URL` + `CONSOLE_OWNER_USER_ID`. Tests: `npm run test:money-import`
   (engine + helpers) and `npm run test:money-import-review` (WebKit, ports 4620-4639; needs the built
   app). Trap: innerText reads `an-sec` headings in capitals, so Playwright matches must ignore case.
+  **Bankroll merge, Phase 7: standing shares live** (`docs/bankroll-merge.md` "Phase 7: as built"; code in
+  `lib/staking/live.js` + the routes in `standing-routes.js`): the money state and its switch
+  (`GET`/`PUT /api/bankrolls/money/cutover`, owner only; **unset posting is ON**, only an explicit `off`
+  refuses the Notify tap; `cutover: 'live'` stands the roster sync down and ends the feed's roster
+  fallback), the Q7 answer stored (`standing_result_answers`, the tap's `answers` body), exclusions,
+  a dashboard share's recalc and remove, the drift report and apply, the agreements' routes (list,
+  create with a minted link, update, stakes from-today / correct with preview, delivery, events) and
+  the unsaved-result preview. Every write path follows a notified share silently, the Personal-row
+  admin edit and the import's undo included. Tests: `npm run test:standing-live` (ports 4680-4689).
 
 ## Hazards
 - ⚠️ **Junction hazard**: checking out any pre-carve branch (e.g. `wip/windows-mtt-feed`)
