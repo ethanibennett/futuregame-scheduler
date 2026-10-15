@@ -113,11 +113,13 @@
 .bp-push-label { display: block; }
 
 /* ── Hero ── */
-.bp-hero { margin-top: calc(var(--subrow) * 2); }
+/* The name in a 3r row (owner, 2026-10-15), its baseline where it was (r6 from the content's top):
+   3r over it, then 1r more to the stakes line, which keeps its place too. */
+.bp-hero { margin-top: calc(var(--subrow) * 3); }
 .bp-name {
-  /* Display face xl, one step down from 2xl (owner, 2026-10-15: "really big"); still 5r with the
-     baseline on line 4. c scales with the size (2xl's 1.1243 x xl/2xl = 0.9444), so p = 1.1112. */
-  --h: 5; --p: 1.1112;
+  /* Display face xl, one step down from 2xl (owner, 2026-10-15: "really big"), in a 3r row with the
+     baseline on line 3. c scales with the size (2xl's 1.1243 x xl/2xl = 0.9444), so p = 1.1112. */
+  --h: 3; --p: 1.1112;
   font-family: var(--font-display);
   font-size: var(--fs-xl);
   font-weight: var(--fw-regular);
@@ -125,6 +127,7 @@
   color: var(--text);
 }
 .bp-stakes {
+  margin-top: var(--subrow);
   /* Univers Condensed sm, baseline on line 2 of 2. */
   --h: 2; --p: 0.6978;
   font-family: var(--font-condensed);
@@ -154,10 +157,16 @@
 /* The settlement bar at the card's foot (owner, 2026-10-15): the Schedule card's late-reg block, 1r
    pad + 2r label row + 1r + a 1r bar = 5r after the note's line, then 2r to the card's edge: the card
    grows by those 5r, 1r over the divider, and the 1r under its label: 12r + 5r + 1r + 1r = 19r. Muted throughout; the week running out is not an alarm. */
-.bp-total:has(.bp-settle) { height: calc(var(--subrow) * 19); }
-.bp-settle { margin-top: var(--subrow); }   /* 1r between the stats line and the divider */
-/* 1r more between "Running total" and the figure (owner, 2026-10-15); the card grows by it. */
-.bp-total .bp-total-val { margin-top: var(--subrow); }
+/* Every row 1r further apart (owner, 2026-10-15), baselines from the card's top: the label r3, the
+   figure r9 (2xl in a 3r row, 3r over it), the stats line r13 (2r over it), the divider r15 (2r over
+   it), the settlement line r19 (2r pad + its 2r row), the bar r20-21, then 2r: 23r. */
+.bp-total:has(.bp-settle) { height: calc(var(--subrow) * 23); }
+.bp-total .bp-total-val { --h: 3; --p: 0.7514; font-size: var(--fs-2xl); margin-top: calc(var(--subrow) * 3); }
+.bp-total .bp-total-val + .an-note { margin-top: calc(var(--subrow) * 2); }
+.bp-total .late-reg-wrap.bp-settle { margin-top: calc(var(--subrow) * 2); padding-top: calc(var(--subrow) * 2); }
+/* The top bar's actions sit 1g in from the content, past the scrollbar's lane where one shows (--bp-sb-g,
+   0 elsewhere), so the theme button ends on the content's 1g margin, not over the scrollbar (2026-10-15). */
+.bp-shell .bp-top-actions { right: calc(var(--gu) * (1 + var(--bp-sb-g, 0))); }
 .bp-settle .late-reg-label-row { margin-bottom: var(--subrow); }
 .bp-settle .late-reg-bar-bg { height: var(--subrow); }
 .bp-settle .late-reg-label, .bp-settle .late-reg-time { color: var(--text-muted); }

@@ -20,6 +20,7 @@ wsop-console side and verified against both live services.
 - **Total card:** 1r more between "Running total" and the figure; a settlement bar at its foot (the Schedule's late-reg block): "Until settlement" and a countdown to Sunday 12:00 New York time, draining over the week; clock changes handled (tests). Card 19r.
 - **Elsewhere:** the graph's "Your share" reads "Balance"; the backer's name is one size smaller (2xl to xl, baseline re-seated, measured on line 4).
 - **Admin grid:** a device signed in to the app as an admin (token in localStorage) gets the "#" toggle on backer pages; backers never see it.
+- **Then (same day):** the name and the total's figure each sit in a 3r row (the figure one size down, 3xl to 2xl); the total card's rows are 1r further apart (label r3, figure r9, stats r13, divider r15, settlement r19, bar r20-21; 23r). The extra space on the right of a desktop window is a classic scrollbar's lane (the column widens by it so content keeps 37g; owner: makes sense); the theme button now sits 1g inside the content there, not over the scrollbar.
 - **Guard fix:** `check:controls` read an in-flow sticky 0.4px under its stuck line as stuck and dropped the scroll; the stuck test is one-sided now. The demo seed's notes are opt-in (`seedBackerDemo(db, { notes: true })`, on from the CLI) so the parity tests keep the plain seed.
 
 ## 2026-10-15 (later) — Backer page: session cards are the Schedule's card, and open to the notes
