@@ -70,7 +70,8 @@
     "test:money-homes": "node test/money-homes.test.js && cd vite-app && node --test src/utils/__tests__/money-homes.test.mjs",
     "test:standing-payouts": "node test/standing-payouts.test.js",
     "test:notify-tap": "node test/notify-tap.test.js",
-    "test:live-page": "cd vite-app && node --test src/utils/__tests__/live-page.test.mjs src/utils/__tests__/live-only-defaults.test.mjs"
+    "test:live-page": "cd vite-app && node --test src/utils/__tests__/live-page.test.mjs src/utils/__tests__/live-only-defaults.test.mjs",
+    "test:growth": "node test/growth.test.js"
   },
   "keywords": [],
   "author": "",

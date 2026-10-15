@@ -317,6 +317,13 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   (`backerCumulativeCents`), and the feed carries `paidCents` only when there are any. The Standing card's
   Payouts. Tests: `npm run test:standing-payouts` (ports 4730-4739).
 
+- **Growth measurement** (launch plan, action 5; `lib/growth.js`): `growth_events` (`signup` with its
+  source: the browser's first touch from futurega.me/live `?ct=`, the web app's `?src=`, the platform and
+  the sign-up form's "How did you hear about us?"; `activated` = the first event saved to My Schedule,
+  once) and `user_days` (an account active that UTC day, written by `authenticateToken`). The weekly
+  cohort report (sign-ups, activated within 7 days, D7, D30, by source) is `GET /api/admin/growth`
+  (app admins). No SDK, no ATT prompt. Test: `npm run test:growth`.
+
 ## Hazards
 - ⚠️ **Junction hazard**: checking out any pre-carve branch (e.g. `wip/windows-mtt-feed`)
   materializes tracked `solver/` files THROUGH the junction and clobbers

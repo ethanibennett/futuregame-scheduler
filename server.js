@@ -547,6 +547,7 @@ const bankrollLedger = require('./lib/bankroll-ledger');
 const bankrollManagement = require('./lib/bankroll-management');
 const bankrollImport = require('./lib/bankroll-import');
 const cashSessions = require('./lib/cash-sessions');
+const growth = require('./lib/growth');   // first-party growth measurement (launch plan, action 5)
 const bankrollTransactions = require('./lib/bankroll-transactions');
 const { validateHomeLayout, parseStoredHomeLayout } = require('./lib/home-layout');
 const moneyMerge = require('./lib/money-merge');
@@ -903,6 +904,18 @@ app.get('/live', serveLive);
 // a player's Personal day), the series they belong to and the rooms. Public and cached ten minutes.
 // appStore is the store link's parts once the app is listed (APP_STORE_ID and the campaign provider
 // token APP_STORE_PT, both unset until launch); the page adds the ad's campaign (?ct=) to it.
+// The weekly cohort report (lib/growth.js report): app admins only. ?weeks= up to 52 (default 13).
+app.get('/api/admin/growth', authenticateToken, requireAppAdmin, (req, res) => {
+  try {
+    const weeks = Math.max(1, Math.min(52, Number(req.query.weeks) || 13));
+    res.set('Cache-Control', 'no-store');
+    res.json(growth.report(db, { weeks }));
+  } catch (e) {
+    console.error('[growth] report:', e.message);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
 let liveSummaryCache = null;
 app.get('/api/public/live-summary', (req, res) => {
   try {
@@ -1265,6 +1278,7 @@ async function initDatabase() {
       UNIQUE(user_id, tournament_id)
     )
   `);
+  growth.migrate(db);   // growth_events + user_days (lib/growth.js), every boot, idempotent
   // The line under the game on a backer's session card (owner, 2026-10-15): a result's and a cash
   // session's own `subtitle`, typed in their forms. Checked every boot, so any database gets it.
   for (const t of ['tracking_entries', 'cash_sessions']) {
@@ -3782,6 +3796,8 @@ function authenticateToken(req, res, next) {
       return res.status(401).json({ error: 'Account no longer exists' });
     }
     req.user = user;
+    // An active day for the cohort report (lib/growth.js): one write per account per day.
+    if (user && !user.isGuest) growth.touchDay(db, user.id);
     next();
   });
 }
@@ -4055,6 +4071,8 @@ app.post('/api/register', registerLimit, async (req, res) => {
     );
     const idRow = db.exec('SELECT id FROM users WHERE username = ?', [username]);
     const userId = idRow.length && idRow[0].values.length ? idRow[0].values[0][0] : null;
+    // Where the sign-up came from (the browser's first touch and "How did you hear about us?").
+    if (userId != null) { try { growth.recordSignup(db, userId, req.body.source); } catch (e) { console.error('[growth] signup:', e.message); } }
 
     await saveDatabase();
 
@@ -4658,6 +4676,8 @@ app.post('/api/schedule', authenticateToken, async (req, res) => {
       'INSERT OR IGNORE INTO user_schedules (user_id, tournament_id) VALUES (?, ?)',
       [req.user.id, tournamentId]
     );
+    // Activation: the account's first saved event, once, so a later delete cannot erase it.
+    if (!req.user.isGuest) { try { growth.recordOnce(db, req.user.id, 'activated', { tournamentId: Number(tournamentId) || null }); } catch (e) { console.error('[growth] activated:', e.message); } }
 
     await saveDatabase();
     broadcastToBuddies(req.user.id, 'buddy-schedule-change', {

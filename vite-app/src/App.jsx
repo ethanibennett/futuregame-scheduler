@@ -192,6 +192,19 @@ function landMySchedule() {
 // choices when the live-only defaults arrive (utils/location-prefs.js).
 migrateLiveOnlyDefaults();
 
+/* Where a sign-up came from (launch plan, growth measurement): the first touch this browser kept
+   (the landing page's ?ct=, utils/live-page.js), the web app's ?src=, the platform and the form's
+   "How did you hear about us?". The server keeps only fields it recognises (lib/growth.js). */
+function signupSource(heard) {
+  let first = {};
+  try { first = JSON.parse(localStorage.getItem('acqSource') || '{}') || {}; } catch { first = {}; }
+  let src = null;
+  try { src = new URLSearchParams(window.location.search).get('src'); } catch { src = null; }
+  const native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  const platform = native ? (window.Capacitor.getPlatform ? window.Capacitor.getPlatform() : 'ios') : 'web';
+  return { ct: first.ct || undefined, landing: first.landing || undefined, ref: first.ref || undefined, src: src || undefined, heard: heard || undefined, platform };
+}
+
 const APP_ADMIN_USERNAMES = ['ham', 'ham5', 'claude'];   // mirrors server.js APP_ADMIN_USERNAMES
 const EVENT_EDITOR_USERNAMES = ['ham', 'ham5'];          // mirrors the server's write allowlist
 function tokenUsername(tok) {
@@ -993,7 +1006,7 @@ function App() {
     try {
       const endpoint = isRegister ? '/register' : '/login';
       const body = isRegister
-        ? { username: usernameInput, email, password, realName: realNameInput }
+        ? { username: usernameInput, email, password, realName: realNameInput, source: signupSource(fd.get('heard')) }
         : { email, password };
 
       const res = await fetch(`${API_URL}${endpoint}`, {

@@ -2,6 +2,13 @@ import React, { useState } from 'react';
 import Icon from './Icon.jsx';
 import { THEME_ORDER, THEME_LABEL, THEME_ICON, getStoredSeasonLabel } from '../utils/utils.js';
 
+// The sign-up's "How did you hear about us?" choices; the values are lib/growth.js HEARD.
+const HEARD_OPTIONS = [
+  ['friend', 'A friend'], ['room', 'At a poker room'], ['instagram', 'Instagram'], ['facebook', 'Facebook'],
+  ['reddit', 'Reddit'], ['tiktok', 'TikTok'], ['youtube', 'YouTube'], ['podcast', 'A podcast'],
+  ['press', 'A news story'], ['appstore', 'The App Store'], ['search', 'A web search'], ['other', 'Somewhere else'],
+];
+
 export default function AuthScreen({ onSubmit, error, success, theme, toggleTheme, onForgotPassword, onGuestLogin, initialRegister }) {
   const [isRegister, setIsRegister] = useState(!!initialRegister);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
@@ -44,6 +51,16 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
             <label>Password</label>
             <input type="password" name="password" placeholder={isRegister ? 'At least 8 characters' : 'Your password'} required minLength={isRegister ? 8 : 6} autoComplete={isRegister ? 'new-password' : 'current-password'} />
           </div>
+          {isRegister && (
+            <div className="form-field">
+              {/* Where the player heard of the app (launch plan, growth measurement; optional). */}
+              <label htmlFor="auth-heard">How did you hear about us?</label>
+              <select id="auth-heard" name="heard" defaultValue="">
+                <option value="">Prefer not to say</option>
+                {HEARD_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </div>
+          )}
           {!isRegister && (
             <label className="auth-keep" style={{display:'flex',alignItems:'center',gap:'var(--space-sm)',fontSize:'calc(var(--gu) * 1.178)',color:'var(--text-muted)',cursor:'pointer'}}>
               <input type="checkbox" checked={keepSignedIn} onChange={e => setKeepSignedIn(e.target.checked)}

@@ -9230,7 +9230,7 @@
     .auth-card .auth-logo p { line-height: calc(var(--subrow) * 2); }
     .auth-card .form-field { gap: var(--subrow); }
     .auth-card .form-field label { line-height: calc(var(--subrow) * 2); }
-    .auth-card .form-field input { height: calc(var(--subrow) * 6); box-sizing: border-box; padding-block: 0; }
+    .auth-card .form-field input, .auth-card .form-field select { height: calc(var(--subrow) * 6); box-sizing: border-box; padding-block: 0; }
     .auth-card .auth-hint { line-height: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }   /* one line; its inline link button would grow the line box */
     .auth-card .auth-keep { height: calc(var(--subrow) * 2); margin-top: var(--subrow); }
     .auth-card .auth-divider { border-top: 0; box-shadow: inset 0 var(--bw-hair) 0 var(--border); padding-top: calc(var(--subrow) * 3); }
@@ -9239,7 +9239,7 @@
 
     .form-field label { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text-muted); }
 
-    .form-field input {
+    .form-field input, .form-field select {
       padding: var(--space-lg) var(--space-xl);
       border: var(--bw-1) solid var(--border);
       border-radius: var(--radius-sm);
@@ -9250,7 +9250,9 @@
       transition: border-color var(--dur-snap);
     }
 
-    .form-field input:focus {
+    /* The sign-up's one select (2026-10-15): the inputs' box, the platform's arrow kept. */
+    .form-field select { width: 100%; }
+    .form-field input:focus, .form-field select:focus {
       border-color: var(--brand-line);
     }
 
