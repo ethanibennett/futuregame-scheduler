@@ -18,7 +18,8 @@
 import { readFileSync } from 'node:fs';
 import {
   computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot,
-  seatOrderFromButton, evaluateShowdown, parseCardNotation, GAME_EVAL,
+  seatOrderFromButton, evaluateShowdown, parseCardNotation, GAME_EVAL, gameEvalFor,
+  bestHighFor, bestLow8For, bestLow27Hand, bestBadugiHand,
   bestOmahaHigh, bestOmahaLow, bestHighHand, bestLowA5Hand,
 } from '../vite-app/src/utils/poker-engine.js';
 
@@ -299,12 +300,12 @@ for (const c of CARD_CASES) {
   const potAwardsOf = new Function(
     'showResult', 'flaggedWinners', 'hand', 'allPotLayers', 'pot', 'settled', 'folded', 'category',
     'boardCards', 'heroCards', 'opponentCards', 'replayHeroIdx', 'gameCfg',
-    'GAME_EVAL', 'parseCardNotation', 'bestOmahaHigh', 'bestOmahaLow', 'bestHighHand',
+    'GAME_EVAL', 'gameEvalFor', 'parseCardNotation', 'bestOmahaHigh', 'bestOmahaLow', 'bestHighHand',
     'bestLowA5Hand', 'hiLoWinnersAmong', 'potLayerWinners', 'computePotAwards',
-    'reconcileLayersToPot', 'seatOrderFromButton',
+    'reconcileLayersToPot', 'seatOrderFromButton', 'bestHighFor', 'bestLow8For', 'bestLow27Hand', 'bestBadugiHand',
     slice('const potAwards = useMemo(() => {', '\n  }, [showResult, flaggedWinners'));
 
-  const run = (winners, layers, pot) => {
+  const run = (winners, layers, pot, oppCards = 'Ad2d3c7h') => {
     const hand = {
       gameType: 'O8',
       players: [{ position: 'BTN' }, { position: 'BB' }],
@@ -313,10 +314,10 @@ for (const c of CARD_CASES) {
     const awards = potAwardsOf(
       // settled: the memo reads only its contested total (the pot the layers must add up to).
       true, flagWinners(hand), hand, layers, pot, { contested: pot }, new Set(), 'community',
-      '5h8s4cKd9d', 'AsKsKc2h', [undefined, 'Ad2d3c7h'], 0, { heroCards: 4, isStud: false },
-      GAME_EVAL, parseCardNotation, bestOmahaHigh, bestOmahaLow, bestHighHand,
+      '5h8s4cKd9d', 'AsKsKc2h', [undefined, oppCards], 0, { heroCards: 4, isStud: false },
+      GAME_EVAL, gameEvalFor, parseCardNotation, bestOmahaHigh, bestOmahaLow, bestHighHand,
       bestLowA5Hand, hiLoWinnersAmong, potLayerWinners, computePotAwards,
-      reconcileLayersToPot, seatOrderFromButton);
+      reconcileLayersToPot, seatOrderFromButton, bestHighFor, bestLow8For, bestLow27Hand, bestBadugiHand);
     return awards || {};
   };
 
@@ -334,9 +335,14 @@ for (const c of CARD_CASES) {
       { playerIdx: 1, split: true, label: 'P2 wins Lo: 8-5-4-2-A' },
     ], [{ amount: 400, players: [0, 1] }], 400), 0, { 0: 300, 1: 100 });
 
-  check('replayer memo: a hand-marked split stays an even split',
+  // Since 2026-09-23 (1477966, the side-pot fix) shown cards decide every pot: a plain split mark
+  // over cards that quarter is paid as the cards say. The mark decides when the cards cannot.
+  check('replayer memo: with every hand shown, the cards decide over a plain split mark',
     [{ amount: 400 }], run([{ playerIdx: 0, split: true }, { playerIdx: 1, split: true }],
-      [{ amount: 400, players: [0, 1] }], 400), 0, { 0: 200, 1: 200 });
+      [{ amount: 400, players: [0, 1] }], 400), 0, { 0: 300, 1: 100 });
+  check('replayer memo: a hand-marked split stays an even split when a hand is mucked',
+    [{ amount: 400 }], run([{ playerIdx: 0, split: true }, { playerIdx: 1, split: true }],
+      [{ amount: 400, players: [0, 1] }], 400, 'MUCK'), 0, { 0: 200, 1: 200 });
 
   check('replayer memo: antes outside the wager layers still get paid out',
     [{ amount: 440 }], run(evaluated, [{ amount: 400, players: [0, 1] }], 440), 0, { 0: 330, 1: 110 });
