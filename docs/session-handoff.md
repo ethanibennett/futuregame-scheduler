@@ -18,6 +18,9 @@ wsop-console side and verified against both live services.
 - **Short Deck:** choosing it in the replayer asks whether trips beat a straight (rooms differ). The answer is stored on the hand (`hand.tripsBeatStraight`), ranks it through `gameEvalFor` (utils/poker-engine.js), and travels in share links as code `SKT` (plain `SK` keeps the default). Per-device default in `localStorage.shortDeckTripsBeatStraight`. Guard step `hands-short-deck-rule`.
 - **Answered:** the third number in "1/2/5" is a straddle (as built); crossbook is a bet (the default). Both questions closed in the docs.
 - **Still open:** the launch plan's 7 (listed in this session's chat; the artifact is the source).
+- **Fixed:** `test:hilo` runs again (31/31): the sliced replayer memo is handed every helper it calls; a plain split mark holds only when the cards cannot decide (cards decide since 1477966, on purpose). The "Overview ITM counts per event" bug was already fixed (per entry since 2026-10-13); struck.
+- **Launch Q3 (Mid-Atlantic clocks), checked 00:25 ET 15 Oct through Bravo:** Live! Philadelphia, Maryland Live! and MGM National Harbor each published a clock. Borgata, Harrah's AC, Parx and Horseshoe Baltimore published none at that hour: inconclusive, recheck while an afternoon event runs (probe: Bravo roster by the room's PROPERTY_COORDS, then GetClocksByCasinoDetailID with { mgmtID, casinoID }). Wind Creek Bethlehem is not on Bravo.
+- **Still parked by the owner:** `fix/replayer-hilo-pills` (whole-r pills, a single-row split pot on a phone held sideways).
 
 ## 2026-10-15 — The cutover is done
 - **Live:** LEDGER_TOKEN on both Render services; the owner ran the import on futurega.me; MONEY_SOURCE=scheduler on futuregame-dashboard. The dashboard summary reads futurega.me (checked: roll $26,462, freshness.money ok). Dashboard main is ad62960 (Phase 11, merged).
