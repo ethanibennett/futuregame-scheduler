@@ -8485,6 +8485,11 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                Grouping on the winner COUNT — the thing #94 removed from the
                amount — would have drawn a quartered pot as one "2x 1/2". */
             const evenAmt = Math.floor(pot / splitters.length);
+            /* The fraction is of what was AWARDED (2026-10-15). \`pot\` counts every chip committed,
+               an uncalled bet included, which goes back to its owner rather than into anyone's share:
+               a 2,000 pot split three ways with 1,000 returned read "2/9" on each 667 (667 / 3,000). */
+            const awardedTotal = potAwards ? Object.values(potAwards).reduce((a, b) => a + (Number(b) || 0), 0) : 0;
+            const shareBase = awardedTotal > 0 ? awardedTotal : pot;
             const groups = [];
             splitters.forEach(w => {
               /* #94 recorded which half each winner took as flags, so the
@@ -8507,7 +8512,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                  kept as Math.floor(pot / n) and never pot * (1 / n), which is
                  a chip light wherever 1/n has no exact binary form. */
               const amt = potAwards && potAwards[w.playerIdx] != null ? potAwards[w.playerIdx] : evenAmt;
-              const share = pot > 0 ? amt / pot : 1 / splitters.length;
+              const share = shareBase > 0 ? amt / shareBase : 1 / splitters.length;
               const name = w.playerIdx === replayHeroIdx ? 'Hero' : (hand.players[w.playerIdx]?.name || 'Player');
               const key = tag + '|' + amt;
               const found = groups.find(g => g.key === key);
