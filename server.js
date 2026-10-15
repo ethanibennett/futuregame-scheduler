@@ -906,6 +906,20 @@ app.get('/live', serveLive);
 // a player's Personal day), the series they belong to and the rooms. Public and cached ten minutes.
 // appStore is the store link's parts once the app is listed (APP_STORE_ID and the campaign provider
 // token APP_STORE_PT, both unset until launch); the page adds the ad's campaign (?ct=) to it.
+// The hand parser's live eval, run by the server with its own key (lib/admin-eval.js): app admins only.
+// POST starts one run (409 while one runs, 503 without ANTHROPIC_API_KEY); GET is its status and report.
+const adminEval = require('./lib/admin-eval');
+app.post('/api/admin/quick-add-eval', authenticateToken, requireAppAdmin, (req, res) => {
+  const r = adminEval.start();
+  if (r.error) return res.status(r.status).json({ error: r.error });
+  console.log('[quick-add eval] started by', req.user.username);
+  res.status(202).json(adminEval.status());
+});
+app.get('/api/admin/quick-add-eval', authenticateToken, requireAppAdmin, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(adminEval.status());
+});
+
 // The weekly cohort report (lib/growth.js report): app admins only. ?weeks= up to 52 (default 13).
 app.get('/api/admin/growth', authenticateToken, requireAppAdmin, (req, res) => {
   try {

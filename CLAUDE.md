@@ -324,6 +324,9 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   `GET /api/subscription/apple/account-token`, `POST /api/subscription/apple/verify`, `POST
   /api/subscription/apple/webhook`. Product ids: `docs/app-store-listing.md`. Test: `npm run
   test:apple-billing` (a TEST ONLY chain in `test/fixtures/apple-test-chain`).
+- **Parser eval from Admin** (`lib/admin-eval.js`): `POST/GET /api/admin/quick-add-eval` (app admins) runs
+  `test/quick-add/eval.js` in the background with the server's own ANTHROPIC_API_KEY, one run at a time;
+  the Admin screen's "Hand parser, live eval" section starts it and shows the report.
 - **Growth measurement** (launch plan, action 5; `lib/growth.js`): `growth_events` (`signup` with its
   source: the browser's first touch from futurega.me/live `?ct=`, the web app's `?src=`, the platform and
   the sign-up form's "How did you hear about us?"; `activated` = the first event saved to My Schedule,
