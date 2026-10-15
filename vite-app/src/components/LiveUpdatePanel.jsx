@@ -1,3 +1,4 @@
+import { noteReviewMoment } from '../utils/review-prompt.js';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
@@ -417,6 +418,9 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
     haptic(25);
     const data = buildUpdateData();
     onPost(data);
+    // A bag is a moment to ask for a rating; a bust never is (utils/review-prompt.js).
+    if (data.isBusted || updateType === 'finish') noteReviewMoment('busted');
+    else if (data.isBagged) noteReviewMoment('bagged');
     // Auto-create tracking entry on bust
     if ((updateType === 'finish' || (updateType === 'update' && data.isBusted)) && onAddTracking) {
       const bc = activeUpdateMap[selectedTournamentId]?.bust_count || 0;

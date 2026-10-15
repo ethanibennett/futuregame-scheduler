@@ -23,6 +23,7 @@ import ResetPasswordForm from './components/ResetPasswordForm.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import GridOverlay from './components/GridOverlay.jsx';
 import LivePage from './components/LivePage.jsx';
+import { noteReviewMoment } from './utils/review-prompt.js';
 import DesktopRail from './components/DesktopRail.jsx';
 import DesktopEventDetail from './components/DesktopEventDetail.jsx';
 import useDesktopLayout from './hooks/useDesktopLayout.js';
@@ -1197,11 +1198,13 @@ function App() {
           });
         }
       } else {
-        await fetch(`${API_URL}/schedule`, {
+        const saved = await fetch(`${API_URL}/schedule`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ tournamentId })
         });
+        // The third saved event is a moment to ask for a rating (utils/review-prompt.js).
+        if (saved.ok) noteReviewMoment('saved');
       }
       fetchMySchedule();
     } catch { setError('Failed to update schedule'); }
