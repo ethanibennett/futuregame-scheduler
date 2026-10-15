@@ -287,6 +287,13 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   and drift box. The Notify block's series flag asks Both / Series only (stored). "Posts to backers" under
   the result and cash forms (`PostsToBackers.jsx`, the owner only). Seed: `scripts/seed-standing-demo.js`;
   guards `staking-standing*` (controls) and `staking-standing` (clipping).
+  **Bankroll merge, Phase 9: the owner API and deep links** (`docs/bankroll-merge.md` "Phase 9: as built";
+  `lib/owner-api/`): `GET /api/owner/money` and `POST /api/owner/sessions/log` behind `LEDGER_TOKEN`
+  (`lib/shared-token.js`, constant time; 404 / 503 / 60 a minute; OFF until the token is set, the boot
+  line says). The session log is the dashboard's `normalizeSession` verbatim, written through the import's
+  mapping with the id as its `bankroll_import_keys` fingerprint (told twice = one row). Deep links
+  `#bankroll/<tab>`, `#results/…`, `#staking/standing`, `#tax` (`utils/deep-links.js`, admins only).
+  Tests: `npm run test:owner-api` (ports 4690-4699).
 
 ## Hazards
 - ⚠️ **Junction hazard**: checking out any pre-carve branch (e.g. `wip/windows-mtt-feed`)

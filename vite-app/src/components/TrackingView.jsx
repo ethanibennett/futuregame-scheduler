@@ -318,7 +318,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
 }
 
 // ── Tracking View (main export) ─────────────────────────────
-export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone, onLog }) {
+export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone, onLog, deepLink = null }) {
   const toast = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -344,6 +344,13 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   // so the form neither shows nor sends a bankroll.
   const [showBankrolls, setShowBankrolls] = useState(false);
   const [showBankrollDashboard, setShowBankrollDashboard] = useState(false);
+  const [dashboardTab, setDashboardTab] = useState(undefined);
+  // A deep link (§11.5): #bankroll/<tab> opens the bankroll dashboard on that tab, #tax the tax report.
+  useEffect(() => {
+    if (!deepLink) return;
+    if (deepLink.bankrollTab) { setDashboardTab(deepLink.bankrollTab); setShowBankrollDashboard(true); }
+    if (deepLink.tax) setShowTaxReport(true);
+  }, [deepLink]);
   const closeBankrollDashboard = useCallback(() => setShowBankrollDashboard(false), []);
   const trackingData = useMemo(() => filterByBankroll(allTrackingData, bk.selected), [allTrackingData, bk.selected]);
   // Balances come from the server's combined ledger (every ledger source), not from summing the
@@ -546,7 +553,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       )}
       {/* The bankroll dashboard (beta): mounted beside the strip whose button opens it, so it opens
           from either half of the tab (it sat in the Tournaments half, and Dashboard did nothing on Cash). */}
-      {bk.enabled && showBankrollDashboard && <BankrollDashboardSheet bk={bk} onClose={closeBankrollDashboard} onLog={onLog} />}
+      {bk.enabled && showBankrollDashboard && <BankrollDashboardSheet bk={bk} onClose={closeBankrollDashboard} onLog={onLog} initialTab={dashboardTab} />}
       {/* Cash sessions (beta, admins): Tournaments | Cash. Everyone else sees no strip. */}
       {isAdmin && <ResultsKindTabs />}
       {isAdmin && resultsKind === 'cash' ? (

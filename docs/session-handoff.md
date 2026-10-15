@@ -14,6 +14,16 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-14 (latest) — Bankroll merge Phase 9: the owner API and deep links, merged
+- **Live on master:** `/api/owner/money` and `/api/owner/sessions/log` behind LEDGER_TOKEN (OFF on every
+  server until the token is set; the boot line says), the deep links. Spec: "Phase 9: as built".
+- **Verified:** `test:owner-api` (13 + the parser's cases). No guard: no new control.
+- **Phase 8 is merged** (b61d78f). **Open bug report:** "Edit home renders a blank screen" (owner, from
+  the Mac). Reproduced NOT: the sheet renders on the local build at 402 and 1440 as ham5, and futurega.me
+  serves the same bundle. If it is the Mac app, its bundle is last night's TestFlight build, before the
+  day's merges. Waiting on where it was seen.
+- **Next:** Phase 10 (money homes: the fund target line, "Where's the money", tax set-aside).
+
 ## 2026-10-14 (later) — Bankroll merge Phase 8: the standing UI, on `feat/money-merge-8`
 - **Built** (worktree `.claude/worktrees/money-merge-8`): the Staking tab's Standing view, the Notify
   block's Q7 ask (Both / Series only), "Posts to backers" under the result and cash forms. Spec: "Phase 8:

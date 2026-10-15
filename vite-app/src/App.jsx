@@ -3,6 +3,7 @@ import AlternatingSubtitle from './components/AlternatingSubtitle.jsx';
 import { createPortal } from 'react-dom';
 
 import { API_URL } from './utils/api.js';
+import { parseDeepLink } from './utils/deep-links.js';
 import { resetPath } from './utils/reset-results.js';
 import { haptic, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones, registerVenueCoords, getDebugNow, setDebugNow } from './utils/utils.js';
 import { decodeHand } from './utils/hand-shorthand.js';
@@ -84,6 +85,9 @@ const RESET_TOKEN = RESET_MATCH ? RESET_MATCH[1] : null;
 
 // Detect shared hand URL: /#h/ENCODED_STRING
 const HAND_MATCH = window.location.hash.match(/^#h\/(.+)$/);
+// A deep link (docs/bankroll-merge.md §11.5): #bankroll/<tab>, #results/…, #staking/standing, #tax.
+// Read at load; acted on once an admin is signed in (utils/deep-links.js), then cleared.
+const DEEP_LINK_AT_LOAD = parseDeepLink(window.location.hash);
 const HAND_SHORTHAND = HAND_MATCH ? decodeURIComponent(HAND_MATCH[1]) : null;
 
 // Server-backed short link: /h/<id>. Unlike the self-contained #h/ fragment, this
@@ -540,9 +544,14 @@ function App() {
     sharedPathShown.current = false;
   }, [sharedHandData]);
 
+  // Deep links (§11.5): the pending one waits for an admin sign-in, then opens its view once.
+  const [deepLink, setDeepLink] = useState(DEEP_LINK_AT_LOAD);
+
   // Listen for hashchange to handle #h/ hand links without full reload
   useEffect(() => {
     const onHashChange = () => {
+      const dl = parseDeepLink(window.location.hash);
+      if (dl) { setDeepLink({ ...dl, at: Date.now() }); return; }
       const m = window.location.hash.match(/^#h\/(.+)$/);
       if (m) {
         try {
@@ -1637,6 +1646,12 @@ function App() {
   // 'claude' rather than fix anything.
   // Read from the signed token's claim (authUsername), not the editable 'username' storage key.
   const isAdmin = !isGuest && APP_ADMIN_USERNAMES.includes(authUsername);
+  // A deep link opens its view once an admin is signed in, then the hash is cleared (§11.5).
+  useEffect(() => {
+    if (!deepLink || !isAdmin) return;
+    setCurrentView(deepLink.view);
+    if (window.history.replaceState) window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }, [deepLink, isAdmin]);
   // The write capability is separate and DOES have to match the server, which gates every admin
   // route on ['ham','ham5'] in 8 places. Passing the callbacks conditionally is enough: the row
   // renders its Edit button on `isAdmin && onAdminEdit`, so an account without the capability
@@ -1978,6 +1993,7 @@ function App() {
                 buddyEvents={buddyEvents}
                 buddyLiveUpdates={buddyLiveUpdates}
                 onOpenScheduleView={() => setCurrentView('tournaments')}
+                deepLink={isAdmin ? deepLink : null}
                 initialSearch={calendarFind}
                 onSearchConsumed={clearCalendarFind}
               />
@@ -2115,7 +2131,7 @@ function App() {
             <div className={'tab-panel' + (currentView === 'staking' ? ' tab-active' : '')} data-tab="staking" style={{display: currentView === 'staking' ? undefined : 'none', height: currentView === 'staking' ? '100%' : undefined}}>
             {visitedTabs.has('staking') && (
               isAdmin
-                ? <Suspense fallback={<LazyFallback />}><StakingView token={token} tournaments={tournaments} mySchedule={mySchedule} /></Suspense>
+                ? <Suspense fallback={<LazyFallback />}><StakingView token={token} tournaments={tournaments} mySchedule={mySchedule} deepLink={isAdmin ? deepLink : null} /></Suspense>
                 : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'calc(var(--subrow) * 7.5) calc(var(--subrow) * 2.5)',textAlign:'center'}}>
                     <h2 style={{fontFamily:"'Univers Condensed', 'Univers', sans-serif",fontSize:'calc(var(--gu) * 1.914)',fontWeight:700,color:'var(--text)',margin:'0 0 calc(var(--subrow) * 1)'}}>Staking</h2>
                     <p style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.325)',margin:0}}>Coming Soon</p>

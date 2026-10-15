@@ -211,8 +211,10 @@ function StakingSettings({ token, tournaments, onBack }) {
 
 // ── Main Staking View ──────────────────────────────────────
 
-export default function StakingView({ token, tournaments, mySchedule }) {
-  const [subView, setSubView] = useState('list'); // list | detail | backers | backerSummary | settings
+export default function StakingView({ token, tournaments, mySchedule, deepLink = null }) {
+  const [subView, setSubView] = useState(deepLink && deepLink.standing ? 'standing' : 'list'); // list | detail | backers | backerSummary | settings | standing
+  // A deep link to #staking/standing (§11.5) opens the Standing section; a later one does too.
+  useEffect(() => { if (deepLink && deepLink.standing) setSubView('standing'); }, [deepLink]);
   const [series, setSeries] = useState([]);
   const [backers, setBackers] = useState([]);
   const [activeSeriesId, setActiveSeriesId] = useState(null);
