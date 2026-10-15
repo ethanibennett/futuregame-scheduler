@@ -80,8 +80,11 @@ export default function LivePage() {
         </div>
 
         <footer className="an-p lp-foot">
-          21+. futurega.me lists live poker tournaments. It takes no bets and offers no real-money games.
-          Gambling problem? Call <span className="lp-nowrap">1-800-GAMBLER</span>.
+          {/* The launch plan's footer, word for word (section 11, "Lines that ship on every paid post"). */}
+          futurega.me is a schedule, planner and record-keeping app. It takes no bets and offers no
+          real-money play. Not affiliated with any casino or poker room. 21+. If gambling is a problem
+          for you, call <span className="lp-nowrap">1-800-MY-RESET</span> (national)
+          or <span className="lp-nowrap">1-800-GAMBLER</span> (New Jersey).
         </footer>
       </main>
       {grid && <GridOverlay showReadout={false} />}

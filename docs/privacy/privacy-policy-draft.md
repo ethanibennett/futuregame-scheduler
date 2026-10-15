@@ -20,7 +20,8 @@ terms.
 - We collect what you give us to run your account and plan your poker: your username, email,
   full name, optional profile photo, your schedule and results, and your location if you choose
   to share it.
-- We do **not** use advertising, analytics or crash-reporting services, we do **not** track you
+- We do **not** use third-party advertising, analytics or crash-reporting services (we keep our
+  own simple usage counts, section 8), we do **not** track you
   across other apps or websites, and we do **not** sell your information.
 - A few features send data to other companies so the feature can work. The main ones are the
   **Table Scanner**, which sends the photo you scan to Anthropic, and **location search**, which
@@ -153,9 +154,14 @@ status and transaction identifiers.]
 
 ## 8. Analytics, advertising and tracking
 
-None. The app contains no analytics, advertising or crash-reporting software, does not use
-Apple's advertising identifier, and does not track you across other companies' apps or
-websites.
+The app contains no third-party analytics, advertising or crash-reporting software, does not use
+Apple's advertising identifier, and does not track you across other companies' apps or websites.
+
+We keep our own simple counts on our own server: which days your account is used, when you first
+saved an event, and where you came from when you signed up (an ad's campaign name if you arrived
+from one, the website that sent you, and your answer to "How did you hear about us?" if you gave
+one). We use these only to understand how people find and use futurega.me. They are never shared
+or sold.
 
 Our hosting provider keeps routine request logs, which include IP addresses
 [CHECK: Render's log retention period]. For security, our sign-in rate limits hold IP addresses in

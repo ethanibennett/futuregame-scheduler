@@ -73,7 +73,7 @@ test('answersFrom: online, the sites default, and filter-sheet extras', () => {
   assert.equal(O.answersFrom(null, { showOnline: false }).online, false);
   assert.equal(O.answersFrom(null, {}).online, true);
   assert.equal(O.answersFrom(null, {}, { firstRun: true }).onlyAvailable, true, 'first run: on');
-  assert.equal(O.answersFrom(null, {}, { firstRun: false }).onlyAvailable, false, 're-run: off');
+  assert.equal(O.answersFrom(null, {}, { firstRun: false }).onlyAvailable, true, 're-run with nothing stored: on, the default since the live-only defaults');
   assert.equal(O.answersFrom(null, { onlyAvailableOnline: false }, { firstRun: true }).onlyAvailable, false, 'stored wins');
   const x = O.answersFrom(null, { selectedGames: ['NLH', 'Razz', 'O8'] });
   assert.deepEqual(x.games, ['NLH']);

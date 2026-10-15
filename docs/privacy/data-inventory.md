@@ -135,6 +135,21 @@ cron `server.js:13028`). The backer page loads fonts from **Google Fonts**
   Apple stub logs the first 500 characters of the notification body (`server.js:13006`).
 - No StoreKit or Stripe code in the client. **No payment data is collected.**
 
+## 10b. First-party growth measurement (added 2026-10-15; `lib/growth.js`)
+
+- `growth_events`, linked to the account: `signup` with its source (the campaign tag `ct` from an
+  ad's link to futurega.me/live, the landing page name, the referring site's HOST name only, the web
+  app's `src` tag, the platform `ios`/`android`/`web`, and the sign-up form's optional "How did you
+  hear about us?" answer); `activated` (the time of the first event saved to My Schedule, and its
+  tournament id). Written by `/api/register` and `POST /api/schedule`.
+- `user_days`, linked to the account: one row per UTC day the account made any signed-in request.
+- Purpose: the operator's own counts of sign-ups, activation and retention by source. Nothing is
+  sent to any third party; no device identifier, IDFA or fingerprint is read.
+- Device storage: `localStorage.acqSource` holds the first-touch source until sign-up
+  (`utils/live-page.js`), and `liveOnlyDefaults` marks a one-time filter migration.
+- Deletion: both tables are cleared with the account (`DELETE /api/account`, server.js), like the
+  rest of the account's rows.
+
 ## 11. Device storage (no cookies besides the session cookie)
 
 - Cookie: `fg_session` only, httpOnly, Secure, SameSite=Lax, 90 days (`server.js:226-237`).

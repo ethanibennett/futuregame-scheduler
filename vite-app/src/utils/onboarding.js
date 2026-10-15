@@ -79,7 +79,7 @@ const countryOf = (code) => (code ? (String(code).toUpperCase() === 'US' ? 'US' 
      online     a re-run: showOnline false -> No, anything else -> Yes. A first run starts at No
                 (online events are off until the player says yes: the launch plan); only an explicit
                 stored true makes it Yes
-     sites      onlyAvailableOnline as stored; unset -> on for a first run, off for a re-run
+     sites      onlyAvailableOnline as stored; unset -> on, the Schedule's default since 2026-10-15
      games      NLH / PLO from selectedGames, Mixed from mixedOnly; the filter sheet's other
                 variants are carried as gameExtras ("+2 more set in Filters")
      buy-ins    a chip is on when any of its ranges is stored */
@@ -105,7 +105,7 @@ export function answersFrom(savedLoc, savedFilters, { firstRun = false } = {}) {
     jurisdiction,
     jurisdictionManual: !!(jurisdiction && loc.jurisdictionManual),
     online: firstRun ? f.showOnline === true : f.showOnline !== false,
-    onlyAvailable: hasOwn(f, 'onlyAvailableOnline') ? !!f.onlyAvailableOnline : !!firstRun,
+    onlyAvailable: hasOwn(f, 'onlyAvailableOnline') ? !!f.onlyAvailableOnline : true,   // unset = the default, on (2026-10-15)
     games: [
       ...(sel.includes('NLH') ? ['NLH'] : []),
       ...(sel.includes('PLO') ? ['PLO'] : []),

@@ -4284,7 +4284,8 @@ function deleteUserAccount(userId) {
                      'push_subscriptions', 'apns_tokens', 'subscriptions',
                      'cash_session_stacks', 'cash_sessions', 'bankroll_transactions', 'bankroll_trips', 'bankroll_adjustments', 'bankrolls',
                      'bankroll_prefs', 'bankroll_import_keys',
-                     'session_extras', 'money_locations', 'money_settings', 'money_import_runs']) {
+                     'session_extras', 'money_locations', 'money_settings', 'money_import_runs',
+                     'growth_events', 'user_days']) {   // growth measurement (lib/growth.js) goes with the account
       run(t, `DELETE FROM ${t} WHERE user_id = ?`, [uid]);
     }
     run('shared_hands', 'DELETE FROM shared_hands WHERE uploaded_by = ?', [uid]);

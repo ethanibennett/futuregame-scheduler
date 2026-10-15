@@ -14,6 +14,12 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-15 (night, last) — Launch plan action 8 drafted; privacy docs caught up; actions 6 held
+- **App Store listing:** `docs/app-store-listing.md`, paste-ready: name, subtitle, both keyword sets, categories, age rating, promo text, description (guardrail-clean, no Mac, no provider, no online room), What's New, review notes rewritten for ACR staying, the screenshot list, and what to do after approval. **Owner to supply:** privacy policy CHECK answers (then publish `/privacy`), a support email (`/support`), the review demo account, and the Hands decision (plan action 2).
+- **Privacy docs:** inventory §10b, the policy draft §8 and the App Privacy labels (Usage Data: Product Interaction now Yes, linked, Analytics, not tracking) cover the growth measurement. Account deletion now clears `growth_events` and `user_days` (test:account covers them).
+- **Landing footer** is the plan's exact wording (1-800-MY-RESET national, 1-800-GAMBLER NJ, not affiliated). Setup's re-run prefill shows the state filter on when nothing is stored (the new default).
+- **Held, deliberately (action 6):** `webContentsDebuggingEnabled: false` and dropping the β both wait for the submission build, since TestFlight builds are the store binary; AdServices / SKAdNetwork need native code, which needs the Mac to compile (send as a handoff when it is time).
+
 ## 2026-10-15 (night, later) — Launch plan action 5: first-party growth measurement
 - **Built:** `lib/growth.js` + hooks: sign-ups record their source (first touch `acqSource`, `?src=`, platform, and the new optional "How did you hear about us?" on the sign-up form); the first save to My Schedule records `activated` once; every signed-in day writes `user_days`. `GET /api/admin/growth?weeks=13` returns the weekly cohorts (activated within 7 days, D7 and D30 once old enough, sources). Accounts made before this have no signup event and are left out of the cohorts rather than guessed.
 - **Not yet:** a screen for the report (JSON only for now) and the weekly scorecard's email; native attribution (AdServices, SKAdNetwork) is action 6.

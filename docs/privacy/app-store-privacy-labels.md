@@ -104,9 +104,12 @@ Purchase History: **No.** The only subscription rows are the free trial and manu
 there are no transactions (Inv §10). **Flips to Yes** (Linked, AF) when IAP or Stripe ships.
 
 ### Usage Data
-Product Interaction: **No**. Advertising Data: **No**. Other Usage Data: **No**.
-There are no analytics. The server keeps only functional state such as "last seen
-notifications" timestamps (Inv §1).
+Product Interaction: **Yes** since 2026-10-15 (Linked to the user, Analytics; not Tracking).
+Advertising Data: **No**. Other Usage Data: **No**.
+The server's own growth measurement (Inv §10b) records the days an account is active and when it
+first saved an event, plus where the sign-up came from (an ad campaign tag, the referring site's
+host, or the sign-up form's "How did you hear about us?"). It stays on the operator's server; no
+SDK, no advertising identifier, nothing shared, so Tracking stays **No**.
 
 ### Diagnostics
 Crash Data: **No**. Performance Data: **No**. Other Diagnostic Data: **No**.
