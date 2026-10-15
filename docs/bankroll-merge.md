@@ -1589,7 +1589,7 @@ judgment about money, posting or layout. The model policy (handoff, 2026-10-14) 
 | **8** | sched | **Built** (see "Phase 8: as built" below). Standing UI in the Staking tab: backers with stakes editor (from today / correct with preview; the game list is `classify.js` `GAMES`, Q8), opening, delivery, copy and rotate link, recorded shares with exclude / recalc / remove; the "Posts to backers" preview line on the result and cash forms and the Notify sheet (with the Q7 ask); guard steps | 7 | Sonnet |
 | **9** | sched | **Built** (see "Phase 9: as built" below). Owner API (§11.2-11.3, ported `normalizeSession` + tests) and deep links (§11.5) | 1, 7 | Sonnet |
 | **10** | sched | **Built** (see "Phase 10: as built" below). Money homes: fund bankroll target and progress (bankroll manager field + an Overview line), "Where's the money" (a seventh Overview section: locations, total, drift against the roll), tax set-aside line in the tax report | 1 | Sonnet |
-| **11** | WC | Dashboard adapter (§12.1): `money-source`, flags, summary/series/MCP/PWA store, Today log sheet, frozen sync and relay, Money tab links, fund target from the feed; contract and adapter tests | 9, 4 | Sonnet build, **Opus** review of the summary adapter |
+| **11** | WC | **Built, pushed, not merged** (see "Phase 11: as built" below). Dashboard adapter (§12.1): `money-source`, flags, summary/series/MCP/PWA store, Today log sheet, frozen sync and relay, Money tab links, fund target from the feed; contract and adapter tests | 9, 4 | Sonnet build, **Opus** review of the summary adapter |
 | **12** | both | Cutover (§13 steps 2-8), run by the lead with the owner | 1-11 | **Opus** + owner |
 | **13** | both | Retire (§12.2, §7.3, §7.4) and CLAUDE.md / docs (§14), after a two-week soak; tag `pre-money-retire` first | 12 | Sonnet |
 | **14** | sched | **Built** (see "Phase 14: as built" below). *(optional, §17 Q10)* Standing payouts: `standing_payments` (id, agreement_id, amount_cents signed, paid_on, note), each writing a `settlement` adjustment (`settlement_ref 'sp:<id>'`); feed `paidCents`, running total = shares + opening − payouts | 7, 8 | Sonnet |
@@ -2593,6 +2593,30 @@ settlement.
   helper tests gained theirs; `test:backers` (parity included), `test:backer-page` and
   `test:standing-live` still pass. Guards: `staking-standing*` with the new `-payouts` view, every
   control on the grid at 402 and 1440, no clipped text.
+
+### Phase 11: as built (2026-10-14, dashboard repo `wsop-console`, branch `feat/money-source`, ad62960)
+
+**Pushed, not merged**: merging to the dashboard's `main` deploys it on Render, which is the owner's
+call. Off by default, so the merge alone changes nothing anyone sees.
+- `server/lib/money-source.js` reads `/api/owner/money` with `LEDGER_TOKEN` (Bearer, 5 s, a 60 s cache,
+  a 5-minute refresh), keeps the last good copy on any failure and persists it in `console_flags`.
+- With `MONEY_SOURCE=scheduler`: `dashboardRecords('sessions')` serves the feed's sessions (already the
+  dashboard's Session shape), so the summary, the series, the insight, the discipline score and the
+  verdict all follow; the summary takes the roll, the fund, the peak and the target from the feed and
+  adds `freshness.money`. `/api/sessions/log` and MCP `log_session` forward to `/api/owner/sessions/log`
+  (the backer cuts in the tool text). The PWA reads `/console/api/money` (cached offline), shows the
+  feed's roll through `bankrollState`, and Today logs a session to futurega.me with a preview.
+- `MONEY_WRITES=frozen` refuses log commits, answers money records in sync as rejected, and 410s the
+  notify relay. With the plain cutover below it is optional.
+- Tests: `server/test/money-source.test.js` (45: the summary from a stubbed feed, empty and populated;
+  over HTTP against a stub futurega.me, the Bearer header, the forward, a non-JSON 502, the last good
+  copy, frozen). The whole server suite and the app's 172 still pass.
+
+**The cutover, plainly** (owner, 2026-10-14: "it's just a tracker"; this replaces §13's freeze and
+soak for this owner): 1. set `LEDGER_TOKEN` on both Render services; 2. merge `feat/money-source`;
+3. on futurega.me, Bankroll › Import › Fetch, answer the pairs, Import, and check the reconciliation's
+unexplained is $0; 4. set `MONEY_SOURCE=scheduler` on the dashboard service. Undo is the import's Undo
+and unsetting the variable. Phase 13 (deleting the dashboard's money screens) can wait or never happen.
 
 ### Backers view (read-only), ahead of Phase 8 (2026-10-14, branch `feat/backers-view`)
 

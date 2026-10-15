@@ -14,6 +14,13 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-14 (close) — Phase 11 pushed; the cutover made plain
+- **Dashboard repo:** `feat/money-source` (ad62960) is pushed, NOT merged: the dashboard reads its money
+  from futurega.me behind `MONEY_SOURCE=scheduler`, off by default. Merging deploys the dashboard; the
+  owner merges.
+- **The owner's direction:** the money is a tracker, so no freeze windows or soaks (memory
+  `money-is-a-tracker`). The whole cutover is four steps, in the spec's "Phase 11: as built".
+
 ## 2026-10-14 (end) — Bankroll merge Phase 14: standing payouts, merged
 - **Live on master:** payouts to and from standing backers (the Standing card's Payouts), their
   settlement in the ledger, and the running total net of them on every surface. Spec: "Phase 14: as built".
