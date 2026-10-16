@@ -459,24 +459,24 @@ function scan(rootSel) {
   // Skipped quietly when the account has no bankroll strip (not an admin).
   if (on('bankroll-dashboard')) try {
     await openResults();
-    await p.locator('.bk-bar .bk-act:has-text("Dashboard")').first().click({ timeout: 4000 });
+    await p.locator('.results-kind-tabs .kind-toggle:has-text("Overview")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1800);
     // The sheet scrolls, and only text on screen is measured: run at the top, then page down
     // through the sheet's body, 11 pages at most. { toEnd } pages on until the body stops moving
     // (the Sessions list: 150 rows, ~10,000 px, then Show more); { from: 'here' } starts where the
     // body already is (the rows Show more just added) instead of at the top.
     const runSheet = async (label, { toEnd = false, from = 0 } = {}) => {
-      if (from !== 'here') await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
-      await run(label, '.an-sheet');
+      if (from !== 'here') await p.evaluate(() => { const s = document.scrollingElement; if (s) s.scrollTop = 0; });
+      await run(label, '.bd-inline');
       for (let i = 1; i < (toEnd ? 80 : 12); i++) {
         const moved = await p.evaluate((h) => {
-          const s = document.querySelector('.an-sheet .an-body');
+          const s = document.scrollingElement;
           if (!s) return false;
           const before = s.scrollTop; s.scrollTop += Math.round(h * 0.7); return s.scrollTop !== before;
         }, H);
         if (!moved) break;
         await p.waitForTimeout(300);
-        await run(`${label} (scrolled ${i})`, '.an-sheet');
+        await run(`${label} (scrolled ${i})`, '.bd-inline');
       }
     };
     // The Overview's collapsible table sections: every one opened by its header (the state is
@@ -484,77 +484,37 @@ function scan(rootSel) {
     const sections = async (expanded) => {
       const want = expanded ? 'false' : 'true';
       for (let i = 0; i < 12; i++) {
-        const head = p.locator(`.an-sheet .ovt-head[aria-expanded="${want}"]`).first();
+        const head = p.locator(`.bd-inline .ovt-head[aria-expanded="${want}"]`).first();
         if (!(await head.count())) break;
         await head.click({ timeout: 4000 });
         await p.waitForTimeout(450);
       }
-      if (await p.locator(`.an-sheet .ovt-head[aria-expanded="${want}"]`).count()) throw new Error('an Overview section did not toggle');
+      if (await p.locator(`.bd-inline .ovt-head[aria-expanded="${want}"]`).count()) throw new Error('an Overview section did not toggle');
       // Then until every collapse has finished: a body still mid-transition clips its own rows (by
       // design), and on a slow frame the last one can outlast the fixed wait above.
       await p.waitForFunction(() => {
-        const o = document.querySelector('.an-sheet .ovt');
+        const o = document.querySelector('.bd-inline .ovt');
         return !o || !o.getAnimations || o.getAnimations({ subtree: true }).length === 0;
       }, null, { timeout: 5000 });
     };
     await sections(true);
-    // Every tab in the strip, whatever it holds (Overview, Rules, Goals, Import, and any added
-    // later; once the tabs outgrow 35g the strip scrolls sideways, and each click scrolls it to its
-    // tab), then the Overview again with its graph switched to Balance and the range to All.
-    const tabs = p.locator('.an-sheet .bd-tabs [role="radio"]');   // the tabs, not the page chevrons
-    const n = await tabs.count();
-    for (let i = 0; i < n; i++) {
-      const tab = (await tabs.nth(i).innerText()).trim();
-      await tabs.nth(i).click({ timeout: 4000 });
+    // Every section of the old dashboard, now on the page (owner, 2026-10-16), by its chip.
+    const chip = (name) => p.locator(`.results-kind-tabs .kind-toggle:has-text("${name}")`).first();
+    for (const tab of ['Overview', 'Locations', 'Reports', 'Backers', 'Rules', 'Goals', 'Import']) {
+      await chip(tab).click({ timeout: 4000 });
       await p.waitForTimeout(800);
-      // Sessions to the list's end: its last rows and the Show more button.
-      await runSheet(`bankroll dashboard ${tab}`, { toEnd: tab === 'Sessions' });
+      await runSheet(`bankroll ${tab}`);
     }
-    // Sessions (the loop above ran its list on the remembered filter): the Cash filter, then a cash
-    // session's detail and a tournament's (the longest title on show, which wraps), scrolled
-    // through, and the filter back on All, where Show more adds the rows past the first 150 (when
-    // the account has that many), measured from the button to the list's new end.
-    await p.locator('.an-sheet .bd-tabs [role="radio"]:has-text("Sessions")').click({ timeout: 4000 });
-    await p.locator('.an-sheet .bs-row').first().waitFor({ timeout: 8000 });
-    await p.locator('.an-sheet .bs-chip:has-text("Cash")').click({ timeout: 4000 });
-    await p.waitForTimeout(400);
-    await runSheet('bankroll sessions (cash)');
-    await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
-    await p.locator('.an-sheet .bs-row').first().click({ timeout: 4000 });
-    await p.locator('.an-sheet .bs-detail').waitFor({ timeout: 4000 });
-    await p.waitForTimeout(800);
-    await runSheet('bankroll sessions (a cash session)');
-    await p.locator('.an-sheet .bs-dhead button').first().click({ timeout: 4000 });
-    await p.locator('.an-sheet .bs-chip:has-text("Tournaments")').click({ timeout: 4000 });
-    await p.waitForTimeout(400);
-    await p.evaluate(() => {
-      const rows = [...document.querySelectorAll('.an-sheet .bs-row')];
-      const long = rows.reduce((a, r) => (r.querySelector('.bs-title').textContent.length > a.querySelector('.bs-title').textContent.length ? r : a), rows[0]);
-      long.click();
-    });
-    await p.locator('.an-sheet .bs-detail').waitFor({ timeout: 4000 });
-    await p.waitForTimeout(500);
-    await runSheet('bankroll sessions (a tournament)');
-    await p.locator('.an-sheet .bs-dhead button').first().click({ timeout: 4000 });
-    await p.locator('.an-sheet .bs-chip:has-text("All")').click({ timeout: 4000 });
-    await p.waitForTimeout(400);
-    if (await p.locator('.an-sheet .bs-more').count()) {
-      await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = s.scrollHeight; });
-      await p.waitForTimeout(300);
-      await p.locator('.an-sheet .bs-more').click({ timeout: 4000 });
-      await p.waitForTimeout(500);
-      await runSheet('bankroll sessions (shown more)', { toEnd: true, from: 'here' });
-    }
-    await tabs.first().click({ timeout: 4000 });
-    await p.locator('.an-sheet .bd-mode button:has-text("Balance")').click({ timeout: 4000 });
-    await p.locator('.an-sheet .bd-range button:has-text("All")').click({ timeout: 4000 });
+    await chip('Overview').click({ timeout: 4000 });
+    await p.locator('.bd-inline .bd-mode button:has-text("Balance")').click({ timeout: 4000 });
+    await p.locator('.bd-inline .bd-range button:has-text("All")').click({ timeout: 4000 });
     await p.waitForTimeout(800);
     await runSheet('bankroll dashboard overview (balance, all time)');
     // Every section closed: the headers carry their headline figures.
     await sections(false);
     await runSheet('bankroll dashboard overview (sections closed)');
-    await p.locator('.an-sheet .bd-mode button:has-text("Profit")').click({ timeout: 4000 });
-    await p.locator('.an-sheet .bd-range button:has-text("YTD")').click({ timeout: 4000 });
+    await p.locator('.bd-inline .bd-mode button:has-text("Profit")').click({ timeout: 4000 });
+    await p.locator('.bd-inline .bd-range button:has-text("YTD")').click({ timeout: 4000 });
     // Reports: every report's table, scrolled through the sheet; then the filter sheet with a
     // filter on (its chips truncate long room names), scrolled through.
     const scrollRun = async (label, scroller, root) => {
@@ -564,16 +524,16 @@ function scan(rootSel) {
         await p.waitForTimeout(300);
       }
     };
-    await p.locator('.an-sheet .bk-seg-btn:has-text("Reports")').first().click({ timeout: 4000 });
+    await p.locator('.results-kind-tabs .kind-toggle:has-text("Reports")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1200);
     const reportNames = await p.locator('.br-picker .br-chip:not([disabled])').allInnerTexts();
     for (const name of reportNames) {
-      await p.evaluate(() => { const s = document.querySelector('.bd-sheet .an-body'); if (s) s.scrollTop = 0; });
+      await p.evaluate(() => { const s = document.scrollingElement; if (s) s.scrollTop = 0; });
       await p.locator(`.br-picker .br-chip:has-text("${name.trim()}")`).first().click({ timeout: 4000 });
       await p.waitForTimeout(400);
-      await scrollRun(`bankroll reports ${name.trim()}`, '.bd-sheet .an-body', '.br-reports');
+      await scrollRun(`bankroll reports ${name.trim()}`, 'html', '.br-reports');
     }
-    await p.evaluate(() => { const s = document.querySelector('.bd-sheet .an-body'); if (s) s.scrollTop = 0; });
+    await p.evaluate(() => { const s = document.scrollingElement; if (s) s.scrollTop = 0; });
     await p.locator('.br-bar .bk-btn').first().click({ timeout: 4000 });
     await p.waitForTimeout(800);
     await p.locator('.br-fsheet .br-chip:has-text("Cash")').first().click({ timeout: 4000 });
@@ -585,21 +545,21 @@ function scan(rootSel) {
   // name wraps, so a long one is checked whole. Long event names truncate.
   if (on('bankroll-locations')) try {
     await openResults();
-    await p.locator('.bk-bar .bk-act:has-text("Dashboard")').first().click({ timeout: 4000 });
+    await p.locator('.results-kind-tabs .kind-toggle:has-text("Overview")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1500);
-    await p.locator('.an-sheet .bd-tabs [role="radio"]:has-text("Locations")').first().click({ timeout: 4000 });
+    await p.locator('.results-kind-tabs .kind-toggle:has-text("Locations")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1200);
     const pageThrough = async (label) => {
-      await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
-      await run(label, '.an-sheet');
+      await p.evaluate(() => { const s = document.scrollingElement; if (s) s.scrollTop = 0; });
+      await run(label, '.bd-inline');
       for (let i = 1; i < 30; i++) {
         const moved = await p.evaluate((h) => {
-          const s = document.querySelector('.an-sheet .an-body');
+          const s = document.scrollingElement;
           const before = s.scrollTop; s.scrollTop += Math.round(h * 0.7); return s.scrollTop !== before;
         }, H);
         if (!moved) break;
         await p.waitForTimeout(250);
-        await run(`${label} (scrolled ${i})`, '.an-sheet');
+        await run(`${label} (scrolled ${i})`, '.bd-inline');
       }
     };
     const cards = p.locator('.bl-card');
@@ -615,7 +575,7 @@ function scan(rootSel) {
     await pageThrough('bankroll locations, a card open');
     // Show fewer: back to ten, and every card closed again for the next pass.
     await p.locator('.bl-pager .bl-fewer').first().click({ timeout: 4000 }).catch(() => {});
-    await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
+    await p.evaluate(() => { const s = document.scrollingElement; if (s) s.scrollTop = 0; });
     await p.locator('.bl-sort button:has-text("Name")').first().click({ timeout: 4000 });
     await p.waitForTimeout(600);
     const shut = p.locator('.bl-card[aria-expanded="false"]');
@@ -636,9 +596,9 @@ function scan(rootSel) {
         if (body) await p.route('**/api/staking/standing/backers', (r) => r.fulfill({ status, json: body }));
         try {
           await openResults();
-          await p.locator('.bk-bar .bk-act:has-text("Dashboard")').first().click({ timeout: 4000 });
+          await p.locator('.results-kind-tabs .kind-toggle:has-text("Overview")').first().click({ timeout: 4000 });
           await p.waitForTimeout(1500);
-          await p.locator('.an-sheet .bd-tabs [role="radio"]:has-text("Backers")').first().click({ timeout: 4000 });
+          await p.locator('.results-kind-tabs .kind-toggle:has-text("Backers")').first().click({ timeout: 4000 });
           await p.locator('.bb-backers .bl-item, .bb-backers .an-p.bl-gap').first().waitFor({ timeout: 8000 });
           await p.waitForTimeout(600);
         } finally { if (body) await p.unroute('**/api/staking/standing/backers'); }
@@ -650,16 +610,16 @@ function scan(rootSel) {
           }
           await p.waitForTimeout(400);
         }
-        await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
-        await run(label, '.an-sheet');
+        await p.evaluate(() => { const s = document.scrollingElement; if (s) s.scrollTop = 0; });
+        await run(label, '.bd-inline');
         for (let i = 1; i < 30; i++) {
           const moved = await p.evaluate((h) => {
-            const s = document.querySelector('.an-sheet .an-body');
+            const s = document.scrollingElement;
             const before = s.scrollTop; s.scrollTop += Math.round(h * 0.7); return s.scrollTop !== before;
           }, H);
           if (!moved) break;
           await p.waitForTimeout(250);
-          await run(`${label} (scrolled ${i})`, '.an-sheet');
+          await run(`${label} (scrolled ${i})`, '.bd-inline');
         }
       } catch (e) { console.log(`  (${label} skipped: ${e.message.split('\n')[0]})`); }
     };
@@ -677,14 +637,14 @@ function scan(rootSel) {
   // scripts/money-import-stub-dashboard.js); skipped and said otherwise.
   if (on('bankroll-import-dashboard')) try {
     const label = 'bankroll import';
-    const sheet = '.an-sheet';
+    const sheet = '.bd-inline';
     const pageSheet = async (name) => {
-      await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
+      await p.evaluate(() => { const s = document.scrollingElement; if (s) s.scrollTop = 0; });
       await p.waitForTimeout(250);
       await run(name, sheet);
       for (let i = 1; i < 30; i++) {
         const moved = await p.evaluate((h) => {
-          const s = document.querySelector('.an-sheet .an-body');
+          const s = document.scrollingElement;
           const before = s.scrollTop; s.scrollTop += Math.round(h * 0.7); return s.scrollTop !== before;
         }, H);
         if (!moved) break;
@@ -694,34 +654,34 @@ function scan(rootSel) {
     };
     const at = async (sel) => { await p.evaluate((s) => { const el = document.querySelector(s); if (el) el.scrollIntoView({ block: 'center' }); }, sel); await p.waitForTimeout(400); };
     const saved = async () => {
-      await p.waitForFunction(() => ![...document.querySelectorAll('.an-sheet .bid-state')].some((s) => /Saving/.test(s.textContent)), null, { timeout: 60000 });
+      await p.waitForFunction(() => ![...document.querySelectorAll('.bd-inline .bid-state')].some((s) => /Saving/.test(s.textContent)), null, { timeout: 60000 });
       await p.waitForTimeout(500);
     };
     await openResults();
-    await p.locator('.bk-bar .bk-act:has-text("Dashboard")').first().click({ timeout: 4000 });
+    await p.locator('.results-kind-tabs .kind-toggle:has-text("Overview")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1500);
-    await p.locator('.an-sheet .bd-tabs [role="radio"]:has-text("Import")').first().click({ timeout: 4000 });
-    await p.locator('.an-sheet .bid').first().waitFor({ timeout: 8000 });
+    await p.locator('.results-kind-tabs .kind-toggle:has-text("Import")').first().click({ timeout: 4000 });
+    await p.locator('.bd-inline .bid').first().waitFor({ timeout: 8000 });
     await p.waitForTimeout(800);
-    if (!(await p.locator('.an-sheet .bid-review').count())) throw new Error('no staged run (scripts/seed-money-import-demo.js)');
+    if (!(await p.locator('.bd-inline .bid-review').count())) throw new Error('no staged run (scripts/seed-money-import-demo.js)');
     // Every pair answered, so Import opens; the first pair card open on its whole values.
-    const fill = p.locator('.an-sheet button:has-text("Fill the likely ones")');
+    const fill = p.locator('.bd-inline button:has-text("Fill the likely ones")');
     if (await fill.count() && await fill.first().isEnabled()) { await fill.first().click(); await p.waitForTimeout(300); }
-    for (const seg of await p.locator('.an-sheet .bid-pair-seg').all()) {
+    for (const seg of await p.locator('.bd-inline .bid-pair-seg').all()) {
       if (await seg.locator('[aria-checked="true"]').count()) continue;
       await seg.locator('[role="radio"]').first().click();
       await p.waitForTimeout(150);
     }
     await saved();
-    await p.locator('.an-sheet .bid-pair .bid-pair-fields').first().click();
+    await p.locator('.bd-inline .bid-pair .bid-pair-fields').first().click();
     await p.waitForTimeout(400);
     await pageSheet(`${label} review`);
-    await p.locator('.an-sheet .bid-commit .bk-btn--brand').first().click({ timeout: 4000 });
-    await p.locator('.an-sheet .bid-confirm').first().waitFor({ timeout: 4000 });
-    await at('.an-sheet .bid-confirm');
+    await p.locator('.bd-inline .bid-commit .bk-btn--brand').first().click({ timeout: 4000 });
+    await p.locator('.bd-inline .bid-confirm').first().waitFor({ timeout: 4000 });
+    await at('.bd-inline .bid-confirm');
     await run(`${label} confirm`, sheet);
-    await p.locator('.an-sheet .bid-confirm .bk-btn--brand').first().click({ timeout: 4000 });
-    await p.locator('.an-sheet .bid-summary').first().waitFor({ timeout: 90000 });
+    await p.locator('.bd-inline .bid-confirm .bk-btn--brand').first().click({ timeout: 4000 });
+    await p.locator('.bd-inline .bid-summary').first().waitFor({ timeout: 90000 });
     await p.waitForTimeout(600);
     await pageSheet(`${label} summary`);
     const edited = await p.evaluate(async () => {
@@ -733,27 +693,27 @@ function scan(rootSel) {
       const r = await fetch(`/api/cash-sessions/${row.id}`, { method: 'PUT', headers: h, body: JSON.stringify({ notes: 'guard: edited after the import' }) });
       return r.ok ? row.id : null;
     });
-    await p.locator('.an-sheet button:has-text("Undo this import")').first().click({ timeout: 4000 });
-    const form = p.locator('.an-sheet form.bid-confirm');
+    await p.locator('.bd-inline button:has-text("Undo this import")').first().click({ timeout: 4000 });
+    const form = p.locator('.bd-inline form.bid-confirm');
     const count = await form.locator('.bk-field-label').first().innerText();
     await form.locator('input').fill((count.match(/\d[\d,]*/) || [''])[0].replace(/,/g, ''));
-    await at('.an-sheet form.bid-confirm');
+    await at('.bd-inline form.bid-confirm');
     await run(`${label} undo form`, sheet);
     await form.locator('button[type="submit"]').click({ timeout: 4000 });
     if (edited != null) {
-      await p.locator('.an-sheet .bid-undo-err').first().waitFor({ timeout: 60000 });
-      await at('.an-sheet .bid-undo-err');
+      await p.locator('.bd-inline .bid-undo-err').first().waitFor({ timeout: 60000 });
+      await at('.bd-inline .bid-undo-err');
       await run(`${label} undo refused`, sheet);
       await p.evaluate((id) => fetch(`/api/cash-sessions/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }), edited);
       await form.locator('button[type="submit"]').click({ timeout: 4000 });
     } else console.log(`  (${label}: no imported Wynn cash session to edit, so the refused undo was not scanned)`);
-    await p.locator('.an-sheet .bid-summary').waitFor({ state: 'detached', timeout: 60000 });
+    await p.locator('.bd-inline .bid-summary').waitFor({ state: 'detached', timeout: 60000 });
     await p.waitForTimeout(500);
     await run(`${label} undone`, sheet);
-    const again = p.locator('.an-sheet .bid button:has-text("Fetch from the dashboard")').first();
+    const again = p.locator('.bd-inline .bid button:has-text("Fetch from the dashboard")').first();
     if (await again.isEnabled()) {
       await again.click();
-      await p.locator('.an-sheet .bid-review').first().waitFor({ timeout: 90000 }).catch(() => {});
+      await p.locator('.bd-inline .bid-review').first().waitFor({ timeout: 90000 }).catch(() => {});
     } else console.log(`  (${label}: the pull is off, so the run was not fetched again; seed before the next size)`);
   } catch (e) { console.log(`  (bankroll import skipped: ${e.message.split('\n')[0]})`); }
   // Results > Cash (cash sessions beta), each screen: the running session (it opens by itself while
@@ -824,7 +784,6 @@ function scan(rootSel) {
   };
   if (on('bankroll-fab')) await fabView('bankroll + menu');
   if (on('bankroll-fab')) await fabView('bankroll + menu, no session running', { idle: true });
-  if (on('bankroll-fab')) await fabView('bankroll sheet + menu', { sheet: true });
 
   // Results → Expenses & income (admin beta) and its sheets: rows, cells and trip lines truncate
   // with an ellipsis. Skipped quietly where the section is absent (a non-admin token).

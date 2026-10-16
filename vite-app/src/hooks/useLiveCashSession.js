@@ -68,13 +68,23 @@ export function useLiveSessionNow() {
   return useSyncExternalStore(subscribe, () => state).session;
 }
 
-// ── Results tab half: 'tournaments' | 'cash' ──
+// ── The Bankroll tab's section: 'tournaments' | 'cash', or one of the retired bankroll dashboard's
+// tabs, drawn on the page itself (owner, 2026-10-16): 'balance' (Overview), 'locations', 'reports',
+// 'backers', 'rules', 'goals', 'data' (Import). ──
+export const RESULTS_SECTIONS = [
+  ['tournaments', 'Tournaments'], ['cash', 'Cash'], ['balance', 'Overview'], ['locations', 'Locations'],
+  ['reports', 'Reports'], ['backers', 'Backers'], ['rules', 'Rules'], ['goals', 'Goals'], ['data', 'Import'],
+];
+const SECTION_KEYS = new Set(RESULTS_SECTIONS.map(([k]) => k));
 const KIND_KEY = 'resultsKind';
-let kind = (() => { try { return localStorage.getItem(KIND_KEY) === 'cash' ? 'cash' : 'tournaments'; } catch { return 'tournaments'; } })();
+const asSection = (k) => (k === 'sessions' ? 'tournaments' : SECTION_KEYS.has(k) ? k : 'tournaments');
+let kind = (() => { try { return asSection(localStorage.getItem(KIND_KEY)); } catch { return 'tournaments'; } })();
 const kindSubs = new Set();
 export function setResultsKind(k) {
-  kind = k === 'cash' ? 'cash' : 'tournaments';
-  try { localStorage.setItem(KIND_KEY, kind); } catch { /* private mode */ }
+  kind = asSection(k);
+  // Only the halves are remembered on this device: a launch opens on Tournaments or Cash, never on
+  // Import or Rules from last time.
+  if (kind === 'tournaments' || kind === 'cash') { try { localStorage.setItem(KIND_KEY, kind); } catch { /* private mode */ } }
   for (const f of kindSubs) f();
 }
 export function useResultsKind() {

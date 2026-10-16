@@ -1,6 +1,5 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { bankrollLine } from '../utils/home-period.js';
-import BankrollDashboardSheet from './BankrollDashboardSheet.jsx';
 import useLiveCashSession from '../hooks/useLiveCashSession.js';
 
 // The Analytics sheet is its own chunk (as in Results): only an admin who taps the noise line loads it.
@@ -27,11 +26,9 @@ const AnalyticsView = lazy(() => import('./AnalyticsView.jsx'));
 //   num.sheets      the sheets, rendered once at the home's root (they portal to the body)
 export function useHomeNumbers({ isAdmin, token, bk, onLog }) {
   const admin = !!(isAdmin && bk && bk.enabled);
-  const [sheet, setSheet] = useState(null); // the dashboard tab to open: 'rules' | 'goals' | 'balance'
   const [analytics, setAnalytics] = useState(null); // the bankroll scope to open Analytics on
   // Stable: the sheet focuses its Done button whenever its onClose changes.
   const closeAnalytics = useCallback(() => setAnalytics(null), []);
-  const closeSheet = useCallback(() => setSheet(null), []);
 
   // A cash session started or ended changes the ledger without changing a result: refresh the
   // shared summary (and with it the block) when the live session comes or goes.
@@ -44,23 +41,23 @@ export function useHomeNumbers({ isAdmin, token, bk, onLog }) {
     lastLive.current = liveKey;
   }, [liveKey, admin]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The bankroll dashboard retired (owner, 2026-10-16): its tabs are sections of the Bankroll tab, so
+  // the home's Overview, Rules and Goals taps go there.
+  const openSection = (section) => { if (onLog) onLog({ kind: 'section', section }); };
   const onOpenBlock = (o) => {
     if (o && o.kind === 'trip' && onLog) onLog({ kind: 'trip', tripId: o.tripId });
-    else if (admin) setSheet('balance');
+    else if (admin && onLog) openSection('balance');
     else if (onLog) onLog({ kind: 'results' });
   };
-  const onOpenRules = () => setSheet('rules');
-  const onOpenGoals = () => setSheet('goals');
-  const onOpenNoise = (game, scope) => (game === 'cash' ? setSheet('balance') : setAnalytics(scope || 'all'));
+  const onOpenRules = () => openSection('rules');
+  const onOpenGoals = () => openSection('goals');
+  const onOpenNoise = (game, scope) => (game === 'cash' ? openSection('balance') : setAnalytics(scope || 'all'));
   // The bankroll line's header states the scope ('All bankrolls · USD'); the period block right
   // under it (DashboardView: immediately under it, in the same column) leaves its own out when it is
   // the same.
   const bankLine = admin ? bankrollLine(bk.summary, String) : null;
   const sheets = (
     <>
-      {admin && sheet && (
-        <BankrollDashboardSheet bk={bk} initialTab={sheet} initialKey="all" onClose={closeSheet} onLog={onLog} />
-      )}
       {admin && analytics && (
         <Suspense fallback={null}>
           <AnalyticsView bankroll={analytics} onClose={closeAnalytics} />

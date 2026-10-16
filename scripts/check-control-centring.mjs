@@ -1796,13 +1796,12 @@ function finalize(c) {
     await click('.filter-chip-square:not([title]):visible', 800);
   });
   step('bankrolls', async () => { await nav('Bankroll'); await click('.bk-bar .bk-act:has-text("Manage")', 800); });
-  // The bankroll dashboard (the bankroll strip's Dashboard button). A tab is found by its label
-  // among the strip's radios (.bd-tabs: the strip's page chevrons are buttons too); when the tabs
-  // outgrow 35g the strip is a row that scrolls sideways, and the click scrolls it there.
+  // The retired bankroll dashboard's tabs, now sections of the Bankroll tab (owner, 2026-10-16): a
+  // section is its chip among the page's kind toggles; null = the Overview.
   const dash = async (tab) => {
     await nav('Bankroll');
-    await click('.bk-bar .bk-act:has-text("Dashboard")', 1500);
-    if (tab) await click(`.an-sheet .bd-tabs [role="radio"]:has-text("${tab}")`, 600);
+    await click(`.results-kind-tabs .kind-toggle:has-text("${tab || 'Overview'}")`, 1200);
+    await p.evaluate(() => window.scrollTo(0, 0));
   };
   // The Overview: hero, graph, the collapsible table sections (Summary, Sessions, Games, Rooms,
   // Bankroll, By month) and the latest sessions. First with every section opened by its header
@@ -1811,47 +1810,23 @@ function finalize(c) {
   const sections = async (expanded) => {
     const want = expanded ? 'false' : 'true';
     for (let i = 0; i < 12; i++) {
-      const head = p.locator(`.an-sheet .ovt-head[aria-expanded="${want}"]`).first();
+      const head = p.locator(`.bd-inline .ovt-head[aria-expanded="${want}"]`).first();
       if (!(await head.count())) break;
       await head.click({ timeout: 4000, force: overlay });
       await p.waitForTimeout(450);   // the body's 0fr <-> 1fr transition (--dur-base)
     }
-    if (await p.locator(`.an-sheet .ovt-head[aria-expanded="${want}"]`).count()) throw new Error('a section did not toggle');
+    if (await p.locator(`.bd-inline .ovt-head[aria-expanded="${want}"]`).count()) throw new Error('a section did not toggle');
     // Then until every collapse has finished (on a slow frame the last can outlast the wait above).
     await p.waitForFunction(() => {
-      const o = document.querySelector('.an-sheet .ovt');
+      const o = document.querySelector('.bd-inline .ovt');
       return !o || !o.getAnimations || o.getAnimations({ subtree: true }).length === 0;
     }, null, { timeout: 5000 });
-    await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
+    await p.evaluate(() => { const s = document.scrollingElement; if (s) s.scrollTop = 0; });
   };
   step('bankroll-dashboard', async () => { await dash(null); await sections(true); }, 12);
   step('bankroll-dashboard-closed', async () => { await dash(null); await sections(false); }, 3);
   step('bankroll-rules', () => dash('Rules'), 2);
   step('bankroll-goals', () => dash('Goals'), 1);
-  // Sessions: the list (chips, year pills, rows; scrolled past the next year), a filter on (Cash),
-  // and the read-only detail of a tournament and of a cash session (its stack graph), scrolled
-  // through. The type filter is remembered per device, so each view sets it by clicking.
-  const sessionsTab = async (...steps) => {
-    await dash('Sessions');
-    await p.locator('.an-sheet .bs-row').first().waitFor({ timeout: 8000 });
-    for (const sel of steps) await click(sel, 700);
-  };
-  step('bankroll-sessions', () => sessionsTab('.an-sheet .bs-chip:has-text("All")'), 10);
-  // The list's foot: its last year pill and the Show more button (past the first 150 rows).
-  step('bankroll-sessions-foot', async () => {
-    await sessionsTab('.an-sheet .bs-chip:has-text("All")');
-    await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = s.scrollHeight; });
-    await p.waitForTimeout(400);
-  });
-  step('bankroll-sessions-cash', () => sessionsTab('.an-sheet .bs-chip:has-text("Cash")'), 2);
-  step('bankroll-sessions-tournament', () => sessionsTab('.an-sheet .bs-chip:has-text("Tournaments")', '.an-sheet .bs-row'), 3);
-  step('bankroll-sessions-cash-detail', () => sessionsTab('.an-sheet .bs-chip:has-text("Cash")', '.an-sheet .bs-row'), 3);
-  // The tab strip with its last tab selected: scrolled to its end when it scrolls, so the start's
-  // page chevron is up (the Overview's step has the end's).
-  step('bankroll-tabs-end', async () => {
-    await dash(null);
-    await click('.an-sheet .bd-tabs button[role="radio"]:last-of-type', 900);
-  }, 0);
   // Locations: the range and sort strips and the cards; a card open on its results (the first room
   // with a pager: more than ten results, the biggest first by default sort), its pager scrolled into
   // view before and after a page (Show 50 more or Show all, then Show fewer beside it), then the
@@ -1859,7 +1834,7 @@ function finalize(c) {
   step('bankroll-locations', () => dash('Locations'), 3);
   const openPaged = async () => {
     await dash('Locations');
-    const cards = p.locator('.an-sheet .bl-card');
+    const cards = p.locator('.bd-inline .bl-card');
     const n = await cards.count();
     for (let i = 0; i < n; i++) {
       await cards.nth(i).click({ timeout: 4000, force: overlay });
@@ -1895,18 +1870,18 @@ function finalize(c) {
     if (answer) await p.route('**/api/staking/standing/backers', (r) => r.fulfill(answer));
     try {
       await dash('Backers');
-      await p.locator('.an-sheet .bb-backers .bl-item, .an-sheet .bb-backers .an-p.bl-gap').first().waitFor({ timeout: 8000 });
+      await p.locator('.bd-inline .bb-backers .bl-item, .bd-inline .bb-backers .an-p.bl-gap').first().waitFor({ timeout: 8000 });
     } finally { if (answer) await p.unroute('**/api/staking/standing/backers'); }
   };
   step('bankroll-backers', () => backersTab(), 2);
   step('bankroll-backers-open', async () => {
     await backersTab();
-    const shut = p.locator('.an-sheet .bb-item .bl-card[aria-expanded="false"]');
+    const shut = p.locator('.bd-inline .bb-item .bl-card[aria-expanded="false"]');
     for (let k = await shut.count(); k > 0; k--) {
       await shut.first().click({ timeout: 4000, force: overlay });
       await p.waitForTimeout(250);
     }
-    if (await p.locator('.an-sheet .bb-item .bl-card[aria-expanded="false"]').count()) throw new Error('a card did not open');
+    if (await p.locator('.bd-inline .bb-item .bl-card[aria-expanded="false"]').count()) throw new Error('a card did not open');
   }, 4);
   step('bankroll-backers-empty', () => backersTab({ status: 200, json: { backers: [] } }), 0);
   step('bankroll-backers-refused', () => backersTab({ status: 403, json: { error: 'Forbidden' } }), 0);
@@ -1921,23 +1896,23 @@ function finalize(c) {
   // second size. Never against :3001.
   const importOpen = async () => {
     await dash('Import');
-    await p.locator('.an-sheet .bid').first().waitFor({ timeout: 8000 });
+    await p.locator('.bd-inline .bid').first().waitFor({ timeout: 8000 });
     await p.waitForTimeout(600);
   };
   const importReview = async () => {
     await importOpen();
-    await p.locator('.an-sheet .bid-review').first().waitFor({ timeout: 8000 });
+    await p.locator('.bd-inline .bid-review').first().waitFor({ timeout: 8000 });
   };
   const importSaved = async () => {
-    await p.waitForFunction(() => ![...document.querySelectorAll('.an-sheet .bid-state')].some((s) => /Saving/.test(s.textContent)), null, { timeout: 60000 });
+    await p.waitForFunction(() => ![...document.querySelectorAll('.bd-inline .bid-state')].some((s) => /Saving/.test(s.textContent)), null, { timeout: 60000 });
     await p.waitForTimeout(500);
   };
   // Every pair answered (the Likely ones filled, each Possible one's first answer), so Import opens.
   const importAnswered = async () => {
     await importReview();
-    const fill = p.locator('.an-sheet .bid-group button:has-text("Fill the likely ones")');
+    const fill = p.locator('.bd-inline .bid-group button:has-text("Fill the likely ones")');
     if (await fill.count() && await fill.first().isEnabled()) { await fill.first().click({ force: overlay }); await p.waitForTimeout(300); }
-    for (const seg of await p.locator('.an-sheet .bid-pair-seg').all()) {
+    for (const seg of await p.locator('.bd-inline .bid-pair-seg').all()) {
       if (await seg.locator('[aria-checked="true"]').count()) continue;
       await seg.locator('[role="radio"]').first().click({ force: overlay });
       await p.waitForTimeout(150);
@@ -1948,34 +1923,34 @@ function finalize(c) {
     await p.evaluate((s) => { const el = document.querySelector(s); if (el) el.scrollIntoView({ block: 'center' }); }, sel);
     await p.waitForTimeout(400);
   };
-  const sheetTop = async () => { await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; }); await p.waitForTimeout(300); };
+  const sheetTop = async () => { await p.evaluate(() => { const s = document.scrollingElement; if (s) s.scrollTop = 0; }); await p.waitForTimeout(300); };
   step('bankroll-import-dashboard', importOpen, 1);
   step('bankroll-import-dashboard-review', importReview, 14);
   // A pair card tapped open (its long values whole), then Import's confirm step and Discard's.
   step('bankroll-import-dashboard-confirm', async () => {
     await importAnswered();
-    await p.locator('.an-sheet .bid-pair .bid-pair-fields').first().click({ force: overlay });
+    await p.locator('.bd-inline .bid-pair .bid-pair-fields').first().click({ force: overlay });
     await p.waitForTimeout(400);
-    await sheetTo('.an-sheet .bid-pair');
+    await sheetTo('.bd-inline .bid-pair');
     await run('bankroll-import-dashboard-confirm (a pair open)');
-    await click('.an-sheet .bid-commit .bk-btn--brand', 600);
-    await sheetTo('.an-sheet .bid-confirm');
+    await click('.bd-inline .bid-commit .bk-btn--brand', 600);
+    await sheetTo('.bd-inline .bid-confirm');
     await run('bankroll-import-dashboard-confirm (import)');
     await scrollMain(2);
-    await click('.an-sheet .bid-confirm button:has-text("Cancel")', 400);
-    await click('.an-sheet .bid-commit button:has-text("Discard")', 600);
-    await sheetTo('.an-sheet .bid-confirm');
+    await click('.bd-inline .bid-confirm button:has-text("Cancel")', 400);
+    await click('.bd-inline .bid-commit button:has-text("Discard")', 600);
+    await sheetTo('.bd-inline .bid-confirm');
     await run('bankroll-import-dashboard-confirm (discard)');
-    await click('.an-sheet .bid-confirm button:has-text("Keep")', 400);
+    await click('.bd-inline .bid-confirm button:has-text("Keep")', 400);
   }, 0, { selfRun: true });
   // The import done: its summary paged; Undo's typed-count form; the undo refused by a row edited
   // since (each row with where it lives and Open in Results); that row deleted and the undo
   // through; then a fetch, so the run is back.
   step('bankroll-import-dashboard-imported', async () => {
     await importAnswered();
-    await click('.an-sheet .bid-commit .bk-btn--brand', 600);
-    await click('.an-sheet .bid-confirm .bk-btn--brand', 1500);
-    await p.locator('.an-sheet .bid-summary').first().waitFor({ timeout: 90000 });
+    await click('.bd-inline .bid-commit .bk-btn--brand', 600);
+    await click('.bd-inline .bid-confirm .bk-btn--brand', 1500);
+    await p.locator('.bd-inline .bid-summary').first().waitFor({ timeout: 90000 });
     await p.waitForTimeout(600);
     await sheetTop();
     await run('bankroll-import-dashboard-imported');
@@ -1991,28 +1966,28 @@ function finalize(c) {
       const r = await fetch(`/api/cash-sessions/${row.id}`, { method: 'PUT', headers: h, body: JSON.stringify({ notes: 'guard: edited after the import' }) });
       return r.ok ? row.id : null;
     });
-    await click('.an-sheet button:has-text("Undo this import")', 600);
-    const label = await p.locator('.an-sheet form.bid-confirm .bk-field-label').first().innerText();
-    await p.locator('.an-sheet form.bid-confirm input').fill((label.match(/\d[\d,]*/) || [''])[0].replace(/,/g, ''));
-    await sheetTo('.an-sheet form.bid-confirm');
+    await click('.bd-inline button:has-text("Undo this import")', 600);
+    const label = await p.locator('.bd-inline form.bid-confirm .bk-field-label').first().innerText();
+    await p.locator('.bd-inline form.bid-confirm input').fill((label.match(/\d[\d,]*/) || [''])[0].replace(/,/g, ''));
+    await sheetTo('.bd-inline form.bid-confirm');
     await run('bankroll-import-dashboard-imported (undo form)');
     await scrollMain(1);
-    await click('.an-sheet form.bid-confirm button[type="submit"]', 1500);
+    await click('.bd-inline form.bid-confirm button[type="submit"]', 1500);
     if (edited != null) {
-      await p.locator('.an-sheet .bid-undo-err').first().waitFor({ timeout: 60000 });
-      await sheetTo('.an-sheet .bid-undo-err');
+      await p.locator('.bd-inline .bid-undo-err').first().waitFor({ timeout: 60000 });
+      await sheetTo('.bd-inline .bid-undo-err');
       await run('bankroll-import-dashboard-imported (undo refused)');
       await scrollMain(1);
       await p.evaluate((id) => fetch(`/api/cash-sessions/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }), edited);
-      await click('.an-sheet form.bid-confirm button[type="submit"]', 1500);
+      await click('.bd-inline form.bid-confirm button[type="submit"]', 1500);
     } else notes.push({ view: 'bankroll-import-dashboard-imported', note: 'no imported Wynn cash session to edit, so the refused undo was not measured' });
-    await p.locator('.an-sheet .bid-summary').waitFor({ state: 'detached', timeout: 60000 });
+    await p.locator('.bd-inline .bid-summary').waitFor({ state: 'detached', timeout: 60000 });
     await sheetTop();
     await run('bankroll-import-dashboard-imported (undone)');
-    const again = p.locator('.an-sheet .bid button:has-text("Fetch from the dashboard")').first();
+    const again = p.locator('.bd-inline .bid button:has-text("Fetch from the dashboard")').first();
     if (await again.isEnabled()) {
       await again.click({ force: overlay });
-      await p.locator('.an-sheet .bid-review').first().waitFor({ timeout: 90000 }).catch(() => {});
+      await p.locator('.bd-inline .bid-review').first().waitFor({ timeout: 90000 }).catch(() => {});
     } else notes.push({ view: 'bankroll-import-dashboard-imported', note: 'the pull is off, so the run was not fetched again: the review views need a fresh seed before the next size' });
   }, 0, { selfRun: true });
   // Reports: the filter bar, the report picker and a table; then its filter sheet (over the
@@ -2025,8 +2000,8 @@ function finalize(c) {
   }, 3);
   step('bankroll-import', async () => {
     await dash('Import');
-    await click('.an-sheet button:has-text("Import CSV")', 300);
-    await p.locator('.an-sheet input[type=file]').setInputFiles({
+    await click('.bd-inline button:has-text("Import CSV")', 300);
+    await p.locator('.bd-inline input[type=file]').setInputFiles({
       name: 'check.csv', mimeType: 'text/csv',
       buffer: Buffer.from(['Date,Event,Buy-in,Winnings', '2024-03-02,Check Event,215,0', '2024-03-09,Check Event,215,900', ''].join('\n')),
     });
@@ -2058,8 +2033,6 @@ function finalize(c) {
   };
   step('bankroll-fab-idle', () => idleFab(false), 0);
   step('bankroll-fab-idle-menu', () => idleFab(true), 0);
-  step('bankroll-fab-sheet', () => dash(null), 2);
-  step('bankroll-fab-sheet-menu', async () => { await dash(null); await openFab('.bk-fab--sheet'); }, 0);
   const cashHalf = async (...steps) => {
     await nav('Bankroll');
     await click('.results-kind-tabs button:has-text("Cash")', 1500);

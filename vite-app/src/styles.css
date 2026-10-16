@@ -497,6 +497,9 @@
          which was the card outline and which the divider. */
       /* Stroke widths as fractions of r so even hairlines scale with the grid
          (≈1 / 1.5 / 3px at 402pt). Nothing is px. */
+      /* Half a hairline (≈0.5px: one device pixel on a 2x screen): graph lines and the outline of a
+         selected button (owner, 2026-10-16: "super thin"). */
+      --bw-fine: calc(var(--subrow) * 0.065);
       --bw-hair: calc(var(--subrow) * 0.13);
       --bw-1:    calc(var(--subrow) * 0.195);
       --bw-2:    calc(var(--subrow) * 0.39);
@@ -10015,7 +10018,7 @@
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
     }
-    .kind-toggle.active { border-color: var(--accent); color: var(--accent); background: rgba(160,160,160,0.1); }
+    .kind-toggle.active { border-color: var(--accent); border-width: var(--bw-fine); color: var(--accent); background: rgba(160,160,160,0.1); }
     /* The button's flex centre centres the label (Univers Condensed's line box and its capitals
        share a middle). text-indent balances the trailing letter-spacing WebKit adds after the
        last letter, so the capitals are centred sideways too, not shifted left by one gap. */
@@ -10047,7 +10050,7 @@
       -webkit-tap-highlight-color: transparent;
     }
     .kind-toggle-caret svg { width: var(--subrow); height: var(--subrow); display: block; }
-    .kind-toggle-caret.active { color: var(--accent); border-color: var(--accent); background: rgba(160,160,160,0.1); }
+    .kind-toggle-caret.active { color: var(--accent); border-color: var(--accent); border-width: var(--bw-fine); background: rgba(160,160,160,0.1); }
 
     /* The Online menu: opened by a tap on the Online toggle. Full content width (35g, the 1g
        margins either side) and 1r under the button row. */

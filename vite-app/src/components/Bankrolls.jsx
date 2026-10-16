@@ -18,7 +18,7 @@ const signed = (v, cur) => (v > 0 ? '+' : '') + money(v, cur);
 const tone = (v) => (v < 0 ? ' is-neg' : '');
 
 // ── Switcher ────────────────────────────────────────────────────────────────
-export function BankrollSwitcher({ bk, balances, onManage, onDashboard }) {
+export function BankrollSwitcher({ bk, balances, onManage }) {
   const cells = [{ id: BANKROLL_ALL, name: 'All' }, ...bk.visible];
   return (
     /* In the Schedule's scheme (owner, 2026-10-16): no title row (the top bar says Bankroll); the
@@ -45,11 +45,6 @@ export function BankrollSwitcher({ bk, balances, onManage, onDashboard }) {
             </label>
           );
         })()}
-        {onDashboard && (
-          <button type="button" className="bk-cell bk-act" onClick={onDashboard} title="Bankroll dashboard (beta)">
-            <span className="bk-act-label">Dashboard</span>
-          </button>
-        )}
         <button type="button" className="bk-cell bk-act" onClick={onManage} title="Manage bankrolls">
           <span className="bk-act-label">Manage</span>
         </button>

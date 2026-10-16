@@ -243,11 +243,17 @@ function Risk({ risk, money }) {
 // initialTab / initialKey: where it opens (the home's bankroll line opens Rules on All).
 // onLog: App's hand-off to Results; the floating + inside the sheet closes the sheet and opens the
 // chosen form there, as the Overview's latest-sessions buttons do (BankrollOverview open()).
-export default function BankrollDashboard({ bk, onClose, initialTab = 'balance', initialKey = null, onLog }) {
+/* inline (owner, 2026-10-16: "retire the bankroll dashboard"): the same tabs drawn on the Bankroll
+   page itself, one at a time, chosen by the page's section chips (tab) and following the page's
+   bankroll dropdown (bk.selected). No sheet, no Done, no tab strip or bankroll chips of its own, and
+   the page's floating + stays. */
+export default function BankrollDashboard({ bk, onClose = () => {}, initialTab = 'balance', initialKey = null, onLog, inline = false, tab: tabProp = null }) {
   const toast = useToast();
   const closeRef = useRef(null);
-  const [key, setKey] = useState(initialKey ?? bk.selected);
-  const [tab, setTab] = useState(initialTab);
+  const [keyState, setKey] = useState(initialKey ?? bk.selected);
+  const key = inline ? bk.selected : keyState;
+  const [tabState, setTab] = useState(initialTab);
+  const tab = inline && tabProp ? tabProp : tabState;
   const [ledger, setLedger] = useState({ status: 'loading', data: null });
   const [prefsAll, setPrefsAll] = useState(null);
   const [risk, setRisk] = useState(null);
@@ -257,7 +263,7 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
   const today = getToday();
   // The sheet covers the Results tab's floating + and has its own; that one steps aside on the CSV
   // import screen, which is a form of its own.
-  useHideBankrollFab(true, 'page');
+  useHideBankrollFab(!inline, 'page');
   useHideBankrollFab(importing, 'sheet');
 
   const b = key === BANKROLL_ALL ? null : bk.bankrolls.find((x) => x.id === key);
@@ -280,6 +286,7 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
     bk.call('GET', '/prefs').then((d) => setPrefsAll(d.prefs || {})).catch(() => {});
   }, [version]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
+    if (inline) return undefined;
     closeRef.current && closeRef.current.focus();
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -320,24 +327,15 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
     if (onLog) onLog(intent);
   };
 
-  return createPortal(
+  const body = (
     <>
-      <div className="an-scrim" onClick={onClose} />
-      <div className="an-sheet bd-sheet" role="dialog" aria-modal="true" aria-labelledby="bd-title">
-        <header className="an-head">
-          <h2 className="an-title-row" id="bd-title"><span className="an-cell an-title snap-g">Bankroll</span><span className="an-beta">Beta</span></h2>
-          <button ref={closeRef} type="button" className="bk-btn bk-w8 bd-close" onClick={importing ? () => setImporting(false) : onClose}>
-            <span>{importing ? 'Back' : 'Done'}</span>
-          </button>
-        </header>
-        <div className="an-body">
           {importing ? (
             <BankrollImport bk={bk} toast={toast} defaultKey={key}
               onDone={() => { setImporting(false); setVersion((v) => v + 1); bk.refresh(); }} />
           ) : (
             <>
-              <Seg cols="bd-seg4" label="Bankroll" options={chips} value={key} onChange={setKey} />
-              <TabStrip className="bd-tabs" label="Show" options={TABS} value={tab} onChange={setTab} btnClass="bk-seg-btn bd-tab" />
+              {!inline && <Seg cols="bd-seg4" label="Bankroll" options={chips} value={key} onChange={setKey} />}
+              {!inline && <TabStrip className="bd-tabs" label="Show" options={TABS} value={tab} onChange={setTab} btnClass="bk-seg-btn bd-tab" />}
               {ledger.status === 'error' && <p className="an-p">The ledger could not load. Close and try again.</p>}
               {d && d.sources.some((s) => !s.ok) && (
                 <p className="an-p">Not included (a ledger source failed): {d.sources.filter((s) => !s.ok).map((s) => s.name).join(', ')}.</p>
@@ -373,6 +371,33 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
               </section>}
             </>
           )}
+    </>
+  );
+  if (inline) {
+    return (
+      <div className="bd-inline">
+        {importing && (
+          <div className="bd-actions">
+            <button type="button" className="bk-btn bk-w8" onClick={() => setImporting(false)}><span>Back</span></button>
+          </div>
+        )}
+        {body}
+      </div>
+    );
+  }
+
+  return createPortal(
+    <>
+      <div className="an-scrim" onClick={onClose} />
+      <div className="an-sheet bd-sheet" role="dialog" aria-modal="true" aria-labelledby="bd-title">
+        <header className="an-head">
+          <h2 className="an-title-row" id="bd-title"><span className="an-cell an-title snap-g">Bankroll</span><span className="an-beta">Beta</span></h2>
+          <button ref={closeRef} type="button" className="bk-btn bk-w8 bd-close" onClick={importing ? () => setImporting(false) : onClose}>
+            <span>{importing ? 'Back' : 'Done'}</span>
+          </button>
+        </header>
+        <div className="an-body">
+          {body}
         </div>
         {onLog && <BankrollFab scope="sheet" isAdmin={bk.enabled} onPick={addFromSheet} />}
       </div>

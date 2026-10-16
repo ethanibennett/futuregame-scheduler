@@ -174,7 +174,9 @@ export function groupByMonth(events) {
 // ── The graph ────────────────────────────────────────────────────────────
 
 export const RANGES = [['1m', '1M'], ['3m', '3M'], ['ytd', 'YTD'], ['all', 'All']];
-export const RANGE_NOUN = { '1m': 'last month', '3m': 'last 3 months', ytd: 'this year', all: 'all sessions' };
+export const RANGE_NOUN = { '1m': 'last month', '3m': 'last 3 months', ytd: 'this year', mtd: 'this month', '7d': 'last 7 days', all: 'all sessions' };
+/** The Bankroll tab's graph ranges (owner, 2026-10-16): always these four, All first. */
+export const BANKROLL_RANGES = [['all', 'All'], ['ytd', 'YTD'], ['mtd', 'MTD'], ['7d', '7D']];
 
 const pad = (n) => String(n).padStart(2, '0');
 function monthsBefore(iso, n) {
@@ -189,6 +191,9 @@ const dayAfter = (iso) => new Date(Date.parse(iso + 'T00:00:00Z') + 864e5).toISO
 /** The first date a range takes in (inclusive), or null for every session. */
 export function rangeFrom(range, today) {
   if (range === 'ytd') return `${String(today).slice(0, 4)}-01-01`;
+  if (range === 'mtd') return `${String(today).slice(0, 7)}-01`;
+  // 7D: today and the six days before it.
+  if (range === '7d') return new Date(Date.parse(String(today).slice(0, 10) + 'T00:00:00Z') - 6 * 864e5).toISOString().slice(0, 10);
   const n = { '1m': 1, '3m': 3 }[range];
   return n ? dayAfter(monthsBefore(today, n)) : null;
 }

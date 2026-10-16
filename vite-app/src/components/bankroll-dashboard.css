@@ -69,7 +69,7 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
   font-variant-numeric: var(--num-tabular);
 }
-.bd-seg > button.is-on { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-2) var(--brand); color: var(--brand-ink, var(--brand)); }
+.bd-seg > button.is-on { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-fine) var(--brand); color: var(--brand-ink, var(--brand)); }
 .bd-seg > button:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 .bd-tabs { height: calc(var(--subrow) * 5); margin-top: calc(var(--subrow) * 2); }
 .bd-range { height: calc(var(--subrow) * 4); margin-top: var(--subrow); }
@@ -176,7 +176,7 @@
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 .bd-sp:focus-visible, .bd-fill-btn:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
-.bd-sp.is-on { background: var(--surface); box-shadow: inset 0 0 0 var(--bw-1) var(--c); color: var(--text); }
+.bd-sp.is-on { background: var(--surface); box-shadow: inset 0 0 0 var(--bw-fine) var(--c); color: var(--text); }
 .bd-sp[aria-disabled="true"] { cursor: default; }
 .bd-sp-name {
   display: flex; align-items: center;
@@ -188,14 +188,14 @@
 }
 .bd-sw {
   flex: none; width: var(--gu); height: var(--subrow); margin-right: calc(var(--gu) * 0.5);
-  border-radius: var(--radius-sm); box-shadow: inset 0 0 0 var(--bw-1) var(--c);
+  border-radius: var(--radius-sm); box-shadow: inset 0 0 0 var(--bw-hair) var(--c);
 }
 .bd-sp.is-on .bd-sw { background: var(--c); }
 .bd-sp-val { font-size: var(--fs-sm); font-variant-numeric: var(--num-tabular); line-height: calc(var(--subrow) * 2); }
 /* Fill is not a line, so it has no colour of its own: on, a neutral ring (not the brand aqua,
    which is the Tournaments line's). */
 .bd-fill-btn { grid-column: 4; }
-.bd-fill-btn.is-on { background: var(--surface); box-shadow: inset 0 0 0 var(--bw-1) var(--text-muted); color: var(--text); }
+.bd-fill-btn.is-on { background: var(--surface); box-shadow: inset 0 0 0 var(--bw-fine) var(--text-muted); color: var(--text); }
 
 /* Each line's colour and fill alpha (styles.css --series-*), for its pill, line and fill. */
 .bd-sp-total, .bd-c-total, .bd-sp-balance, .bd-c-balance { --c: var(--series-total); --fa: var(--series-fill-total); }
@@ -210,14 +210,14 @@
 .bd-tick { position: absolute; left: 0; top: calc(var(--subrow) * var(--k)); width: calc(var(--gu) * 5); }
 .bd-chart-msg { position: absolute; left: 0; right: 0; top: calc(var(--subrow) * 12); text-align: center; }
 .bd-grid { stroke: var(--border); stroke-width: var(--bw-hair); }
-.bd-zero { stroke: var(--text-muted); stroke-width: var(--bw-1); }
-.bd-line { fill: none; stroke: var(--c); stroke-width: var(--bw-2); stroke-linejoin: round; }
+.bd-zero { stroke: var(--text-muted); stroke-width: var(--bw-fine); }
+.bd-line { fill: none; stroke: var(--c); stroke-width: var(--bw-fine); stroke-linejoin: round; }
 /* Total, drawn under the others, runs a hairline wider (.bd-under, only while other lines are on):
    where it coincides with Tournaments or Cash, half a hairline of it shows either side, a hint
    rather than a casing, and where it runs apart it is barely heavier than the other two. */
-.bd-line.bd-under { stroke-width: calc(var(--bw-2) + var(--bw-hair)); }
+.bd-line.bd-under { stroke-width: var(--bw-hair); }
 .bd-area { fill: var(--c); fill-opacity: var(--fa); stroke: none; }
-.bd-peak { fill: none; stroke: var(--text-muted); stroke-width: var(--bw-1); stroke-dasharray: var(--bw-2) var(--bw-2); }
+.bd-peak { fill: none; stroke: var(--text-muted); stroke-width: var(--bw-hair); stroke-dasharray: var(--bw-2) var(--bw-2); }
 .bd-dd { fill: var(--neg-quiet); stroke: none; }
 
 /* Busy, as the Overview tables (bankroll-overview-tables.css): while the next bankroll's ledger
@@ -283,3 +283,16 @@
 .an-sheet .is-neg { color: var(--neg); }
 .an-sheet .is-pos { color: var(--pos); }
 .an-row.is-body .bd-status-error, .an-row.is-body .bd-status-skip { color: var(--text-muted); }
+
+/* The tabs drawn on the Bankroll page itself (inline; owner, 2026-10-16, the dashboard retired):
+   the sheet's own scoped rules, for the page. */
+.bd-inline .an-clip {
+  height: calc(var(--subrow) * (var(--h) + 1));
+  padding-bottom: var(--subrow);
+  margin-bottom: calc(var(--subrow) * -1);
+}
+.bd-inline :is(h2, h3) { margin: 0; }
+.bd-inline .bd-down { color: var(--neg); }
+.bd-inline .bd-up { color: var(--pos); }
+.bd-inline .is-neg { color: var(--neg); }
+.bd-inline .is-pos { color: var(--pos); }

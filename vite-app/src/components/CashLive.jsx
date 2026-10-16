@@ -10,7 +10,7 @@
 // content's way, under the thumb at the table, and it only exists while a session does.
 import React, { useEffect, useState } from 'react';
 import './CashSessions.css';
-import useLiveCashSession, { useResultsKind, setResultsKind } from '../hooks/useLiveCashSession.js';
+import useLiveCashSession, { RESULTS_SECTIONS, useResultsKind, setResultsKind } from '../hooks/useLiveCashSession.js';
 import { formatClock, liveElapsed, sessionGame } from '../utils/cash-sessions.js';
 import { formatCurrencyAmount } from '../utils/utils.js';
 
@@ -30,7 +30,7 @@ export function ResultsKindTabs() {
     // The Schedule's kind toggles (owner, 2026-10-16: the Bankroll tab in the Schedule's scheme): 8g x 2r
     // caps chips, the active one in the accent, as Satellites / Restarts / Side Events / Online.
     <div className="kind-toggles results-kind-tabs" role="tablist" aria-label="Results">
-      {[['tournaments', 'Tournaments'], ['cash', 'Cash']].map(([k, label]) => (
+      {RESULTS_SECTIONS.map(([k, label]) => (
         <button key={k} type="button" role="tab" aria-selected={kind === k} className={'kind-toggle' + (kind === k ? ' active' : '')}
           onClick={() => setResultsKind(k)}><span className="kind-toggle-label">{label}</span></button>
       ))}

@@ -1,7 +1,42 @@
 import React from 'react';
 import { getVenueInfo, getVenueBrandColor, getStripAbbr, splitEventStage, VENUE_MAP } from '../utils/utils.js';
-import { monthLabel, stripFor } from '../utils/backer-page.js';
+import { monthLabel, stripFor, shareSeries, BANKROLL_RANGES } from '../utils/backer-page.js';
 import useInkBalance from '../hooks/useInkBalance.js';
+import BackerChart, { RangeStrip } from './BackerChart.jsx';
+import { getToday } from '../utils/utils.js';
+
+const RANGE_KEY = 'bankrollGraphRange';
+const readRange = () => { try { const v = localStorage.getItem(RANGE_KEY); return BANKROLL_RANGES.some(([k]) => k === v) ? v : 'all'; } catch { return 'all'; } };
+
+/**
+ * The Bankroll tab's graph (Tournaments and Cash): the backer page's interactive graph over
+ * `events` ({ date, shareCents, game }), with All / YTD / MTD / 7D (owner, 2026-10-16), the choice
+ * remembered on this device. A range with nothing in it says so and keeps the strip, so the way back
+ * is right there. Two or more sessions in all before it draws at all.
+ */
+export function BankrollGraph({ events, label }) {
+  const [range, setRange] = React.useState(readRange);
+  const today = getToday();
+  const pick = (k) => { setRange(k); try { localStorage.setItem(RANGE_KEY, k); } catch { /* private mode */ } };
+  const series = React.useMemo(() => shareSeries(events, { base: 0, range, today }), [events, range, today]);
+  if (!events || events.length < 2) return null;
+  const strip = <RangeStrip options={BANKROLL_RANGES} value={range} onChange={pick} />;
+  if (!series) {
+    return (
+      <div className="tr-chart">
+        <div className="bp-chart-block">
+          <div className="an-cell an-note an-clip tr-chart-empty">Nothing played {range === '7d' ? 'in the last 7 days' : range === 'mtd' ? 'this month' : 'this year'}.</div>
+          {strip}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="tr-chart">
+      <BackerChart series={series} label={label} today={today} baseNote="start" control={strip} />
+    </div>
+  );
+}
 
 /*
  * The Schedule's event card, in parts, for the Bankroll tab's lists (owner, 2026-10-16): a result

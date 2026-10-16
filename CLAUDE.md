@@ -281,7 +281,7 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   - Tests: `npm run test:money-import` (a stub dashboard in the test process), ports 4610-4619.
   **Bankroll merge, Phase 6: the import review** (`docs/bankroll-merge.md` "Phase 6: as built"; code in
   `vite-app/src/components/BankrollImportDashboard.jsx` + `utils/bankroll-import-dashboard.js`):
-  Bankroll › Dashboard › Import, "From the dashboard app", owner only (it hides itself on the routes'
+  Bankroll › Import (a section chip since the dashboard sheet retired, 2026-10-16), "From the dashboard app", owner only (it hides itself on the routes'
   403). Fetch, the review (pairs, backers, slate, balances, a delta's changes and deletions, the
   opening, the reconciliation, errors, flags), answers saved as given, Import behind a confirm step that
   names every table, Undo behind the typed row count. **A 409 `stale` reloads the plan and highlights

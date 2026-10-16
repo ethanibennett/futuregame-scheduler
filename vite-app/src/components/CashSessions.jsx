@@ -31,10 +31,8 @@ import {
   swingSeries, swingSummary, chartPath,
 } from '../utils/cash-sessions.js';
 import { cashBbGroups, bbColumn, bbFigures, bbBasis, unitLabel } from '../utils/bb-hr.js';
-import { CardStrip, MonthBreak } from './ResultCardParts.jsx';
-import BackerChart, { RangeStrip } from './BackerChart.jsx';
-import { shareSeries, rangeOptions, fmtDay } from '../utils/backer-page.js';
-import { getToday } from '../utils/utils.js';
+import { CardStrip, MonthBreak, BankrollGraph } from './ResultCardParts.jsx';
+import { fmtDay } from '../utils/backer-page.js';
 import useLiveCashSession, { setLiveSession } from '../hooks/useLiveCashSession.js';
 import { useResultsFocus, clearResultsFocus, revealInScroller } from '../hooks/useResultsFocus.js';
 import { useTick } from './CashLive.jsx';
@@ -405,15 +403,10 @@ function Stats({ stats, sessions }) {
 
 // ── Sessions: the chip graph, then month by month ────────────────────────────
 function Summary({ stats, sessions }) {
-  const [range, setRange] = useState('all');
-  const today = getToday();
   // One step per session in date order, its net (BackerChart / utils/backer-page.js; owner, 2026-10-16:
   // "the interactive graph and session cards" on both halves of the Bankroll tab).
   const events = useMemo(() => (sessions || []).filter((x) => x.session_date && x.net != null)
     .map((x) => ({ date: x.session_date, shareCents: Math.round(x.net * 100), game: [sessionGame(x) || 'Cash', x.room].filter(Boolean).join(' · ') })), [sessions]);
-  const options = useMemo(() => rangeOptions(events, today), [events, today]);
-  const r = options.some(([k]) => k === range) ? range : 'all';
-  const series = useMemo(() => shareSeries(events, { base: 0, range: r, today }), [events, r, today]);
   if (!stats || !stats.sessions) return null;
   const o = stats.overall, cur = stats.currency;
   return (
@@ -426,12 +419,7 @@ function Summary({ stats, sessions }) {
         <span className={'cs-t cs-sum-net' + tone(o.net)}>{signed(o.net, cur)}</span>
         <span className={'cs-t cs-sum-rate cs-r' + tone(o.hourly || 0)}>{perHour(o.hourly, cur)}</span>
       </div>
-      {series && series.n > 1 && (
-        <div className="tr-chart cs-sum-chart">
-          <BackerChart series={series} label="Cash" today={today} baseNote="start"
-            control={options.length > 0 && <RangeStrip options={options} value={r} onChange={setRange} />} />
-        </div>
-      )}
+      <div className="cs-sum-chart"><BankrollGraph events={events} label="Cash" /></div>
     </section>
   );
 }

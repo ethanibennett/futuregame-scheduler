@@ -12,13 +12,11 @@ import {
   getVenueBrandColor, getStripAbbr, splitEventStage,
 } from '../utils/utils.js';
 import { fmtDay, monthLabel, shareSeries, rangeOptions } from '../utils/backer-page.js';
-import BackerChart, { RangeStrip } from './BackerChart.jsx';
 import './tracking-cards.css';
-import { CardStrip, CardName, CardChevron, MonthBreak, barKeys, stop } from './ResultCardParts.jsx';
+import { CardStrip, CardName, CardChevron, MonthBreak, barKeys, stop, BankrollGraph } from './ResultCardParts.jsx';
 import ResultsCurve from './ResultsCurve.jsx';
 import { BankrollSwitcher, BankrollManager, BankrollPicker } from './Bankrolls.jsx';
 import { filterByBankroll, balancesFromSummary, defaultBankrollFor } from '../utils/bankrolls.js';
-import BankrollDashboardSheet from './BankrollDashboardSheet.jsx';
 import ResetResults from './ResetResults.jsx';
 import { resetScope } from '../utils/reset-results.js';
 import { resultMoney, awaitingResults, eventNo, isoDay } from '../utils/home.js';
@@ -32,6 +30,8 @@ import { useResultsFocus, clearResultsFocus } from '../hooks/useResultsFocus.js'
 import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
 // BETA cash sessions, admins only: lazy like the tax report.
 const CashSessionsView = lazy(() => import('./CashSessions.jsx'));
+// The retired bankroll dashboard's tabs, drawn on this page under the section chips (owner, 2026-10-16).
+const BankrollDashboard = lazy(() => import('./BankrollDashboard.jsx'));
 // BETA tax report, admins only: lazy so nobody else downloads it (or its jsPDF export).
 const TaxReportView = lazy(() => import('./TaxReportView.jsx'));
 // BETA expenses, income and trips, admins only, lazy for the same reason.
@@ -460,15 +460,13 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   // everyone else `bk.selected` is 'all', the filter is the identity, and `formBankrolls` is null
   // so the form neither shows nor sends a bankroll.
   const [showBankrolls, setShowBankrolls] = useState(false);
-  const [showBankrollDashboard, setShowBankrollDashboard] = useState(false);
-  const [dashboardTab, setDashboardTab] = useState(undefined);
-  // A deep link (§11.5): #bankroll/<tab> opens the bankroll dashboard on that tab, #tax the tax report.
+  // A deep link (§11.5): #bankroll/<tab> opens that section of this page (the dashboard's tabs live
+  // here now), #tax the tax report.
   useEffect(() => {
     if (!deepLink) return;
-    if (deepLink.bankrollTab) { setDashboardTab(deepLink.bankrollTab); setShowBankrollDashboard(true); }
+    if (deepLink.bankrollTab && bk.enabled) setResultsKind(deepLink.bankrollTab);
     if (deepLink.tax) setShowTaxReport(true);
-  }, [deepLink]);
-  const closeBankrollDashboard = useCallback(() => setShowBankrollDashboard(false), []);
+  }, [deepLink, bk.enabled]);
   const trackingData = useMemo(() => filterByBankroll(allTrackingData, bk.selected), [allTrackingData, bk.selected]);
   // Balances come from the server's combined ledger (every ledger source), not from summing the
   // results this tab happens to hold — see docs/bankrolls.md "The combined ledger".
@@ -578,8 +576,6 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   }, [trackingData, notPlayedEvents]);
   // The backer page's interactive graph (owner, 2026-10-16): the running total of these results, one
   // step per result in date order, in dollars (BackerChart / utils/backer-page.js shareSeries).
-  const [chartRange, setChartRange] = useState('all');
-  const chartToday = getToday();
   const chartEvents = useMemo(() => trackingData
     .map((e) => ({
       date: isoDay(e.date),
@@ -587,9 +583,6 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       game: e.event_name || null,
     }))
     .filter((e) => e.date), [trackingData, exchangeRates]);
-  const chartOptions = useMemo(() => rangeOptions(chartEvents, chartToday), [chartEvents, chartToday]);
-  const chartSeries = useMemo(() => shareSeries(chartEvents, { base: 0, range: chartOptions.some(([k]) => k === chartRange) ? chartRange : 'all', today: chartToday }),
-    [chartEvents, chartRange, chartOptions, chartToday]);
   const netCode = displayCurrency === 'NATIVE' ? 'USD' : displayCurrency;
   const fmtMonthNet = (v) => (v > 0 ? '+' : '') + formatCurrencyAmount(Math.round(v), netCode);
   const months = useMemo(() => {
@@ -649,7 +642,12 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       if (isAdmin) setResultsKind('cash'); else onIntentDone && onIntentDone();
       return;
     }
-    setResultsKind('tournaments');
+    if (intent.kind === 'section') {
+      if (bk.enabled) setResultsKind(intent.section);
+      onIntentDone && onIntentDone();
+      return;
+    }
+    if (intent.kind !== 'import') setResultsKind('tournaments');
     // Expenses & income (the Log menu's choice) and a trip's page (the home's period block in trip
     // mode) belong to ExpensesSection, which reports back itself.
     if (intent.kind === 'expense' || intent.kind === 'trip') { if (!isAdmin) onIntentDone && onIntentDone(); return; }
@@ -672,7 +670,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
     } else if (intent.kind === 'entry') {
       setFocusEntry({ id: intent.entryId, at: intent.at || Date.now() });
     } else if (intent.kind === 'import') {
-      if (bk.enabled) setShowBankrollDashboard(true);
+      if (bk.enabled) setResultsKind('data');
     } else if (intent.kind === 'awaiting') {
       setFocusEntry({ id: 'pending', at: intent.at || Date.now() });
     }
@@ -712,7 +710,8 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   // (the Log Result form, however it was opened, or a row in edit; not while the Cash half has the
   // tab, which keeps the form's state but not its screen) and for the tax report, which is the whole
   // tab. Cash sessions and expenses hold it from their own views.
-  const tournamentsHalf = !(isAdmin && resultsKind === 'cash');
+  const tournamentsHalf = !(isAdmin && resultsKind !== 'tournaments');
+  const dashSection = bk.enabled && resultsKind !== 'tournaments' && resultsKind !== 'cash';
   useHideBankrollFab((tournamentsHalf && (showAddForm || !!intentForm || !!pendingFormId || !!editingId)) || (showTaxReport && isAdmin));
 
   if (showTaxReport && isAdmin) {
@@ -726,18 +725,16 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   return (
     <div>
       {bk.enabled && (
-        <BankrollSwitcher bk={bk} balances={bankrollBalances} onManage={() => setShowBankrolls(true)}
-          onDashboard={() => setShowBankrollDashboard(true)} />
+        <BankrollSwitcher bk={bk} balances={bankrollBalances} onManage={() => setShowBankrolls(true)} />
       )}
       {showBankrolls && (
         <BankrollManager bk={bk} balances={bankrollBalances} onClose={() => setShowBankrolls(false)} />
       )}
-      {/* The bankroll dashboard (beta): mounted beside the strip whose button opens it, so it opens
-          from either half of the tab (it sat in the Tournaments half, and Dashboard did nothing on Cash). */}
-      {bk.enabled && showBankrollDashboard && <BankrollDashboardSheet bk={bk} onClose={closeBankrollDashboard} onLog={onLog} initialTab={dashboardTab} />}
       {/* Cash sessions (beta, admins): Tournaments | Cash. Everyone else sees no strip. */}
       {isAdmin && <ResultsKindTabs />}
-      {isAdmin && resultsKind === 'cash' ? (
+      {dashSection ? (
+        <Suspense fallback={null}><BankrollDashboard inline tab={resultsKind} bk={bk} onLog={onLog} /></Suspense>
+      ) : isAdmin && resultsKind === 'cash' ? (
         <Suspense fallback={null}><CashSessionsView token={token} bk={bk} intent={cashIntent} onIntentDone={onIntentDone} /></Suspense>
       ) : (<>
       {/* One row, as the Schedule's location | filter | calendar (owner, 2026-10-16): Log Result spans
@@ -808,14 +805,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
         </div>
       )}
 
-      {chartSeries && chartSeries.n > 1 && (
-        <div className="tr-chart">
-          <BackerChart series={chartSeries} label="Profit" today={chartToday} baseNote="start"
-            control={chartOptions.length > 0 && (
-              <RangeStrip options={chartOptions} value={chartOptions.some(([k]) => k === chartRange) ? chartRange : 'all'} onChange={setChartRange} />
-            )} />
-        </div>
-      )}
+      <BankrollGraph events={chartEvents} label="Profit" />
 
       {/* Analytics BETA: app admins only (staged rollout); everyone else sees no change. */}
       {isAdmin && trackingData.length > 0 && <AnalyticsLauncher bankroll={bk.selected} />}
