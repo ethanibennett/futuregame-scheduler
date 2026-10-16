@@ -758,7 +758,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                     <div style={{marginBottom:'calc(var(--subrow) * 1.5)'}}>
                       <label style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', display:'block', marginBottom:'calc(var(--subrow) * 0.5)'}}>Travel details</label>
                       <div style={{display:'flex', gap:'calc(var(--subrow) * 0.75)', alignItems:'center'}}>
-                        <input
+                        <input className="focus-inset"
                           type="text"
                           value={travelNotes}
                           onChange={e => setTravelNotes(e.target.value)}
@@ -768,7 +768,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                           style={{
                             flex:1, padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1.25)', fontSize:'calc(var(--gu) * 1.222)',
                             borderRadius:'calc(var(--subrow) * 0.75)', border:'var(--bw-hair) solid var(--border)',
-                            background:'var(--surface)', color:'var(--text)', outline:'none'
+                            background:'var(--surface)', color:'var(--text)'
                           }}
                         />
                       </div>
@@ -987,7 +987,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                       // Inline rather than a CSS class: the base border is inline too, so a class
                       // would lose the specificity fight and silently do nothing.
                       border:`var(--bw-hair) solid ${fieldErrors[key] ? '#ef4444' : 'var(--border)'}`,
-                      background:'var(--surface)', color:'var(--text)', outline:'none',
+                      background:'var(--surface)', color:'var(--text)',
                     });
                     const field = (label, key, type) => (
                       <div className="cal-detail-item" key={key}>
@@ -1019,7 +1019,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                         ) : (
                           <input type={type || 'text'} value={f[key] ?? ''} aria-invalid={!!fieldErrors[key]}
                             onChange={e => { clearFieldError(key); setEditFields(p => ({...p, [key]: e.target.value})); }}
-                            style={inputStyle(key)} />
+                            className="focus-inset" style={inputStyle(key)} />
                         )}
                         {fieldErrors[key] && <div className="admin-field-error">{fieldErrors[key]}</div>}
                       </div>

@@ -986,6 +986,17 @@ function getSeatName(idx, heroIdx, heroName) {
 }
 
 // ── Create empty hand ──
+/* The hero's seat while a hand is entered. The hand's own heroIdx is the truth: matching the seat
+   by the account's hero name lost the hero the moment that seat was renamed, fell back to seat 0,
+   and moved them to whatever position seat 0 holds (MP1 at eight-handed). The name is only the
+   fallback, for a hand saved before heroIdx existed. */
+function entryHeroIdx(hand, heroName) {
+  const n = hand.players.length;
+  if (Number.isInteger(hand.heroIdx) && hand.heroIdx >= 0 && hand.heroIdx < n) return hand.heroIdx;
+  const byName = hand.players.findIndex(p => p.name === (heroName || 'Hero'));
+  return byName < 0 ? 0 : byName;
+}
+
 function createEmptyHand(gameType, heroName) {
   const streetDef = getStreetDef(gameType);
   const gameCfg = HAND_CONFIG[gameType] || HAND_CONFIG[gameType.replace(/^Super /, '')] || HAND_CONFIG_DEFAULT;
@@ -2852,8 +2863,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
 
   const setNumPlayers = (n) => {
     setHand(prev => {
-      let heroI = prev.players.findIndex(p => p.name === (heroName || 'Hero'));
-      if (heroI < 0) heroI = 0;
+      const heroI = entryHeroIdx(prev, heroName);
       const positions = getPositionLabels(n);
       const players = Array.from({ length: n }, (_, i) => {
         if (prev.players[i]) return { ...prev.players[i], position: positions[i] || '' };
@@ -2864,8 +2874,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     });
   };
 
-  let heroIdx = hand.players.findIndex(p => p.name === (heroName || 'Hero'));
-  if (heroIdx < 0) heroIdx = 0;
+  const heroIdx = entryHeroIdx(hand, heroName);
 
   const setHeroSeat = (newIdx) => {
     if (newIdx === heroIdx) return;
@@ -8663,11 +8672,8 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
               + (b.ante ? '/(' + formatChipAmount(b.ante) + ')' : '')
             : null;
           // SPR moved to plain text above the pot's chip stack (2026-09-30).
-          /* The street, in the one block inside the captured element (catalogue three, idea 42; 2026-10-15):
-             the timeline and commentary that name it sit outside the capture root, so every exported
-             still and GIF frame showed no street at all. */
-          const streetName = (hand.streets[streetIdx] && hand.streets[streetIdx].name) || null;
-          const level = [hand.gameType, sizes, streetName].filter(Boolean).join('  ·  ');
+          /* No street here (owner, 2026-10-15): the board itself says which street it is. */
+          const level = [hand.gameType, sizes].filter(Boolean).join('  ·  ');
           const meta = [
             hand.playersLeft ? hand.playersLeft + ' left' : null,
             hand.payoutNote || null,

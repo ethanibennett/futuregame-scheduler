@@ -1990,6 +1990,10 @@
       outline-offset: var(--focus-offset);
       border-radius: inherit;
     }
+    /* The same ring drawn INSIDE the field, for a form control whose ancestor clips (an event row
+       is overflow:hidden) or that sits edge to edge. These six used an inline outline:none, which beats
+       every stylesheet rule, so they had no focus ring at all (audit, 2026-10-15). */
+    .focus-inset:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
     /* A brand ring is unreadable against a brand-filled control (aqua on aqua). */
     [data-contrast="high"] :where(button, a):focus-visible {
       outline-color: var(--n-8);
@@ -6688,12 +6692,7 @@
        2r (border-box); flex centering keeps the text on the box's midline.
        The weight hierarchy stays (light fold/check, bold bet/raise, black
        all-in); only all-in steps up a size. */
-    .replayer-action-badge-outer,
-    .replayer-action-badge-outer.action-fold,
-    .replayer-action-badge-outer.action-check,
-    .replayer-action-badge-outer.action-call,
-    .replayer-action-badge-outer.action-bet,
-    .replayer-action-badge-outer.action-raise,
+    /* The action pills are 3r (owner, 2026-10-15); the draw run stays 2r. */
     .replayer-seat-draw-badge {
       box-sizing: border-box;
       height: calc(var(--subrow) * 2);
@@ -6702,9 +6701,22 @@
       font-size: var(--fs-2xs);
       line-height: 1;
     }
+    .replayer-action-badge-outer,
+    .replayer-action-badge-outer.action-fold,
+    .replayer-action-badge-outer.action-check,
+    .replayer-action-badge-outer.action-call,
+    .replayer-action-badge-outer.action-bet,
+    .replayer-action-badge-outer.action-raise {
+      box-sizing: border-box;
+      height: calc(var(--subrow) * 3);
+      padding-block: 0;
+      padding-inline: var(--space-sm);
+      font-size: var(--fs-2xs);
+      line-height: 1;
+    }
     .replayer-action-badge-outer.action-allin {
       box-sizing: border-box;
-      height: calc(var(--subrow) * 2);
+      height: calc(var(--subrow) * 3);
       padding-block: 0;
       font-size: var(--fs-xs);
       line-height: 1;
@@ -8881,12 +8893,9 @@
       border-color: var(--act-allin);
       box-shadow: var(--plate-bevel), var(--ring-1) rgba(168,85,247,0.42);
     }
-    .replayer-allin-mark {
-      font-family: var(--font-condensed);
-      font-size: var(--fs-2xs); font-weight: var(--fw-bold);
-      letter-spacing: var(--track-caps);
-      color: #c9a2f5;
-    }
+    /* ALL-IN stands in for the stack figure in the figure's own type: same face, size, weight and
+       colour (owner, 2026-10-15). It used to be a smaller purple label. */
+    .replayer-allin-mark { font: inherit; letter-spacing: inherit; color: inherit; }
 
 
 
