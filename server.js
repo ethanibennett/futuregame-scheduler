@@ -6426,7 +6426,7 @@ app.get('/api/tracking', authenticateToken, (req, res) => {
     const stmt = db.prepare(`
       SELECT te.*,
              t.event_number, t.event_name, t.date, t.time, t.buyin,
-             t.game_variant, t.venue, t.property, t.is_satellite, t.total_entries,
+             t.game_variant, t.venue, t.property, t.is_satellite, t.total_entries, t.is_online,
              CASE WHEN t.source_pdf = 'bankroll-import' THEN 1 ELSE 0 END AS imported
       FROM tracking_entries te
       JOIN tournaments t ON te.tournament_id = t.id

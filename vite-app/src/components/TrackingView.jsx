@@ -194,14 +194,19 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
 
       {/* The owner's cut of what is typed, before it is saved (Phase 8): the server's own figures;
           nothing posts here. Anyone else gets nothing. */}
-      {previewToken && (
-        <Suspense fallback={null}>
-          <PostsToBackers token={previewToken} query={tournamentPreviewQuery({
-            tournament: tournaments.find((t) => String(t.id) === String(tournamentId)), numEntries, cashed, cashAmount,
-            currency: (() => { const t = tournaments.find((x) => String(x.id) === String(tournamentId)); return t ? nativeCurrency(t.venue) : 'USD'; })(),
-          })} />
-        </Suspense>
-      )}
+      {previewToken && (() => {
+        /* An edit is opened from the saved result, with no tournaments list (it crashed here, a blank
+           screen, from 2026-10-14 to 10-16): the result row carries its event's fields itself. */
+        const t = (tournaments || []).find((x) => String(x.id) === String(tournamentId))
+          || (isEdit && entryForPOY ? { ...entryForPOY, id: entryForPOY.tournament_id } : null);
+        return (
+          <Suspense fallback={null}>
+            <PostsToBackers token={previewToken} query={tournamentPreviewQuery({
+              tournament: t, numEntries, cashed, cashAmount, currency: t ? nativeCurrency(t.venue) : 'USD',
+            })} />
+          </Suspense>
+        );
+      })()}
       {/* Backers (the owner's): the SAVED result's shares and the Notify tap. Nothing posts on
           save; the block draws nothing for any other account. */}
       {notify && (
