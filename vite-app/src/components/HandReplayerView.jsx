@@ -4475,6 +4475,7 @@ class ReplayErrorBoundary extends React.Component {
 export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, linkedReplay, quickAdd }) {
   const toast = useToast();
   const [mode, setMode] = useState(initialHand ? 'replay' : 'list');
+  const [quickVoice, setQuickVoice] = useState(false);   // quick add opened by Say (listening at once)
   const [entryMode, setEntryMode] = useState('gto');
   const [entryTab, setEntryTab] = useState('form');
   const [shorthandText, setShorthandText] = useState('');
@@ -5016,7 +5017,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 
   // ── Quick add (admins): describe a hand, answer its gaps, then replay or review it ──
   if (mode === 'quick' && quickAdd) {
-    return <QuickAddView token={token} heroName={heroName} onBack={() => setMode('list')}
+    return <QuickAddView token={token} heroName={heroName} voice={quickVoice} onBack={() => setMode('list')}
       onOpen={(hand, target, description) => {
         // The description the hand was read from is kept as its notes, so the original words
         // travel with the saved hand. "Open in replayer" saves at once — before this nothing
@@ -5083,7 +5084,12 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 
       {quickAdd && (
         <div className="qa-entry">
-          <button type="button" className="qa-chip" onClick={() => setMode('quick')}><span>Quick add · describe a hand</span></button>
+          {/* Two ways in (owner, 2026-10-16): type the hand, or say it. */}
+          <button type="button" className="qa-chip" onClick={() => { setQuickVoice(false); setMode('quick'); }}><span>Type a hand</span></button>
+          <button type="button" className="qa-chip" onClick={() => { setQuickVoice(true); setMode('quick'); }}>
+            <svg className="qa-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="22"/></svg>
+            <span>Say a hand</span>
+          </button>
         </div>
       )}
 

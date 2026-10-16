@@ -2043,7 +2043,7 @@ function finalize(c) {
   step('cash-sessions-live-rebuy', () => cashHalf('.cs-livescreen button:has-text("Rebuy")'), 1);
   step('cash-sessions-live-end', () => cashHalf('.cs-livescreen button:has-text("Cash out")'), 2);
   step('cash-sessions', () => cashHalf(csBack), 2);
-  step('cash-sessions-stats', () => cashHalf(csBack, '.cs-tabs button:has-text("Stats")'), 1);
+  step('cash-sessions-stats', () => cashHalf(csBack, '.cs-stats-launch'), 1);
   step('cash-sessions-detail', () => cashHalf(csBack, '[data-cash-row]'), 2);
   step('cash-sessions-forms', () => cashHalf(csBack, '.cs-head button[title="Add a past session"]', '.cs-form-foot button'), 3);
   // The Backers block (components/BackerNotify.jsx, the Notify tap; the owner's, so CHECK_TOKEN must
@@ -2486,7 +2486,7 @@ function finalize(c) {
     await tap('.share-menu-item:has-text("Series Wrap")', 1500);
   }, 1);
   // The admin's Quick add (Hands): describe a hand.
-  step('hands-quick-add', async () => { await nav('Hands'); await tap('.qa-chip:has-text("Quick add")', 1200); }, 1);
+  step('hands-quick-add', async () => { await nav('Hands'); await tap('.qa-entry .qa-chip:has-text("Type a hand")', 1200); }, 1);
   // Admin.
   step('admin', () => menu('Admin', 'Admin'), 3);
   step('batches', () => menu('New Events', 'New Events'), 2);

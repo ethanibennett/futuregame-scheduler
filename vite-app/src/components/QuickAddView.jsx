@@ -262,7 +262,46 @@ function loadDraft() {
 }
 function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch { /* storage unavailable */ } }
 
-export default function QuickAddView({ token, heroName, onBack, onOpen }) {
+/* Say (owner, 2026-10-16): the browser's own recogniser (Web Speech: Safari, Chrome, the iOS and
+   Mac apps' WebKit), dictating into the description; where there is none, the field takes focus so
+   the keyboard's mic is one tap away. The transcript is the same text a typed hand is, read the same
+   way (the parser already reads recogniser output: lib/quick-add/speech.js). */
+const Recognition = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition || null) : null;
+
+function useDictation(setText) {
+  const recRef = useRef(null);
+  const [listening, setListening] = useState(false);
+  const [interim, setInterim] = useState('');
+  const [failed, setFailed] = useState(null);
+  const stop = useCallback(() => { try { if (recRef.current) recRef.current.stop(); } catch { /* already stopped */ } }, []);
+  const start = useCallback(() => {
+    if (!Recognition) return false;
+    try {
+      const rec = new Recognition();
+      rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true;
+      rec.onresult = (e) => {
+        let fin = '', mid = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const t = e.results[i][0].transcript;
+          if (e.results[i].isFinal) fin += t; else mid += t;
+        }
+        if (fin) setText((prev) => (prev && !/\s$/.test(prev) ? prev + ' ' : prev) + fin.trim());
+        setInterim(mid.trim());
+      };
+      rec.onerror = (e) => { setFailed(e.error === 'not-allowed' || e.error === 'service-not-allowed' ? 'denied' : 'error'); };
+      rec.onend = () => { setListening(false); setInterim(''); recRef.current = null; };
+      recRef.current = rec;
+      setFailed(null);
+      rec.start();
+      setListening(true);
+      return true;
+    } catch { setFailed('error'); return false; }
+  }, [setText]);
+  useEffect(() => () => { try { if (recRef.current) recRef.current.abort(); } catch { /* gone */ } }, []);
+  return { supported: !!Recognition, listening, interim, failed, start, stop };
+}
+
+export default function QuickAddView({ token, heroName, onBack, onOpen, voice = false }) {
   const draft = useMemo(loadDraft, []);
   const [phase, setPhase] = useState(() => (draft && draft.phase === 'chat' && draft.hand ? 'chat' : 'describe'));
   const [text, setText] = useState(() => (draft && typeof draft.text === 'string' ? draft.text : ''));
@@ -273,6 +312,13 @@ export default function QuickAddView({ token, heroName, onBack, onOpen }) {
   const [reply, setReply] = useState('');
   const [skipped, setSkipped] = useState(() => new Set());
   const activeRef = useRef(null);
+  const textRef = useRef(null);
+  const dict = useDictation(setText);
+  // Opened by Say: listen at once (on the describe step), or hand the keyboard's mic the field.
+  useEffect(() => {
+    if (!voice || phase !== 'describe') return;
+    if (!dict.start() && textRef.current) textRef.current.focus();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const gaps = useMemo(() => (hand ? findGaps(hand).filter(g => !g.provisional) : []), [hand]);
   const open = useMemo(() => gaps.filter(g => !skipped.has(g.id)), [gaps, skipped]);
@@ -434,12 +480,23 @@ export default function QuickAddView({ token, heroName, onBack, onOpen }) {
           <Bubble side="app" text="Describe the hand: game, stakes, positions, stacks, your cards and the action street by street. Leave out what you don't remember and I'll ask." />
           <div className="qa-field">
             <label htmlFor="qa-describe-text">Describe the hand</label>
-            <textarea id="qa-describe-text" value={text} disabled={busy === 'parse'}
+            <textarea id="qa-describe-text" ref={textRef} value={dict.interim ? (text ? text + ' ' : '') + dict.interim : text} disabled={busy === 'parse'}
+              readOnly={dict.listening}
               placeholder={'e.g. 200/400 400 ante, I open AKs on the button to 1000, BB calls. Flop Q72 rainbow, check, I bet 1200, call. Turn 5s…'}
               onChange={e => setText(e.target.value)} />
-            <p className="qa-hint">Type it, or tap the mic on your keyboard and say it.</p>
+            <p className="qa-hint">{dict.failed === 'denied'
+              ? 'The microphone is off for futurega.me. Allow it in Settings, or tap the mic on your keyboard.'
+              : dict.listening ? 'Listening. Say the hand street by street, then tap Stop.'
+                : dict.supported ? 'Type it, or tap Speak and say it.' : 'Type it, or tap the mic on your keyboard and say it.'}</p>
           </div>
-          <button type="button" className="qa-chip is-best qa-wide" disabled={!text.trim() || !!busy} onClick={parse}>
+          {dict.supported && (
+            <button type="button" className={'qa-chip qa-wide qa-speak' + (dict.listening ? ' is-live' : '')} disabled={!!busy}
+              onClick={() => (dict.listening ? dict.stop() : dict.start())}>
+              <svg className="qa-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="22"/></svg>
+              <span>{dict.listening ? 'Stop' : text.trim() ? 'Speak more' : 'Speak'}</span>
+            </button>
+          )}
+          <button type="button" className="qa-chip is-best qa-wide" disabled={!text.trim() || !!busy || dict.listening} onClick={parse}>
             <span>{busy === 'parse' ? 'Reading the hand…' : 'Read hand'}</span>
           </button>
           {error && <Status text={error} />}

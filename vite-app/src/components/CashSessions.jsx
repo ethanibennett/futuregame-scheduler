@@ -401,27 +401,40 @@ function Stats({ stats, sessions }) {
   );
 }
 
-// ── Sessions: the chip graph, then month by month ────────────────────────────
-function Summary({ stats, sessions }) {
-  // One step per session in date order, its net (BackerChart / utils/backer-page.js; owner, 2026-10-16:
-  // "the interactive graph and session cards" on both halves of the Bankroll tab).
-  const events = useMemo(() => (sessions || []).filter((x) => x.session_date && x.net != null)
-    .map((x) => ({ date: x.session_date, shareCents: Math.round(x.net * 100), game: [sessionGame(x) || 'Cash', x.room].filter(Boolean).join(' · ') })), [sessions]);
+// ── The list's top: the Tournaments half's summary card and graph (owner, 2026-10-16: "Tournament and
+// cash pages should have the same structure"): Profit, the net first and largest, what it is made of on
+// one line, Total buy-ins | Total cash-outs; then the interactive graph. ──
+function Summary({ stats }) {
   if (!stats || !stats.sessions) return null;
   const o = stats.overall, cur = stats.currency;
   return (
-    <section className="cs-sum" aria-label="Cash results">
-      <div className="cs-sum-line">
-        <span className="cs-t cs-sum-label">Cash net{stats.mixed ? ` (${cur})` : ''}</span>
-        <span className="cs-t cs-sum-label cs-r">{plural(stats.sessions, 'session')} · {formatHours(o.hours)}</span>
+    <div className="tracking-card cs-sum-card" style={{ marginBottom: 'calc(var(--subrow) * 2)' }}>
+      <div className="tracking-summary-head">
+        <span className="tr-seat tr-seat-3" style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Profit{stats.mixed ? ` (${cur})` : ''}</span>
       </div>
-      <div className="cs-sum-main">
-        <span className={'cs-t cs-sum-net' + tone(o.net)}>{signed(o.net, cur)}</span>
-        <span className={'cs-t cs-sum-rate cs-r' + tone(o.hourly || 0)}>{perHour(o.hourly, cur)}</span>
+      <div className={'tr-seat tr-sum-net' + (o.net > 0 ? ' is-pos' : o.net < 0 ? ' is-neg' : '')}>{signed(o.net, cur)}</div>
+      <p className="tr-seat tr-seat-2 tr-sum-sub">
+        {plural(stats.sessions, 'session')} · {formatHours(o.hours)} · {perHour(o.hourly, cur)}
+      </p>
+      <div className="tracking-stats tr-sum-stats">
+        <div className="cal-detail-item">
+          <span className="cal-detail-label">Total Buy-ins</span>
+          <span className="cal-detail-value">{money(o.buy_ins, cur)}</span>
+        </div>
+        <div className="cal-detail-item">
+          <span className="cal-detail-label">Total Cash-outs</span>
+          <span className="cal-detail-value">{money(o.cash_outs, cur)}</span>
+        </div>
       </div>
-      <div className="cs-sum-chart"><BankrollGraph events={events} label="Cash" /></div>
-    </section>
+    </div>
   );
+}
+
+/** One step per session in date order, its net (BackerChart / utils/backer-page.js). */
+function SessionsGraph({ sessions }) {
+  const events = useMemo(() => (sessions || []).filter((x) => x.session_date && x.net != null)
+    .map((x) => ({ date: x.session_date, shareCents: Math.round(x.net * 100), game: [sessionGame(x) || 'Cash', x.room].filter(Boolean).join(' · ') })), [sessions]);
+  return <BankrollGraph events={events} label="Profit" />;
 }
 
 function SessionRow({ s, onOpen }) {
@@ -543,7 +556,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
   // null = automatic (the running session if there is one, else the list) | 'list' | 'live' |
   // 'add' | 'start' | { detail: id } | { edit: id }
   const [screen, setScreen] = useState(null);
-  const [tab, setTab] = useState('sessions'); // the list's Sessions | Stats
+  const [tab, setTab] = useState('sessions'); // the list, or its Stats screen (the Stats row opens it)
   const [detailStacks, setDetailStacks] = useState({ id: null, stacks: [] });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -707,6 +720,10 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
     );
     body = <SessionDetail s={current} stacks={stacksOf(current.id)} bk={bk} busy={busy} confirm={confirmDelete} token={token}
       onConfirm={setConfirmDelete} onDelete={() => remove(current.id)} />;
+  } else if (tab === 'stats') {
+    fabAway = false;
+    head = <><Btn w={9} h={4} onClick={() => setTab('sessions')}>‹ Sessions</Btn><h2 className="cs-t cs-title">Stats</h2></>;
+    body = <Stats stats={stats} sessions={sessions} />;
   } else {
     focus = false;
     fabAway = false;
@@ -729,21 +746,19 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
     );
     body = (
       <>
-        <div className="kind-toggles cs-tabs" role="tablist" aria-label="Cash">
-          {[['sessions', 'Sessions'], ['stats', 'Stats']].map(([k, label]) => (
-            <button key={k} type="button" role="tab" aria-selected={tab === k} className={'kind-toggle' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}><span className="kind-toggle-label">{label}</span></button>
-          ))}
-        </div>
-        {live && <LiveRow session={live} skew={skew} onOpen={() => go('live')} />}
-        {tab === 'stats' ? <Stats stats={stats} sessions={sessions} /> : (
-          <>
-            <Summary stats={stats} sessions={ended} />
-            {loaded && !ended.length && (
-              <p className="cs-t cs-note">No cash sessions{bk.selected !== 'all' ? ' in this bankroll' : ''} yet. Start the clock at the table, or add a past one.</p>
-            )}
-            <SessionList sessions={ended} stats={stats} onOpen={(id) => go({ detail: id })} />
-          </>
+        <Summary stats={stats} />
+        <SessionsGraph sessions={ended} />
+        {stats && stats.sessions > 0 && (
+          <button type="button" className="an-cell an-launch cs-stats-launch" onClick={() => setTab('stats')}>
+            <span className="an-launch-name snap-g ctl-cap">Stats</span>
+            <span className="an-launch-go" aria-hidden="true">Stakes, games, rooms, bb/hr ›</span>
+          </button>
         )}
+        {live && <LiveRow session={live} skew={skew} onOpen={() => go('live')} />}
+        {loaded && !ended.length && (
+          <p className="cs-t cs-note">No cash sessions{bk.selected !== 'all' ? ' in this bankroll' : ''} yet. Start the clock at the table, or add a past one.</p>
+        )}
+        <SessionList sessions={ended} stats={stats} onOpen={(id) => go({ detail: id })} />
       </>
     );
   }

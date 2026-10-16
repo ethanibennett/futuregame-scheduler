@@ -16841,7 +16841,12 @@
     /* Entry on the hands list (admins only): 1r above, a 5r ghost button 1–36, so
        everything below it on the list sits 6r lower than the list comment above says. */
     .qa-entry { box-sizing: content-box; height: calc(var(--subrow) * 5); padding-top: var(--subrow); }
+    /* Type | Say (owner, 2026-10-16): two 17g buttons, 1g apart, across the 35g. */
+    .qa-entry { display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 17)); column-gap: var(--gu); }
     .qa-entry > .qa-chip { width: 100%; }
+    .qa-chip .qa-mic { flex: none; width: calc(var(--gu) * 1.5); height: calc(var(--gu) * 1.5); margin-right: calc(var(--gu) * 0.5); }
+    .qa-speak { margin-bottom: var(--subrow); }
+    .qa-speak.is-live { color: var(--danger); box-shadow: inset 0 0 0 var(--bw-fine) currentColor; }
     .qa-entry > .skeleton { height: 100%; border-radius: var(--radius-sm); }
 
     /* Bubbles. Width is set inline in whole g, chosen so both edges are x-lines:
