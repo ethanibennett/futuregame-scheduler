@@ -7,6 +7,7 @@ import {
 import {
   parseDateTimeInTz, parseDateTime,
 } from '../utils/utils.js';
+import { isSwissTheme, drawSwissScorecard, drawSwissCountdown } from '../utils/swiss-share.js';
 
 export default function ShareMenu({ trackingData, tournaments, mySchedule, myActiveUpdates, onClose, onOpenWrapUp }) {
   const scorecardData = useMemo(() => computeScorecardData(trackingData, null, tournaments), [trackingData, tournaments]);
@@ -67,13 +68,13 @@ export default function ShareMenu({ trackingData, tournaments, mySchedule, myAct
     if (type === 'scorecard') {
       canvas.width = 1080; canvas.height = 1080;
       ctx = canvas.getContext('2d');
-      drawSeriesScorecard(ctx, 1080, 1080, scorecardData);
+      (isSwissTheme() ? drawSwissScorecard : drawSeriesScorecard)(ctx, 1080, 1080, scorecardData);
       filename = 'series-scorecard.png';
     } else if (type === 'countdown') {
       if (!nextEvent) return;
       canvas.width = 1080; canvas.height = 1920;
       ctx = canvas.getContext('2d');
-      drawCountdownStory(ctx, 1080, 1920, {
+      (isSwissTheme() ? drawSwissCountdown : drawCountdownStory)(ctx, 1080, 1920, {
         tournamentName: nextEvent.event_name,
         buyin: nextEvent.buyin,
         venue: nextEvent.venue,
