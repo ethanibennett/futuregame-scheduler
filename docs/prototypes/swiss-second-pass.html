@@ -1,0 +1,426 @@
+<meta charset="utf-8">
+<title>Swiss, Second Pass</title>
+<style>
+/* Layout: a Swiss catalogue. A four-column field: the marginal column carries the section and the
+   number, the three wide columns the proposal and its specimen. Helvetica, black, white, one red. */
+:root {
+  --paper: #ffffff;
+  --ink: #000000;
+  --red: #e30613;
+  --g60: #666666;
+  --g30: #b3b3b3;
+  --g10: #ececec;
+  --sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { color-scheme: dark; --paper: #000000; --ink: #ffffff; --red: #ff2a35; --g60: #a6a6a6; --g30: #595959; --g10: #1c1c1c; }
+}
+:root[data-theme="dark"] { color-scheme: dark; --paper: #000000; --ink: #ffffff; --red: #ff2a35; --g60: #a6a6a6; --g30: #595959; --g10: #1c1c1c; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 300 16px/1.45 var(--sans); -webkit-font-smoothing: antialiased; }
+b, strong, .b { font-weight: 700; letter-spacing: -0.02em; }
+.wrap { max-width: 1200px; margin: 0 auto; padding-inline: 24px; padding-block: 40px 96px; }
+@media (max-width: 480px) { .wrap { padding-inline: 16px; } }
+:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.field { display: grid; grid-template-columns: 1fr 3fr; column-gap: 24px; }
+@media (max-width: 760px) { .field { grid-template-columns: minmax(0, 1fr); } }
+
+/* masthead */
+.mast { border-top: 6px solid var(--ink); padding-top: 16px; }
+.mast .k { font-size: 13px; font-weight: 700; letter-spacing: 0; margin: 0; }
+.big { font-weight: 100; font-size: clamp(120px, 26vw, 300px); line-height: .8; letter-spacing: -0.06em; margin: 24px 0 0 -0.06em; }
+.mast h1 { font-weight: 700; font-size: clamp(36px, 6vw, 72px); line-height: .95; letter-spacing: -0.05em; margin: 12px 0 0; }
+.mast h1 span { color: var(--red); }
+.lede { font-size: 20px; line-height: 1.4; max-width: 34em; margin: 28px 0 0; text-wrap: pretty; }
+.meta-row { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--ink); }
+.meta-row p { margin: 0 0 8px; font-size: 14px; max-width: 60em; }
+.src { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 4px 24px; font-size: 14px; }
+.src a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--g30); }
+.src a:hover { border-color: var(--red); }
+
+/* picks bar */
+.picks { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); border-bottom: 1px solid var(--ink); margin-top: 48px; padding-block: 10px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 20px; }
+.picks .n { font-weight: 700; letter-spacing: -0.03em; }
+.picks .list { color: var(--g60); font-size: 14px; min-width: 0; overflow-wrap: anywhere; flex: 1 1 200px; }
+.picks button, .theme button { appearance: none; border: 0; background: none; color: var(--ink); font: 700 14px/1 var(--sans); padding: 6px 0; cursor: pointer; letter-spacing: -0.01em; }
+.picks button:hover, .theme button:hover { color: var(--red); }
+.theme { display: flex; gap: 14px; }
+.theme button[aria-pressed="true"] { color: var(--red); }
+.copied { color: var(--red); font-size: 14px; }
+
+/* sections */
+.sec { margin-top: 72px; border-top: 3px solid var(--ink); padding-top: 12px; }
+.sec-h { grid-column: 1; }
+.sec-h h2 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.05; }
+.sec-h p { margin: 8px 0 0; font-size: 14px; color: var(--g60); max-width: 22em; }
+.items { grid-column: 2; display: grid; }
+@media (max-width: 760px) { .items { grid-column: 1; margin-top: 24px; } }
+
+.item { display: grid; grid-template-columns: 64px minmax(0, 1fr) minmax(0, 300px); column-gap: 20px; padding: 18px 0 22px; border-top: 1px solid var(--g30); }
+.item:first-child { border-top: 0; padding-top: 0; }
+@media (max-width: 980px) { .item { grid-template-columns: 52px minmax(0, 1fr); } .item .plate { grid-column: 2; margin-top: 14px; } }
+.no { font-size: 44px; font-weight: 100; line-height: .9; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
+.item.is-picked .no { color: var(--red); font-weight: 700; }
+.body h3 { margin: 0 0 6px; font-size: 19px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.2; text-wrap: balance; }
+.body p { margin: 0 0 8px; max-width: 38em; }
+.why { font-size: 14px; color: var(--g60); }
+.why b { color: var(--ink); font-weight: 700; letter-spacing: 0; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--g60); margin-top: 6px; }
+.tags .eff { color: var(--ink); font-weight: 700; letter-spacing: 0; }
+.pick { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 14px; cursor: pointer; user-select: none; }
+.pick input { appearance: none; width: 16px; height: 16px; margin: 0; border: 1px solid var(--ink); background: var(--paper); cursor: pointer; display: grid; place-items: center; }
+.pick input:checked { background: var(--red); border-color: var(--red); }
+.pick input:checked::after { content: ""; width: 8px; height: 2px; background: var(--paper); }
+
+/* specimen plates: a scrap of the app as proposed */
+.plate { align-self: start; border-top: 1px solid var(--ink); padding-top: 10px; font-size: 13px; line-height: 1.3; min-width: 0; overflow: hidden; }
+.plate .cap { font-size: 11px; color: var(--g60); margin-bottom: 8px; }
+.k-b { font-weight: 700; letter-spacing: -0.05em; }
+.k-m { font-weight: 700; letter-spacing: -0.02em; }
+.k-t { font-weight: 200; }
+.k-l { font-weight: 300; }
+.k-r { color: var(--red); }
+.k-g { color: var(--g60); }
+.k-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.k-rule { border-top: 1px solid var(--ink); }
+.k-hair { border-top: .5px solid var(--g30); }
+.k-num { font-variant-numeric: tabular-nums; }
+.k-blk { background: var(--ink); color: var(--paper); }
+.k-redblk { background: var(--red); color: #fff; }
+.k-cols { display: grid; grid-template-columns: 1fr 3fr; gap: 10px; }
+.k-strip { display: flex; }
+.k-strip .v { writing-mode: vertical-rl; transform: rotate(180deg); background: var(--ink); color: var(--paper); padding: 6px 3px; font-weight: 700; letter-spacing: -0.02em; font-size: 11px; }
+.k-x { text-decoration: line-through; color: var(--g60); }
+.k-tiny { font-size: 10px; }
+.k-sup { font-size: .62em; vertical-align: .55em; }
+.k-ul { box-shadow: inset 0 -2px 0 var(--red); }
+.k-ul-ink { box-shadow: inset 0 -2px 0 var(--ink); }
+.k-gap > * + * { margin-top: 6px; }
+.k-vs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.k-vs > div > .cap { margin-bottom: 4px; }
+.k-box { border: 1px solid var(--ink); padding: 4px 6px; text-align: center; }
+.k-redbox { border: 1px solid var(--red); color: var(--red); padding: 2px 6px; text-align: center; }
+.k-bar { height: 3px; background: var(--g10); position: relative; }
+.k-bar i { position: absolute; inset: 0 auto 0 0; background: var(--red); }
+
+.foot { margin-top: 96px; border-top: 1px solid var(--ink); padding-top: 12px; font-size: 14px; color: var(--g60); max-width: 60em; }
+@media (prefers-reduced-motion: no-preference) { .no { transition: color .12s linear; } }
+</style>
+
+<main class="wrap">
+  <header class="mast">
+    <p class="k">futurega.me · Theme study · 16 Oct 2026</p>
+    <div class="big" aria-hidden="true">50</div>
+    <h1>Swiss, second pass<span>.</span></h1>
+    <p class="lede">The first pass got the materials right: Helvetica, black, white, one red. These are fifty ways to make it Swiss in its structure as well, drawn from the grid manuals and posters of Zürich and Basel. Each has a specimen, the screens it touches, a size, and a box to tick.</p>
+    <div class="meta-row field">
+      <p class="b" style="margin:0 0 8px">What the first pass does</p>
+      <div>
+        <p>Thin and bold Helvetica, red for selection and action, ink bands for venues, no radii or shadows, hairline graph lines. It still keeps the app's old skeleton: outlined boxes around every control, centred labels, a red outline for a selected chip, chevrons centred under cards, and an italic series line. Most of what follows replaces that skeleton with typographic structure.</p>
+        <p>The first pass's screenshots were rendered on Windows in Arial, which has no thin weight. The specimens here use Helvetica Neue where your device has it, so on a Mac or iPhone the thin weights show as intended.</p>
+      </div>
+    </div>
+    <div class="meta-row field">
+      <p class="b" style="margin:0 0 8px">Sources</p>
+      <ul class="src">
+        <li><a href="https://en.wikipedia.org/wiki/Josef_M%C3%BCller-Brockmann">Müller-Brockmann, <i>Grid Systems</i>, Tonhalle posters</a></li>
+        <li><a href="https://neugraphic.com/ruder/ruder-text2.html">Ruder, <i>Typographie</i>, on white space</a></li>
+        <li><a href="https://eyemagazine.com/blog/post/at-your-service">Hofmann, <i>Graphic Design Manual</i></a></li>
+        <li><a href="https://artequalswork.com/posts/designing-programmes/">Gerstner, <i>Designing Programmes</i></a></li>
+        <li><a href="https://andrewclark.super.site/all-media/the-vignelli-canon">Vignelli, <i>The Vignelli Canon</i></a></li>
+        <li><a href="https://en.wikipedia.org/wiki/Neue_Grafik"><i>Neue Grafik</i>, 1958–65</a></li>
+        <li><a href="https://www.eguide.ch/en/objekt/sbb-bahnhofsuhr/?pdf=2261">Hilfiker, SBB station clock</a></li>
+        <li><a href="https://en.wikipedia.org/wiki/Helvetica">Miedinger and Hoffmann, Helvetica</a></li>
+        <li><a href="https://opentextbc.ca/graphicdesign/chapter/1-6-its/">The International Typographic Style</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <div class="picks" role="region" aria-label="Your picks">
+    <span class="n" id="pickCount">0 picked</span>
+    <span class="list" id="pickList">Tick the ones you want; they are kept on this device.</span>
+    <button type="button" id="copyPicks">Copy picks</button>
+    <button type="button" id="clearPicks">Clear</button>
+    <span class="copied" id="copied" aria-live="polite"></span>
+    <span class="theme" role="group" aria-label="Theme"><button type="button" data-t="light" aria-pressed="false">Light</button><button type="button" data-t="dark" aria-pressed="false">Dark</button></span>
+  </div>
+
+  <div id="catalogue"></div>
+
+  <p class="foot">Sizes: S is a stylesheet change inside <code>theme-swiss.css</code>; M touches a component's markup or needs a guard re-run on several views; L changes how a screen is built and would need its own branch. Every item keeps to the app's grid (whole g, whole r) and its rule that a control's label is centred, except where an item says it asks you to relax that rule for the Swiss theme.</p>
+</main>
+
+<script>
+(() => {
+  const S = (title, html) => `<div class="cap">${title}</div>${html}`;
+  const SECTIONS = [
+    { h: 'Grid and structure', p: 'The field the Swiss built everything on: columns, a marginal column, and white space doing work.', items: [
+      { t: 'One flush-left axis', src: 'International Typographic Style: asymmetric, flush left, ragged right',
+        d: 'Every label, figure and control starts on the same left line. The centred labels in All locations, the filter chips, the section chips and the Create button move to the left edge of their boxes.',
+        where: 'Schedule, Bankroll, every button', eff: 'M',
+        ask: 'Asks you to let control labels sit flush left in the Swiss theme, against the centred-label rule.',
+        demo: S('Proposed', `<div class="k-gap"><div class="k-m" style="border-top:1px solid var(--ink);padding-top:4px">All locations ↓</div><div class="k-m k-redblk" style="padding:6px">+ Log Result</div><div><span class="k-m">Satellites</span>&nbsp;&nbsp;<span class="k-g">Restarts</span></div></div>`) },
+      { t: 'A marginal column for dates', src: 'Müller-Brockmann: the narrow column beside the text block',
+        d: 'On desktop My Schedule, each day moves out of the black date block into a narrow left column: the date set large and thin, the weekday under it. The day’s events take the three wide columns to its right.',
+        where: 'My Schedule (desktop), Bankroll months', eff: 'L',
+        demo: S('Proposed', `<div class="k-cols"><div><div class="k-t" style="font-size:34px;line-height:.9;letter-spacing:-.05em">01</div><div class="k-m">Nov Su</div></div><div class="k-gap"><div class="k-hair" style="padding-top:4px"><span class="k-g">1:00 PM</span> <span class="k-m">WSOPC Deep Stack</span></div><div class="k-hair" style="padding-top:4px"><span class="k-g">6:00 PM</span> <span class="k-m">NLH Turbo</span></div></div></div>`) },
+      { t: 'Today as a poster numeral', src: 'Tonhalle concert posters: one figure at enormous scale',
+        d: 'Today’s date block becomes a thin numeral several rows tall, with the month and the event count set small against it. Scale alone tells you where you are.',
+        where: 'Schedule list head', eff: 'S',
+        demo: S('Proposed', `<div class="k-row" style="align-items:flex-end"><span class="k-t k-r" style="font-size:64px;line-height:.8;letter-spacing:-.06em">16</span><span style="text-align:right"><span class="k-m">October</span><br><span class="k-g">32 events</span></span></div>`) },
+      { t: 'Rules instead of boxes', src: 'Vignelli: rules and weight for distinction',
+        d: 'Cards, the bankroll dropdown, the summary card and the stat tiles lose their outlines. A day starts under a 2px rule, an event under a hairline. Weight carries the hierarchy, not enclosure.',
+        where: 'Every card and tile', eff: 'M',
+        demo: S('Proposed', `<div style="border-top:2px solid var(--ink);padding-top:4px" class="k-m">Thursday 16</div><div class="k-hair" style="margin-top:6px;padding-top:4px">NLH Mini Main Event</div><div class="k-hair" style="margin-top:6px;padding-top:4px">NLH Lions of the East</div>`) },
+      { t: 'White space with a ratio', src: 'Ruder: unprinted space has its own optical value',
+        d: 'Three spacings only, in whole rows: 1r inside a group, 3r between groups, 6r before a section. Today the gaps vary from screen to screen; a fixed ratio makes the white read as deliberate.',
+        where: 'All screens', eff: 'S',
+        demo: S('Proposed', `<div class="k-m">Profit</div><div style="margin-top:3px" class="k-t">+$10,628</div><div style="margin-top:18px" class="k-m">Analytics</div><div style="margin-top:3px" class="k-t">Breakdowns</div><div style="margin-top:36px;border-top:1px solid var(--ink)"></div>`) },
+      { t: 'Two sizes per screen, plus one', src: 'Vignelli: few sizes, extreme contrast between them',
+        d: 'Each screen keeps a text size, a small size and one display size. Bankroll in the first pass mixes many sizes; folding them to three makes the display figure land harder.',
+        where: 'Bankroll, Overview, Cash', eff: 'M',
+        demo: S('Proposed', `<div class="k-b" style="font-size:40px;line-height:.9">+$2,575</div><div style="margin-top:6px">9 sessions · 39h · +$66/h</div><div class="k-g k-tiny" style="margin-top:2px">Cash net, all time</div>`) },
+      { t: 'Running heads', src: 'Book typography: the running head names the page',
+        d: 'The top bar’s second line becomes a running head in thin type: section, then the scope (“Schedule · Oct–Dec 2026”, “Bankroll · Main”). The bankroll dropdown can then lose its own label.',
+        where: 'Top bar', eff: 'S',
+        demo: S('Proposed', `<div><span class="k-b" style="font-size:18px">futurega.me</span></div><div class="k-t">Bankroll · Main · $13,203</div>`) },
+      { t: 'Edge-to-edge bars', src: 'Neue Grafik: type and rules run to the trim',
+        d: 'The top bar and the bottom navigation lose their boxes. A single rule spans the full width under the top bar and over the navigation, edge to edge, while content keeps its 1g gutter.',
+        where: 'Top bar, bottom nav', eff: 'S',
+        demo: S('Proposed', `<div style="margin:0 -10px;border-top:1px solid var(--ink)"></div><div class="k-row" style="padding-top:6px"><span class="k-m">Schedule</span><span>Bankroll</span><span>Hands</span><span>Cash</span></div>`) },
+    ]},
+    { h: 'Type', p: 'Helvetica as its designers meant it: tight, dense, few weights, and sized with care.', items: [
+      { t: 'Light, not ultralight, below 14px', src: 'Helvetica: designed as a dense text face',
+        d: 'Ultralight (200) stays for display sizes. Body and small text step up to Light (300) so they hold on a phone in daylight. This answers the faintness the first pass warned about.',
+        where: 'All small text', eff: 'S',
+        demo: S('200 vs 300 at 12px', `<div class="k-vs"><div><div class="cap">Ultralight</div><div style="font-weight:200;font-size:12px">late reg closed<br>Flight B · 40 min</div></div><div><div class="cap">Light</div><div style="font-weight:300;font-size:12px">late reg closed<br>Flight B · 40 min</div></div></div>`) },
+      { t: 'Tracking by size', src: 'Optical spacing: tighter as type grows',
+        d: 'The −50 you asked for, at display sizes. −20 from 16 to 24px, 0 at text sizes, +10 for the 10px captions. One tracking at every size makes small type clot and large type gape.',
+        where: 'All type', eff: 'S',
+        demo: S('Proposed', `<div class="k-b" style="font-size:30px;letter-spacing:-.05em;line-height:1">Profit</div><div style="font-size:18px;font-weight:700;letter-spacing:-.02em">NLH Mini Main Event</div><div style="font-size:13px">Flight B · 10:00 AM</div><div style="font-size:10px;letter-spacing:.01em" class="k-g">Late reg closed</div>`) },
+      { t: 'Sentence case everywhere', src: 'Ruder: words keep their shape in lower case',
+        d: 'The rotated venue names (BORGATA, HARRAH S) and the remaining caps labels go to sentence case: Borgata, Harrah’s. Word shapes read faster than capitals, and it fixes the missing apostrophe.',
+        where: 'Venue strips, labels', eff: 'S',
+        demo: S('Proposed', `<div class="k-strip" style="height:84px;gap:8px"><span class="v">Harrah’s</span><span class="v">Borgata</span><span class="v">Turning Stone</span></div>`) },
+      { t: 'Venue names sit at the foot', src: 'Swiss posters: vertical type on a shared baseline',
+        d: 'The rotated venue name starts at the bottom of its strip, flush, instead of floating at the centre. Down a list the names then align, like spines on a shelf.',
+        where: 'Event and session cards', eff: 'S',
+        demo: S('Proposed', `<div style="display:flex;gap:8px;height:90px"><div class="k-blk" style="width:18px;display:flex;align-items:flex-end;justify-content:center"><span style="writing-mode:vertical-rl;transform:rotate(180deg);font-weight:700;font-size:11px;padding-bottom:4px">Borgata</span></div><div class="k-blk" style="width:18px;display:flex;align-items:flex-end;justify-content:center"><span style="writing-mode:vertical-rl;transform:rotate(180deg);font-weight:700;font-size:11px;padding-bottom:4px">Parx</span></div></div>`) },
+      { t: 'The event name leads', src: 'Hierarchy by scale, not by order alone',
+        d: 'On a card the event name becomes the largest line (bold, 18px). The time drops to the small size above it and the flight sits thin beside the name, not under it.',
+        where: 'Schedule cards', eff: 'M',
+        demo: S('Proposed', `<div class="k-g">10:15 AM EDT</div><div><span class="k-b" style="font-size:18px">NLH Lions of the East</span> <span class="k-t">Flight E</span></div>`) },
+      { t: 'No italic', src: 'Neo-grotesque practice: emphasis by weight',
+        d: 'The series line under an open card (“2026 WPT Prime Cyprus Championship”) is italic in the first pass. Swiss practice emphasises by weight; set it thin, roman.',
+        where: 'Open event card', eff: 'S',
+        demo: S('Proposed', `<div class="k-vs"><div><div class="cap">Now</div><i>2026 WPT Prime Cyprus</i></div><div><div class="cap">Proposed</div><span class="k-t">2026 WPT Prime Cyprus</span></div></div>`) },
+      { t: 'Real punctuation', src: 'Typographic correctness as part of the style',
+        d: 'En dash in ranges (Oct–Dec), a true minus in losses and axes (−$125), hair spaces around the slashes in blinds (2k / 3k / 3k), and a real apostrophe in Harrah’s.',
+        where: 'All figures and ranges', eff: 'S',
+        demo: S('Proposed', `<div class="k-num">Oct–Dec 2026<br><span class="k-r">−$125</span><br>2k&#8202;/&#8202;3k&#8202;/&#8202;3k</div>`) },
+      { t: 'A red full stop', src: 'Swiss identities: one mark of colour',
+        d: 'The wordmark sets in bold at −50, its full stop in red: futurega.me. It is the only red in the top bar.',
+        where: 'Top bar, share images', eff: 'S',
+        demo: S('Proposed', `<div class="k-b" style="font-size:28px">futurega<span class="k-r">.</span>me</div>`) },
+      { t: 'Words, not icons, in the navigation', src: 'Swiss signage: words read at a glance',
+        d: 'The bottom navigation drops its icons for five words. The current one is bold with a red rule above it; the others are light.',
+        where: 'Bottom nav, desktop rail', eff: 'M',
+        demo: S('Proposed', `<div style="display:flex;gap:12px"><span style="box-shadow:inset 0 2px 0 var(--red);padding-top:6px" class="k-m">Schedule</span><span style="padding-top:6px">Bankroll</span><span style="padding-top:6px">Dashboard</span><span style="padding-top:6px">Hands</span></div>`) },
+      { t: 'Tabular figures in columns, proportional in display', src: 'Number setting in tables',
+        d: 'Money and times that stack in columns use tabular figures so the digits align. Big display figures switch back to proportional so the 1s do not leave gaps.',
+        where: 'Lists, tables, heroes', eff: 'S',
+        demo: S('Proposed', `<div class="k-num" style="text-align:right;width:90px">$1,100<br>$400<br>$11,600</div>`) },
+    ]},
+    { h: 'Numbers and data', p: 'Money is the content. Set it the way a timetable sets departures.', items: [
+      { t: 'A raised currency sign', src: 'Price setting: the unit smaller than the number',
+        d: 'In the display figures, the $ drops to 60% and rises to the cap height. The sign stops competing with the figure.',
+        where: 'Profit, balance, Cash net', eff: 'S',
+        demo: S('Proposed', `<div class="k-b" style="font-size:44px;line-height:1">+<span style="font-size:.55em;vertical-align:.6em">$</span>10,628</div>`) },
+      { t: 'Extreme scale on the Overview', src: 'Vignelli: the headline at twice the text, or far more',
+        d: 'Balance in ultralight at about 8g, profit beneath in bold at half that. The first pass sets them side by side at one size; stacking them at two sizes reads as a statement and a footnote.',
+        where: 'Overview', eff: 'S',
+        demo: S('Proposed', `<div class="k-t" style="font-size:52px;line-height:.85;letter-spacing:-.06em">$13,203</div><div class="k-b" style="font-size:22px;margin-top:4px">+$13,203 <span class="k-l k-g" style="font-size:12px;letter-spacing:0">profit YTD</span></div>`) },
+      { t: 'Loss is the only red number', src: 'One accent, one meaning',
+        d: 'A loss is red with a true minus; a gain is plain ink with no plus colour; zero is thin. The first pass already makes gains ink; this extends it to month pills, tables and the backer pages.',
+        where: 'All money', eff: 'S',
+        demo: S('Proposed', `<div class="k-num"><div class="k-row"><span>Oct</span><span class="k-r">−$125</span></div><div class="k-row"><span>Sep</span><span class="k-m">+$2,700</span></div><div class="k-row"><span>Aug</span><span class="k-t">$0</span></div></div>`) },
+      { t: 'A chart with almost no chart', src: 'Information design: remove all that is not data',
+        d: 'No box, one zero line, the scale given only at the top and bottom at the right edge. The line itself at the finest weight, ending in a red square with the figure beside it.',
+        where: 'Bankroll graph, Overview graph', eff: 'M',
+        demo: S('Proposed', `<svg viewBox="0 0 260 90" width="100%" height="90" role="img" aria-label="A profit line rising to the right"><line x1="0" y1="70" x2="230" y2="70" stroke="var(--ink)" stroke-width=".5"/><polyline fill="none" stroke="var(--ink)" stroke-width=".75" points="0,70 30,70 30,64 70,64 70,74 100,74 100,50 140,50 140,56 170,56 170,30 210,30 210,22 226,22"/><rect x="223" y="19" width="6" height="6" fill="var(--red)"/><text x="258" y="14" text-anchor="end" font-size="9" fill="var(--g60)">$15k</text><text x="258" y="73" text-anchor="end" font-size="9" fill="var(--g60)">0</text></svg>`) },
+      { t: 'Series by weight, not colour', src: 'Ruder: shades of grey as a design tool',
+        d: 'On the Overview, Total is a 1px ink line, Tournaments 0.5px ink, Cash a dotted grey. Red is left for the endpoint marker. Readable in print, for colour blindness, and in both themes.',
+        where: 'Overview graph', eff: 'S',
+        demo: S('Proposed', `<svg viewBox="0 0 260 60" width="100%" height="60" role="img" aria-label="Three lines told apart by weight and dash"><polyline fill="none" stroke="var(--ink)" stroke-width="1.2" points="0,50 80,44 160,24 250,12"/><polyline fill="none" stroke="var(--ink)" stroke-width=".5" points="0,52 80,48 160,32 250,22"/><polyline fill="none" stroke="var(--g60)" stroke-width=".75" stroke-dasharray="2 2" points="0,54 80,52 160,46 250,40"/></svg><div class="k-tiny"><span class="k-m">Total</span>&nbsp; Tournaments&nbsp; <span class="k-g">Cash</span></div>`) },
+      { t: 'The range strip as words', src: 'Controls as typography',
+        d: 'All, YTD, MTD, 7D become four words in a row, flush left. The selected one is bold with a red rule under it. No boxes, no dividing lines.',
+        where: 'Both graphs', eff: 'S',
+        demo: S('Proposed', `<div style="display:flex;gap:18px"><span class="k-m k-ul">All</span><span>YTD</span><span>MTD</span><span>7D</span></div>`) },
+      { t: 'Tables with three rules', src: 'Swiss tabular setting',
+        d: 'The Overview summary table drops its alternating bands. A rule under the head, a rule over the total, nothing else. Figures right-aligned on the column’s edge, heads small and light.',
+        where: 'Overview tables, Stats, Reports', eff: 'M',
+        demo: S('Proposed', `<div class="k-num"><div class="k-row k-g k-tiny" style="border-bottom:1px solid var(--ink);padding-bottom:2px"><span></span><span>Cash</span><span>Tourn.</span></div><div class="k-row"><span>Buy-ins</span><span>5,400</span><span>10,158</span></div><div class="k-row"><span>Cash-outs</span><span>7,975</span><span>20,786</span></div><div class="k-row k-m" style="border-top:1px solid var(--ink);padding-top:2px"><span>Net</span><span>2,575</span><span>10,628</span></div></div>`) },
+      { t: 'A departure-board list', src: 'SBB timetables: time, destination, platform',
+        d: 'A compact mode for the Schedule: one line per event, the start time bold in a fixed column, the name in light, the buy-in right-aligned. Thirty events fit on a screen.',
+        where: 'Schedule (a density toggle)', eff: 'L',
+        demo: S('Proposed', `<div class="k-num" style="display:grid;grid-template-columns:44px 1fr auto;gap:3px 8px"><span class="k-m">10:00</span><span>NLH Mini Main</span><span>$400</span><span class="k-m">10:15</span><span>Lions of the East</span><span>$600</span><span class="k-m">11:00</span><span>NLH Flight I</span><span>$300</span><span class="k-m k-r">12:00</span><span>WPT Prime Main</span><span>$1,100</span></div>`) },
+      { t: 'Counts as superior figures', src: 'Index setting',
+        d: 'The filter words carry their counts as small raised figures (Side Events⁷). You see what a filter holds before you tap it.',
+        where: 'Schedule filters, section chips', eff: 'M',
+        demo: S('Proposed', `<div><span class="k-m">Side Events<span class="k-sup">7</span></span>&nbsp;&nbsp;<span>Online<span class="k-sup">12</span></span>&nbsp;&nbsp;<span class="k-g">Restarts<span class="k-sup">0</span></span></div>`) },
+    ]},
+    { h: 'Colour', p: 'Black does the work. Red is rare enough to mean something every time it appears.', items: [
+      { t: 'Red means now, act or lose', src: 'One accent with one job',
+        d: 'Red is kept for today, the live state, the one primary button and losses. Selected filters and tabs, which are red in the first pass, turn black. The screen then has two or three reds, not seven.',
+        where: 'All screens', eff: 'S',
+        demo: S('Proposed', `<div class="k-gap"><div><span class="k-m k-ul-ink">Side Events</span>&nbsp; <span class="k-m k-ul-ink">Online</span>&nbsp; Satellites</div><div class="k-redblk k-m" style="padding:5px 8px">+ Log Result</div></div>`) },
+      { t: 'Selection as a solid block', src: 'Inverse type, a poster staple',
+        d: 'A selected chip or tab becomes a solid ink block with paper-coloured type, instead of a red outline with red type. It is unmistakable at a glance and needs no colour.',
+        where: 'Section chips, filters, toggles', eff: 'S',
+        demo: S('Proposed', `<div style="display:flex;gap:6px;flex-wrap:wrap"><span class="k-blk k-m" style="padding:3px 8px">Cash</span><span style="padding:3px 8px">Overview</span><span style="padding:3px 8px">Locations</span></div>`) },
+      { t: 'Three greys, as print tints', src: 'Ruder: tints of black as their own values',
+        d: 'Only three greys: 60% for secondary text, 30% for rules, 10% for fills. Every other grey in the first pass maps to one of them.',
+        where: 'theme-swiss.css tokens', eff: 'S',
+        demo: S('Proposed', `<div style="display:flex;gap:6px;align-items:flex-end"><span style="width:40px;height:40px;background:var(--ink)"></span><span style="width:40px;height:40px;background:var(--g60)"></span><span style="width:40px;height:40px;background:var(--g30)"></span><span style="width:40px;height:40px;background:var(--g10);outline:.5px solid var(--g30)"></span></div><div class="k-tiny k-g" style="margin-top:4px">100 · 60 · 30 · 10</div>`) },
+      { t: 'A dark mode of its own', src: 'Contrast tuned per ground',
+        d: 'On black, the red lifts slightly (#ff2a35) so it holds the same weight as on white, thin type steps up one weight, and greys are re-cut rather than inverted.',
+        where: 'Swiss dark', eff: 'S',
+        demo: S('Both reds', `<div style="display:flex"><span style="flex:1;background:#fff;color:#e30613;padding:8px" class="k-m">Loss −$125</span><span style="flex:1;background:#000;color:#ff2a35;padding:8px" class="k-m">Loss −$125</span></div>`) },
+      { t: 'Red for the event you are in', src: 'Colour as information, not decoration',
+        d: 'Venue strips stay black, except the strip of an event you are registered for today, which turns red. Your day reads down the list without opening a card.',
+        where: 'Schedule cards', eff: 'M',
+        demo: S('Proposed', `<div style="display:flex;gap:6px;height:56px"><span style="width:14px;background:var(--ink)"></span><span style="width:14px;background:var(--red)"></span><span style="width:14px;background:var(--ink)"></span><span style="width:14px;background:var(--ink)"></span></div>`) },
+      { t: 'Photographs in black and white', src: 'Neue Grafik: objective photography',
+        d: 'Avatars and any photos (the profile picture, social cards) are shown greyscale and high contrast, cropped square. Colour stays reserved for red.',
+        where: 'Avatar, Social', eff: 'S',
+        demo: S('Proposed', `<div style="display:flex;gap:8px;align-items:center"><span style="width:36px;height:36px;background:linear-gradient(135deg,var(--g30),var(--ink))"></span><span class="k-m">Ethan Bennett</span></div>`) },
+    ]},
+    { h: 'Controls', p: 'Buttons that look like the typography around them, with one solid block for the action that matters.', items: [
+      { t: 'Secondary buttons as words', src: 'Swiss signage: a word and an arrow',
+        d: 'Manage, Travel, Day Off and Export become bold words followed by an arrow, without boxes. Only the primary action on a screen keeps a filled block.',
+        where: 'Bankroll, My Schedule, forms', eff: 'M',
+        demo: S('Proposed', `<div style="display:flex;gap:16px"><span class="k-m">Travel →</span><span class="k-m">Day off →</span><span class="k-m">Export ↓</span></div>`) },
+      { t: 'The location as a heading', src: 'Typography carries the interface',
+        d: 'All locations stops being a boxed button with a pin. It becomes the list’s heading, large and bold, with a down arrow, and opens the same sheet when tapped.',
+        where: 'Schedule', eff: 'M',
+        demo: S('Proposed', `<div class="k-b" style="font-size:24px">Philadelphia, 100 mi ↓</div>`) },
+      { t: 'Filters as an index', src: 'An index, read across',
+        d: 'Satellites, Restarts, Side Events, Online run as one line of words separated by thin slashes. Those on are bold ink, those off are light.',
+        where: 'Schedule filters', eff: 'S',
+        demo: S('Proposed', `<div><span class="k-l">Satellites</span> <span class="k-g">/</span> <span class="k-l">Restarts</span> <span class="k-g">/</span> <span class="k-m">Side Events</span> <span class="k-g">/</span> <span class="k-m">Online</span></div>`) },
+      { t: 'The Bankroll sections as a menu', src: 'A typographic contents list',
+        d: 'The nine section chips become three columns of words, flush left, without boxes. The current section is a solid block. Nine boxes read as noise; nine words read as a contents list.',
+        where: 'Bankroll', eff: 'M',
+        demo: S('Proposed', `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px 8px"><span class="k-blk k-m" style="padding:0 3px">Tournaments</span><span>Cash</span><span>Overview</span><span>Locations</span><span>Reports</span><span>Backers</span><span>Rules</span><span>Goals</span><span>Import</span></div>`) },
+      { t: 'Square icons', src: 'Icons drawn like the type',
+        d: 'Icons switch to square caps and mitred joins at the stroke weight of Helvetica Bold’s stems, so they read as part of the type rather than as rounded add-ons.',
+        where: 'All icons', eff: 'S',
+        demo: S('Round vs square', `<div style="display:flex;gap:18px"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--g60)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M7 12h10M10 18h4"/></svg><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.2" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 6h18M7 12h10M10 18h4"/></svg></div>`) },
+      { t: 'Arrows instead of chevrons', src: 'SBB wayfinding: the arrow',
+        d: 'The chevrons centred under every card become a single arrow at the card’s right edge (↓ to open, ↑ to close). It sits on the axis instead of floating in the middle.',
+        where: 'Cards, dropdowns', eff: 'S',
+        demo: S('Proposed', `<div class="k-row"><span class="k-m">NLH Mini Main Event</span><span class="k-m">↓</span></div>`) },
+      { t: 'Underlined fields', src: 'Forms as ruled lines',
+        d: 'Inputs in the result, cash and quick-add forms lose their boxes: a light label above, the value bold, a single rule beneath. The currency select gets the same treatment instead of the system’s grey box.',
+        where: 'Forms, Native currency select', eff: 'M',
+        demo: S('Proposed', `<div class="k-g k-tiny">Buy-in</div><div class="k-m" style="border-bottom:1px solid var(--ink);padding-bottom:2px">$1,100</div><div class="k-g k-tiny" style="margin-top:6px">Currency</div><div class="k-m" style="border-bottom:1px solid var(--ink);padding-bottom:2px">Native ↓</div>`) },
+      { t: 'The + on the grid', src: 'Nothing floats',
+        d: 'The red + leaves its floating position over the content and becomes the last column of the bottom navigation: a red square in line with the five words. Nothing covers card figures any more.',
+        where: 'Bankroll, Hands', eff: 'M',
+        demo: S('Proposed', `<div style="display:flex;align-items:stretch;border-top:1px solid var(--ink)"><span style="flex:1;padding-top:6px" class="k-m">Schedule</span><span style="flex:1;padding-top:6px">Bankroll</span><span style="flex:1;padding-top:6px">Hands</span><span class="k-redblk k-b" style="width:34px;display:grid;place-items:center;font-size:20px">+</span></div>`) },
+    ]},
+    { h: 'Motion and detail', p: 'Restraint in movement, and the small Swiss touches that make it feel made rather than themed.', items: [
+      { t: 'Cuts, not tweens', src: 'Restraint as a principle',
+        d: 'In the Swiss theme, state changes are instant or 120ms linear fades. No springs, no bounces, no sliding sheets. Weight changes do the signalling.',
+        where: 'All transitions (theme only)', eff: 'S',
+        demo: S('Proposed', `<div class="k-num k-tiny" style="font-family:ui-monospace,monospace">transition: opacity 120ms linear;</div>`) },
+      { t: 'The station clock’s second hand', src: 'Hilfiker’s SBB clock: a red sweep that pauses at twelve',
+        d: 'The late-registration bar becomes a thin red sweep that fills to the close and stops dead, like the clock’s second hand waiting for the minute. Elapsed in black, remaining in red.',
+        where: 'Schedule cards, Up Next', eff: 'M',
+        demo: S('Proposed', `<div class="k-row k-tiny"><span>Late reg</span><span class="k-num">0:47 left</span></div><div class="k-bar" style="margin-top:4px"><i style="width:72%"></i></div>`) },
+      { t: 'The live beacon as a clock face', src: 'Hilfiker: the red signal disc',
+        d: 'On the backer pages, the beacon becomes a red disc drawn as a slowly filling segment, one turn per hour since the session started. Calm, and it shows duration without a number.',
+        where: 'Backer pages', eff: 'M',
+        demo: S('Proposed', `<svg width="44" height="44" viewBox="0 0 44 44" role="img" aria-label="A red segment two-thirds full"><circle cx="22" cy="22" r="20" fill="none" stroke="var(--g30)" stroke-width=".75"/><path d="M22 22 L22 2 A20 20 0 1 1 4.7 32 Z" fill="var(--red)"/></svg>`) },
+      { t: 'Loading as rules', src: 'Placeholders in the grid’s own material',
+        d: 'Skeletons become hairlines at the positions of the text lines that will arrive, not grey shimmering boxes.',
+        where: 'All loading states', eff: 'S',
+        demo: S('Proposed', `<div class="k-gap"><div class="k-hair" style="width:60%"></div><div class="k-hair" style="width:85%"></div><div class="k-hair" style="width:40%"></div></div>`) },
+      { t: 'Empty states as posters', src: 'Tonhalle posters: type alone',
+        d: 'An empty screen gets one large light sentence and one bold action, flush left. No illustration.',
+        where: 'First run, empty lists', eff: 'S',
+        demo: S('Proposed', `<div class="k-t" style="font-size:24px;line-height:1">No results yet.</div><div class="k-m k-r" style="margin-top:6px">Log your first →</div>`) },
+      { t: 'Share cards on the same grid', src: 'One programme for every surface',
+        d: 'The result share images and the weekly “This week near you” carousels adopt the Swiss grid: a giant numeral, a hairline, the event in bold, the wordmark with its red full stop at the foot.',
+        where: 'Share sheet, weekly graphics', eff: 'L',
+        demo: S('Proposed', `<div style="aspect-ratio:4/5;max-width:150px;background:var(--paper);outline:.5px solid var(--g30);padding:8px;display:flex;flex-direction:column"><div class="k-t" style="font-size:46px;line-height:.85;letter-spacing:-.06em">3rd</div><div class="k-hair" style="margin:6px 0"></div><div class="k-m" style="font-size:11px">NLH Mini Main Event</div><div class="k-tiny">+$4,200</div><div class="k-b k-tiny" style="margin-top:auto">futurega<span class="k-r">.</span>me</div></div>`) },
+      { t: 'The month pill as a ledger line', src: 'Account books: the period and its total on one rule',
+        d: 'The Bankroll month block (black, with Oct 2026 in it) becomes a ledger line: the month bold, the count light, the net at the right, all on a 2px rule.',
+        where: 'Bankroll and Cash lists, backer pages', eff: 'S',
+        demo: S('Proposed', `<div class="k-row" style="border-top:2px solid var(--ink);padding-top:4px"><span><span class="k-m">October</span> <span class="k-t">2 sessions</span></span><span class="k-r k-m k-num">−$125</span></div>`) },
+      { t: 'A Swiss home screen', src: 'Poster as dashboard',
+        d: 'The Dashboard tab in the Swiss theme becomes one poster: Up Next’s next event as the headline, its start as a thin numeral, the bankroll as a single bold figure, and nothing else above the fold.',
+        where: 'Dashboard', eff: 'L',
+        demo: S('Proposed', `<div class="k-t" style="font-size:40px;line-height:.85;letter-spacing:-.06em">12:00</div><div class="k-b" style="font-size:16px;margin-top:4px">WPT Prime Main Event</div><div class="k-g k-tiny">Chamada · $1,100</div><div class="k-hair" style="margin:8px 0 4px"></div><div class="k-m">$13,203 <span class="k-l k-g">Main</span></div>`) },
+      { t: 'Hands in the theme', src: 'One programme for the whole app',
+        d: 'The replayer gets the Swiss treatment last: a white felt with hairline seat boxes, stacks in tabular bold, bets in light, the pot as the one display figure, and red only for the all-in.',
+        where: 'Hands, replayer', eff: 'L',
+        demo: S('Proposed', `<div style="border:.5px solid var(--g30);border-radius:40px;height:70px;display:grid;place-items:center"><div style="text-align:center"><div class="k-t k-tiny">Pot</div><div class="k-b" style="font-size:22px;line-height:1">12,400</div></div></div><div class="k-row k-tiny" style="margin-top:4px"><span class="k-m">Hero 41,200</span><span class="k-r k-m">All in</span></div>`) },
+    ]},
+  ];
+
+  let n = 0;
+  const KEY = 'swissPicks';
+  let picks = new Set();
+  try { picks = new Set(JSON.parse(localStorage.getItem(KEY) || '[]')); } catch { /* storage unavailable */ }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...picks])); } catch { /* storage unavailable */ } };
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  document.getElementById('catalogue').innerHTML = SECTIONS.map((sec) => `
+    <section class="sec field" aria-labelledby="s-${esc(sec.h).replace(/\W+/g, '')}">
+      <div class="sec-h"><h2 id="s-${esc(sec.h).replace(/\W+/g, '')}">${esc(sec.h)}</h2><p>${esc(sec.p)}</p></div>
+      <div class="items">${sec.items.map((it) => { n += 1; return `
+        <article class="item${picks.has(n) ? ' is-picked' : ''}" id="i${n}" data-n="${n}">
+          <div class="no" aria-hidden="true">${n}</div>
+          <div class="body">
+            <h3><span class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">${n}. </span>${esc(it.t)}</h3>
+            <p>${esc(it.d)}</p>
+            <p class="why"><b>From</b> ${esc(it.src)}</p>
+            ${it.ask ? `<p class="why"><b>Note</b> ${esc(it.ask)}</p>` : ''}
+            <div class="tags"><span class="eff">${it.eff}</span><span>${esc(it.where)}</span></div>
+            <label class="pick"><input type="checkbox" id="pick-${n}" data-n="${n}"${picks.has(n) ? ' checked' : ''}> Want this</label>
+          </div>
+          <div class="plate">${it.demo}</div>
+        </article>`; }).join('')}</div>
+    </section>`).join('');
+
+  const count = document.getElementById('pickCount'), list = document.getElementById('pickList');
+  const show = () => {
+    const sorted = [...picks].sort((a, b) => a - b);
+    count.textContent = `${sorted.length} picked`;
+    list.textContent = sorted.length ? sorted.join(', ') : 'Tick the ones you want; they are kept on this device.';
+  };
+  document.querySelectorAll('.pick input').forEach((cb) => cb.addEventListener('change', () => {
+    const k = Number(cb.dataset.n);
+    if (cb.checked) picks.add(k); else picks.delete(k);
+    document.getElementById('i' + k).classList.toggle('is-picked', cb.checked);
+    save(); show();
+  }));
+  document.getElementById('clearPicks').addEventListener('click', () => {
+    picks.clear(); save(); show();
+    document.querySelectorAll('.pick input').forEach((cb) => { cb.checked = false; });
+    document.querySelectorAll('.item').forEach((el) => el.classList.remove('is-picked'));
+  });
+  document.getElementById('copyPicks').addEventListener('click', async () => {
+    const text = `Swiss second pass, picks: ${[...picks].sort((a, b) => a - b).join(', ') || 'none'}`;
+    const out = document.getElementById('copied');
+    try { await navigator.clipboard.writeText(text); out.textContent = 'Copied.'; }
+    catch { out.textContent = text; }
+  });
+  document.querySelectorAll('.theme button').forEach((b) => b.addEventListener('click', () => {
+    document.documentElement.setAttribute('data-theme', b.dataset.t);
+    document.querySelectorAll('.theme button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  }));
+  show();
+})();
+</script>
