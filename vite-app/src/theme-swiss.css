@@ -1275,3 +1275,25 @@
    the rail and the felt take their capsule radii back from the theme's square-everything rule. */
 :root[data-theme^="swiss"] body .replayer-table .replayer-table-rail { border-radius: var(--rail-r, calc(var(--subrow) * 128)) !important; }
 :root[data-theme^="swiss"] body .replayer-table .replayer-table-felt { border-radius: var(--felt-r, calc(var(--subrow) * 128)) !important; }
+
+/* Replayer seats filled (owner, 2026-10-16: "filled black seats on the white background and vice
+   versa"): an ink block with the name and stack in the ground colour. A folded seat steps back to
+   the 30% grey; the hero and the seat to act carry a ground-coloured rule just inside the block; an
+   all-in seat is the red block. */
+:root[data-theme^="swiss"] .replayer-seat-info {
+  background: var(--sw-ink) !important;
+  box-shadow: none !important;
+  border-color: var(--sw-ink) !important;
+}
+:root[data-theme^="swiss"] .replayer-seat-name { color: color-mix(in srgb, var(--sw-ground) 70%, var(--sw-ink)) !important; }
+:root[data-theme^="swiss"] .replayer-seat-stack { color: var(--sw-ground) !important; }
+:root[data-theme^="swiss"] :is(.replayer-seat.is-hero, .replayer-seat.active-turn) .replayer-seat-info {
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--sw-ink), inset 0 0 0 var(--bw-2) var(--sw-ground) !important;
+}
+:root[data-theme^="swiss"] :is(.replayer-seat.folded, .replayer-seat.mucked) .replayer-seat-info {
+  background: var(--sw-g30) !important;
+  box-shadow: none !important;
+}
+:root[data-theme^="swiss"] :is(.replayer-seat.folded, .replayer-seat.mucked) :is(.replayer-seat-name, .replayer-seat-stack) { color: var(--sw-ground) !important; }
+:root[data-theme^="swiss"] .replayer-seat.is-allin .replayer-seat-info { background: var(--sw-red) !important; box-shadow: none !important; }
+:root[data-theme^="swiss"] .replayer-seat.is-allin :is(.replayer-seat-name, .replayer-seat-stack, .replayer-allin-mark) { color: #ffffff !important; }
