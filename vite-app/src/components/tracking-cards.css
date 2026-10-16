@@ -32,3 +32,41 @@
 .tr-month-break .tr-month-net.is-pos { color: var(--pos, var(--ok)); }
 .tr-month-break .tr-month-net.is-neg { color: var(--neg, var(--danger)); }
 .tr-month .cal-event-row.tr-card { margin-bottom: calc(var(--subrow) * 2); }
+
+/* ── The top of the tab in the Schedule's scheme (owner, 2026-10-16) ── */
+/* Tournaments | Cash: the Schedule's kind toggles (styles.css .kind-toggles), 2r above the row. */
+.kind-toggles.results-kind-tabs { margin: 0 0 calc(var(--subrow) * 2); }
+/* One row, as the Schedule's location | filter | calendar: Log Result in the location pill's 26g
+   (three primary columns), a 4g Share square and the 3g Tax report square, 1g apart, 4r tall. */
+.tr-head-row { display: flex; gap: var(--gu); align-items: center; margin-bottom: calc(var(--subrow) * 2); }
+.tr-head-row .tr-log-btn {
+  flex: 0 0 auto;
+  width: calc(var(--col) * 3 + var(--gu) * 2);
+  height: calc(var(--subrow) * 4);
+  box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center; gap: var(--subrow);
+  padding: 0 var(--gu);
+  background: var(--brand); border-color: var(--brand); color: var(--on-brand);
+}
+.tr-head-row .tr-log-btn.is-cancel { background: var(--surface); border-color: var(--border); color: var(--text); }
+.tr-head-row .tr-log-btn svg { width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }
+.tr-head-row .tr-log-label {
+  font-family: var(--font-condensed); font-size: calc(var(--gu) * 1.149); font-weight: var(--fw-bold);
+  line-height: calc(var(--subrow) * 2); white-space: nowrap;
+}
+.tr-head-row .tr-head-square { width: calc(var(--gu) * 4); }
+/* The summary led by the profit: the Schedule's money face, its baseline on the fourth r line. */
+.tracking-card .tr-sum-net {
+  font-family: var(--serif); font-size: var(--fs-2xl); font-weight: 700;
+  padding-top: calc(var(--subrow) * 4 - 1cap); min-height: calc(var(--subrow) * 4);
+  font-variant-numeric: var(--num-tabular);
+}
+.tracking-card .tr-sum-net.is-pos { color: var(--pos, var(--ok)); }
+.tracking-card .tr-sum-net.is-neg { color: var(--neg, var(--danger)); }
+.tracking-card .tr-sum-sub { font-size: calc(var(--gu) * 1.104); color: var(--text-muted); margin: 0 0 var(--subrow); }
+.tracking-card > p.tr-seat:empty { display: none; }
+/* The result still to log: the same card, dashed while it waits, its two actions under the title
+   at the card's 1g inset, 2r above the card's foot. */
+.cal-event-row.tr-card.tracking-pending { outline: var(--bw-1) dashed var(--accent); outline-offset: calc(var(--bw-1) * -1); margin-bottom: calc(var(--subrow) * 2); }
+.tr-card.tracking-pending .tr-pending-bar { cursor: default; }
+.tr-card .tr-pending-actions { padding: 0 var(--gu) calc(var(--subrow) * 2); }

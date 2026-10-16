@@ -775,30 +775,31 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       {isAdmin && resultsKind === 'cash' ? (
         <Suspense fallback={null}><CashSessionsView token={token} bk={bk} intent={cashIntent} onIntentDone={onIntentDone} /></Suspense>
       ) : (<>
-      <div className="section-header">
-        <h2>Bankroll</h2>
-        <div style={{display:'flex',gap:'var(--gu)',alignItems:'center'}}>
-          {isAdmin && (
-            <button className="btn btn-ghost btn-sm" style={{width:'var(--col)',padding:0}} onClick={() => setShowTaxReport(true)} title="Tax report (beta)">
-              Tax report
-            </button>
-          )}
-          {trackingData.length > 0 && (
-            <button className="btn-share-overlay ctl" style={{width:'calc(var(--gu) * 7)',height:'calc(var(--subrow) * 4)',padding:0}} onClick={() => setShowShareMenu(true)} title="Share & Social">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-              Share
-            </button>
-          )}
-          <button className="btn btn-primary btn-sm" style={{width:'var(--col)',padding:0}} onClick={() => { setShowAddForm(f => !f); setEditingId(null); }}>
-            {showAddForm ? 'Cancel' : '+ Log Result'}
+      {!bk.enabled && <div className="section-header"><h2>Bankroll</h2></div>}
+      {/* One row, as the Schedule's location | filter | calendar (owner, 2026-10-16): Log Result spans
+          three primary columns (26g), then a 4g Share square and the 3g Tax report square, 1g apart. */}
+      <div className="tr-head-row">
+        <button type="button" className={'filter-chip tr-log-btn' + (showAddForm ? ' is-cancel' : '')}
+          onClick={() => { setShowAddForm(f => !f); setEditingId(null); }}>
+          {showAddForm ? null : <Icon.plus />}
+          <span className="tr-log-label">{showAddForm ? 'Cancel' : 'Log Result'}</span>
+        </button>
+        {trackingData.length > 0 && (
+          <button type="button" className="filter-chip filter-chip-square tr-head-square" onClick={() => setShowShareMenu(true)} title="Share & Social" aria-label="Share">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
           </button>
-        </div>
+        )}
+        {isAdmin && (
+          <button type="button" className="filter-chip filter-chip-square" onClick={() => setShowTaxReport(true)} title="Tax report (beta)" aria-label="Tax report">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+          </button>
+        )}
       </div>
 
       {trackingData.length > 0 && (
         <div className="tracking-card" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
           <div className="tracking-summary-head">
-            <span className="tr-seat tr-seat-3" style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Summary</span>
+            <span className="tr-seat tr-seat-3" style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Profit</span>
             {exchangeRates && (
               <select value={displayCurrency} onChange={e => onCurrencyChange(e.target.value)}
                 style={{fontSize:'calc(var(--gu) * 1.031)',padding:'0 var(--space-sm)',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 0.75)',
@@ -810,7 +811,15 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
               </select>
             )}
           </div>
-          <div className="tracking-stats">
+          {/* The profit first and largest, in the Schedule's money face (owner, 2026-10-16), then what
+              it is made of: the events and cashes, and the ROI, on one line. */}
+          <div className={'tr-seat tr-sum-net ' + (stats.profit > 0 ? 'is-pos' : stats.profit < 0 ? 'is-neg' : '')}>
+            {stats.profit >= 0 ? '+' : ''}{fmtStat(stats.profit)}
+          </div>
+          <p className="tr-seat tr-seat-2 tr-sum-sub">
+            {stats.totalEntries} event{stats.totalEntries !== 1 ? 's' : ''} · {stats.eventsCashed} cash{stats.eventsCashed !== 1 ? 'es' : ''} · ROI {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(1)}%
+          </p>
+          <div className="tracking-stats tr-sum-stats">
             <div className="cal-detail-item">
               <span className="cal-detail-label">Total Buyins</span>
               <span className="cal-detail-value">{fmtStat(stats.totalBuyins)}</span>
@@ -818,22 +827,6 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
             <div className="cal-detail-item">
               <span className="cal-detail-label">Total Cashes</span>
               <span className="cal-detail-value">{fmtStat(stats.totalCashes)}</span>
-            </div>
-            <div className="cal-detail-item">
-              <span className="cal-detail-label">Profit</span>
-              <span className={`cal-detail-value ${stats.profit >= 0 ? 'tracking-profit-pos' : 'tracking-profit-neg'}`}>
-                {/* formatCurrencyAmount already prepends its own sign, so the
-                    manual '-' rendered a losing series as two minus signs -
-                    and the row formatter twelve lines up did it correctly, so
-                    the summary card and the rows disagreed on one page. */}
-                {stats.profit >= 0 ? '+' : ''}{fmtStat(stats.profit)}
-              </span>
-            </div>
-            <div className="cal-detail-item">
-              <span className="cal-detail-label">ROI</span>
-              <span className={`cal-detail-value ${stats.roi >= 0 ? 'tracking-profit-pos' : 'tracking-profit-neg'}`}>
-                {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(1)}%
-              </span>
             </div>
             {stats.poyEventCount > 0 && (
               <div className="cal-detail-item">
@@ -848,11 +841,10 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
             format={fmtStat}
           />
           <p className="tr-seat tr-seat-2" style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',margin:0}}>
-            {stats.totalEntries} event{stats.totalEntries !== 1 ? 's' : ''} played · {stats.eventsCashed} cash{stats.eventsCashed !== 1 ? 'es' : ''}
-            {stats.poyEventCount > 0 && <> · {stats.poyEventCount} POY event{stats.poyEventCount !== 1 ? 's' : ''}</>}
-            {displayCurrency !== 'NATIVE' && exchangeRates && (
-              <> · {ratesStale ? 'fallback rates' : 'live rates'}</>
-            )}
+            {[
+              stats.poyEventCount > 0 ? `${stats.poyEventCount} POY event${stats.poyEventCount !== 1 ? 's' : ''}` : '',
+              displayCurrency !== 'NATIVE' && exchangeRates ? (ratesStale ? 'fallback rates' : 'live rates') : '',
+            ].filter(Boolean).join(' · ')}
           </p>
         </div>
       )}
@@ -874,29 +866,32 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       )}
 
       {(!dnpForm || dnpForm.fromList) && pendingEvent && !showAddForm && !intentForm && pendingFormId !== pendingEvent.id && (
-        <div className="tracking-card tracking-pending" style={{padding:'calc(var(--subrow) * 2) var(--gu)', marginBottom:'calc(var(--subrow) * 2)', border:0, outline:'var(--bw-1) dashed var(--accent)', outlineOffset:'calc(var(--bw-1) * -1)'}}>
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
-            <div style={{flex:1, minWidth:0}}>
-              <div style={{fontSize:'calc(var(--gu) * 1.031)', lineHeight:'calc(var(--subrow) * 2)', color:'var(--text-muted)', fontFamily:"'Univers Condensed','Univers',sans-serif", letterSpacing:'0.03em'}}>
-                {pendingEvent.date} · #{pendingEvent.event_number?.replace(/^[A-Za-z]+-/, '')}
+        /* The Schedule's card too (owner, 2026-10-16), dashed while it waits: the room strip, the day,
+           the name over its flight, "Awaiting result" in the money column, the two actions under it. */
+        <div className="cal-event-row tr-card tracking-pending">
+          <CardStrip venue={pendingEvent.venue} property={pendingEvent.property} open={false} onToggle={() => setPendingFormId(pendingEvent.id)} />
+          <div className="cal-event-row-content">
+            <div className="cal-event-bar tr-pending-bar">
+              <div className="cal-bar-row1">
+                <span className="cal-event-time">{fmtDay(isoDay(pendingEvent.date))}</span>
+                <span className="cal-event-money"><span className="cal-event-gtd">Awaiting result</span></span>
               </div>
-              <div style={{fontSize:'calc(var(--gu) * 1.252)', lineHeight:'calc(var(--subrow) * 3)', fontWeight: 'var(--fw-bold)', color:'var(--text)', fontFamily:"'Univers Condensed','Univers',sans-serif", overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
-                {pendingEvent.event_name}
-              </div>
-              <div style={{fontSize:'calc(var(--gu) * 1.060)', lineHeight:'calc(var(--subrow) * 2)', color:'var(--text-muted)'}}>
-                Awaiting result
+              <div className="cal-bar-row2">
+                <CardName name={pendingEvent.event_name} />
               </div>
             </div>
-            {onSetPlayed && (
-              <button className="btn btn-ghost btn-sm" style={{flexShrink:0, marginLeft:'var(--gu)', width:'var(--col)', padding:0}}
-                onClick={() => setDnpForm({ event: pendingEvent, note: '' })} aria-label={`Didn't play ${pendingEvent.event_name}: stop asking for its result`}>
-                Didn&rsquo;t play
+            <div className="tracking-actions tr-pending-actions">
+              {onSetPlayed && (
+                <button className="btn btn-ghost btn-sm" style={{width:'var(--col)', padding:0}}
+                  onClick={() => setDnpForm({ event: pendingEvent, note: '' })} aria-label={`Didn't play ${pendingEvent.event_name}: stop asking for its result`}>
+                  Didn&rsquo;t play
+                </button>
+              )}
+              <button className="btn btn-primary btn-sm" style={{width:'var(--col)', padding:0}}
+                onClick={() => setPendingFormId(pendingEvent.id)}>
+                Log Result
               </button>
-            )}
-            <button className="btn btn-primary btn-sm" style={{flexShrink:0, marginLeft:'var(--gu)', width:'var(--col)', padding:0}}
-              onClick={() => setPendingFormId(pendingEvent.id)}>
-              Log Result
-            </button>
+            </div>
           </div>
         </div>
       )}

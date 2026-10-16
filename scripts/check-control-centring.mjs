@@ -2414,7 +2414,7 @@ function finalize(c) {
   // Cash: the location picker.
   step('cash-location', async () => { await nav('Cash'); await tap('.filter-chip', 900); }, 1);
   // Results: the log form, a row in edit, the tax report, the share menu, the analytics sheet.
-  step('results-log', async () => { await nav('Bankroll'); await tap('button:has-text("+ Log Result")', 900); }, 2);
+  step('results-log', async () => { await nav('Bankroll'); await tap('.tr-head-row .tr-log-btn', 900); }, 2);
   step('results-edit', async () => {
     await nav('Bankroll');
     // A result is the Schedule's card now (2026-10-16): Edit is in its opened detail.

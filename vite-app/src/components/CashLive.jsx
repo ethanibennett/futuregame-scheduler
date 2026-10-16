@@ -27,10 +27,12 @@ export function useTick(active, ms = 1000) {
 export function ResultsKindTabs() {
   const kind = useResultsKind();
   return (
-    <div className="live-update-tabs cash-mode-tabs results-kind-tabs" role="tablist" aria-label="Results">
+    // The Schedule's kind toggles (owner, 2026-10-16: the Bankroll tab in the Schedule's scheme): 8g x 2r
+    // caps chips, the active one in the accent, as Satellites / Restarts / Side Events / Online.
+    <div className="kind-toggles results-kind-tabs" role="tablist" aria-label="Results">
       {[['tournaments', 'Tournaments'], ['cash', 'Cash']].map(([k, label]) => (
-        <button key={k} type="button" role="tab" aria-selected={kind === k} className={kind === k ? 'active' : ''}
-          onClick={() => setResultsKind(k)}>{label}</button>
+        <button key={k} type="button" role="tab" aria-selected={kind === k} className={'kind-toggle' + (kind === k ? ' active' : '')}
+          onClick={() => setResultsKind(k)}><span className="kind-toggle-label">{label}</span></button>
       ))}
     </div>
   );
