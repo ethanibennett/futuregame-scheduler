@@ -99,6 +99,50 @@ const todayISO = () => {
 
 /** The graph's range: one 35g x 4r strip of whole-g segments (the bankroll overview's segmented
  *  strip, drawn here so the page does not load the bankroll chunk). A radio group. */
+/* The live beacon (owner, 2026-10-16): the player is at a table now, and what. From
+   GET /api/backer/:token/live (lib/backer-live.js), polled each minute while the page is visible.
+   A card under the name, before the running total: "Playing now" with a pulsing dot, the game or the
+   event in the display face, the room and when it started. Nothing about money. */
+const LIVE_POLL_MS = 60000;
+function useLiveSession(token) {
+  const [live, setLive] = useState(null);
+  useEffect(() => {
+    let off = false;
+    const check = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetch(`${API_URL}/backer/${token}/live`, { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (!off) setLive(d && d.live ? d.live : null); })
+        .catch(() => {});
+    };
+    check();
+    const id = setInterval(check, LIVE_POLL_MS);
+    const onVis = () => { if (!document.hidden) check(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { off = true; clearInterval(id); document.removeEventListener('visibilitychange', onVis); };
+  }, [token]);
+  return live;
+}
+function liveSince(since, now = Date.now()) {
+  const t = Date.parse(since);
+  if (!Number.isFinite(t)) return '';
+  const clock = new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const mins = Math.max(0, Math.round((now - t) / 60000));
+  const run = mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h${mins % 60 ? ` ${mins % 60}m` : ''}`;
+  return `since ${clock} · ${run}`;
+}
+function LiveBeacon({ live }) {
+  const what = live.kind === 'cash' ? 'Cash game' : 'Tournament';
+  return (
+    <section className="bp-live" aria-live="polite" aria-label="Playing now">
+      <span className="bp-live-dot" aria-hidden="true" />
+      <div className="an-cell an-lbl an-lbl-3">Playing now · {what}</div>
+      <div className="an-cell an-val bp-live-title an-clip">{live.title}</div>
+      <div className="an-cell an-note an-clip">{[live.room, liveSince(live.since)].filter(Boolean).join(' · ')}</div>
+    </section>
+  );
+}
+
 function PushPill({ push }) {
   const { state } = push;
   if (state === 'unsupported' || state === 'unavailable' || state === 'checking') return null;
@@ -338,6 +382,7 @@ export default function BackerPage({ token }) {
   const gridOverlay = forcedGrid || (isAdmin && adminGrid);
   const toggleGrid = () => setAdminGrid((g) => { const next = !g; try { localStorage.setItem('gridOverlay', next ? 'on' : 'off'); } catch { /* private mode */ } return next; });
 
+  const live = useLiveSession(token);
   const load = useCallback(() => {
     setFailed(false);
     setFeed(null);
@@ -388,6 +433,8 @@ export default function BackerPage({ token }) {
           <h2 className="an-cell bp-name an-clip">{name}</h2>
           {feed.stakes ? <p className="an-cell bp-stakes an-clip">{feed.stakes}</p> : null}
         </div>
+
+        {live && <LiveBeacon live={live} />}
 
         {(events.length > 0 || sum.opening !== 0) && (
           <section className="bp-total" aria-label="Running total">

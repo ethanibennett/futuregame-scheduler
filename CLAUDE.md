@@ -214,6 +214,12 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   carries it only when set). bb/hr sits under the share; hours read "6h". The total card ends in a
   **settlement bar** counting down to Sunday noon Eastern (`settlementCountdown`). A device signed in to
   the app as an admin gets the app's "#" grid toggle on the page (shared `localStorage.gridOverlay`).
+  **Live beacon** (owner, 2026-10-16): while the player is at a table, a "Playing now" card under the name
+  (the game or event, the room, since when; never money). `GET /api/backer/:token/live` (`lib/backer-live.js`:
+  a live cash session under 24h old, or a tournament whose latest live update is neither a bust nor a bag,
+  under 20h old, with no result logged), polled each minute while the page is visible; the player is the
+  backers row's owner, else the console owner; a token no roster knows is a 404. The feed is unchanged.
+  Test: `npm run test:backer-live` (in `test:backers`).
   **Bankroll merge, Phase 2** (`docs/bankroll-merge.md`; code in `lib/backer-surface.js`):
   - **Delivery is gated.** Push, SMS and the Sunday email go out only where `BACKER_DELIVERY` is on
     (default: on when `RENDER` is set; `BACKER_DELIVERY=1|0` overrides; a typo is off). This box has

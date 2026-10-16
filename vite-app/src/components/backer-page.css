@@ -329,3 +329,42 @@
 .bp-skeleton .bp-sk-strip { height: calc(var(--subrow) * 3); border-radius: 0; }
 .bp-sk-line { width: calc(var(--gu) * 21); height: calc(var(--subrow) * 1); margin-top: calc(var(--subrow) * 2); }
 .bp-sk-line.is-short { width: calc(var(--gu) * 13); }
+
+/* ── The live beacon (owner, 2026-10-16) ──
+   A card under the name while the player is at a table: the label row (3r, baseline on its 3rd line),
+   the title in the display face (3r), the room and the time (2r), then 2r to the edge: 10r. The dot
+   pulses once a second and a half, in the positive green, 1g in from the card's right on the label's
+   row; reduced motion keeps it still. */
+.bp-live {
+  position: relative;
+  margin-top: calc(var(--subrow) * 2);
+  height: calc(var(--subrow) * 10);
+  box-sizing: border-box;
+  padding: 0 var(--gu);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--elev-1), inset 0 0 0 var(--bw-1) var(--pos-quiet);
+}
+.bp-live .an-lbl { color: var(--pos); }
+.bp-live-title { padding-right: calc(var(--gu) * 2); }
+.bp-live-dot {
+  position: absolute;
+  right: var(--gu);
+  top: calc(var(--subrow) * 1.5);
+  width: var(--subrow);
+  height: var(--subrow);
+  border-radius: var(--radius-circle);
+  background: var(--pos);
+}
+.bp-live-dot::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 0 var(--pos);
+  animation: bpLivePulse 1.6s var(--ease-out, ease-out) infinite;
+}
+@keyframes bpLivePulse {
+  0%   { box-shadow: 0 0 0 0 var(--pos); opacity: 0.7; }
+  100% { box-shadow: 0 0 0 calc(var(--subrow) * 1.25) var(--pos); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .bp-live-dot::after { animation: none; } }

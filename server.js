@@ -636,6 +636,23 @@ app.get('/api/backer/:token/feed', (req, res) => {
   }
 });
 
+// The live beacon (lib/backer-live.js; owner, 2026-10-16): whether the player is at a table now, and
+// what. The page polls it each minute while it is open; a token no roster knows is a 404, as a page.
+app.get('/api/backer/:token/live', (req, res) => {
+  const token = String(req.params.token || '');
+  if (!BACKER_TOKEN_RE.test(token)) return res.status(404).json({ error: 'Not found' });
+  try {
+    const strict = backerSurface.pageSource() === 'sql' && standingLive.cutoverLive(db);
+    const player = backerSurface.pagePlayer(db, token, { strict });
+    if (player === undefined) return res.status(404).json({ error: 'Not found' });
+    res.set('Cache-Control', 'no-store');
+    res.json({ live: require('./lib/backer-live').liveSession(db, player == null ? HAM_OWNER_ID : player) });
+  } catch (err) {
+    console.error('Backer live error:', err);
+    res.status(500).json({ error: 'live failed' });
+  }
+});
+
 // A backer enables push from their page.
 app.post('/api/backer/:token/subscribe', async (req, res) => {
   const token = String(req.params.token || '');
