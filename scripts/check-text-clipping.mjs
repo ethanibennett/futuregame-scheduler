@@ -459,7 +459,7 @@ function scan(rootSel) {
   // Skipped quietly when the account has no bankroll strip (not an admin).
   if (on('bankroll-dashboard')) try {
     await openResults();
-    await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
+    await p.locator('.bk-bar .bk-act:has-text("Dashboard")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1800);
     // The sheet scrolls, and only text on screen is measured: run at the top, then page down
     // through the sheet's body, 11 pages at most. { toEnd } pages on until the body stops moving
@@ -585,7 +585,7 @@ function scan(rootSel) {
   // name wraps, so a long one is checked whole. Long event names truncate.
   if (on('bankroll-locations')) try {
     await openResults();
-    await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
+    await p.locator('.bk-bar .bk-act:has-text("Dashboard")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1500);
     await p.locator('.an-sheet .bd-tabs [role="radio"]:has-text("Locations")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1200);
@@ -636,7 +636,7 @@ function scan(rootSel) {
         if (body) await p.route('**/api/staking/standing/backers', (r) => r.fulfill({ status, json: body }));
         try {
           await openResults();
-          await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
+          await p.locator('.bk-bar .bk-act:has-text("Dashboard")').first().click({ timeout: 4000 });
           await p.waitForTimeout(1500);
           await p.locator('.an-sheet .bd-tabs [role="radio"]:has-text("Backers")').first().click({ timeout: 4000 });
           await p.locator('.bb-backers .bl-item, .bb-backers .an-p.bl-gap').first().waitFor({ timeout: 8000 });
@@ -698,7 +698,7 @@ function scan(rootSel) {
       await p.waitForTimeout(500);
     };
     await openResults();
-    await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
+    await p.locator('.bk-bar .bk-act:has-text("Dashboard")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1500);
     await p.locator('.an-sheet .bd-tabs [role="radio"]:has-text("Import")').first().click({ timeout: 4000 });
     await p.locator('.an-sheet .bid').first().waitFor({ timeout: 8000 });
@@ -808,7 +808,7 @@ function scan(rootSel) {
       try {
         await openResults();
         if (sheet) {
-          await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
+          await p.locator('.bk-bar .bk-act:has-text("Dashboard")').first().click({ timeout: 4000 });
           await p.waitForTimeout(1800);
         }
         const fab = p.locator(sheet ? '.bk-fab--sheet' : '.bk-fab--page');

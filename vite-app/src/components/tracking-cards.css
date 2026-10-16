@@ -70,3 +70,66 @@
 .cal-event-row.tr-card.tracking-pending { outline: var(--bw-1) dashed var(--accent); outline-offset: calc(var(--bw-1) * -1); margin-bottom: calc(var(--subrow) * 2); }
 .tr-card.tracking-pending .tr-pending-bar { cursor: default; }
 .tr-card .tr-pending-actions { padding: 0 var(--gu) calc(var(--subrow) * 2); }
+
+/* ── The bankroll switcher, Analytics and Expenses & Income in the Schedule's scheme (owner, 2026-10-16) ──
+   The tiles are the Schedule's outlined chips (the kind toggles' radius, hairline and accent when on):
+   a caps name, the figure in the money face. Geometry and baseline seating are styles.css's own;
+   only the type and the outline change here. Two classes, to out-rank styles.css, which loads later. */
+.bk-bar.bk-bar--sched .bk-grid { margin-top: 0; }
+.bk-bar.bk-bar--sched .bk-cell { border-radius: var(--radius-xs); }
+.bk-bar.bk-bar--sched .bk-cell.is-on { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); background: rgba(160,160,160,0.1); }
+.bk-bar.bk-bar--sched .bk-cell-name {
+  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-muted);
+}
+.bk-bar.bk-bar--sched .bk-cell.is-on .bk-cell-name { color: var(--accent); }
+.bk-bar.bk-bar--sched .bk-cell-bal { font-family: var(--serif); font-size: var(--fs-sm); font-weight: 700; }
+/* Dashboard and Manage: tiles of the same size, a centred caps label (a control's label centres). */
+.bk-bar.bk-bar--sched .bk-act {
+  align-items: center; justify-content: center; padding: 0;
+  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-muted);
+}
+.bk-bar.bk-bar--sched .bk-act-label { display: block; line-height: 1; text-indent: var(--track-caps); }
+
+/* Expenses & Income: the title in the display face (the Schedule's event-name face), the year's
+   tiles as the switcher's, + Add / Trips / All as the Schedule's caps toggles. */
+.tx-sec .tx-title { font-family: var(--serif); font-weight: 700; font-size: var(--fs-md); }
+.tx-sec .tx-cell { border-radius: var(--radius-xs); }
+.tx-sec .tx-cell-label {
+  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps); text-transform: uppercase;
+}
+.tx-sec .tx-cell-val { font-family: var(--serif); font-size: var(--fs-md); font-weight: 700; }
+.tx-sec .tx-head .bk-head-btn,
+.tx-sec .bk-actions .bk-btn {
+  background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border); border-radius: var(--radius-xs);
+  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-muted);
+}
+.tx-sec .bk-actions .bk-btn { height: calc(var(--subrow) * 3); }
+.tx-sec .tx-head .bk-head-btn > span, .tx-sec .bk-actions .bk-btn > span { text-indent: var(--track-caps); }
+/* Analytics' name in the same display face as the section titles; a control's display-face label
+   takes .ctl-cap, which centres Baskerville's capitals (styles.css, Pills and buttons). */
+.an-launch .an-launch-name { font-family: var(--serif); font-size: var(--fs-md); font-weight: 700; }
+/* No title row above it now (owner, 2026-10-16), so the switcher keeps the Schedule's 2r under the top bar. */
+.bk-bar.bk-bar--sched { padding-top: calc(var(--subrow) * 2); }
+
+/* One row (owner, 2026-10-16): the bankroll dropdown over two major columns (17g), Dashboard and
+   Manage one column each (8g), all 5r. Main is the default (hooks/useBankrolls.js). */
+.bk-bar.bk-bar--sched .bk-grid--row { grid-template-columns: calc(var(--col) * 2 + var(--gu)) var(--col) var(--col); }
+.bk-bar.bk-bar--sched .bk-pick { position: relative; width: auto; cursor: pointer; }
+.bk-bar.bk-bar--sched .bk-pick-caret {
+  position: absolute; right: var(--gu); top: calc(var(--subrow) * 1.5);
+  width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); color: var(--text-muted); pointer-events: none;
+}
+/* The native list over the whole tile: invisible, so the tile's own name and balance show, and a tap
+   anywhere on it opens the picker (the system wheel on a phone). Its type is at least 16px-equivalent
+   so iOS does not zoom the page when it opens. */
+.bk-bar.bk-bar--sched .bk-pick-select {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; margin: 0; border: 0; padding: 0; cursor: pointer;
+  font-size: calc(var(--gu) * 1.5);
+  -webkit-appearance: none; appearance: none;
+}
+.bk-bar.bk-bar--sched .bk-pick:focus-within { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); }

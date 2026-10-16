@@ -525,7 +525,7 @@ export default function ExpensesSection({ token, bankroll = BANKROLL_ALL, bankro
     <section ref={secRef} className="tx-sec" aria-label="Expenses and income">
       <div className="tx-head">
         <span className="tx-title">Expenses &amp; Income</span>
-        <span className="bk-beta">Beta</span>
+
         <button type="button" className="bk-head-btn" onClick={() => setSheet({ type: 'add', preset: { kind: 'expense', bankroll: presetBankroll } })}>
           <span>+ Add</span>
         </button>

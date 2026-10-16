@@ -1795,13 +1795,13 @@ function finalize(c) {
     await click('.filter-chip-square[title="Calendar view"]', 1500);
     await click('.filter-chip-square:not([title]):visible', 800);
   });
-  step('bankrolls', async () => { await nav('Bankroll'); await click('.bk-head-btn', 800); });
+  step('bankrolls', async () => { await nav('Bankroll'); await click('.bk-bar .bk-act:has-text("Manage")', 800); });
   // The bankroll dashboard (the bankroll strip's Dashboard button). A tab is found by its label
   // among the strip's radios (.bd-tabs: the strip's page chevrons are buttons too); when the tabs
   // outgrow 35g the strip is a row that scrolls sideways, and the click scrolls it there.
   const dash = async (tab) => {
     await nav('Bankroll');
-    await click('.bk-head-btn:has-text("Dashboard")', 1500);
+    await click('.bk-bar .bk-act:has-text("Dashboard")', 1500);
     if (tab) await click(`.an-sheet .bd-tabs [role="radio"]:has-text("${tab}")`, 600);
   };
   // The Overview: hero, graph, the collapsible table sections (Summary, Sessions, Games, Rooms,

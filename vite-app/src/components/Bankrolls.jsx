@@ -21,25 +21,38 @@ const tone = (v) => (v < 0 ? ' is-neg' : '');
 export function BankrollSwitcher({ bk, balances, onManage, onDashboard }) {
   const cells = [{ id: BANKROLL_ALL, name: 'All' }, ...bk.visible];
   return (
-    <section className="bk-bar" aria-label="Bankroll">
-      <div className="bk-head">
-        <span className="bk-head-title">Bankroll</span>
-        <span className="bk-beta">Beta</span>
-        {onDashboard && <button type="button" className="bk-head-btn" onClick={onDashboard}><span>Dashboard</span></button>}
-        <button type="button" className="bk-head-btn" onClick={onManage}><span>Manage</span></button>
-      </div>
-      <div className="bk-grid" role="radiogroup" aria-label="Show results for">
-        {cells.map((b) => {
-          const bal = balances.get(b.id) || { balance: 0, currency: 'USD' };
-          const on = bk.selected === b.id;
+    /* In the Schedule's scheme (owner, 2026-10-16): no title row (the top bar says Bankroll); the
+       bankrolls and the two actions are one grid of 8g tiles, the tiles the Schedule's outlined chips
+       with a caps name and the balance in its money face (tracking-cards.css). */
+    <section className="bk-bar bk-bar--sched" aria-label="Bankroll">
+      <div className="bk-grid bk-grid--row">
+        {(() => {
+          const cur = cells.find((c) => c.id === bk.selected) || cells[0];
+          const bal = balances.get(cur.id) || { balance: 0, currency: 'USD' };
           return (
-            <button key={b.id} type="button" role="radio" aria-checked={on}
-              className={'bk-cell' + (on ? ' is-on' : '')} onClick={() => bk.setSelected(b.id)}>
-              <span className="bk-cell-name">{b.name}</span>
+            <label className="bk-cell bk-pick">
+              <span className="bk-cell-name">{cur.name}</span>
               <span className={'bk-cell-bal' + tone(bal.balance)}>{money(bal.balance, bal.currency)}</span>
-            </button>
+              <svg className="bk-pick-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
+              {/* The native list (on a phone, the system picker), laid over the whole tile. */}
+              <select className="bk-pick-select" aria-label="Bankroll" value={String(cur.id)}
+                onChange={(e) => { const c = cells.find((x) => String(x.id) === e.target.value); if (c) bk.setSelected(c.id); }}>
+                {cells.map((b) => {
+                  const bb = balances.get(b.id) || { balance: 0, currency: 'USD' };
+                  return <option key={b.id} value={String(b.id)}>{b.name} · {money(bb.balance, bb.currency)}</option>;
+                })}
+              </select>
+            </label>
           );
-        })}
+        })()}
+        {onDashboard && (
+          <button type="button" className="bk-cell bk-act" onClick={onDashboard} title="Bankroll dashboard (beta)">
+            <span className="bk-act-label">Dashboard</span>
+          </button>
+        )}
+        <button type="button" className="bk-cell bk-act" onClick={onManage} title="Manage bankrolls">
+          <span className="bk-act-label">Manage</span>
+        </button>
       </div>
     </section>
   );

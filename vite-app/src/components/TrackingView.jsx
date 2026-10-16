@@ -775,7 +775,6 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       {isAdmin && resultsKind === 'cash' ? (
         <Suspense fallback={null}><CashSessionsView token={token} bk={bk} intent={cashIntent} onIntentDone={onIntentDone} /></Suspense>
       ) : (<>
-      {!bk.enabled && <div className="section-header"><h2>Bankroll</h2></div>}
       {/* One row, as the Schedule's location | filter | calendar (owner, 2026-10-16): Log Result spans
           three primary columns (26g), then a 4g Share square and the 3g Tax report square, 1g apart. */}
       <div className="tr-head-row">

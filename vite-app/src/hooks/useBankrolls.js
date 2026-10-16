@@ -4,10 +4,23 @@
 // renders exactly what it rendered before bankrolls existed.
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { API_URL } from '../utils/api.js';
-import { BANKROLL_ALL, toBankrollKey } from '../utils/bankrolls.js';
+import { BANKROLL_ALL, BANKROLL_MAIN, toBankrollKey } from '../utils/bankrolls.js';
 
 const STORE_KEY = 'resultsBankroll';
-const readSelected = () => { try { return toBankrollKey(localStorage.getItem(STORE_KEY)); } catch { return BANKROLL_ALL; } };
+/* Main is the default (owner, 2026-10-16: the bankrolls became one dropdown, "main as the default").
+   Nothing stored is Main; a browser that stored All before then (All was the default, so that was
+   almost always the default, not a choice) moves to Main once; a choice made after that is kept. */
+const MAIN_DEFAULT_KEY = 'resultsBankrollMainDefault';
+const readSelected = () => {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!localStorage.getItem(MAIN_DEFAULT_KEY)) {
+      localStorage.setItem(MAIN_DEFAULT_KEY, '1');
+      if (raw == null || raw === BANKROLL_ALL) { localStorage.setItem(STORE_KEY, BANKROLL_MAIN); return BANKROLL_MAIN; }
+    }
+    return raw == null ? BANKROLL_MAIN : toBankrollKey(raw);
+  } catch { return BANKROLL_MAIN; }
+};
 
 // `version` is anything that changes when results change (App passes its tracking entries), so the
 // balances, which the server now computes, are refetched after a result is logged or edited.
@@ -60,9 +73,12 @@ export default function useBankrolls({ enabled, token, version }) {
   // in after the app opened picks up their remembered selection here rather than at mount.
   useEffect(() => { setSelectedState(enabled ? readSelected() : BANKROLL_ALL); }, [enabled]);
 
-  // A selection that no longer exists (deleted, archived, another account's) falls back to All.
+  // A selection that no longer exists (deleted, archived, another account's) falls back to Main
+  // while the list is loading or when Main is in it, else to All.
   const visible = bankrolls.filter((b) => !b.archived);
-  const effective = enabled && (selected === BANKROLL_ALL || visible.some((b) => b.id === selected)) ? selected : BANKROLL_ALL;
+  const known = selected === BANKROLL_ALL || visible.some((b) => b.id === selected) || (selected === BANKROLL_MAIN && !bankrolls.length);
+  const fallback = !bankrolls.length || visible.some((b) => b.id === BANKROLL_MAIN) ? BANKROLL_MAIN : BANKROLL_ALL;
+  const effective = enabled ? (known ? selected : fallback) : BANKROLL_ALL;
 
   const setSelected = useCallback((key) => {
     const k = toBankrollKey(key);
