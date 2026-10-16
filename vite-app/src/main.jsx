@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import { ToastProvider } from './contexts/ToastContext.jsx';
 import './styles.css';
+// The experimental Swiss theme: every rule in it is scoped to data-theme swiss-light / swiss-dark.
+import './theme-swiss.css';
 import { installNumericFocusClear } from './utils/numeric-focus-clear.js';
 import { installGridSnap } from './utils/grid-snap.js';
 

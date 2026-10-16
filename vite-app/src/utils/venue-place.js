@@ -69,9 +69,9 @@ export function mapsLinks({ name, town, coords }) {
   };
 }
 
-// The app's theme, as a map's colour scheme: light and cloudy are light grounds.
+// The app's theme, as a map's colour scheme: light, cloudy and swiss-light are light grounds.
 export function mapTheme() {
   if (typeof document === 'undefined') return 'dark';
   const t = document.documentElement.dataset.theme;
-  return t === 'light' || t === 'cloudy' ? 'light' : 'dark';
+  return t === 'light' || t === 'cloudy' || t === 'swiss-light' ? 'light' : 'dark';
 }

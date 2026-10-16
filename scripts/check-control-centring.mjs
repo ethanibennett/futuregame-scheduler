@@ -18,6 +18,7 @@
 //                   app's JWT_SECRET from ecosystem.config.cjs, for http://localhost:3001)
 //   CHECK_TOKEN_FILE  or a file holding one
 //   CHECK_USERNAME  that account's username (default ham5)
+//   CHECK_THEME     optional: a theme to run under (localStorage 'theme', e.g. swiss-light)
 //   CHECK_FRESH_USER / CHECK_FRESH_PASSWORD  optional: the EMAIL and password of an account with
 //                   no real name, signed in through the login screen to reach the real-name prompt
 //                   (it only shows after a password login) and the first-run wizard after it.
@@ -1335,14 +1336,15 @@ function finalize(c) {
   const ctx = await b.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: DPR });
   const t = listOnly ? '' : token();
   // Signed in as the admin, past the first-run wizard (the onboarding view clears the flag).
-  await ctx.addInitScript(({ t, u, overlay }) => {
+  await ctx.addInitScript(({ t, u, overlay, theme }) => {
     // --overlay screenshots show the grid lines without the cyan numeric readout over them.
     if (overlay) localStorage.setItem('gridReadout', 'off');
+    if (theme) localStorage.setItem('theme', theme);
     if (sessionStorage.getItem('guard-signed-out')) return;
     localStorage.setItem('token', t); localStorage.setItem('username', u);
     localStorage.setItem('onboardComplete', '1'); localStorage.setItem('hasOnboarded', 'true');
     if (!sessionStorage.getItem('guard-onboarding')) localStorage.setItem('onboarded', '1');
-  }, { t, u: USER, overlay });
+  }, { t, u: USER, overlay, theme: process.env.CHECK_THEME || '' });
   // Edit home: every view sees the default home whatever the account saved, and the sheet's
   // changes (and Reset) are answered here and never written, so the guard leaves the account's
   // home layout as it found it (scripts/home-states.mjs).

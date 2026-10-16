@@ -7,11 +7,14 @@
  * <html data-theme="...">. The button steps through THEME_ORDER and wraps. */
 
 export const THEME_KEY = 'theme';
-export const THEME_ORDER = ['dark', 'dusk', 'light', 'cloudy'];
-export const isDarkTheme = (t) => t === 'dark' || t === 'dusk';
-export const THEME_ICON = { dark: 'moon', dusk: 'sunset', light: 'sun', cloudy: 'cloud' };
-export const THEME_LABEL = { dark: 'Dark', dusk: 'Dusk', light: 'Light', cloudy: 'Cloudy' };
-export const THEME_META = { dark: '#111111', dusk: '#0d1525', light: '#f5f5f5', cloudy: '#cbcbcb' };
+// swiss-light and swiss-dark are the EXPERIMENTAL Swiss theme (owner brief, 2026-10-16): Helvetica
+// only, bold and ultralight, white/black with one red. Every style it has is in theme-swiss.css and
+// applies only under these two values; the four themes before them are untouched by it.
+export const THEME_ORDER = ['dark', 'dusk', 'light', 'cloudy', 'swiss-light', 'swiss-dark'];
+export const isDarkTheme = (t) => t === 'dark' || t === 'dusk' || t === 'swiss-dark';
+export const THEME_ICON = { dark: 'moon', dusk: 'sunset', light: 'sun', cloudy: 'cloud', 'swiss-light': 'swissLight', 'swiss-dark': 'swissDark' };
+export const THEME_LABEL = { dark: 'Dark', dusk: 'Dusk', light: 'Light', cloudy: 'Cloudy', 'swiss-light': 'Swiss light', 'swiss-dark': 'Swiss dark' };
+export const THEME_META = { dark: '#111111', dusk: '#0d1525', light: '#f5f5f5', cloudy: '#cbcbcb', 'swiss-light': '#ffffff', 'swiss-dark': '#000000' };
 
 /** The theme after `t` in THEME_ORDER, wrapping. An unknown value steps to the first. */
 export function nextTheme(t) {

@@ -14,25 +14,27 @@ import {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel) => readFileSync(path.join(here, rel), 'utf8');
 
-test('the order is dark, dusk, light, cloudy and the key is the app\'s "theme"', () => {
-  assert.deepEqual(THEME_ORDER, ['dark', 'dusk', 'light', 'cloudy']);
+test('the order is dark, dusk, light, cloudy, then the experimental Swiss pair, and the key is the app\'s "theme"', () => {
+  assert.deepEqual(THEME_ORDER, ['dark', 'dusk', 'light', 'cloudy', 'swiss-light', 'swiss-dark']);
   assert.equal(THEME_KEY, 'theme');
 });
 
 test('every theme has an icon, a label and a theme-color, and nothing else does', () => {
   for (const map of [THEME_ICON, THEME_LABEL, THEME_META]) assert.deepEqual(Object.keys(map).sort(), [...THEME_ORDER].sort());
-  assert.deepEqual(THEME_ORDER.filter(isDarkTheme), ['dark', 'dusk']);
+  assert.deepEqual(THEME_ORDER.filter(isDarkTheme), ['dark', 'dusk', 'swiss-dark']);
 });
 
 test('the button steps through the order and wraps', () => {
   assert.equal(nextTheme('dark'), 'dusk');
   assert.equal(nextTheme('dusk'), 'light');
   assert.equal(nextTheme('light'), 'cloudy');
-  assert.equal(nextTheme('cloudy'), 'dark');
+  assert.equal(nextTheme('cloudy'), 'swiss-light');
+  assert.equal(nextTheme('swiss-light'), 'swiss-dark');
+  assert.equal(nextTheme('swiss-dark'), 'dark');
   let t = 'light';
   const seen = [];
   for (let i = 0; i < THEME_ORDER.length; i++) { t = nextTheme(t); seen.push(t); }
-  assert.deepEqual(seen, ['cloudy', 'dark', 'dusk', 'light']);     // four presses, back where it started
+  assert.deepEqual(seen, ['cloudy', 'swiss-light', 'swiss-dark', 'dark', 'dusk', 'light']);     // six presses, back where it started
   assert.equal(nextTheme('nonsense'), 'dark');                    // an unknown value steps to the first
 });
 
@@ -40,7 +42,9 @@ test('the label names the theme the button switches to', () => {
   assert.equal(nextThemeLabel('dark'), 'Dusk');
   assert.equal(nextThemeLabel('dusk'), 'Light');
   assert.equal(nextThemeLabel('light'), 'Cloudy');
-  assert.equal(nextThemeLabel('cloudy'), 'Dark');
+  assert.equal(nextThemeLabel('cloudy'), 'Swiss light');
+  assert.equal(nextThemeLabel('swiss-light'), 'Swiss dark');
+  assert.equal(nextThemeLabel('swiss-dark'), 'Dark');
 });
 
 test('a stored value counts only if it names a theme', () => {
@@ -55,11 +59,11 @@ test('a device with no choice gets its scheme', () => {
   assert.equal(deviceTheme(false), 'dark');
 });
 
-test('index.html\'s head script knows the same four theme-colors, and gives /b/ the stored theme first', () => {
+test('index.html\'s head script knows the same six theme-colors, and gives /b/ the stored theme first', () => {
   const html = read('../../../index.html');
   const m = /var mc = \{([^}]*)\}/.exec(html);
   assert.ok(m, 'the head script has a theme-color map');
-  const map = Object.fromEntries([...m[1].matchAll(/(\w+):'(#[0-9a-fA-F]{6})'/g)].map((x) => [x[1], x[2]]));
+  const map = Object.fromEntries([...m[1].matchAll(/'?([\w-]+)'?:'(#[0-9a-fA-F]{6})'/g)].map((x) => [x[1], x[2]]));
   assert.deepEqual(map, THEME_META);
   // The backer branch uses a stored theme (one of mc's keys) before the device's scheme.
   assert.match(html, /t = stored && Object\.prototype\.hasOwnProperty\.call\(mc, stored\) \? stored : \(mm\('\(prefers-color-scheme: light\)'\)/);
