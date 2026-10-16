@@ -509,6 +509,13 @@ JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
   guards the Back/Forward double ship.
   Before/after video: `scripts/capture-replayer-motion.mjs` + `compare-replayer-motion.mjs`.
   See `docs/replayer-springs.md`.
+- **The Swiss theme** (owner, 2026-10-16; app admins only): `swiss-light` and `swiss-dark`, in the theme button's
+  cycle only for an admin (`utils/theme.js` themeOrder/nextTheme). Every style is `vite-app/src/theme-swiss.css`,
+  scoped to those two values; the markup hooks it needs render nothing elsewhere (`components/SwissParts.jsx`:
+  sentence-case strips, the raised currency mark, the Board density; `utils/swiss-typography.js`: real minus, dashes
+  and apostrophes on screen; `utils/swiss-share.js`: the share images). The 47 picks it implements are the catalogue
+  https://claude.ai/artifact/PaDqr8bjZWLX2ByoFuDKiE (not taken: 12, 33, 42). Its controls are flush left by design,
+  so `check:controls` with `CHECK_THEME=swiss-light` reports their labels off centre; `check:clipping` must pass.
 - **Design tokens**: type, spacing, radius, elevation, brand, motion and focus
   tokens live at the top of `vite-app/src/styles.css` — see `docs/design-tokens.md`
   for the steps and what each replaces. Never write a bare literal for anything a
