@@ -632,6 +632,7 @@ to the account and readable with WebFetch.
 | Graphics backlog | 100 measured graphic upgrades across the whole app, each naming the file and quoting the current value | https://claude.ai/code/artifact/f5f543f9-33b7-44e3-94d6-c9e7779eefcd |
 | Launch plan | Launch on 5 Jan 2027 at the BWPO, free until a 1 Mar paywall, $10,000 in three gates; channels, the twelve ads, policy wording, ASO, tracking, next 10 actions and 7 open questions (2026-10-13) | https://claude.ai/artifact/5k5qVK6Y8cPmzdMXjJEDgW |
 | Variant picker | Ten redesigns of the replayer entry's variant picker (recommended 8+10, fallback 1) (2026-10-13) | https://claude.ai/artifact/Jk96jEaP58rBAsf4eak9ka |
+| Variant wheels | Working prototype of direction 9 revised by the owner: a structure wheel, a game wheel (14 games), variants opening rightward (Hold'em: Pineapple, Short Deck; Razz: Action Razz, Razzdugi, Razzdeucy, 2-7 Razz) (2026-10-16; source `docs/prototypes/variant-wheels.html`) | https://claude.ai/artifact/TKD2nCXC32Wz4SdZdBdKgh |
 | Parser questions | 47 questions from the real-hand corpora, tap-to-answer; the answers are in its db collection `answers` (Artifact tool, read_db) (2026-10-14) | https://claude.ai/artifact/9m4sQRQY4JpvcuEZJZR5NR |
 | Merge questions | The 16 bankroll-merge calls; answers in its db collection `answers` (2026-10-14) | https://claude.ai/artifact/K7iAcVUaV7ZjQ21U9EyynU |
 
