@@ -335,11 +335,15 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
 }
 
 // ── Tracking View (main export) ─────────────────────────────
-export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone, onLog, deepLink = null }) {
+export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone, onLog, deepLink = null, onSetPlayed = null }) {
   const toast = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [pendingFormId, setPendingFormId] = useState(null);
+  // The awaiting card's "Didn't play" (owner, 2026-10-16): the home's To log action, here too.
+  // { event, at } while the card shows "Not played" and an Undo, for SKIP_HOLD_MS.
+  const [skipped, setSkipped] = useState(null);
+  const [skipBusy, setSkipBusy] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showWrapUp, setShowWrapUp] = useState(false);
   const [showTaxReport, setShowTaxReport] = useState(false);
@@ -441,6 +445,32 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
     const first = awaitingResults(mySchedule, allTrackingData, myActiveUpdates, { today: getToday(), now: getNow(), startOf: parseTournamentTime, plans })[0];
     return first ? first.event : null;
   }, [mySchedule, allTrackingData, myActiveUpdates, tournaments]);
+
+  // Didn't play: user_schedules.not_played (App's setNotPlayed, the home's own call), so the event
+  // stops being asked about everywhere; the card says so with an Undo for SKIP_HOLD_MS, then the
+  // next awaiting event (if any) takes its place.
+  const SKIP_HOLD_MS = 8000;
+  const skipPending = async (event) => {
+    if (!onSetPlayed || skipBusy) return;
+    setSkipBusy(true);
+    const ok = await onSetPlayed(event.id, true);
+    setSkipBusy(false);
+    if (ok) setSkipped({ event, at: Date.now() });
+    else toast?.error('Could not mark it not played');
+  };
+  const undoSkip = async () => {
+    if (!skipped || skipBusy) return;
+    setSkipBusy(true);
+    const ok = await onSetPlayed(skipped.event.id, false);
+    setSkipBusy(false);
+    if (ok) setSkipped(null);
+    else toast?.error('Could not undo');
+  };
+  useEffect(() => {
+    if (!skipped) return undefined;
+    const id = setTimeout(() => setSkipped(null), SKIP_HOLD_MS - (Date.now() - skipped.at));
+    return () => clearTimeout(id);
+  }, [skipped]);
 
   // What the home asked for (App's resultsIntent): a form, an entry, a sheet. The cash and
   // expense ones are handed to the view that owns that form, which reports back itself.
@@ -669,7 +699,26 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
         </Suspense>
       )}
 
-      {pendingEvent && !showAddForm && !intentForm && pendingFormId !== pendingEvent.id && (
+      {skipped && !showAddForm && !intentForm && (
+        <div className="tracking-card tracking-pending" style={{padding:'calc(var(--subrow) * 2) var(--gu)', marginBottom:'calc(var(--subrow) * 2)', border:0, outline:'var(--bw-1) dashed var(--border)', outlineOffset:'calc(var(--bw-1) * -1)'}}>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:'var(--gu)'}}>
+            <div style={{flex:1, minWidth:0}}>
+              <div style={{fontSize:'calc(var(--gu) * 1.252)', lineHeight:'calc(var(--subrow) * 3)', fontWeight: 'var(--fw-bold)', color:'var(--text)', fontFamily:"'Univers Condensed','Univers',sans-serif", overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                {skipped.event.event_name}
+              </div>
+              <div style={{fontSize:'calc(var(--gu) * 1.060)', lineHeight:'calc(var(--subrow) * 2)', color:'var(--text-muted)'}}>
+                Marked not played
+              </div>
+            </div>
+            <button className="btn btn-ghost btn-sm" style={{flexShrink:0, width:'var(--col)', padding:0}} disabled={skipBusy}
+              onClick={undoSkip}>
+              Undo
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!skipped && pendingEvent && !showAddForm && !intentForm && pendingFormId !== pendingEvent.id && (
         <div className="tracking-card tracking-pending" style={{padding:'calc(var(--subrow) * 2) var(--gu)', marginBottom:'calc(var(--subrow) * 2)', border:0, outline:'var(--bw-1) dashed var(--accent)', outlineOffset:'calc(var(--bw-1) * -1)'}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
             <div style={{flex:1, minWidth:0}}>
@@ -683,6 +732,12 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
                 Awaiting result
               </div>
             </div>
+            {onSetPlayed && (
+              <button className="btn btn-ghost btn-sm" style={{flexShrink:0, marginLeft:'var(--gu)', width:'var(--col)', padding:0}} disabled={skipBusy}
+                onClick={() => skipPending(pendingEvent)} aria-label={`Didn't play ${pendingEvent.event_name}: stop asking for its result`}>
+                Didn&rsquo;t play
+              </button>
+            )}
             <button className="btn btn-primary btn-sm" style={{flexShrink:0, marginLeft:'var(--gu)', width:'var(--col)', padding:0}}
               onClick={() => setPendingFormId(pendingEvent.id)}>
               Log Result

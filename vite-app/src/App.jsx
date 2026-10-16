@@ -2045,6 +2045,7 @@ function App() {
                 intent={resultsIntent}
                 onIntentDone={clearResultsIntent}
                 onLog={logIntoResults}
+                onSetPlayed={setNotPlayed}
               />
             )}
             </div>
