@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
+import { StripLabel } from './SwissParts.jsx';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
@@ -694,7 +695,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
         className={`cal-venue-strip venue-strip-${venue.abbr.toLowerCase().replace(/\s+/g, '-')}`}
         style={{ background: stripColor, color: stripTextColor, cursor: 'pointer' }}
         {...venueStripProps(tournament, toggle, { 'aria-expanded': open })}
-      ><span className="venue-strip-abbr">{getStripAbbr(venue.abbr)}</span>{open && <span className="venue-strip-full">{venue.longName || venue.abbr}</span>}</div>
+      ><StripLabel text={getStripAbbr(venue.abbr)} />{open && <span className="venue-strip-full">{venue.longName || venue.abbr}</span>}</div>
       <div className="cal-event-row-content" style={isInSchedule ? {'--card-outline': conditions && conditions.length > 0 ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
         {/* Collapsed bar -- always visible */}
         <div className="cal-event-bar" onClick={toggle} role="button" tabIndex={0} aria-expanded={open} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}>
@@ -1282,7 +1283,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
         className={`cal-venue-strip venue-strip-${venue.abbr.toLowerCase().replace(/\s+/g, '-')}`}
         style={{ background: stripColor, color: stripTextColor, cursor: 'pointer' }}
         {...venueStripProps(tournament, expand)}
-      ><span className="venue-strip-abbr">{getStripAbbr(venue.abbr)}</span></div>
+      ><StripLabel text={getStripAbbr(venue.abbr)} /></div>
       <div className="cal-event-row-content" style={isInSchedule ? {'--card-outline': hasConditions ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
         <div className="cal-event-bar" onClick={expand} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); expand(e); } }}>
           {tournament.venue === 'Personal' ? (

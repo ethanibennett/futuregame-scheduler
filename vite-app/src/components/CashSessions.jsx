@@ -32,6 +32,7 @@ import {
 } from '../utils/cash-sessions.js';
 import { cashBbGroups, bbColumn, bbFigures, bbBasis, unitLabel } from '../utils/bb-hr.js';
 import { CardStrip, MonthBreak, BankrollGraph } from './ResultCardParts.jsx';
+import { MoneyParts } from './SwissParts.jsx';
 import { fmtDay } from '../utils/backer-page.js';
 import useLiveCashSession, { setLiveSession } from '../hooks/useLiveCashSession.js';
 import { useResultsFocus, clearResultsFocus, revealInScroller } from '../hooks/useResultsFocus.js';
@@ -412,7 +413,7 @@ function Summary({ stats }) {
       <div className="tracking-summary-head">
         <span className="tr-seat tr-seat-3" style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Profit{stats.mixed ? ` (${cur})` : ''}</span>
       </div>
-      <div className={'tr-seat tr-sum-net' + (o.net > 0 ? ' is-pos' : o.net < 0 ? ' is-neg' : '')}>{signed(o.net, cur)}</div>
+      <div className={'tr-seat tr-sum-net' + (o.net > 0 ? ' is-pos' : o.net < 0 ? ' is-neg' : '')}><MoneyParts text={signed(o.net, cur)} /></div>
       <p className="tr-seat tr-seat-2 tr-sum-sub">
         {plural(stats.sessions, 'session')} · {formatHours(o.hours)} · {perHour(o.hourly, cur)}
       </p>

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { MoneyParts } from './SwissParts.jsx';
 import { API_URL } from '../utils/api.js';
 import { normaliseHomes } from '../utils/money-homes.js';
 import { CURRENCY_CONFIG, formatCurrencyAmount } from '../utils/utils.js';
@@ -141,12 +142,12 @@ export default function BankrollOverview({ d, risk, bk, bkKey, currency: asked, 
       <div className={'bd-hero' + (busy ? ' is-busy' : '')} aria-busy={busy ? 'true' : undefined}>
         <div className="bd-hero-col">
           <div className="an-cell an-lbl an-lbl-2 an-clip">Balance</div>
-          <div className={'an-cell bd-hero-val an-clip' + (d.closing.total_display < 0 ? ' an-neg' : '')}>{money(d.closing.total_display)}</div>
+          <div className={'an-cell bd-hero-val an-clip' + (d.closing.total_display < 0 ? ' an-neg' : '')}><MoneyParts text={money(d.closing.total_display)} /></div>
           <div className="an-cell an-note bd-note-3 an-clip">{currency} · {sc.key === 'all' ? 'every bankroll' : sc.name}</div>
         </div>
         <div className="bd-hero-col an-num">
           <div className="an-cell an-lbl an-lbl-2 an-clip">Profit · {rangeLabel}</div>
-          <div className={'an-cell bd-hero-val an-clip' + tone(s.results)}>{signed(s.results)}</div>
+          <div className={'an-cell bd-hero-val an-clip' + tone(s.results)}><MoneyParts text={signed(s.results)} /></div>
           <div className="an-cell an-note bd-note-3 an-clip">
             {count(s.mtt.events)} {s.mtt.events === 1 ? 'event' : 'events'} · {count(s.cash.sessions)} cash {s.cash.sessions === 1 ? 'session' : 'sessions'}
           </div>
