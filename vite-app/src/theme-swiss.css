@@ -1166,3 +1166,107 @@
 :root[data-theme^="swiss"] .dashboard-view.home :is(.dashboard-section-title, .hm-sec-title) * { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
 :root[data-theme^="swiss"] .dashboard-view.home :is(.hm-bank-v, .hm-fact-v, .hm-prow-v, .hm-receipt-net, .hm-period-net) * { font-weight: var(--sw-bold); }
 :root[data-theme^="swiss"] .dashboard-view.home .hm-edit { margin-left: 0 !important; margin-right: auto !important; }
+
+/* --- Second pass, 50: the replayer in the theme (done last, as asked). A plain felt in the ground
+   colour inside one ink rail; seats are hairline boxes with the name light over the stack in
+   tabular bold; actions and bets are light words with no badge; the pot is the one display figure;
+   chips are ink; and the only red is the all-in. The table's own skins (Casino Royale, Neon Vegas)
+   give way while a Swiss theme is on. --------------------------------------------------------- */
+:root[data-theme^="swiss"] .replayer-replay,
+:root[data-theme^="swiss"] .replayer-bottom-fixed { background: var(--sw-ground) !important; }
+:root[data-theme^="swiss"] .replayer-table-rail {
+  background: var(--sw-ground) !important;
+  background-image: none !important;
+  box-shadow: inset 0 0 0 var(--bw-2) var(--sw-ink) !important;
+  border-color: var(--sw-ink) !important;
+}
+:root[data-theme^="swiss"] .replayer-table .replayer-table-felt {
+  background: var(--sw-ground) !important;
+  background-image: none !important;
+  box-shadow: inset 0 0 0 var(--bw-fine) var(--sw-g30) !important;
+  border-color: transparent !important;
+}
+:root[data-theme^="swiss"] .replayer-table .replayer-table-felt::before,
+:root[data-theme^="swiss"] .replayer-table .replayer-table-felt::after { display: none !important; }
+:root[data-theme^="swiss"] .replayer-watermark { color: var(--sw-g10) !important; font-weight: var(--sw-bold); letter-spacing: var(--sw-track-display); opacity: 1; }
+:root[data-theme^="swiss"] .replayer-level-blinds { background: transparent !important; box-shadow: none !important; border-color: transparent !important; color: var(--sw-g60) !important; }
+
+/* Seats. */
+:root[data-theme^="swiss"] .replayer-seat-info {
+  background: var(--sw-ground) !important;
+  background-image: none !important;
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--sw-ink) !important;
+  border-color: var(--sw-ink) !important;
+}
+:root[data-theme^="swiss"] :is(.replayer-seat.is-hero, .replayer-seat.active-turn) .replayer-seat-info { box-shadow: inset 0 0 0 var(--bw-2) var(--sw-ink) !important; }
+:root[data-theme^="swiss"] .replayer-seat-name { color: var(--sw-g60) !important; font-weight: var(--sw-thin); }
+:root[data-theme^="swiss"] .replayer-seat-stack { color: var(--sw-ink) !important; font-weight: var(--sw-bold); letter-spacing: var(--sw-track); font-variant-numeric: tabular-nums; }
+:root[data-theme^="swiss"] .replayer-seat.folded .replayer-seat-info { box-shadow: inset 0 0 0 var(--bw-fine) var(--sw-g30) !important; }
+/* All-in: the one red on the table. */
+:root[data-theme^="swiss"] .replayer-seat.is-allin .replayer-seat-info { box-shadow: inset 0 0 0 var(--bw-2) var(--sw-red) !important; }
+:root[data-theme^="swiss"] .replayer-allin-mark { color: var(--sw-red) !important; font-weight: var(--sw-bold); }
+
+/* Actions and bets: light words, no badge; an all-in action is red. */
+:root[data-theme^="swiss"] .replayer-action-badge-outer {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  color: var(--sw-ink) !important;
+  font-weight: var(--sw-thin);
+}
+:root[data-theme^="swiss"] .replayer-action-badge-outer * { color: inherit !important; font-weight: inherit; }
+:root[data-theme^="swiss"] .replayer-action-badge-outer.action-fold { color: var(--sw-g60) !important; }
+:root[data-theme^="swiss"] .replayer-action-badge-outer.action-allin { color: var(--sw-red) !important; font-weight: var(--sw-bold); }
+:root[data-theme^="swiss"] .replayer-bet-chip { color: var(--sw-ink) !important; font-weight: var(--sw-thin); background: transparent !important; box-shadow: none !important; }
+:root[data-theme^="swiss"] .replayer-bet-chip * { color: inherit !important; }
+:root[data-theme^="swiss"] :is(.chip-disc, .replayer-pot-chip-disc, .replayer-flying-chip.is-disc) {
+  background: var(--sw-ink) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border-color: var(--sw-ink) !important;
+}
+
+/* The pot: the display figure. */
+:root[data-theme^="swiss"] .replayer-pot-total { color: var(--sw-ink) !important; font-weight: var(--sw-bold); letter-spacing: var(--sw-track-display); font-size: var(--fs-xl) !important; }
+:root[data-theme^="swiss"] .replayer-pot-total * { color: inherit !important; font-weight: inherit; }
+:root[data-theme^="swiss"] .replayer-pot-cell-label { color: var(--sw-g60) !important; font-weight: var(--sw-thin) !important; font-size: var(--fs-xs) !important; letter-spacing: 0 !important; }
+
+/* The transport: hairline squares on the ground, Play the one red fill. */
+:root[data-theme^="swiss"] .replayer-controls { background: transparent !important; background-image: none !important; box-shadow: none !important; }
+:root[data-theme^="swiss"] .replayer-controls button {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--sw-ink) !important;
+  border-color: transparent !important;
+  color: var(--sw-ink) !important;
+}
+:root[data-theme^="swiss"] .replayer-controls .replayer-play-btn { background: var(--sw-red) !important; box-shadow: none !important; color: #ffffff !important; }
+:root[data-theme^="swiss"] .replayer-controls .replayer-play-btn * { color: #ffffff !important; fill: currentColor; }
+:root[data-theme^="swiss"] .replayer-quick-btn { background: transparent !important; box-shadow: inset 0 0 0 var(--bw-hair) var(--sw-ink) !important; color: var(--sw-ink) !important; }
+
+/* Replayer, second look: folded seats on the ground (only their rule fades), chips drawn by inline
+   colour turned to ink, the dealer button an ink square with the D in the ground colour, and no
+   shading under the table or around the rail. */
+:root[data-theme^="swiss"] .replayer-seat.folded .replayer-seat-info,
+:root[data-theme^="swiss"] .replayer-seat.mucked .replayer-seat-info { background: var(--sw-ground) !important; filter: none !important; }
+:root[data-theme^="swiss"] :is(.chip-stack-visual, .replayer-pot-chip-stack, .replayer-pot-chips) * {
+  background: var(--sw-ink) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border-color: var(--sw-ink) !important;
+}
+:root[data-theme^="swiss"] .replayer-dealer-btn { background: var(--sw-ink) !important; box-shadow: none !important; border-color: var(--sw-ink) !important; }
+:root[data-theme^="swiss"] .replayer-dealer-btn :is(.dg-light, .dg-dark) { fill: transparent !important; }
+:root[data-theme^="swiss"] .replayer-dealer-btn .dg-face { fill: var(--sw-ground) !important; }
+:root[data-theme^="swiss"] .replayer-under,
+:root[data-theme^="swiss"] .replayer-table-slot,
+:root[data-theme^="swiss"] .replayer-table { background: transparent !important; background-image: none !important; box-shadow: none !important; }
+:root[data-theme^="swiss"] .replayer-under::before,
+:root[data-theme^="swiss"] .replayer-under::after,
+:root[data-theme^="swiss"] .replayer-bottom-fixed::before,
+:root[data-theme^="swiss"] .replayer-bottom-fixed::after { display: none !important; }
+:root[data-theme^="swiss"] .replayer-table-rail { box-shadow: inset 0 0 0 var(--bw-2) var(--sw-ink) !important; filter: none !important; }
+:root[data-theme^="swiss"] :is(.chip-disc, .replayer-pot-chip-disc) { --chip: var(--sw-ink) !important; background: transparent !important; }
+:root[data-theme^="swiss"] :is(.replayer-table, .replayer-table-rail, .replayer-table-slot)::before,
+:root[data-theme^="swiss"] :is(.replayer-table, .replayer-table-rail, .replayer-table-slot)::after { box-shadow: none !important; filter: none !important; background-image: none !important; }
