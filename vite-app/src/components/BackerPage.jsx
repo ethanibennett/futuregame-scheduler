@@ -131,11 +131,20 @@ function liveSince(since, now = Date.now()) {
   const run = mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h${mins % 60 ? ` ${mins % 60}m` : ''}`;
   return `since ${clock} · ${run}`;
 }
+/** The minutes past the hour since the session started, as an angle (the Swiss theme draws the
+ *  beacon as a filling clock face from it; catalogue item 44). */
+function liveSweep(since) {
+  const t = Date.parse(since);
+  if (!Number.isFinite(t)) return '0deg';
+  const min = Math.max(0, (Date.now() - t) / 60000) % 60;
+  return Math.round((min / 60) * 360) + 'deg';
+}
+
 function LiveBeacon({ live }) {
   const what = live.kind === 'cash' ? 'Cash game' : 'Tournament';
   return (
     <section className="bp-live" aria-live="polite" aria-label="Playing now">
-      <span className="bp-live-dot" aria-hidden="true" />
+      <span className="bp-live-dot" aria-hidden="true" style={{ '--sweep': liveSweep(live.since) }} />
       <div className="an-cell an-lbl an-lbl-3">Playing now · {what}</div>
       <div className="an-cell an-val bp-live-title an-clip">{live.title}</div>
       <div className="an-cell an-note an-clip">{[live.room, liveSince(live.since)].filter(Boolean).join(' · ')}</div>
@@ -365,7 +374,7 @@ function Skeleton() {
 
 export default function BackerPage({ token }) {
   useDeviceContrast();
-  const theme = useThemeChoice({ followDevice: true });
+  const theme = useThemeChoice({ followDevice: true, admin: deviceIsAppAdmin() });
   const shellRef = useRef(null);
   useScrollbarAllowance(shellRef);
   const toast = useToast();

@@ -3,13 +3,17 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import { ToastProvider } from './contexts/ToastContext.jsx';
 import './styles.css';
+// The experimental Swiss theme: every rule in it is scoped to data-theme swiss-light / swiss-dark.
+import './theme-swiss.css';
 import { installNumericFocusClear } from './utils/numeric-focus-clear.js';
 import { installGridSnap } from './utils/grid-snap.js';
+import { installSwissTypography } from './utils/swiss-typography.js';
 
 // Every numeric field clears on focus, ready for a new number (utils/numeric-focus-clear.js).
 installNumericFocusClear();
 // Content-sized pills (class snap-g) round their width up to a whole g (utils/grid-snap.js).
 installGridSnap();
+installSwissTypography();
 
 // After a deploy, vite chunks get new hashes — pages loaded against the old
 // HTML will fail to fetch the renamed chunks. Catch the preload error and do

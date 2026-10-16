@@ -18,11 +18,11 @@
       var stored = localStorage.getItem('theme');
       var t = stored || 'dark';
       var c = localStorage.getItem('contrast') || 'normal';
-      var mc = {dark:'#111111',dusk:'#0d1525',light:'#f5f5f5',cloudy:'#cbcbcb'};
+      var mc = {dark:'#111111',dusk:'#0d1525',light:'#f5f5f5',cloudy:'#cbcbcb','swiss-light':'#ffffff','swiss-dark':'#000000'};
       // A backer's private page (/b/<token>) has no Settings: its theme button stores the same
       // 'theme' the app's does, and with none stored it follows the device's scheme; its contrast
       // always follows the device (components/BackerPage.jsx and hooks/useThemeChoice.js keep both
-      // in step). A stored value that is not one of the four themes counts as none.
+      // in step). A stored value that is not one of the six themes counts as none.
       if (/^\/b\/[A-Za-z0-9]{6,64}\/?$/.test(location.pathname)) {
         var mm = window.matchMedia ? function (q) { return window.matchMedia(q).matches; } : function () { return false; };
         t = stored && Object.prototype.hasOwnProperty.call(mc, stored) ? stored : (mm('(prefers-color-scheme: light)') ? 'light' : 'dark');

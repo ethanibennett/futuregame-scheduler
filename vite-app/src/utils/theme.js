@@ -7,20 +7,32 @@
  * <html data-theme="...">. The button steps through THEME_ORDER and wraps. */
 
 export const THEME_KEY = 'theme';
-export const THEME_ORDER = ['dark', 'dusk', 'light', 'cloudy'];
-export const isDarkTheme = (t) => t === 'dark' || t === 'dusk';
-export const THEME_ICON = { dark: 'moon', dusk: 'sunset', light: 'sun', cloudy: 'cloud' };
-export const THEME_LABEL = { dark: 'Dark', dusk: 'Dusk', light: 'Light', cloudy: 'Cloudy' };
-export const THEME_META = { dark: '#111111', dusk: '#0d1525', light: '#f5f5f5', cloudy: '#cbcbcb' };
+// swiss-light and swiss-dark are the EXPERIMENTAL Swiss theme (owner brief, 2026-10-16): Helvetica
+// only, bold and ultralight, white/black with one red. Every style it has is in theme-swiss.css and
+// applies only under these two values; the four themes before them are untouched by it.
+export const THEME_ORDER = ['dark', 'dusk', 'light', 'cloudy', 'swiss-light', 'swiss-dark'];
+export const isDarkTheme = (t) => t === 'dark' || t === 'dusk' || t === 'swiss-dark';
+export const THEME_ICON = { dark: 'moon', dusk: 'sunset', light: 'sun', cloudy: 'cloud', 'swiss-light': 'swissLight', 'swiss-dark': 'swissDark' };
+export const THEME_LABEL = { dark: 'Dark', dusk: 'Dusk', light: 'Light', cloudy: 'Cloudy', 'swiss-light': 'Swiss light', 'swiss-dark': 'Swiss dark' };
+export const THEME_META = { dark: '#111111', dusk: '#0d1525', light: '#f5f5f5', cloudy: '#cbcbcb', 'swiss-light': '#ffffff', 'swiss-dark': '#000000' };
 
-/** The theme after `t` in THEME_ORDER, wrapping. An unknown value steps to the first. */
-export function nextTheme(t) {
-  return THEME_ORDER[(THEME_ORDER.indexOf(t) + 1) % THEME_ORDER.length];
+/** The Swiss themes are for app admins only while they are tried out (owner, 2026-10-16): only an
+ *  admin's button steps into them. Everyone else's order is the four themes. */
+export const ADMIN_ONLY_THEMES = ['swiss-light', 'swiss-dark'];
+export function themeOrder(admin = false) {
+  return admin ? THEME_ORDER : THEME_ORDER.filter((t) => !ADMIN_ONLY_THEMES.includes(t));
+}
+
+/** The theme after `t` in the order this person may use, wrapping. A value not in that order (an
+ *  unknown one, or a Swiss theme a non-admin still has stored) steps to the first. */
+export function nextTheme(t, admin = false) {
+  const order = themeOrder(admin);
+  return order[(order.indexOf(t) + 1) % order.length];
 }
 
 /** The name of the theme the button switches to ("Dusk"), for its label. */
-export function nextThemeLabel(t) {
-  return THEME_LABEL[nextTheme(t)];
+export function nextThemeLabel(t, admin = false) {
+  return THEME_LABEL[nextTheme(t, admin)];
 }
 
 /** What a stored value means: the theme it names, or null for nothing stored or a value that is

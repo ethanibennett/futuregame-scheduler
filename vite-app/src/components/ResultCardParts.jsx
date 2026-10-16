@@ -2,6 +2,7 @@ import React from 'react';
 import { getVenueInfo, getVenueBrandColor, getStripAbbr, splitEventStage, VENUE_MAP } from '../utils/utils.js';
 import { monthLabel, stripFor, shareSeries, BANKROLL_RANGES } from '../utils/backer-page.js';
 import useInkBalance from '../hooks/useInkBalance.js';
+import { StripLabel } from './SwissParts.jsx';
 import BackerChart, { RangeStrip } from './BackerChart.jsx';
 import { getToday } from '../utils/utils.js';
 
@@ -66,7 +67,7 @@ export function CardStrip({ venue, property, room, open, onToggle }) {
   return (
     <div className={'cal-venue-strip' + (abbr ? '' : ' is-neutral')} aria-hidden="true" onClick={onToggle}
       style={{ background: abbr ? getVenueBrandColor(abbr) : 'var(--border-strong)', color: '#ffffff', cursor: 'pointer' }}>
-      <span className="venue-strip-abbr">{abbr ? getStripAbbr(abbr) : ''}</span>
+      <StripLabel text={abbr ? getStripAbbr(abbr) : ''} />
       {open && <span className="venue-strip-full">{name}</span>}
     </div>
   );

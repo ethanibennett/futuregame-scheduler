@@ -6,7 +6,7 @@
 //   hands, bankroll-dashboard, bankroll-locations, bankroll-backers, bankroll-import-dashboard, cash, bankroll-fab,
 //   expenses, results-notify, cash-notify, results-reset, staking-settlement, staking-standing, backer-page; --verbose names the views a run scanned. A pass that skips itself
 //   says so, and the "scanned N views" line before the verdict counts the ones that ran.)
-//   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME as check-control-centring.mjs)
+//   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME / CHECK_THEME as check-control-centring.mjs)
 //
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
 // Schedule, the home (Dashboard) paged to its foot (plain, then its NUMBERS in trip mode, series
@@ -137,7 +137,8 @@ function scan(rootSel) {
   const b = await webkit.launch();
   const ctx = await b.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 3 });
   const t = token();
-  await ctx.addInitScript(({ t }) => {
+  await ctx.addInitScript(({ t, theme }) => {
+    if (theme) localStorage.setItem('theme', theme);   // CHECK_THEME, as check-control-centring.mjs
     localStorage.setItem('token', t); localStorage.setItem('username', 'ham5');
     localStorage.setItem('onboardComplete', '1'); localStorage.setItem('hasOnboarded', 'true');
     // Past the first-run wizard (utils/location-prefs.js hasOnboarded reads 'onboarded'): on a
@@ -145,7 +146,7 @@ function scan(rootSel) {
     // it on a slow desktop render; the wizard's backdrop then swallowed the Results click, skipping
     // 10 sections while still printing a passing line.
     localStorage.setItem('onboarded', '1');
-  }, { t });
+  }, { t, theme: process.env.CHECK_THEME || '' });
   // Edit home: every view sees the default home whatever the account saved, and the sheet's
   // changes are answered here and never written (scripts/home-states.mjs).
   await routeHomeLayout(ctx);

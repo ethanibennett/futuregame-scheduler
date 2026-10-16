@@ -13,6 +13,7 @@ import {
 } from '../utils/utils.js';
 import { fmtDay, monthLabel, shareSeries, rangeOptions } from '../utils/backer-page.js';
 import './tracking-cards.css';
+import { MoneyParts } from './SwissParts.jsx';
 import { CardStrip, CardName, CardChevron, MonthBreak, barKeys, stop, BankrollGraph } from './ResultCardParts.jsx';
 import ResultsCurve from './ResultsCurve.jsx';
 import { BankrollSwitcher, BankrollManager, BankrollPicker } from './Bankrolls.jsx';
@@ -775,7 +776,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
           {/* The profit first and largest, in the Schedule's money face (owner, 2026-10-16), then what
               it is made of: the events and cashes, and the ROI, on one line. */}
           <div className={'tr-seat tr-sum-net ' + (stats.profit > 0 ? 'is-pos' : stats.profit < 0 ? 'is-neg' : '')}>
-            {stats.profit >= 0 ? '+' : ''}{fmtStat(stats.profit)}
+            <MoneyParts text={(stats.profit >= 0 ? '+' : '') + fmtStat(stats.profit)} />
           </div>
           <p className="tr-seat tr-seat-2 tr-sum-sub">
             {stats.totalEntries} event{stats.totalEntries !== 1 ? 's' : ''} · {stats.eventsCashed} cash{stats.eventsCashed !== 1 ? 'es' : ''} · ROI {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(1)}%

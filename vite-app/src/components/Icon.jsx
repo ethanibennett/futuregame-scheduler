@@ -39,6 +39,9 @@ const GLYPHS = {
   moon: { filled: false, path: (<><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></>) },
   sunset: { filled: false, path: (<><path d="M18 14a6 6 0 00-12 0"/> <line x1="12" y1="2" x2="12" y2="5"/> <line x1="4.93" y1="5.93" x2="6.34" y2="7.34"/> <line x1="19.07" y1="5.93" x2="17.66" y2="7.34"/> <line x1="1" y1="14" x2="4" y2="14"/> <line x1="20" y1="14" x2="23" y2="14"/> <line x1="2" y1="18" x2="22" y2="18"/> <line x1="4" y1="22" x2="20" y2="22"/></>) },
   cloud: { filled: false, path: (<><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></>) },
+  // The Swiss theme's two (utils/theme.js): an outlined square with a cross, and the flag itself.
+  swissLight: { filled: false, path: (<><rect x="4" y="4" width="16" height="16"/> <line x1="12" y1="8" x2="12" y2="16"/> <line x1="8" y1="12" x2="16" y2="12"/></>) },
+  swissDark: { filled: true, path: (<><path fillRule="evenodd" d="M4 4h16v16H4z M10.5 7.5h3v3h3v3h-3v3h-3v-3h-3v-3h3z"/></>) },
   signal: { filled: false, path: (<><path d="M5.636 18.364a9 9 0 010-12.728"/> <path d="M18.364 5.636a9 9 0 010 12.728"/> <path d="M8.464 15.536a5 5 0 010-7.072"/> <path d="M15.536 8.464a5 5 0 010 7.072"/> <circle cx="12" cy="12" r="1.5"/></>) },
   tracking: { filled: false, path: (<><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></>) },
   user: { filled: false, path: (<><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></>) },

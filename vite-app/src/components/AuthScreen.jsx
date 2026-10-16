@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Icon from './Icon.jsx';
 import { THEME_ORDER, THEME_LABEL, THEME_ICON, getStoredSeasonLabel } from '../utils/utils.js';
+import { nextTheme } from '../utils/theme.js';
 
 // The sign-up's "How did you hear about us?" choices; the values are lib/growth.js HEARD.
 const HEARD_OPTIONS = [
@@ -12,7 +13,7 @@ const HEARD_OPTIONS = [
 export default function AuthScreen({ onSubmit, error, success, theme, toggleTheme, onForgotPassword, onGuestLogin, initialRegister }) {
   const [isRegister, setIsRegister] = useState(!!initialRegister);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
-  const nextThemeLabel = THEME_LABEL[THEME_ORDER[(THEME_ORDER.indexOf(theme) + 1) % THEME_ORDER.length]];
+  const nextThemeLabel = THEME_LABEL[nextTheme(theme)];
 
   return (
     <div className="auth-wrap">

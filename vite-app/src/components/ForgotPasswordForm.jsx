@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import Icon from './Icon.jsx';
 import { THEME_ORDER, THEME_LABEL, THEME_ICON } from '../utils/utils.js';
+import { nextTheme } from '../utils/theme.js';
 import { API_URL } from '../utils/api.js';
 
 export default function ForgotPasswordForm({ onBack, theme, toggleTheme }) {
-  const nextThemeLabel = THEME_LABEL[THEME_ORDER[(THEME_ORDER.indexOf(theme) + 1) % THEME_ORDER.length]];
+  const nextThemeLabel = THEME_LABEL[nextTheme(theme)];
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
+import { balancesFromSummary } from './utils/bankrolls.js';
 import AlternatingSubtitle from './components/AlternatingSubtitle.jsx';
 import { createPortal } from 'react-dom';
 
@@ -444,7 +445,8 @@ function App() {
   const [activeMilestone, setActiveMilestone] = useState(null);
 
   // Theme
-  const { theme, toggleTheme, nextThemeLabel } = useThemeChoice();
+  // The Swiss themes are admin-only (utils/theme.js); the signed token's name says who is one.
+  const { theme, toggleTheme, nextThemeLabel } = useThemeChoice({ admin: APP_ADMIN_USERNAMES.includes(tokenUsername(token)) });
   const [contrast, setContrast] = useState(localStorage.getItem('contrast') || 'normal');
   const [cardSplay, setCardSplay] = useState(localStorage.getItem('cardSplay') !== 'off');
   // Admin-only layout-grid overlay for checking alignment (GridOverlay.jsx).
@@ -1694,6 +1696,21 @@ function App() {
   // TrackingView so the two never disagree. The balances are the server's combined ledger, so they
   // are refetched whenever the results change (version). For everyone else it fetches nothing.
   const bk = useBankrolls({ enabled: isAdmin, token, version: trackingData });
+  // The Swiss theme's running head: the section, then its scope (catalogue item 7).
+  const swissRunningHead = useMemo(() => {
+    if (currentView === 'tracking') {
+      if (!bk.enabled) return 'Bankroll';
+      const cur = bk.selected === 'all' ? null : (bk.visible || []).find((b) => b.id === bk.selected);
+      const bal = balancesFromSummary(bk.summary).get(bk.selected);
+      let amt = '';
+      try { if (bal) amt = new Intl.NumberFormat('en-US', { style: 'currency', currency: bal.currency || 'USD', maximumFractionDigits: 0 }).format(bal.balance || 0); } catch { /* an unknown code */ }
+      return ['Bankroll', cur ? cur.name : 'All bankrolls', amt].filter(Boolean).join(' \u00b7 ');
+    }
+    if (currentView === 'cash') return 'Cash \u00b7 ' + (cashMode === 'heatmap' ? 'history' : 'live games');
+    if (currentView === 'hands') return 'Hands \u00b7 archive';
+    if (currentView === 'dashboard') return 'Dashboard';
+    return ['Schedule', seasonLabel].filter(Boolean).join(' \u00b7 ');
+  }, [currentView, bk.enabled, bk.selected, bk.visible, bk.summary, cashMode, seasonLabel]);
 
   // Edit home (utils/home-layout.js): which Dashboard sections show and in what order, per account
   // (cached locally, saved to the server). homeEdit: the sheet is open; homeEditOpener: the control
@@ -2334,7 +2351,7 @@ function App() {
     >
       <header className="top-bar">
         <div className="top-bar-title">
-          <h1>futurega.me</h1>
+          <h1>futurega<span className="wm-dot">.</span>me</h1>
           {/* The cash tab is not seasonal, so its subtitle names the tab instead of the
               season's date range. The h2 inside CashView is dropped in favour of this. */}
           {currentView === 'cash' ? <small>{cashMode === 'heatmap' ? 'cash game history' : 'live cash games'}</small>
@@ -2342,6 +2359,8 @@ function App() {
             : currentView === 'dashboard' ? <small>dashboard</small>
             : currentView === 'tracking' ? <small>bankroll</small>
             : (seasonLabel ? <AlternatingSubtitle labels={[seasonLabel, 'scheduler']} /> : null)}
+          {/* The Swiss theme's running head (theme-swiss.css; hidden in every other theme). */}
+          <small className="sw-runhead">{swissRunningHead}</small>
         </div>
         <div className="top-bar-actions">
           <button

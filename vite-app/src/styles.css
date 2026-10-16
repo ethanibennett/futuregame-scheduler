@@ -11127,6 +11127,9 @@
     .cal-event-row.saved:not(.conditional):not(.is-selected):not(.completed) > .cal-venue-strip {
       padding-right: var(--bw-1);
     }
+    /* The Swiss theme sets the strip in sentence case (SwissParts.jsx StripLabel) and adds a
+       running head (App.jsx); both hidden in every other theme. */
+    .venue-strip-sc, .sw-runhead, .kt-count, .sw-board-toggle { display: none; }
     .venue-strip-abbr,
     .venue-strip-full {
       grid-area: 1 / 1;
