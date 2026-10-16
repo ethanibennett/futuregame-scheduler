@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import {
   THEME_KEY, THEME_ORDER, THEME_ICON, THEME_LABEL, THEME_META, isDarkTheme,
-  nextTheme, nextThemeLabel, storedTheme, deviceTheme,
+  nextTheme, nextThemeLabel, storedTheme, deviceTheme, themeOrder,
 } from '../theme.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -24,27 +24,34 @@ test('every theme has an icon, a label and a theme-color, and nothing else does'
   assert.deepEqual(THEME_ORDER.filter(isDarkTheme), ['dark', 'dusk', 'swiss-dark']);
 });
 
-test('the button steps through the order and wraps', () => {
-  assert.equal(nextTheme('dark'), 'dusk');
-  assert.equal(nextTheme('dusk'), 'light');
-  assert.equal(nextTheme('light'), 'cloudy');
-  assert.equal(nextTheme('cloudy'), 'swiss-light');
-  assert.equal(nextTheme('swiss-light'), 'swiss-dark');
-  assert.equal(nextTheme('swiss-dark'), 'dark');
+test('the button of an admin steps through all six and wraps', () => {
+  assert.equal(nextTheme('dark', true), 'dusk');
+  assert.equal(nextTheme('cloudy', true), 'swiss-light');
+  assert.equal(nextTheme('swiss-light', true), 'swiss-dark');
+  assert.equal(nextTheme('swiss-dark', true), 'dark');
   let t = 'light';
   const seen = [];
-  for (let i = 0; i < THEME_ORDER.length; i++) { t = nextTheme(t); seen.push(t); }
+  for (let i = 0; i < THEME_ORDER.length; i++) { t = nextTheme(t, true); seen.push(t); }
   assert.deepEqual(seen, ['cloudy', 'swiss-light', 'swiss-dark', 'dark', 'dusk', 'light']);     // six presses, back where it started
-  assert.equal(nextTheme('nonsense'), 'dark');                    // an unknown value steps to the first
+  assert.equal(nextTheme('nonsense', true), 'dark');                    // an unknown value steps to the first
+});
+
+test('everyone else steps through the four, never into Swiss', () => {
+  assert.deepEqual(themeOrder(), ['dark', 'dusk', 'light', 'cloudy']);
+  assert.equal(nextTheme('light'), 'cloudy');
+  assert.equal(nextTheme('cloudy'), 'dark');
+  assert.equal(nextTheme('swiss-light'), 'dark');      // a Swiss theme left stored steps out of it
+  assert.equal(nextTheme('nonsense'), 'dark');
 });
 
 test('the label names the theme the button switches to', () => {
   assert.equal(nextThemeLabel('dark'), 'Dusk');
   assert.equal(nextThemeLabel('dusk'), 'Light');
   assert.equal(nextThemeLabel('light'), 'Cloudy');
-  assert.equal(nextThemeLabel('cloudy'), 'Swiss light');
-  assert.equal(nextThemeLabel('swiss-light'), 'Swiss dark');
-  assert.equal(nextThemeLabel('swiss-dark'), 'Dark');
+  assert.equal(nextThemeLabel('cloudy'), 'Dark');
+  assert.equal(nextThemeLabel('cloudy', true), 'Swiss light');
+  assert.equal(nextThemeLabel('swiss-light', true), 'Swiss dark');
+  assert.equal(nextThemeLabel('swiss-dark', true), 'Dark');
 });
 
 test('a stored value counts only if it names a theme', () => {

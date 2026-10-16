@@ -374,7 +374,7 @@ function Skeleton() {
 
 export default function BackerPage({ token }) {
   useDeviceContrast();
-  const theme = useThemeChoice({ followDevice: true });
+  const theme = useThemeChoice({ followDevice: true, admin: deviceIsAppAdmin() });
   const shellRef = useRef(null);
   useScrollbarAllowance(shellRef);
   const toast = useToast();

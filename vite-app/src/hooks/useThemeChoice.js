@@ -24,7 +24,7 @@ const readStored = () => {
  * writing nothing; the first press of the button is a choice and is stored from then on. Without
  * it (the app) the theme starts as dark and is stored on first mount, as it always has been.
  */
-export default function useThemeChoice({ followDevice = false } = {}) {
+export default function useThemeChoice({ followDevice = false, admin = false } = {}) {
   const [state, setState] = useState(() => {
     const stored = readStored();
     if (stored) return { theme: stored, chosen: true };
@@ -60,7 +60,8 @@ export default function useThemeChoice({ followDevice = false } = {}) {
     return () => mq.removeEventListener('change', follow);
   }, [followDevice, chosen]);
 
-  const toggleTheme = useCallback(() => setState((s) => ({ theme: nextTheme(s.theme), chosen: true })), []);
+  // `admin` lets the button step into the admin-only themes (utils/theme.js ADMIN_ONLY_THEMES).
+  const toggleTheme = useCallback(() => setState((s) => ({ theme: nextTheme(s.theme, admin), chosen: true })), [admin]);
 
-  return { theme, toggleTheme, nextThemeLabel: nextThemeLabel(theme) };
+  return { theme, toggleTheme, nextThemeLabel: nextThemeLabel(theme, admin) };
 }

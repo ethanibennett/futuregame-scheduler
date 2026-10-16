@@ -445,7 +445,8 @@ function App() {
   const [activeMilestone, setActiveMilestone] = useState(null);
 
   // Theme
-  const { theme, toggleTheme, nextThemeLabel } = useThemeChoice();
+  // The Swiss themes are admin-only (utils/theme.js); the signed token's name says who is one.
+  const { theme, toggleTheme, nextThemeLabel } = useThemeChoice({ admin: APP_ADMIN_USERNAMES.includes(tokenUsername(token)) });
   const [contrast, setContrast] = useState(localStorage.getItem('contrast') || 'normal');
   const [cardSplay, setCardSplay] = useState(localStorage.getItem('cardSplay') !== 'off');
   // Admin-only layout-grid overlay for checking alignment (GridOverlay.jsx).
