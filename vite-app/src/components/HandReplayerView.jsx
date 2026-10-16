@@ -8668,11 +8668,8 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
               + (b.ante ? '/(' + formatChipAmount(b.ante) + ')' : '')
             : null;
           // SPR moved to plain text above the pot's chip stack (2026-09-30).
-          /* The street, in the one block inside the captured element (catalogue three, idea 42; 2026-10-15):
-             the timeline and commentary that name it sit outside the capture root, so every exported
-             still and GIF frame showed no street at all. */
-          const streetName = (hand.streets[streetIdx] && hand.streets[streetIdx].name) || null;
-          const level = [hand.gameType, sizes, streetName].filter(Boolean).join('  ·  ');
+          /* No street here (owner, 2026-10-15): the board itself says which street it is. */
+          const level = [hand.gameType, sizes].filter(Boolean).join('  ·  ');
           const meta = [
             hand.playersLeft ? hand.playersLeft + ' left' : null,
             hand.payoutNote || null,
