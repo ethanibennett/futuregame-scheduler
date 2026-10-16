@@ -1270,3 +1270,8 @@
 :root[data-theme^="swiss"] :is(.chip-disc, .replayer-pot-chip-disc) { --chip: var(--sw-ink) !important; background: transparent !important; }
 :root[data-theme^="swiss"] :is(.replayer-table, .replayer-table-rail, .replayer-table-slot)::before,
 :root[data-theme^="swiss"] :is(.replayer-table, .replayer-table-rail, .replayer-table-slot)::after { box-shadow: none !important; filter: none !important; background-image: none !important; }
+
+/* The replayer keeps the table's own shape (owner, 2026-10-16: "keep the shape from the other one"):
+   the rail and the felt take their capsule radii back from the theme's square-everything rule. */
+:root[data-theme^="swiss"] body .replayer-table .replayer-table-rail { border-radius: var(--rail-r, calc(var(--subrow) * 128)) !important; }
+:root[data-theme^="swiss"] body .replayer-table .replayer-table-felt { border-radius: var(--felt-r, calc(var(--subrow) * 128)) !important; }
