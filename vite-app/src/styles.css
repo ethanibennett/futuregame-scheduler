@@ -1292,10 +1292,7 @@
         0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) rgba(0,0,0,0.4);
     }
 
-    /* The light strip finally reads the property it has always been handed. */
-    .replayer-light-strip {
-      border-color: var(--strip-color, rgba(255,255,255,0.4));
-    }
+    /* The light strip's colour is --strip-color (the felt's, or the theme's below). */
 
 
     /* ==================================================================
@@ -5580,16 +5577,15 @@
       position: absolute;
       inset: var(--felt-y) var(--felt-x);
       border-radius: var(--felt-r, var(--radius-pill));
-      border: var(--bw-1) solid transparent;
-      background:
-        linear-gradient(180deg,
-          rgba(255,255,255,0.13) 0%,
-          rgba(255,255,255,0.30) 42%,
-          rgba(255,255,255,0.62) 100%) border-box;
-      -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
-      -webkit-mask-composite: xor;
-              mask-composite: exclude;
-      box-shadow: 0 calc(var(--subrow) * 0.375) calc(var(--subrow) * 1.25) calc(var(--subrow) * -0.375) rgba(255,255,255,0.30);
+      /* Catalogue three, idea 7: no mask. The ring was a gradient through a masked border
+         (-webkit-mask + mask-composite: exclude, the most WKWebView-sensitive construction on the
+         table), and the border colour painted over the gradient anyway. Now: a hairline in the
+         strip's colour, a brighter band along the near cushion that thins away up the sides, and the
+         same soft glow. Shadows only. */
+      box-shadow:
+        inset 0 0 0 var(--bw-1) var(--strip-color, rgba(255,255,255,0.4)),
+        inset 0 calc(var(--bw-1) * -1) 0 var(--bw-hair) rgba(255,255,255,0.32),
+        0 calc(var(--subrow) * 0.375) calc(var(--subrow) * 1.25) calc(var(--subrow) * -0.375) rgba(255,255,255,0.30);
       z-index: var(--z-strip);
       pointer-events: none;
     }
@@ -6229,7 +6225,10 @@
       background: rgba(14,12,19,0.93);
       /* 9% white vanished against both grounds a plaque sits on — the felt it
          is on and, for the seats above the table's edge, the page behind it. */
-      border: var(--bw-hair) solid rgba(255,255,255,0.22);
+      /* Catalogue three, idea 8: no hairline at rest. The states (turn, winner, split, loser, all-in)
+         each set a border colour AND a ring, so a resting edge was a second line saying nothing; the
+         border stays, transparent, so a state never shifts the plaque's size. */
+      border: var(--bw-hair) solid transparent;
       border-radius: var(--r-object);
       padding: var(--nudge-1) min(var(--space-sm), 3cqmin);
       /* A flat 72px is 45% of a 159px table, against seats spaced 32% apart —
@@ -8435,11 +8434,11 @@
     .replayer-table.theme-minimalist    .replayer-table-rail { background-color: #e0e0e0; }
     .replayer-table.theme-high-stakes   .replayer-table-rail { background-color: #151515; }
 
-    .replayer-table.theme-casino-royale .replayer-light-strip { border-color: rgba(232,200,120,0.45); }
-    .replayer-table.theme-neon-vegas    .replayer-light-strip { border-color: rgba(0,229,255,0.50); }
-    .replayer-table.theme-vintage       .replayer-light-strip { border-color: rgba(230,210,170,0.40); }
-    .replayer-table.theme-minimalist    .replayer-light-strip { border-color: rgba(0,0,0,0.12); }
-    .replayer-table.theme-high-stakes   .replayer-light-strip { border-color: rgba(200,170,90,0.35); }
+    .replayer-table.theme-casino-royale .replayer-light-strip { --strip-color: rgba(232,200,120,0.45); }
+    .replayer-table.theme-neon-vegas    .replayer-light-strip { --strip-color: rgba(0,229,255,0.50); }
+    .replayer-table.theme-vintage       .replayer-light-strip { --strip-color: rgba(230,210,170,0.40); }
+    .replayer-table.theme-minimalist    .replayer-light-strip { --strip-color: rgba(0,0,0,0.12); }
+    .replayer-table.theme-high-stakes   .replayer-light-strip { --strip-color: rgba(200,170,90,0.35); }
 
 
     /* ---- 16: shapes broke out of their own rail --------------------------
