@@ -14,6 +14,14 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-16 — Didn't play on Results; the result edit crash; replayer fixes
+- **Didn't play (owner):** the Bankroll tab's awaiting-result card has Didn't play beside Log Result. It opens a card form with Notes; Save marks the event not played (user_schedules.not_played, the home's To log action) and keeps the note in the new `user_schedules.not_played_note` (PUT /api/schedule/:id/played takes `note`; marking it played clears it). The event then shows as a Didn't play card among the results by date, with Edit (the note) and Played it (back to awaiting). Not a result: no buy-in, ROI, ledger or backer figure moves. The home's To log Didn't play is still one tap with no note. test:home-log covers the note.
+- **Fixed:** editing a logged tournament result blanked the screen for the owner (the Posts-to-backers preview read a tournaments list the edit form is never given), 2026-10-14 to 10-16. Renaming the hero in hand entry moved them to seat 0. Replayer: ALL-IN in the stack figure's type, 3r action pills, no street in the level line (owner).
+- **Open:** the owner reports Up Next showing events they never added and missing ones they did. Server query, feeds and this week's commits check out; production's six upcoming events were listed to the owner, waiting on which screen and which events.
+- **Review branch** `feat/replayer-catalogue-3`: ideas 7, 8, 11, 12, 46 built, not merged; 37 needs a table-size field (owner). Celebrations catalogue (50 ideas): https://claude.ai/artifact/Th5rd41L7CfeTugoRTTAKH, waiting on picks.
+
+---
+
 ## 2026-10-15 (13:07 ET) — Mid-Atlantic clock check: the room's real clock comes through
 - **Bravo, while afternoon events ran:** a live clock at Borgata, Live! Philadelphia, Parx, Maryland Live! and MGM National Harbor (1 each). None at Harrah's AC or Horseshoe Baltimore (none at 00:25 either). Wind Creek Bethlehem is not on Bravo.
 - **Through the app** (local server, POST /api/live-clocks): Borgata and Parx, the two rooms with events in today's feed, both returned running Bravo clocks (level 6 with blinds and antes).

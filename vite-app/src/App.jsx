@@ -808,15 +808,18 @@ function App() {
 
   // The home's To log "Didn't play" (true) and its Undo (false): user_schedules.not_played, so it
   // syncs across devices. Resolves true when stored.
-  const setNotPlayed = useCallback(async (tournamentId, notPlayed) => {
+  const setNotPlayed = useCallback(async (tournamentId, notPlayed, note) => {
     try {
       const res = await fetch(`${API_URL}/schedule/${tournamentId}/played`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notPlayed: !!notPlayed })
+        body: JSON.stringify({ notPlayed: !!notPlayed, ...(typeof note === 'string' ? { note } : {}) })
       });
       if (!res.ok) return false;
-      setMySchedule(prev => prev.map(t => (t.id === tournamentId ? { ...t, not_played: notPlayed ? 1 : 0 } : t)));
+      setMySchedule(prev => prev.map(t => (t.id === tournamentId ? {
+        ...t, not_played: notPlayed ? 1 : 0,
+        not_played_note: !notPlayed ? null : typeof note === 'string' ? (note.trim() || null) : t.not_played_note,
+      } : t)));
       return true;
     } catch { return false; }
   }, [token]);

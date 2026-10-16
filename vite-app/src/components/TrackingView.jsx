@@ -16,7 +16,7 @@ import { filterByBankroll, balancesFromSummary, defaultBankrollFor } from '../ut
 import BankrollDashboardSheet from './BankrollDashboardSheet.jsx';
 import ResetResults from './ResetResults.jsx';
 import { resetScope } from '../utils/reset-results.js';
-import { resultMoney, awaitingResults, eventNo } from '../utils/home.js';
+import { resultMoney, awaitingResults, eventNo, isoDay } from '../utils/home.js';
 import { resolveConditions } from '../utils/home-upnext.js';
 import { publishDisplayCurrency } from '../hooks/useDisplayCurrency.js';
 import AnalyticsLauncher from './AnalyticsLauncher.jsx';
@@ -334,16 +334,73 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
   );
 }
 
+// ── Didn't play (owner, 2026-10-16) ──────────────────────────
+// Results' Didn't play: the event stays on the schedule, marked not played
+// (user_schedules.not_played, the home's To log action), with the note this card asks for. It is
+// not a result, so no buy-in, ROI, ledger or backer figure moves; the card sits in the list among
+// the results by its date, and Played it takes it back to awaiting a result.
+const DNP_LINE = { fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', fontFamily: "'Univers Condensed','Univers',sans-serif", letterSpacing: '0.03em' };
+const DNP_NAME = { fontSize: 'calc(var(--gu) * 1.296)', fontWeight: 'var(--fw-bold)', color: 'var(--text)', fontFamily: "'Univers Condensed','Univers',sans-serif" };
+const dnpLabel = (e) => [eventNo(e.event_number), e.event_name].filter(Boolean).join(' ');
+
+function DidNotPlayForm({ event, initialNote = '', onSave, onCancel }) {
+  const [note, setNote] = useState(initialNote || '');
+  const [busy, setBusy] = useState(false);
+  const id = 'dnp-note-' + event.id;
+  return (
+    <form className="tracking-card" style={{marginBottom:'calc(var(--subrow) * 2)'}}
+      onSubmit={async (e) => { e.preventDefault(); if (busy) return; setBusy(true); await onSave(note); setBusy(false); }}>
+      <div style={{fontSize:'calc(var(--gu) * 1.325)',fontWeight:700,color:'var(--text)',lineHeight:'calc(var(--subrow) * 3)',marginBottom:'var(--subrow)',fontFamily:"'Univers Condensed','Univers',sans-serif",overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+        Didn&rsquo;t play: {dnpLabel(event)}
+      </div>
+      <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
+        <label htmlFor={id}>Notes (optional)</label>
+        <input id={id} type="text" value={note} maxLength={1000} autoFocus onChange={(e) => setNote(e.target.value)}
+          placeholder="Why you skipped it, what you did instead"
+          style={{padding:'var(--space-ml) var(--space-lg)',border:'var(--bw-1) solid var(--border)',borderRadius:'var(--radius-sm)',
+            background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.325)',width:'100%'}} />
+      </div>
+      <div style={{display:'flex',gap:'var(--gu)'}}>
+        <button type="submit" className="btn btn-primary btn-sm" style={{width:'calc(var(--gu) * 10)',padding:0}} disabled={busy}>Save</button>
+        <button type="button" className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 6)',padding:0}} onClick={onCancel}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+function DidNotPlayRow({ event, onEdit, onPlayed, busy }) {
+  return (
+    <div className="tracking-card" data-not-played={event.id}>
+      <div className="tracking-head">
+        <div style={{minWidth:0}}>
+          <div className="tr-seat tr-seat-2" style={DNP_LINE}>{[event.date, eventNo(event.event_number)].filter(Boolean).join(' · ')}</div>
+          <div className="tr-seat tr-seat-3" style={DNP_NAME}>{event.event_name}</div>
+        </div>
+        <div style={{textAlign:'right',flexShrink:0}}>
+          <div className="tr-seat tr-seat-3" style={{...DNP_LINE, fontSize:'calc(var(--gu) * 1.149)'}}>Didn&rsquo;t play</div>
+        </div>
+      </div>
+      {event.not_played_note && (
+        <p className="tr-seat tr-seat-2" style={{fontSize:'calc(var(--gu) * 1.149)',color:'var(--text-muted)',fontStyle:'italic',margin:'0 0 var(--space-md)'}}>{event.not_played_note}</p>
+      )}
+      <div className="tracking-actions">
+        <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 5)'}} onClick={onEdit} disabled={busy}>Edit</button>
+        <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 8)'}} onClick={onPlayed} disabled={busy}
+          aria-label={`Played ${event.event_name}: ask for its result again`}>Played it</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Tracking View (main export) ─────────────────────────────
 export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone, onLog, deepLink = null, onSetPlayed = null }) {
   const toast = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [pendingFormId, setPendingFormId] = useState(null);
-  // The awaiting card's "Didn't play" (owner, 2026-10-16): the home's To log action, here too.
-  // { event, at } while the card shows "Not played" and an Undo, for SKIP_HOLD_MS.
-  const [skipped, setSkipped] = useState(null);
-  const [skipBusy, setSkipBusy] = useState(false);
+  // Didn't play (owner, 2026-10-16): the form open for an event ({ event, note }), and a write in flight.
+  const [dnpForm, setDnpForm] = useState(null);
+  const [dnpBusy, setDnpBusy] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showWrapUp, setShowWrapUp] = useState(false);
   const [showTaxReport, setShowTaxReport] = useState(false);
@@ -446,31 +503,37 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
     return first ? first.event : null;
   }, [mySchedule, allTrackingData, myActiveUpdates, tournaments]);
 
-  // Didn't play: user_schedules.not_played (App's setNotPlayed, the home's own call), so the event
-  // stops being asked about everywhere; the card says so with an Undo for SKIP_HOLD_MS, then the
-  // next awaiting event (if any) takes its place.
-  const SKIP_HOLD_MS = 8000;
-  const skipPending = async (event) => {
-    if (!onSetPlayed || skipBusy) return;
-    setSkipBusy(true);
-    const ok = await onSetPlayed(event.id, true);
-    setSkipBusy(false);
-    if (ok) setSkipped({ event, at: Date.now() });
-    else toast?.error('Could not mark it not played');
+  // Didn't play: user_schedules.not_played and its note (App's setNotPlayed, the home's own call), so
+  // the event stops being asked about everywhere; its card joins the list by date.
+  const saveDnp = async (note) => {
+    if (!onSetPlayed || !dnpForm) return;
+    const ok = await onSetPlayed(dnpForm.event.id, true, note);
+    if (ok) setDnpForm(null);
+    else toast?.error('Could not save it');
   };
-  const undoSkip = async () => {
-    if (!skipped || skipBusy) return;
-    setSkipBusy(true);
-    const ok = await onSetPlayed(skipped.event.id, false);
-    setSkipBusy(false);
-    if (ok) setSkipped(null);
-    else toast?.error('Could not undo');
+  const markPlayed = async (event) => {
+    if (!onSetPlayed || dnpBusy) return;
+    setDnpBusy(true);
+    const ok = await onSetPlayed(event.id, false);
+    setDnpBusy(false);
+    if (!ok) toast?.error('Could not change it');
   };
-  useEffect(() => {
-    if (!skipped) return undefined;
-    const id = setTimeout(() => setSkipped(null), SKIP_HOLD_MS - (Date.now() - skipped.at));
-    return () => clearTimeout(id);
-  }, [skipped]);
+  // The not-played events, newest first, each placed among the results before the first older one
+  // (the results keep the order they come in).
+  const notPlayedEvents = useMemo(() => (mySchedule || [])
+    .filter((e) => Number(e.not_played) && e.venue !== 'Personal' && !Number(e.is_restart))
+    .sort((a, b) => (isoDay(b.date) || '').localeCompare(isoDay(a.date) || '')), [mySchedule]);
+  const listItems = useMemo(() => {
+    const out = [];
+    let k = 0;
+    for (const entry of trackingData) {
+      const day = isoDay(entry.date) || '';
+      while (k < notPlayedEvents.length && (isoDay(notPlayedEvents[k].date) || '') > day) out.push({ dnp: notPlayedEvents[k++] });
+      out.push({ entry });
+    }
+    while (k < notPlayedEvents.length) out.push({ dnp: notPlayedEvents[k++] });
+    return out;
+  }, [trackingData, notPlayedEvents]);
 
   // What the home asked for (App's resultsIntent): a form, an entry, a sheet. The cash and
   // expense ones are handed to the view that owns that form, which reports back itself.
@@ -699,26 +762,12 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
         </Suspense>
       )}
 
-      {skipped && !showAddForm && !intentForm && (
-        <div className="tracking-card tracking-pending" style={{padding:'calc(var(--subrow) * 2) var(--gu)', marginBottom:'calc(var(--subrow) * 2)', border:0, outline:'var(--bw-1) dashed var(--border)', outlineOffset:'calc(var(--bw-1) * -1)'}}>
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:'var(--gu)'}}>
-            <div style={{flex:1, minWidth:0}}>
-              <div style={{fontSize:'calc(var(--gu) * 1.252)', lineHeight:'calc(var(--subrow) * 3)', fontWeight: 'var(--fw-bold)', color:'var(--text)', fontFamily:"'Univers Condensed','Univers',sans-serif", overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
-                {skipped.event.event_name}
-              </div>
-              <div style={{fontSize:'calc(var(--gu) * 1.060)', lineHeight:'calc(var(--subrow) * 2)', color:'var(--text-muted)'}}>
-                Marked not played
-              </div>
-            </div>
-            <button className="btn btn-ghost btn-sm" style={{flexShrink:0, width:'var(--col)', padding:0}} disabled={skipBusy}
-              onClick={undoSkip}>
-              Undo
-            </button>
-          </div>
-        </div>
+      {dnpForm && !dnpForm.fromList && !showAddForm && !intentForm && (
+        <DidNotPlayForm key={'dnp-' + dnpForm.event.id} event={dnpForm.event} initialNote={dnpForm.note}
+          onSave={saveDnp} onCancel={() => setDnpForm(null)} />
       )}
 
-      {!skipped && pendingEvent && !showAddForm && !intentForm && pendingFormId !== pendingEvent.id && (
+      {(!dnpForm || dnpForm.fromList) && pendingEvent && !showAddForm && !intentForm && pendingFormId !== pendingEvent.id && (
         <div className="tracking-card tracking-pending" style={{padding:'calc(var(--subrow) * 2) var(--gu)', marginBottom:'calc(var(--subrow) * 2)', border:0, outline:'var(--bw-1) dashed var(--accent)', outlineOffset:'calc(var(--bw-1) * -1)'}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
             <div style={{flex:1, minWidth:0}}>
@@ -733,8 +782,8 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
               </div>
             </div>
             {onSetPlayed && (
-              <button className="btn btn-ghost btn-sm" style={{flexShrink:0, marginLeft:'var(--gu)', width:'var(--col)', padding:0}} disabled={skipBusy}
-                onClick={() => skipPending(pendingEvent)} aria-label={`Didn't play ${pendingEvent.event_name}: stop asking for its result`}>
+              <button className="btn btn-ghost btn-sm" style={{flexShrink:0, marginLeft:'var(--gu)', width:'var(--col)', padding:0}}
+                onClick={() => setDnpForm({ event: pendingEvent, note: '' })} aria-label={`Didn't play ${pendingEvent.event_name}: stop asking for its result`}>
                 Didn&rsquo;t play
               </button>
             )}
@@ -799,7 +848,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       )}
       </div>
 
-      {trackingData.length === 0 && !showAddForm && !pendingFormId ? (
+      {trackingData.length === 0 && notPlayedEvents.length === 0 && !showAddForm && !pendingFormId ? (
         <FirstRun
           icon="tracking"
           title="Log your first result"
@@ -808,7 +857,17 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
           onAction={() => { setShowAddForm(true); setEditingId(null); }}
         />
       ) : (
-        trackingData.map(entry => (
+        listItems.map(({ entry, dnp }) => dnp ? (
+          <div key={'dnp-' + dnp.id}>
+            {dnpForm && dnpForm.fromList && dnpForm.event.id === dnp.id ? (
+              <DidNotPlayForm event={dnp} initialNote={dnpForm.note} onSave={saveDnp} onCancel={() => setDnpForm(null)} />
+            ) : (
+              <DidNotPlayRow event={dnp} busy={dnpBusy}
+                onEdit={() => setDnpForm({ event: dnp, note: dnp.not_played_note || '', fromList: true })}
+                onPlayed={() => markPlayed(dnp)} />
+            )}
+          </div>
+        ) : (
           <div key={entry.id} data-entry-id={entry.id}>
           <TrackingEntryRow
             entry={entry}

@@ -1484,6 +1484,8 @@ async function initDatabase() {
   } catch (e) {
     // Column already exists — ignore
   }
+  // ...and why (owner, 2026-10-16): Results' Didn't play opens a card with a note.
+  try { db.run('ALTER TABLE user_schedules ADD COLUMN not_played_note TEXT'); } catch (e) { /* exists */ }
 
   // Migrate: add rake breakdown columns for tournament cost analysis
   const rakeColumns = [
@@ -4857,18 +4859,28 @@ app.put('/api/schedule/:tournamentId/entries', authenticateToken, async (req, re
   }
 });
 
-// The home's To log "Didn't play", and its Undo: { notPlayed: true | false }. The event stays on
-// the schedule (user_schedules.not_played); the home and Results stop asking for its result.
-// 404 when the event is not on the caller's schedule.
+// The home's To log "Didn't play", and its Undo: { notPlayed: true | false, note? }. The event stays
+// on the schedule (user_schedules.not_played); the home and Results stop asking for its result.
+// note (Results' Didn't play card, 2026-10-16): stored with it, up to 1,000 characters, '' clears it;
+// left out, the note stands. Marking it played again clears the note. 404 when the event is not on
+// the caller's schedule.
 app.put('/api/schedule/:tournamentId/played', authenticateToken, requireRegistered, async (req, res) => {
   try {
     const tid = Number(req.params.tournamentId);
     if (!Number.isInteger(tid) || tid <= 0) return res.status(400).json({ error: 'Unknown event' });
     const flag = req.body && req.body.notPlayed ? 1 : 0;
-    db.run('UPDATE user_schedules SET not_played = ? WHERE user_id = ? AND tournament_id = ?', [flag, req.user.id, tid]);
+    const hasNote = req.body && typeof req.body.note === 'string';
+    const note = hasNote ? (req.body.note.trim().slice(0, 1000) || null) : null;
+    if (!flag) {
+      db.run('UPDATE user_schedules SET not_played = 0, not_played_note = NULL WHERE user_id = ? AND tournament_id = ?', [req.user.id, tid]);
+    } else if (hasNote) {
+      db.run('UPDATE user_schedules SET not_played = 1, not_played_note = ? WHERE user_id = ? AND tournament_id = ?', [note, req.user.id, tid]);
+    } else {
+      db.run('UPDATE user_schedules SET not_played = 1 WHERE user_id = ? AND tournament_id = ?', [req.user.id, tid]);
+    }
     if (!db.getRowsModified()) return res.status(404).json({ error: 'Event not on your schedule' });
     await saveDatabase();
-    res.json({ tournamentId: tid, notPlayed: !!flag });
+    res.json({ tournamentId: tid, notPlayed: !!flag, ...(flag && hasNote ? { note } : {}) });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
@@ -5015,7 +5027,7 @@ app.delete('/api/personal-event/:id', authenticateToken, requireRegistered, asyn
 app.get('/api/my-schedule', authenticateToken, (req, res) => {
   try {
     const query = `
-      SELECT t.*, us.added_at, us.is_anchor, us.planned_entries, us.not_played,
+      SELECT t.*, us.added_at, us.is_anchor, us.planned_entries, us.not_played, us.not_played_note,
              sc.conditions AS conditions_json,
              sc.is_public AS condition_is_public
       FROM tournaments t

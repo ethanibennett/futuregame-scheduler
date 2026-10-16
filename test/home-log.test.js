@@ -122,6 +122,25 @@ async function down(child) {
       assert.strictEqual(await flagOf(L, T[0]), 0);
     });
 
+    await test("Results' Didn't play card: a note is kept with the flag, edited, cleared, and goes when played", async () => {
+      const noteOf = async (h, id) => { const e = (await mine(h)).find((x) => x.id === id); return e ? e.not_played_note : undefined; };
+      let r = await put(`/api/schedule/${T[1]}/played`, L, { notPlayed: true, note: '  Sick, stayed home  ' });
+      assert.strictEqual(r.status, 200, r.body);
+      assert.deepStrictEqual(r.json, { tournamentId: T[1], notPlayed: true, note: 'Sick, stayed home' });
+      assert.strictEqual(await flagOf(L, T[1]), 1);
+      assert.strictEqual(await noteOf(L, T[1]), 'Sick, stayed home');
+      assert.strictEqual((await put(`/api/schedule/${T[1]}/played`, L, { notPlayed: true })).status, 200);
+      assert.strictEqual(await noteOf(L, T[1]), 'Sick, stayed home', 'no note in the body leaves it alone');
+      assert.strictEqual((await put(`/api/schedule/${T[1]}/played`, L, { notPlayed: true, note: 'x'.repeat(1200) })).status, 200);
+      assert.strictEqual((await noteOf(L, T[1])).length, 1000, 'capped at 1,000 characters');
+      assert.strictEqual((await put(`/api/schedule/${T[1]}/played`, L, { notPlayed: true, note: '' })).status, 200);
+      assert.strictEqual(await noteOf(L, T[1]), null, "'' clears it");
+      assert.strictEqual((await put(`/api/schedule/${T[1]}/played`, L, { notPlayed: true, note: 'Rained out' })).status, 200);
+      assert.strictEqual((await put(`/api/schedule/${T[1]}/played`, L, { notPlayed: false })).status, 200);
+      assert.strictEqual(await flagOf(L, T[1]), 0);
+      assert.strictEqual(await noteOf(L, T[1]), null, 'marked played again, the note goes');
+    });
+
     await test('an event not on the schedule is a 404; a bad id is a 400; nothing changes', async () => {
       assert.strictEqual((await put(`/api/schedule/${T[3]}/played`, L, { notPlayed: true })).status, 404);
       assert.strictEqual((await put(`/api/schedule/${T[1]}/played`, O, { notPlayed: true })).status, 404, "another account's saved event");
