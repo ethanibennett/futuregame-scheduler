@@ -11,10 +11,10 @@ import {
   calculatePOYPoints, isSixMax, haptic, ordinalSuffix, parseTournamentTime,
   getVenueBrandColor, getStripAbbr, splitEventStage,
 } from '../utils/utils.js';
-import useInkBalance from '../hooks/useInkBalance.js';
 import { fmtDay, monthLabel, shareSeries, rangeOptions } from '../utils/backer-page.js';
 import BackerChart, { RangeStrip } from './BackerChart.jsx';
 import './tracking-cards.css';
+import { CardStrip, CardName, CardChevron, MonthBreak, barKeys, stop } from './ResultCardParts.jsx';
 import ResultsCurve from './ResultsCurve.jsx';
 import { BankrollSwitcher, BankrollManager, BankrollPicker } from './Bankrolls.jsx';
 import { filterByBankroll, balancesFromSummary, defaultBankrollFor } from '../utils/bankrolls.js';
@@ -358,60 +358,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
 // the Schedule's date pill above the cards; the row-1 line is the event's start time (and the
 // entries, when more than one); the result takes the buy-in's place, what it is of under it; the
 // details and Edit / Delete are behind the chevron. tracking-cards.css holds the little that differs.
-function stripOf(venue, property) {
-  const info = getVenueInfo(venue, property) || {};
-  const abbr = info.abbr || null;
-  return { abbr, name: info.longName || venue || '' };
-}
-function CardStrip({ venue, property, open, onToggle }) {
-  const { abbr, name } = stripOf(venue, property);
-  return (
-    <div className={'cal-venue-strip' + (abbr ? '' : ' is-neutral')} aria-hidden="true" onClick={onToggle}
-      style={{ background: abbr ? getVenueBrandColor(abbr) : 'var(--border-strong)', color: '#ffffff', cursor: 'pointer' }}>
-      <span className="venue-strip-abbr">{abbr ? getStripAbbr(abbr) : ''}</span>
-      {open && <span className="venue-strip-full">{name}</span>}
-    </div>
-  );
-}
-function CardName({ name }) {
-  const { base, stage } = splitEventStage(name || '');
-  return (
-    <span className="cal-event-name" title={name || ''}>
-      {stage ? (<><span className="cal-event-base">{base}</span><span className="cal-event-stage">{stage}</span></>) : name}
-    </span>
-  );
-}
-function CardChevron({ open, onToggle }) {
-  return (
-    <div className={'cal-event-chevron' + (open ? ' open' : '')} onClick={onToggle}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
-    </div>
-  );
-}
-/* A month break, as the backer page draws its sessions (owner, 2026-10-16): the Schedule's date-break
-   pill with the month where the day number sits, the count on the pill's line, the month's net at its
-   right end; sticky at the scroller's top. */
-function MonthBreak({ monthKey, count, net, fmtNet }) {
-  const { mon, year } = monthLabel(monthKey);
-  const labelRef = React.useRef(null);
-  useInkBalance(labelRef, [mon, year]);
-  return (
-    <div className="schedule-date-break tr-month-break" style={{ top: 0 }}>
-      <span className="date-break-pill tr-month-pill">
-        <span className="date-break-label" ref={labelRef}>
-          <b className="date-break-day">{mon}</b>
-          <span className="date-break-mon">{year}</span>
-        </span>
-      </span>
-      <span className="date-break-count">{count === 1 ? '1 event' : count + ' events'}</span>
-      <span className="date-break-end tr-month-end">
-        <span className={'date-break-dow tr-month-net' + (net > 0 ? ' is-pos' : net < 0 ? ' is-neg' : '')}>{fmtNet(net)}</span>
-      </span>
-    </div>
-  );
-}
-const barKeys = (toggle) => (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
-const stop = (fn) => (e) => { e.stopPropagation(); fn && fn(e); };
+// The card parts (strip, name, chevron, month break) live in ResultCardParts.jsx, shared with Cash.
 
 // ── Didn't play (owner, 2026-10-16) ──────────────────────────
 // Results' Didn't play: the event stays on the schedule, marked not played

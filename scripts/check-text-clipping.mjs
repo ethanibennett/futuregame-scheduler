@@ -785,8 +785,8 @@ function scan(rootSel) {
   if (on('cash')) await cashScreen('cash live cash-out', ['.cs-livescreen button:has-text("Cash out")']);
   if (on('cash')) await cashScreen('cash list', [back]);
   if (on('cash')) await cashScreen('cash stats', [back, '.cs-tabs button:has-text("Stats")']);
-  if (on('cash')) await cashScreen('cash session', [back, '.cs-row']);
-  if (on('cash')) await cashScreen('cash add', [back, '.cs-head button:has-text("Add")', '.cs-form-foot button']);
+  if (on('cash')) await cashScreen('cash session', [back, '[data-cash-row]']);
+  if (on('cash')) await cashScreen('cash add', [back, '.cs-head button[title="Add a past session"]', '.cs-form-foot button']);
   if (on('cash-bar')) try {
     await openResults();
     await p.locator('.results-kind-tabs button:has-text("Cash")').first().click({ timeout: 4000 });
@@ -875,7 +875,7 @@ function scan(rootSel) {
             await p.waitForTimeout(1500);
             await p.locator('.cs-head button:has-text("Sessions")').first().click({ timeout: 4000 });
             await p.waitForTimeout(700);
-            await p.locator('.cs-row').first().click({ timeout: 4000 });
+            await p.locator('[data-cash-row]').first().click({ timeout: 4000 });
           }
           await p.locator('.bn').filter({ visible: true }).first().waitFor({ timeout: 8000 });
           if (kind === 'warning' || kind === 'long') {

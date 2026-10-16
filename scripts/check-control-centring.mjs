@@ -2071,8 +2071,8 @@ function finalize(c) {
   step('cash-sessions-live-end', () => cashHalf('.cs-livescreen button:has-text("Cash out")'), 2);
   step('cash-sessions', () => cashHalf(csBack), 2);
   step('cash-sessions-stats', () => cashHalf(csBack, '.cs-tabs button:has-text("Stats")'), 1);
-  step('cash-sessions-detail', () => cashHalf(csBack, '.cs-row'), 2);
-  step('cash-sessions-forms', () => cashHalf(csBack, '.cs-head button:has-text("Add")', '.cs-form-foot button'), 3);
+  step('cash-sessions-detail', () => cashHalf(csBack, '[data-cash-row]'), 2);
+  step('cash-sessions-forms', () => cashHalf(csBack, '.cs-head button[title="Add a past session"]', '.cs-form-foot button'), 3);
   // The Backers block (components/BackerNotify.jsx, the Notify tap; the owner's, so CHECK_TOKEN must
   // be the owner's: CONSOLE_OWNER_USER_ID on a scratch server) under a tournament result's edit
   // form, on a cash session's page and on its edit screen: previewed (the server's own answer for
@@ -2092,9 +2092,9 @@ function finalize(c) {
         await reveal(sel, 200);
         await tap(sel, 900);
       } else if (where === 'cash') {
-        await cashHalf(csBack, '.cs-row');
+        await cashHalf(csBack, '[data-cash-row]');
       } else {
-        await cashHalf(csBack, '.cs-row', '.cs-head button:has-text("Edit")');
+        await cashHalf(csBack, '[data-cash-row]', '.cs-head button:has-text("Edit")');
       }
       await vis('.bn').first().waitFor({ timeout: 8000 });
       if (kind === 'warning') { await tap('.bn-row.has-warn .bn-btn--brand', 500); await vis('.bn-row-act[role="group"]').first().waitFor({ timeout: 3000 }); }

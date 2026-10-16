@@ -88,3 +88,12 @@
   color: var(--brand-ink, var(--brand));
 }
 .bp-seg > button:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+/* The graph's truncating labels keep their descenders' room wherever it is drawn (the backer page
+   does this for every cell; the Bankroll tab has no such rule): 1r of padding below the line,
+   cancelled by an equal negative margin, so the layout and the baseline do not move. */
+.bp-chart-block .an-clip {
+  height: calc(var(--subrow) * (var(--h) + 1));
+  padding-bottom: var(--subrow);
+  margin-bottom: calc(var(--subrow) * -1);
+}

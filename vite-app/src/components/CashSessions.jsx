@@ -31,6 +31,10 @@ import {
   swingSeries, swingSummary, chartPath,
 } from '../utils/cash-sessions.js';
 import { cashBbGroups, bbColumn, bbFigures, bbBasis, unitLabel } from '../utils/bb-hr.js';
+import { CardStrip, MonthBreak } from './ResultCardParts.jsx';
+import BackerChart, { RangeStrip } from './BackerChart.jsx';
+import { shareSeries, rangeOptions, fmtDay } from '../utils/backer-page.js';
+import { getToday } from '../utils/utils.js';
 import useLiveCashSession, { setLiveSession } from '../hooks/useLiveCashSession.js';
 import { useResultsFocus, clearResultsFocus, revealInScroller } from '../hooks/useResultsFocus.js';
 import { useTick } from './CashLive.jsx';
@@ -400,10 +404,18 @@ function Stats({ stats, sessions }) {
 }
 
 // ── Sessions: the chip graph, then month by month ────────────────────────────
-function Summary({ stats }) {
+function Summary({ stats, sessions }) {
+  const [range, setRange] = useState('all');
+  const today = getToday();
+  // One step per session in date order, its net (BackerChart / utils/backer-page.js; owner, 2026-10-16:
+  // "the interactive graph and session cards" on both halves of the Bankroll tab).
+  const events = useMemo(() => (sessions || []).filter((x) => x.session_date && x.net != null)
+    .map((x) => ({ date: x.session_date, shareCents: Math.round(x.net * 100), game: [sessionGame(x) || 'Cash', x.room].filter(Boolean).join(' · ') })), [sessions]);
+  const options = useMemo(() => rangeOptions(events, today), [events, today]);
+  const r = options.some(([k]) => k === range) ? range : 'all';
+  const series = useMemo(() => shareSeries(events, { base: 0, range: r, today }), [events, r, today]);
   if (!stats || !stats.sessions) return null;
   const o = stats.overall, cur = stats.currency;
-  const points = [{ v: 0 }, ...(stats.series || []).map((p) => ({ v: p.cum }))];
   return (
     <section className="cs-sum" aria-label="Cash results">
       <div className="cs-sum-line">
@@ -414,7 +426,12 @@ function Summary({ stats }) {
         <span className={'cs-t cs-sum-net' + tone(o.net)}>{signed(o.net, cur)}</span>
         <span className={'cs-t cs-sum-rate cs-r' + tone(o.hourly || 0)}>{perHour(o.hourly, cur)}</span>
       </div>
-      <Chart className="cs-chart--sum" points={points} x="i" label="Cumulative cash results, session by session" />
+      {series && series.n > 1 && (
+        <div className="tr-chart cs-sum-chart">
+          <BackerChart series={series} label="Cash" today={today} baseNote="start"
+            control={options.length > 0 && <RangeStrip options={options} value={r} onChange={setRange} />} />
+        </div>
+      )}
     </section>
   );
 }
@@ -422,15 +439,29 @@ function Summary({ stats }) {
 function SessionRow({ s, onOpen }) {
   const cur = s.currency;
   const hourly = sessionHourly(s);
-  const what = [sessionGame(s) || 'Cash', s.room].filter(Boolean).join(' · ');
+  const game = sessionGame(s) || 'Cash';
+  const stage = (s.subtitle || s.notes || '').trim();
   return (
-    <div className={'cs-row' + (s.notes ? ' has-note' : '')} role="button" tabIndex={0} onClick={onOpen}
+    <div className="cal-event-row tr-card cs-card" data-cash-row={s.id} role="button" tabIndex={0} onClick={onOpen}
+      aria-label={`${game}${s.room ? ', ' + s.room : ''}, ${fmtDay(s.session_date)}: ${signed(s.net, cur)}`}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}>
-      <span className={'cs-t cs-row-net' + tone(s.net)}>{signed(s.net, cur)}</span>
-      <span className="cs-t cs-row-what">{what}</span>
-      <span className="cs-t cs-row-rate">{hourly == null ? '' : `${signed(hourly, cur)}/h`}</span>
-      <span className="cs-t cs-row-when">{rowDay(s.session_date)} · {clockTime(s.started_at)} · {formatHours(s.hours)}</span>
-      {s.notes && <span className="cs-t cs-row-note">{s.notes}</span>}
+      <CardStrip room={s.room || ''} open={false} onToggle={() => {}} />
+      <div className="cal-event-row-content">
+        <div className="cal-event-bar">
+          <div className="cal-bar-row1">
+            <span className="cal-event-time">{fmtDay(s.session_date)} · {formatHours(s.hours)}</span>
+            <span className="cal-event-money">
+              <span className={'cal-event-buyin tr-amt' + tone(s.net)}>{signed(s.net, cur)}</span>
+              {hourly != null && <span className="cal-event-gtd">{signed(hourly, cur)}/h</span>}
+            </span>
+          </div>
+          <div className="cal-bar-row2">
+            <span className="cal-event-name" title={game}>
+              {stage ? (<><span className="cal-event-base">{game}</span><span className="cal-event-stage">{stage}</span></>) : game}
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -444,13 +475,10 @@ function SessionList({ sessions, stats, onOpen }) {
       {months.map((m) => {
         const t = byMonth.get(m.key) || monthTotals(m.sessions);
         return (
-          <React.Fragment key={m.key}>
-            <div className="cs-month">
-              <h3 className="cs-t cs-month-name">{monthLabel(m.key)}</h3>
-              <p className="cs-t cs-month-sum"><span className={tone(t.net)}>{signed(t.net, cur)}</span> · {formatHours(t.hours)} · {plural(m.sessions.length, 'session')}</p>
-            </div>
+          <div key={m.key} className="tr-month">
+            <MonthBreak monthKey={m.key} count={m.sessions.length} net={t.net} fmtNet={(v) => signed(v, cur)} noun="session" />
             {m.sessions.map((s) => <SessionRow key={s.id} s={s} onOpen={() => onOpen(s.id)} />)}
-          </React.Fragment>
+          </div>
         );
       })}
     </section>
@@ -667,6 +695,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
   // The floating + (BankrollFab) steps aside on the screens it leads to or would sit over: the live
   // screen, which has the tab to itself, and the add, start and edit forms.
   let fabAway = true;
+  let listHead = false;   // the list's head takes the Tournaments row's shape (tr-head-row)
   if (shown === 'live' && live) {
     head = <>{back}<h2 className="cs-t cs-title cs-title--live"><span className="cs-dot" aria-hidden="true">●</span> Live</h2></>;
     body = <LiveScreen key={live.id} session={live} stacks={liveStacks || []} skew={skew} busy={busy}
@@ -693,25 +722,34 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
   } else {
     focus = false;
     fabAway = false;
+    listHead = true;
     head = (
       <>
-        <h2 className="cs-t cs-title">Cash</h2>
-        <Btn w={5} h={4} disabled={!ended.length} onClick={exportCsv} title="Export sessions as CSV">CSV</Btn>
-        <Btn w={5} h={4} onClick={() => go('add')}>Add</Btn>
-        {!live && <Btn kind="brand" w={6} h={4} onClick={() => go('start')}>Start</Btn>}
+        {/* As the Tournaments half's row (owner, 2026-10-16): Start (or the running session) in the 26g,
+            then Add a past session and the CSV export as squares. No title: the toggle above says Cash. */}
+        <button type="button" className="filter-chip tr-log-btn" onClick={() => go(live ? 'live' : 'start')}>
+          {live ? null : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>}
+          <span className="tr-log-label">{live ? 'Open the running session' : 'Start session'}</span>
+        </button>
+        <button type="button" className="filter-chip filter-chip-square tr-head-square" onClick={() => go('add')} title="Add a past session" aria-label="Add a past session">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        </button>
+        <button type="button" className="filter-chip filter-chip-square" disabled={!ended.length} onClick={exportCsv} title="Export sessions as CSV" aria-label="Export sessions as CSV">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
       </>
     );
     body = (
       <>
-        <div className="live-update-tabs cash-mode-tabs cs-tabs" role="tablist" aria-label="Cash">
+        <div className="kind-toggles cs-tabs" role="tablist" aria-label="Cash">
           {[['sessions', 'Sessions'], ['stats', 'Stats']].map(([k, label]) => (
-            <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'active' : ''} onClick={() => setTab(k)}>{label}</button>
+            <button key={k} type="button" role="tab" aria-selected={tab === k} className={'kind-toggle' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}><span className="kind-toggle-label">{label}</span></button>
           ))}
         </div>
         {live && <LiveRow session={live} skew={skew} onOpen={() => go('live')} />}
         {tab === 'stats' ? <Stats stats={stats} sessions={sessions} /> : (
           <>
-            <Summary stats={stats} />
+            <Summary stats={stats} sessions={ended} />
             {loaded && !ended.length && (
               <p className="cs-t cs-note">No cash sessions{bk.selected !== 'all' ? ' in this bankroll' : ''} yet. Start the clock at the table, or add a past one.</p>
             )}
@@ -724,7 +762,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
   useHideBankrollFab(fabAway);
   return (
     <div className={'cs-view' + (focus ? ' is-focus' : '')}>
-      <div className="cs-head">{head}</div>
+      <div className={'cs-head' + (listHead ? ' tr-head-row' : '')}>{head}</div>
       {body}
     </div>
   );
