@@ -12,7 +12,7 @@ import {
   getIfIBustEvents, getIfIBagEvents, describeGame, calculateCountdown, haptic,
   currencySymbol, CURRENCY_CONFIG, formatCurrencyAmount,
   VENUE_TO_SERIES, VENUE_BRAND_VAR, isPOYEligible, calculatePOYPoints, isSixMax,
-  HAND_CONFIG, HAND_CONFIG_DEFAULT, splitEventStage, formatChips, getVenueCoords,
+  HAND_CONFIG, HAND_CONFIG_DEFAULT, splitEventStage, formatChips, getVenueCoords, getToday,
 } from '../utils/utils.js';
 import { registerClock, useClockStore, useSecondTick, liveView, clockRegEnd, fmtClock, isCompleted } from '../utils/live-clocks.js';
 import { API_URL } from '../utils/api.js';
@@ -675,6 +675,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
     detail ? 'is-detail' : '',
     selected ? 'is-selected' : '',
     isInSchedule ? 'saved' : '',
+    isInSchedule && normaliseDate(tournament.date) === getToday() ? 'is-today' : '',
     isAnchor ? 'anchor' : (conditions && conditions.length > 0 ? 'conditional' : ''),
     venueClass,
     bracelet ? 'bracelet' : '',
@@ -1271,6 +1272,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
   const rowClasses = [
     'cal-event-row',
     isInSchedule ? 'saved' : '',
+    isInSchedule && normaliseDate(tournament.date) === getToday() ? 'is-today' : '',
     isAnchor ? 'anchor' : (hasConditions ? 'conditional' : ''),
     venueClass,
     bracelet ? 'bracelet' : '',

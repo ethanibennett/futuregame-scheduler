@@ -11129,7 +11129,7 @@
     }
     /* The Swiss theme sets the strip in sentence case (SwissParts.jsx StripLabel) and adds a
        running head (App.jsx); both hidden in every other theme. */
-    .venue-strip-sc, .sw-runhead { display: none; }
+    .venue-strip-sc, .sw-runhead, .kt-count { display: none; }
     .venue-strip-abbr,
     .venue-strip-full {
       grid-area: 1 / 1;

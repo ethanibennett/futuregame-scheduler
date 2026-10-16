@@ -957,3 +957,39 @@
 /* 19: the currency mark small and raised to the figure's cap height (0.55 of the size, lifted
    by 0.72 - 0.4 of the figure's em: 0.58 of its own). Relative, so the line box is unmoved. */
 :root[data-theme^="swiss"] .m-cur { font-size: 0.55em; position: relative; top: -0.58em; margin-right: 0.04em; }
+
+/* --- Second pass, batch 2: the data picks ----------------------------------- */
+/* 27: counts as superior figures beside each filter word (TournamentsView kindCounts). */
+:root[data-theme^="swiss"] .kt-count {
+  display: inline;
+  font-size: 0.62em;
+  position: relative;
+  top: -0.55em;
+  margin-left: 0.15em;
+  font-weight: var(--sw-thin);
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  vertical-align: baseline;
+}
+/* 32: the event you are registered for today: its strip is the red one. */
+:root[data-theme^="swiss"] .cal-event-row.saved.is-today > .cal-venue-strip { background: var(--sw-red) !important; color: #ffffff !important; }
+:root[data-theme^="swiss"] .cal-event-row.saved.is-today > .cal-venue-strip :is(.venue-strip-sc, .venue-strip-abbr, .venue-strip-full) { color: #ffffff; }
+/* 44: the live beacon as a clock face: a red segment that fills once an hour from the start of
+   the session (--sweep, BackerPage liveSweep), on a hairline ring. No pulse. */
+:root[data-theme^="swiss"] .bp-live { box-shadow: inset 0 var(--bw-2) 0 0 var(--sw-red); background: transparent; }
+:root[data-theme^="swiss"] .bp-live .an-lbl { color: var(--sw-red); }
+:root[data-theme^="swiss"] .bp-live-dot {
+  width: calc(var(--subrow) * 3);
+  height: calc(var(--subrow) * 3);
+  top: calc(var(--subrow) * 1.5);
+  border-radius: 50% !important;
+  background: conic-gradient(var(--sw-red) var(--sweep, 0deg), transparent 0);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--sw-g30);
+  animation: none !important;
+}
+:root[data-theme^="swiss"] .bp-live-dot::after { display: none; }
+
+/* Helvetica is wider than the condensed face the money column was measured in: its second line
+   (a guarantee, a backer's "20% of +$479") keeps to one line and runs left, never wraps. */
+:root[data-theme^="swiss"] .cal-event-gtd { white-space: nowrap; justify-self: end; width: max-content; }
+:root[data-theme^="swiss"] .cal-event-money { grid-template-columns: minmax(0, 1fr); }

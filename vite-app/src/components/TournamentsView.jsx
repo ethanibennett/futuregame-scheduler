@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
+import { isOnline as isOnlineEvent } from '../utils/utils.js';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import DateBreak from './DateBreak.jsx';
@@ -86,6 +87,20 @@ function OnlineRoomRules({ sites, siteRules, setFilters, disabled }) {
 // ── Inline Filters (portal-based, matching original) ──
 function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buyinOptions, tournaments, open, setOpen, toggleRef, search, setSearch }) {
   const panelRef = useRef(null);
+  // The Swiss theme's index of filters shows each one's upcoming count as a superior figure
+  // (catalogue item 27; .kt-count is hidden in every other theme).
+  const kindCounts = useMemo(() => {
+    const today = getToday();
+    const c = { Satellites: 0, Restarts: 0, 'Side Events': 0, Online: 0 };
+    for (const t of tournaments || []) {
+      if (!t || normaliseDate(t.date) < today) continue;
+      if (t.is_satellite) c.Satellites += 1;
+      if (t.is_restart) c.Restarts += 1;
+      if (isSideEvent(t)) c['Side Events'] += 1;
+      if (isOnlineEvent(t)) c.Online += 1;
+    }
+    return c;
+  }, [tournaments]);
   // A tap on the Online toggle opens the per-room menu (below), anchored under the button. Online
   // itself is switched from the menu's first row, so the tap no longer toggles it directly.
   const onlineBtnRef = useRef(null);
@@ -234,7 +249,7 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
               <button key={label} type="button"
                       className={`kind-toggle${on ? ' active' : ''}`} aria-pressed={on}
                       onClick={() => pinListTopAcross(() => setFiltersRaw(f => ({ ...f, ...patch(!on) })))}>
-                <span className="kind-toggle-label">{label}</span>
+                <span className="kind-toggle-label">{label}<sup className="kt-count">{kindCounts[label]}</sup></span>
               </button>
             );
             // Online is ONE 8g button with two targets: a tap anywhere toggles Online like its
