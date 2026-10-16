@@ -745,7 +745,7 @@ function scan(rootSel) {
   if (on('cash')) await cashScreen('cash live rebuy', ['.cs-livescreen button:has-text("Rebuy")']);
   if (on('cash')) await cashScreen('cash live cash-out', ['.cs-livescreen button:has-text("Cash out")']);
   if (on('cash')) await cashScreen('cash list', [back]);
-  if (on('cash')) await cashScreen('cash stats', [back, '.cs-tabs button:has-text("Stats")']);
+  if (on('cash')) await cashScreen('cash stats', [back, '.cs-stats-launch']);
   if (on('cash')) await cashScreen('cash session', [back, '[data-cash-row]']);
   if (on('cash')) await cashScreen('cash add', [back, '.cs-head button[title="Add a past session"]', '.cs-form-foot button']);
   if (on('cash-bar')) try {

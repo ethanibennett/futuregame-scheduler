@@ -1,0 +1,405 @@
+<meta charset="utf-8">
+<title>Variant Wheels</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&family=Libre+Baskerville:wght@400;700&display=swap">
+<style>
+/* Layout: the picker as it would sit in the app (a phone-width panel in the app's own dark/light
+   palette), and beside it on wide screens, the notes for the review. */
+:root {
+  --bg: #eef2f2;
+  --panel: #ffffff;
+  --surface2: #e6ecec;
+  --text: #121a1c;
+  --muted: #5d6c70;
+  --line: #cfd9db;
+  --brand: #0e7490;
+  --brand-ink: #ffffff;
+  --brand-quiet: #d9ecf0;
+  --fam-flop: #2f6fa3;
+  --fam-stud: #a86f17;
+  --fam-draw: #2f7d52;
+  --fam-other: #6f55a8;
+  --warn: #9a5b00;
+  --shadow: 0 1px 2px rgba(8,30,36,.08), 0 12px 32px rgba(8,30,36,.10);
+  --display: "Libre Baskerville", Baskerville, Georgia, serif;
+  --cond: "IBM Plex Sans Condensed", "Univers Condensed", "Arial Narrow", sans-serif;
+  --row: 40px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0b0e0f; --panel: #161a1b; --surface2: #222829; --text: #e6ecec; --muted: #8fa0a4;
+    --line: #2a3335; --brand: #3cc8e0; --brand-ink: #03191d; --brand-quiet: #0f2a30;
+    --fam-flop: #4a8fc4; --fam-stud: #cf9a45; --fam-draw: #57a97a; --fam-other: #9a7fcf;
+    --warn: #e0a24a; --shadow: 0 1px 2px rgba(0,0,0,.5), 0 14px 36px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b0e0f; --panel: #161a1b; --surface2: #222829; --text: #e6ecec; --muted: #8fa0a4;
+  --line: #2a3335; --brand: #3cc8e0; --brand-ink: #03191d; --brand-quiet: #0f2a30;
+  --fam-flop: #4a8fc4; --fam-stud: #cf9a45; --fam-draw: #57a97a; --fam-other: #9a7fcf;
+  --warn: #e0a24a; --shadow: 0 1px 2px rgba(0,0,0,.5), 0 14px 36px rgba(0,0,0,.45);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.55 var(--cond); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 32px 16px 64px; display: grid; grid-template-columns: 402px minmax(0, 1fr); gap: 40px 56px; align-items: start; }
+@media (max-width: 900px) { .wrap { grid-template-columns: minmax(0, 1fr); justify-items: center; } .notes { justify-self: stretch; } }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ── The picker panel ── */
+.panel { width: 100%; max-width: 402px; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 18px 16px 16px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); }
+@media (max-width: 900px) { .panel { position: static; } }
+.head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.head h1 { margin: 0; font: 400 17px/1.2 var(--cond); }
+.readout { font: 700 15px/1.2 var(--cond); color: var(--text); text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.label { margin: 0 0 8px; font: 600 11px/1.2 var(--cond); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.faves { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
+.fave { appearance: none; height: 34px; border: 0; border-radius: 6px; background: transparent; box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); font: 700 13px/1 var(--cond); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 4px; white-space: nowrap; }
+.fave i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); flex: none; }
+.fave[aria-pressed="true"] { color: var(--brand); background: var(--brand-quiet); box-shadow: inset 0 0 0 .5px var(--brand); }
+
+.cols { display: grid; grid-template-columns: var(--cols); transition: grid-template-columns .32s cubic-bezier(.2,.8,.2,1); margin-bottom: 6px; }
+.cols .label { margin: 0; padding: 0 4px; white-space: nowrap; overflow: hidden; }
+.cols .label.r { text-align: right; padding-right: 10px; }
+
+.wheels { position: relative; display: grid; grid-template-columns: var(--cols); transition: grid-template-columns .32s cubic-bezier(.2,.8,.2,1); height: calc(var(--row) * 5); }
+.picker { --cols: 30% 1fr 34px 0fr; }
+.picker.is-open { --cols: 20% 1fr 34px 1.2fr; }
+.picker.is-open .w-struct li { padding: 0 6px; letter-spacing: .04em; }
+/* Open: the structure shortens to NL / PL / Limit and the counts step aside, so three wheels fit. */
+.w-struct .s-short, .picker.is-open .w-struct .s-long, .picker.is-open .w-game .more { display: none; }
+.picker.is-open .w-struct .s-short { display: inline; }
+#varLabel { transition: opacity .2s; opacity: 0; }
+.picker.is-open #varLabel { opacity: 1; }
+.band { position: absolute; left: 0; right: 0; top: calc(var(--row) * 2); height: var(--row); border-radius: 8px; background: var(--surface2); box-shadow: inset 3px 0 0 var(--fam, var(--brand)); pointer-events: none; transition: box-shadow .25s; }
+.wheel { position: relative; height: 100%; overflow-y: auto; overflow-x: hidden; scroll-snap-type: y mandatory; scrollbar-width: none; overscroll-behavior: contain; perspective: 420px; -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); outline-offset: -2px; border-radius: 8px; min-width: 0; }
+.wheel::-webkit-scrollbar { display: none; }
+.wheel ul { list-style: none; margin: 0; padding: calc(var(--row) * 2) 0; }
+.wheel li { height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 10px; scroll-snap-align: center; cursor: pointer; white-space: nowrap; transform-origin: center; will-change: transform, opacity; user-select: none; -webkit-user-select: none; }
+.wheel li span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.w-struct li { justify-content: flex-end; font: 700 13px/1 var(--cond); letter-spacing: .08em; text-transform: uppercase; }
+.w-struct li.is-off { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+.w-game li, .w-var li { font: 400 17px/1 var(--display); }
+.w-game li .more { margin-left: auto; flex: none; font: 600 12px/1 var(--cond); color: var(--muted); letter-spacing: .04em; }
+.w-var { opacity: 0; transition: opacity .2s; }
+.picker.is-open .w-var { opacity: 1; }
+.w-var li.is-base { color: var(--muted); }
+
+.exp { align-self: center; z-index: 1; appearance: none; width: 30px; height: 30px; margin: 0 2px; border: 0; border-radius: 50%; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); color: var(--brand); cursor: pointer; display: grid; place-items: center; transition: transform .32s cubic-bezier(.2,.8,.2,1), opacity .2s; }
+.exp svg { width: 14px; height: 14px; }
+.exp[hidden] { display: grid !important; opacity: 0; pointer-events: none; }
+.picker.is-open .exp { transform: rotate(180deg); }
+
+.hint { min-height: 22px; margin: 10px 2px 12px; font-size: 13px; color: var(--muted); }
+.hint b { color: var(--warn); font-weight: 600; }
+.create { appearance: none; width: 100%; height: 46px; border: 0; border-radius: 8px; background: var(--brand); color: var(--brand-ink); font: 700 16px/1 var(--cond); cursor: pointer; padding: 0 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toast { margin: 10px 2px 0; min-height: 20px; font-size: 13px; color: var(--muted); }
+.theme-row { display: flex; justify-content: flex-end; gap: 6px; margin-top: 14px; }
+.theme-row button { appearance: none; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: 4px 10px; font: 600 11px/1 var(--cond); letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
+.theme-row button[aria-pressed="true"] { color: var(--text); border-color: var(--text); }
+
+/* ── Notes ── */
+.notes { min-width: 0; max-width: 64ch; }
+.notes .eyebrow { margin: 0; font: 600 12px/1.3 var(--cond); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.notes h2 { font: 400 clamp(30px, 4.6vw, 42px)/1.1 var(--display); margin: 8px 0 14px; text-wrap: balance; }
+.notes h3 { margin: 30px 0 10px; font: 700 12px/1.2 var(--cond); letter-spacing: .14em; text-transform: uppercase; color: var(--brand); }
+.notes p { margin: 0 0 10px; }
+.notes .lede { font: 400 17px/1.65 var(--display); }
+.notes ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.notes li::marker { color: var(--muted); }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child th, tr:last-child td { border-bottom: 0; }
+thead th { font: 600 11px/1.3 var(--cond); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); background: var(--surface2); }
+tbody th { font: 400 15px/1.4 var(--display); white-space: nowrap; }
+td .tag { display: inline-block; margin-left: 6px; font: 600 10px/1 var(--cond); letter-spacing: .1em; text-transform: uppercase; color: var(--brand); border: 1px solid currentColor; border-radius: 999px; padding: 2px 6px; vertical-align: 2px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
+@media (prefers-reduced-motion: reduce) { .cols, .wheels, .exp, .w-var { transition: none; } }
+</style>
+
+<main class="wrap">
+  <section class="panel" aria-label="New Hand picker prototype">
+    <div class="picker" id="picker">
+      <div class="head">
+        <h1>New Hand</h1>
+        <div class="readout" id="readout" aria-live="polite">No Limit Hold'em</div>
+      </div>
+      <p class="label">Favorites</p>
+      <div class="faves" id="faves" role="group" aria-label="Favorites"></div>
+      <div class="cols" aria-hidden="true">
+        <p class="label r">Structure</p>
+        <p class="label">Game</p>
+        <span></span>
+        <p class="label" id="varLabel">Variant</p>
+      </div>
+      <div class="wheels">
+        <div class="band" id="band"></div>
+        <div class="wheel w-struct" id="wStruct" role="listbox" tabindex="0" aria-label="Betting structure"><ul></ul></div>
+        <div class="wheel w-game" id="wGame" role="listbox" tabindex="0" aria-label="Game"><ul></ul></div>
+        <button type="button" class="exp" id="exp" aria-expanded="false" aria-controls="wVar" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+        </button>
+        <div class="wheel w-var" id="wVar" role="listbox" tabindex="-1" aria-label="Variant"><ul></ul></div>
+      </div>
+      <p class="hint" id="hint"></p>
+      <button type="button" class="create" id="create">Create No Limit Hold'em Hand</button>
+      <p class="toast" id="toast" aria-live="polite"></p>
+      <div class="theme-row" role="group" aria-label="Theme">
+        <button type="button" data-t="dark" aria-pressed="false">Dark</button>
+        <button type="button" data-t="light" aria-pressed="false">Light</button>
+      </div>
+    </div>
+  </section>
+
+  <article class="notes">
+    <p class="eyebrow">futurega.me · Hands · New Hand · direction 9, revised</p>
+    <h2>Variant Wheels</h2>
+    <p class="lede">Two wheels read as one phrase: the betting structure on the left, the game on the right. A game with relatives has an arrow; tap it and a third wheel slides out to the right with its variants. Hold'em opens to Pineapple and Short Deck, Razz to Action Razz, Razzdugi, Razzdeucy and 2-7 Razz.</p>
+
+    <h3>Try it</h3>
+    <ul>
+      <li>Flick or drag either wheel, tap a row, or focus a wheel and use the arrow keys.</li>
+      <li>Land on Hold'em or Razz and tap the arrow beside the game. Pick a variant on the new wheel, or tap the arrow again to fold it away.</li>
+      <li>Change the game and the structure wheel turns to that game's usual structure. Turn it yourself to log an unusual one (Pot Limit Hold'em, No Limit Razz); the line under the wheels says when you have.</li>
+      <li>Short Deck, PLO5, PLO6 and PLO6 8/b are played one way only, so the other structures are struck through and the wheel springs back.</li>
+    </ul>
+
+    <h3>What changed from direction 9</h3>
+    <ul>
+      <li><strong>Structure is its own wheel, first.</strong> No Limit, Pot Limit, Limit: three rows, always in the same place.</li>
+      <li><strong>The game wheel lists 14 games, not 48, named as families where it has to (2-7 Draw opens to Triple and Single Draw).</strong> Everything else sits one level out, in its game's variant wheel, so a flick covers the whole list and there is no family rail or More row.</li>
+      <li><strong>Variants open rightward</strong>, as you asked for Hold'em and Razz. I applied the same pattern to the other families with relatives; the table below marks which ones are your call and which are mine.</li>
+      <li>Mixed games (HORSE, 8-Game) and the bottom-of-screen sheet from direction 9 are left out of this round, so the wheels can be judged on their own.</li>
+    </ul>
+
+    <h3>The game wheel and its variants</h3>
+    <div class="tbl"><table>
+      <thead><tr><th scope="col">Game</th><th scope="col">Opens to</th></tr></thead>
+      <tbody id="famTable"></tbody>
+    </table></div>
+
+    <h3>Not decided yet</h3>
+    <ul>
+      <li>Stud's Super toggle. Action is a Razz variant here; Super Stud could be a Stud variant the same way.</li>
+      <li>Where it sits: at the top of Hands as today, or docked in the thumb zone as direction 9 had it.</li>
+      <li>Custom games from your saved list: a 15th row on the game wheel, or their own variant wheel under "Custom".</li>
+      <li>Mixed games: a fourth "this hand" wheel when the game wheel lands on a rotation, as in direction 9.</li>
+    </ul>
+  </article>
+</main>
+
+<script>
+(() => {
+  const FAM = { flop: 'var(--fam-flop)', stud: 'var(--fam-stud)', draw: 'var(--fam-draw)', other: 'var(--fam-other)' };
+  // The game wheel: 14 games. `v` lists the variant wheel (the game itself first); `asked` marks the
+  // expansions the owner named.
+  const GAMES = [
+    { k: "Hold'em", fam: 'flop', v: ["Hold'em", 'Pineapple', 'Short Deck'], asked: true },
+    { k: 'Omaha', fam: 'flop', v: ['Omaha', 'Omaha 8/b', 'Big O', 'PLO5', 'PLO6', 'PLO6 8/b', 'Courchevel', 'Double Board Bomb Pot'] },
+    { k: 'Stud', fam: 'stud', v: ['Stud', 'Stud 8/b', 'Stud Hi/Lo Regular'] },
+    { k: 'Razz', fam: 'stud', v: ['Razz', 'Action Razz', 'Razzdugi', 'Razzdeucy', '2-7 Razz'], asked: true },
+    { k: '2-7 Draw', fam: 'draw', v: ['2-7 Triple Draw', '2-7 Single Draw'] },
+    { k: 'A-5 Draw', fam: 'draw', v: ['A-5 Triple Draw', 'A-5 Single Draw'] },
+    { k: 'Badugi', fam: 'draw', v: ['Badugi', 'Badeucy', 'Badacey'] },
+    { k: '5-Card Draw', fam: 'draw' },
+    { k: 'Archie', fam: 'draw', v: ['Archie 66', 'Archie 99'] },
+    { k: 'Ari', fam: 'draw' },
+    { k: 'Dramaha', fam: 'other', v: ['Dramaha Hi', 'Dramaha 2-7', 'Dramaha 49', 'Dramaha 0', 'Dramadugi'] },
+    { k: 'Omajack', fam: 'other' },
+    { k: 'OFC', fam: 'other' },
+    { k: 'Custom', fam: 'other', v: ['Custom', 'Saved game 1', 'Saved game 2'] },
+  ];
+  const STRUCTS = ['No Limit', 'Pot Limit', 'Limit'];
+  // The app's own conventions (HandReplayerView defaultStructure / FIXED_STRUCTURE).
+  const DEFAULT = {
+    "Hold'em": 'No Limit', Pineapple: 'No Limit', 'Short Deck': 'No Limit',
+    Omaha: 'Pot Limit', 'Omaha 8/b': 'Pot Limit', 'Big O': 'Pot Limit', PLO5: 'Pot Limit', PLO6: 'Pot Limit', 'PLO6 8/b': 'Pot Limit', Courchevel: 'Pot Limit', 'Double Board Bomb Pot': 'No Limit',
+    Stud: 'Limit', 'Stud 8/b': 'Limit', 'Stud Hi/Lo Regular': 'Limit',
+    Razz: 'Limit', 'Action Razz': 'Limit', Razzdugi: 'Limit', Razzdeucy: 'Limit', '2-7 Razz': 'Limit',
+    '2-7 Triple Draw': 'Limit', '2-7 Single Draw': 'No Limit', 'A-5 Triple Draw': 'Limit', 'A-5 Single Draw': 'No Limit',
+    Badugi: 'Limit', Badeucy: 'Limit', Badacey: 'Limit', '5-Card Draw': 'No Limit', 'Archie 66': 'Limit', 'Archie 99': 'Limit', Ari: 'Limit',
+    'Dramaha Hi': 'Pot Limit', 'Dramaha 2-7': 'Pot Limit', 'Dramaha 49': 'Pot Limit', 'Dramaha 0': 'Pot Limit', Dramadugi: 'Pot Limit', Omajack: 'Pot Limit', OFC: 'No Limit',
+    Custom: 'No Limit', 'Saved game 1': 'No Limit', 'Saved game 2': 'No Limit',
+  };
+  const FIXED = { 'Short Deck': 'No Limit', PLO5: 'Pot Limit', PLO6: 'Pot Limit', 'PLO6 8/b': 'Pot Limit' };
+  const FAVES = [
+    { label: 'NLH', game: "Hold'em", v: "Hold'em", s: 'No Limit' },
+    { label: 'PLO', game: 'Omaha', v: 'Omaha', s: 'Pot Limit' },
+    { label: 'Action Razz', game: 'Razz', v: 'Action Razz', s: 'Limit' },
+    { label: '2-7 TD', game: '2-7 Draw', v: '2-7 Triple Draw', s: 'Limit' },
+  ];
+
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = (id) => document.getElementById(id);
+  const picker = $('picker');
+  const state = { s: 0, g: 0, v: 0, open: false, userStruct: false };
+
+  // A wheel: a scroll-snapped list. `onSettle(i)` fires when it comes to rest on a new row.
+  function wheel(el, onSettle) {
+    const ul = el.querySelector('ul');
+    let items = [], idx = 0, t = 0, raf = 0, lock = false;
+    const row = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--row')) || 40;
+    const paint = () => {
+      raf = 0;
+      const mid = el.scrollTop + el.clientHeight / 2, h = row();
+      ul.querySelectorAll('li').forEach((li, i) => {
+        const d = (i * h + h * 2 + h / 2 - mid) / h;   // rows from the band
+        const a = Math.min(Math.abs(d), 3);
+        li.style.opacity = String(Math.max(0.22, 1 - a * 0.3));
+        li.style.transform = reduce ? 'none' : `rotateX(${(-d * 16).toFixed(1)}deg) scale(${(1 - a * 0.05).toFixed(3)})`;
+      });
+    };
+    const settle = () => {
+      const i = Math.max(0, Math.min(items.length - 1, Math.round(el.scrollTop / row())));
+      if (i !== idx) { idx = i; mark(); onSettle(i); } else if (!lock) onSettle(i, true);
+    };
+    const mark = () => ul.querySelectorAll('li').forEach((li, i) => li.setAttribute('aria-selected', String(i === idx)));
+    el.addEventListener('scroll', () => {
+      if (!raf) raf = requestAnimationFrame(paint);
+      clearTimeout(t); t = setTimeout(settle, 110);
+    }, { passive: true });
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); api.set(idx + (e.key === 'ArrowDown' ? 1 : -1), true); }
+    });
+    const api = {
+      setItems(list, at = 0) {
+        items = list;
+        ul.innerHTML = list.map((it, i) => `<li role="option" id="${el.id}-${i}" class="${it.cls || ''}">${it.html}</li>`).join('');
+        ul.querySelectorAll('li').forEach((li, i) => li.addEventListener('click', () => api.set(i, true)));
+        idx = Math.max(0, Math.min(list.length - 1, at));
+        lock = true; el.scrollTop = idx * row(); lock = false;
+        mark(); paint();
+      },
+      set(i, smooth) {
+        i = Math.max(0, Math.min(items.length - 1, i));
+        el.scrollTo({ top: i * row(), behavior: smooth && !reduce ? 'smooth' : 'auto' });
+        if (!smooth || reduce) { idx = i; mark(); paint(); }
+      },
+      restyle(list) { ul.querySelectorAll('li').forEach((li, i) => { li.className = (list[i] && list[i].cls) || ''; }); },
+      get index() { return idx; },
+      paint,
+    };
+    return api;
+  }
+
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const game = () => GAMES[state.g];
+  const variant = () => (state.open && game().v ? game().v[state.v] : (game().v ? game().v[0] : game().k));
+  const struct = () => STRUCTS[state.s];
+
+  const wS = wheel($('wStruct'), (i, same) => {
+    const f = FIXED[variant()];
+    if (f && STRUCTS[i] !== f) { wS.set(STRUCTS.indexOf(f), true); return; }   // played one way only
+    if (!same) { state.s = i; state.userStruct = STRUCTS[i] !== DEFAULT[variant()]; render(); }
+  });
+  let quiet = null;   // a favourite's spin: its own variant and structure stand
+  const wG = wheel($('wGame'), (i, same) => {
+    if (same) return;
+    if (quiet === i) { quiet = null; return; }
+    state.g = i; state.v = 0;
+    if (!game().v) setOpen(false); else if (state.open) wV.setItems(varItems(), 0);
+    followStructure(); render();
+  });
+  const wV = wheel($('wVar'), (i, same) => {
+    if (same) return;
+    state.v = i; followStructure(); render();
+  });
+
+  const gameItems = () => GAMES.map((g) => ({ html: `<span>${esc(g.k)}</span>${g.v ? `<span class="more" aria-hidden="true">${g.v.length - 1} ›</span>` : ''}` }));
+  const varItems = () => (game().v || []).map((v, i) => ({ html: `<span>${esc(v)}</span>`, cls: i === 0 ? 'is-base' : '' }));
+  const SHORT = { 'No Limit': 'NL', 'Pot Limit': 'PL', Limit: 'Limit' };
+  const structItems = () => STRUCTS.map((s) => ({ html: `<span class="s-long">${s}</span><span class="s-short">${SHORT[s]}</span>`, cls: FIXED[variant()] && FIXED[variant()] !== s ? 'is-off' : '' }));
+
+  // The structure wheel turns to the game's usual structure (or its only one).
+  function followStructure() {
+    const want = FIXED[variant()] || DEFAULT[variant()] || 'No Limit';
+    state.s = STRUCTS.indexOf(want); state.userStruct = false;
+    wS.restyle(structItems());
+    wS.set(state.s, true);
+  }
+
+  function setOpen(open) {
+    state.open = !!open && !!game().v;
+    picker.classList.toggle('is-open', state.open);
+    $('exp').setAttribute('aria-expanded', String(state.open));
+    $('wVar').tabIndex = state.open ? 0 : -1;
+    if (state.open) wV.setItems(varItems(), state.v);
+    else state.v = 0;
+    setTimeout(() => { wS.paint(); wG.paint(); wV.paint(); }, 340);
+  }
+
+  $('exp').addEventListener('click', () => {
+    setOpen(!state.open);
+    if (state.open) $('wVar').focus({ preventScroll: true });
+    followStructure(); render();
+  });
+
+  function name() {
+    const v = variant();
+    if (FIXED[v]) return v;
+    if (v === 'Custom' || /^Saved game/.test(v)) return v;
+    return `${struct()} ${v}`;
+  }
+
+  function render() {
+    const g = game(), v = variant();
+    $('band').style.setProperty('--fam', FAM[g.fam]);
+    const exp = $('exp');
+    exp.hidden = !g.v;
+    exp.setAttribute('aria-label', state.open ? `Hide ${g.k} variants` : `Show ${g.k} variants: ${(g.v || []).slice(1).join(', ')}`);
+    $('varLabel').textContent = g.v ? `${g.k} variants` : 'Variant';
+    $('readout').textContent = name();
+    $('create').textContent = `Create ${name()} Hand`;
+    const hint = $('hint');
+    if (FIXED[v]) hint.textContent = `${v} is only played ${FIXED[v].toLowerCase()}.`;
+    else if (state.userStruct) hint.innerHTML = `<b>Unusual:</b> ${esc(v)} is usually ${DEFAULT[v].toLowerCase()}.`;
+    else if (g.v && !state.open) hint.textContent = `${g.k} has ${g.v.length - 1} variant${g.v.length > 2 ? 's' : ''}: tap › to choose one.`;
+    else hint.textContent = '';
+    document.querySelectorAll('.fave').forEach((b, i) => {
+      const f = FAVES[i];
+      b.setAttribute('aria-pressed', String(f.v === v && f.s === struct()));
+    });
+  }
+
+  // Favourites spin the wheels to their pair.
+  $('faves').innerHTML = FAVES.map((f) => `<button type="button" class="fave" style="--c:${FAM[GAMES.find((g) => g.k === f.game).fam]}"><i></i>${esc(f.label)}</button>`).join('');
+  document.querySelectorAll('.fave').forEach((b, i) => b.addEventListener('click', () => {
+    const f = FAVES[i];
+    const gi = GAMES.findIndex((g) => g.k === f.game);
+    if (gi !== wG.index) quiet = gi;
+    state.g = gi;
+    wG.set(gi, true);
+    const vi = (game().v || []).indexOf(f.v);
+    state.v = Math.max(0, vi);
+    setOpen(vi > 0);
+    state.s = STRUCTS.indexOf(f.s); state.userStruct = false;
+    wS.restyle(structItems());
+    wS.set(state.s, true);
+    render();
+  }));
+
+  $('create').addEventListener('click', () => { $('toast').textContent = `Would open the hand entry for ${name()}.`; });
+
+  // The table in the notes, from the same data.
+  $('famTable').innerHTML = GAMES.filter((g) => g.v && g.k !== 'Custom').map((g) =>
+    `<tr><th scope="row"><span class="dot" style="background:${FAM[g.fam]}"></span>${esc(g.k)}</th><td>${g.v.slice(1).map(esc).join(', ')}${g.asked ? '<span class="tag">You asked</span>' : ''}</td></tr>`).join('')
+    + `<tr><th scope="row"><span class="dot" style="background:${FAM.other}"></span>Custom</th><td>Your saved custom games</td></tr>`
+    + `<tr><td colspan="2">No variants: ${GAMES.filter((g) => !g.v).map((g) => esc(g.k)).join(', ')}.</td></tr>`;
+
+  // Theme buttons (the page follows the device until one is pressed).
+  document.querySelectorAll('.theme-row button').forEach((b) => b.addEventListener('click', () => {
+    document.documentElement.setAttribute('data-theme', b.dataset.t);
+    document.querySelectorAll('.theme-row button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  }));
+
+  wG.setItems(gameItems(), 0);
+  wV.setItems([], 0);
+  wS.setItems(structItems(), 0);
+  followStructure();
+  render();
+})();
+</script>

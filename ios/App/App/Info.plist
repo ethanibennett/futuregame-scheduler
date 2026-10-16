@@ -95,6 +95,10 @@
 	     because Safari holds the location entitlement itself; the wrapper declares its own. -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>futurega.me uses your location to find tournaments near you</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>futurega.me listens while you describe a hand in Quick add</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>futurega.me turns the hand you describe into text in Quick add</string>
 	<key>NSCameraUsageDescription</key>
 	<string>futurega.me uses the camera for table scanning and registration photos</string>
 	<key>NSPhotoLibraryUsageDescription</key>

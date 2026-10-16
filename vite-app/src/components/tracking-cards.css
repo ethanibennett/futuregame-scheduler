@@ -143,9 +143,7 @@
 /* The Cash half in the same scheme (owner, 2026-10-16): Sessions | Stats as the kind toggles, the
    graph under the summary at the full 35g (the summary's own figures are unchanged), the session
    cards under the month pills, 2r apart, like the results. */
-.cs-view .kind-toggles.cs-tabs { margin: 0 0 calc(var(--subrow) * 2); }
 .cs-view .cs-head.tr-head-row { height: calc(var(--subrow) * 4); }
-.cs-sum .cs-sum-chart { margin-top: calc(var(--subrow) * 2); }
 .cs-list .tr-month .cal-event-row.tr-card { margin-bottom: calc(var(--subrow) * 2); cursor: pointer; }
 .cs-list .tr-month:first-child .tr-month-break { margin-top: 0; }
 /* A range with nothing in it: one 2r line where the graph would be, the strip under it. */
