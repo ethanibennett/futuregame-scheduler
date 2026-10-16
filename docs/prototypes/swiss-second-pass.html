@@ -373,7 +373,42 @@ b, strong, .b { font-weight: 700; letter-spacing: -0.02em; }
   const KEY = 'swissPicks';
   let picks = new Set();
   try { picks = new Set(JSON.parse(localStorage.getItem(KEY) || '[]')); } catch { /* storage unavailable */ }
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...picks])); } catch { /* storage unavailable */ } };
+  // Picks are kept in the artifact's database (one shared document) so Claude can read them, and on
+  // this device as a fallback. Ticks made before the database existed are carried over once.
+  let pickDoc = null, lastSaved = '';
+  const status = () => document.getElementById('copied');
+  const save = () => {
+    try { localStorage.setItem(KEY, JSON.stringify([...picks])); } catch { /* storage unavailable */ }
+    if (!pickDoc) return;
+    const list = [...picks].sort((a, b) => a - b);
+    const key = list.join(',');
+    if (key === lastSaved) return;
+    pickDoc.set({ picks: list, updatedAt: new Date().toISOString() })
+      .then(() => { lastSaved = key; status().textContent = 'Saved for Claude.'; })
+      .catch(() => { status().textContent = 'Saved on this device only.'; });
+  };
+  const sync = (list) => {
+    picks = new Set(list);
+    document.querySelectorAll('.pick input').forEach((cb) => {
+      const on = picks.has(Number(cb.dataset.n));
+      cb.checked = on;
+      document.getElementById('i' + cb.dataset.n).classList.toggle('is-picked', on);
+    });
+    show();
+  };
+  (async () => {
+    const db = window.claude && window.claude.use ? await window.claude.use('db').catch(() => null) : null;
+    if (!db) return;
+    pickDoc = db.doc('picks/main');
+    try {
+      const snap = await pickDoc.get();
+      const stored = snap.exists && Array.isArray(snap.data().picks) ? snap.data().picks.map(Number) : [];
+      lastSaved = [...stored].sort((a, b) => a - b).join(',');
+      const merged = [...new Set([...stored, ...picks])].sort((a, b) => a - b);
+      sync(merged);
+      if (merged.join(',') !== lastSaved) save();
+    } catch { pickDoc = null; }
+  })();
   const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
   document.getElementById('catalogue').innerHTML = SECTIONS.map((sec) => `
