@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import Icon from './Icon.jsx';
 import GridOverlay from './GridOverlay.jsx';
 import ThemeButton from './ThemeButton.jsx';
-import BackerChart from './BackerChart.jsx';
+import BackerChart, { RangeStrip } from './BackerChart.jsx';
 import useBackerPush from '../hooks/useBackerPush.js';
 import useInkBalance from '../hooks/useInkBalance.js';
 import useThemeChoice from '../hooks/useThemeChoice.js';
@@ -99,19 +99,6 @@ const todayISO = () => {
 
 /** The graph's range: one 35g x 4r strip of whole-g segments (the bankroll overview's segmented
  *  strip, drawn here so the page does not load the bankroll chunk). A radio group. */
-function RangeStrip({ options, value, onChange }) {
-  return (
-    <div className="bp-seg" data-n={options.length} role="radiogroup" aria-label="Range">
-      {options.map(([k, text]) => (
-        <button key={k} type="button" role="radio" aria-checked={value === k}
-          className={value === k ? 'is-on' : ''} onClick={() => onChange(k)}>
-          <span>{text}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function PushPill({ push }) {
   const { state } = push;
   if (state === 'unsupported' || state === 'unavailable' || state === 'checking') return null;

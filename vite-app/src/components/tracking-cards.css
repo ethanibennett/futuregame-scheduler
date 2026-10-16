@@ -133,3 +133,7 @@
   -webkit-appearance: none; appearance: none;
 }
 .bk-bar.bk-bar--sched .bk-pick:focus-within { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); }
+
+/* The backer page's graph under the summary (owner, 2026-10-16): full 35g, 2r to what follows. */
+.tr-chart { margin-bottom: calc(var(--subrow) * 2); }
+.tr-chart .bp-chart-block { margin-top: 0; }

@@ -36,7 +36,6 @@
   --neg: #952f28;
   --neg-quiet: rgba(149, 47, 40, 0.12);
 }
-[data-theme="cloudy"] .bp-base { stroke: var(--n-6); }
 [data-theme="cloudy"] .bp-empty { outline-color: var(--n-6); }
 
 /* The shell: the phone's 37g column, centred on a wider window (no rail, no panes). A classic
@@ -184,91 +183,7 @@
 .bp-bb.is-pos { color: var(--pos); }
 .bp-bb.is-neg { color: var(--neg); }
 
-/* ── Graph ── */
-.bp-chart-block { margin-top: calc(var(--subrow) * 3); }
-/* Every figure on the right ends 1g in, on the session cards' figures (owner, 2026-10-14): 22g | 1g |
-   11g, then 1g. */
-.bp-chart-head, .bp-chart-foot {
-  display: grid;
-  grid-template-columns: calc(var(--gu) * 22) calc(var(--gu) * 11);
-  column-gap: var(--gu);
-  padding-right: var(--gu);
-}
-.bp-chart-change { text-align: right; }
-.bp-chart-change.is-pos { color: var(--pos); }
-.bp-chart-change.is-neg { color: var(--neg); }
-.bp-chart-foot { grid-template-columns: calc(var(--gu) * 16) calc(var(--gu) * 17); }
-.bp-chart {
-  position: relative;
-  width: calc(var(--gu) * 35);
-  height: calc(var(--subrow) * 16);
-  margin-top: var(--subrow);
-}
-/* Tap or drag across the plot to read a session (BackerChart); a vertical drag still scrolls. */
-.bp-chart { touch-action: pan-y; cursor: crosshair; }
-.bp-chart:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
-.bp-chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.bp-line { fill: none; stroke: var(--text); stroke-width: var(--bw-1); stroke-linejoin: round; }
-.bp-base { stroke: var(--border-strong); stroke-width: var(--bw-hair); }
-.bp-fill-pos { fill: var(--pos-quiet); stroke: none; }
-.bp-fill-neg { fill: var(--neg-quiet); stroke: none; }
-/* The last point: a 1r disc centred on it, in the tone of the range's change, ringed in the page
-   ground so it reads off the line. */
-.bp-dot {
-  position: absolute;
-  width: var(--subrow);
-  height: var(--subrow);
-  margin: calc(var(--subrow) * -0.5) 0 0 calc(var(--subrow) * -0.5);
-  border-radius: var(--radius-circle);
-  background: var(--text);
-  box-shadow: 0 0 0 var(--bw-1) var(--bg);
-  pointer-events: none;
-}
-.bp-dot.is-pos { background: var(--pos); }
-/* The session being read: a hairline down the plot at its step, and its own dot on the step's top. */
-.bp-mark {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 0;
-  border-left: var(--bw-hair) solid var(--text-muted);
-  pointer-events: none;
-}
-.bp-dot.is-neg { background: var(--neg); }
-/* The range: a 35g x 4r strip 1r under the foot, its N segments whole g and flush (as
-   bankroll-dashboard.css .bd-seg divides 35g), each a control: label centred both ways. */
-.bp-seg {
-  display: grid;
-  width: calc(var(--gu) * 35);
-  height: calc(var(--subrow) * 4);
-  margin-top: var(--subrow);
-  box-sizing: border-box;
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
-}
-.bp-seg[data-n="2"] { grid-template-columns: calc(var(--gu) * 18) calc(var(--gu) * 17); }
-.bp-seg[data-n="3"] { grid-template-columns: repeat(2, calc(var(--gu) * 12)) calc(var(--gu) * 11); }
-.bp-seg[data-n="4"] { grid-template-columns: repeat(3, calc(var(--gu) * 9)) var(--col); }
-.bp-seg > button {
-  display: grid; align-items: center;
-  width: 100%; height: 100%; min-width: 0; min-height: 0;
-  box-sizing: border-box;
-  margin: 0; padding: 0; border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--text-muted);
-  font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: var(--fs-sm);
-  cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
-}
-.bp-seg > button > span { display: block; min-width: 0; white-space: nowrap; text-align: center; }
-.bp-seg > button.is-on {
-  background: var(--brand-quiet);
-  box-shadow: inset 0 0 0 var(--bw-2) var(--brand);
-  color: var(--brand-ink, var(--brand));
-}
-.bp-seg > button:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+/* The graph and its range strip: backer-chart.css, imported by BackerChart.jsx (shared with the Bankroll tab). */
 
 /* ── Sessions ── */
 .bp-sessions { margin-top: calc(var(--subrow) * 3); }

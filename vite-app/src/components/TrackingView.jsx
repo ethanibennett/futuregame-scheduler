@@ -12,7 +12,8 @@ import {
   getVenueBrandColor, getStripAbbr, splitEventStage,
 } from '../utils/utils.js';
 import useInkBalance from '../hooks/useInkBalance.js';
-import { fmtDay, monthLabel } from '../utils/backer-page.js';
+import { fmtDay, monthLabel, shareSeries, rangeOptions } from '../utils/backer-page.js';
+import BackerChart, { RangeStrip } from './BackerChart.jsx';
 import './tracking-cards.css';
 import ResultsCurve from './ResultsCurve.jsx';
 import { BankrollSwitcher, BankrollManager, BankrollPicker } from './Bankrolls.jsx';
@@ -617,7 +618,10 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   const listItems = useMemo(() => {
     const out = [];
     let k = 0;
-    for (const entry of trackingData) {
+    // Newest first by the real date: the server orders by the stored text ("September 3" after
+    // "September 27"), which scrambled days within a month and months within the list.
+    const byDate = trackingData.map((e, i) => [e, i]).sort((x, y) => (isoDay(y[0].date) || '').localeCompare(isoDay(x[0].date) || '') || x[1] - y[1]).map((x) => x[0]);
+    for (const entry of byDate) {
       const day = isoDay(entry.date) || '';
       while (k < notPlayedEvents.length && (isoDay(notPlayedEvents[k].date) || '') > day) out.push({ dnp: notPlayedEvents[k++] });
       out.push({ entry });
@@ -625,6 +629,20 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
     while (k < notPlayedEvents.length) out.push({ dnp: notPlayedEvents[k++] });
     return out;
   }, [trackingData, notPlayedEvents]);
+  // The backer page's interactive graph (owner, 2026-10-16): the running total of these results, one
+  // step per result in date order, in dollars (BackerChart / utils/backer-page.js shareSeries).
+  const [chartRange, setChartRange] = useState('all');
+  const chartToday = getToday();
+  const chartEvents = useMemo(() => trackingData
+    .map((e) => ({
+      date: isoDay(e.date),
+      shareCents: Math.round(convertAmount(resultMoney(e).net, nativeCurrency(e.venue), 'USD', exchangeRates) * 100),
+      game: e.event_name || null,
+    }))
+    .filter((e) => e.date), [trackingData, exchangeRates]);
+  const chartOptions = useMemo(() => rangeOptions(chartEvents, chartToday), [chartEvents, chartToday]);
+  const chartSeries = useMemo(() => shareSeries(chartEvents, { base: 0, range: chartOptions.some(([k]) => k === chartRange) ? chartRange : 'all', today: chartToday }),
+    [chartEvents, chartRange, chartOptions, chartToday]);
   const netCode = displayCurrency === 'NATIVE' ? 'USD' : displayCurrency;
   const fmtMonthNet = (v) => (v > 0 ? '+' : '') + formatCurrencyAmount(Math.round(v), netCode);
   const months = useMemo(() => {
@@ -834,17 +852,21 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
               </div>
             )}
           </div>
-          <ResultsCurve
-            entries={trackingData}
-            convert={(v) => convertAmount(v, 'USD', displayCurrency === 'NATIVE' ? 'USD' : displayCurrency, exchangeRates)}
-            format={fmtStat}
-          />
           <p className="tr-seat tr-seat-2" style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',margin:0}}>
             {[
               stats.poyEventCount > 0 ? `${stats.poyEventCount} POY event${stats.poyEventCount !== 1 ? 's' : ''}` : '',
               displayCurrency !== 'NATIVE' && exchangeRates ? (ratesStale ? 'fallback rates' : 'live rates') : '',
             ].filter(Boolean).join(' · ')}
           </p>
+        </div>
+      )}
+
+      {chartSeries && chartSeries.n > 1 && (
+        <div className="tr-chart">
+          <BackerChart series={chartSeries} label="Profit" today={chartToday} baseNote="start"
+            control={chartOptions.length > 0 && (
+              <RangeStrip options={chartOptions} value={chartOptions.some(([k]) => k === chartRange) ? chartRange : 'all'} onChange={setChartRange} />
+            )} />
         </div>
       )}
 
