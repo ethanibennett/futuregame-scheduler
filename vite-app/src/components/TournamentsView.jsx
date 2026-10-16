@@ -21,6 +21,7 @@ import {
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
   fetchServerLocation, sameLocation, readLocalFilters, writeLocalFilters } from '../utils/location-prefs.js';
 import { API_URL } from '../utils/api.js';
+import { DEFAULT_FILTERS, useSharedFilters, clearedFilters } from '../utils/shared-filters.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1100,36 +1101,6 @@ function ImportSchedulePanel({ isOpen, onClose, token, onRefreshTournaments }) {
 // Baseline filter state. Shared by the initial useState and clearAllFilters so
 // the two cannot drift — hideSatellites/hideRestarts are on by default, and
 // "clear filters" means back to these, not maximally permissive.
-const DEFAULT_FILTERS = {
-  minBuyin: '', maxBuyin: '', buyinRanges: [], rakeRanges: [], selectedGames: [],
-  hiddenVenues: [], bountyOnly: false, mysteryBountyOnly: false, headsUpOnly: false,
-  tagTeamOnly: false, employeesOnly: false, hideSatellites: true, hideRestarts: true,
-  hideSideEvents: false, hiddenMonths: [], ladiesOnly: false, seniorsOnly: false,
-  mixedOnly: false, dateFrom: '', dateTo: '',
-  maxDistance: '', userLocation: null, locationRegion: null, locationLabel: null,
-  // Live only by default (launch plan, 2026-10-15): online play shows once the player says yes,
-  // in setup or the Online menu. A browser that used the app before keeps its choice
-  // (location-prefs.js migrateLiveOnlyDefaults). It is deliberately NOT a location field: an
-  // online event has no place, so every location filter would otherwise hide all of it.
-  showOnline: false,
-  /* "Available in <state>": only online rooms that can serve the user's
-     jurisdiction. Set from the Online menu (2026-09-30; it was dark from 09-25
-     when its filter-row checkbox was removed) and persisted with the other
-     online choices. matchesOnline ignores it while no jurisdiction is known. On by default
-     (launch plan, 2026-10-15): a room that cannot serve the player's state stays out of the list. */
-  onlyAvailableOnline: true,
-  /* Two-letter state code, or null. A standing fact about the user rather than
-     a filter, which is why it survives "Clear all" alongside the location. */
-  jurisdiction: null,
-  /* True when the user chose the state by hand. A derived lookup must not
-     overwrite a deliberate choice. */
-  jurisdictionManual: false,
-  /* Per-room overrides: { [siteKey]: { minBuyin, seriesOnly } }. Empty means no
-     restriction anywhere, which is what a filter set saved before this existed
-     also means. */
-  siteRules: {},
-};
-
 // LocationDropdown lives in its own file now (shared with CalendarView).
 
 /* Keep the list's top row where it is while a filter adds or removes rows ABOVE it (owner, 2026-10-10:
@@ -1175,23 +1146,8 @@ export default function TournamentsView({
   const toast = useToast();
   const [search, setSearch] = useState('');
   const deferredSearch = React.useDeferredValue ? React.useDeferredValue(search) : search;
-  const [filters, setFilters] = useState(() => {
-    // Restore previously-chosen location from localStorage so users don't have
-    // to re-enter distance/region on every launch.
-    const savedLoc = readLocalLocation() || {};
-    // Non-location answers from the first-run wizard (games, buy-in band, online).
-    const savedFilters = readLocalFilters() || {};
-    return {
-      ...DEFAULT_FILTERS,
-      ...savedFilters,
-      maxDistance: savedLoc.maxDistance || '',
-      userLocation: savedLoc.userLocation || null,
-      locationRegion: savedLoc.locationRegion || null,
-      locationLabel: savedLoc.locationLabel || null,
-      jurisdiction: savedLoc.jurisdiction || null,
-      jurisdictionManual: !!savedLoc.jurisdictionManual,
-    };
-  });
+  // Shared with the Calendar tab (utils/shared-filters.js): one set of filters for both.
+  const [filters, setFilters] = useSharedFilters();
   // Offered as the way out of the filtered-empty state. Clears the search box
   // and every filter back to defaults, including the saved location — a
   // distance radius is usually the thing hiding everything, and leaving it set
@@ -1204,20 +1160,7 @@ export default function TournamentsView({
        what hides everything, so clearing had to include it — but that made the
        choice disposable, and it is the one filter a user expects to outlive
        the session. */
-    setFilters(f => ({
-      ...DEFAULT_FILTERS,
-      maxDistance: f.maxDistance,
-      userLocation: f.userLocation,
-      locationRegion: f.locationRegion,
-      locationLabel: f.locationLabel,
-      jurisdiction: f.jurisdiction,
-      jurisdictionManual: f.jurisdictionManual,
-      // The online choices are standing answers too (setup asks them), not one look at the list:
-      // "Clear all" must not turn online play back on for someone who said live only.
-      showOnline: f.showOnline,
-      onlyAvailableOnline: f.onlyAvailableOnline,
-      siteRules: f.siteRules,
-    }));
+    setFilters(clearedFilters);
   };
   // Persist location selection across sessions
   const locationMounted = useRef(false);

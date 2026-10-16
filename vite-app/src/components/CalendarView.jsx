@@ -8,8 +8,9 @@ import {
   isBraceletEvent, extractConditions, detectConflicts, findClosestFlight,
   haptic, VENUE_MAP, getVenueBrandColor,
   VENUE_TO_SERIES,
-  isSideEvent, isOnline, passesSiteRule, matchesLocation,
+  isSideEvent, isOnline, passesSiteRule, matchesLocation, matchesGames,
 } from '../utils/utils.js';
+import { useSharedFilters, clearedFilters } from '../utils/shared-filters.js';
 import { isSiteAvailable } from '../utils/online-sites.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
   fetchServerLocation, sameLocation, readLocalFilters } from '../utils/location-prefs.js';
@@ -480,7 +481,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
           <div className="cal-fp-actions">
             {hasActive && (
               <button type="button" className="btn btn-ghost btn-sm cal-fp-clear" onClick={() =>
-                setFilters(f => ({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:false,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',/* Location survives a clear: it is a standing choice about where the user IS, not a filter they set for one look at the list. It changes only when they change it. */maxDistance:f.maxDistance,userLocation:f.userLocation,locationRegion:f.locationRegion,locationLabel:f.locationLabel}))
+                /* Clear all, the Schedule tab's own (shared-filters.js): the location and the online choices stay. */setFilters(clearedFilters)
               }><span className="cal-fp-cap">Clear all filters</span></button>
             )}
             <button type="button" className="btn btn-primary btn-sm cal-fp-save" onClick={() => setOpen(false)}><span className="cal-fp-cap">Save &amp; Close</span></button>
@@ -624,32 +625,9 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
     if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
   }, [selectedDate]);
 
-  const [filters, setFilters] = useState(() => {
-    // Restore previously-chosen location from localStorage so users don't have
-    // to re-enter distance/region on every launch.
-    const savedLoc = readLocalLocation() || {};
-    // The online choices made on the Schedule tab (the Online switch, per-room rules, "available
-    // in my state") are saved there; start from them so this tab lists the same online events.
-    const savedFilters = readLocalFilters() || {};
-    return {
-      minBuyin: '', maxBuyin: '', buyinRanges: [], rakeRanges: [], selectedGames: [],
-      hiddenVenues: [], bountyOnly: false, mysteryBountyOnly: false, headsUpOnly: false,
-      tagTeamOnly: false, employeesOnly: false, hideSatellites: true, hideRestarts: true,
-      hideSideEvents: false,
-      // Must match TournamentsView's DEFAULT_FILTERS: the two views filter the same
-      // tournaments from the same array, and a field present in one and absent in the
-      // other produces two different lists from identical data.
-      showOnline: savedFilters.showOnline === true,
-      onlyAvailableOnline: savedFilters.onlyAvailableOnline !== false,
-      siteRules: savedFilters.siteRules || {},
-      maxDistance: savedLoc.maxDistance || '',
-      userLocation: savedLoc.userLocation || null,
-      locationRegion: savedLoc.locationRegion || null,
-      locationLabel: savedLoc.locationLabel || null,
-      jurisdiction: savedLoc.jurisdiction || null,
-      jurisdictionManual: !!savedLoc.jurisdictionManual,
-    };
-  });
+  // The Schedule tab's filters, shared (utils/shared-filters.js; owner, 2026-10-16): whatever is
+  // set there is set here, and the other way round.
+  const [filters, setFilters] = useSharedFilters();
   // Persist location selection across sessions
   const locationMounted = useRef(false);
   useEffect(() => {
@@ -842,7 +820,8 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
           });
           if (!matchesRake) return false;
         }
-        if (filters.selectedGames.length > 0 && !filters.selectedGames.includes(t.game_variant)) return false;
+        // The Schedule list's own game test, so Mixed means the same here (it was not applied at all).
+        if (!matchesGames(t, filters)) return false;
         if (filters.hiddenVenues && filters.hiddenVenues.length > 0 && filters.hiddenVenues.includes(t.venue)) return false;
         // Both location filters treat an unknown location the same way: it can't be shown
         // to match, so it's excluded. Previously distance kept un-located events (listing
