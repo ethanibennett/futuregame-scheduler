@@ -45,3 +45,22 @@ export function StripLabel({ text }) {
     </>
   );
 }
+
+const BOARD_KEY = 'swissBoard';
+const readBoard = () => { try { return localStorage.getItem(BOARD_KEY) === '1'; } catch { return false; } };
+
+/** The Schedule's departure-board density (catalogue item 26): one line per event. Kept on this
+ *  device and mirrored onto <html data-sw-board>, which only the Swiss theme's rules read. */
+export function useSwissBoard() {
+  const [on, setOn] = React.useState(readBoard);
+  React.useEffect(() => {
+    if (on) document.documentElement.setAttribute('data-sw-board', '1');
+    else document.documentElement.removeAttribute('data-sw-board');
+  }, [on]);
+  const toggle = React.useCallback(() => setOn((v) => {
+    const next = !v;
+    try { localStorage.setItem(BOARD_KEY, next ? '1' : '0'); } catch { /* private mode */ }
+    return next;
+  }), []);
+  return [on, toggle];
+}

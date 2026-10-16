@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import { isOnline as isOnlineEvent } from '../utils/utils.js';
+import { useSwissBoard } from './SwissParts.jsx';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import DateBreak from './DateBreak.jsx';
@@ -89,6 +90,7 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
   const panelRef = useRef(null);
   // The Swiss theme's index of filters shows each one's upcoming count as a superior figure
   // (catalogue item 27; .kt-count is hidden in every other theme).
+  const [swissBoard, toggleSwissBoard] = useSwissBoard();
   const kindCounts = useMemo(() => {
     const today = getToday();
     const c = { Satellites: 0, Restarts: 0, 'Side Events': 0, Online: 0 };
@@ -267,6 +269,8 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
               </div>
             );
           })}
+          {/* The Swiss theme's board/cards density (hidden in every other theme). */}
+          <button type="button" className="sw-board-toggle" aria-pressed={swissBoard} onClick={toggleSwissBoard}>{swissBoard ? 'Cards' : 'Board'}</button>
         </div>
       </div>
 

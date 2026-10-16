@@ -993,3 +993,128 @@
    (a guarantee, a backer's "20% of +$479") keeps to one line and runs left, never wraps. */
 :root[data-theme^="swiss"] .cal-event-gtd { white-space: nowrap; justify-self: end; width: max-content; }
 :root[data-theme^="swiss"] .cal-event-money { grid-template-columns: minmax(0, 1fr); }
+
+/* --- Second pass, 2: a marginal column for dates (desktop My Schedule). Each day's group becomes
+   a two-column field: the date in an 8g column on the left, set as a large thin numeral over its
+   month and weekday and held in view while its events scroll; the events take the rest, 1g to its
+   right. A day starts under a 2px rule across both columns. -------------------------------- */
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] {
+  display: grid;
+  grid-template-columns: var(--col) minmax(0, 1fr);
+  column-gap: var(--gu);
+  align-items: start;
+  padding-top: var(--subrow);
+  box-shadow: inset 0 var(--bw-2) 0 0 var(--sw-ink);
+}
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break {
+  grid-column: 1;
+  grid-row: 1 / span 400;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0;
+  background: transparent;
+}
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > :not(.schedule-date-break) { grid-column: 2; }
+:root[data-theme^="swiss"] .dk-mine-block .schedule-date-break .date-break-pill {
+  background: transparent;
+  color: var(--sw-ink);
+  width: auto;
+  height: auto;
+  justify-content: flex-start;
+}
+:root[data-theme^="swiss"] .dk-mine-block .schedule-date-break .date-break-label { transform: none !important; display: flex; flex-direction: column; align-items: flex-start; }
+:root[data-theme^="swiss"] .dk-mine-block .schedule-date-break .date-break-day {
+  font-size: calc(var(--gu) * 4);
+  line-height: 1;
+  font-weight: var(--sw-hairline);
+  letter-spacing: var(--sw-track-display);
+}
+:root[data-theme^="swiss"] .dk-mine-block .schedule-date-break.is-today .date-break-day { color: var(--sw-red); font-size: calc(var(--gu) * 4); }
+:root[data-theme^="swiss"] .dk-mine-block .schedule-date-break .date-break-mon { font-size: var(--fs-sm); font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
+:root[data-theme^="swiss"] .dk-mine-block .schedule-date-break .date-break-end,
+:root[data-theme^="swiss"] .dk-mine-block .schedule-date-break .date-break-dow { margin: 0; font-size: var(--fs-sm); }
+:root[data-theme^="swiss"] .dk-mine-block .schedule-date-break.is-today { padding-top: 0; }
+:root[data-theme^="swiss"] .dk-mine-block .schedule-date-break.is-today .date-break-pill { height: auto; min-width: 0; }
+/* In the field every event is saved: the day's 2px rule is the one rule; events below it part
+   on a grey hairline. The weekday sits flush under the month. */
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] .cal-event-row .cal-event-row-content { box-shadow: none; }
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > :not(.schedule-date-break) + :not(.schedule-date-break) .cal-event-row-content { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30); }
+:root[data-theme^="swiss"] .dk-mine-block .schedule-date-break .date-break-end { margin: 0 !important; padding: 0 !important; justify-content: flex-start; align-self: flex-start; position: static; }
+:root[data-theme^="swiss"] .dk-mine-block .schedule-date-break .date-break-label { gap: 0; }
+:root[data-theme^="swiss"] .dk-mine-block .schedule-date-break .date-break-mon { margin-left: 0 !important; padding-left: 0 !important; text-indent: 0; }
+
+/* --- Second pass, 26: a departure-board list --------------------------------------------- */
+/* The index of filters packs its words, with the density switch (Board / Cards) at the end. */
+:root[data-theme^="swiss"] .kind-toggles:not(.results-kind-tabs) { grid-template-columns: repeat(4, auto) minmax(0, 1fr); column-gap: calc(var(--gu) * 1.5); }
+:root[data-theme^="swiss"] .kind-toggles:not(.results-kind-tabs) .kind-toggle { width: auto; }
+:root[data-theme^="swiss"] .kind-toggles:not(.results-kind-tabs) > .sw-board-toggle::before { content: none; }
+:root[data-theme^="swiss"] .sw-board-toggle {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  height: calc(var(--subrow) * 2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--sw-ink);
+  font-size: var(--fs-sm);
+  font-weight: var(--sw-bold);
+  letter-spacing: var(--sw-track);
+  cursor: pointer;
+}
+:root[data-theme^="swiss"] .sw-board-toggle::after { content: '\00a0\2192'; font-weight: var(--sw-thin); }
+
+/* Board: every closed card is one 3r line, a timetable: the time bold in a fixed 8g column, the
+   event light, the buy-in right. The strip shrinks to a 0.5g bar (red for today's registered
+   event); the clock, guarantee, accolades, late-reg bar and arrow step aside. A tap opens the
+   card in full, as before. */
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] [style*="contain-intrinsic-size"] { contain-intrinsic-size: auto calc(var(--subrow) * 4) !important; }
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) { min-height: 0; }
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) > .cal-venue-strip {
+  width: calc(var(--gu) * 0.5);
+  min-width: 0;
+  font-size: 0;
+  padding: 0;
+}
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) > .cal-venue-strip * { display: none; }
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) .cal-event-row-content { padding-block: calc(var(--subrow) * 0.5); }
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) .cal-event-bar {
+  display: grid;
+  grid-template-columns: var(--col) minmax(0, 1fr) auto;
+  column-gap: var(--gu);
+  align-items: center;
+  min-height: calc(var(--subrow) * 3);
+  padding-block: 0;
+}
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) :is(.cal-bar-row1, .cal-bar-row2) { display: contents; }
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) .cal-event-time {
+  grid-column: 1; grid-row: 1;
+  font-size: var(--fs-sm);
+  font-weight: var(--sw-bold);
+  letter-spacing: var(--sw-track);
+  color: var(--sw-ink);
+  line-height: calc(var(--subrow) * 3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) .cal-event-name {
+  grid-column: 2; grid-row: 1;
+  font-size: var(--fs-sm);
+  line-height: calc(var(--subrow) * 3);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) :is(.cal-event-base, .cal-event-stage) { display: inline; font-size: var(--fs-sm); line-height: inherit; }
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) .cal-event-base { font-weight: var(--sw-thin); letter-spacing: 0; }
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) .cal-event-stage { margin-left: 0.4em; opacity: 1; }
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) .cal-event-money { grid-column: 3; grid-row: 1; display: block; }
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) .cal-event-buyin { line-height: calc(var(--subrow) * 3); }
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) :is(.cal-event-gtd, .cal-event-clock, .cal-accolades, .mini-late-reg, .cal-event-chevron) { display: none; }
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) .cal-event-bar { grid-template-rows: auto; grid-auto-rows: auto; row-gap: 0; height: auto; }
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) .cal-event-name { display: block; overflow: hidden; padding-block: 0; margin-block: 0; }
+/* Board text: whole line boxes (no trim), with descender room the layout does not see. */
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) :is(.cal-event-name, .cal-event-base, .cal-event-stage, .cal-event-time, .cal-event-buyin) { text-box-trim: none; }
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) .cal-event-name { font-weight: var(--sw-thin); letter-spacing: 0; padding-block: calc(var(--subrow) * 0.5); margin-block: calc(var(--subrow) * -0.5); }
+:root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) .cal-event-base { padding-block: 0; margin-block: 0; overflow: visible; }
