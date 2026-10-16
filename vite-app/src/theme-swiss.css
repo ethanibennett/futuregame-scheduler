@@ -1118,3 +1118,51 @@
 :root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) :is(.cal-event-name, .cal-event-base, .cal-event-stage, .cal-event-time, .cal-event-buyin) { text-box-trim: none; }
 :root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) .cal-event-name { font-weight: var(--sw-thin); letter-spacing: 0; padding-block: calc(var(--subrow) * 0.5); margin-block: calc(var(--subrow) * -0.5); }
 :root[data-theme^="swiss"][data-sw-board="1"] [data-tab="tournaments"] .cal-event-row:not(.open) .cal-event-base { padding-block: 0; margin-block: 0; overflow: visible; }
+
+/* --- Second pass, 49: a Swiss home screen. The Dashboard reads as one poster: each section opens
+   under a 2px rule with its title bold, the boxes become hairlines, Up Next's event is the
+   headline (its room a bold line over it, not a band), and the figures are set as figures. --- */
+:root[data-theme^="swiss"] .dashboard-view.home .dashboard-section { box-shadow: inset 0 var(--bw-2) 0 0 var(--sw-ink); padding-top: var(--subrow); }
+:root[data-theme^="swiss"] .dashboard-view.home :is(.dashboard-section-title, .hm-sec-title) { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); color: var(--sw-ink); }
+:root[data-theme^="swiss"] .dashboard-view.home .dashboard-section-badge { background: transparent; border-color: transparent; color: var(--sw-g60); }
+/* Up Next: no box; the room a bold line; the event as the headline; the time thin. */
+:root[data-theme^="swiss"] .dashboard-view.home .dash-event-card { background: transparent; border-color: transparent !important; box-shadow: none !important; }
+:root[data-theme^="swiss"] .dashboard-view.home .dash-venue-strip {
+  background: transparent !important;
+  color: var(--sw-ink) !important;
+  justify-content: flex-start;
+  text-align: left;
+  font-weight: var(--sw-bold);
+  letter-spacing: var(--sw-track);
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--sw-g30);
+}
+:root[data-theme^="swiss"] .dashboard-view.home .dash-venue-strip * { color: var(--sw-ink) !important; font-weight: var(--sw-bold); }
+:root[data-theme^="swiss"] .dashboard-view.home .dash-card-content { padding-left: 0; padding-right: 0; }
+:root[data-theme^="swiss"] .dashboard-view.home .dash-event-name .dash-t { font-size: var(--fs-xl); font-weight: var(--sw-bold); letter-spacing: var(--sw-track-display); }
+:root[data-theme^="swiss"] .dashboard-view.home .dash-event-meta svg { display: none; }
+:root[data-theme^="swiss"] .dashboard-view.home .dash-event-meta .dash-t { font-weight: var(--sw-thin); color: var(--sw-g60); }
+:root[data-theme^="swiss"] .dashboard-view.home .dash-event-buyin .dash-t { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
+:root[data-theme^="swiss"] .dashboard-view.home .dash-undo-x { border-color: transparent !important; box-shadow: none !important; background: transparent !important; }
+/* The receipts and bars: hairlines, not boxes. */
+:root[data-theme^="swiss"] .dashboard-view.home :is(.hm-receipt, .hm-bank-bar, .hm-period-card, .hm-fact, .hm-prow, .hm-facts) {
+  border-color: transparent !important;
+  background: transparent !important;
+}
+:root[data-theme^="swiss"] .dashboard-view.home :is(.hm-receipt, .hm-bank-bar, .hm-period-card) { box-shadow: none !important; }
+:root[data-theme^="swiss"] .dashboard-view.home :is(.hm-prow, .hm-facts) { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30) !important; }
+:root[data-theme^="swiss"] .dashboard-view.home .hm-fact { justify-content: flex-start; text-align: left; }
+/* The figures: bold, tracked; the period's net the display figure. */
+:root[data-theme^="swiss"] .dashboard-view.home :is(.hm-receipt-net, .hm-period-net) { font-weight: var(--sw-bold); letter-spacing: var(--sw-track-display); }
+:root[data-theme^="swiss"] .dashboard-view.home :is(.hm-bank-v, .hm-fact-v, .hm-prow-v) { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
+:root[data-theme^="swiss"] .dashboard-view.home :is(.hm-bank-k, .hm-fact-l, .hm-period-scope, .hm-receipt-meta, .hm-period-sample, .hm-period-s2, .hm-prow-s) { color: var(--sw-g60); }
+:root[data-theme^="swiss"] .dashboard-view.home :is(.hm-head-pill, .hm-bank-pill) { background: transparent !important; border-color: transparent !important; box-shadow: none !important; }
+:root[data-theme^="swiss"] .dashboard-view.home .hm-hp-t { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
+:root[data-theme^="swiss"] .dashboard-view.home .hm-hp-t::after { content: '\00a0\2192'; font-weight: var(--sw-thin); }
+/* Edit home: a word and an arrow, flush left. */
+:root[data-theme^="swiss"] .dashboard-view.home .hm-edit { background: transparent !important; border-color: transparent !important; box-shadow: none !important; justify-content: flex-start; padding-left: 0; }
+:root[data-theme^="swiss"] .dashboard-view.home .hm-edit svg { display: none; }
+:root[data-theme^="swiss"] .dashboard-view.home .hm-edit-t { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
+:root[data-theme^="swiss"] .dashboard-view.home .hm-edit-t::after { content: '\00a0\2192'; font-weight: var(--sw-thin); }
+:root[data-theme^="swiss"] .dashboard-view.home :is(.dashboard-section-title, .hm-sec-title) * { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
+:root[data-theme^="swiss"] .dashboard-view.home :is(.hm-bank-v, .hm-fact-v, .hm-prow-v, .hm-receipt-net, .hm-period-net) * { font-weight: var(--sw-bold); }
+:root[data-theme^="swiss"] .dashboard-view.home .hm-edit { margin-left: 0 !important; margin-right: auto !important; }
