@@ -54,6 +54,8 @@ wsop-console side and verified against both live services.
   - **46:** `scale` 0.92 (top row) to 1.0 (bottom) by `--seat-depth` from castStyle. The origin is each seat's anchor, so edge seats keep their 1g to the screen edge. Nothing grows. **Owner check:** a scaled plaque's text leaves the r grid.
   - **Moot or decided:** 5 (already one fixed-height `.replayer-under`; the banner and its twin are gone), 30 (the springs spec: "nothing plays backwards"), 32 (the empty state is a list row matching the skeleton, per 78/81; a felt there would bring back the reflow).
   - **Taste:** 35 (ALL-IN shows only where the figure would be 0).
+  - **Missed, not started:** 7 (fold the light strip into the rail), 8 (the plaque hairline), 37 (draw the empty seats).
+  - **The catalogue itself now carries every idea's status** (live, approval with real renders, your decision, not started, not doing): https://claude.ai/artifact/MAjgSxmsn2vaMMt6t1oCRb (v3, 15 Oct).
 - **Guard note, closed:** `button.game-fave-btn "2-7 TD"` (ink dx -0.76 at 1280x800) is fixed by `text-indent: var(--track-caps)`. Re-run 2026-10-15 late: hands-games and the hands-entry views, 162 controls, 0 failing.
 - **Focus-ring audit done** (design-tokens checklist). Six form controls had an inline `outline: none` and no ring at all; they now take `.focus-inset`. Pushed as 4ec083a.
 
