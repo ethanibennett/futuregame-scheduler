@@ -9,7 +9,11 @@ import {
   getVenueInfo, normaliseDate, getToday, getNow, currencySymbol, nativeCurrency,
   CURRENCY_CONFIG, formatCurrencyAmount, convertAmount, isPOYEligible,
   calculatePOYPoints, isSixMax, haptic, ordinalSuffix, parseTournamentTime,
+  getVenueBrandColor, getStripAbbr, splitEventStage,
 } from '../utils/utils.js';
+import useInkBalance from '../hooks/useInkBalance.js';
+import { fmtDay, monthLabel } from '../utils/backer-page.js';
+import './tracking-cards.css';
 import ResultsCurve from './ResultsCurve.jsx';
 import { BankrollSwitcher, BankrollManager, BankrollPicker } from './Bankrolls.jsx';
 import { filterByBankroll, balancesFromSummary, defaultBankrollFor } from '../utils/bankrolls.js';
@@ -220,6 +224,8 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
 
 // ── Tracking Entry Row ──────────────────────────────────────
 function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCancelEdit, displayCurrency, exchangeRates, bankrolls, notifyToken = null }) {
+  const [open, setOpen] = useState(false);
+  const toggle = () => setOpen((v) => !v);
   const from = nativeCurrency(entry.venue);
   const to = displayCurrency === 'NATIVE' ? from : displayCurrency;
   const cv = (val) => convertAmount(val, from, to, exchangeRates);
@@ -259,80 +265,152 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
     );
   }
 
+  const entries = Number(entry.num_entries) || 1;
+  const place = entry.finish_place ? `${entry.finish_place}${ordinalSuffix(entry.finish_place)}` : '';
+  const under = entry.cashed
+    ? [place, 'cashed ' + fmt(cv(entry.cash_amount))].filter(Boolean).join(' · ')
+    : 'cost ' + fmt(cv(totalCost));
+  const tone = profit > 0 ? ' is-pos' : profit < 0 ? ' is-neg' : '';
   return (
-    <div className="tracking-card" data-entry={entry.id}>
-      {/* Date on its 2r line, the event name's first baseline 3r below it, the profit seated on
-          line 3 at the right: 5r, then 1r. */}
-      <div className="tracking-head">
-        <div>
-          <div className="tr-seat tr-seat-2" style={{fontSize:'calc(var(--gu) * 1.060)',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif",letterSpacing:'0.03em'}}>
-            {entry.date} · #{entry.event_number}
-          </div>
-          <div className="tr-seat tr-seat-3" style={{fontSize:'calc(var(--gu) * 1.296)',fontWeight: 'var(--fw-bold)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
-            {entry.event_name}
-          </div>
-        </div>
-        <div style={{textAlign:'right',flexShrink:0}}>
-          <div style={{fontFamily:"var(--serif)",fontSize:'calc(var(--gu) * 1.473)',fontWeight:700}}
-            className={'tr-seat tr-seat-3 ' + (profit >= 0 && entry.cashed ? 'tracking-profit-pos' : 'tracking-profit-neg')}>
-            {fmtSigned(profit)}
-          </div>
-        </div>
-      </div>
-
-      <div className="cal-detail-grid" style={{marginBottom:'var(--space-md)'}}>
-        <div className="cal-detail-item">
-          <span className="cal-detail-label">Cost</span>
-          <span className="cal-detail-value">{fmt(cv(totalCost))}</span>
-        </div>
-        <div className="cal-detail-item">
-          <span className="cal-detail-label">Entries</span>
-          <span className="cal-detail-value">{entry.num_entries || 1}</span>
-        </div>
-        {entry.cashed ? (
-          <React.Fragment>
-            <div className="cal-detail-item">
-              <span className="cal-detail-label">Cashed</span>
-              <span className="cal-detail-value">{fmt(cv(entry.cash_amount))}</span>
-            </div>
-            <div className="cal-detail-item">
-              <span className="cal-detail-label">Finish</span>
-              <span className="cal-detail-value">{entry.finish_place ? `${entry.finish_place}${ordinalSuffix(entry.finish_place)}` : '\u2014'}</span>
-            </div>
-          </React.Fragment>
-        ) : (
-          <div className="cal-detail-item">
-            <span className="cal-detail-label">Result</span>
-            <span className="cal-detail-value" style={{color:'var(--text-muted)'}}>No cash</span>
-          </div>
-        )}
-        {poyEligible && (
-          <div className="cal-detail-item">
-            <span className="cal-detail-label">POY Pts</span>
-            <span className={`cal-detail-value ${poyPoints > 0 ? 'tracking-poy' : ''}`}>
-              {poyPoints !== null ? poyPoints.toFixed(1) : '\u2014'}
+    <div className={'cal-event-row tr-card' + (open ? ' open' : '')} data-entry={entry.id}>
+      <CardStrip venue={entry.venue} property={entry.property} open={open} onToggle={toggle} />
+      <div className="cal-event-row-content">
+        <div className="cal-event-bar" onClick={toggle} role="button" tabIndex={0} aria-expanded={open} onKeyDown={barKeys(toggle)}>
+          <div className="cal-bar-row1">
+            <span className="cal-event-time">{[fmtDay(isoDay(entry.date)), entries > 1 ? entries + ' entries' : ''].filter(Boolean).join(' · ')}</span>
+            <span className="cal-event-money">
+              <span className={'cal-event-buyin tr-amt' + tone}>{fmtSigned(profit)}</span>
+              <span className="cal-event-gtd">{under}</span>
             </span>
           </div>
-        )}
-      </div>
-
-      {poyEligible && !entry.total_entries && (
-        <p className="tr-seat tr-seat-2" style={{fontSize:'calc(var(--gu) * 1.060)',color:'#d97706',margin:'0 0 var(--space-md)'}}>
-          \u2691 Edit to add field size for POY points
-        </p>
-      )}
-
-      {entry.notes && (
-        <p className="tr-seat tr-seat-2" style={{fontSize:'calc(var(--gu) * 1.149)',color:'var(--text-muted)',fontStyle:'italic',margin:'0 0 var(--space-md)'}}>{entry.notes}</p>
-      )}
-
-      <div className="tracking-actions">
-        <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 5)'}} onClick={onEdit}>Edit</button>
-        <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 7)',color:'var(--accent2)'}} onClick={onDelete}>Delete</button>
+          <div className="cal-bar-row2">
+            <CardName name={entry.event_name} />
+          </div>
+        </div>
+        <CardChevron open={open} onToggle={toggle} />
+        <div className={'cal-event-detail-wrap' + (open ? ' open' : '')}>
+          <div className="cal-event-detail-inner">
+            <div className="cal-event-detail">
+              <div className="cal-detail-grid">
+                <div className="cal-detail-item">
+                  <span className="cal-detail-label">Cost</span>
+                  <span className="cal-detail-value">{fmt(cv(totalCost))}</span>
+                </div>
+                <div className="cal-detail-item">
+                  <span className="cal-detail-label">Entries</span>
+                  <span className="cal-detail-value">{entries}</span>
+                </div>
+                {entry.cashed ? (
+                  <React.Fragment>
+                    <div className="cal-detail-item">
+                      <span className="cal-detail-label">Cashed</span>
+                      <span className="cal-detail-value">{fmt(cv(entry.cash_amount))}</span>
+                    </div>
+                    <div className="cal-detail-item">
+                      <span className="cal-detail-label">Finish</span>
+                      <span className="cal-detail-value">{place || '\u2014'}</span>
+                    </div>
+                  </React.Fragment>
+                ) : (
+                  <div className="cal-detail-item">
+                    <span className="cal-detail-label">Result</span>
+                    <span className="cal-detail-value" style={{color:'var(--text-muted)'}}>No cash</span>
+                  </div>
+                )}
+                {poyEligible && (
+                  <div className="cal-detail-item">
+                    <span className="cal-detail-label">POY Pts</span>
+                    <span className={`cal-detail-value ${poyPoints > 0 ? 'tracking-poy' : ''}`}>
+                      {poyPoints !== null ? poyPoints.toFixed(1) : '\u2014'}
+                    </span>
+                  </div>
+                )}
+                {entry.subtitle && (
+                  <div className="cal-detail-item">
+                    <span className="cal-detail-label">Subheading</span>
+                    <span className="cal-detail-value">{entry.subtitle}</span>
+                  </div>
+                )}
+              </div>
+              {poyEligible && !entry.total_entries && (
+                <p className="tr-seat tr-seat-2" style={{fontSize:'calc(var(--gu) * 1.060)',color:'#d97706',margin:'0 0 var(--space-md)'}}>
+                  \u2691 Edit to add field size for POY points
+                </p>
+              )}
+              {entry.notes && <p className="tr-seat tr-seat-2 tr-card-notes">{entry.notes}</p>}
+              <div className="tracking-actions">
+                <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 5)'}} onClick={stop(onEdit)}>Edit</button>
+                <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 7)',color:'var(--accent2)'}} onClick={stop(onDelete)}>Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
+// ── The Schedule's card (owner, 2026-10-16: "bring the bankroll page more in line with the design
+// scheme of the schedule tab") ──
+// A result is drawn as the Schedule's event card: CalendarEventRow's markup and classes (styles.css),
+// so the room strip, the type, the money column and the opening are the Schedule's own. The day is
+// the Schedule's date pill above the cards; the row-1 line is the event's start time (and the
+// entries, when more than one); the result takes the buy-in's place, what it is of under it; the
+// details and Edit / Delete are behind the chevron. tracking-cards.css holds the little that differs.
+function stripOf(venue, property) {
+  const info = getVenueInfo(venue, property) || {};
+  const abbr = info.abbr || null;
+  return { abbr, name: info.longName || venue || '' };
+}
+function CardStrip({ venue, property, open, onToggle }) {
+  const { abbr, name } = stripOf(venue, property);
+  return (
+    <div className={'cal-venue-strip' + (abbr ? '' : ' is-neutral')} aria-hidden="true" onClick={onToggle}
+      style={{ background: abbr ? getVenueBrandColor(abbr) : 'var(--border-strong)', color: '#ffffff', cursor: 'pointer' }}>
+      <span className="venue-strip-abbr">{abbr ? getStripAbbr(abbr) : ''}</span>
+      {open && <span className="venue-strip-full">{name}</span>}
+    </div>
+  );
+}
+function CardName({ name }) {
+  const { base, stage } = splitEventStage(name || '');
+  return (
+    <span className="cal-event-name" title={name || ''}>
+      {stage ? (<><span className="cal-event-base">{base}</span><span className="cal-event-stage">{stage}</span></>) : name}
+    </span>
+  );
+}
+function CardChevron({ open, onToggle }) {
+  return (
+    <div className={'cal-event-chevron' + (open ? ' open' : '')} onClick={onToggle}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+    </div>
+  );
+}
+/* A month break, as the backer page draws its sessions (owner, 2026-10-16): the Schedule's date-break
+   pill with the month where the day number sits, the count on the pill's line, the month's net at its
+   right end; sticky at the scroller's top. */
+function MonthBreak({ monthKey, count, net, fmtNet }) {
+  const { mon, year } = monthLabel(monthKey);
+  const labelRef = React.useRef(null);
+  useInkBalance(labelRef, [mon, year]);
+  return (
+    <div className="schedule-date-break tr-month-break" style={{ top: 0 }}>
+      <span className="date-break-pill tr-month-pill">
+        <span className="date-break-label" ref={labelRef}>
+          <b className="date-break-day">{mon}</b>
+          <span className="date-break-mon">{year}</span>
+        </span>
+      </span>
+      <span className="date-break-count">{count === 1 ? '1 event' : count + ' events'}</span>
+      <span className="date-break-end tr-month-end">
+        <span className={'date-break-dow tr-month-net' + (net > 0 ? ' is-pos' : net < 0 ? ' is-neg' : '')}>{fmtNet(net)}</span>
+      </span>
+    </div>
+  );
+}
+const barKeys = (toggle) => (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
+const stop = (fn) => (e) => { e.stopPropagation(); fn && fn(e); };
 
 // ── Didn't play (owner, 2026-10-16) ──────────────────────────
 // Results' Didn't play: the event stays on the schedule, marked not played
@@ -369,24 +447,37 @@ function DidNotPlayForm({ event, initialNote = '', onSave, onCancel }) {
 }
 
 function DidNotPlayRow({ event, onEdit, onPlayed, busy }) {
+  const [open, setOpen] = useState(false);
+  const toggle = () => setOpen((v) => !v);
+  const note = (event.not_played_note || '').trim();
   return (
-    <div className="tracking-card" data-not-played={event.id}>
-      <div className="tracking-head">
-        <div style={{minWidth:0}}>
-          <div className="tr-seat tr-seat-2" style={DNP_LINE}>{[event.date, eventNo(event.event_number)].filter(Boolean).join(' · ')}</div>
-          <div className="tr-seat tr-seat-3" style={DNP_NAME}>{event.event_name}</div>
+    <div className={'cal-event-row tr-card tr-card-dnp' + (open ? ' open' : '')} data-not-played={event.id}>
+      <CardStrip venue={event.venue} property={event.property} open={open} onToggle={toggle} />
+      <div className="cal-event-row-content">
+        <div className="cal-event-bar" onClick={toggle} role="button" tabIndex={0} aria-expanded={open} onKeyDown={barKeys(toggle)}>
+          <div className="cal-bar-row1">
+            <span className="cal-event-time">{fmtDay(isoDay(event.date))}</span>
+            <span className="cal-event-money">
+              <span className="cal-event-gtd">Didn&rsquo;t play</span>
+            </span>
+          </div>
+          <div className="cal-bar-row2">
+            <CardName name={event.event_name} />
+          </div>
         </div>
-        <div style={{textAlign:'right',flexShrink:0}}>
-          <div className="tr-seat tr-seat-3" style={{...DNP_LINE, fontSize:'calc(var(--gu) * 1.149)'}}>Didn&rsquo;t play</div>
+        <CardChevron open={open} onToggle={toggle} />
+        <div className={'cal-event-detail-wrap' + (open ? ' open' : '')}>
+          <div className="cal-event-detail-inner">
+            <div className="cal-event-detail">
+              {note && <p className="tr-seat tr-seat-2 tr-card-notes">{note}</p>}
+              <div className="tracking-actions">
+                <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 5)'}} onClick={stop(onEdit)} disabled={busy}>Edit</button>
+                <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 8)'}} onClick={stop(onPlayed)} disabled={busy}
+                  aria-label={`Played ${event.event_name}: ask for its result again`}>Played it</button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-      {event.not_played_note && (
-        <p className="tr-seat tr-seat-2" style={{fontSize:'calc(var(--gu) * 1.149)',color:'var(--text-muted)',fontStyle:'italic',margin:'0 0 var(--space-md)'}}>{event.not_played_note}</p>
-      )}
-      <div className="tracking-actions">
-        <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 5)'}} onClick={onEdit} disabled={busy}>Edit</button>
-        <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 8)'}} onClick={onPlayed} disabled={busy}
-          aria-label={`Played ${event.event_name}: ask for its result again`}>Played it</button>
       </div>
     </div>
   );
@@ -534,6 +625,21 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
     while (k < notPlayedEvents.length) out.push({ dnp: notPlayedEvents[k++] });
     return out;
   }, [trackingData, notPlayedEvents]);
+  const netCode = displayCurrency === 'NATIVE' ? 'USD' : displayCurrency;
+  const fmtMonthNet = (v) => (v > 0 ? '+' : '') + formatCurrencyAmount(Math.round(v), netCode);
+  const months = useMemo(() => {
+    const out = [];
+    for (const it of listItems) {
+      const row = it.dnp || it.entry;
+      const key = (isoDay(row.date) || '').slice(0, 7) || 'undated';
+      let g = out[out.length - 1];
+      if (!g || g.key !== key) { g = { key, items: [], net: 0 }; out.push(g); }
+      g.items.push(it);
+      if (it.entry) g.net += convertAmount(resultMoney(it.entry).net, nativeCurrency(it.entry.venue), netCode, exchangeRates);
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listItems, netCode, exchangeRates]);
 
   // What the home asked for (App's resultsIntent): a form, an entry, a sheet. The cash and
   // expense ones are handed to the view that owns that form, which reports back itself.
@@ -857,32 +963,39 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
           onAction={() => { setShowAddForm(true); setEditingId(null); }}
         />
       ) : (
-        listItems.map(({ entry, dnp }) => dnp ? (
-          <div key={'dnp-' + dnp.id}>
-            {dnpForm && dnpForm.fromList && dnpForm.event.id === dnp.id ? (
-              <DidNotPlayForm event={dnp} initialNote={dnpForm.note} onSave={saveDnp} onCancel={() => setDnpForm(null)} />
-            ) : (
-              <DidNotPlayRow event={dnp} busy={dnpBusy}
-                onEdit={() => setDnpForm({ event: dnp, note: dnp.not_played_note || '', fromList: true })}
-                onPlayed={() => markPlayed(dnp)} />
-            )}
-          </div>
-        ) : (
-          <div key={entry.id} data-entry-id={entry.id}>
-          <TrackingEntryRow
-            entry={entry}
-            onEdit={() => setEditingId(entry.id)}
-            onDelete={() => onDelete(entry.id)}
-            isEditing={editingId === entry.id}
-            onUpdate={(data) => { onUpdate(entry.id, data); setEditingId(null); }}
-            onCancelEdit={() => setEditingId(null)}
-            displayCurrency={displayCurrency}
-            exchangeRates={exchangeRates}
-            bankrolls={formBankrolls}
-            notifyToken={isAdmin ? token : null}
-          />
-          </div>
-        ))
+        <div className="tr-months">
+          {months.map((g) => (
+            <div key={g.key} className="tr-month">
+              <MonthBreak monthKey={g.key} count={g.items.length} net={g.net} fmtNet={fmtMonthNet} />
+              {g.items.map(({ entry, dnp }) => dnp ? (
+                <div key={'dnp-' + dnp.id}>
+                  {dnpForm && dnpForm.fromList && dnpForm.event.id === dnp.id ? (
+                    <DidNotPlayForm event={dnp} initialNote={dnpForm.note} onSave={saveDnp} onCancel={() => setDnpForm(null)} />
+                  ) : (
+                    <DidNotPlayRow event={dnp} busy={dnpBusy}
+                      onEdit={() => setDnpForm({ event: dnp, note: dnp.not_played_note || '', fromList: true })}
+                      onPlayed={() => markPlayed(dnp)} />
+                  )}
+                </div>
+              ) : (
+                <div key={entry.id} data-entry-id={entry.id}>
+                  <TrackingEntryRow
+                    entry={entry}
+                    onEdit={() => setEditingId(entry.id)}
+                    onDelete={() => onDelete(entry.id)}
+                    isEditing={editingId === entry.id}
+                    onUpdate={(data) => { onUpdate(entry.id, data); setEditingId(null); }}
+                    onCancelEdit={() => setEditingId(null)}
+                    displayCurrency={displayCurrency}
+                    exchangeRates={exchangeRates}
+                    bankrolls={formBankrolls}
+                    notifyToken={isAdmin ? token : null}
+                  />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Delete results: the bankroll on show only, typed confirmation (moved off the home). */}

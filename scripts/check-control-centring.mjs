@@ -2417,8 +2417,11 @@ function finalize(c) {
   step('results-log', async () => { await nav('Bankroll'); await tap('button:has-text("+ Log Result")', 900); }, 2);
   step('results-edit', async () => {
     await nav('Bankroll');
-    const sel = '.tab-panel[data-tab="tracking"] .tracking-actions button:has-text("Edit"), .tracking-actions button:has-text("Edit")';
-    await reveal(sel, 200);
+    // A result is the Schedule's card now (2026-10-16): Edit is in its opened detail.
+    const bar = '.tab-panel[data-tab="tracking"] .tr-card[data-entry] .cal-event-bar';
+    await reveal(bar, 200);
+    await tap(bar, 600);
+    const sel = '.tab-panel[data-tab="tracking"] .tr-card.open .tracking-actions button:has-text("Edit")';
     await tap(sel, 900);
   }, 1);
   step('results-tax', async () => { await nav('Bankroll'); await tap('button[title="Tax report (beta)"]', 2000); }, 3);

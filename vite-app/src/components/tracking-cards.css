@@ -1,0 +1,34 @@
+/* The Bankroll tab's results as the Schedule's own event card (owner, 2026-10-16): CalendarEventRow's
+   markup and classes, styled by styles.css, so the strip, the type, the money column and the opening
+   are the Schedule's. Only what differs is here. */
+
+/* The result in the buy-in's place, in the app's profit colours. */
+.tr-card .tr-amt.is-pos { color: var(--pos, var(--ok)); }
+.tr-card .tr-amt.is-neg { color: var(--neg, var(--danger)); }
+
+
+/* The notes under the figures in an open card, the owner's line breaks kept. */
+.tr-card .tr-card-notes {
+  font-size: calc(var(--gu) * 1.149);
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0 0 var(--space-md);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* By month, as the backer page draws its sessions (owner, 2026-10-16): the month break is the
+   Schedule's date break (styles.css .schedule-date-break: sticky, a 4r pill then 1r, the count on the
+   pill's line) with the month where the day number sits and the month's net where the weekday sits;
+   2r to the first card and 2r between cards (BackerPage's .bp-month rules). styles.css loads after the
+   component sheets, so these out-rank its rules by one class. */
+.tr-month-break { padding-bottom: calc(var(--subrow) * 2); }
+.tr-month-break .tr-month-pill { width: calc(var(--gu) * 10); }
+.tr-month-break .date-break-label { font-size: var(--fs-xl); }
+.tr-month-break .date-break-day { font-size: var(--fs-xl); }
+.tr-month-break .date-break-mon { font-size: var(--fs-sm); }
+.tr-month-break .tr-month-end { width: calc(var(--gu) * 11); margin-right: var(--gu); }
+.tr-month-net { font-variant-numeric: var(--num-tabular); white-space: nowrap; }
+.tr-month-break .tr-month-net.is-pos { color: var(--pos, var(--ok)); }
+.tr-month-break .tr-month-net.is-neg { color: var(--neg, var(--danger)); }
+.tr-month .cal-event-row.tr-card { margin-bottom: calc(var(--subrow) * 2); }
