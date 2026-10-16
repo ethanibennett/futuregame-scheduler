@@ -356,15 +356,26 @@
   border-radius: var(--radius-circle);
   background: var(--pos);
 }
+/* A slow glowing pulse (owner, 2026-10-16), not a ping: a soft halo breathes out and back behind the
+   dot while the dot itself brightens, about 4 s a breath. Opacity and transform only. */
+.bp-live-dot { animation: bpLiveDot 2s ease-in-out infinite alternate; }
 .bp-live-dot::after {
   content: '';
   position: absolute; inset: 0;
   border-radius: inherit;
-  box-shadow: 0 0 0 0 var(--pos);
-  animation: bpLivePulse 1.6s var(--ease-out, ease-out) infinite;
+  background: var(--pos);
+  filter: blur(calc(var(--subrow) * 0.6));
+  animation: bpLiveGlow 2s ease-in-out infinite alternate;
 }
-@keyframes bpLivePulse {
-  0%   { box-shadow: 0 0 0 0 var(--pos); opacity: 0.7; }
-  100% { box-shadow: 0 0 0 calc(var(--subrow) * 1.25) var(--pos); opacity: 0; }
+@keyframes bpLiveDot {
+  from { opacity: 0.7; }
+  to   { opacity: 1; }
 }
-@media (prefers-reduced-motion: reduce) { .bp-live-dot::after { animation: none; } }
+@keyframes bpLiveGlow {
+  from { opacity: 0.15; transform: scale(1); }
+  to   { opacity: 0.8; transform: scale(2.4); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bp-live-dot { animation: none; }
+  .bp-live-dot::after { animation: none; opacity: 0.45; transform: scale(1.8); }
+}
