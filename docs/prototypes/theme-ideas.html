@@ -1,0 +1,245 @@
+<meta charset="utf-8">
+<title>Ten Themes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:wght@400;700&family=Libre+Franklin:wght@400;600&family=IBM+Plex+Mono:wght@400;600&family=Archivo+Narrow:wght@400;600&family=Bodoni+Moda:wght@500;700&family=Mulish:wght@400;700&family=Overpass+Mono:wght@400;700&family=Barlow+Condensed:wght@400;600&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;700&family=Poiret+One&family=Josefin+Sans:wght@400;600&family=Shippori+Mincho:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;700&family=Monoton&family=Rajdhani:wght@500;700&family=Special+Elite&family=Courier+Prime:wght@400;700&display=swap">
+<style>
+/* Layout: a contact sheet. The gallery itself stays neutral and quiet; each phone-sized plate is one
+   theme drawn on the same screen (top bar, a date, two event cards, the profit and its graph, the nav). */
+:root {
+  --g-bg: #eceae6;
+  --g-ink: #1b1b1a;
+  --g-muted: #6b6965;
+  --g-line: #cfccc6;
+  --g-card: #f7f6f3;
+  --g-sans: "Libre Franklin", "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --g-bg: #141413; --g-ink: #ecebe8; --g-muted: #9a9893; --g-line: #33322f; --g-card: #1c1c1b; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --g-bg: #141413; --g-ink: #ecebe8; --g-muted: #9a9893; --g-line: #33322f; --g-card: #1c1c1b; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--g-bg); color: var(--g-ink); font: 400 15px/1.5 var(--g-sans); }
+.wrap { max-width: 1400px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 72px; }
+header h1 { margin: 0; font: 600 34px/1.1 var(--g-sans); letter-spacing: -0.02em; }
+header p { margin: 10px 0 0; max-width: 62ch; color: var(--g-muted); }
+.sheet { margin-top: 32px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 32px 24px; }
+.item { min-width: 0; }
+.cap { margin-top: 12px; }
+.cap h2 { margin: 0; font: 600 17px/1.3 var(--g-sans); }
+.cap h2 span { color: var(--g-muted); font-weight: 400; margin-right: 6px; font-variant-numeric: tabular-nums; }
+.cap p { margin: 4px 0 0; color: var(--g-muted); font-size: 14px; line-height: 1.45; }
+
+/* ── The plate: one screen, its structure shared; every theme below only restyles it. ── */
+.mock {
+  --bg: #fff; --ink: #111; --muted: #777; --rule: #ddd; --accent: #c00; --win: #111; --loss: #c00;
+  --fd: Georgia, serif; --fb: Arial, sans-serif; --fn: var(--fb);
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  aspect-ratio: 9 / 17;
+  margin: 0 auto;
+  border-radius: 26px;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--fb);
+  font-size: 12.5px;
+  line-height: 1.35;
+  box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 14px 34px rgba(0,0,0,.16);
+  display: flex;
+  flex-direction: column;
+  padding: 22px 16px 0;
+}
+.m-top { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 10px; border-bottom: 1px solid var(--rule); }
+.m-wm { font-family: var(--fd); font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
+.m-wm .dot { color: var(--accent); }
+.m-run { color: var(--muted); font-size: 11px; }
+.m-date { display: flex; align-items: baseline; gap: 6px; margin: 14px 0 8px; }
+.m-day { font-family: var(--fd); font-size: 34px; line-height: .9; color: var(--accent); }
+.m-mon { font-weight: 700; }
+.m-dow { margin-left: auto; color: var(--muted); }
+.m-card { display: grid; grid-template-columns: auto 1fr auto; gap: 0 10px; padding: 10px 0; border-top: 1px solid var(--rule); align-items: start; }
+.m-strip { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 9.5px; font-weight: 700; letter-spacing: .04em; color: var(--muted); padding: 2px 0; }
+.m-time { color: var(--muted); font-size: 11px; font-family: var(--fn); }
+.m-name { font-family: var(--fd); font-size: 14.5px; font-weight: 700; margin-top: 2px; }
+.m-sub { color: var(--muted); font-size: 11px; }
+.m-buy { font-family: var(--fn); font-weight: 700; }
+.m-fig { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--rule); }
+.m-lbl { color: var(--muted); font-size: 11px; }
+.m-val { font-family: var(--fd); font-size: 30px; line-height: 1; color: var(--win); margin: 2px 0 6px; font-variant-numeric: lining-nums; }
+.m-spark { display: block; width: 100%; height: 48px; overflow: visible; }
+.m-spark path { fill: none; stroke: var(--win); stroke-width: 1.25; }
+.m-spark .area { fill: var(--win); stroke: none; opacity: .08; }
+.m-spark circle { fill: var(--accent); }
+.m-nav { display: flex; justify-content: space-between; margin: 12px -16px 0; padding: 12px 16px 16px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 11px; }
+.m-nav .on { color: var(--ink); font-weight: 700; }
+
+/* 1. Letterpress: cotton stock, ink pressed in, one oxblood. */
+.t-letterpress { --bg: #f4ede0; --ink: #2a2421; --muted: #8a7f73; --rule: #d9cdb9; --accent: #7a1e22; --win: #2a2421;
+  --fd: "Libre Caslon Text", Georgia, serif; --fb: "Libre Franklin", Arial, sans-serif;
+  background-image: radial-gradient(rgba(120,90,50,.05) 1px, transparent 1px); background-size: 3px 3px; }
+.t-letterpress :is(.m-name, .m-val, .m-wm, .m-day) { text-shadow: 0 1px 0 rgba(255,255,255,.7), 0 -0.5px 0 rgba(0,0,0,.18); }
+.t-letterpress .m-day { font-weight: 400; font-style: italic; }
+
+/* 2. Blueprint: drafted on a grid, white linework on Prussian blue. */
+.t-blueprint { --bg: #11335f; --ink: #eef5ff; --muted: #9db8dc; --rule: rgba(238,245,255,.35); --accent: #ffd36b; --win: #eef5ff;
+  --fd: "IBM Plex Mono", monospace; --fb: "Archivo Narrow", Arial, sans-serif; --fn: "IBM Plex Mono", monospace;
+  background-image: linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.07) 1px, transparent 1px);
+  background-size: 14px 14px; }
+.t-blueprint .m-card { border-top-style: dashed; }
+.t-blueprint .m-name { font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .02em; }
+.t-blueprint .m-strip { border: 1px solid var(--rule); padding: 4px 2px; }
+.t-blueprint .m-spark path { stroke-dasharray: 3 2; }
+
+/* 3. Felt: the table itself; cream type, gold only for a win. */
+.t-felt { --bg: #0f4634; --ink: #f2e8cf; --muted: #a9c2b4; --rule: rgba(242,232,207,.18); --accent: #d4a94f; --win: #e3bd62;
+  --fd: "Bodoni Moda", Georgia, serif; --fb: "Mulish", Arial, sans-serif;
+  background-image: radial-gradient(ellipse at 50% 30%, rgba(255,255,255,.07), transparent 60%), radial-gradient(rgba(0,0,0,.18) 1px, transparent 1px);
+  background-size: auto, 2px 2px; }
+.t-felt .m-strip { color: var(--accent); }
+.t-felt .m-card { border-top-color: rgba(212,169,79,.3); }
+
+/* 4. Night Train: the departure board; split-flap figures in sodium orange. */
+.t-train { --bg: #0b1220; --ink: #f2f2ee; --muted: #8592a8; --rule: #1f2b40; --accent: #ffad1f; --win: #ffad1f;
+  --fd: "Barlow Condensed", Arial, sans-serif; --fb: "Barlow Condensed", Arial, sans-serif; --fn: "Overpass Mono", monospace; font-size: 13.5px; }
+.t-train .m-time, .t-train .m-buy { color: var(--accent); }
+.t-train .flap { display: inline-block; min-width: 1.05em; margin-right: 1px; padding: 1px 2px; text-align: center; background: #18233a; border-radius: 2px;
+  background-image: linear-gradient(transparent 49%, rgba(0,0,0,.6) 49%, rgba(0,0,0,.6) 52%, transparent 52%); }
+.t-train .m-name { text-transform: uppercase; letter-spacing: .03em; font-weight: 600; }
+.t-train .m-val { font-family: var(--fn); font-size: 25px; }
+
+/* 5. Paperback: a well-set book page; running head, generous margin, one serif. */
+.t-paperback { --bg: #fbf7ee; --ink: #2b2620; --muted: #8b8276; --rule: #e6ddcd; --accent: #2b2620; --win: #2b2620;
+  --fd: "EB Garamond", Georgia, serif; --fb: "EB Garamond", Georgia, serif; font-size: 14px; padding-inline: 24px; }
+.t-paperback .m-top { border-bottom: 0; justify-content: center; flex-direction: column; align-items: center; gap: 2px; }
+.t-paperback .m-run { font-variant: small-caps; letter-spacing: .08em; font-size: 12px; }
+.t-paperback .m-day { font-style: italic; font-size: 30px; }
+.t-paperback .m-card { border-top: 0; }
+.t-paperback .m-name { font-weight: 400; font-style: italic; font-size: 16px; }
+.t-paperback .m-strip { font-variant: small-caps; font-weight: 400; letter-spacing: .1em; }
+.t-paperback .m-val { font-weight: 400; }
+.t-paperback .m-nav { justify-content: center; gap: 14px; font-variant: small-caps; letter-spacing: .06em; }
+
+/* 6. Terminal: phosphor on black; brackets are the controls. */
+.t-terminal { --bg: #050806; --ink: #5dff9a; --muted: #2f9a5b; --rule: #133a22; --accent: #b9ffd2; --win: #5dff9a;
+  --fd: "JetBrains Mono", monospace; --fb: "JetBrains Mono", monospace; font-size: 11.5px;
+  background-image: repeating-linear-gradient(rgba(93,255,154,.04) 0 1px, transparent 1px 3px); }
+.t-terminal :is(.m-name, .m-val, .m-wm) { text-shadow: 0 0 6px rgba(93,255,154,.45); }
+.t-terminal .m-nav span::before { content: '['; color: var(--muted); }
+.t-terminal .m-nav span::after { content: ']'; color: var(--muted); }
+.t-terminal .m-card { border-top-style: dotted; }
+.t-terminal .m-val { font-size: 24px; }
+.t-terminal .m-day::before { content: '> '; color: var(--muted); font-size: 18px; }
+
+/* 7. Riviera: sun-washed sand, Mediterranean blue, coral; deco numerals. */
+.t-riviera { --bg: #f4e4c8; --ink: #17436a; --muted: #6f5f47; --rule: #e3cfa9; --accent: #ef6a52; --win: #1d4f78;
+  --fd: "Poiret One", Georgia, serif; --fb: "Josefin Sans", Arial, sans-serif; }
+.t-riviera .m-card { border: 0; background: #fbf1df; border-radius: 16px; padding: 10px 12px; margin-top: 8px; }
+.t-riviera .m-name { font-family: var(--fb); font-weight: 700; }
+.t-riviera { font-weight: 600; }
+.t-riviera .m-strip { color: var(--accent); }
+.t-riviera .m-val, .t-riviera .m-day { font-weight: 400; }
+.t-riviera .m-top { border-bottom: 2px solid var(--accent); }
+.t-riviera .m-nav { background: var(--ink); color: #d6e4ef; border: 0; }
+.t-riviera .m-nav .on { color: #fff; }
+
+/* 8. Ink Wash: rice paper, ink greys, one vermilion seal; a lot of empty space. */
+.t-ink { --bg: #f1ede4; --ink: #22201d; --muted: #8e877b; --rule: transparent; --accent: #c83c26; --win: #22201d;
+  --fd: "Shippori Mincho", Georgia, serif; --fb: "Zen Kaku Gothic New", Arial, sans-serif; padding-inline: 22px;
+  background-image: radial-gradient(ellipse at 85% 10%, rgba(60,50,40,.08), transparent 45%); }
+.t-ink .m-card { padding: 14px 0; }
+.t-ink .m-name { font-weight: 400; font-size: 16px; }
+.t-ink .m-day { color: var(--ink); font-weight: 400; }
+.t-ink .seal { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 6px; background: var(--accent); color: #fff; font-size: 9px; font-weight: 700; border-radius: 2px; transform: rotate(-4deg); vertical-align: 2px; }
+.t-ink .m-spark path { stroke-width: 2.4; stroke-linecap: round; opacity: .85; }
+.t-ink .m-spark .area { opacity: .05; }
+
+/* 9. Neon Strip: Vegas after dark, the glow kept to the headline figures. */
+.t-neon { --bg: #0b0714; --ink: #f4ecff; --muted: #9a8ab8; --rule: #2a2140; --accent: #ff3fa4; --win: #36e3ff;
+  --fd: "Rajdhani", Arial, sans-serif; --fb: "Rajdhani", Arial, sans-serif; font-size: 13.5px; }
+.t-neon .m-wm { font-family: "Monoton", cursive; font-weight: 400; font-size: 15px; color: var(--accent); text-shadow: 0 0 8px rgba(255,63,164,.8); }
+.t-neon .m-wm .dot { color: var(--win); }
+.t-neon .m-val { color: var(--win); text-shadow: 0 0 10px rgba(54,227,255,.7); font-weight: 700; }
+.t-neon .m-day { text-shadow: 0 0 10px rgba(255,63,164,.7); font-weight: 700; }
+.t-neon .m-card { border: 1px solid rgba(255,63,164,.35); border-radius: 10px; padding: 10px; margin-top: 8px; box-shadow: 0 0 12px rgba(255,63,164,.12) inset; }
+.t-neon .m-name { font-weight: 700; }
+.t-neon .m-spark path { filter: drop-shadow(0 0 3px rgba(54,227,255,.9)); }
+
+/* 10. Archive: kraft paper, index cards, typewriter, a red stamp. */
+.t-archive { --bg: #c9a777; --ink: #2b2219; --muted: #6d5940; --rule: transparent; --accent: #b3261e; --win: #2b2219;
+  --fd: "Special Elite", "Courier New", monospace; --fb: "Courier Prime", "Courier New", monospace; font-size: 12px;
+  background-image: radial-gradient(rgba(80,50,20,.12) 1px, transparent 1px); background-size: 4px 4px; }
+.t-archive .m-card { background: #f5ecd6; margin-top: 8px; padding: 8px 10px; border: 0;
+  background-image: linear-gradient(90deg, transparent 22px, rgba(179,38,30,.45) 22px, rgba(179,38,30,.45) 23px, transparent 23px), repeating-linear-gradient(transparent 0 15px, rgba(70,110,180,.25) 15px 16px);
+  box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.t-archive .m-strip { color: var(--accent); }
+.t-archive .m-name { font-weight: 400; }
+.t-archive .stamp { display: inline-block; margin-left: 8px; padding: 0 5px; border: 2px solid var(--accent); color: var(--accent); font-family: var(--fd); font-size: 10px; letter-spacing: .08em; transform: rotate(-6deg); opacity: .85; }
+.t-archive .m-top { border-bottom: 2px solid var(--ink); }
+.t-archive .m-nav { background: #f5ecd6; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .item:hover .mock { transform: translateY(-3px); transition: transform .2s ease; }
+}
+</style>
+
+<main class="wrap">
+  <header>
+    <h1>Ten Themes</h1>
+    <p>Basic visuals for the theme ideas: each plate is the same screen (the Schedule's head, two events, the bankroll figure and its graph) drawn in one theme, so the themes compare directly. Sample events, not your data.</p>
+  </header>
+  <section class="sheet" id="sheet" aria-label="Themes"></section>
+</main>
+
+<script>
+(() => {
+  const THEMES = [
+    ['letterpress', 'Letterpress', 'Cotton stock, ink pressed in, one oxblood accent, an old-style serif for the figures.'],
+    ['blueprint', 'Blueprint', 'Prussian blue with white linework on the grid, monospaced figures, dashed rules.'],
+    ['felt', 'Felt', 'Tournament-table green with a cloth texture, cream type, gold kept for wins.'],
+    ['train', 'Night Train', 'A departure board: split-flap times and buy-ins in sodium orange on night blue.'],
+    ['paperback', 'Paperback', 'A well-set book page: one serif, small-caps running head, generous margins.'],
+    ['terminal', 'Terminal', 'Phosphor green on black, one monospace face, brackets for controls.'],
+    ['riviera', 'Riviera', 'Sun-washed sand, Mediterranean blue and coral, rounded Art Deco numerals.'],
+    ['ink', 'Ink Wash', 'Rice paper, ink greys, one vermilion seal, lots of empty space.'],
+    ['neon', 'Neon Strip', 'Vegas after dark: neon pink and cyan, the glow kept to the headline figures.'],
+    ['archive', 'Archive', 'Kraft paper and index cards, typewriter type, stamped red labels.'],
+  ];
+  // A profit curve (monotone, as the app's Curves) through sample results.
+  const spark = 'M0,40 C6,40 10,39 16,37 C24,34 28,38 36,36 C46,33 50,26 60,27 C70,28 74,31 84,24 C94,17 98,22 108,19 C120,15 124,9 136,10 C146,11 150,6 160,4';
+  const flap = (s) => [...s].map((c) => (c === ' ' ? ' ' : `<span class="flap">${c}</span>`)).join('');
+  const plate = (k) => {
+    const train = k === 'train';
+    const t1 = train ? flap('12:00') : '12:00 PM EDT';
+    const t2 = train ? flap('13:00') : '1:00 PM EDT';
+    const b1 = train ? flap('$400') : '$400';
+    const b2 = train ? flap('$1,000') : '$1,000';
+    const t3 = train ? flap('19:00') : '7:00 PM EDT';
+    const b3 = train ? flap('$250') : '$250';
+    const extra2 = k === 'ink' ? '<span class="seal">済</span>' : k === 'archive' ? '<span class="stamp">SAVED</span>' : '';
+    return `
+      <div class="mock t-${k}" role="img" aria-label="${k} theme: a schedule screen with two events and a profit of plus $10,642">
+        <div class="m-top"><div class="m-wm">futurega<span class="dot">.</span>me</div><div class="m-run">Schedule · Oct–Dec</div></div>
+        <div class="m-date"><span class="m-day">18</span><span class="m-mon">October</span><span class="m-dow">Saturday</span></div>
+        <div class="m-card"><div class="m-strip">Borgata</div>
+          <div><div class="m-time">${t1}</div><div class="m-name">NLH Mini Main Event</div><div class="m-sub">Flight B · 40 min levels</div></div>
+          <div class="m-buy">${b1}</div></div>
+        <div class="m-card"><div class="m-strip">Parx</div>
+          <div><div class="m-time">${t2}</div><div class="m-name">WSOPC Deep Stack${extra2}</div><div class="m-sub">Day 2 · registered</div></div>
+          <div class="m-buy">${b2}</div></div>
+        <div class="m-card"><div class="m-strip">Harrah’s</div>
+          <div><div class="m-time">${t3}</div><div class="m-name">PLO Bounty</div><div class="m-sub">Late reg 2h 10m</div></div>
+          <div class="m-buy">${b3}</div></div>
+        <div class="m-fig"><div class="m-lbl">Profit · year to date</div><div class="m-val">+$10,642</div>
+          <svg class="m-spark" viewBox="0 0 160 48" preserveAspectRatio="none" aria-hidden="true">
+            <path class="area" d="${spark} L160,48 L0,48 Z"/><path d="${spark}" vector-effect="non-scaling-stroke"/><circle cx="160" cy="4" r="2.5"/></svg></div>
+        <div class="m-nav"><span class="on">Schedule</span><span>Bankroll</span><span>Hands</span><span>Cash</span></div>
+      </div>`;
+  };
+  document.getElementById('sheet').innerHTML = THEMES.map(([k, name, d], i) => `
+    <article class="item">${plate(k)}
+      <div class="cap"><h2><span>${i + 1}</span>${name}</h2><p>${d}</p></div>
+    </article>`).join('');
+})();
+</script>
