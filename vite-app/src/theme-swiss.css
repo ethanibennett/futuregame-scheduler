@@ -1471,3 +1471,6 @@
 :root[data-theme^="swiss"] .cal-event-row .cal-event-row-content,
 :root[data-theme^="swiss"] .cal-event-row.saved .cal-event-row-content,
 :root[data-theme^="swiss"] .cal-event-row.saved.is-today .cal-event-row-content { box-shadow: none; }
+/* The day and its month sit close: a quarter g between them (owner, 2026-10-17). */
+:root[data-theme^="swiss"] .schedule-date-break .date-break-label { gap: calc(var(--gu) * 0.25) !important; }
+:root[data-theme^="swiss"] .schedule-date-break .date-break-mon { margin-left: 0 !important; padding-left: 0 !important; }
