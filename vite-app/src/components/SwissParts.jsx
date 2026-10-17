@@ -22,6 +22,9 @@ export function MoneyParts({ text }) {
 
 const ACRONYM = /^(WSOP|WSOPC|WSOPE|WPT|MGM|TCH|IPO|NLH|PLO|LV|AC|RW|HS|GN|WPTDS|MSPT|RGPS|DSE|ACR|GG|WPN|IPO|MSPT|RRPO|SHRB|LAPC|WCOOP|SCOOP)$/;
 
+/** Names with their own capitals. */
+const CASED = { CLUBWPT: 'ClubWPT', GGPOKER: 'GGPoker', POKERSTARS: 'PokerStars', WPTGLOBAL: 'WPT Global', BETMGM: 'BetMGM', BETRIVERS: 'BetRivers' };
+
 /** A venue strip's capitals in sentence case (catalogue item 11): BORGATA -> Borgata,
  *  HARRAH S -> Harrah’s; acronyms (WSOP, WPT, MGM) stay as they are. */
 export function stripSentence(s) {
@@ -30,6 +33,7 @@ export function stripSentence(s) {
   for (let i = 0; i < words.length; i += 1) {
     const w = words[i];
     if (w === 'S' && out.length) { out[out.length - 1] += '’s'; continue; }
+    if (CASED[w]) { out.push(CASED[w]); continue; }
     if (ACRONYM.test(w) || !/[AEIOUaeiou]/.test(w)) { out.push(w); continue; }
     out.push(w.charAt(0) + w.slice(1).toLowerCase());
   }

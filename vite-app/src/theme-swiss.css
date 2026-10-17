@@ -1432,3 +1432,42 @@
 :root[data-theme^="swiss"] .cb-wl { display: block; height: calc(var(--subrow) * 4); padding: calc(var(--subrow) * 0.6978) 0 0; line-height: calc(var(--subrow) * 3.3022); text-align: right; font-size: var(--fs-sm); }
 :root[data-theme^="swiss"] .cb-interest { align-items: baseline; }
 :root[data-theme^="swiss"] .cb-int { display: block; height: calc(var(--subrow) * 3); padding: calc(var(--subrow) * 1.9574) var(--gu) 0 0; line-height: calc(var(--subrow) * 1.0426); }
+
+/* The Schedule's date headers (owner, 2026-10-17): the date larger, its baseline on the 4r line the event
+   count and the weekday already sit on (each trimmed to cap height and baseline, bottom-aligned), and the
+   rule under it margin to margin: the rule belongs to the whole card row, not the content beside the
+   venue column. */
+:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break) .date-break-pill {
+  height: calc(var(--subrow) * 4);
+  align-items: flex-end;
+  justify-content: flex-start;
+  width: auto;
+  min-width: var(--col);
+}
+:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break) .date-break-label {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--gu) * 0.5);
+  transform: none !important;
+}
+:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break) .date-break-day {
+  font-size: calc(var(--gu) * 3.5);
+  line-height: 1;
+  font-weight: var(--sw-bold);
+  letter-spacing: var(--sw-track-display);
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break) .date-break-mon {
+  font-size: var(--fs-sm);
+  line-height: 1;
+  font-weight: var(--sw-thin);
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+:root[data-theme^="swiss"] .cal-event-row,
+:root[data-theme^="swiss"] .cal-event-row.saved { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30) !important; }
+:root[data-theme^="swiss"] .cal-event-row.saved.is-today { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-red) !important; }
+:root[data-theme^="swiss"] .cal-event-row .cal-event-row-content,
+:root[data-theme^="swiss"] .cal-event-row.saved .cal-event-row-content,
+:root[data-theme^="swiss"] .cal-event-row.saved.is-today .cal-event-row-content { box-shadow: none; }
