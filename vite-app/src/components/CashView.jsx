@@ -231,10 +231,10 @@ export default function CashView({ token, onModeChange }) {
     const fromMs = Date.now() - HISTORY_HOURS * 3600 * 1000;
     const fromIso = new Date(fromMs).toISOString();
     try {
-      const [curRes, histRes] = await Promise.all([
-        fetch(`${API_URL}/cash/current`, { headers }),
-        fetch(`${API_URL}/cash/history?from=${encodeURIComponent(fromIso)}&limit=10000`, { headers }).catch(() => null),
-      ]);
+      // The board shows as soon as the snapshot is in; the history (how long each game has been
+      // running) fills in after it, rather than holding the board until both have arrived.
+      const histP = fetch(`${API_URL}/cash/history?from=${encodeURIComponent(fromIso)}&limit=10000`, { headers }).catch(() => null);
+      const curRes = await fetch(`${API_URL}/cash/current`, { headers });
       if (!curRes.ok) {
         let msg = 'HTTP ' + curRes.status;
         if (curRes.status === 403) msg = 'This account is not an admin.';
@@ -249,13 +249,14 @@ export default function CashView({ token, onModeChange }) {
       setData(json);
       setFetchedAt(Date.now());
       setStatus('ok');
-      if (histRes && histRes.ok) {
+      histP.then(async (histRes) => {
+        if (!histRes || !histRes.ok) return;
         try {
           const h = await histRes.json();
           setRunStarts(buildRunStarts(h && h.rows));
           setWindowStartMs(fromMs);
         } catch { /* leave durations as-is */ }
-      }
+      });
     } catch (e) {
       setErrMsg('Could not reach the server.');
       setStatus('error');

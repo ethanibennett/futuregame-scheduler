@@ -484,6 +484,14 @@ app.use('/api/staking', authenticateToken, requireAppAdmin);
 // account behind it is free for anyone to sign up as. Reserve them all outright.
 const RESERVED_USERNAMES = new Set([...APP_ADMIN_USERNAMES, ...EVENT_EDITOR_USERNAMES]);
 
+// /cash/games is the heatmap's catalog: every (room, game, stakes) the watcher has ever recorded,
+// a full scan of its history (over a second on the box, longer on the hosted copy). It changes only
+// by a few counts between polls, so it is kept here and served at once, refreshed in the background
+// once it is five minutes old (owner, 2026-10-17: "the heat map just took too long to load").
+const CASH_GAMES_TTL_MS = 5 * 60 * 1000;
+let cashGamesCache = null; // { at, type, body }
+let cashGamesRefresh = null;
+
 app.use('/api/cash', authenticateToken, (req, res) => {
   const u = String((req.user && req.user.username) || '').toLowerCase();
   if (!APP_ADMIN_USERNAMES.has(u)) {
@@ -507,6 +515,28 @@ app.use('/api/cash', authenticateToken, (req, res) => {
     ownerCookie = `${SESSION_COOKIE}=${encodeURIComponent(tok)}`;
   } catch (e) {
     return res.status(500).json({ error: 'cash auth mint failed' });
+  }
+  const isGamesRead = req.method === 'GET' && /^\/games(\?|$)/.test(sub);
+  const fetchGames = () => fetch(`${CASHWATCHER_URL}/api/games`, { headers: { cookie: ownerCookie, accept: 'application/json' }, redirect: 'manual' })
+    .then(async (r) => {
+      if (!r.ok) return null;
+      const body = Buffer.from(await r.arrayBuffer());
+      cashGamesCache = { at: Date.now(), type: r.headers.get('content-type'), body };
+      return cashGamesCache;
+    })
+    .catch(() => null)
+    .finally(() => { cashGamesRefresh = null; });
+  if (isGamesRead && cashGamesCache) {
+    if (Date.now() - cashGamesCache.at > CASH_GAMES_TTL_MS && !cashGamesRefresh) cashGamesRefresh = fetchGames();
+    if (cashGamesCache.type) res.type(cashGamesCache.type);
+    return res.status(200).send(cashGamesCache.body);
+  }
+  if (isGamesRead && cashGamesRefresh) {
+    return cashGamesRefresh.then((c) => {
+      if (!c) return res.status(503).json({ error: 'cash watcher offline' });
+      if (c.type) res.type(c.type);
+      res.status(200).send(c.body);
+    });
   }
   (async () => {
     let upstream;
@@ -532,6 +562,7 @@ app.use('/api/cash', authenticateToken, (req, res) => {
     const body = Buffer.from(await upstream.arrayBuffer());
     const type = upstream.headers.get('content-type');
     if (type) res.type(type);
+    if (isGamesRead && upstream.ok) cashGamesCache = { at: Date.now(), type, body };
     res.status(upstream.status).send(body);
   })();
 });
