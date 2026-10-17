@@ -47,6 +47,9 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
   const [sel, setSel] = useState(() => { try { return JSON.parse(localStorage.getItem(SEL_KEY)) || null; } catch { return null; } });
   const [metric, setMetric] = useState(() => localStorage.getItem(METRIC_KEY) || 'tables'); // 'tables' | 'reliability'
   const [cells, setCells] = useState(null);
+  // Where the cells came from: the 10-minute collector, or the hourly nationwide sweep for a room the
+  // collector has barely watched; both over the watcher's rolling window (eight weeks).
+  const [basis, setBasis] = useState(null); // { source, days, windowDays }
   const [status, setStatus] = useState('loading'); // loading | ready | error
   const [err, setErr] = useState('');
   const [pick, setPick] = useState(null); // a tapped cell, for the readout
@@ -129,6 +132,7 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
     if (!sel) return;
     let live = true;
     setCells(null);
+    setBasis(null);
     (async () => {
       const headers = { Authorization: 'Bearer ' + token };
       const tz = -new Date().getTimezoneOffset(); // minutes UTC->local, as the API wants
@@ -136,7 +140,7 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
       try {
         const res = await fetch(`${API_URL}/cash/heatmap?${qs.toString()}`, { headers });
         const j = res.ok ? await res.json() : { cells: [] };
-        if (live) setCells(j.cells || []);
+        if (live) { setCells(j.cells || []); setBasis(j.source ? { source: j.source, days: j.days, windowDays: j.windowDays } : null); }
       } catch { if (live) setCells([]); }
     })();
     return () => { live = false; };
@@ -301,6 +305,14 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
                 : 'Tap a cell for detail'}
             </div>
           </div>
+          {basis && (
+            <div style={{ marginTop: 'var(--subrow)', fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted,#888)' }}>
+              {basis.source === 'sweep'
+                ? `Hourly, from the nationwide sweep: ${basis.days} days`
+                : 'Every 10 minutes, from the watched rooms'}
+              {basis.windowDays ? ` · last ${Math.round(basis.windowDays / 7)} weeks` : ''}
+            </div>
+          )}
         </>
       )}
     </div>
