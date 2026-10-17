@@ -28,6 +28,8 @@ header p { margin: 10px 0 0; max-width: 62ch; color: var(--g-muted); }
 .cap { margin-top: 12px; }
 .cap h2 { margin: 0; font: 600 17px/1.3 var(--g-sans); }
 .cap h2 span { color: var(--g-muted); font-weight: 400; margin-right: 6px; font-variant-numeric: tabular-nums; }
+.cap .keep { display: inline-block; margin-left: 8px; padding: 1px 8px; border: 1px solid var(--g-ink); border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: .04em; vertical-align: 2px; }
+.item.is-keep .mock { outline: 2px solid var(--g-ink); outline-offset: 6px; }
 .cap p { margin: 4px 0 0; color: var(--g-muted); font-size: 14px; line-height: 1.45; }
 
 /* ── The plate: one screen, its structure shared; every theme below only restyles it. ── */
@@ -187,13 +189,15 @@ header p { margin: 10px 0 0; max-width: 62ch; color: var(--g-muted); }
 <main class="wrap">
   <header>
     <h1>Ten Themes</h1>
-    <p>Basic visuals for the theme ideas: each plate is the same screen (the Schedule's head, two events, the bankroll figure and its graph) drawn in one theme, so the themes compare directly. Sample events, not your data.</p>
+    <p>Marked worth revisiting: 3 Felt, 5 Paperback, 7 Riviera and 9 Neon Strip. Basic visuals for the theme ideas: each plate is the same screen (the Schedule's head, two events, the bankroll figure and its graph) drawn in one theme, so the themes compare directly. Sample events, not your data.</p>
   </header>
   <section class="sheet" id="sheet" aria-label="Themes"></section>
 </main>
 
 <script>
 (() => {
+  // Marked by the owner, 2026-10-17: worth revisiting.
+  const KEEP = new Set(['felt', 'paperback', 'riviera', 'neon']);
   const THEMES = [
     ['letterpress', 'Letterpress', 'Cotton stock, ink pressed in, one oxblood accent, an old-style serif for the figures.'],
     ['blueprint', 'Blueprint', 'Prussian blue with white linework on the grid, monospaced figures, dashed rules.'],
@@ -238,8 +242,8 @@ header p { margin: 10px 0 0; max-width: 62ch; color: var(--g-muted); }
       </div>`;
   };
   document.getElementById('sheet').innerHTML = THEMES.map(([k, name, d], i) => `
-    <article class="item">${plate(k)}
-      <div class="cap"><h2><span>${i + 1}</span>${name}</h2><p>${d}</p></div>
+    <article class="item${KEEP.has(k) ? ' is-keep' : ''}">${plate(k)}
+      <div class="cap"><h2><span>${i + 1}</span>${name}${KEEP.has(k) ? '<span class="keep">Worth revisiting</span>' : ''}</h2><p>${d}</p></div>
     </article>`).join('');
 })();
 </script>
