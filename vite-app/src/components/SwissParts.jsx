@@ -20,7 +20,7 @@ export function MoneyParts({ text }) {
   );
 }
 
-const ACRONYM = /^(WSOP|WSOPC|WSOPE|WPT|MGM|TCH|IPO|NLH|PLO|LV|AC|RW|HS|GN|WPTDS|MSPT|RGPS|DSE)$/;
+const ACRONYM = /^(WSOP|WSOPC|WSOPE|WPT|MGM|TCH|IPO|NLH|PLO|LV|AC|RW|HS|GN|WPTDS|MSPT|RGPS|DSE|ACR|GG|WPN|IPO|MSPT|RRPO|SHRB|LAPC|WCOOP|SCOOP)$/;
 
 /** A venue strip's capitals in sentence case (catalogue item 11): BORGATA -> Borgata,
  *  HARRAH S -> Harrah’s; acronyms (WSOP, WPT, MGM) stay as they are. */

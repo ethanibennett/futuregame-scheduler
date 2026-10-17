@@ -1297,3 +1297,75 @@
 :root[data-theme^="swiss"] :is(.replayer-seat.folded, .replayer-seat.mucked) :is(.replayer-seat-name, .replayer-seat-stack) { color: var(--sw-ground) !important; }
 :root[data-theme^="swiss"] .replayer-seat.is-allin .replayer-seat-info { background: var(--sw-red) !important; box-shadow: none !important; }
 :root[data-theme^="swiss"] .replayer-seat.is-allin :is(.replayer-seat-name, .replayer-seat-stack, .replayer-allin-mark) { color: #ffffff !important; }
+
+/* ==========================================================================
+   CALM (owner, 2026-10-17: the catalogue page "was much closer to what I was thinking … it's
+   looking very cluttered"). The catalogue's look: a lot of white, black type, grey hairlines,
+   one or two bold things per block, and almost no solid black. So the solid black and red slabs
+   go (venue strips, the date blocks, the red Log Result bar, the avatar square, the selected
+   section block), the 2px rules become grey hairlines, the cards drop their secondary lines
+   (the guarantee, the late-reg bar, the arrow), and bold is kept for names and figures.
+   ========================================================================== */
+
+/* Rules: grey hairlines everywhere a heavier or black rule was. */
+:root[data-theme^="swiss"] .cal-event-row-content,
+:root[data-theme^="swiss"] .cal-event-row.saved .cal-event-row-content { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30); }
+:root[data-theme^="swiss"] .cal-event-row.saved.is-today .cal-event-row-content { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-red); }
+:root[data-theme^="swiss"] .schedule-date-break.tr-month-break,
+:root[data-theme^="swiss"] .dashboard-view.home .dashboard-section,
+:root[data-theme^="swiss"] .ovt-head,
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30); }
+:root[data-theme^="swiss"] .tracking-card { box-shadow: none; }
+:root[data-theme^="swiss"] :is(.bk-cell, .bk-bar.bk-bar--sched .bk-cell, .bk-act) { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30); }
+
+/* Venue strips: no slab. The room's name stays in the margin, small, light and grey; today's
+   registered event names its room in red. */
+:root[data-theme^="swiss"] .cal-venue-strip { background: transparent !important; color: var(--sw-g60) !important; }
+:root[data-theme^="swiss"] .cal-venue-strip :is(.venue-strip-sc, .venue-strip-abbr, .venue-strip-full) { color: var(--sw-g60) !important; font-weight: var(--sw-thin) !important; letter-spacing: 0 !important; }
+:root[data-theme^="swiss"] .cal-event-row.saved.is-today > .cal-venue-strip { background: transparent !important; }
+:root[data-theme^="swiss"] .cal-event-row.saved.is-today > .cal-venue-strip :is(.venue-strip-sc, .venue-strip-abbr, .venue-strip-full) { color: var(--sw-red) !important; }
+
+/* Cards: the name and the buy-in; the rest light grey or gone until the card is opened. */
+:root[data-theme^="swiss"] .cal-event-row:not(.open) :is(.cal-event-gtd, .mini-late-reg) { display: none; }
+:root[data-theme^="swiss"] .cal-event-row:not(.open) .cal-event-chevron::after { content: none; }
+:root[data-theme^="swiss"] .cal-event-buyin { font-weight: var(--sw-thin); letter-spacing: 0; }
+:root[data-theme^="swiss"] .cal-event-clock { color: var(--sw-g60); }
+:root[data-theme^="swiss"] .cal-clock-pt { font-weight: var(--sw-thin); letter-spacing: 0; }
+
+/* Date breaks other than today: no block, the day and month as plain words. */
+:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break) .date-break-pill { background: transparent; color: var(--sw-ink); justify-content: flex-start; width: auto; }
+:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break) .date-break-label { transform: none !important; }
+:root[data-theme^="swiss"] .schedule-date-break .date-break-dow { font-weight: var(--sw-thin); letter-spacing: 0; color: var(--sw-g60); }
+
+/* The top bar: no black avatar square; the icon glyphs grey. */
+:root[data-theme^="swiss"] .username-chip > :first-child:not(span) { background: transparent !important; color: var(--sw-g60) !important; }
+:root[data-theme^="swiss"] .username-chip span { font-weight: var(--sw-thin); letter-spacing: 0; }
+:root[data-theme^="swiss"] .top-bar-actions .btn-icon { color: var(--sw-g60); }
+
+/* The filter index: no slashes; counts and the switches in grey. */
+:root[data-theme^="swiss"] .kind-toggles:not(.results-kind-tabs) > :not(:first-child)::before { content: none; }
+:root[data-theme^="swiss"] .kt-count { color: var(--sw-g60); }
+:root[data-theme^="swiss"] .kind-toggles:not(.results-kind-tabs) .kind-toggle-caret { color: var(--sw-g30); }
+:root[data-theme^="swiss"] .sw-board-toggle { color: var(--sw-g60); font-weight: var(--sw-thin); letter-spacing: 0; }
+:root[data-theme^="swiss"] .sw-board-toggle::after { content: none; }
+:root[data-theme^="swiss"] .sticky-filters .filter-chip-square svg { color: var(--sw-g60); }
+
+/* Bankroll: the sections as words, the current one bold with a red rule under it (as the range
+   strip), not a black block; Log Result as red words, not a red bar; the tools grey. */
+:root[data-theme^="swiss"] .kind-toggles.results-kind-tabs .kind-toggle { color: var(--sw-g60); padding-left: 0; }
+:root[data-theme^="swiss"] .kind-toggles.results-kind-tabs .kind-toggle.active { background: transparent; border-color: transparent; color: var(--sw-ink); }
+:root[data-theme^="swiss"] .kind-toggles.results-kind-tabs .kind-toggle.active .kind-toggle-label { text-decoration: underline var(--bw-2) var(--sw-red); text-underline-offset: 0.3em; }
+:root[data-theme^="swiss"] .filter-chip.tr-log-btn { background: transparent; border-color: transparent; color: var(--sw-red); padding-left: 0; }
+:root[data-theme^="swiss"] .filter-chip.tr-log-btn svg { color: var(--sw-red); }
+:root[data-theme^="swiss"] .filter-chip.tr-log-btn .tr-log-label::after { content: '\00a0\2192'; font-weight: var(--sw-thin); }
+:root[data-theme^="swiss"] .tr-head-row .filter-chip-square svg { color: var(--sw-g60); }
+
+/* The admin keys (D, #) sit quietly in the corner. */
+:root[data-theme^="swiss"] .grid-dev-toggle { background: transparent !important; border-color: transparent !important; box-shadow: none !important; color: var(--sw-g30) !important; }
+:root[data-theme^="swiss"] .grid-dev-toggle.is-on { color: var(--sw-red) !important; }
+/* A closed card has no arrow row: the whole card opens it. */
+:root[data-theme^="swiss"] .cal-event-row:not(.open) .cal-event-chevron { display: none; }
+:root[data-theme^="swiss"] .cal-event-row:not(.open) .cal-event-row-content { padding-bottom: calc(var(--subrow) * 2); }
+:root[data-theme^="swiss"] :is(.bd-sp, .bd-fill-btn) { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30); }
+:root[data-theme^="swiss"] :is(.bd-sp, .bd-fill-btn).is-on { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-ink); }
+:root[data-theme^="swiss"] :is(.tx-cell, .an-launch) { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30); }
