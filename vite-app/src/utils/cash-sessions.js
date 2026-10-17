@@ -7,6 +7,8 @@
 // (total, rebuys included), rebuys (count), cash_out, tips, expenses, currency, notes, tags[],
 // live, hours, result, net }.
 
+import { shapePath } from './line-shape.js';
+
 export const CASH_GAMES = ['NLH', 'PLO', 'PLO5', 'PLO6', 'PLO8', 'Big O', 'LHE', 'O8', 'Stud Hi', 'Stud 8', 'Razz', 'Mixed'];
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -227,7 +229,7 @@ export function swingSummary(stacks) {
  * 0 so the zero line is on the chart). -> { d, zeroY, lastY } or null with fewer than two points.
  * `x` picks the abscissa: 't' (time) or 'i' (index, the chip graph's one step per session).
  */
-export function chartPath(points, { W = 1000, H = 300, x = 't', pad = 0.08 } = {}) {
+export function chartPath(points, { W = 1000, H = 300, x = 't', pad = 0.08, style = 'lines' } = {}) {
   if (!points || points.length < 2) return null;
   const xs = points.map((p, i) => (x === 'i' ? i : p.t));
   const vs = points.map((p) => p.v);
@@ -239,6 +241,6 @@ export function chartPath(points, { W = 1000, H = 300, x = 't', pad = 0.08 } = {
   const X = (v) => (x1 === x0 ? 0 : ((v - x0) / (x1 - x0)) * W);
   const Y = (v) => H - ((v - lo) / (hi - lo)) * H;
   const r = (n) => Math.round(n * 10) / 10;
-  const d = points.map((p, i) => `${i ? 'L' : 'M'}${r(X(xs[i]))} ${r(Y(p.v))}`).join(' ');
+  const d = shapePath(points.map((p, i) => [X(xs[i]), Y(p.v)]), style, { fmt: (n) => String(r(n)) });
   return { d, zeroY: r(Y(0)), lastY: r(Y(vs[vs.length - 1])) };
 }

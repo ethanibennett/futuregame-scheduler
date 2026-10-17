@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { shapePath, useLineStyle, lineStyleLabel } from '../utils/line-style.js';
 import { stepGeometry, fmtSignedCents, fmtShort } from '../utils/backer-page.js';
 import './analytics.css';
 import './backer-chart.css';
@@ -46,6 +47,7 @@ export default function BackerChart({ series, label, today, baseNote = 'start', 
   const thisYear = today ? Number(String(today).slice(0, 4)) : null;
   const plotRef = useRef(null);
   const [sel, setSel] = useState(null);   // the index of the session being read, or null
+  const [lineStyle, cycleLineStyle] = useLineStyle();   // steps, lines or curves (utils/line-style.js)
   useEffect(() => { setSel(null); }, [series]);
   // A tap anywhere else lets go of the session.
   useEffect(() => {
@@ -69,7 +71,9 @@ export default function BackerChart({ series, label, today, baseNote = 'start', 
     } else if (ev.key === 'Escape') setSel(null);
   };
   const geo = stepGeometry(series, { w: W, h: H, inset: 1 });
-  const d = geo.line.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(3)},${y.toFixed(3)}`).join(' ');
+  // The line through the start, each session's total and today, in the chosen shape.
+  const knots = [geo.line[0], ...series.points.map((_, i) => geo.line[2 + 2 * i]), geo.last];
+  const d = shapePath(knots, lineStyle);
   // Close the area along the baseline.
   const area = `${d} L${W},${geo.baseY.toFixed(3)} L0,${geo.baseY.toFixed(3)} Z`;
   const up = series.change > 0 ? 'is-pos' : series.change < 0 ? 'is-neg' : '';
@@ -93,6 +97,8 @@ export default function BackerChart({ series, label, today, baseNote = 'start', 
         ) : (
           <>
             <span className="an-cell an-sec an-clip">{label}</span>
+            <button type="button" className="bp-style ctl" onClick={cycleLineStyle}
+              aria-label={`Line: ${lineStyleLabel(lineStyle)}. Change the line`} title="Steps, lines or curves">{lineStyleLabel(lineStyle)}</button>
             <span className={'an-cell an-val bp-chart-change ' + up}>{fmtSignedCents(series.change)}</span>
           </>
         )}

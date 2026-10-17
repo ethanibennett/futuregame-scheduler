@@ -7,6 +7,7 @@ import { useToast } from '../contexts/ToastContext.jsx';
 import LocationDropdown from './LocationDropdown.jsx';
 import Icon from './Icon.jsx';
 import CashHeatmap from './CashHeatmap.jsx';
+import './cash-board.css';
 
 // ── Cash watcher: Live now ──
 // Admin-only. Reads the cash-game traffic watcher through the scheduler's
@@ -179,7 +180,7 @@ function CashLocationPicker({ token, onSaved, trailing = null }) {
        and Heatmaps alike, above the mode strip. `trailing` (the Refresh button) takes the
        fourth column of the same row: 1g gutter, then 8g. */
     <div style={{ marginTop: 'calc(var(--subrow) * 2)', marginBottom: 'var(--subrow)', display: 'flex', alignItems: 'center', gap: 'var(--gu)' }}>
-      <button ref={btnRef} type="button" className={'filter-chip' + (filters.userLocation ? ' active' : '')} onClick={() => setOpen(o => !o)}
+      <button ref={btnRef} type="button" className={'filter-chip cb-loc' + (filters.userLocation ? ' active' : '')} onClick={() => setOpen(o => !o)}
         style={{ width: 'calc(var(--col) * 3 + var(--gu) * 2)', minWidth: 0, height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'calc(var(--subrow) * 1)', padding: '0 var(--gu)' }}>
         <Icon.mapPin />
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'calc(var(--gu) * 1.149)', fontFamily: 'var(--font-condensed)', lineHeight: 'calc(var(--subrow) * 2)' }}>{label}</span>
@@ -324,7 +325,7 @@ export default function CashView({ token, onModeChange }) {
       {/* Refresh shares the location field's row (owner, 2026-10-10), in its fourth column, on both
           views: Live reloads the board, Heatmaps re-reads its room list. */}
       <CashLocationPicker token={token} onSaved={bumpLocation} trailing={
-        <button type="button" onClick={mode === 'heatmap' ? bumpLocation : load}
+        <button type="button" className="cb-refresh" onClick={mode === 'heatmap' ? bumpLocation : load}
           style={{ width: 'var(--col)', flex: '0 0 auto', height: CTRL_H, boxSizing: 'border-box', border: 'var(--bw-hair) solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 'var(--radius-sm)', padding: 0, cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.060)', whiteSpace: 'nowrap' }}>
           {mode === 'live' && status === 'loading' ? 'Loading…' : 'Refresh'}
         </button>
@@ -348,21 +349,15 @@ export default function CashView({ token, onModeChange }) {
       {mode === 'live' && (<>
 
 
-      {/* Persistent variant filter */}
+      {/* The variant filter: one chip per variant on the board, spread margin to margin with 1g between
+          (owner, 2026-10-17); cash-board.css. */}
       {availableVariants.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
+        <div className="cb-variants" style={{ '--n': Math.min(availableVariants.length, 6) }}>
           {availableVariants.map(vt => {
             const on = !hidden.has(vt);
             return (
-              <button key={vt} onClick={() => toggleVariant(vt)}
-                style={{
-                  fontFamily: UNIVERS, fontSize: 'calc(var(--gu) * 1.031)', textTransform: 'uppercase', letterSpacing: '0.04em',
-                  height: CHIP_H, boxSizing: 'border-box', padding: '0 var(--space-ml)', borderRadius: 999, cursor: 'pointer',
-                  border: 'var(--bw-hair) solid ' + (on ? 'var(--text-muted, #999)' : 'var(--border, #333)'),
-                  background: on ? 'var(--text-muted, #999)' : 'transparent',
-                  color: on ? 'var(--bg, #111)' : 'var(--text-muted, #777)',
-                }}>
-                {vt}
+              <button key={vt} type="button" className={'cb-chip ctl' + (on ? ' is-on' : '')} aria-pressed={on} onClick={() => toggleVariant(vt)}>
+                <span>{vt}</span>
               </button>
             );
           })}
@@ -390,9 +385,7 @@ export default function CashView({ token, onModeChange }) {
 
       {status !== 'error' && data && (
         <>
-          <div style={{ color: 'var(--text-muted, #999)', fontSize: 'calc(var(--gu) * 1.031)', marginBottom: 'var(--space-lg)' }}>
-            Snapshot {ago(data.ts) || '—'}{fetchedAt ? ` · refreshed ${ago(new Date(fetchedAt).toISOString())}` : ''}
-          </div>
+          <p className="cb-snap">Snapshot {ago(data.ts) || '—'}{fetchedAt ? ` · refreshed ${ago(new Date(fetchedAt).toISOString())}` : ''}</p>
 
           {venues.length === 0 && (
             <div style={{ color: 'var(--text-muted, #aaa)', padding: 'var(--space-2xl)', textAlign: 'center' }}>
@@ -400,62 +393,47 @@ export default function CashView({ token, onModeChange }) {
             </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+          <div className="cb-venues">
             {venues.map(v => {
               const color = deriveVenueInfo(v.name).color;
               const running = v._running, interest = v._interest;
               return (
-                <section key={v.slug} style={{ border: 'var(--bw-hair) solid var(--border, #2a2a2a)', borderRadius: 'var(--radius)', overflow: 'hidden', background: 'var(--surface, rgba(255,255,255,0.02))' }}>
-                  {/* Venue strip — same treatment as the Up Next banner: a
-                      brand-coloured bar, full venue name in Univers, uppercase. */}
-                  <div style={{ background: color, color: '#fff', textAlign: 'center', padding: 'var(--space-sm) calc(var(--subrow) * 1.75)', fontFamily: UNIVERS, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, fontSize: 'calc(var(--gu) * 1.208)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {v.name}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--space-md)', padding: 'var(--space-sm) calc(var(--subrow) * 1.75)', borderBottom: 'var(--bw-hair) solid var(--border, #2a2a2a)' }}>
-                    {/* No data source is named anywhere in the app (owner, 2026-10-15: no agreement with either
-                        provider, so keep them quiet). Only the freshness line remains, at the right. */}
-                    <span style={{ fontSize: 'calc(var(--gu) * 0.972)', color: 'var(--text-muted, #888)', whiteSpace: 'nowrap' }}>
-                      {v.ok === false ? 'poll failed' : v.ok === null ? 'no data yet' : (ago(v.lastPollTs) || '')}
-                    </span>
-                  </div>
-
+                <section key={v.slug} className="cb-venue" style={{ '--venue': color }}>
+                  {/* The room's band, as the Up Next banner. */}
+                  <div className="cb-venue-name">{v.name}</div>
+                  {/* No data source is named anywhere in the app (owner, 2026-10-15). Only the freshness. */}
+                  <div className="cb-venue-meta">{v.ok === false ? 'poll failed' : v.ok === null ? 'no data yet' : (ago(v.lastPollTs) || '')}</div>
                   {v.ok === false ? (
-                    <div style={{ padding: 'var(--space-ml) calc(var(--subrow) * 1.75)', color: 'var(--text-muted,#888)', fontSize: 'calc(var(--gu) * 1.149)' }}>Couldn’t read this room’s feed.</div>
+                    <p className="cb-note">Couldn’t read this room’s feed.</p>
                   ) : running.length === 0 && interest.length === 0 ? (
-                    <div style={{ padding: 'var(--space-ml) calc(var(--subrow) * 1.75)', color: 'var(--text-muted,#888)', fontSize: 'calc(var(--gu) * 1.149)' }}>Nothing running.</div>
+                    <p className="cb-note">Nothing running.</p>
                   ) : (
-                    <div>
+                    <div className="cb-games">
                       {running.map((g, gi) => {
-                        // One row PER TABLE, each with its own open duration; the
-                        // stakes and variant name only on the top row of the group.
+                        // One row PER TABLE, each with its own open duration; the stakes and the game
+                        // only on the group's first row.
                         const starts = runStarts.get(gameKey(v.slug, g.gameType, g.stakes)) || [];
                         const n = Math.max(g.tablesRunning || 0, starts.length) || 1;
                         return Array.from({ length: n }, (_, ti) => {
                           const isTop = ti === 0;
                           const open = openLabel(starts[ti], snapMs, windowStartMs);
                           return (
-                            <div key={gi + '-' + ti} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-ml)', padding: isTop ? 'var(--space-md) calc(var(--subrow) * 1.75)' : 'calc(var(--subrow) * 0.375) calc(var(--subrow) * 1.75)', borderTop: (gi === 0 && isTop) ? 'none' : (isTop ? 'var(--bw-hair) solid var(--border, rgba(255,255,255,0.08))' : 'none') }}>
-                              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text, #fff)', minWidth: 'calc(var(--subrow) * 7.75)' }}>{isTop ? g.stakes : ''}</span>
-                              <span style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted, #aaa)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isTop ? listedGame(g) : ''}</span>
-                              <span style={{ fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted, #888)', whiteSpace: 'nowrap', minWidth: 'calc(var(--subrow) * 12)', textAlign: 'right' }}>{open || ''}</span>
-                              <span style={{ minWidth: 'calc(var(--subrow) * 6.75)', textAlign: 'right' }}>
-                                {isTop && (g.waitlistLen || 0) > 0 && (
-                                  <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--warn)', border: 'var(--bw-hair) solid var(--warn)', borderRadius: 'calc(var(--subrow) * 0.625)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', whiteSpace: 'nowrap' }}>
-                                    WL {g.waitlistLen}
-                                  </span>
-                                )}
+                            <div key={gi + '-' + ti} className={'cb-row' + (isTop ? ' is-top' : '')}>
+                              <span className="cb-stakes">{isTop ? g.stakes : ''}</span>
+                              <span className="cb-game">{isTop ? listedGame(g) : ''}</span>
+                              <span className="cb-open">{open || ''}</span>
+                              <span className="cb-wl-cell">
+                                {isTop && (g.waitlistLen || 0) > 0 && <span className="cb-wl">WL {g.waitlistLen}</span>}
                               </span>
                             </div>
                           );
                         });
                       })}
                       {interest.length > 0 && (
-                        <div style={{ padding: 'var(--space-md) calc(var(--subrow) * 1.75)', borderTop: 'var(--bw-hair) solid var(--border, rgba(255,255,255,0.05))', display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-                          <span style={{ fontSize: 'calc(var(--gu) * 0.913)', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted,#777)', alignSelf: 'center' }}>Interest</span>
+                        <div className="cb-interest">
+                          <span className="cb-interest-label">Interest</span>
                           {interest.map((g, i) => (
-                            <span key={'i' + i} style={{ fontSize: 'calc(var(--gu) * 1.031)', color: 'var(--text-muted,#999)', border: 'var(--bw-hair) dashed var(--border,#333)', borderRadius: 'calc(var(--subrow) * 0.625)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)' }}>
-                              {g.stakes} {listedGame(g)}{(g.waitlistLen || 0) > 0 ? ` · WL ${g.waitlistLen}` : ''}
-                            </span>
+                            <span key={'i' + i} className="cb-int">{g.stakes} {listedGame(g)}{(g.waitlistLen || 0) > 0 ? ` · WL ${g.waitlistLen}` : ''}</span>
                           ))}
                         </div>
                       )}

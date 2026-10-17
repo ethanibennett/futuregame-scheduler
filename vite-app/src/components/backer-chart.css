@@ -97,3 +97,13 @@
   padding-bottom: var(--subrow);
   margin-bottom: calc(var(--subrow) * -1);
 }
+
+/* The line-shape switch (utils/line-style.js: steps, lines, curves), a 6g x 3r control between the
+   label and the figure; the label column narrows to 15g while it shows (not while a session is read). */
+.bp-chart-head:has(.bp-style) { grid-template-columns: calc(var(--gu) * 15) calc(var(--gu) * 6) calc(var(--gu) * 11); }
+.bp-style {
+  width: calc(var(--gu) * 6); height: calc(var(--subrow) * 3); box-sizing: border-box; margin: 0; padding: 0;
+  border: 0; border-radius: var(--radius-sm); background: transparent; box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text-muted); font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold); cursor: pointer;
+}
+.bp-style:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }

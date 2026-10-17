@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
+import { shapePath, useLineStyle, lineStyleLabel } from '../utils/line-style.js';
 import { niceTicks, drawdownBand } from '../utils/bankroll-ledger.js';
 
 /**
@@ -53,12 +54,13 @@ const DD_MIN = 0.25;        // the shallowest drawdown band drawn, in r (any sha
 const t = (d) => Date.parse(d + 'T00:00:00Z');
 const NOUN = { total: 'results', tourn: 'tournaments', cash: 'cash sessions', balance: 'movement' };
 const f2 = (n) => n.toFixed(2);
-const path = (pts) => pts.map(([a, b], i) => `${i ? 'L' : 'M'}${f2(a)},${f2(b)}`).join(' ');
+const path = (pts, style) => shapePath(pts, style, { fmt: f2 });
 
 export default function BankrollChart({
   lines, onToggle = null, fill = true, onFill, zero = false, start, end, money, tick, fmtDate, note = '', control = null,
   what = 'Balance', busy = false,
 }) {
+  const [lineStyle, cycleLineStyle] = useLineStyle();   // steps, lines or curves (utils/line-style.js)
   const shown = lines.filter((l) => l.on);
   const live = shown.filter((l) => l.has);
 
@@ -96,6 +98,8 @@ export default function BankrollChart({
   const head = (
     <div className="bd-chart-head">
       <span className="an-cell an-note bd-note-4 an-clip" title={note || undefined}>{note}</span>
+      <button type="button" className="bp-style bd-style ctl" onClick={cycleLineStyle}
+        aria-label={`Line: ${lineStyleLabel(lineStyle)}. Change the line`} title="Steps, lines or curves">{lineStyleLabel(lineStyle)}</button>
       {control}
     </div>
   );
@@ -150,14 +154,10 @@ export default function BankrollChart({
   const t0 = t(start);
   const t1 = Math.max(t(end), t0 + 864e5);
   const x = (d) => X0 + Math.max(0, Math.min(1, (t(d) - t0) / (t1 - t0))) * (W - X0);
-  // A step line through pts with vals[i] at pts[i], as viewBox vertices, held to the right edge.
+  // The points a line goes through (vals[i] at pts[i], held to the right edge); its shape (steps,
+  // lines or curves) is the shared choice (utils/line-style.js).
   const steps = (pts, vals) => {
-    const v = [];
-    pts.forEach((p, i) => {
-      const xi = i === 0 ? X0 : x(p.date);
-      if (i > 0) v.push([xi, y(vals[i - 1])]);
-      v.push([xi, y(vals[i])]);
-    });
+    const v = pts.map((p, i) => [i === 0 ? X0 : x(p.date), y(vals[i])]);
     v.push([W, y(vals[vals.length - 1])]);
     return v;
   };
@@ -190,7 +190,7 @@ export default function BankrollChart({
       g0.f = steps(g0.pts, band.map((b) => b.edge));
       const top = steps(g0.pts, band.map((b) => b.peak));
       const bottom = steps(g0.pts, band.map((b) => b.bottom));
-      dd = { peak: path(top), area: path(top) + ' ' + bottom.reverse().map(([a, b]) => `L${f2(a)},${f2(b)}`).join(' ') + ' Z' };
+      dd = { peak: path(top, lineStyle), area: path(top, lineStyle) + ' ' + shapePath([...bottom].reverse(), lineStyle, { move: false, fmt: f2 }) + ' Z' };
     }
   }
 
@@ -215,12 +215,12 @@ export default function BankrollChart({
               className={g.v === 0 ? 'bd-zero' : 'bd-grid'} vectorEffect="non-scaling-stroke" />
           ))}
           {fill && drawn.map(({ l, f }) => (
-            <path key={'a' + l.key} d={`${path(f)} L${W},${f2(base)} L${X0},${f2(base)} Z`} className={`bd-area bd-c-${l.key}`} />
+            <path key={'a' + l.key} d={`${path(f, lineStyle)} L${W},${f2(base)} L${X0},${f2(base)} Z`} className={`bd-area bd-c-${l.key}`} />
           ))}
           {dd && <path d={dd.area} className="bd-dd" />}
           {dd && <path d={dd.peak} className="bd-peak" vectorEffect="non-scaling-stroke" />}
           {drawn.map(({ l, v }) => (
-            <path key={'l' + l.key} d={path(v)} data-series={l.key} data-end={l.end}
+            <path key={'l' + l.key} d={path(v, lineStyle)} data-series={l.key} data-end={l.end}
               className={`bd-line bd-c-${l.key}` + (l.key === 'total' && drawn.length > 1 ? ' bd-under' : '')}
               vectorEffect="non-scaling-stroke" />
           ))}

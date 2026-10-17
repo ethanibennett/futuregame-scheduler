@@ -1,0 +1,142 @@
+/* The Cash tab's live board (CashView.jsx), on the grid (owner, 2026-10-17: "lots of stuff not falling on
+   the grid"). It was inline styles in spacing tokens and odd fractions of r; now every box is whole g by
+   whole r and every line of text sits on an r line by the same seating the analytics cells use
+   (analytics.css .an-cell: height h r, top pad p r, line-height (h - p) r; p fixed per face and size):
+     Univers Condensed sm on 4r, baseline on line 3: p 0.6978  (a game's first row)
+     Univers Condensed xs on 3r, baseline on line 3: p 1.9574  (its other tables, the notes)        */
+
+/* Text cells. */
+.cb-snap, .cb-venue-meta, .cb-note, .cb-interest-label,
+.cb-row > .cb-stakes, .cb-row > .cb-game, .cb-row > .cb-open {
+  display: block;
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0;
+  white-space: nowrap;
+  height: calc(var(--subrow) * var(--h));
+  padding-top: calc(var(--subrow) * var(--p));
+  line-height: calc(var(--subrow) * (var(--h) - var(--p)));
+}
+.cb-snap, .cb-venue-meta, .cb-interest-label,
+.cb-row:not(.is-top) > :is(.cb-stakes, .cb-game, .cb-open) {
+  --h: 3; --p: 1.9574;
+  font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text-muted);
+  font-variant-numeric: var(--num-tabular);
+}
+.cb-note, .cb-row.is-top > :is(.cb-stakes, .cb-game, .cb-open) {
+  --h: 4; --p: 0.6978;
+  font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text);
+  font-variant-numeric: var(--num-tabular);
+}
+.cb-row.is-top > .cb-stakes { font-weight: var(--fw-bold); }
+.cb-row.is-top > :is(.cb-game, .cb-open) { color: var(--text-muted); }
+.cb-game { overflow: hidden; text-overflow: ellipsis; }
+.cb-snap { margin-bottom: var(--subrow); }
+
+/* The variant chips: margin to margin, 1g apart, up to six to a row (CashView sets --n). */
+.cb-variants {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 6), minmax(0, 1fr));
+  gap: var(--subrow) var(--gu);
+  margin-bottom: calc(var(--subrow) * 2);
+}
+.cb-chip {
+  height: calc(var(--subrow) * 3);
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: var(--bw-hair) solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.cb-chip > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-indent: var(--track-caps); }
+.cb-chip.is-on { background: var(--text-muted); border-color: var(--text-muted); color: var(--bg); }
+.cb-chip:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+/* The rooms: 2r apart. */
+.cb-venues { display: grid; row-gap: calc(var(--subrow) * 2); }
+.cb-venue {
+  border: var(--bw-hair) solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+/* The room's band: a 4r heading, its name centred, in the room's colour. */
+.cb-venue-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--subrow) * 4);
+  padding: 0 var(--gu);
+  background: var(--venue);
+  color: #ffffff;
+  font-family: var(--font-condensed);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.cb-venue-meta { text-align: right; padding: 0 var(--gu); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border); }
+.cb-note { padding-left: var(--gu); }
+
+/* A table: stakes 6g, the game, open 10g, the waitlist 5g; 1g between, 1g in from the box. */
+.cb-row {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 6) minmax(0, 1fr) calc(var(--gu) * 10) calc(var(--gu) * 5);
+  column-gap: var(--gu);
+  padding: 0 var(--gu);
+}
+.cb-row.is-top + .cb-row.is-top,
+.cb-row:not(.is-top) + .cb-row.is-top { box-shadow: inset 0 var(--bw-hair) 0 0 var(--border); }
+.cb-open { text-align: right; }
+.cb-wl-cell { display: flex; align-items: center; justify-content: flex-end; }
+.cb-row.is-top > .cb-wl-cell { height: calc(var(--subrow) * 4); }
+.cb-row:not(.is-top) > .cb-wl-cell { height: calc(var(--subrow) * 3); }
+.cb-wl {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--subrow) * 3);
+  box-sizing: border-box;
+  padding: 0 calc(var(--gu) * 0.5);
+  border: var(--bw-hair) solid var(--warn);
+  border-radius: var(--radius-sm);
+  color: var(--warn);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-xs);
+  font-variant-numeric: var(--num-tabular);
+  white-space: nowrap;
+}
+
+/* Interest lists: their label, then each as a dashed 3r pill; 1r and 1g between. */
+.cb-interest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--subrow) var(--gu);
+  padding: var(--subrow) var(--gu);
+  box-shadow: inset 0 var(--bw-hair) 0 0 var(--border);
+}
+.cb-int {
+  display: inline-flex;
+  align-items: center;
+  height: calc(var(--subrow) * 3);
+  box-sizing: border-box;
+  padding: 0 calc(var(--gu) * 0.5);
+  border: var(--bw-hair) dashed var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}

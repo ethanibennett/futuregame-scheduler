@@ -296,3 +296,7 @@
 .bd-inline .bd-up { color: var(--pos); }
 .bd-inline .is-neg { color: var(--neg); }
 .bd-inline .is-pos { color: var(--pos); }
+
+/* The line-shape switch in the Overview graph's head (styled as .bp-style, backer-chart.css). */
+.bd-chart-head:has(.bd-style) { grid-template-columns: calc(var(--gu) * 15) calc(var(--gu) * 6) calc(var(--gu) * 12); }
+.bd-style { width: calc(var(--gu) * 6); height: calc(var(--subrow) * 3); box-sizing: border-box; margin: 0; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; box-shadow: inset 0 0 0 var(--bw-hair) var(--border); color: var(--text-muted); font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold); cursor: pointer; }

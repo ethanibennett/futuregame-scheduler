@@ -121,10 +121,10 @@ test('swing: from 0 at the start, each update against its own buy-in, closing on
 
 test('chart path: zero always in range, x by time or by index', () => {
   const p = chartPath([{ t: 0, v: 0 }, { t: 10, v: 100 }], { W: 100, H: 100, pad: 0 });
-  assert.equal(p.d, 'M0 100 L100 0');
+  assert.equal(p.d, 'M0,100 L100,0');
   assert.equal(p.zeroY, 100);
   const q = chartPath([{ v: 50 }, { v: -50 }, { v: 50 }], { W: 100, H: 100, x: 'i', pad: 0 });
-  assert.equal(q.d, 'M0 0 L50 100 L100 0');
+  assert.equal(q.d, 'M0,0 L50,100 L100,0');
   assert.equal(q.zeroY, 50);
   assert.equal(chartPath([{ t: 0, v: 1 }]), null);
 });

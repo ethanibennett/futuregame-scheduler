@@ -18,6 +18,7 @@
 // these totals, months and stats are cash-only (mixing them would change what every number means).
 // It follows the Results tab's bankroll (bk.selected) like the tournament half does. Server:
 // lib/cash-sessions.js. Styles: CashSessions.css (every box whole g x whole r, baselines on r).
+import { useLineStyle } from '../utils/line-style.js';
 import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { API_URL } from '../utils/api.js';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -101,7 +102,8 @@ const Notes = (props) => <textarea maxLength={500} rows={2} placeholder="Optiona
 const VW = 1000, VH = 300;
 function Chart({ points, x = 't', className = '', label, empty }) {
   const id = 'cs' + useId().replace(/[^\w-]/g, '');
-  const p = chartPath(points, { W: VW, H: VH, x });
+  const [lineStyle] = useLineStyle();
+  const p = chartPath(points, { W: VW, H: VH, x, style: lineStyle });
   // Clip margins reach past the viewBox so round caps at the ends are not cut.
   const sides = p ? [['is-pos', -VH, p.zeroY + VH], ['is-neg', p.zeroY, VH * 2 - p.zeroY]] : [];
   return (
