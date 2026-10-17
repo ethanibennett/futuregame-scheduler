@@ -148,3 +148,7 @@
 .cs-list .tr-month:first-child .tr-month-break { margin-top: 0; }
 /* A range with nothing in it: one 2r line where the graph would be, the strip under it. */
 .tr-chart .tr-chart-empty { color: var(--text-muted); }
+
+/* A cash session's line under the game (its subheading, or the first line of its notes) stays one
+   line, cut with an ellipsis, so a long note never runs over the card. */
+.cs-card .cal-event-stage { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }

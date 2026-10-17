@@ -442,7 +442,9 @@ function SessionRow({ s, onOpen }) {
   const cur = s.currency;
   const hourly = sessionHourly(s);
   const game = sessionGame(s) || 'Cash';
-  const stage = (s.subtitle || s.notes || '').trim();
+  // The line under the game is the session's subheading only: its notes stay behind the tap, on the
+  // session's own page (owner, 2026-10-17). One line, cut with an ellipsis (tracking-cards.css).
+  const stage = (s.subtitle || '').trim();
   return (
     <div className="cal-event-row tr-card cs-card" data-cash-row={s.id} role="button" tabIndex={0} onClick={onOpen}
       aria-label={`${game}${s.room ? ', ' + s.room : ''}, ${fmtDay(s.session_date)}: ${signed(s.net, cur)}`}
