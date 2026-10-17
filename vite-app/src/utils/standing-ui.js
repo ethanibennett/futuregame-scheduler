@@ -159,7 +159,7 @@ export function driftView(l, { thisYear } = {}) {
 /** The money state as one line. */
 export function stateLine(s) {
   if (!s) return null;
-  const posting = s.posting === 'off' ? 'Posting is off: Notify is refused until the cutover turns it on.' : s.posting === 'on' ? 'Posting is on.' : 'Posting is on (unset).';
+  const posting = s.posting === 'off' ? 'Posting is off: Notify is refused until you turn it on.' : s.posting === 'on' ? 'Posting is on.' : 'Posting is on (unset).';
   const cut = s.cutover === 'live' ? ' Cutover live: this app owns the backers.' : s.cutover === 'imported' ? ' The dashboard is imported.' : '';
   return posting + cut;
 }

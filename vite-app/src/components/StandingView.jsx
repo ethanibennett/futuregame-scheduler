@@ -395,6 +395,17 @@ export default function StandingView({ token, backers, onBack }) {
     reload();
   };
   const y = thisYear();
+  // Posting: the dashboard import leaves it off (lib/money-import/apply.js; the spec's step 6 was to turn it
+  // back on), and the plain cutover had no such step, so the Notify tap was refused (owner, 2026-10-17).
+  // On only: no postingSince, so no agreement's date moves, and the cutover state is left alone.
+  const setPosting = async (on) => {
+    setBusy('posting');
+    const r = await api('PUT', '/bankrolls/money/cutover', { posting: on ? 'on' : 'off' });
+    setBusy(null);
+    if (r.status !== 200) { toast.error((r.data && r.data.error) || 'Could not change posting.'); return; }
+    toast.success(on ? 'Posting is on: Notify records shares again.' : 'Posting is off.');
+    reload();
+  };
   const driftLines = useMemo(() => (drift || []).map((l) => driftView(l, { thisYear: y })), [drift, y]);
   return (
     <div className="sd">
@@ -407,6 +418,9 @@ export default function StandingView({ token, backers, onBack }) {
       </div>
       <p className="sd-text">A standing agreement is a backer&rsquo;s share of every result of a game, from a day on. A share is recorded only when you tap Notify on a result; an edit after that follows it silently.</p>
       {owner && <p className="sd-text sd-text--muted">{stateLine(state)}</p>}
+      {owner && state.posting === 'off' && (
+        <div className="sd-actions"><Btn w={14} tone="brand" disabled={busy === 'posting'} onClick={() => setPosting(true)}>Turn posting on</Btn></div>
+      )}
       {adding && list && <AddForm api={api} backers={backers || []} formats={list.formats} channels={list.channels} onSaved={() => { setAdding(false); reload(); }} onCancel={() => setAdding(false)} />}
       {owner && driftLines.length > 0 && (
         <section className="sd-drift" aria-label="Shares a result moved under">

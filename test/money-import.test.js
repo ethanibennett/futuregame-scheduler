@@ -515,7 +515,7 @@ const diffTables = (a, b) => Object.keys({ ...a, ...b }).filter((k) => a[k] !== 
       assert.deepStrictEqual(op, { kind: 'deposit', amount: 14750, occurred_on: '2026-02-01', bankroll_id: null });
       assert.strictEqual(q(d, 'SELECT amount FROM bankroll_adjustments WHERE id = ?', [key('dash:rounding:main').ref_id])[0].amount, -2);
       assert.strictEqual(key('dash:rounding:fund'), undefined, 'the fund\'s remainder (-0.15) is under $0.50: no correction');
-      assert.deepStrictEqual(q(d, 'SELECT data FROM money_settings WHERE user_id = ?', [hamId])[0], { data: '{"posting":"off","cutover":"imported","taxSetAsidePct":28}' });
+      assert.deepStrictEqual(q(d, 'SELECT data FROM money_settings WHERE user_id = ?', [hamId])[0], { data: '{"cutover":"imported","taxSetAsidePct":28}' });
       assert.deepStrictEqual(q(d, 'SELECT name, amount FROM money_locations ORDER BY sort_order'), [{ name: 'Bank', amount: 30000 }, { name: 'Parx front', amount: 1500.5 }]);
       d.close();
     });
