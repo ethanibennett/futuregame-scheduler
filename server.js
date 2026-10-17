@@ -3560,6 +3560,12 @@ async function initDatabase() {
       name: standingPayouts.MIGRATION_NAME,
       fn: () => { standingPayouts.migrate(db); console.log('Standing payouts: table ready'); }
     },
+    {
+      // The dashboard import left posting 'off' and the plain cutover never turned it on, so the
+      // Notify tap was refused (owner, 2026-10-17). Once: clear that write (lib/staking/live.js).
+      name: '2026-10-17-posting-after-import',
+      fn: () => { const n = standingLive.clearImportedPostingOff(db); console.log(`[staking] posting: cleared the import's 'off' for ${n} owner(s); Notify is on`); }
+    },
   ];
 
   for (const mig of dataMigrations) {

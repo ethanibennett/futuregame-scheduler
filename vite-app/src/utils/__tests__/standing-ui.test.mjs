@@ -55,7 +55,7 @@ test('the correction preview, a share, a drift line, the state line', () => {
   assert.deepEqual([d.detail, d.dashboard, d.canExclude], ['20% of −$400 · from the dashboard', true, false]);
   assert.equal(driftView({ refTable: 'tracking_entries', refId: 12, key: 'b7', name: 'Sam', date: '2026-10-10', game: 'NLH MTT', shareCents: 24000, freshShareCents: 22000, action: 'revise' }, { thisYear: 2026 }).text, 'Oct 10 · NLH MTT · Sam: +$240 → +$220');
   assert.equal(driftView({ refTable: 'cash_sessions', refId: 1, date: '2026-10-08', game: '2/5 NLH', shareCents: 7000, action: 'void' }, { thisYear: 2026 }).text, 'Oct 8 · 2/5 NLH · a backer: +$70 → removed');
-  assert.equal(stateLine({ posting: 'off', cutover: 'none' }), 'Posting is off: Notify is refused until the cutover turns it on.');
+  assert.equal(stateLine({ posting: 'off', cutover: 'none' }), 'Posting is off: Notify is refused until you turn it on.');
   assert.equal(stateLine({ posting: null, cutover: 'live' }), 'Posting is on (unset). Cutover live: this app owns the backers.');
 });
 test('the preview queries for unsaved results', () => {
