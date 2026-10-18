@@ -160,3 +160,10 @@
   padding-top: calc(var(--subrow) * 0.9574);
   line-height: calc(var(--subrow) * 1.0426);
 }
+
+/* The room's freshness line ("7m ago") the same way (owner, 2026-10-17): on its 3r box's second line,
+   off the hairline under it. After .cb-venue-meta's padding shorthand, which would reset the top. */
+.cb-venue > .cb-venue-meta {
+  padding-top: calc(var(--subrow) * 0.9574);
+  line-height: calc(var(--subrow) * 1.0426);
+}
