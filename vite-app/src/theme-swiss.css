@@ -1416,7 +1416,7 @@
 
 :root[data-theme^="swiss"] .cb-venue { border: 0; background: transparent; box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-ink); }
 :root[data-theme^="swiss"] .cb-venue-name { background: transparent; color: var(--sw-ink); justify-content: flex-start; padding: 0; text-transform: none; font-weight: var(--sw-bold); letter-spacing: var(--sw-track); font-size: var(--fs-md); }
-:root[data-theme^="swiss"] .cb-venue-meta { padding: calc(var(--subrow) * 0.9574) 0 0; box-shadow: none; text-align: left; }
+:root[data-theme^="swiss"] .cb-venue-meta { padding: 0; box-shadow: none; text-align: left; }
 :root[data-theme^="swiss"] :is(.cb-row, .cb-interest) { padding-left: 0; padding-right: 0; }
 :root[data-theme^="swiss"] .cb-note { padding-left: 0; }
 :root[data-theme^="swiss"] :is(.cb-row.is-top + .cb-row.is-top, .cb-row:not(.is-top) + .cb-row.is-top, .cb-interest) { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30); }

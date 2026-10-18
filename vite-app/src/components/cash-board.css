@@ -1,9 +1,9 @@
 /* The Cash tab's live board (CashView.jsx), on the grid (owner, 2026-10-17: "lots of stuff not falling on
-   the grid"). It was inline styles in spacing tokens and odd fractions of r; now every box is whole g by
-   whole r and every line of text sits on an r line by the same seating the analytics cells use
-   (analytics.css .an-cell: height h r, top pad p r, line-height (h - p) r; p fixed per face and size):
-     Univers Condensed sm on 4r, baseline on line 3: p 0.6978  (a game's first row)
-     Univers Condensed xs on 3r, baseline on line 3: p 1.9574  (its other tables, the notes)        */
+   the grid"): every box is whole g by whole r. Every line of text is CENTRED in its row (owner,
+   2026-10-17: "center each line of text vertically in its row"), the way a pill's label is, not seated on
+   an r line: the line box is the row's height, so the half-leading above and below is equal (the shipped
+   fonts' ascent and descent are matched across platforms; check:fonts). A game's first row is 4r, sm;
+   its other tables, the room's freshness line and the snapshot line 3r, xs. */
 
 /* Text cells. */
 .cb-snap, .cb-venue-meta, .cb-note, .cb-interest-label,
@@ -14,17 +14,18 @@
   margin: 0;
   white-space: nowrap;
   height: calc(var(--subrow) * var(--h));
-  padding-top: calc(var(--subrow) * var(--p));
-  line-height: calc(var(--subrow) * (var(--h) - var(--p)));
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: calc(var(--subrow) * var(--h));
 }
 .cb-snap, .cb-venue-meta, .cb-interest-label,
 .cb-row:not(.is-top) > :is(.cb-stakes, .cb-game, .cb-open) {
-  --h: 3; --p: 1.9574;
+  --h: 3;
   font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text-muted);
   font-variant-numeric: var(--num-tabular);
 }
 .cb-note, .cb-row.is-top > :is(.cb-stakes, .cb-game, .cb-open) {
-  --h: 4; --p: 0.6978;
+  --h: 4;
   font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text);
   font-variant-numeric: var(--num-tabular);
 }
@@ -141,29 +142,11 @@
   white-space: nowrap;
 }
 
-/* "Interest" centred on its pills (owner, 2026-10-17): a 3r box like theirs, its word centred in it,
-   the way a pill's label is, rather than seated on the box's bottom line. */
+/* "Interest" centred on its pills: a 3r box like theirs, its word centred in it. */
 .cb-interest > .cb-interest-label {
   display: inline-flex;
   align-items: center;
   height: calc(var(--subrow) * 3);
   padding-top: 0;
   line-height: 1;
-}
-
-/* A game's later tables (owner, 2026-10-17): their baseline on the SECOND line of their 3r box, not
-   the third. On the third it sat on the next game's hairline, the descenders hanging through it (and,
-   as a room's last row, cut off by the room's box), and the steps read 4r then 3r. Same line-height,
-   1r less padding above: the baseline rises exactly one r, so the table lines step 3r, 3r, 3r with 1r
-   clear below the last. */
-.cb-row:not(.is-top) > :is(.cb-stakes, .cb-game, .cb-open) {
-  padding-top: calc(var(--subrow) * 0.9574);
-  line-height: calc(var(--subrow) * 1.0426);
-}
-
-/* The room's freshness line ("7m ago") the same way (owner, 2026-10-17): on its 3r box's second line,
-   off the hairline under it. After .cb-venue-meta's padding shorthand, which would reset the top. */
-.cb-venue > .cb-venue-meta {
-  padding-top: calc(var(--subrow) * 0.9574);
-  line-height: calc(var(--subrow) * 1.0426);
 }
