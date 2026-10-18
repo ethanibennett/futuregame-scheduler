@@ -140,3 +140,23 @@
   font-size: var(--fs-xs);
   white-space: nowrap;
 }
+
+/* "Interest" centred on its pills (owner, 2026-10-17): a 3r box like theirs, its word centred in it,
+   the way a pill's label is, rather than seated on the box's bottom line. */
+.cb-interest > .cb-interest-label {
+  display: inline-flex;
+  align-items: center;
+  height: calc(var(--subrow) * 3);
+  padding-top: 0;
+  line-height: 1;
+}
+
+/* A game's later tables (owner, 2026-10-17): their baseline on the SECOND line of their 3r box, not
+   the third. On the third it sat on the next game's hairline, the descenders hanging through it (and,
+   as a room's last row, cut off by the room's box), and the steps read 4r then 3r. Same line-height,
+   1r less padding above: the baseline rises exactly one r, so the table lines step 3r, 3r, 3r with 1r
+   clear below the last. */
+.cb-row:not(.is-top) > :is(.cb-stakes, .cb-game, .cb-open) {
+  padding-top: calc(var(--subrow) * 0.9574);
+  line-height: calc(var(--subrow) * 1.0426);
+}
