@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import useWordmarkFit from '../hooks/useWordmarkFit.js';
 import Icon from './Icon.jsx';
 import GridOverlay from './GridOverlay.jsx';
 import ThemeButton from './ThemeButton.jsx';
@@ -170,10 +171,12 @@ function PushPill({ push }) {
 }
 
 function TopBar({ push, theme }) {
+  const wordmarkRef = useRef(null);
+  useWordmarkFit(wordmarkRef);
   return (
     <header className="top-bar bp-top">
       <div className="top-bar-title">
-        <h1>futurega.me</h1>
+        <h1 ref={wordmarkRef}>futurega.me</h1>
         {/* The player's full name (owner, 2026-10-14). One player today; when backers belong to other
             players after the bankroll merge, this comes from the feed. */}
         <small>your action with Ethan Bennett</small>

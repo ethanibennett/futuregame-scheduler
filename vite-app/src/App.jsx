@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
+import useWordmarkFit from './hooks/useWordmarkFit.js';
 import { balancesFromSummary } from './utils/bankrolls.js';
 import AlternatingSubtitle from './components/AlternatingSubtitle.jsx';
 import { createPortal } from 'react-dom';
@@ -344,6 +345,9 @@ function App() {
   // Cash tab's Live / Heatmaps mode, for the top bar's subtitle. CashView owns and persists
   // it ('cashMode'); this reads the same key so the first paint is already right.
   const [cashMode, setCashMode] = useState(() => { try { return localStorage.getItem('cashMode') || 'live'; } catch { return 'live'; } });
+  // The top bar's wordmark, fitted to exactly 8g in every theme and face (hooks/useWordmarkFit.js).
+  const wordmarkRef = useRef(null);
+  useWordmarkFit(wordmarkRef);
 
   // Shared hand from URL hash
   const [sharedHandData, setSharedHandData] = useState(() => {
@@ -2351,7 +2355,7 @@ function App() {
     >
       <header className="top-bar">
         <div className="top-bar-title">
-          <h1>futurega<span className="wm-dot">.</span>me</h1>
+          <h1 ref={wordmarkRef}>futurega<span className="wm-dot">.</span>me</h1>
           {/* The cash tab is not seasonal, so its subtitle names the tab instead of the
               season's date range. The h2 inside CashView is dropped in favour of this. */}
           {currentView === 'cash' ? <small>{cashMode === 'heatmap' ? 'cash game history' : 'live cash games'}</small>
