@@ -119,15 +119,17 @@
   white-space: nowrap;
 }
 
-/* Interest lists: their label, then each as a dashed 3r pill; 1r and 1g between. */
+/* Interest lists: the label in the stakes column, the dashed 3r pills from the game column (owner,
+   2026-10-17: the first one under the running game above), wrapping within it; 1r and 1g between. */
 .cb-interest {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--subrow) var(--gu);
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 6) minmax(0, 1fr);
+  align-items: start;
+  column-gap: var(--gu);
   padding: var(--subrow) var(--gu);
   box-shadow: inset 0 var(--bw-hair) 0 0 var(--border);
 }
+.cb-int-list { display: flex; flex-wrap: wrap; gap: var(--subrow) var(--gu); min-width: 0; }
 .cb-int {
   display: inline-flex;
   align-items: center;

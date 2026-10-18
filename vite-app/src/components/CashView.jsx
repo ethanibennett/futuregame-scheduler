@@ -433,9 +433,11 @@ export default function CashView({ token, onModeChange }) {
                       {interest.length > 0 && (
                         <div className="cb-interest">
                           <span className="cb-interest-label">Interest</span>
-                          {interest.map((g, i) => (
-                            <span key={'i' + i} className="cb-int">{g.stakes} {listedGame(g)}{(g.waitlistLen || 0) > 0 ? ` · WL ${g.waitlistLen}` : ''}</span>
-                          ))}
+                          <span className="cb-int-list">
+                            {interest.map((g, i) => (
+                              <span key={'i' + i} className="cb-int">{g.stakes} {listedGame(g)}{(g.waitlistLen || 0) > 0 ? ` · WL ${g.waitlistLen}` : ''}</span>
+                            ))}
+                          </span>
                         </div>
                       )}
                     </div>

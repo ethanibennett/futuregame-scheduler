@@ -1430,8 +1430,8 @@
 /* Swiss seats the waitlist and the interest lists as text on the rows' baselines (no badge boxes). */
 :root[data-theme^="swiss"] .cb-wl-cell { display: block; }
 :root[data-theme^="swiss"] .cb-wl { display: block; height: calc(var(--subrow) * 4); padding: calc(var(--subrow) * 0.6978) 0 0; line-height: calc(var(--subrow) * 3.3022); text-align: right; font-size: var(--fs-sm); }
-:root[data-theme^="swiss"] .cb-interest { align-items: baseline; }
-:root[data-theme^="swiss"] .cb-int { display: block; height: calc(var(--subrow) * 3); padding: calc(var(--subrow) * 1.9574) var(--gu) 0 0; line-height: calc(var(--subrow) * 1.0426); }
+:root[data-theme^="swiss"] .cb-interest { align-items: start; }
+:root[data-theme^="swiss"] .cb-int { display: block; height: calc(var(--subrow) * 3); padding: 0 var(--gu) 0 0; line-height: calc(var(--subrow) * 3); }
 
 /* The Schedule's date headers (owner, 2026-10-17): the date larger, its baseline on the 4r line the event
    count and the weekday already sit on (each trimmed to cap height and baseline, bottom-aligned), and the
