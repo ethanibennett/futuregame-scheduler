@@ -6,6 +6,7 @@ import {
   fmtSignedCents, plural,
 } from '../utils/bankroll-backers.js';
 import { useToast } from '../contexts/ToastContext.jsx';
+import { settleView } from '../utils/backer-settle.js';
 import './analytics.css';
 import './bankroll-locations.css';
 import './bankroll-backers.css';
@@ -52,7 +53,7 @@ async function copyText(value) {
   } catch (_) { return false; }
 }
 
-function BackerCard({ b, open, onToggle, thisYear, onCopy }) {
+function BackerCard({ b, open, onToggle, thisYear, onCopy, onSettle, settling }) {
   const id = 'bb-shares-' + b.id.replace(/[^\w-]+/g, '-');
   const name = displayName(b);
   const items = statItems(b);
@@ -60,6 +61,7 @@ function BackerCard({ b, open, onToggle, thisYear, onCopy }) {
   const bbs = bbItems(b);
   const delivery = deliveryText(b.delivery);
   const more = moreLine(b);
+  const settle = settleView({ settlement: b.settlement, totalCents: b.cumulativeCents, side: 'owner', backer: b.name || 'your backer' });
   return (
     <li className={'bl-item bb-item' + (open ? ' is-open' : '')}>
       <button type="button" className={'bl-card' + (bbs.length ? ' has-bb' : '')} aria-expanded={open} aria-controls={open ? id : undefined} onClick={onToggle}>
@@ -98,6 +100,17 @@ function BackerCard({ b, open, onToggle, thisYear, onCopy }) {
           : <button type="button" className="bk-btn bl-more" disabled><span>Open page</span></button>}
         <span className="an-cell bl-count bb-delivery an-clip" title={delivery.long}>{delivery.short}</span>
       </div>
+      {settle && (
+        /* Settled (owner, 2026-10-19): the player's half of the handshake; the backer presses it on
+           their page. Both pressed = the balance goes to $0 on both. */
+        <div className="bl-pager bb-actions bb-settle">
+          {settle.button && (
+            <button type="button" className={'bk-btn bl-more bb-settle-btn' + (settle.button.primary ? ' is-primary' : '')}
+              disabled={settling} onClick={() => onSettle(b, settle)}><span>{settle.button.label}</span></button>
+          )}
+          <span className="an-cell bl-count bb-settle-status an-clip" title={settle.status}>{settle.status}</span>
+        </div>
+      )}
       {open && (
         <div className="bl-detail bb-detail" id={id}>
           {b.shares.length === 0 ? (
@@ -130,6 +143,8 @@ export default function BankrollBackers({ bk }) {
   const toast = useToast();
   const [state, setState] = useState({ status: 'loading', backers: [], error: '' });
   const [open, setOpen] = useState(() => new Set());
+  const [settling, setSettling] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const thisYear = Number(getToday().slice(0, 4));
 
   useEffect(() => {
@@ -146,7 +161,26 @@ export default function BankrollBackers({ bk }) {
       }
     })();
     return () => { live = false; };
-  }, [bk.token]);
+  }, [bk.token, reloadKey]);
+
+  // A Settled press: sends the balance this card shows, then reloads the list (the figures come from
+  // the server, so the card reads exactly what the backer's page does).
+  const settle = useCallback(async (b, v) => {
+    if (v.confirm && !window.confirm(v.confirm)) return;
+    setSettling(true);
+    try {
+      const res = await fetch(`${API_URL}/staking/standing/backers/${encodeURIComponent(b.id)}/settle`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${bk.token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: v.button.action, amountCents: b.cumulativeCents }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) toast.error(data.error || 'That did not go through. Try again.');
+      else if (data.completed) toast.success(`Settled with ${b.name || 'your backer'}. The balance is back to $0.`);
+      setReloadKey((k) => k + 1);
+    } catch { toast.error('That did not go through. Check your connection.'); }
+    finally { setSettling(false); }
+  }, [bk.token, toast]);
 
   const list = state.backers;
   const sum = useMemo(() => listSummary(list), [list]);
@@ -192,7 +226,7 @@ export default function BankrollBackers({ bk }) {
           <ul className="bl-list">
             {list.map((b) => (
               <BackerCard key={b.id} b={b} open={open.has(b.id)} onToggle={() => toggle(b.id)}
-                thisYear={thisYear} onCopy={copy} />
+                thisYear={thisYear} onCopy={copy} onSettle={settle} settling={settling} />
             ))}
           </ul>
         </>

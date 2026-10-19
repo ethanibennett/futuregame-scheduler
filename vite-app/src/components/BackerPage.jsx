@@ -9,6 +9,7 @@ import useInkBalance from '../hooks/useInkBalance.js';
 import useThemeChoice from '../hooks/useThemeChoice.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { API_URL } from '../utils/api.js';
+import { settleView } from '../utils/backer-settle.js';
 import { VENUE_MAP, getVenueBrandColor, getVenueInfo, getStripAbbr } from '../utils/utils.js';
 import {
   summarize, groupByMonth, shareSeries, rangeOptions, stripFor, monthLabel, RANGE_NOUN,
@@ -326,6 +327,42 @@ function SettlementBar() {
   );
 }
 
+/** Settled (owner, 2026-10-19): the backer's half of the handshake, under the settlement bar. The
+ *  balance goes to $0 once the player has pressed it too (Bankroll > Backers); either side can undo
+ *  its press until then. utils/backer-settle.js words it; lib/staking/backer-settle.js keeps it. */
+function SettleRow({ token, feed, total, onChange }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const v = settleView({ settlement: feed.settlement, totalCents: total, side: 'backer' });
+  if (!v) return null;
+  const press = async () => {
+    if (!v.button || busy) return;
+    if (v.confirm && !window.confirm(v.confirm)) return;
+    setBusy(true);
+    try {
+      const r = await fetch(`${API_URL}/backer/${token}/settle`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
+        body: JSON.stringify({ action: v.button.action, amountCents: total }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { if (toast) toast.error(d.error || 'That did not go through. Try again.'); }
+      else if (d.completed && toast) toast.success('Settled. The balance is back to $0.');
+      onChange();
+    } catch { if (toast) toast.error('That did not go through. Check your connection.'); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="bp-settled-row">
+      {v.button && (
+        <button type="button" className={'bp-settled-btn' + (v.button.primary ? ' is-primary' : '')} onClick={press} disabled={busy}>
+          {v.button.label}
+        </button>
+      )}
+      <span className="an-cell bp-settled-status an-clip" title={v.status}>{v.status}</span>
+    </div>
+  );
+}
+
 /** A month break: the Schedule's date-break pill and count (styles.css .schedule-date-break),
  *  sticky at the scroller's top, the month's share at its right end. Its label, "Oct 2026", is
  *  centred on its ink like the Schedule's "DD Mon" (utils/ink-balance.js): a month name starts on
@@ -404,6 +441,11 @@ export default function BackerPage({ token }) {
       .catch(() => setFailed(true));
   }, [token]);
   useEffect(() => { load(); }, [load]);
+  // After a Settled press: the feed again, without the skeleton in between.
+  const reload = useCallback(() => {
+    fetch(`${API_URL}/backer/${token}/feed`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setFeed(d); }).catch(() => {});
+  }, [token]);
 
   useEffect(() => { if (push.error && toast) toast.error(push.error); }, [push.error, toast]);
 
@@ -470,6 +512,7 @@ export default function BackerPage({ token }) {
               ) : `Opening balance · no sessions yet`}
             </div>
             <SettlementBar />
+            <SettleRow token={token} feed={feed} total={sum.total} onChange={reload} />
           </section>
         )}
 

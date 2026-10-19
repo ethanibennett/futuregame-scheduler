@@ -62,7 +62,10 @@ test('order: session date first, then when it was recorded', () => {
 test('summary: totals from the feed, falling back to the sessions it holds', () => {
   const events = [ev('2026-03-01', 10000), ev('2026-03-02', -4000)];
   const s = summarize({ openingCents: 50000, cumulativeCents: 56000, sessions: 2, hours: 8, events });
-  assert.deepEqual(s, { total: 56000, sessions: 2, hours: 8, opening: 50000, paid: 0, base: 50000, complete: true });
+  assert.deepEqual(s, { total: 56000, sessions: 2, hours: 8, opening: 50000, paid: 0, settled: 0, base: 50000, complete: true });
+  // A settlement both sides confirmed lowers the total the same way, and the base adds it back.
+  const st = summarize({ openingCents: 50000, cumulativeCents: 0, settlement: { settledCents: 56000 }, sessions: 2, hours: 8, events });
+  assert.deepEqual([st.total, st.settled, st.base, st.complete], [0, 56000, 50000, true]);
   // A payout (Phase 14) lowers the total, not the shares: the curve's base adds it back, so the
   // history still reads complete.
   const p = summarize({ openingCents: 50000, cumulativeCents: 51000, paidCents: 5000, sessions: 2, hours: 8, events });
@@ -77,7 +80,7 @@ test('summary: totals from the feed, falling back to the sessions it holds', () 
   assert.equal(t.base, 84000);
   assert.equal(t.complete, false);
   // Nothing at all (an unknown token answers an empty feed).
-  assert.deepEqual(summarize({ name: null, events: [] }), { total: 0, sessions: 0, hours: 0, opening: 0, paid: 0, base: 0, complete: true });
+  assert.deepEqual(summarize({ name: null, events: [] }), { total: 0, sessions: 0, hours: 0, opening: 0, paid: 0, settled: 0, base: 0, complete: true });
 });
 
 test('months: newest first, newest session first inside, with the month\'s share and hours', () => {

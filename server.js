@@ -684,6 +684,27 @@ app.get('/api/backer/:token/live', (req, res) => {
   }
 });
 
+// The backer presses Settled on their page (or withdraws it): lib/staking/backer-settle.js. The link is
+// the whole authentication, as for the feed. { action: 'confirm' | 'undo', amountCents: the balance shown }.
+// The balance resets to $0 once the owner has pressed it too (Bankroll > Backers).
+const backerSettleLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests, please try again later.' } });
+app.post('/api/backer/:token/settle', backerSettleLimiter, async (req, res) => {
+  const token = String(req.params.token || '');
+  if (!BACKER_TOKEN_RE.test(token)) return res.status(404).json({ error: 'Not found' });
+  try {
+    res.set('Cache-Control', 'no-store');
+    const out = backerSurface.settleOnPage(db, token, 'backer', req.body, { ownerId: HAM_OWNER_ID });
+    if (out.status === 200) {
+      await saveDatabase();
+      if (out.body.completed) console.log('[backers] a settlement was confirmed by both sides (backer last)');
+    }
+    res.status(out.status).json(out.body);
+  } catch (err) {
+    console.error('Backer settle error:', err && err.message);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
 // A backer enables push from their page.
 app.post('/api/backer/:token/subscribe', async (req, res) => {
   const token = String(req.params.token || '');
@@ -3590,6 +3611,11 @@ async function initDatabase() {
       // Phase 14 of the bankroll merge: standing payouts (lib/staking/payouts.js). Additive.
       name: standingPayouts.MIGRATION_NAME,
       fn: () => { standingPayouts.migrate(db); console.log('Standing payouts: table ready'); }
+    },
+    {
+      // The Settled handshake on a backer's page (lib/staking/backer-settle.js; owner, 2026-10-19). Additive.
+      name: require('./lib/staking/backer-settle').MIGRATION_NAME,
+      fn: () => { require('./lib/staking/backer-settle').migrate(db); console.log('Backer settlements: table ready'); }
     },
     {
       // The dashboard import left posting 'off' and the plain cutover never turned it on, so the

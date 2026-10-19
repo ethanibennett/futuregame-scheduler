@@ -47,7 +47,7 @@ const COL = { backer_public: 'token', backer_events: 'token', backer_push_subs: 
       const before = one(db, 'SELECT SUM(share_cents) FROM backer_events WHERE token = ?', ['k7Qm2xR9']);
       const res = surface.rotateBackerToken(db, 'k7Qm2xR9', 'Zx4Lm8Qt');
       assert.strictEqual(res.ok, true);
-      assert.deepStrictEqual(res.counts, { backer_public: 1, backer_events: 5, backer_push_subs: 1, backers: 1, backer_event_revisions: 3 });
+      assert.deepStrictEqual(res.counts, { backer_public: 1, backer_events: 5, backer_push_subs: 1, backers: 1, backer_event_revisions: 3, backer_page_settlements: 0 });
       for (const t of FIVE) {
         assert.ok(countAt(db, t, COL[t], 'Zx4Lm8Qt') > 0, `${t} is on the new token`);
         assert.strictEqual(countAt(db, t, COL[t], 'k7Qm2xR9'), 0, `${t} has nothing left on the old token`);
@@ -112,7 +112,7 @@ const COL = { backer_public: 'token', backer_events: 'token', backer_push_subs: 
       const db = scratch.open();
       const res = surface.rotateBackerToken(db, 'ccccc111', 'ddddd222');
       assert.strictEqual(res.ok, true);
-      assert.deepStrictEqual(res.counts, { backer_public: 0, backer_events: 0, backer_push_subs: 0, backers: 0, backer_event_revisions: 0 });
+      assert.deepStrictEqual(res.counts, { backer_public: 0, backer_events: 0, backer_push_subs: 0, backers: 0, backer_event_revisions: 0, backer_page_settlements: 0 });
       db.close();
     });
 
@@ -163,7 +163,7 @@ const COL = { backer_public: 'token', backer_events: 'token', backer_push_subs: 
       assert.strictEqual(r.status, 200);
       assert.match(r.token, /^[A-Za-z0-9]{8}$/);
       assert.notStrictEqual(r.token, 'oldlink01');
-      assert.deepStrictEqual(r.counts, { backer_public: 1, backer_events: 5, backer_push_subs: 1, backers: 1, backer_event_revisions: 3 });
+      assert.deepStrictEqual(r.counts, { backer_public: 1, backer_events: 5, backer_push_subs: 1, backers: 1, backer_event_revisions: 3, backer_page_settlements: 0 });
       assert.strictEqual(r.rosterRecord, 'updated');
       assert.strictEqual(one(db, 'SELECT public_token FROM backers WHERE id = ?', [id]), r.token);
       // The roster record (the fallback the page reads for a token no backers row owns) moved too,

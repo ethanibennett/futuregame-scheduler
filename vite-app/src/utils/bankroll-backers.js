@@ -58,6 +58,8 @@ export function normalise(data) {
     played: (Array.isArray(b.played) ? b.played : []).filter((p) => Array.isArray(p)).map((p) => [text(p[0]), num(p[1]), num(p[2])]),
     delivery: { sms: !!(b.delivery && b.delivery.sms), email: !!(b.delivery && b.delivery.email) },
     link: /^https:\/\//.test(text(b.link)) ? text(b.link) : '',
+    // The Settled handshake's state (lib/staking/backer-settle.js), as the backer's page has it.
+    settlement: b.settlement && typeof b.settlement === 'object' ? b.settlement : null,
   }));
 }
 

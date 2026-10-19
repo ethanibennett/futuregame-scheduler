@@ -220,6 +220,15 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   under 20h old, with no result logged), polled each minute while the page is visible; the player is the
   backers row's owner, else the console owner; a token no roster knows is a 404. The feed is unchanged.
   Test: `npm run test:backer-live` (in `test:backers`).
+  **Settled** (owner, 2026-10-19; `lib/staking/backer-settle.js`, wording in `utils/backer-settle.js`): a
+  Settled button under the page's settlement bar and on each Bankroll › Backers card. The first press opens
+  a settlement for the balance that side was shown (`backer_page_settlements`, keyed by the link; NOT
+  `backer_settlements`, which is the series settlements'); the other side's press completes it, the
+  running total subtracts it everywhere (`backerCumulativeCents`) so the page reads $0, and one `settlement`
+  adjustment goes into the player's Main (`'bks:<id>'`, whole dollars). A share landing between the presses
+  voids the half-confirmed one; either side can undo before the other presses. `POST /api/backer/:token/settle`
+  (the link, rate limited) and `POST /api/staking/standing/backers/:id/settle` (owner; the card's id, never a
+  token), both `{ action: 'confirm'|'undo', amountCents }`. Nobody is messaged. Test: `npm run test:backer-settle`.
   **Bankroll merge, Phase 2** (`docs/bankroll-merge.md`; code in `lib/backer-surface.js`):
   - **Delivery is gated.** Push, SMS and the Sunday email go out only where `BACKER_DELIVERY` is on
     (default: on when `RENDER` is set; `BACKER_DELIVERY=1|0` overrides; a typo is off). This box has

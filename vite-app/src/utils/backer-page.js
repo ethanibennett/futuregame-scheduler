@@ -113,8 +113,10 @@ export function summarize(feed) {
   // Payouts (Phase 14) lower the total but are not shares: the curve is the shares, so its base
   // adds them back.
   const paid = Math.round(Number(f.paidCents) || 0);
-  const base = total + paid - shown;
-  return { total, sessions, hours, opening, paid, base, complete: sessions <= events.length && base === opening };
+  // Settlements both sides confirmed (the Settled button) lower the total the same way.
+  const settled = Math.round(Number(f.settlement && f.settlement.settledCents) || 0);
+  const base = total + paid + settled - shown;
+  return { total, sessions, hours, opening, paid, settled, base, complete: sessions <= events.length && base === opening };
 }
 
 // ── bb/hr, the player's ────────────────────────────────────────────────────────────────────

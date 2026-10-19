@@ -5,7 +5,7 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-10-17 (from Windows) — newest section first. Earlier notes: 2026-10-13, then 2026-09-30, live
+Last updated: 2026-10-19 (from Windows) — newest section first. Earlier notes: 2026-10-13, then 2026-09-30, live
 tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
@@ -13,6 +13,15 @@ Below it the 2026-09-25 Schedule grid sweep, then the dated sections back throug
 wsop-console side and verified against both live services.
 
 ---
+
+## 2026-10-19 — Settled: both sides confirm, the backer page goes to $0
+
+- A **Settled** button on the backer page (under the settlement bar) and on each Bankroll › Backers card.
+  Both pressed = the balance resets to $0 everywhere and one settlement enters Main. See CLAUDE.md
+  "Settled". Checked end to end on a scratch copy of the backer demo (Sam: $7,349 -> $0, `bks:1` -$7,349).
+- Not built (ask first): telling the other side when one presses (push to the backer, a notice to the owner).
+- `test/notify-tap.test.js` has one failure that predates this ("A session is at most 72 hours"); date-dependent.
+
 
 ## 2026-10-17 — Cash tab: heatmaps from the nationwide sweep, faster loads, the board centred; wordmark 8g
 

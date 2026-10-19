@@ -175,7 +175,7 @@ const legacyJson = (db, token) => JSON.stringify(legacyFeed(db, token));
           assert.match(r.json.token, /^[A-Za-z0-9]{8}$/);
           assert.notStrictEqual(r.json.token, tk.one);
           assert.strictEqual(r.json.path, `/b/${r.json.token}`);
-          assert.deepStrictEqual(r.json.moved, { backer_public: 1, backer_events: 1, backer_push_subs: 0, backers: 1, backer_event_revisions: 0 });
+          assert.deepStrictEqual(r.json.moved, { backer_public: 1, backer_events: 1, backer_push_subs: 0, backers: 1, backer_event_revisions: 0, backer_page_settlements: 0 });
           assert.strictEqual(r.json.rosterRecord, 'updated');
           const fresh = await api(srv, 'GET', `/api/backer/${r.json.token}/feed`);
           assert.strictEqual(fresh.text, expected[tk.one], 'the new link shows exactly what the old one did');
