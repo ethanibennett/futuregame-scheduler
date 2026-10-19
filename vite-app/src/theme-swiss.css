@@ -1590,7 +1590,7 @@
 :root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) .date-break-day {
   font-size: calc(var(--subrow) * 2.797 + var(--fs-md)) !important;
 }
-:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) .date-break-count { position: absolute; left: calc(var(--gu) * 9); bottom: 0; margin: 0; }
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) .date-break-count { position: absolute; left: calc(var(--gu) * 9); bottom: var(--subrow); margin: 0; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; }
 :root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) + * .cal-venue-strip { grid-template-rows: calc(var(--subrow) * 8); }
 :root[data-theme^="swiss"] .cal-bar-row1:has(> .cal-event-clock) { grid-template-rows: minmax(calc(var(--subrow) * 4), auto) calc(var(--subrow) * 2) calc(var(--subrow) * 2); }
 
@@ -1609,7 +1609,14 @@
 :root[data-theme^="swiss"] .cal-event-row.saved.is-today:not(.dk-mine-block .cal-event-row) {
   background-image: linear-gradient(var(--sw-red), var(--sw-red)) !important;
 }
+/* The day's margin-to-margin rule is the header's own foot, not the first card's top: the date hangs
+   from the header on the ground colour and painted over a card's line (owner: "I don't see the margin
+   to margin hairline over the date"). It also rides with the header when it pins. The first card then
+   draws none, or the two would double. */
 :root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) + * .cal-event-row {
-  background-size: 100% var(--bw-hair) !important;
+  background-image: none !important;
 }
-:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) { background: var(--sw-ground) !important; }
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) {
+  background: var(--sw-ground) !important;
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--sw-g30) !important;
+}
