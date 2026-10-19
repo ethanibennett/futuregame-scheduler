@@ -5,7 +5,7 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-10-14, night (from Windows) — see the night section first, then the evening one. Earlier notes: 2026-10-13, then 2026-09-30, live
+Last updated: 2026-10-17 (from Windows) — newest section first. Earlier notes: 2026-10-13, then 2026-09-30, live
 tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
@@ -13,6 +13,27 @@ Below it the 2026-09-25 Schedule grid sweep, then the dated sections back throug
 wsop-console side and verified against both live services.
 
 ---
+
+## 2026-10-17 — Cash tab: heatmaps from the nationwide sweep, faster loads, the board centred; wordmark 8g
+
+- **Heatmaps were thin because collection follows the picker.** The 10-minute collector only polls rooms
+  near the cash location, so a room picked once (Turning Stone, Oct 7–8) had a night of data. Now the box
+  sums the hourly nationwide sweep (`sweep_game_all`, every Bravo room since 2026-09-25) into day x hour
+  cells for the active rooms and pushes those (cash-game-watcher `7be82bd`, deployed); the heatmap uses
+  them where the sweep has more days, and both read a **rolling 8 weeks** (owner). The app says which.
+- ⚠️ **The cash location was left on Verona NY (50 mi)** on 2026-10-17 18:39 UTC, which STOPPED the
+  10-minute collection at the Philly rooms. Open owner question: separate "what I view" from "what is
+  collected" (always collect home), or just set it back.
+- Speed: the proxy keeps `/cash/games` (a full-history scan) and serves it at once; the live board shows
+  before the 16h history arrives.
+- Cash board (`cash-board.css`): every line CENTRED in its row (owner; an exception to baseline seating,
+  in memory), Interest on the table columns, the last lines no longer clipped.
+- Wordmark: `hooks/useWordmarkFit.js` fits the top bar's futurega.me to exactly 8g in every theme/face
+  (measured 8.000g x 6 themes x phone/desktop). The auth screens' logo is not fitted.
+- Swiss: Schedule date headers (bigger date, margin-to-margin rule, a quarter g between day and month).
+  Leftover: Swiss text sits a few px high against the WL marks on the cash board.
+- TestFlight dispatched at `52f7293`.
+
 
 ## 2026-10-16 — Didn't play on Results; the result edit crash; replayer fixes
 - **Didn't play (owner):** the Bankroll tab's awaiting-result card has Didn't play beside Log Result. It opens a card form with Notes; Save marks the event not played (user_schedules.not_played, the home's To log action) and keeps the note in the new `user_schedules.not_played_note` (PUT /api/schedule/:id/played takes `note`; marking it played clears it). The event then shows as a Didn't play card among the results by date, with Edit (the note) and Played it (back to awaiting). Not a result: no buy-in, ROI, ledger or backer figure moves. The home's To log Didn't play is still one tap with no note. test:home-log covers the note.
