@@ -21,9 +21,11 @@ wsop-console side and verified against both live services.
   sums the hourly nationwide sweep (`sweep_game_all`, every Bravo room since 2026-09-25) into day x hour
   cells for the active rooms and pushes those (cash-game-watcher `7be82bd`, deployed); the heatmap uses
   them where the sweep has more days, and both read a **rolling 8 weeks** (owner). The app says which.
-- ⚠️ **The cash location was left on Verona NY (50 mi)** on 2026-10-17 18:39 UTC, which STOPPED the
-  10-minute collection at the Philly rooms. Open owner question: separate "what I view" from "what is
-  collected" (always collect home), or just set it back.
+- **The home rooms are now always collected** (owner, 2026-10-18; cash-game-watcher `2e8fd9d`): the
+  collector polls the picked location's rooms PLUS the 8 curated home rooms, so picking Verona NY no longer
+  stops Philly (it had, from 2026-10-17 18:34 UTC until the restart on 10-19 01:00 UTC; that gap is
+  permanent). The app still shows the picked set alone. Not done (owner chose only this): a faster Bravo
+  sweep, or PokerAtlas nationwide.
 - Speed: the proxy keeps `/cash/games` (a full-history scan) and serves it at once; the live board shows
   before the 16h history arrives.
 - Cash board (`cash-board.css`): every line CENTRED in its row (owner; an exception to baseline seating,
