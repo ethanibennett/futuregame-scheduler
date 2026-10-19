@@ -1477,3 +1477,37 @@
 /* The day and its month sit close: a quarter g between them (owner, 2026-10-17). */
 :root[data-theme^="swiss"] .schedule-date-break .date-break-label { gap: calc(var(--gu) * 0.25) !important; }
 :root[data-theme^="swiss"] .schedule-date-break .date-break-mon { margin-left: 0 !important; padding-left: 0 !important; }
+
+/* Today as every other date, only red (owner, 2026-10-19): the same 4r row, size, weight and the
+   quarter g to its month as the rest (the rules above), the day in red. */
+:root[data-theme^="swiss"] .schedule-date-break.is-today:not(.tr-month-break) { padding-top: 0; }
+:root[data-theme^="swiss"] .schedule-date-break.is-today:not(.tr-month-break) .date-break-pill {
+  height: calc(var(--subrow) * 4); align-items: flex-end; justify-content: flex-start; width: auto; min-width: var(--col);
+}
+:root[data-theme^="swiss"] .schedule-date-break.is-today:not(.tr-month-break) .date-break-day {
+  color: var(--sw-red); font-size: calc(var(--gu) * 3.5); line-height: 1; font-weight: var(--sw-bold);
+  letter-spacing: var(--sw-track-display); text-box-trim: trim-both; text-box-edge: cap alphabetic;
+}
+:root[data-theme^="swiss"] .schedule-date-break.is-today:not(.tr-month-break) .date-break-mon {
+  font-size: var(--fs-sm); line-height: 1; font-weight: var(--sw-thin); letter-spacing: 0; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+}
+
+/* Desktop My Schedule's date column: the full 8g to itself (owner, 2026-10-19). The day and its month on
+   one line across the column, as the list sets them, the weekday under them; nothing stacked or
+   overlapping. Scoped through the group so it outranks the list's date rules. */
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break) { width: var(--col); }
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break) .date-break-pill {
+  width: var(--col); min-width: 0; height: calc(var(--subrow) * 4); align-items: flex-end; justify-content: flex-start;
+}
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break) .date-break-label {
+  flex-direction: row; align-items: baseline; gap: calc(var(--gu) * 0.25);
+}
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break) .date-break-day {
+  font-size: calc(var(--gu) * 3.5); font-weight: var(--sw-bold); line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+}
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break) .date-break-mon {
+  font-size: var(--fs-sm); font-weight: var(--sw-thin); letter-spacing: 0;
+}
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break) .date-break-end {
+  width: var(--col); margin-top: var(--subrow) !important;
+}
