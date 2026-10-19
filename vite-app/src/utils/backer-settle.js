@@ -42,7 +42,7 @@ export function settleView({ settlement, totalCents, side, player = 'Ethan', bac
     return { button: { label: 'Confirm', action: 'confirm', primary: true }, status: `${other} marked ${amt} settled`, confirm: `${question} ${done}` };
   }
   const when = side === 'owner'
-    ? (total > 0 ? `Once you have paid ${backer} ${amt}` : `Once ${backer} has paid you ${amt}`)
-    : (total > 0 ? `Once ${player} has paid you ${amt}` : `Once you have paid ${player} ${amt}`);
+    ? (total > 0 ? `Once you have sent ${backer} ${amt}` : `Once ${backer} has paid you ${amt}`)
+    : (total > 0 ? `Once ${player} has paid you ${amt}` : `Once you have sent ${player} ${amt}`);
   return { button: { label: 'Settled', action: 'confirm', primary: true }, status: when, confirm: `${question} ${done}` };
 }
