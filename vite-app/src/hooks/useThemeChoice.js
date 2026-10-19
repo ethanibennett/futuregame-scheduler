@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
-import { THEME_KEY, THEME_META, isDarkTheme, nextTheme, nextThemeLabel, storedTheme, deviceTheme } from '../utils/theme.js';
+import { THEME_KEY, THEME_META, ADMIN_ONLY_THEMES, isDarkTheme, nextTheme, nextThemeLabel, storedTheme, deviceTheme } from '../utils/theme.js';
 
 const LIGHT_QUERY = '(prefers-color-scheme: light)';
 
@@ -30,11 +30,16 @@ export default function useThemeChoice({ followDevice = false, admin = false } =
     if (stored) return { theme: stored, chosen: true };
     return followDevice ? { theme: deviceTheme(prefersLight()), chosen: false } : { theme: 'dark', chosen: true };
   });
-  const { theme, chosen } = state;
+  const { theme: stored, chosen } = state;
+  // Swiss is an admin's alone (owner, 2026-10-19): the button offers it only to an admin, and a Swiss
+  // choice stored on a device (an admin who signed out, a backer page opened there) shows anyone else
+  // the standard theme instead. The stored choice is kept for the admin's next visit.
+  const coerced = !admin && ADMIN_ONLY_THEMES.includes(stored);
+  const theme = coerced ? (followDevice ? deviceTheme(prefersLight()) : 'dark') : stored;
 
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme;
-    if (chosen) { try { localStorage.setItem(THEME_KEY, theme); } catch { /* storage blocked: the choice lasts this visit */ } }
+    if (chosen && !coerced) { try { localStorage.setItem(THEME_KEY, theme); } catch { /* storage blocked: the choice lasts this visit */ } }
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', THEME_META[theme] || '#111111');
 
@@ -49,7 +54,7 @@ export default function useThemeChoice({ followDevice = false, admin = false } =
         StatusBar.setBackgroundColor({ color: THEME_META[theme] || '#111111' }).catch(() => {});
       }).catch(() => {});
     }
-  }, [theme, chosen]);
+  }, [theme, chosen, coerced]);
 
   // No choice made yet: stay with the device as it changes between light and dark.
   useEffect(() => {
@@ -61,7 +66,7 @@ export default function useThemeChoice({ followDevice = false, admin = false } =
   }, [followDevice, chosen]);
 
   // `admin` lets the button step into the admin-only themes (utils/theme.js ADMIN_ONLY_THEMES).
-  const toggleTheme = useCallback(() => setState((s) => ({ theme: nextTheme(s.theme, admin), chosen: true })), [admin]);
+  const toggleTheme = useCallback(() => setState((s) => ({ theme: nextTheme(!admin && ADMIN_ONLY_THEMES.includes(s.theme) ? theme : s.theme, admin), chosen: true })), [admin, theme]);
 
   return { theme, toggleTheme, nextThemeLabel: nextThemeLabel(theme, admin) };
 }

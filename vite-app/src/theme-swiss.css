@@ -1573,16 +1573,18 @@
    with the title's capitals and its baseline on r6 with the flight and time line, so it is exactly as
    tall as the two lines beside it: cap height = 2r + the title's cap height, and with Helvetica's
    capitals 0.715 of the size, size = 2r / 0.715 + the title's size. The day header keeps only the
-   count and the weekday, on a 3r line; it no longer sticks (the date would hang over the next cards).
+   count and the weekday, on a 3r line, and still sticks: the date hangs under it, pinned too.
    The first card's venue drops to r8, under the date. */
 :root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) {
-  position: relative !important; top: auto !important; z-index: 3;
   height: calc(var(--subrow) * 3); min-height: 0; padding-top: 0 !important; align-items: flex-end;
 }
 :root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) .date-break-pill {
   position: absolute; left: 0; top: 100%;
   width: var(--col); min-width: 0; height: calc(var(--subrow) * 6) !important;
-  display: flex; align-items: flex-end; justify-content: flex-start; background: transparent; pointer-events: none;
+  display: flex; align-items: flex-end; justify-content: flex-start; pointer-events: none;
+  /* Pinned with its header while the day scrolls (owner, 2026-10-19): on the page's ground, so the
+     cards' venue names pass under it, and the next day's date covers this one. */
+  background: var(--sw-ground) !important;
 }
 :root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) .date-break-label { gap: calc(var(--gu) * 0.25); align-items: baseline; }
 :root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) .date-break-day {
@@ -1591,3 +1593,23 @@
 :root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) .date-break-count { position: absolute; left: calc(var(--gu) * 9); bottom: 0; margin: 0; }
 :root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) + * .cal-venue-strip { grid-template-rows: calc(var(--subrow) * 8); }
 :root[data-theme^="swiss"] .cal-bar-row1:has(> .cal-event-clock) { grid-template-rows: minmax(calc(var(--subrow) * 4), auto) calc(var(--subrow) * 2) calc(var(--subrow) * 2); }
+
+/* Hairlines (owner, 2026-10-19): each event's rule runs from 10g (its text column) to the right margin;
+   the day's first event, where the date sits, has a rule margin to margin above it. Drawn as a
+   background line, not a shadow, so it can stop short of the venue column. My Schedule's field keeps
+   its own rules. The day header sits on the ground, so cards pass under it pinned. */
+:root[data-theme^="swiss"] .cal-event-row:not(.dk-mine-block .cal-event-row),
+:root[data-theme^="swiss"] .cal-event-row.saved:not(.dk-mine-block .cal-event-row) {
+  box-shadow: none !important;
+  background-image: linear-gradient(var(--sw-g30), var(--sw-g30)) !important;
+  background-repeat: no-repeat !important;
+  background-size: calc(100% - var(--gu) * 9) var(--bw-hair) !important;
+  background-position: right top !important;
+}
+:root[data-theme^="swiss"] .cal-event-row.saved.is-today:not(.dk-mine-block .cal-event-row) {
+  background-image: linear-gradient(var(--sw-red), var(--sw-red)) !important;
+}
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) + * .cal-event-row {
+  background-size: 100% var(--bw-hair) !important;
+}
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) { background: var(--sw-ground) !important; }

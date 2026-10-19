@@ -522,7 +522,8 @@ JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
   Before/after video: `scripts/capture-replayer-motion.mjs` + `compare-replayer-motion.mjs`.
   See `docs/replayer-springs.md`.
 - **The Swiss theme** (owner, 2026-10-16; app admins only): `swiss-light` and `swiss-dark`, in the theme button's
-  cycle only for an admin (`utils/theme.js` themeOrder/nextTheme). Every style is `vite-app/src/theme-swiss.css`,
+  cycle only for an admin (`utils/theme.js` themeOrder/nextTheme), and shown only to one: `hooks/useThemeChoice.js` gives anyone else
+  the standard theme when Swiss is stored on the device (signed out, a non-admin, a backer page), keeping the stored choice. Every style is `vite-app/src/theme-swiss.css`,
   scoped to those two values; the markup hooks it needs render nothing elsewhere (`components/SwissParts.jsx`:
   sentence-case strips, the raised currency mark, the Board density; `utils/swiss-typography.js`: real minus, dashes
   and apostrophes on screen; `utils/swiss-share.js`: the share images). The 47 picks it implements are the catalogue
