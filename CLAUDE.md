@@ -228,7 +228,10 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   adjustment goes into the player's Main (`'bks:<id>'`, whole dollars). A share landing between the presses
   voids the half-confirmed one; either side can undo before the other presses. `POST /api/backer/:token/settle`
   (the link, rate limited) and `POST /api/staking/standing/backers/:id/settle` (owner; the card's id, never a
-  token), both `{ action: 'confirm'|'undo', amountCents }`. Nobody is messaged. Test: `npm run test:backer-settle`.
+  token), both `{ action: 'confirm'|'undo', amountCents }`. **Notices** (owner): the player ALWAYS hears of the
+  backer's press, undo or completion (`sendPushToAdmin`: web push + the native app); the backer hears of the player's
+  only through their page's push subscription (`sendBackerPush`, gated by `BACKER_DELIVERY`). Nobody hears of their
+  own press or of a repeated tap (`notifySettle` in server.js). Test: `npm run test:backer-settle`.
   **Bankroll merge, Phase 2** (`docs/bankroll-merge.md`; code in `lib/backer-surface.js`):
   - **Delivery is gated.** Push, SMS and the Sunday email go out only where `BACKER_DELIVERY` is on
     (default: on when `RENDER` is set; `BACKER_DELIVERY=1|0` overrides; a typo is off). This box has

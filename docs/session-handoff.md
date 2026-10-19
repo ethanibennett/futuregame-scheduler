@@ -19,7 +19,8 @@ wsop-console side and verified against both live services.
 - A **Settled** button on the backer page (under the settlement bar) and on each Bankroll › Backers card.
   Both pressed = the balance resets to $0 everywhere and one settlement enters Main. See CLAUDE.md
   "Settled". Checked end to end on a scratch copy of the backer demo (Sam: $7,349 -> $0, `bks:1` -$7,349).
-- Not built (ask first): telling the other side when one presses (push to the backer, a notice to the owner).
+- Notices (owner): the player is always pushed when the backer presses, undoes or completes; the backer is
+  pushed for the player's presses only if their page has notifications on. TestFlight build 2029 carries the button.
 - `test/notify-tap.test.js` has one failure that predates this ("A session is at most 72 hours"); date-dependent.
 
 

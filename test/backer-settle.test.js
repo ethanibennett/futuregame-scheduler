@@ -8,12 +8,18 @@
 'use strict';
 const assert = require('assert');
 const fs = require('fs');
+const path = require('path');
 const { createScratch, boot, sqlJs, one, rowsOf, runner } = require('./helpers/scratch-server');
 
 const PORTS = [4740, 4749];
 const PW = 'backer-settle-test-password-1';
 const TOK = 'SettleSam01';
 const REC = 'rec-sam';
+// Delivery on, with web push stubbed (test/stub-delivery-preload.js logs each send's title and endpoint).
+const STUB = path.join(__dirname, 'stub-delivery-preload.js');
+const ENV = { BACKER_DELIVERY: '1', VAPID_PUBLIC_KEY: 'stub-public', VAPID_PRIVATE_KEY: 'stub-private' };
+const OWNER_EP = 'https://push.example.test/owner-device';
+const BACKER_EP = 'https://push.example.test/sam-page';
 
 (async () => {
   const { test, done } = runner('backer-settle.test.js');
@@ -42,9 +48,17 @@ const REC = 'rec-sam';
     db.run(`INSERT INTO backer_events (id, token, session_id, ts, date, game, venue, hours, session_result_cents, pct, share_cents, source)
             VALUES (?, ?, 'fg-cs-1', 1, '2026-10-01', '2/5 NLH', 'Parx', 5, 300000, 20, 60000, 'ledger')`, [`${TOK}:fg-cs-1`, TOK]);
     db.run("INSERT INTO bankroll_adjustments (user_id, bankroll_id, kind, amount, occurred_on, note, created_at) VALUES (?, NULL, 'deposit', 5000, '2026-09-01', 'seed', '2026-09-01T00:00:00Z')", [ham]);
+    // The player's browser and the backer's page each have notifications on.
+    db.run('INSERT INTO push_subscriptions (user_id, endpoint, keys_p256dh, keys_auth) VALUES (?, ?, ?, ?)', [ham, OWNER_EP, 'p', 'a']);
+    db.run('INSERT INTO backer_push_subs (token, endpoint, keys_p256dh, keys_auth) VALUES (?, ?, ?, ?)', [TOK, BACKER_EP, 'p', 'a']);
     scratch.save(db); db.close();
-    srv = await boot(scratch.dbPath, { BACKER_DELIVERY: '0', CONSOLE_OWNER_USER_ID: String(ham) }, { ports: PORTS });
+    srv = await boot(scratch.dbPath, { ...ENV, CONSOLE_OWNER_USER_ID: String(ham) }, { ports: PORTS, preloads: [STUB] });
     servers.push(srv);
+    // Each push the server attempted since `from`: [title, 'owner' | 'backer'].
+    const pushes = (from = 0) => srv.log().slice(from).split(/\r?\n/).filter((l) => l.includes('[delivery-stub] push'))
+      .map((l) => [(/\[delivery-stub\] push \[([^\]]*)\]/.exec(l) || [])[1], l.trim().endsWith(OWNER_EP) ? 'owner' : l.trim().endsWith(BACKER_EP) ? 'backer' : 'other']);
+    const mark = () => srv.log().length;
+    const settle = async () => new Promise((r) => setTimeout(r, 400)); // the sends run after the reply
     const login = async (email) => (await api('/api/login', { method: 'POST', body: { email, password: PW } })).json.token;
     const owner = await login('adminx@x.test');
     const other = await login('otheradm@x.test');
@@ -65,8 +79,15 @@ const REC = 'rec-sam';
       assert.strictEqual(r.status, 409);
       assert.strictEqual(r.json.balanceCents, 70000);
     });
-    await test('the backer presses: open, waiting for the owner; the balance has not moved', async () => {
+    await test('the backer presses: open, waiting for the owner; the balance has not moved; the player is told', async () => {
+      const m0 = mark();
       const r = await backer('confirm', 70000);
+      await settle();
+      assert.deepStrictEqual(pushes(m0), [['Settled?', 'owner']], 'the player hears of it, the backer does not hear of their own press');
+      const m1 = mark();
+      assert.strictEqual((await backer('confirm', 70000)).status, 200);
+      await settle();
+      assert.deepStrictEqual(pushes(m1), [], 'a repeated tap tells nobody');
       assert.strictEqual(r.status, 200, r.text);
       assert.strictEqual(r.json.completed, false);
       assert.strictEqual(r.json.balanceCents, 70000);
@@ -74,21 +95,27 @@ const REC = 'rec-sam';
       const c = await card();
       assert.strictEqual(c.settlement.open.amountCents, 70000);
     });
-    await test('the backer can undo before the owner presses', async () => {
+    await test('the backer can undo before the owner presses (the player is told)', async () => {
+      const m0 = mark();
       assert.strictEqual((await backer('undo')).status, 200);
+      await settle();
+      assert.deepStrictEqual(pushes(m0), [['Settled withdrawn', 'owner']]);
       const f = await feed();
       assert.strictEqual(f.settlement.open, null);
       assert.strictEqual(f.cumulativeCents, 70000);
     });
     await test('a share landing between the two presses voids the half-confirmed one', async () => {
+      const m0 = mark();
       assert.strictEqual((await mine('confirm', 70000)).status, 200);
+      await settle();
+      assert.deepStrictEqual(pushes(m0), [['Settled?', 'backer']], 'the backer (notifications on) hears of the player press');
       // The new share goes in through the server's own DB: stop, write, boot.
       await srv.stop();
       const d = scratch.open();
       d.run(`INSERT INTO backer_events (id, token, session_id, ts, date, game, venue, hours, session_result_cents, pct, share_cents, source)
              VALUES (?, ?, 'fg-cs-2', 2, '2026-10-02', '2/5 NLH', 'Parx', 4, -50000, 20, -10000, 'ledger')`, [`${TOK}:fg-cs-2`, TOK]);
       scratch.save(d); d.close();
-      srv = await boot(scratch.dbPath, { BACKER_DELIVERY: '0', CONSOLE_OWNER_USER_ID: String(ham) }, { ports: PORTS });
+      srv = await boot(scratch.dbPath, { ...ENV, CONSOLE_OWNER_USER_ID: String(ham) }, { ports: PORTS, preloads: [STUB] });
       servers.push(srv);
       const f = await feed();
       assert.strictEqual(f.cumulativeCents, 60000);
@@ -103,7 +130,10 @@ const REC = 'rec-sam';
     });
     await test('the owner confirms: the page reads $0, one settlement leaves Main, the card says settled', async () => {
       const before = await mainBalance();
+      const m0 = mark();
       const r = await mine('confirm', 60000);
+      await settle();
+      assert.deepStrictEqual(pushes(m0), [['Settled', 'backer']], 'the backer is told it is settled');
       assert.strictEqual(r.status, 200, r.text);
       assert.strictEqual(r.json.completed, true);
       assert.strictEqual(r.json.balanceCents, 0);

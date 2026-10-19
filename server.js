@@ -687,6 +687,30 @@ app.get('/api/backer/:token/live', (req, res) => {
 // The backer presses Settled on their page (or withdraws it): lib/staking/backer-settle.js. The link is
 // the whole authentication, as for the feed. { action: 'confirm' | 'undo', amountCents: the balance shown }.
 // The balance resets to $0 once the owner has pressed it too (Bankroll > Backers).
+// Who hears about a Settled press (owner, 2026-10-19): the player ALWAYS hears of the backer's (the
+// admin push: web push and the native app), and the backer hears of the player's when they turned
+// notifications on for their page (sendBackerPush: their subscriptions, and only where backer
+// delivery is on). Nobody is told of their own press, or of a repeated tap that changed nothing.
+// The message names the backer and the amount, never a token.
+function notifySettle(token, notice) {
+  if (!notice) return;
+  const amt = '$' + Math.round(Math.abs(Number(notice.amountCents) || 0) / 100).toLocaleString('en-US');
+  const who = notice.name || 'Your backer';
+  if (notice.side === 'backer') {
+    const [title, body] = notice.action === 'undo' ? ['Settled withdrawn', `${who} withdrew Settled (${amt}).`]
+      : notice.completed ? ['Settled', `${who} confirmed: ${amt} settled. Their balance is back to $0.`]
+        : ['Settled?', `${who} marked ${amt} settled. Confirm in Bankroll › Backers.`];
+    sendPushToAdmin(title, body, '/#bankroll/backers').catch((err) => console.error('[backers] settle notice to the player failed:', err && err.message));
+  } else {
+    const [title, body] = notice.action === 'undo' ? ['Settled withdrawn', `Ethan withdrew Settled (${amt}).`]
+      : notice.completed ? ['Settled', `${amt} settled. Your balance is back to $0.`]
+        : ['Settled?', `Ethan marked ${amt} settled. Confirm on your page.`];
+    sendBackerPush(token, title, body, `/b/${token}`)
+      .then((r) => { if (r && r.changed) saveDatabase().catch(() => {}); })
+      .catch((err) => console.error('[backers] settle notice to the backer failed:', err && err.message));
+  }
+}
+
 const backerSettleLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests, please try again later.' } });
 app.post('/api/backer/:token/settle', backerSettleLimiter, async (req, res) => {
   const token = String(req.params.token || '');
@@ -697,6 +721,7 @@ app.post('/api/backer/:token/settle', backerSettleLimiter, async (req, res) => {
     if (out.status === 200) {
       await saveDatabase();
       if (out.body.completed) console.log('[backers] a settlement was confirmed by both sides (backer last)');
+      notifySettle(token, out.notice);
     }
     res.status(out.status).json(out.body);
   } catch (err) {
@@ -7068,6 +7093,7 @@ const stakingLimiter = rateLimit({
 require('./lib/staking/standing-routes').mountRoutes(app, {
   getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, requireRegistered, limiter: stakingLimiter,
   getOwnerId: () => HAM_OWNER_ID,
+  notifySettle,
   // The Notify tap (POST /api/staking/standing/notify): a non-USD result converts at these rates,
   // and a recorded share is told to its backer through the gated senders below (lib/staking/notify.js
   // calls this only where delivery is on; the senders check the gate again).

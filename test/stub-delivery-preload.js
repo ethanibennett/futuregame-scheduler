@@ -6,7 +6,7 @@
  * leaves the machine:
  *
  *   web push   require('web-push') resolves to a stub: setVapidDetails does nothing and
- *              sendNotification resolves, logging `[delivery-stub] push <endpoint>`.
+ *              sendNotification resolves, logging `[delivery-stub] push [<title>] <endpoint>`.
  *   SMS        global fetch to api.twilio.com answers 201 without a request, logging
  *              `[delivery-stub] sms <To>`. Every other fetch goes through untouched.
  *
@@ -18,8 +18,11 @@ const Module = require('module');
 const stubPush = {
   setVapidDetails() {},
   generateVAPIDKeys() { return { publicKey: 'stub', privateKey: 'stub' }; },
-  async sendNotification(sub) {
-    console.log(`[delivery-stub] push ${sub && sub.endpoint}`);
+  async sendNotification(sub, payload) {
+    // The title in brackets, then the endpoint LAST (tests read it with split(' ').pop()).
+    let title = '';
+    try { title = String(JSON.parse(payload).title || ''); } catch (_) { /* not JSON */ }
+    console.log(`[delivery-stub] push [${title}] ${sub && sub.endpoint}`);
     return { statusCode: 201, body: '', headers: {} };
   },
 };
