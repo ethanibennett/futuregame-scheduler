@@ -15,13 +15,14 @@ import { useEffect, useState } from 'react';
  * by var(--gu) and no px value is ever written:
  *
  *   rail   = 10g   (one 8g column inside 1g margins — the wordmark's column)
- *   gap    = 2g of background between two side-by-side panes (owner, 2026-10-13)
+ *   gaps   = 1g, header-coloured, after the rail and between two side-by-side panes (owner,
+ *            2026-10-19; the pane gap was 2g from 2026-10-13, and the rail had none)
  *   pane   = 9N+1g (N columns of 8g, 1g gutters, 1g margins; N=4 is the 37g phone canvas)
  *            + the scrollbar's width where scrollbars take space (sbG, 0 on overlay scrollbars),
  *            so the content inside the scrollbar is still exactly 9N+1g
  *
  * Tiers (W = floor(window / g), whole g):
- *   'two'   rail 10 | list 37 | 2g | right pane 9N+1 (the event over My Schedule)
+ *   'two'   rail 10 | 1g | list 37 | 1g | right pane 9N+1 (the event over My Schedule)
  *   'three' rail 10 | list 37 | detail 9N+1 | my schedule 37   (W >= 121)
  * The flexible pane takes as many whole columns as fit, N clamped to 4..7 —
  * 7 columns (64g, ~744px) is the widest measure a single event card reads well at.
@@ -29,7 +30,8 @@ import { useEffect, useState } from 'react';
 export const DESKTOP_QUERY = '(min-width: 1024px)';
 export const RAIL_G = 10;
 export const PHONE_PANE_G = 37;
-export const PANE_GAP_G = 2;
+export const RAIL_GAP_G = 1;
+export const PANE_GAP_G = 1;
 // Where scrollbars OVERLAY the content (macOS default, iPadOS), the bar still needs somewhere to
 // float: without a lane it sat on the cards' right edge and the selection ring (owner, 2026-10-13).
 // Each scrolling pane then gets this many g on its right, outside the 37g / 9N+1 content.
@@ -79,14 +81,14 @@ export function computeDesktopLayout() {
   // of taking a third column, so every desktop width is rail | list | right pane.
   const tier = 'two';
   const panes = 2;
-  const fixed = RAIL_G + PHONE_PANE_G + PANE_GAP_G;
+  const fixed = RAIL_G + RAIL_GAP_G + PHONE_PANE_G + PANE_GAP_G;
   const ovG = sbG > 0 ? 0 : OVERLAY_LANE_G;
   const laneG = sbG + ovG;
   const detailCols = colsFor(W - fixed - panes * laneG);
   const shellG = fixed + paneG(detailCols) + panes * laneG;
   // A single-pane tab (Dashboard, Social, …) uses the same shell; its one pane
   // is as many whole columns as fit after the rail, capped at the same 7.
-  const wideCols = colsFor(shellG - RAIL_G - laneG);
+  const wideCols = colsFor(shellG - RAIL_G - RAIL_GAP_G - laneG);
   return { desktop: true, g, W, tier, detailCols, shellG, wideCols, sbG, ovG };
 }
 

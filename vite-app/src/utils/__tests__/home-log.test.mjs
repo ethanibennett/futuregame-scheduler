@@ -154,6 +154,11 @@ test('labels: ordinals, top %, day names, event numbers', () => {
   assert.equal(eventNo('34'), '#34');
   assert.equal(eventNo(''), '');
   assert.equal(eventNo(null), '');
+  // A series' compound id shows its number alone; a side event's (letters for a number) shows none.
+  assert.equal(eventNo('5-293156-20261018'), '#5');
+  assert.equal(eventNo('6-293157-20261019-1000'), '#6');
+  assert.equal(eventNo('6C-x-20261020'), '#6C');
+  assert.equal(eventNo('PA-293170-20261019'), '');
 });
 
 test('receipt: a near miss reads as one (finish and field), not just a loss', () => {

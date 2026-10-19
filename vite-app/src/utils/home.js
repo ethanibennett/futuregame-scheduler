@@ -358,9 +358,18 @@ export function dayName(day, today) {
   return `${MONTHS3[m - 1]} ${dd}`;
 }
 
-/** An event number as shown: '#12', the feed's 'MTT-' style prefix dropped; '' when there is none. */
+/**
+ * An event number as shown: '#12', the feed's 'MTT-' style prefix dropped; '' when there is none.
+ * Some series carry a compound id, '<number>-<listing>-<yyyymmdd>' with an optional '-<hhmm>' for a
+ * second flight ('5-293156-20261018', '6-293157-20261019-1000', '6C-x-20261020'): only the number is
+ * shown ('#5'; owner, 2026-10-19: the To log row read "#5-293156-20261018 $400 PLO"). A side event's
+ * id has letters where the number goes ('PA-293170-20261019') and shows none.
+ */
 export function eventNo(n) {
-  const s = String(n == null ? '' : n).replace(/^[A-Za-z]+-/, '').trim();
+  let s = String(n == null ? '' : n).trim();
+  const compound = /^([^-]+)-(?:\d{5,}|x)-\d{8}(?:-\d{3,4})?$/.exec(s);
+  if (compound) s = /^[A-Za-z]+$/.test(compound[1]) ? '' : compound[1];
+  else s = s.replace(/^[A-Za-z]+-/, '').trim();
   return s ? `#${s}` : '';
 }
 

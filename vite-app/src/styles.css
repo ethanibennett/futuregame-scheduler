@@ -12691,8 +12691,13 @@
        says. It started at 10.02/10.44/13.56g depending on the text. */
     .cal-event-row .mini-late-reg { gap: 0; }
     .cal-event-row .mini-late-reg-time { flex: 0 0 calc(var(--gu) * 12); }
+    /* Centred between two r lines (owner, 2026-10-19): the row is bottom-aligned (the label's baseline on
+       its bottom line), so the 0.375r track rises (1 - 0.375) / 2 = 0.3125r off that line and sits in the
+       middle of the row's last r. It sat ON the line, 0.31r low (measured). */
     .mini-late-reg-track {
       flex: 1;
+      align-self: flex-end;
+      margin-bottom: calc(var(--subrow) * 0.3125);
       height: calc(var(--subrow) * 0.375);
       border-radius: var(--radius-xs);
       background: var(--border);
@@ -17139,7 +17144,10 @@
     /* The gap is painted in the header's colour (owner, 2026-10-13): --surface, where the header's
        gradient ends against the panes. A shadow cast 2g to the left with no blur fills exactly the
        margin, outside the pane's own box, so nothing in the layout moves. */
-    .dk-pane + .dk-pane { margin-left: calc(var(--gu) * 2); box-shadow: calc(var(--gu) * -2) 0 0 0 var(--surface); }
+    /* 1g since 2026-10-19 (owner), and the same 1g after the rail, in the same colour: useDesktopLayout
+       counts both (RAIL_GAP_G, PANE_GAP_G). */
+    .dk-pane + .dk-pane { margin-left: var(--gu); box-shadow: calc(var(--gu) * -1) 0 0 0 var(--surface); }
+    .dk-rail + .dk-pane { margin-left: var(--gu); box-shadow: calc(var(--gu) * -1) 0 0 0 var(--surface); }
     /* + --dk-sb-g: a classic scrollbar's width in g (0 where scrollbars overlay), so the content
        beside the scrollbar keeps the whole 9N+1 g (useDesktopLayout.js measureScrollbarG). */
     /* .dk-pane-home: the Dashboard's NOW pane, the list's 37g without the list's nav band

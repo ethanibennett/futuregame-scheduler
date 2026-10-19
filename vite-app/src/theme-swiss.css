@@ -791,6 +791,9 @@
 :root[data-theme^="swiss"] .nav-tab.active .nav-tab-label { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
 :root[data-theme^="swiss"] .nav-tab.active::before { left: 0; right: 0; height: var(--bw-2); background: var(--sw-red); }
 :root[data-theme^="swiss"] .dk-rail-item svg { display: none; }
+/* With no icons, the labels start where the wordmark does, on the rail's 1g margin (owner, 2026-10-19). */
+:root[data-theme^="swiss"] .dk-rail-item { grid-template-columns: 0 minmax(0, 1fr); column-gap: 0; }
+:root[data-theme^="swiss"] .dk-rail-icon { width: 0; overflow: hidden; }
 :root[data-theme^="swiss"] :is(.dk-rail-item.active, .dk-rail-item.is-active, .dk-rail-item[aria-current="page"]) {
   color: var(--sw-ink);
   box-shadow: inset var(--bw-2) 0 0 0 var(--sw-red);
