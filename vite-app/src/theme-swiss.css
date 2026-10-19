@@ -1511,3 +1511,29 @@
 :root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break) .date-break-end {
   width: var(--col); margin-top: var(--subrow) !important;
 }
+
+/* The card on the page's columns (owner, 2026-10-19: closer to the catalogue page): the venue takes the
+   first 8g column, set across it at the top, and the card's text (time, title, subheading) starts on
+   10g from the pane's edge (the 1g margin, the 8g column, the 1g gutter). Was a 2g strip with the
+   text on 4g. */
+:root[data-theme^="swiss"] .cal-event-row { grid-template-columns: var(--col) minmax(0, 1fr); }
+:root[data-theme^="swiss"] .cal-venue-strip {
+  writing-mode: horizontal-tb;
+  transform: none !important;
+  /* One 4r row at the top, its name at the row's foot: trimmed to cap and baseline, so its baseline
+     is the 4r line the time's is on, whatever face the device has. */
+  grid-template-rows: calc(var(--subrow) * 4);
+  align-content: start;
+  align-items: end;
+  justify-items: start;
+  text-align: left;
+  text-indent: 0;
+  padding: 0;
+}
+:root[data-theme^="swiss"] .cal-venue-strip :is(.venue-strip-sc, .venue-strip-full) {
+  writing-mode: horizontal-tb; transform: none; white-space: nowrap; text-align: left;
+  max-width: var(--col); overflow: hidden; text-overflow: ellipsis;
+  line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+  /* Its descenders painted, not clipped by the ellipsis' overflow: room below, cancelled. */
+  padding-bottom: 0.3em; margin-bottom: -0.3em;
+}

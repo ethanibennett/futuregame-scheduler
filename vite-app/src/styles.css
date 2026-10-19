@@ -17342,6 +17342,23 @@
       pointer-events: none;
       z-index: 3;
     }
+    /* The standard themes mark the selected card with an ambient glow beneath it instead of the ring
+       (owner, 2026-10-19): a soft brand-tinted light falling below the card. Its row's wrapper paints
+       contained (content-visibility, TournamentsView/ScheduleView) and the next row would paint over
+       the glow, so the selected row's wrapper paints uncontained and sits above its neighbours. The
+       glow is the card's own shadow, which its overflow: hidden does not clip. */
+    :root:not([data-theme^="swiss"]) .cal-event-row.is-selected::after { display: none; }
+    :root:not([data-theme^="swiss"]) div:has(> .cal-event-row.is-selected) {
+      content-visibility: visible !important;
+      position: relative;
+      z-index: 2;
+    }
+    :root:not([data-theme^="swiss"]) .cal-event-row.is-selected,
+    :root:not([data-theme^="swiss"]) .cal-event-row.is-selected:hover {
+      box-shadow:
+        0 calc(var(--subrow) * 0.75) calc(var(--subrow) * 3) calc(var(--subrow) * 0.25) color-mix(in srgb, var(--brand) 38%, transparent),
+        0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 1) color-mix(in srgb, var(--brand) 22%, transparent);
+    }
     /* The right pane's two blocks, each its own scroller: the selected event on top at its
        natural height (at most about half the pane), My Schedule filling the rest below a hairline. */
     /* Opening and closing an event (owner, 2026-10-10 and -11): the details grow DOWNWARD from the
