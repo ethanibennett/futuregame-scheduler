@@ -17148,6 +17148,21 @@
        counts both (RAIL_GAP_G, PANE_GAP_G). */
     .dk-pane + .dk-pane { margin-left: var(--gu); box-shadow: calc(var(--gu) * -1) 0 0 0 var(--surface); }
     .dk-rail + .dk-pane { margin-left: var(--gu); box-shadow: calc(var(--gu) * -1) 0 0 0 var(--surface); }
+    /* Every pane fully bordered in the standard themes (owner, 2026-10-19): the top and bottom
+       hairlines join the sides, so each pane (the rail too) is its own framed box against the
+       header-coloured gaps. Drawn over the edges like the sides, so no box grows. */
+    :root:not([data-theme^="swiss"]) .dk-pane::before {
+      border-top: var(--bw-hair) solid var(--border);
+      border-bottom: var(--bw-hair) solid var(--border);
+    }
+    :root:not([data-theme^="swiss"]) .dk-rail { box-shadow: inset 0 0 0 var(--bw-hair) var(--border); }
+    /* The same 1g of header colour under the panes as between them, so the bottom hairlines stand
+       off the window's edge instead of sitting on its last pixel row. */
+    :root:not([data-theme^="swiss"]) .dk-body {
+      padding-bottom: var(--gu);
+      box-sizing: border-box;
+      background: linear-gradient(var(--surface), var(--surface)) bottom / 100% var(--gu) no-repeat, var(--bg);
+    }
     /* + --dk-sb-g: a classic scrollbar's width in g (0 where scrollbars overlay), so the content
        beside the scrollbar keeps the whole 9N+1 g (useDesktopLayout.js measureScrollbarG). */
     /* .dk-pane-home: the Dashboard's NOW pane, the list's 37g without the list's nav band
