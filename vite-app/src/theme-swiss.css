@@ -1537,3 +1537,57 @@
   /* Its descenders painted, not clipped by the ellipsis' overflow: room below, cancelled. */
   padding-bottom: 0.3em; margin-bottom: -0.3em;
 }
+
+/* The title on top, then the flight and the start time on one line (owner, 2026-10-19; CalendarEventRow
+   SwissLines): the title takes the time's place in the first row (its baseline on r4, the buy-in's),
+   "Flight B · 10:00 AM" (or the time alone) the second (r6). The time and name rows' own text is
+   hidden; the name row stays only for the accolade icons. Each line trimmed to cap and baseline at the
+   foot of its track, a wrapped title's lines 2r apart. */
+:root[data-theme^="swiss"] .cal-bar-row1 > .cal-event-time { display: none; }
+:root[data-theme^="swiss"] .cal-bar-row1 > .sw-card-title {
+  display: block; grid-column: 1; grid-row: 1; min-width: 0;
+  font-family: var(--sw-font, inherit); font-size: var(--fs-md); font-weight: var(--sw-bold); letter-spacing: var(--sw-track);
+  color: var(--sw-ink); white-space: normal; line-height: calc(var(--subrow) * 2);
+  text-box-trim: trim-both; text-box-edge: cap alphabetic;
+  padding-right: var(--gu);
+}
+:root[data-theme^="swiss"] .cal-bar-row1 > .sw-card-meta {
+  display: block; grid-column: 1; grid-row: 2; min-width: 0;
+  font-size: var(--fs-sm); font-weight: var(--sw-thin); color: var(--sw-g60); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+  padding-bottom: 0.3em; margin-bottom: -0.3em;
+}
+:root[data-theme^="swiss"] .cal-bar-row1 { grid-template-rows: minmax(calc(var(--subrow) * 4), auto) calc(var(--subrow) * 2); }
+:root[data-theme^="swiss"] .cal-bar-row2 .cal-event-name { display: none; }
+:root[data-theme^="swiss"] .cal-bar-row2:not(:has(.cal-accolades)) { display: none; }
+:root[data-theme^="swiss"] .cal-bar-row2:has(.cal-accolades) { min-height: 0; }
+
+/* The card's height follows its two lines (owner, 2026-10-19): the old flight card's fixed 13r and the
+   closed card's 2r foot were for the time / title / flight stack; now the lines end on r6, then 2r. */
+:root[data-theme^="swiss"] .cal-event-row:not(.open) .cal-event-bar { height: auto !important; padding-bottom: calc(var(--subrow) * 2); }
+:root[data-theme^="swiss"] .cal-event-row:not(.open) .cal-event-row-content { padding-bottom: 0; }
+/* The live clock moves to the time's line, at its right, off the title. */
+:root[data-theme^="swiss"] .cal-bar-row1 > .cal-event-clock { grid-row: 3; justify-self: start; align-self: end; margin-right: 0; line-height: 1; }
+
+/* The date in the day's first card (owner, 2026-10-19): in the card's first 8g column, its top level
+   with the title's capitals and its baseline on r6 with the flight and time line, so it is exactly as
+   tall as the two lines beside it: cap height = 2r + the title's cap height, and with Helvetica's
+   capitals 0.715 of the size, size = 2r / 0.715 + the title's size. The day header keeps only the
+   count and the weekday, on a 3r line; it no longer sticks (the date would hang over the next cards).
+   The first card's venue drops to r8, under the date. */
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) {
+  position: relative !important; top: auto !important; z-index: 3;
+  height: calc(var(--subrow) * 3); min-height: 0; padding-top: 0 !important; align-items: flex-end;
+}
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) .date-break-pill {
+  position: absolute; left: 0; top: 100%;
+  width: var(--col); min-width: 0; height: calc(var(--subrow) * 6) !important;
+  display: flex; align-items: flex-end; justify-content: flex-start; background: transparent; pointer-events: none;
+}
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) .date-break-label { gap: calc(var(--gu) * 0.25); align-items: baseline; }
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) .date-break-day {
+  font-size: calc(var(--subrow) * 2.797 + var(--fs-md)) !important;
+}
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) .date-break-count { position: absolute; left: calc(var(--gu) * 9); bottom: 0; margin: 0; }
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) + * .cal-venue-strip { grid-template-rows: calc(var(--subrow) * 8); }
+:root[data-theme^="swiss"] .cal-bar-row1:has(> .cal-event-clock) { grid-template-rows: minmax(calc(var(--subrow) * 4), auto) calc(var(--subrow) * 2) calc(var(--subrow) * 2); }

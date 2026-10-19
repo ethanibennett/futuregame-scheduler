@@ -36,6 +36,19 @@ function formatEventName(name) {
   );
 }
 
+// The Swiss card's two lines (owner, 2026-10-19): the title on top, then the flight and the start time
+// on one line ("Flight B · 10:00 AM", or the time alone). Rendered on every card but shown only by
+// theme-swiss.css, which hides the time and name rows' own text; display:none elsewhere.
+function SwissLines({ name, time }) {
+  const { base, stage } = splitEventStage(name || '');
+  return (
+    <>
+      <span className="sw-card-title">{stage ? base : name}</span>
+      <span className="sw-card-meta">{stage ? `${stage} · ${time}` : time}</span>
+    </>
+  );
+}
+
 /* The venue strip's behaviour (owner, 2026-10-13). On an event at a real room the strip opens the
    venue map (utils/venue-map/open.js) — where the room is, for names that do not say — and the bar
    keeps opening and closing the card. Online events and Personal days have no place: their strip
@@ -715,6 +728,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
             <>
               <div className="cal-bar-row1">
                 <span className="cal-event-time">{timeLabel}</span>
+                <SwissLines name={tournament.event_name} time={timeLabel} />
                 {live && <ClockLine live={live} />}
                 <span className="cal-event-money">
                   <span className="cal-event-buyin">{currencySymbol(tournament.venue)}{Number(tournament.buyin).toLocaleString()}</span>
@@ -1303,6 +1317,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
             <>
               <div className="cal-bar-row1">
                 <span className="cal-event-time">{timeLabel}</span>
+                <SwissLines name={tournament.event_name} time={timeLabel} />
                 <span className="cal-event-money">
                   <span className="cal-event-buyin">{currencySymbol(tournament.venue)}{Number(tournament.buyin).toLocaleString()}</span>
                   {Number(tournament.prize_pool) > 0 && (
