@@ -13,7 +13,7 @@ import { settleView } from '../utils/backer-settle.js';
 import { VENUE_MAP, getVenueBrandColor, getVenueInfo, getStripAbbr } from '../utils/utils.js';
 import {
   summarize, groupByMonth, shareSeries, rangeOptions, stripFor, monthLabel, RANGE_NOUN,
-  fmtSignedCents, fmtHours, fmtDay, plural, tone, bbStats, eventBb, settlementCountdown,
+  fmtSignedCents, fmtHours, fmtDay, plural, tone, bbStats, eventBb, settlementCountdown, weekRunning,
 } from '../utils/backer-page.js';
 import './backer-page.css';
 
@@ -327,6 +327,22 @@ function SettlementBar() {
   );
 }
 
+/** This week's running total, under the sessions line, only while earlier weeks are unsettled
+ *  (utils/backer-page.js weekRunning; owner, 2026-10-20). Re-checked every 30 s, so Sunday noon
+ *  starts a new week on an open page. */
+function WeekLine({ feed }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const id = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(id); }, []);
+  const w = weekRunning(feed, now);
+  if (!w.show) return null;
+  return (
+    <div className="an-cell an-note an-clip bp-week">
+      This week <span className={'bp-week-val ' + tone(w.weekCents)}>{fmtSignedCents(w.weekCents)}</span>
+      {' · earlier weeks '}{fmtSignedCents(w.carriedCents)}
+    </div>
+  );
+}
+
 /** Settled (owner, 2026-10-19): the backer's half of the handshake, under the settlement bar. The
  *  balance goes to $0 once the player has pressed it too (Bankroll > Backers); either side can undo
  *  its press until then. utils/backer-settle.js words it; lib/staking/backer-settle.js keeps it. */
@@ -511,6 +527,7 @@ export default function BackerPage({ token }) {
                 </>
               ) : `Opening balance · no sessions yet`}
             </div>
+            <WeekLine feed={feed} />
             <SettlementBar />
             <SettleRow token={token} feed={feed} total={sum.total} onChange={reload} />
           </section>

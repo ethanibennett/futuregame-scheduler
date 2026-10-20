@@ -265,3 +265,20 @@ test('settlementCountdown counts down to Sunday noon Eastern', async () => {
   assert.equal(noon.text, '7 days', 'Sunday from noon: the next one');
   assert.equal(at('2026-10-19T14:00:00Z').text, '6 days', 'Monday');
 });
+
+test('weekRunning: this week shows only while earlier weeks are unsettled', async () => {
+  const { weekRunning, weekStart } = await import('../backer-page.js');
+  const now = Date.UTC(2026, 9, 20, 15, 0);                 // Tue 20 Oct 2026, 11:00 New York
+  const start = weekStart(now);
+  assert.equal(new Date(start).toISOString(), '2026-10-18T16:00:00.000Z', 'Sunday 18 Oct, noon EDT');
+  const ev = (ts, shareCents) => ({ ts, date: '2026-10-19', shareCents });
+  // Earlier weeks owe $500; this week +$120: shown.
+  const a = weekRunning({ cumulativeCents: 62000, events: [ev(start + 3600e3, 12000), ev(start - 86400e3, 50000)] }, now);
+  assert.deepEqual([a.show, a.weekCents, a.carriedCents], [true, 12000, 50000]);
+  // Settled before this week's sessions: the total is this week's alone, so no line.
+  const b = weekRunning({ cumulativeCents: 12000, events: [ev(start + 3600e3, 12000), ev(start - 86400e3, 50000)] }, now);
+  assert.equal(b.show, false);
+  // Unsettled with nothing yet this week: this week is $0, still shown.
+  const c = weekRunning({ cumulativeCents: 50000, events: [ev(start - 86400e3, 50000)] }, now);
+  assert.deepEqual([c.show, c.weekCents], [true, 0]);
+});

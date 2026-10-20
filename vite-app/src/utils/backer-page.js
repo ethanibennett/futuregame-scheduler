@@ -319,6 +319,32 @@ export function nextSettlement(nowMs) {
   if (q.h !== 12) next += (12 - q.h) * 3600e3;
   return next;
 }
+/** The Sunday 12:00 in New York that started the current settlement week (the one before nextSettlement). */
+export function weekStart(nowMs) {
+  let t = nextSettlement(nowMs) - SETTLE_WEEK_MS;
+  const q = etParts(t);
+  if (q.h !== 12) t += (12 - q.h) * 3600e3;
+  return t;
+}
+
+/**
+ * This week's running total, shown only when the weeks before it went unsettled (owner, 2026-10-20: "if
+ * a new week starts without having settled the previous one, add a new line for this week's running
+ * total"). This week = the shares recorded since the last Sunday noon in New York (an event's `ts`).
+ * carried = the running total less this week's shares: what earlier weeks left owing. Whole dollars
+ * decide, as the page shows them; a settlement or payout that clears the earlier weeks hides the line.
+ * -> { show, weekCents, carriedCents, since }
+ */
+export function weekRunning(feed, nowMs) {
+  const f = feed || {};
+  const since = weekStart(nowMs);
+  const events = Array.isArray(f.events) ? f.events : [];
+  const weekCents = events.reduce((a, e) => a + (Number(e.ts) >= since ? Math.round(Number(e.shareCents) || 0) : 0), 0);
+  const total = Math.round(Number(f.cumulativeCents) || 0);
+  const carriedCents = total - weekCents;
+  return { show: whole(carriedCents) !== 0, weekCents, carriedCents, since };
+}
+
 /** { leftMs, pct (0-100, the share of the week still to run, exact to Sunday noon), days, text }.
  *  The text counts whole calendar days in New York, not hours (owner, 2026-10-15): Saturday is
  *  "1 day" at any hour, Monday "6 days", Sunday morning "Today", Sunday after noon "7 days". */
