@@ -107,3 +107,18 @@
   color: var(--text-muted); font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold); cursor: pointer;
 }
 .bp-style:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+/* The line-shape switch as an icon of the current shape, small, at the graph's foot between the two
+   dates (owner, 2026-10-20): 15g | 2g | 15g, 1g apart. A 2g x 2r control, its top on the foot's first r
+   line, the icon centred in it. (Was a 6g x 3r word button in the head.) */
+.bp-chart-foot:has(.bp-style-icon) { grid-template-columns: calc(var(--gu) * 15) calc(var(--gu) * 2) calc(var(--gu) * 15); }
+.bp-style-icon {
+  width: calc(var(--gu) * 2); height: calc(var(--subrow) * 2);
+  box-sizing: border-box; margin: 0; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--radius-xs); background: transparent;
+  color: var(--text-muted); cursor: pointer;
+}
+.bp-style-icon svg { width: calc(var(--gu) * 1.25); height: calc(var(--gu) * 1.25); display: block; }
+.bp-style-icon:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+@media (hover: hover) and (pointer: fine) { .bp-style-icon:hover { color: var(--text); } }

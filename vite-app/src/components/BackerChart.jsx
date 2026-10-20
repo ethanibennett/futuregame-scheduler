@@ -2,6 +2,18 @@ import React, { useEffect, useRef, useState } from 'react';
 import { shapePath, useLineStyle, lineStyleLabel } from '../utils/line-style.js';
 import { stepGeometry, fmtSignedCents, fmtShort } from '../utils/backer-page.js';
 import './analytics.css';
+
+/** The line style drawn as itself: a stair, a zigzag through the same points, or a curve through them. */
+function LineStyleIcon({ style }) {
+  const d = style === 'lines' ? 'M1 10 L4 6 L7 7.5 L11 2'
+    : style === 'curves' ? 'M1 10 C2.5 8, 3 6, 4.2 6 S6.5 7.8, 7.5 7 S10 3, 11 2'
+      : 'M1 10 H4 V6 H7 V7.5 H9 V2 H11';
+  return (
+    <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+      <path d={d} fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
 import './backer-chart.css';
 
 /** The graph's range: N whole-g segments across 35g, one on (backer-page.js rangeOptions). */
@@ -97,8 +109,6 @@ export default function BackerChart({ series, label, today, baseNote = 'start', 
         ) : (
           <>
             <span className="an-cell an-sec an-clip">{label}</span>
-            <button type="button" className="bp-style ctl" onClick={cycleLineStyle}
-              aria-label={`Line: ${lineStyleLabel(lineStyle)}. Change the line`} title="Steps, lines or curves">{lineStyleLabel(lineStyle)}</button>
             <span className={'an-cell an-val bp-chart-change ' + up}>{fmtSignedCents(series.change)}</span>
           </>
         )}
@@ -130,6 +140,11 @@ export default function BackerChart({ series, label, today, baseNote = 'start', 
       </div>
       <div className="bp-chart-foot">
         <span className="an-cell an-note an-clip">{fmtShort(series.first, thisYear)} · {baseNote} {fmtSignedCents(series.start)}</span>
+        {/* The line's shape, as a small icon of itself at the graph's foot (owner, 2026-10-20). */}
+        <button type="button" className="bp-style-icon ctl" onClick={cycleLineStyle}
+          aria-label={`Line: ${lineStyleLabel(lineStyle)}. Change the line`} title="Steps, lines or curves">
+          <LineStyleIcon style={lineStyle} />
+        </button>
         <span className="an-cell an-note an-num an-clip">{fmtShort(series.last, thisYear)} · now {fmtSignedCents(series.end)}</span>
       </div>
       {control}
