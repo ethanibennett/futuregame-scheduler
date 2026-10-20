@@ -423,8 +423,13 @@
   color: var(--text-muted);
 }
 
-/* Two large figures while earlier weeks are unsettled (TotalFigures; owner, 2026-10-20): This week |
-   Past due, 16g | 17g 1g apart, each its label and figure seated as the single total's are, so the
-   card keeps its height. */
-.bp-total-split { display: grid; grid-template-columns: calc(var(--gu) * 16) calc(var(--gu) * 17); column-gap: var(--gu); }
-.bp-total .bp-total-split + .an-note { margin-top: calc(var(--subrow) * 2); }
+/* Two large figures while earlier weeks are unsettled (TotalFigures; owner, 2026-10-20): To be settled
+   from last week, then This week, one under the other. Inside the rows each figure sits 2r under its
+   label (the single total's 3r, tightened), and the second label 2r under the first figure: each row
+   is 3r + 2r + 3r = 8r, so the pair is 18r against the single total's 9r and the card grows by 9r. */
+.bp-total .bp-total-rows .bp-total-val { margin-top: calc(var(--subrow) * 2); }
+.bp-total .bp-total-rows .bp-total-row2 { margin-top: calc(var(--subrow) * 2); }
+.bp-total .bp-total-rows + .an-note { margin-top: calc(var(--subrow) * 2); }
+.bp-total:has(.bp-total-rows):not(:has(.bp-settle)) { height: calc(var(--subrow) * 21); }
+.bp-total:has(.bp-settle):has(.bp-total-rows) { height: calc(var(--subrow) * 32); }
+.bp-total:has(.bp-settled-row):has(.bp-total-rows) { height: calc(var(--subrow) * 38); }

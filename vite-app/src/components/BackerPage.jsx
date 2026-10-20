@@ -328,8 +328,8 @@ function SettlementBar() {
 }
 
 /** The card's large figure. While earlier weeks are unsettled (utils/backer-page.js weekRunning; owner,
- *  2026-10-20) it is two, side by side and never added together: This week (shares since Sunday noon,
- *  New York) and Past due (what earlier weeks still owe). Otherwise the one running total. Re-checked
+ *  2026-10-20) it is two rows, never added together: To be settled from last week (what earlier weeks
+ *  still owe), then This week (shares since Sunday noon, New York). Otherwise the one running total. Re-checked
  *  every 30 s, so Sunday noon starts a new week on an open page. */
 function TotalFigures({ feed, total }) {
   const [now, setNow] = useState(() => Date.now());
@@ -344,15 +344,11 @@ function TotalFigures({ feed, total }) {
     );
   }
   return (
-    <div className="bp-total-split">
-      <div className="bp-total-col">
-        <div className="an-cell an-lbl an-lbl-3">This week</div>
-        <div className={'an-cell bp-total-val ' + tone(w.weekCents)}>{fmtSignedCents(w.weekCents)}</div>
-      </div>
-      <div className="bp-total-col">
-        <div className="an-cell an-lbl an-lbl-3">Past due</div>
-        <div className={'an-cell bp-total-val ' + tone(w.carriedCents)}>{fmtSignedCents(w.carriedCents)}</div>
-      </div>
+    <div className="bp-total-rows">
+      <div className="an-cell an-lbl an-lbl-3">To be settled from last week</div>
+      <div className={'an-cell bp-total-val ' + tone(w.carriedCents)}>{fmtSignedCents(w.carriedCents)}</div>
+      <div className="an-cell an-lbl an-lbl-3 bp-total-row2">This week</div>
+      <div className={'an-cell bp-total-val ' + tone(w.weekCents)}>{fmtSignedCents(w.weekCents)}</div>
     </div>
   );
 }
