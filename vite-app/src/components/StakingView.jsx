@@ -303,9 +303,11 @@ function StakingSeriesList({ series, loading, onSelect, onCreate, onBackers, onS
 
   return (
     <div style={{padding:'0 0 var(--space-2xl)'}}>
-      <div className="section-header" style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'var(--space-xl) 0 var(--space-md)',marginBottom:0}}>
+      <div className="section-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'var(--space-xl) 0 var(--space-md)',marginBottom:0}}>
         <h2 style={{fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'calc(var(--subrow) * 0.125)',fontSize:'calc(var(--subrow) * 1.75)',lineHeight:'calc(var(--subrow) * 4)',margin:0,color:'var(--text-muted)'}}>Staking</h2>
-        <div style={{display:'flex',gap:'var(--gu)'}}>
+        {/* The five buttons are 37g with their gaps, wider than a phone's column: they wrap, right-aligned,
+            onto as many rows as they need (each still whole g, the rows r apart) instead of running off the edge. */}
+        <div style={{display:'flex',flexWrap:'wrap',justifyContent:'flex-end',gap:'var(--subrow) var(--gu)',flex:'1 1 0',minWidth:0}}>
           <button className="btn btn-ghost btn-sm" style={{fontSize:'calc(var(--subrow) * 1.5)',width:'calc(var(--gu) * 3)',flexShrink:0,height:'calc(var(--subrow) * 4)',lineHeight:1,padding:0,color:'var(--text-muted)'}} onClick={onSettings} title="Sell & Markup Settings">{'\u2699'}</button>
           {/* Whole-g buttons (snap-g rounds each up; flexShrink 0 so the row cannot squeeze one
               back off a line), 1g apart, the group ending on the content's right g line, so every
