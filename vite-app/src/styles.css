@@ -17162,6 +17162,19 @@
        bottom line of its own; the rail's and each pane's top hairline are its edge, so the line runs
        over them and stops in every 1g gap. */
     :root:not([data-theme^="swiss"]) .app-shell.is-desktop .top-bar { border-bottom-color: transparent; }
+    /* The window's margins either side of the shell in the header's colour (owner, 2026-10-20): the
+       header's gradient painted across the whole window at the header's height, the same --surface
+       below it (the gaps' colour), so the header runs edge to edge. */
+    :root:not([data-theme^="swiss"]) #root:has(> .app-shell.is-desktop),
+    :root:not([data-theme^="swiss"]) #root:has(.app-shell.is-desktop) {
+      background:
+        linear-gradient(to bottom, var(--surface2), var(--surface))
+        top / 100% calc(var(--sa-t) + var(--header-h)) no-repeat,
+        var(--surface);
+    }
+    /* The band between the open event and My Schedule paints OVER the event's block: an event taller
+       than its block scrolls inside it, and its card used to run across the band and its hairlines. */
+    .dk-detail-block + .dk-mine-block { position: relative; z-index: 1; }
     /* The same 1g of header colour under the panes as between them, so the bottom hairlines stand
        off the window's edge instead of sitting on its last pixel row. */
     :root:not([data-theme^="swiss"]) .dk-body {
