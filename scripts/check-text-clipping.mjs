@@ -36,6 +36,15 @@ import { stageHands, SHARED_HAND_CODE } from './hands-states.mjs';
 import { createRequire } from 'node:module';
 import { stageHome, routeHomeLayout } from './home-states.mjs';
 import { stageNotify } from './notify-states.mjs';
+
+// The Bankroll sections are grouped (owner, 2026-10-20; CashLive.jsx ResultsKindTabs): a section is a
+// chip, or the shown label of its group's split chip, or an item in that group's caret menu.
+async function openSection(p, name) {
+  const chip = p.locator(`.results-kind-tabs .kind-toggle:has-text("${name}")`).first();
+  if (await chip.count() && await chip.isVisible().catch(() => false)) { await chip.click({ timeout: 4000 }); return; }
+  await p.locator(`.results-kind-tabs .kind-toggle-caret[aria-label*="${name}"]`).first().click({ timeout: 4000 });
+  await p.locator(`.rk-menu .rk-menu-item:has-text("${name}")`).first().click({ timeout: 4000 });
+}
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
 // Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
@@ -460,7 +469,7 @@ function scan(rootSel) {
   // Skipped quietly when the account has no bankroll strip (not an admin).
   if (on('bankroll-dashboard')) try {
     await openResults();
-    await p.locator('.results-kind-tabs .kind-toggle:has-text("Overview")').first().click({ timeout: 4000 });
+    await openSection(p, "Overview");
     await p.waitForTimeout(1800);
     // The sheet scrolls, and only text on screen is measured: run at the top, then page down
     // through the sheet's body, 11 pages at most. { toEnd } pages on until the body stops moving
@@ -500,7 +509,7 @@ function scan(rootSel) {
     };
     await sections(true);
     // Every section of the old dashboard, now on the page (owner, 2026-10-16), by its chip.
-    const chip = (name) => p.locator(`.results-kind-tabs .kind-toggle:has-text("${name}")`).first();
+    const chip = (name) => ({ click: () => openSection(p, name) });
     for (const tab of ['Overview', 'Locations', 'Reports', 'Backers', 'Rules', 'Goals', 'Import']) {
       await chip(tab).click({ timeout: 4000 });
       await p.waitForTimeout(800);
@@ -525,7 +534,7 @@ function scan(rootSel) {
         await p.waitForTimeout(300);
       }
     };
-    await p.locator('.results-kind-tabs .kind-toggle:has-text("Reports")').first().click({ timeout: 4000 });
+    await openSection(p, "Reports");
     await p.waitForTimeout(1200);
     const reportNames = await p.locator('.br-picker .br-chip:not([disabled])').allInnerTexts();
     for (const name of reportNames) {
@@ -546,9 +555,9 @@ function scan(rootSel) {
   // name wraps, so a long one is checked whole. Long event names truncate.
   if (on('bankroll-locations')) try {
     await openResults();
-    await p.locator('.results-kind-tabs .kind-toggle:has-text("Overview")').first().click({ timeout: 4000 });
+    await openSection(p, "Overview");
     await p.waitForTimeout(1500);
-    await p.locator('.results-kind-tabs .kind-toggle:has-text("Locations")').first().click({ timeout: 4000 });
+    await openSection(p, "Locations");
     await p.waitForTimeout(1200);
     const pageThrough = async (label) => {
       await p.evaluate(() => { const s = document.scrollingElement; if (s) s.scrollTop = 0; });
@@ -597,9 +606,9 @@ function scan(rootSel) {
         if (body) await p.route('**/api/staking/standing/backers', (r) => r.fulfill({ status, json: body }));
         try {
           await openResults();
-          await p.locator('.results-kind-tabs .kind-toggle:has-text("Overview")').first().click({ timeout: 4000 });
+          await openSection(p, "Overview");
           await p.waitForTimeout(1500);
-          await p.locator('.results-kind-tabs .kind-toggle:has-text("Backers")').first().click({ timeout: 4000 });
+          await openSection(p, "Backers");
           await p.locator('.bb-backers .bl-item, .bb-backers .an-p.bl-gap').first().waitFor({ timeout: 8000 });
           await p.waitForTimeout(600);
         } finally { if (body) await p.unroute('**/api/staking/standing/backers'); }
@@ -659,9 +668,9 @@ function scan(rootSel) {
       await p.waitForTimeout(500);
     };
     await openResults();
-    await p.locator('.results-kind-tabs .kind-toggle:has-text("Overview")').first().click({ timeout: 4000 });
+    await openSection(p, "Overview");
     await p.waitForTimeout(1500);
-    await p.locator('.results-kind-tabs .kind-toggle:has-text("Import")').first().click({ timeout: 4000 });
+    await openSection(p, "Import");
     await p.locator('.bd-inline .bid').first().waitFor({ timeout: 8000 });
     await p.waitForTimeout(800);
     if (!(await p.locator('.bd-inline .bid-review').count())) throw new Error('no staged run (scripts/seed-money-import-demo.js)');

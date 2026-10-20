@@ -171,3 +171,28 @@
   margin-top: var(--subrow);   /* "Total buy-ins" on the Profit label's baseline */
 }
 .app-shell.is-desktop .tracking-card.cs-sum-card > .tr-sum-stats { grid-template-columns: calc(var(--gu) * 16); }
+
+/* The grouped section strip (CashLive.jsx ResultsKindTabs): one row, 10g + 6g + 8g + 8g with 1g gaps
+   (35g). Tournaments ⌄ is an 8g label and the 2g caret (TOURNAMENTS is ~7g at this size); Overview a
+   6g chip; Insights and Manage the Online chip's 6g + 2g. */
+.kind-toggles.results-kind-tabs.is-grouped {
+  grid-template-columns: calc(var(--gu) * 10) calc(var(--gu) * 6) var(--col) var(--col);
+}
+.results-kind-tabs.is-grouped .rk-logs { width: calc(var(--gu) * 10); }
+.results-kind-tabs.is-grouped .rk-logs > .kind-toggle { width: var(--col); }
+.results-kind-tabs.is-grouped .kind-toggle.rk-overview { width: calc(var(--gu) * 6); }
+/* The group's menu: the Online menu's panel, one 4r row per section, the one in view in the accent. */
+.rk-menu { padding: var(--subrow) 0; }
+.rk-menu-item {
+  display: flex; align-items: center;
+  width: 100%; height: calc(var(--subrow) * 4);
+  box-sizing: border-box; margin: 0; padding: 0 var(--gu);
+  background: none; border: 0; border-radius: 0;
+  font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps); text-transform: uppercase; text-align: left;
+  color: var(--text-muted); cursor: pointer;
+}
+.rk-menu-item.is-on { color: var(--accent); }
+.rk-menu-item + .rk-menu-item { box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
+@media (hover: hover) and (pointer: fine) { .rk-menu-item:hover { color: var(--text); background: var(--hover-overlay); } }
+.rk-menu-item:focus-visible { outline: var(--focus-ring); outline-offset: calc(var(--bw-2) * -1); }

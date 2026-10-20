@@ -162,6 +162,15 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { stageHome, routeHomeLayout } from './home-states.mjs';
 import { stageNotify } from './notify-states.mjs';
+
+// The Bankroll sections are grouped (owner, 2026-10-20; CashLive.jsx ResultsKindTabs): a section is a
+// chip, or the shown label of its group's split chip, or an item in that group's caret menu.
+async function openSection(p, name) {
+  const chip = p.locator(`.results-kind-tabs .kind-toggle:has-text("${name}")`).first();
+  if (await chip.count() && await chip.isVisible().catch(() => false)) { await chip.click({ timeout: 4000 }); return; }
+  await p.locator(`.results-kind-tabs .kind-toggle-caret[aria-label*="${name}"]`).first().click({ timeout: 4000 });
+  await p.locator(`.rk-menu .rk-menu-item:has-text("${name}")`).first().click({ timeout: 4000 });
+}
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
 // Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
@@ -1802,7 +1811,7 @@ function finalize(c) {
   // section is its chip among the page's kind toggles; null = the Overview.
   const dash = async (tab) => {
     await nav('Bankroll');
-    await click(`.results-kind-tabs .kind-toggle:has-text("${tab || 'Overview'}")`, 1200);
+    await openSection(p, tab || 'Overview'); await p.waitForTimeout(1200);
     await p.evaluate(() => window.scrollTo(0, 0));
   };
   // The Overview: hero, graph, the collapsible table sections (Summary, Sessions, Games, Rooms,
