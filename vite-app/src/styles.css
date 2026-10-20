@@ -17397,6 +17397,16 @@
        2g between panes (owner, 2026-10-13): a shadow cast 4r up from My Schedule with no blur covers
        exactly the details' 4r foot, full width, and moves with the open / close as the foot does. */
     .dk-detail-block + .dk-mine-block { box-shadow: 0 calc(var(--subrow) * -4) 0 0 var(--surface); }
+    /* Both blocks framed in the standard themes (owner, 2026-10-20: "every pane fully bordered"): a
+       hairline at the band's top (the event's foot) and at its foot (My Schedule's top, drawn just
+       outside the block: its sticky header would paint over a line inside it). Shadows paint first
+       on top: the foot line over the band, the band over the top line, which shows only above it. */
+    :root:not([data-theme^="swiss"]) .dk-detail-block + .dk-mine-block {
+      box-shadow:
+        0 calc(var(--bw-hair) * -1) 0 0 var(--border),
+        0 calc(var(--subrow) * -4) 0 0 var(--surface),
+        0 calc(var(--subrow) * -4 - var(--bw-hair)) 0 0 var(--border);
+    }
     /* ══ end Desktop layout ══════════════════════════════════════════════════ */
 
     /* ══ Admin "New events" (one alert's batch) ══════════════════════════════
