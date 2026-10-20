@@ -14341,6 +14341,22 @@ app.post('/api/subscription/stripe/webhook', express.raw({ type: 'application/js
   res.json({ ok: true });
 });
 
+// The settling-day Discord DM (lib/discord-settle.js). Its backers are the owner's Backers view, the
+// figures each backer's page shows.
+const discordSettle = require('./lib/discord-settle');
+function settleReminderBackers() { return backerSurface.backersView(db, { source: backerSurface.pageSource() }); }
+// The owner's test: sends the reminder as it would read now, marked as a test, without marking the day.
+app.post('/api/admin/discord-settle/test', authenticateToken, async (req, res) => {
+  if (HAM_OWNER_ID == null || Number(req.user.id) !== Number(HAM_OWNER_ID)) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const r = await discordSettle.runReminder(db, { backers: settleReminderBackers, force: true });
+    res.status(r.sent ? 200 : 503).json(r);
+  } catch (err) {
+    console.error('[discord] test failed:', err && err.message);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
 // SPA catch-all for /shared/* routes
 app.get('/shared/:token', serveIndex);
 
@@ -14354,6 +14370,22 @@ initDatabase().then(() => {
       cron.schedule('0 18 * * 0', () => { sendBackerWeeklyDigests(); }, { timezone: CONSOLE_TZ });
     } catch (err) {
       console.error('Backer digest cron setup error:', err.message);
+    }
+    // The settling-day reminder, a Discord DM to the player (lib/discord-settle.js): Sunday 09:00 ET,
+    // three hours before settlement. Off unless DISCORD_BOT_TOKEN and DISCORD_USER_ID are set (and
+    // this is production, or DISCORD_DM=1); the decision is logged on every boot.
+    try {
+      const gate = discordSettle.decision();
+      console.log(`[discord] settling-day DM is ${gate.on ? 'ON' : 'OFF'} (${gate.why})`);
+      if (gate.on) {
+        cron.schedule('0 9 * * 0', () => {
+          discordSettle.runReminder(db, { backers: settleReminderBackers, save: saveDatabase })
+            .then((r) => console.log(`[discord] settling-day DM: ${r.sent ? 'sent' : 'not sent'} (${r.why})`))
+            .catch((err) => console.error('[discord] settling-day DM failed:', err && err.message));
+        }, { timezone: CONSOLE_TZ });
+      }
+    } catch (err) {
+      console.error('[discord] reminder setup error:', err.message);
     }
     // Backer delivery (docs/bankroll-merge.md §6.7): say whether this instance may message a backer,
     // and where the page reads its roster from, in the log of every boot. The sweep that delivers

@@ -232,6 +232,15 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   backer's press, undo or completion (`sendPushToAdmin`: web push + the native app); the backer hears of the player's
   only through their page's push subscription (`sendBackerPush`, gated by `BACKER_DELIVERY`). Nobody hears of their
   own press or of a repeated tap (`notifySettle` in server.js). Test: `npm run test:backer-settle`.
+  Settled clears only what EARLIER weeks owe (`dueCents`: the total less shares recorded since Sunday noon New
+  York); the week in progress rolls on. The page shows "To be settled from last week" over "This week" while
+  earlier weeks owe anything.
+  **Settling-day Discord DM** (owner, 2026-10-20; `lib/discord-settle.js`): Sunday 09:00 ET, a DM to the player
+  listing each backer not at $0 and who pays whom (names and amounts, never a link). A bot, not a webhook:
+  `DISCORD_BOT_TOKEN` + `DISCORD_USER_ID` on Render only (the bot must share a server with the player); on where
+  RENDER is set, `DISCORD_DM=1|0` overrides; every boot logs `[discord] settling-day DM is ON|OFF`. Once per
+  Sunday (`discord_reminders`). `POST /api/admin/discord-settle/test` (owner) sends it now, marked as a test.
+  Test: `npm run test:discord-settle`.
   **Bankroll merge, Phase 2** (`docs/bankroll-merge.md`; code in `lib/backer-surface.js`):
   - **Delivery is gated.** Push, SMS and the Sunday email go out only where `BACKER_DELIVERY` is on
     (default: on when `RENDER` is set; `BACKER_DELIVERY=1|0` overrides; a typo is off). This box has
