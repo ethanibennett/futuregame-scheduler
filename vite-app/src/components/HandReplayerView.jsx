@@ -2625,6 +2625,9 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   const [betAmount, setBetAmount] = useState('');
   const [showHeroCardPicker, setShowHeroCardPicker] = useState(false);
   const [studDealTarget, setStudDealTarget] = useState(0);
+  // The OFC entry phase's card picker. Declared with the other hooks: inside the phase's branch it
+  // changed the hook count when Next opened it, and React threw "Rendered more hooks" (entry audit D5).
+  const [ofcPickerState, setOfcPickerState] = useState(null);
   const activeSeatRef = useRef(null);
   // Buy-in cap: remembered across hands, and a one-tap way to put every seat
   // back on the cap (a fresh full-stack table).
@@ -2739,21 +2742,43 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     const actions = currentStreet.actions || [];
     if (actionOrder.length === 0) return -1;
     let lastRaiserPlayer = -1, lastRaiseIdx = -1;
-    for (let i = actions.length - 1; i >= 0; i--) {
-      if (actions[i].action === 'raise' || actions[i].action === 'bet') { lastRaiseIdx = i; lastRaiserPlayer = actions[i].player; break; }
+    /* The last aggression: a bet or raise, or an all-in that put in more than the price before it
+       (an all-in that only calls reopens nothing). */
+    const before = new Array(hand.players.length).fill(0);
+    let priceBefore = 0;
+    if (isPreflop && category !== 'stud') {
+      const blinds = hand.blinds || {};
+      const sbIdx = hand.players.findIndex(p => p.position === 'SB' || p.position === 'BTN/SB');
+      const bbIdx = hand.players.findIndex(p => p.position === 'BB');
+      if (sbIdx >= 0) before[sbIdx] = blinds.sb || 0;
+      if (bbIdx >= 0) before[bbIdx] = blinds.bb || 0;
+      priceBefore = blinds.bb || 0;
+      getStraddles(hand.players, hand.blinds).forEach(st => { before[st.seat] = st.amount; if (st.amount > priceBefore) priceBefore = st.amount; });
     }
+    actions.forEach((a, i) => {
+      if (a.action === 'fold') return;
+      if (a.action === 'bring-in') { before[a.player] = a.amount || bringInAmount; priceBefore = Math.max(priceBefore, before[a.player]); return; }
+      const after = before[a.player] + (a.amount > 0 ? a.amount : 0);
+      if (a.action === 'raise' || a.action === 'bet' || (a.action === 'all-in' && after > priceBefore)) { lastRaiseIdx = i; lastRaiserPlayer = a.player; }
+      before[a.player] = after;
+      if (after > priceBefore) priceBefore = after;
+    });
+    /* Walk the FULL seat order from the seat after the raiser, skipping folded and all-in seats.
+       Searching the raiser in actionOrder failed whenever the raiser was all-in (they are not in it),
+       so the turn went back to the first seat: SB checks, BB shoves, and the SB was asked again
+       instead of the button (entry audit D1, 2026-10-20). */
     let startOi = 0;
-    if (lastRaiserPlayer >= 0) { const raiserPos = actionOrder.indexOf(lastRaiserPlayer); if (raiserPos >= 0) startOi = raiserPos + 1; }
-    for (let count = 0; count < actionOrder.length; count++) {
-      const oi = (startOi + count) % actionOrder.length;
-      const pidx = actionOrder[oi];
+    if (lastRaiserPlayer >= 0) { const raiserPos = seatOrder.indexOf(lastRaiserPlayer); if (raiserPos >= 0) startOi = raiserPos + 1; }
+    for (let count = 0; count < seatOrder.length; count++) {
+      const pidx = seatOrder[(startOi + count) % seatOrder.length];
+      if (foldedSet.has(pidx) || allInSet.has(pidx)) continue;
       let lastActIdx = -1;
       for (let j = actions.length - 1; j >= 0; j--) { if (actions[j].player === pidx) { lastActIdx = j; break; } }
       if (lastActIdx < lastRaiseIdx) return pidx;
       if (lastActIdx === -1) return pidx;
     }
     return -1;
-  }, [actionOrder, currentStreet.actions]);
+  }, [actionOrder, seatOrder, foldedSet, allInSet, currentStreet.actions, isPreflop, category, hand.players, hand.blinds, bringInAmount]);
 
   const isBettingComplete = currentActor === -1;
   const activePlayers = hand.players.filter((_, i) => !foldedSet.has(i));
@@ -3301,7 +3326,6 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     });
     const ofcAllRanks = 'AKQJT98765432'.split('');
     const ofcAllSuits = ['h', 'd', 'c', 's'];
-    const [ofcPickerState, setOfcPickerState] = useState(null);
     const ofcToggleCard = (rank, suit) => {
       if (!ofcPickerState) return;
       const card = rank + suit;
