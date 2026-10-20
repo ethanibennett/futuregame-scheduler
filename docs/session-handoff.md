@@ -5,7 +5,7 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-10-19 (from Windows) — newest section first. Earlier notes: 2026-10-13, then 2026-09-30, live
+Last updated: 2026-10-20 (from Windows) — newest section first. Earlier notes: 2026-10-13, then 2026-09-30, live
 tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
@@ -13,6 +13,47 @@ Below it the 2026-09-25 Schedule grid sweep, then the dated sections back throug
 wsop-console side and verified against both live services.
 
 ---
+
+## 2026-10-20 — Overnight: audits, three ad drafts, the Swiss third pass, a full disk
+
+**Shipped to master**
+- Settled clears only last week's balance (`dueCents`); the backer page shows "To be settled from last week"
+  over "This week". Settling-day Discord DM (`lib/discord-settle.js`), off until `DISCORD_BOT_TOKEN` +
+  `DISCORD_USER_ID` are set on Render. Set balance on Main and every bankroll. Bankroll sections grouped
+  (Logs / Overview / Insights / Manage; Tournaments reads MTT). Location pickers in the switcher's tile.
+  Desktop: the open event's block fits its card; margins in the header's colour.
+- Result cards: "30th · cashed $812" stays on one line (it wrapped over the figure).
+- The Swiss theme's third pass (merged from an agent; check:clipping passed swiss-light 402 + 1440; standard
+  themes unchanged).
+- Tests: all 47 server groups + 526 client tests pass. Fixed: notify-tap's live session is relative to now,
+  the SSE test asks for an event id, `lib/money-import/room-aliases.js` regenerated (the Irish Open series).
+- **The guards skipped every Bankroll cash/notify/expenses/result-edit view** since the grouped strip:
+  they clicked "Cash"/"Tournaments" buttons that no longer exist. Both now use `openSection`. Results from
+  any guard run before `8354f64` covered far fewer views than they said.
+
+**Waiting on the owner**
+- Branch `replayer-audit-fixes` (pushed, NOT merged): fixes from three audits plus their reports and
+  `docs/audit-2026-10-20-summary.md` (10 fixed, 10 open, 31 questions). Merge when reviewed.
+- Clash detection flags only events that START at the same moment (`detectConflicts`); the ads lead with the
+  clash check. What counts as a clash is question A in the summary.
+- Ad first drafts (no critique rounds, placeholder audio): `weekly-graphics/ads/futuregame-ad9-which-flight-
+  remotion.mp4`, `…ad5-where-is-everyone…`, `…ad6-backers…`; code in `marketing/ads-remotion/src/ad{5,6,9}`
+  (marketing/ is untracked). Storyboards copied to `weekly-graphics/ads/storyboards/`. Decisions: Ad 6's
+  "Markups and %" overclaims (Standing has no markups); Ad 9 shows 9 of the Mini Main's 17 flights and
+  collapsed cards read "BORGATA"; Ad 5 shows "TURNING STONE" and lacks its caption.
+- Still open from before: Up Next showing the wrong events (which screen?), editing ledger entries beyond Set
+  balance, the Tournaments summary in the Cash two-column layout, the line-style icon on the other graphs.
+- The shorthand eval's model half needs `ANTHROPIC_API_KEY` here or a run on Render (~$10–30 per 1,000).
+
+**Traps found tonight**
+- **C: filled to 0 bytes** (the WSL disk image grows; an old session's 8.7 GB scratch was moved to
+  `D:\projects\_moved-from-C`). While it was full, BOTH `node_modules` (root and `vite-app`) were emptied
+  at 03:56, most likely an install rolled back. pm2 kept running from memory; the 05:00 restart would have
+  failed. Reinstalled from the lockfiles (+ `playwright@1.63.0 --no-save` in vite-app). If a server test
+  says "Cannot find module", check `node_modules` first.
+- The Vite dev server on :5199 (not pm2, running since 09-25) was stopped and restarted with the same
+  command to free a locked esbuild.exe.
+- Git Bash heredocs eat backslashes in Python patch scripts: use the Edit tool for any regex edit.
 
 ## 2026-10-19 — Settled: both sides confirm, the backer page goes to $0
 
