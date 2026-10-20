@@ -12239,9 +12239,12 @@
        content width, so the columns start on 4, 12, 20 and 28g), 1r between rows (a 3r pitch).
        Each cell seats its caps label like the game label above. A name too long for 7g (titles
        can list their own games) spans two cells. */
+    /* Left-justified, each game its own width, 1g between them, on one line while they fit
+       (owner, 2026-10-20); a list too long for the line wraps to the next, 1r below. */
     .cal-mix-games {
-      display: grid;
-      grid-template-columns: repeat(4, calc(var(--gu) * 7));
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-start;
       column-gap: var(--gu);
       row-gap: var(--subrow);
     }
@@ -12258,7 +12261,6 @@
       color: var(--text);
       white-space: nowrap;
     }
-    .cal-mix-game.wide { grid-column: span 2; }
     .cal-badges-right { display: flex; flex-direction: column; gap: var(--space-sm); align-items: flex-start; }
 
     /* A seated 2r cell: the link is trimmed to cap..baseline and the cell bottom-aligns it, so its
