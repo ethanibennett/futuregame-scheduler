@@ -180,10 +180,11 @@ function CashLocationPicker({ token, onSaved, trailing = null }) {
        and Heatmaps alike, above the mode strip. `trailing` (the Refresh button) takes the
        fourth column of the same row: 1g gutter, then 8g. */
     <div style={{ marginTop: 'calc(var(--subrow) * 2)', marginBottom: 'var(--subrow)', display: 'flex', alignItems: 'center', gap: 'var(--gu)' }}>
-      <button ref={btnRef} type="button" className={'filter-chip cb-loc' + (filters.userLocation ? ' active' : '')} onClick={() => setOpen(o => !o)}
+      <button ref={btnRef} type="button" className={'filter-chip cb-loc loc-tile' + (filters.userLocation ? ' active' : '')} onClick={() => setOpen(o => !o)}
         style={{ width: 'calc(var(--col) * 3 + var(--gu) * 2)', minWidth: 0, height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'calc(var(--subrow) * 1)', padding: '0 var(--gu)' }}>
-        <Icon.mapPin />
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'calc(var(--gu) * 1.149)', fontFamily: 'var(--font-condensed)', lineHeight: 'calc(var(--subrow) * 2)' }}>{label}</span>
+        <span className="loc-tile-label">Location</span>
+        <span className="loc-tile-value" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'calc(var(--gu) * 1.149)', fontFamily: 'var(--font-condensed)', lineHeight: 'calc(var(--subrow) * 2)' }}>{label}</span>
+        <svg className="loc-tile-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
       </button>
       {trailing}
       {open && createPortal(<div className="dropdown-backdrop" onClick={() => setOpen(false)} />, document.body)}

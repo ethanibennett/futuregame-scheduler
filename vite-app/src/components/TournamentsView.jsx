@@ -1688,7 +1688,7 @@ export default function TournamentsView({
               (28-32g), 1g, and the 3g calendar button (33-36g) — 35g, rail to rail. */}
           <button
             ref={locationBtnRef}
-            className={`filter-chip ${filters.locationRegion || filters.userLocation ? 'active' : ''}`}
+            className={`filter-chip loc-tile ${filters.locationRegion || filters.userLocation ? 'active' : ''}`}
             onClick={() => setLocationDropdownOpen(o => !o)}
             style={{flex:'0 0 auto',width:'calc(var(--col) * 3 + var(--gu) * 2)',minWidth:0,height:'calc(var(--subrow) * 4)',boxSizing:'border-box',display:'flex',alignItems:'center',justifyContent:'center',gap:'calc(var(--subrow) * 1)',padding:'0 var(--gu)'}}
             title={filters.locationRegion && LOCATION_REGIONS[filters.locationRegion]
@@ -1697,14 +1697,16 @@ export default function TournamentsView({
                 ? `${filters.locationLabel || 'Location'} \u00B7 ${filters.maxDistance}mi`
                 : 'All Locations'}
           >
-            <Icon.mapPin />
-            <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:'calc(var(--gu) * 1.149)',fontFamily:'var(--font-condensed)',lineHeight:'calc(var(--subrow) * 2)'}}>
+            {/* The bankroll switcher's tile (owner, 2026-10-20): a caps label over the place, a chevron. */}
+            <span className="loc-tile-label">Location</span>
+            <span className="loc-tile-value" style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:'calc(var(--gu) * 1.149)',fontFamily:'var(--font-condensed)',lineHeight:'calc(var(--subrow) * 2)'}}>
               {filters.locationRegion && LOCATION_REGIONS[filters.locationRegion]
                 ? LOCATION_REGIONS[filters.locationRegion].label
                 : filters.userLocation && filters.maxDistance
                   ? `${filters.locationLabel || 'Location'} \u00B7 ${filters.maxDistance} mi`
                   : 'All locations'}
             </span>
+            <svg className="loc-tile-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
           </button>
           <button
             ref={filterToggleRef}
