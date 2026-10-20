@@ -98,6 +98,7 @@ function BankrollEditor({ b, bal, bk, onDone, toast }) {
       <p className="bk-line">
         Start {money(bal.start, bal.currency)} · Moved {signed(bal.adjustments, bal.currency)} · Results {signed(bal.results, bal.currency)}
       </p>
+      <SetBalance b={b} bal={bal} bk={bk} toast={toast} onDone={onDone} />
       {b.is_main ? (
         <p className="bk-line bk-muted">Main holds every result not filed under another bankroll.</p>
       ) : (
@@ -247,6 +248,38 @@ function Ledger({ bk, rows, toast, onChanged }) {
         </div>
       ))}
     </section>
+  );
+}
+
+/** Set balance (owner, 2026-10-20: "need to be able to reset Main bankroll"): type what the bankroll
+ *  actually holds and the difference is recorded as a deposit or a withdrawal dated today, noted "Balance
+ *  reset". Results and history stay as they are, and a deposit or withdrawal moves the balance without
+ *  being profit. Works for Main, which has no row of its own to edit. */
+function SetBalance({ b, bal, bk, toast, onDone }) {
+  const [value, setValue] = useState('');
+  const [busy, setBusy] = useState(false);
+  const go = async () => {
+    const target = Number(value);
+    if (value === '' || !Number.isFinite(target)) { toast.error('Type the balance it should show'); return; }
+    const diff = Math.round((target - (Number(bal.balance) || 0)) * 100) / 100;
+    if (diff === 0) { toast.info('It already shows that balance'); return; }
+    const kind = diff > 0 ? 'deposit' : 'withdrawal';
+    const ok = window.confirm(`Set ${b.name} to ${money(target, bal.currency)}? This records a ${kind} of ${money(Math.abs(diff), bal.currency)} today. Results are not changed.`);
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await bk.adjust({ kind, amount: Math.abs(diff), bankroll: b.is_main ? 'main' : b.id, note: `Balance reset to ${money(target, bal.currency)}` });
+      toast.success(`${b.name} set to ${money(target, bal.currency)}`);
+      setValue('');
+      onDone();
+    } catch (e) { toast.error(e.message); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="bk-fields bk-setbal">
+      <Field label="Set balance to"><input type="number" inputMode="decimal" value={value} placeholder={String(Math.round(Number(bal.balance) || 0))} onChange={(e) => setValue(e.target.value)} /></Field>
+      <div className="bk-actions"><Btn kind="brand" w={11} disabled={busy || value === ''} onClick={go}>Set balance</Btn></div>
+    </div>
   );
 }
 
