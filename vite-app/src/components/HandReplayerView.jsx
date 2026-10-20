@@ -4550,7 +4550,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       '5-Card Draw': 'PL 5CD Hi', 'OFC': 'OFC',
       'Dramaha Hi': 'PLO', 'Dramaha 2-7': 'PLO', 'Dramaha 49': 'PLO', 'Dramaha 0': 'PLO', 'Dramadugi': 'PLO', 'Omajack': 'PLO' },
     'Limit':     { "Hold'em": 'LHE', 'Pineapple': 'LHE', 'Short Deck': 'Short Deck',
-      'Omaha': 'O8', 'Omaha 8/b': 'O8', 'Big O': 'Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
+      'Omaha': 'LO Hi', 'Omaha 8/b': 'O8', 'Big O': 'Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
       'Double Board Bomb Pot': 'PLO', 'Courchevel': 'PLO',
       'Stud Hi': 'Stud Hi', 'Stud 8/b': 'Stud 8', 'Razz': 'Razz',
       'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': 'Razz',
