@@ -18140,3 +18140,21 @@
 
     /* The Swiss card's own two lines (CalendarEventRow SwissLines): theme-swiss.css shows them. */
     .sw-card-title, .sw-card-meta { display: none; }
+
+    /* The card's action row on the grid (owner, 2026-10-20: "these buttons are weirdly off the grid").
+       An icon over a label is two lines of type, not a centred control face: in each 6r button, 1r of
+       room, the icon centred in a 2r cell (r1-r3, centred on the r2 line), the label's baseline seated
+       on r5 (2r line, padded to its capitals), 1r under it. Was the pair centred as one block, which
+       put the icon's middle 0.26r and the label's baseline 0.7r off any line. */
+    .cal-action-btn, .cal-entries-counter {
+      justify-content: flex-start;
+      padding-top: var(--subrow);
+      gap: 0;
+    }
+    .cal-action-icon, .cal-entries-stepper { height: calc(var(--subrow) * 2); }
+    .cal-action-label {
+      display: block;
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      min-height: calc(var(--subrow) * 2);
+      box-sizing: border-box;
+    }
