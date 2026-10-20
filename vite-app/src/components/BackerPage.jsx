@@ -16,6 +16,7 @@ import {
   fmtSignedCents, fmtHours, fmtDay, plural, tone, bbStats, eventBb, settlementCountdown, weekRunning,
 } from '../utils/backer-page.js';
 import './backer-page.css';
+import { SwissLines } from './SwissParts.jsx';
 
 /**
  * A backer's private page, /b/<token> (owner, 2026-10-13: "the full futuregame design treatment.
@@ -240,6 +241,7 @@ function SessionCard({ e }) {
           onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle(); } }}>
           <div className="cal-bar-row1">
             <span className="cal-event-time">{fmtDay(e.date)} · {fmtHours(e.hours)}</span>
+            <SwissLines name={e.game || 'Session'} stage={subtitle || ''} time={`${fmtDay(e.date)} · ${fmtHours(e.hours)}`} />
             <span className="cal-event-money">
               <span className={'cal-event-buyin bp-amt ' + tone(share)}>{fmtSignedCents(share)}</span>
               <span className="cal-event-gtd">{pctText}% of {fmtSignedCents(result)}</span>

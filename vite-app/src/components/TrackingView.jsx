@@ -13,7 +13,7 @@ import {
 } from '../utils/utils.js';
 import { fmtDay, monthLabel, shareSeries, rangeOptions } from '../utils/backer-page.js';
 import './tracking-cards.css';
-import { MoneyParts } from './SwissParts.jsx';
+import { MoneyParts, SwissLines } from './SwissParts.jsx';
 import { CardStrip, CardName, CardChevron, MonthBreak, barKeys, stop, BankrollGraph } from './ResultCardParts.jsx';
 import ResultsCurve from './ResultsCurve.jsx';
 import { BankrollSwitcher, BankrollManager, BankrollPicker } from './Bankrolls.jsx';
@@ -280,6 +280,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
         <div className="cal-event-bar" onClick={toggle} role="button" tabIndex={0} aria-expanded={open} onKeyDown={barKeys(toggle)}>
           <div className="cal-bar-row1">
             <span className="cal-event-time">{[fmtDay(isoDay(entry.date)), entries > 1 ? entries + ' entries' : ''].filter(Boolean).join(' · ')}</span>
+            <SwissLines name={entry.event_name} time={[fmtDay(isoDay(entry.date)), entries > 1 ? entries + ' entries' : ''].filter(Boolean).join(' · ')} />
             <span className="cal-event-money">
               <span className={'cal-event-buyin tr-amt' + tone}>{fmtSigned(profit)}</span>
               <span className="cal-event-gtd">{under}</span>
@@ -406,6 +407,7 @@ function DidNotPlayRow({ event, onEdit, onPlayed, busy }) {
         <div className="cal-event-bar" onClick={toggle} role="button" tabIndex={0} aria-expanded={open} onKeyDown={barKeys(toggle)}>
           <div className="cal-bar-row1">
             <span className="cal-event-time">{fmtDay(isoDay(event.date))}</span>
+            <SwissLines name={event.event_name} time={fmtDay(isoDay(event.date))} />
             <span className="cal-event-money">
               <span className="cal-event-gtd">Didn&rsquo;t play</span>
             </span>
@@ -833,6 +835,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
             <div className="cal-event-bar tr-pending-bar">
               <div className="cal-bar-row1">
                 <span className="cal-event-time">{fmtDay(isoDay(pendingEvent.date))}</span>
+                <SwissLines name={pendingEvent.event_name} time={fmtDay(isoDay(pendingEvent.date))} />
                 <span className="cal-event-money"><span className="cal-event-gtd">Awaiting result</span></span>
               </div>
               <div className="cal-bar-row2">

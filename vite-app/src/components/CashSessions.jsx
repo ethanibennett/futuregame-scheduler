@@ -33,7 +33,7 @@ import {
 } from '../utils/cash-sessions.js';
 import { cashBbGroups, bbColumn, bbFigures, bbBasis, unitLabel } from '../utils/bb-hr.js';
 import { CardStrip, MonthBreak, BankrollGraph } from './ResultCardParts.jsx';
-import { MoneyParts } from './SwissParts.jsx';
+import { MoneyParts, SwissLines } from './SwissParts.jsx';
 import { fmtDay } from '../utils/backer-page.js';
 import useLiveCashSession, { setLiveSession } from '../hooks/useLiveCashSession.js';
 import { useResultsFocus, clearResultsFocus, revealInScroller } from '../hooks/useResultsFocus.js';
@@ -456,6 +456,7 @@ function SessionRow({ s, onOpen }) {
         <div className="cal-event-bar">
           <div className="cal-bar-row1">
             <span className="cal-event-time">{fmtDay(s.session_date)} · {formatHours(s.hours)}</span>
+            <SwissLines name={game} stage={stage} time={`${fmtDay(s.session_date)} · ${formatHours(s.hours)}`} />
             <span className="cal-event-money">
               <span className={'cal-event-buyin tr-amt' + tone(s.net)}>{signed(s.net, cur)}</span>
               {hourly != null && <span className="cal-event-gtd">{signed(hourly, cur)}/h</span>}

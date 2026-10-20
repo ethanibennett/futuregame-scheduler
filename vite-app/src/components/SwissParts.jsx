@@ -1,4 +1,5 @@
 import React from 'react';
+import { splitEventStage } from '../utils/utils.js';
 
 /*
  * Markup hooks for the Swiss theme (theme-swiss.css). Each renders exactly what the app showed
@@ -46,6 +47,21 @@ export function StripLabel({ text }) {
     <>
       <span className="venue-strip-abbr">{text}</span>
       <span className="venue-strip-sc">{stripSentence(text)}</span>
+    </>
+  );
+}
+
+/** The Swiss card's two lines (owner, 2026-10-19): the title on top, then the flight (or a session's
+ *  subheading) and the time on one line ("Flight B · 10:00 AM", or the time alone). Rendered in row 1
+ *  of every card but shown only by theme-swiss.css, which hides the card's own time and name text;
+ *  display:none in every other theme (styles.css). `stage` gives the second line's lead (a cash
+ *  session's subheading); without it the name is split as the Schedule splits a flight. */
+export function SwissLines({ name, time, stage: given }) {
+  const split = given === undefined ? splitEventStage(name || '') : { base: name, stage: given };
+  return (
+    <>
+      <span className="sw-card-title">{split.stage ? split.base : name}</span>
+      <span className="sw-card-meta">{[split.stage, time].filter(Boolean).join(' · ')}</span>
     </>
   );
 }
