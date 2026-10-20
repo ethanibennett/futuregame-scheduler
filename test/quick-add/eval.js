@@ -1544,11 +1544,19 @@ async function makeParser(o, validated) {
     if (typeof cand === 'function') { fn = cand; fnName = k; break; }
   }
   if (!fn) return { unavailable: `${path.relative(ROOT, modPath)} exports none of ${pick.join(', ')} (use --export <name>)` };
+  // lib/quick-add.js parseHand({ client, text, ... }) calls the model through the client it is handed;
+  // without one every case failed in milliseconds ("Could not reach the parser"), which is what the
+  // Admin screen's live eval ran (shorthand eval, 2026-10-20). Built the way server.js builds its own.
+  let client = null;
+  try {
+    const Anthropic = require('@anthropic-ai/sdk');
+    client = new (Anthropic.default || Anthropic)({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 90000, maxRetries: 1 });
+  } catch (e) { return { unavailable: `could not load @anthropic-ai/sdk: ${e.message}` }; }
   return {
     name: `${path.relative(ROOT, modPath)} ${fnName}()`,
     mode: 'module',
     parse: async c => {
-      const input = { text: c.text, source: c.source };
+      const input = { client, text: c.text, source: c.source };
       if (o.hintGame && c.expect.gameType) input.hints = { gameType: c.expect.gameType };
       // A timer that is cleared once the parse settles, so it cannot hold the process open.
       const run = p => new Promise((resolve, reject) => {
