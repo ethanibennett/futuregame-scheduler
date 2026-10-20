@@ -25,9 +25,8 @@ export function useTick(active, ms = 1000) {
   }, [active, ms]);
 }
 
-// The sections grouped (owner, 2026-10-20: nine chips over three rows were too many): four chips in
-// one row, Tournaments ⌄ (10g: its 8g label + the 2g caret), Overview (6g), Insights ⌄ and Manage ⌄
-// (8g each), 35g with the gaps. A group's chip shows the section last used in it (remembered on the
+// The sections grouped (owner, 2026-10-20: nine chips over three rows were too many): four 8g chips in
+// one row (35g with the gaps): MTT/Cash ⌄, Overview, Insights ⌄ and Manage ⌄. A group's chip shows the section last used in it (remembered on the
 // device), so one tap returns there and its caret opens the group's menu, the way the Schedule's
 // Online chip works. The chip of the group in view is lit.
 const RESULTS_GROUPS = [
@@ -36,7 +35,8 @@ const RESULTS_GROUPS = [
   { id: 'insights', label: 'Insights', keys: ['reports', 'locations', 'goals'] },
   { id: 'manage', label: 'Manage', keys: ['backers', 'rules', 'data'] },
 ];
-const SECTION_LABEL = Object.fromEntries(RESULTS_SECTIONS);
+// Tournaments reads MTT on the strip and in its menu (owner, 2026-10-20), so every chip fits its 8g.
+const SECTION_LABEL = { ...Object.fromEntries(RESULTS_SECTIONS), tournaments: 'MTT' };
 const LAST_KEY = 'resultsGroupLast';
 const readLast = () => { try { return JSON.parse(localStorage.getItem(LAST_KEY)) || {}; } catch { return {}; } };
 
