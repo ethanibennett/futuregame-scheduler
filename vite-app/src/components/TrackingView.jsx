@@ -16,6 +16,7 @@ import './tracking-cards.css';
 import { MoneyParts, SwissLines } from './SwissParts.jsx';
 import { CardStrip, CardName, CardChevron, MonthBreak, barKeys, stop, BankrollGraph } from './ResultCardParts.jsx';
 import ResultsCurve from './ResultsCurve.jsx';
+const ResultsAll = React.lazy(() => import('./ResultsAll.jsx'));
 import { BankrollSwitcher, BankrollManager, BankrollPicker } from './Bankrolls.jsx';
 import { filterByBankroll, balancesFromSummary, defaultBankrollFor } from '../utils/bankrolls.js';
 import ResetResults from './ResetResults.jsx';
@@ -714,7 +715,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   // tab, which keeps the form's state but not its screen) and for the tax report, which is the whole
   // tab. Cash sessions and expenses hold it from their own views.
   const tournamentsHalf = !(isAdmin && resultsKind !== 'tournaments');
-  const dashSection = bk.enabled && resultsKind !== 'tournaments' && resultsKind !== 'cash';
+  const dashSection = bk.enabled && resultsKind !== 'tournaments' && resultsKind !== 'cash' && resultsKind !== 'all';
   useHideBankrollFab((tournamentsHalf && (showAddForm || !!intentForm || !!pendingFormId || !!editingId)) || (showTaxReport && isAdmin));
 
   if (showTaxReport && isAdmin) {
@@ -737,6 +738,25 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       {isAdmin && <ResultsKindTabs />}
       {dashSection ? (
         <Suspense fallback={null}><BankrollDashboard inline tab={resultsKind} bk={bk} onLog={onLog} /></Suspense>
+      ) : isAdmin && resultsKind === 'all' ? (
+        <Suspense fallback={null}>
+          <ResultsAll token={token} bk={bk} entries={trackingData} isoDay={isoDay} exchangeRates={exchangeRates}
+            resultNet={(e) => Math.round(convertAmount(resultMoney(e).net, nativeCurrency(e.venue), 'USD', exchangeRates) * 100)}
+            renderEntry={(entry) => (
+              <TrackingEntryRow
+                entry={entry}
+                onEdit={() => setEditingId(entry.id)}
+                onDelete={() => onDelete(entry.id)}
+                isEditing={editingId === entry.id}
+                onUpdate={(data) => { onUpdate(entry.id, data); setEditingId(null); }}
+                onCancelEdit={() => setEditingId(null)}
+                displayCurrency={displayCurrency}
+                exchangeRates={exchangeRates}
+                bankrolls={formBankrolls}
+                notifyToken={isAdmin ? token : null}
+              />
+            )} />
+        </Suspense>
       ) : isAdmin && resultsKind === 'cash' ? (
         <Suspense fallback={null}><CashSessionsView token={token} bk={bk} intent={cashIntent} onIntentDone={onIntentDone} /></Suspense>
       ) : (<>

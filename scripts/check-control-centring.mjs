@@ -2093,6 +2093,15 @@ function finalize(c) {
   step('cash-notify-sent', () => notifyOpen('cash', 'sent'), 0);
   step('cash-notify-warning', () => notifyOpen('cash', 'warning'), 0);
   step('cash-notify-edit', () => notifyOpen('cash-edit', null), 1);
+  // Bankroll › Logs › All (ResultsAll.jsx), the graph overlaid then combined. cash-bar, next, puts the
+  // strip back on MTT; the graph's mode is set by each view, so it needs no reset.
+  const allView = async (mode) => {
+    await nav('Bankroll');
+    await openSection(p, 'All'); await p.waitForTimeout(1500);
+    await tap(`.ra-all .bp-seg[aria-label="Graph"] button:has-text("${mode}")`, 600);
+  };
+  step('results-all', () => allView('Overlaid'), 1);
+  step('results-all-combined', () => allView('Combined'), 1);
   step('cash-bar', async () => { await cashHalf(); await openSection(p, 'MTT'); await p.waitForTimeout(600); });
   const toExpenses = async () => {
     await nav('Bankroll');

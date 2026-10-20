@@ -122,3 +122,12 @@
 .bp-style-icon svg { width: calc(var(--gu) * 1.25); height: calc(var(--gu) * 1.25); display: block; }
 .bp-style-icon:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 @media (hover: hover) and (pointer: fine) { .bp-style-icon:hover { color: var(--text); } }
+
+/* Bankroll › Logs › All, Overlaid (ResultsAll.jsx): two lines on one scale, no fill (two areas would
+   hide each other). MTT in ink, Cash in the brand colour; the legend's words and the end dots match. */
+.bp-line.ra-line-mtt { stroke: var(--text); }
+.bp-line.ra-line-cash { stroke: var(--brand); }
+.ra-key-mtt { color: var(--text); }
+.ra-key-cash { color: var(--brand); }
+.bp-dot.ra-dot-mtt { background: var(--text); }
+.bp-dot.ra-dot-cash { background: var(--brand); }

@@ -17,9 +17,9 @@ function LineStyleIcon({ style }) {
 import './backer-chart.css';
 
 /** The graph's range: N whole-g segments across 35g, one on (backer-page.js rangeOptions). */
-export function RangeStrip({ options, value, onChange }) {
+export function RangeStrip({ options, value, onChange, label = 'Range' }) {
   return (
-    <div className="bp-seg" data-n={options.length} role="radiogroup" aria-label="Range">
+    <div className="bp-seg" data-n={options.length} role="radiogroup" aria-label={label}>
       {options.map(([k, text]) => (
         <button key={k} type="button" role="radio" aria-checked={value === k}
           className={value === k ? 'is-on' : ''} onClick={() => onChange(k)}>

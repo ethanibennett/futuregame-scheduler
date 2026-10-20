@@ -72,7 +72,7 @@ export function useLiveSessionNow() {
 // tabs, drawn on the page itself (owner, 2026-10-16): 'balance' (Overview), 'locations', 'reports',
 // 'backers', 'rules', 'goals', 'data' (Import). ──
 export const RESULTS_SECTIONS = [
-  ['tournaments', 'Tournaments'], ['cash', 'Cash'], ['balance', 'Overview'], ['locations', 'Locations'],
+  ['tournaments', 'Tournaments'], ['cash', 'Cash'], ['all', 'All'], ['balance', 'Overview'], ['locations', 'Locations'],
   ['reports', 'Reports'], ['backers', 'Backers'], ['rules', 'Rules'], ['goals', 'Goals'], ['data', 'Import'],
 ];
 const SECTION_KEYS = new Set(RESULTS_SECTIONS.map(([k]) => k));
@@ -84,7 +84,7 @@ export function setResultsKind(k) {
   kind = asSection(k);
   // Only the halves are remembered on this device: a launch opens on Tournaments or Cash, never on
   // Import or Rules from last time.
-  if (kind === 'tournaments' || kind === 'cash') { try { localStorage.setItem(KIND_KEY, kind); } catch { /* private mode */ } }
+  if (kind === 'tournaments' || kind === 'cash' || kind === 'all') { try { localStorage.setItem(KIND_KEY, kind); } catch { /* private mode */ } }
   for (const f of kindSubs) f();
 }
 export function useResultsKind() {

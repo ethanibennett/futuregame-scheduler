@@ -440,7 +440,8 @@ function SessionsGraph({ sessions }) {
   return <BankrollGraph events={events} label="Profit" />;
 }
 
-function SessionRow({ s, onOpen }) {
+// Exported for Bankroll › Logs › All (ResultsAll.jsx), which lists sessions among the results.
+export function SessionRow({ s, onOpen }) {
   const cur = s.currency;
   const hourly = sessionHourly(s);
   const game = sessionGame(s) || 'Cash';

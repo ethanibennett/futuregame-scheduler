@@ -30,7 +30,7 @@ export function useTick(active, ms = 1000) {
 // device), so one tap returns there and its caret opens the group's menu, the way the Schedule's
 // Online chip works. The chip of the group in view is lit.
 const RESULTS_GROUPS = [
-  { id: 'logs', label: 'Logs', keys: ['tournaments', 'cash'] },
+  { id: 'logs', label: 'Logs', keys: ['tournaments', 'cash', 'all'] },   // All: both together (ResultsAll.jsx)
   { id: 'overview', label: 'Overview', keys: ['balance'] },
   { id: 'insights', label: 'Insights', keys: ['reports', 'locations', 'goals'] },
   { id: 'manage', label: 'Manage', keys: ['backers', 'rules', 'data'] },

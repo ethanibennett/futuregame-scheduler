@@ -767,6 +767,26 @@ function scan(rootSel) {
   } catch (e) {
     console.log(`  (cash bar skipped: ${e.message.split('\n')[0]})`);
   }
+  // Bankroll › Logs › All (ResultsAll.jsx): results and cash sessions together, the graph overlaid and
+  // combined. Back to Overlaid and MTT after, which the passes that follow expect.
+  if (on('results-all')) try {
+    await openResults();
+    await openSection(p, 'All');
+    await p.waitForTimeout(1500);
+    const ALL = '.results-kind-tabs, .ra-all';
+    const graph = (mode) => p.locator(`.ra-all .bp-seg[aria-label="Graph"] button:has-text("${mode}")`).first().click({ timeout: 4000 });
+    await graph('Overlaid');
+    await p.waitForTimeout(500);
+    await run('results all, overlaid', ALL);
+    await graph('Combined');
+    await p.waitForTimeout(500);
+    await run('results all, combined', ALL);
+    await graph('Overlaid');
+    await openSection(p, 'MTT');
+    await p.waitForTimeout(800);
+  } catch (e) {
+    console.log(`  (results all skipped: ${e.message.split('\n')[0]})`);
+  }
 
   // The floating + on the bankroll pages (components/BankrollFab.jsx) and its menu: the Results tab's
   // with a session running (the seed's: the + is raised over the cash bar), with none (the live fetch
