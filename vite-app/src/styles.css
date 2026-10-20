@@ -17400,6 +17400,11 @@
       /* The cap is rounded DOWN to a whole r (55% of a 101.09r pane is 55.6r): an event taller than
          it put My Schedule's top 0.6r off a line, and its header buttons and date pills with it. */
       max-height: round(down, 55%, var(--subrow));
+      /* The block fits the event, not the other way round (owner, 2026-10-20: "the pane size should
+         accommodate the event card"): no cap and no shrinking; My Schedule takes what is left. Only an
+         event taller than the whole pane scrolls, inside its block. */
+      max-height: 100%;
+      flex-shrink: 0;
       padding-bottom: 0;
       transition:
         height calc(var(--dur-base) * var(--dk-frac, 1)) var(--ease-out),
