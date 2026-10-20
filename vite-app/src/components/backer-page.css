@@ -423,10 +423,8 @@
   color: var(--text-muted);
 }
 
-/* This week's running total (WeekLine; owner, 2026-10-20): a 2r note under the sessions line, only
-   while earlier weeks are unsettled. The card grows by exactly that 2r. */
-.bp-week-val.is-pos { color: var(--pos); }
-.bp-week-val.is-neg { color: var(--neg); }
-.bp-total:has(.bp-week):not(:has(.bp-settle)) { height: calc(var(--subrow) * 14); }
-.bp-total:has(.bp-settle):has(.bp-week) { height: calc(var(--subrow) * 25); }
-.bp-total:has(.bp-settled-row):has(.bp-week) { height: calc(var(--subrow) * 31); }
+/* Two large figures while earlier weeks are unsettled (TotalFigures; owner, 2026-10-20): This week |
+   Past due, 16g | 17g 1g apart, each its label and figure seated as the single total's are, so the
+   card keeps its height. */
+.bp-total-split { display: grid; grid-template-columns: calc(var(--gu) * 16) calc(var(--gu) * 17); column-gap: var(--gu); }
+.bp-total .bp-total-split + .an-note { margin-top: calc(var(--subrow) * 2); }

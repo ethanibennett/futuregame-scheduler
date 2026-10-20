@@ -327,18 +327,32 @@ function SettlementBar() {
   );
 }
 
-/** This week's running total, under the sessions line, only while earlier weeks are unsettled
- *  (utils/backer-page.js weekRunning; owner, 2026-10-20). Re-checked every 30 s, so Sunday noon
- *  starts a new week on an open page. */
-function WeekLine({ feed }) {
+/** The card's large figure. While earlier weeks are unsettled (utils/backer-page.js weekRunning; owner,
+ *  2026-10-20) it is two, side by side and never added together: This week (shares since Sunday noon,
+ *  New York) and Past due (what earlier weeks still owe). Otherwise the one running total. Re-checked
+ *  every 30 s, so Sunday noon starts a new week on an open page. */
+function TotalFigures({ feed, total }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(id); }, []);
   const w = weekRunning(feed, now);
-  if (!w.show) return null;
+  if (!w.show) {
+    return (
+      <>
+        <div className="an-cell an-lbl an-lbl-3">Running total</div>
+        <div className={'an-cell bp-total-val ' + tone(total)}>{fmtSignedCents(total)}</div>
+      </>
+    );
+  }
   return (
-    <div className="an-cell an-note an-clip bp-week">
-      This week <span className={'bp-week-val ' + tone(w.weekCents)}>{fmtSignedCents(w.weekCents)}</span>
-      {' · earlier weeks '}{fmtSignedCents(w.carriedCents)}
+    <div className="bp-total-split">
+      <div className="bp-total-col">
+        <div className="an-cell an-lbl an-lbl-3">This week</div>
+        <div className={'an-cell bp-total-val ' + tone(w.weekCents)}>{fmtSignedCents(w.weekCents)}</div>
+      </div>
+      <div className="bp-total-col">
+        <div className="an-cell an-lbl an-lbl-3">Past due</div>
+        <div className={'an-cell bp-total-val ' + tone(w.carriedCents)}>{fmtSignedCents(w.carriedCents)}</div>
+      </div>
     </div>
   );
 }
@@ -508,8 +522,7 @@ export default function BackerPage({ token }) {
 
         {(events.length > 0 || sum.opening !== 0) && (
           <section className="bp-total" aria-label="Running total">
-            <div className="an-cell an-lbl an-lbl-3">Running total</div>
-            <div className={'an-cell bp-total-val ' + tone(sum.total)}>{fmtSignedCents(sum.total)}</div>
+            <TotalFigures feed={feed} total={sum.total} />
             <div className="an-cell an-note an-clip">
               {events.length > 0 ? (
                 <>
@@ -527,7 +540,6 @@ export default function BackerPage({ token }) {
                 </>
               ) : `Opening balance · no sessions yet`}
             </div>
-            <WeekLine feed={feed} />
             <SettlementBar />
             <SettleRow token={token} feed={feed} total={sum.total} onChange={reload} />
           </section>
