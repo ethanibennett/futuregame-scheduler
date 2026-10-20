@@ -152,3 +152,22 @@
 /* A cash session's line under the game (its subheading, or the first line of its notes) stays one
    line, cut with an ellipsis, so a long note never runs over the card. */
 .cs-card .cal-event-stage { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+/* The Cash summary in two columns (owner, 2026-10-20): Profit, its figure and its line on the left; Total
+   buy-ins over Total cash-outs on the right, the two 16g columns the stats already used, so the card loses
+   the stats row's height. The right column starts level with the Profit label. */
+.tracking-card.cs-sum-card {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 16) calc(var(--gu) * 16);
+  column-gap: var(--gu);
+  align-items: start;
+}
+.tracking-card.cs-sum-card > :not(.tr-sum-stats) { grid-column: 1; }
+.tracking-card.cs-sum-card > .tr-sum-sub { margin-bottom: 0; }
+.tracking-card.cs-sum-card > .tr-sum-stats {
+  grid-column: 2; grid-row: 1 / span 3;
+  grid-template-columns: calc(var(--gu) * 16);
+  row-gap: var(--subrow);
+  margin-top: var(--subrow);   /* "Total buy-ins" on the Profit label's baseline */
+}
+.app-shell.is-desktop .tracking-card.cs-sum-card > .tr-sum-stats { grid-template-columns: calc(var(--gu) * 16); }
