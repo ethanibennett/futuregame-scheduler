@@ -276,6 +276,9 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
                       onMouseEnter={() => { if (hasData) setPick({ dow: d, hour: h, ...c }); }}
                       title={hasData ? `${day} ${hourLabel(h)} · ${(c.meanTables || 0).toFixed(1)} tables avg · ran ${Math.round((c.ranFraction || 0) * 100)}% · ${c.samples} polls` : `${day} ${hourLabel(h)} · no data`}
                       style={{
+                        /* The cell's share of the busiest hour, for the Swiss theme's ink tint
+                           (theme-swiss.css); an unused custom property everywhere else. */
+                        '--heat': intensity.toFixed(3),
                         position: 'relative',
                         /* Exactly the 4g x 2r track: no border (the pick ring and the
                            separating hairline are inset shadows), so nothing adds size. */

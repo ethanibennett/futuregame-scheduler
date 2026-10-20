@@ -1336,8 +1336,8 @@
 :root[data-theme^="swiss"] .cal-clock-pt { font-weight: var(--sw-thin); letter-spacing: 0; }
 
 /* Date breaks other than today: no block, the day and month as plain words. */
-:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break) .date-break-pill { background: transparent; color: var(--sw-ink); justify-content: flex-start; width: auto; }
-:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break) .date-break-label { transform: none !important; }
+:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break):not(.bp-month-break) .date-break-pill { background: transparent; color: var(--sw-ink); justify-content: flex-start; width: auto; }
+:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break):not(.bp-month-break) .date-break-label { transform: none !important; }
 :root[data-theme^="swiss"] .schedule-date-break .date-break-dow { font-weight: var(--sw-thin); letter-spacing: 0; color: var(--sw-g60); }
 
 /* The top bar: no black avatar square; the icon glyphs grey. */
@@ -1440,20 +1440,20 @@
    count and the weekday already sit on (each trimmed to cap height and baseline, bottom-aligned), and the
    rule under it margin to margin: the rule belongs to the whole card row, not the content beside the
    venue column. */
-:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break) .date-break-pill {
+:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break):not(.bp-month-break) .date-break-pill {
   height: calc(var(--subrow) * 4);
   align-items: flex-end;
   justify-content: flex-start;
   width: auto;
   min-width: var(--col);
 }
-:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break) .date-break-label {
+:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break):not(.bp-month-break) .date-break-label {
   display: flex;
   align-items: baseline;
   gap: calc(var(--gu) * 0.5);
   transform: none !important;
 }
-:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break) .date-break-day {
+:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break):not(.bp-month-break) .date-break-day {
   font-size: calc(var(--gu) * 3.5);
   line-height: 1;
   font-weight: var(--sw-bold);
@@ -1461,7 +1461,7 @@
   text-box-trim: trim-both;
   text-box-edge: cap alphabetic;
 }
-:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break) .date-break-mon {
+:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break):not(.bp-month-break) .date-break-mon {
   font-size: var(--fs-sm);
   line-height: 1;
   font-weight: var(--sw-thin);
@@ -1480,35 +1480,35 @@
 
 /* Today as every other date, only red (owner, 2026-10-19): the same 4r row, size, weight and the
    quarter g to its month as the rest (the rules above), the day in red. */
-:root[data-theme^="swiss"] .schedule-date-break.is-today:not(.tr-month-break) { padding-top: 0; }
-:root[data-theme^="swiss"] .schedule-date-break.is-today:not(.tr-month-break) .date-break-pill {
+:root[data-theme^="swiss"] .schedule-date-break.is-today:not(.tr-month-break):not(.bp-month-break) { padding-top: 0; }
+:root[data-theme^="swiss"] .schedule-date-break.is-today:not(.tr-month-break):not(.bp-month-break) .date-break-pill {
   height: calc(var(--subrow) * 4); align-items: flex-end; justify-content: flex-start; width: auto; min-width: var(--col);
 }
-:root[data-theme^="swiss"] .schedule-date-break.is-today:not(.tr-month-break) .date-break-day {
+:root[data-theme^="swiss"] .schedule-date-break.is-today:not(.tr-month-break):not(.bp-month-break) .date-break-day {
   color: var(--sw-red); font-size: calc(var(--gu) * 3.5); line-height: 1; font-weight: var(--sw-bold);
   letter-spacing: var(--sw-track-display); text-box-trim: trim-both; text-box-edge: cap alphabetic;
 }
-:root[data-theme^="swiss"] .schedule-date-break.is-today:not(.tr-month-break) .date-break-mon {
+:root[data-theme^="swiss"] .schedule-date-break.is-today:not(.tr-month-break):not(.bp-month-break) .date-break-mon {
   font-size: var(--fs-sm); line-height: 1; font-weight: var(--sw-thin); letter-spacing: 0; text-box-trim: trim-both; text-box-edge: cap alphabetic;
 }
 
 /* Desktop My Schedule's date column: the full 8g to itself (owner, 2026-10-19). The day and its month on
    one line across the column, as the list sets them, the weekday under them; nothing stacked or
    overlapping. Scoped through the group so it outranks the list's date rules. */
-:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break) { width: var(--col); }
-:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break) .date-break-pill {
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break):not(.bp-month-break) { width: var(--col); }
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break):not(.bp-month-break) .date-break-pill {
   width: var(--col); min-width: 0; height: calc(var(--subrow) * 4); align-items: flex-end; justify-content: flex-start;
 }
-:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break) .date-break-label {
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break):not(.bp-month-break) .date-break-label {
   flex-direction: row; align-items: baseline; gap: calc(var(--gu) * 0.25);
 }
-:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break) .date-break-day {
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break):not(.bp-month-break) .date-break-day {
   font-size: calc(var(--gu) * 3.5); font-weight: var(--sw-bold); line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic;
 }
-:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break) .date-break-mon {
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break):not(.bp-month-break) .date-break-mon {
   font-size: var(--fs-sm); font-weight: var(--sw-thin); letter-spacing: 0;
 }
-:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break) .date-break-end {
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break:not(.tr-month-break):not(.bp-month-break) .date-break-end {
   width: var(--col); margin-top: var(--subrow) !important;
 }
 
@@ -1575,10 +1575,10 @@
    capitals 0.715 of the size, size = 2r / 0.715 + the title's size. The day header keeps only the
    count and the weekday, on a 3r line, and still sticks: the date hangs under it, pinned too.
    The first card's venue drops to r8, under the date. */
-:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) {
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) {
   height: calc(var(--subrow) * 3); min-height: 0; padding-top: 0 !important; align-items: flex-end;
 }
-:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) .date-break-pill {
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) .date-break-pill {
   position: absolute; left: 0; top: 100%;
   width: var(--col); min-width: 0; height: calc(var(--subrow) * 6) !important;
   display: flex; align-items: flex-end; justify-content: flex-start; pointer-events: none;
@@ -1586,12 +1586,12 @@
      cards' venue names pass under it, and the next day's date covers this one. */
   background: var(--sw-ground) !important;
 }
-:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) .date-break-label { gap: calc(var(--gu) * 0.25); align-items: baseline; }
-:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) .date-break-day {
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) .date-break-label { gap: calc(var(--gu) * 0.25); align-items: baseline; }
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) .date-break-day {
   font-size: calc(var(--subrow) * 2.797 + var(--fs-md)) !important;
 }
-:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) .date-break-count { position: absolute; left: calc(var(--gu) * 9); bottom: var(--subrow); margin: 0; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; }
-:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) + * .cal-venue-strip { grid-template-rows: calc(var(--subrow) * 8); }
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) .date-break-count { position: absolute; left: calc(var(--gu) * 9); bottom: var(--subrow); margin: 0; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; }
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) + * .cal-venue-strip { grid-template-rows: calc(var(--subrow) * 8); }
 :root[data-theme^="swiss"] .cal-bar-row1:has(> .cal-event-clock) { grid-template-rows: minmax(calc(var(--subrow) * 4), auto) calc(var(--subrow) * 2) calc(var(--subrow) * 2); }
 
 /* Hairlines (owner, 2026-10-19): each event's rule runs from 10g (its text column) to the right margin;
@@ -1613,10 +1613,260 @@
    from the header on the ground colour and painted over a card's line (owner: "I don't see the margin
    to margin hairline over the date"). It also rides with the header when it pins. The first card then
    draws none, or the two would double. */
-:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) + * .cal-event-row {
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) + * .cal-event-row {
   background-image: none !important;
 }
-:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.dk-mine-block .schedule-date-break) {
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) {
   background: var(--sw-ground) !important;
   box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--sw-g30) !important;
 }
+
+/* ==========================================================================
+   THIRD PASS (owner, 2026-10-20: "make the swiss theme look more like the artifact you built",
+   docs/prototypes/swiss-second-pass.html). The catalogue page's rules, applied to what was still
+   boxed, filled or doubled: no frames, grey hairlines between things, flush-left words for
+   controls, bold only for names and figures, red only for now, losses and the one action.
+   ========================================================================== */
+
+/* --- The frame ------------------------------------------------------------------------------ */
+/* Desktop: no ink box around each pane. Columns part on white space, one grey hairline between
+   two panes (a newspaper's column rule), none at the rail. The rail's divider is grey too. */
+:root[data-theme^="swiss"] .dk-pane::before { border-left-color: transparent; border-right-color: transparent; }
+:root[data-theme^="swiss"] .dk-pane + .dk-pane::before { border-left-color: var(--sw-g30); }
+:root[data-theme^="swiss"] .dk-rail-secondary { box-shadow: inset 0 var(--bw-hair) 0 var(--sw-g30); }
+
+/* --- Schedule cards ------------------------------------------------------------------------- */
+/* The open event in the desktop pane: no red ring round its card (red is not for selection,
+   catalogue 28; the standard themes dropped the mark too). The pane beside says which it is. */
+:root[data-theme^="swiss"] .cal-event-row.is-selected::after { display: none; }
+/* The card's own name never shows under the Swiss title, also on a card with accolades (its row
+   stays for the icons): the base rule for a single-line name outranked the earlier hide. */
+:root[data-theme^="swiss"] .cal-event-bar:has(.sw-card-title) .cal-bar-row2 .cal-event-name { display: none !important; }
+/* The accolade icons (bounty, satellite, restart, bracelet, ring) take no 2r row of their own on a
+   closed card: they sit in the money column on the meta line (r4 to r6), grey. */
+:root[data-theme^="swiss"] .cal-event-row:not(.open) .cal-event-bar:has(.sw-card-title) { position: relative; }
+:root[data-theme^="swiss"] .cal-event-row:not(.open) .cal-event-bar:has(.sw-card-title) > .cal-bar-row2:has(.cal-accolades) {
+  position: absolute;
+  top: calc(var(--subrow) * 4);
+  right: var(--gu);
+  height: calc(var(--subrow) * 2);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+:root[data-theme^="swiss"] .cal-accolades,
+:root[data-theme^="swiss"] .cal-accolades * { color: var(--sw-g60) !important; }
+/* The day header's weekday: grey, without the collapse chevron (the header still collapses), and in
+   the list's marginal column over the hanging date (catalogue 2: the date and its weekday share the
+   8g column), on the count's baseline (r2 of the 3r header), not alone at the far right. */
+:root[data-theme^="swiss"] .schedule-date-break .date-break-chev { display: none; }
+:root[data-theme^="swiss"] .schedule-date-break .date-break-dow { color: var(--sw-g60); }
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) .date-break-end {
+  position: absolute; left: 0; bottom: var(--subrow);
+  width: auto; height: auto; margin: 0 !important; padding: 0; justify-content: flex-start;
+}
+/* Desktop My Schedule: the day's 2px-era rule is the group's grey hairline; its first event draws
+   none of its own 1r under it (two lines a row apart). Later events of the day keep theirs. */
+:root[data-theme^="swiss"] .dk-mine-block [data-date-group] > .schedule-date-break + * .cal-event-row { box-shadow: none !important; }
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) .date-break-dow {
+  font-size: var(--fs-sm); line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+}
+/* The day's first card holds its room's name on r8, under the date: at 8r the card ended on that
+   baseline and cut the descenders (Borgata, Turning Stone). 9r gives them their room. */
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) + * .cal-event-row:not(.open) { min-height: calc(var(--subrow) * 9); }
+/* The floating "Next" key: a red block on the ground, no shadow. */
+:root[data-theme^="swiss"] .back-to-today-fab { box-shadow: none !important; }
+
+/* The card's one-line texts cut to an ellipsis (meta line, room) are trimmed to the capitals, so the
+   ascenders of d, f, h, l stood above the box their own overflow clips (check-text-clipping): painted
+   room above as well as below, cancelled by an equal negative margin, so no line moves. */
+:root[data-theme^="swiss"] .cal-bar-row1 > .sw-card-meta,
+:root[data-theme^="swiss"] .cal-venue-strip :is(.venue-strip-sc, .venue-strip-full) { padding-top: 0.35em; margin-top: -0.35em; }
+
+/* --- The open card: a light grey label over a bold value (catalogue 40), the rake a word, the
+   actions words with an arrow, flush on the text column (10g). ------------------------------ */
+:root[data-theme^="swiss"] .cal-detail-label { color: var(--sw-g60); font-weight: var(--sw-thin); letter-spacing: 0; }
+:root[data-theme^="swiss"] .cal-detail-value { color: var(--sw-ink); font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
+:root[data-theme^="swiss"] .badge { border-color: transparent !important; padding-left: 0; padding-right: 0; }
+:root[data-theme^="swiss"] .badge.badge-event { background: transparent !important; color: var(--sw-ink) !important; }
+:root[data-theme^="swiss"] .cal-action-btn { align-items: flex-start; padding-left: var(--gu); padding-right: 0; }
+:root[data-theme^="swiss"] .cal-action-btn .cal-action-icon { display: none; }
+:root[data-theme^="swiss"] .cal-action-label { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); text-align: left; }
+:root[data-theme^="swiss"] .cal-action-label::after { content: '\00a0\2192'; font-weight: var(--sw-thin); letter-spacing: 0; }
+/* Late registration, Until start and the backer page's settle bar: the time gone a 2px ink line
+   over the hairline track, not a solid bar (catalogue 43, the station clock's thin sweep). */
+:root[data-theme^="swiss"] :is(.mini-late-reg-fill, .late-reg-bar-fill),
+:root[data-theme^="swiss"] :is(.mini-late-reg-fill, .late-reg-bar-fill):is(.critical, .urgent, .open) {
+  background: linear-gradient(var(--sw-ink), var(--sw-ink)) center / 100% var(--bw-2) no-repeat !important;
+}
+:root[data-theme^="swiss"] .late-reg-sep { background: var(--sw-g30); }
+
+/* --- My Schedule (phone): the heading on one line, the count grey. ---------------------------- */
+:root[data-theme^="swiss"] .app-shell:not(.is-desktop) .schedule-sticky-header .section-header h2 { font-size: var(--fs-md); white-space: nowrap; }
+:root[data-theme^="swiss"] .schedule-sticky-header .section-header h2 > span { color: var(--sw-g60) !important; font-weight: var(--sw-thin) !important; letter-spacing: 0; }
+
+/* --- Bankroll --------------------------------------------------------------------------------- */
+/* The four section groups (MTT/Cash, Overview, Insights, Manage; CashLive.jsx) in one row of 8g
+   words, as the Schedule's index: the current one bold with the red rule under it, the carets
+   small grey arrows, no boxes. */
+:root[data-theme^="swiss"] .kind-toggles.results-kind-tabs.is-grouped { grid-template-columns: repeat(4, var(--col)); }
+:root[data-theme^="swiss"] .kind-toggles.results-kind-tabs.is-grouped > .kind-toggle { width: var(--col); }
+:root[data-theme^="swiss"] .kind-toggles.results-kind-tabs.is-grouped .kind-toggle-split > .kind-toggle { width: calc(var(--gu) * 6); }
+:root[data-theme^="swiss"] .kind-toggles.results-kind-tabs .kind-toggle-caret,
+:root[data-theme^="swiss"] .kind-toggles.results-kind-tabs .kind-toggle-caret.active {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--sw-g30);
+}
+/* The summary is no box now, so its 2r of inner padding was only a gap. */
+:root[data-theme^="swiss"] .tracking-card { padding-top: 0; padding-bottom: 0; }
+/* Its two stats: the label light grey over the figure bold (catalogue 40). */
+:root[data-theme^="swiss"] .tr-sum-stats .cal-detail-label { color: var(--sw-g60); font-weight: var(--sw-thin); }
+:root[data-theme^="swiss"] .tr-sum-stats .cal-detail-value { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
+/* The month as a ledger line: the month bold, the year light after a space. The backer page's
+   month break is the same line (it had taken the Schedule's hanging date). */
+:root[data-theme^="swiss"] :is(.tr-month-pill, .bp-month-pill) .date-break-label { display: flex; align-items: baseline; gap: calc(var(--gu) * 0.25) !important; }
+/* Its words on the count's and the net's baseline, r4 of the line: the pill's foot. */
+:root[data-theme^="swiss"] .date-break-pill:is(.tr-month-pill, .bp-month-pill) { align-items: flex-end; }
+:root[data-theme^="swiss"] :is(.tr-month-pill, .bp-month-pill) :is(.date-break-day, .date-break-mon) {
+  line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+}
+:root[data-theme^="swiss"] .schedule-date-break.bp-month-break { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30); background: var(--sw-ground); }
+:root[data-theme^="swiss"] .date-break-pill.bp-month-pill { background: transparent; color: var(--sw-ink); justify-content: flex-start; width: auto; }
+:root[data-theme^="swiss"] .bp-month-pill .date-break-label { transform: none !important; }
+:root[data-theme^="swiss"] :is(.tr-month-break, .bp-month-break) .date-break-count { color: var(--sw-g60); }
+
+/* Overview's summary table: no coloured key bars under the heads; the head's rule grey and inside
+   the margins (the table's scroller runs to the window's edge). */
+:root[data-theme^="swiss"] .ovt-th.is-key::after { display: none; }
+/* The rows bled 1g past the margins for their zebra bands, and the second pass's flush rule took
+   their 1g of padding, which left the row labels on the window's edge. No bands here: the rows sit
+   inside the margins, their rules too. */
+:root[data-theme^="swiss"] :is(.ovt-thead, .ovt-row) { margin-inline: 0 !important; padding-inline: 0 !important; }
+:root[data-theme^="swiss"] .ovt-thead { box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--sw-g30); }
+:root[data-theme^="swiss"] .ovt-row.is-strong { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-ink); }
+
+/* Insights › Reports: the breakdown chips as a menu of words (catalogue 37), the chosen one bold
+   with the red rule. */
+:root[data-theme^="swiss"] .br-chip,
+:root[data-theme^="swiss"] .br-chip.is-on { box-shadow: none !important; background: transparent !important; justify-content: flex-start; text-align: left; padding-left: 0; }
+:root[data-theme^="swiss"] .br-chip { color: var(--sw-g60); }
+:root[data-theme^="swiss"] .br-chip.is-on { color: var(--sw-ink); font-weight: var(--sw-bold); letter-spacing: var(--sw-track); text-decoration: underline var(--bw-2) var(--sw-red); text-underline-offset: 0.3em; }
+:root[data-theme^="swiss"] .br-chip:disabled { color: var(--sw-g30); }
+:root[data-theme^="swiss"] .an-row.is-head.br-cols { box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--sw-g30); }
+/* The bars as lines (catalogue 22: the mark at its finest), in their own 1r boxes. */
+:root[data-theme^="swiss"] .br-fill { background: linear-gradient(var(--sw-ink), var(--sw-ink)) left center / 100% var(--bw-2) no-repeat !important; }
+:root[data-theme^="swiss"] .br-fill.is-neg { background: linear-gradient(var(--sw-red), var(--sw-red)) left center / 100% var(--bw-2) no-repeat !important; }
+:root[data-theme^="swiss"] .br-zero { background: var(--sw-g30) !important; }
+
+/* Manage › Backers: each backer under a grey hairline, not in a box; its inner rules the lightest
+   grey; Settled red words with an arrow, as Log Result. */
+:root[data-theme^="swiss"] .bl-item::after,
+:root[data-theme^="swiss"] .bl-item.is-open::after { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30); }
+:root[data-theme^="swiss"] .bl-card { padding-left: 0; padding-right: 0; }
+:root[data-theme^="swiss"] :is(.bl-stats, .bl-pager.bb-actions, .bb-more, .bb-share) { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g10); }
+:root[data-theme^="swiss"] .bl-pager.bb-actions { padding-left: 0; padding-right: 0; }
+:root[data-theme^="swiss"] .bl-stats { padding-left: 0; }
+:root[data-theme^="swiss"] :is(.bb-settle .bb-settle-btn, .bb-settle .bb-settle-btn.is-primary, .bp-settled-btn, .bp-settled-btn.is-primary) {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: var(--sw-red) !important;
+  justify-content: flex-start;
+  text-align: left;
+  padding-left: 0;
+  font-weight: var(--sw-bold);
+  letter-spacing: var(--sw-track);
+}
+:root[data-theme^="swiss"] :is(.bb-settle-btn, .bp-settled-btn)::after { content: '\00a0\2192'; font-weight: var(--sw-thin); letter-spacing: 0; }
+:root[data-theme^="swiss"] :is(.bb-settle-btn, .bp-settled-btn) { white-space: nowrap; }
+
+/* --- Dashboard: Up Next's pager as short rules on the left margin, grey, the current one red. --- */
+:root[data-theme^="swiss"] .dash-upnext-dots { padding-left: 0; }
+:root[data-theme^="swiss"] .dash-upnext-dot::before {
+  left: 0;
+  top: calc(var(--subrow) - var(--bw-2));
+  width: var(--gu);
+  height: var(--bw-2);
+  border-radius: 0 !important;
+  background: var(--sw-g30);
+}
+:root[data-theme^="swiss"] .dash-upnext-dot.active::before { background: var(--sw-red); }
+
+/* --- Cash tab --------------------------------------------------------------------------------- */
+/* The game chips as words, the chosen bold with the red rule. */
+:root[data-theme^="swiss"] .cb-chip,
+:root[data-theme^="swiss"] .cb-chip.is-on { border-color: transparent !important; background: transparent !important; justify-content: flex-start; padding-left: 0; }
+:root[data-theme^="swiss"] .cb-chip { color: var(--sw-g60); }
+:root[data-theme^="swiss"] .cb-chip.is-on { color: var(--sw-ink); font-weight: var(--sw-bold); }
+/* The heatmap in ink: a cell's tint is its share of the busiest hour (--heat, CashHeatmap), from an
+   8% tint to solid ink; the figure grey on the light cells, the ground colour on the dark. */
+:root[data-theme^="swiss"] .cash-heat-cell:not(.no-data) {
+  background: color-mix(in srgb, var(--sw-ink) calc(8% + 92% * var(--heat, 0)), var(--sw-ground)) !important;
+  /* Grey on the faintest cells, ink on the light ones, the ground colour once the tint passes about
+     half (two steps: each clamp is 0% or 100%). */
+  color: color-mix(in srgb,
+    var(--sw-ground) clamp(0%, (var(--heat, 0) - 0.45) * 100000%, 100%),
+    color-mix(in srgb, var(--sw-ink) clamp(0%, (var(--heat, 0) - 0.15) * 100000%, 100%), var(--sw-g60))) !important;
+}
+:root[data-theme^="swiss"] .cash-heat-cell.no-data { background: var(--sw-ground) !important; }
+:root[data-theme^="swiss"] .cash-heat-cell { text-shadow: none !important; }
+:root[data-theme^="swiss"] .cash-view span[style*="74, 170, 120"] {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--sw-ink) 8%, var(--sw-ground)), var(--sw-ink)) !important;
+}
+/* Avg tables | Reliability: words, the chosen bold with the red rule. */
+:root[data-theme^="swiss"] .cash-view button[style*="999px"] {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--sw-g60) !important;
+  padding-left: 0 !important;
+  margin-right: var(--gu);
+}
+:root[data-theme^="swiss"] .cash-view button[style*="999px"][style*="background: var(--text-muted"] {
+  color: var(--sw-ink) !important;
+  font-weight: var(--sw-bold);
+  letter-spacing: var(--sw-track) !important;
+  text-decoration: underline var(--bw-2) var(--sw-red);
+  text-underline-offset: 0.3em;
+}
+
+/* --- Hands -------------------------------------------------------------------------------------- */
+/* Type a hand / Say a hand: words under a grey rule, flush left. */
+:root[data-theme^="swiss"] .qa-chip { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30) !important; background: transparent !important; justify-content: flex-start; padding-left: 0; }
+:root[data-theme^="swiss"] .qa-chip,
+:root[data-theme^="swiss"] .qa-chip * { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
+:root[data-theme^="swiss"] .qa-chip svg { display: none; }
+/* The game picker: no frame, no grey fill; the chosen game and structure bold with a red rule at
+   the left, the tabs words with the red rule under the chosen. */
+:root[data-theme^="swiss"] .game-picker { box-shadow: none !important; }
+:root[data-theme^="swiss"] .game-tab-bar { box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--sw-g30) !important; }
+:root[data-theme^="swiss"] .game-faves-row { box-shadow: none !important; }
+:root[data-theme^="swiss"] :is(.game-tab-btn, .game-fave-btn) { box-shadow: none !important; background: transparent !important; color: var(--sw-g60); }
+:root[data-theme^="swiss"] :is(.game-tab-btn, .game-fave-btn).active { color: var(--sw-ink); font-weight: var(--sw-bold); letter-spacing: var(--sw-track); box-shadow: inset 0 calc(var(--bw-2) * -1) 0 0 var(--sw-red) !important; }
+:root[data-theme^="swiss"] .game-check-row { background: transparent !important; border-left-color: transparent !important; }
+:root[data-theme^="swiss"] .game-check-row.selected { box-shadow: inset var(--bw-2) 0 0 0 var(--sw-red); }
+:root[data-theme^="swiss"] .game-check-row.selected * { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
+:root[data-theme^="swiss"] .game-check-section-label { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30) !important; color: var(--sw-g60); }
+/* The one red block keeps white type. */
+:root[data-theme^="swiss"] .btn.btn-primary,
+:root[data-theme^="swiss"] .btn.btn-primary * { color: #ffffff; font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
+:root[data-theme^="swiss"] .replayer-hand-card-content { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30) !important; }
+/* The tools row over the navigation: words, the open tool bold with the red rule under it. */
+:root[data-theme^="swiss"] .hands-tool-row > button {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--sw-g60) !important;
+  font-weight: var(--sw-thin) !important;
+  justify-content: flex-start;
+  padding-left: 0 !important;
+}
+:root[data-theme^="swiss"] .hands-tool-row > button[style*="background: var(--accent)"] {
+  color: var(--sw-ink) !important;
+  font-weight: var(--sw-bold) !important;
+  letter-spacing: var(--sw-track);
+  box-shadow: inset 0 calc(var(--bw-2) * -1) 0 0 var(--sw-red);
+}
+
+/* --- The backer page: the totals flush on the margin, the theme key a grey glyph. ------------- */
+:root[data-theme^="swiss"] .bp-total { padding-left: 0 !important; padding-right: 0 !important; }
+:root[data-theme^="swiss"] .bp-top .btn-icon { border-color: transparent !important; color: var(--sw-g60); }

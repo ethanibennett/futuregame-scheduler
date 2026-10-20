@@ -1713,7 +1713,11 @@ function App() {
     if (currentView === 'cash') return 'Cash \u00b7 ' + (cashMode === 'heatmap' ? 'history' : 'live games');
     if (currentView === 'hands') return 'Hands \u00b7 archive';
     if (currentView === 'dashboard') return 'Dashboard';
-    return ['Schedule', seasonLabel].filter(Boolean).join(' \u00b7 ');
+    // The season as the catalogue sets a range (item 15): capital months, an en dash ("Oct 2026\u2013Mar 2027").
+    const season = String(seasonLabel || '')
+      .replace(/\b([a-z])([a-z]{2})\b/g, (m, a, b) => a.toUpperCase() + b)
+      .replace(/\s*-\s*/g, '\u2013');
+    return ['Schedule', season].filter(Boolean).join(' \u00b7 ');
   }, [currentView, bk.enabled, bk.selected, bk.visible, bk.summary, cashMode, seasonLabel]);
 
   // Edit home (utils/home-layout.js): which Dashboard sections show and in what order, per account

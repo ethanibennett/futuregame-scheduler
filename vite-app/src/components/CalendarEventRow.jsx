@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
-import { StripLabel } from './SwissParts.jsx';
+import { StripLabel, SwissLines } from './SwissParts.jsx';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
@@ -32,19 +32,6 @@ function formatEventName(name) {
     <>
       <span className="cal-event-base">{base}</span>
       <span className="cal-event-stage">{stage}</span>
-    </>
-  );
-}
-
-// The Swiss card's two lines (owner, 2026-10-19): the title on top, then the flight and the start time
-// on one line ("Flight B · 10:00 AM", or the time alone). Rendered on every card but shown only by
-// theme-swiss.css, which hides the time and name rows' own text; display:none elsewhere.
-function SwissLines({ name, time }) {
-  const { base, stage } = splitEventStage(name || '');
-  return (
-    <>
-      <span className="sw-card-title">{stage ? base : name}</span>
-      <span className="sw-card-meta">{stage ? `${stage} · ${time}` : time}</span>
     </>
   );
 }
