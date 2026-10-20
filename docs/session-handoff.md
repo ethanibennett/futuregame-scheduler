@@ -45,6 +45,13 @@ wsop-console side and verified against both live services.
   balance, the Tournaments summary in the Cash two-column layout, the line-style icon on the other graphs.
 - The shorthand eval's model half needs `ANTHROPIC_API_KEY` here or a run on Render (~$10–30 per 1,000).
 
+**The overnight guard sweep** (scratch copy of `swiss/scratch2.db`): check:clipping passes standard and swiss-light
+at 402 and 1440. check:controls: phone 9 distinct, desktop 20, after the Staking header fix (`a4596d9`). Left,
+all small or long-standing: on desktop every bottom-anchored control (the admin D/# toggles, the Bankroll +,
+the "Next" pill, the Hands tool row) sits 0.59r off an r line at 1440x900; the grouped strip's "MTT" and
+"IMPORT" labels sit 0.8px off centre (tolerance 0.75); the rake badge's label; Reports' weekday chips;
+two GTO seat strips. The first phone pass ran before the guard fix, so rerun it before trusting its count.
+
 **Traps found tonight**
 - **C: filled to 0 bytes** (the WSL disk image grows; an old session's 8.7 GB scratch was moved to
   `D:\projects\_moved-from-C`). While it was full, BOTH `node_modules` (root and `vite-app`) were emptied
