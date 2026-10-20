@@ -309,6 +309,8 @@ export const VENUE_MAP = {
   'MGM Grand':                   { abbr: 'MGM GRAND', color: '#167f3d', longName: 'MGM Grand' },
   'MGM National Harbor':         { abbr: 'MGM NH',    color: '#94711a', longName: 'MGM National Harbor' },
   'Irish Poker Open':            { abbr: 'IPO',       color: '#1a6b3c', longName: 'Irish Poker Open' },
+  'Irish Poker Open 2027':       { abbr: 'IPO',       color: '#1a6b3c', longName: 'Irish Poker Open' },
+  'Irish Open Marrakech 2026':   { abbr: 'MARRAKECH', color: '#9b1c1c', longName: 'Irish Open Marrakech' },
   'Personal':                    { abbr: 'PERSONAL',  color: '#2064b6', longName: 'Personal' },
   'Turning Stone Casino':        { abbr: 'TURNING STONE', color: '#761515', longName: 'WSOPC Turning Stone' },
   'Texas Card House':            { abbr: 'TCH', color: '#a0522d', longName: 'WSOPC Austin' },
@@ -989,6 +991,8 @@ export const VENUE_TIMEZONES = {
   'Horseshoe Tunica': 'America/Chicago',
   // International
   'Irish Poker Open': 'Europe/Dublin',
+  'Irish Poker Open 2027': 'Europe/Dublin',
+  'Irish Open Marrakech 2026': 'Africa/Casablanca',
   'WSOP Europe': 'Europe/Prague',
   // Online (advertised in Pacific)
   'WSOP Online': 'America/Los_Angeles',
@@ -1105,6 +1109,9 @@ export const VENUE_COORDS = {
   'MGM Grand':                   { lat: 36.1024, lng: -115.1696, region: 'NV' },
   'MGM National Harbor':         { lat: 38.7828, lng: -77.0189, region: 'MD' },
   'Irish Poker Open':            { lat: 53.3438, lng: -6.2530, region: 'IE' },
+  'Irish Poker Open 2027':       { lat: 53.3438, lng: -6.2530, region: 'IE' },
+  // Casino de Marrakech at the Es Saadi resort, Hivernage. MOROCCO, not MA: MA is Massachusetts.
+  'Irish Open Marrakech 2026':   { lat: 31.6247, lng: -8.0102, region: 'MOROCCO' },
   'Turning Stone Casino':        { lat: 43.1215, lng: -75.5130, region: 'NY' },
   'Texas Card House':            { lat: 30.3553, lng: -97.7069, region: 'TX' },
   'Caesars Palace':              { lat: 36.1162, lng: -115.1745, region: 'NV' },
@@ -1860,7 +1867,7 @@ export function detectConflicts(schedule) {
 }
 
 // ── Currency helpers ────────────────────────────────────────
-export const VENUE_CURRENCY = { 'Irish Poker Open': 'EUR', 'WSOP Europe': 'EUR' };
+export const VENUE_CURRENCY = { 'Irish Poker Open': 'EUR', 'Irish Poker Open 2027': 'EUR', 'Irish Open Marrakech 2026': 'EUR', 'WSOP Europe': 'EUR' };
 export function nativeCurrency(venue) { return VENUE_CURRENCY[venue] || 'USD'; }
 export const CURRENCY_CONFIG = {
   USD: { symbol: '$', pos: 'pre', label: 'US Dollar' },
@@ -1918,6 +1925,8 @@ export const VENUE_TO_SERIES = {
   'Golden Nugget': 'Golden Nugget Grand',
   'Horseshoe / Paris Las Vegas': 'WSOP',
   'Irish Poker Open': 'Irish Poker Open',
+  'Irish Poker Open 2027': 'Irish Poker Open',
+  'Irish Open Marrakech 2026': 'Irish Open Marrakech',
   'MGM Grand': 'MGM Grand Championship',
   'Orleans': 'Orleans Open',
   'Resorts World': 'Resorts World Summer Series',

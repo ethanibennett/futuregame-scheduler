@@ -1746,6 +1746,10 @@ async function initDatabase() {
   const seedFiles = [
     { file: 'deepstack-events.json', label: 'deepstacks', check: "is_deepstack = 1" },
     { file: 'ipo-events.json', label: 'Irish Poker Open', check: "venue = 'Irish Poker Open'" },
+    // irishpokeropen.com's own schedule feed (wp-json/api/v2/kholdem/yearly-schedule?year=2027) and the
+    // Marrakech schedule PDF, added 2026-10-20 (owner). Each seeds once, when its venue has no rows.
+    { file: 'ipo-2027-events.json', label: 'Irish Poker Open 2027', check: "venue = 'Irish Poker Open 2027'" },
+    { file: 'iom-2026-events.json', label: 'Irish Open Marrakech 2026', check: "venue = 'Irish Open Marrakech 2026'" },
     { file: 'turning-stone-events.json', label: 'Turning Stone', check: "venue = 'Turning Stone Casino'" },
     { file: 'tch-events.json', label: 'Texas Card House', check: "venue = 'Texas Card House'" },
     { file: 'wsope-events.json', label: 'WSOP Europe', check: "venue = 'WSOP Europe'" },
@@ -1767,8 +1771,8 @@ async function initDatabase() {
                starting_chips, level_duration, reentry, late_reg, late_reg_end,
                game_variant, venue, notes, category, is_satellite, target_event,
                is_restart, parent_event, prize_pool, house_fee, opt_add_on,
-               rake_pct, rake_dollars, source_pdf, is_deepstack)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               rake_pct, rake_dollars, source_pdf, is_deepstack, stable_id, property)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               [
                 t.event_number || '', t.event_name, t.date, t.time, t.buyin,
                 t.starting_chips, t.level_duration, t.reentry,
@@ -1776,7 +1780,8 @@ async function initDatabase() {
                 t.notes, t.category, t.is_satellite || 0, t.target_event,
                 t.is_restart || 0, t.parent_event, t.prize_pool, t.house_fee,
                 t.opt_add_on, t.rake_pct, t.rake_dollars, t.source_pdf,
-                t.is_deepstack || 0
+                // stable_id and property when the seed carries them (the newer seeds do).
+                t.is_deepstack || 0, t.stable_id || null, t.property || null
               ]
             );
           }
