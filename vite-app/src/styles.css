@@ -17158,6 +17158,10 @@
       border-bottom: var(--bw-hair) solid var(--border);
     }
     :root:not([data-theme^="swiss"]) .dk-rail { box-shadow: inset 0 0 0 var(--bw-hair) var(--border); }
+    /* The header's foot breaks in the gutters (owner, 2026-10-20): on desktop the header draws no
+       bottom line of its own; the rail's and each pane's top hairline are its edge, so the line runs
+       over them and stops in every 1g gap. */
+    :root:not([data-theme^="swiss"]) .app-shell.is-desktop .top-bar { border-bottom-color: transparent; }
     /* The same 1g of header colour under the panes as between them, so the bottom hairlines stand
        off the window's edge instead of sitting on its last pixel row. */
     :root:not([data-theme^="swiss"]) .dk-body {
