@@ -2046,7 +2046,7 @@ function finalize(c) {
   step('bankroll-fab-idle-menu', () => idleFab(true), 0);
   const cashHalf = async (...steps) => {
     await nav('Bankroll');
-    await click('.results-kind-tabs button:has-text("Cash")', 1500);
+    await openSection(p, 'Cash'); await p.waitForTimeout(1500);   // the Logs group (MTT, Cash)
     for (const sel of steps) await click(sel, 700);
   };
   const csBack = '.cs-head button:has-text("Sessions")';
@@ -2071,7 +2071,7 @@ function finalize(c) {
     try {
       if (where === 'results') {
         await nav('Bankroll');
-        if (await exists('.results-kind-tabs button:has-text("Tournaments"):not(.active)')) await tap('.results-kind-tabs button:has-text("Tournaments")', 900);
+        if (!(await exists('.results-kind-tabs .kind-toggle.active:has-text("MTT")'))) { await openSection(p, 'MTT'); await p.waitForTimeout(900); }
         const sel = '.tab-panel[data-tab="tracking"] .tracking-actions button:has-text("Edit"), .tracking-actions button:has-text("Edit")';
         await reveal(sel, 200);
         await tap(sel, 900);
@@ -2093,7 +2093,7 @@ function finalize(c) {
   step('cash-notify-sent', () => notifyOpen('cash', 'sent'), 0);
   step('cash-notify-warning', () => notifyOpen('cash', 'warning'), 0);
   step('cash-notify-edit', () => notifyOpen('cash-edit', null), 1);
-  step('cash-bar', async () => { await cashHalf(); await click('.results-kind-tabs button:has-text("Tournaments")', 600); });
+  step('cash-bar', async () => { await cashHalf(); await openSection(p, 'MTT'); await p.waitForTimeout(600); });
   const toExpenses = async () => {
     await nav('Bankroll');
     await p.locator('.tx-sec').first().waitFor({ timeout: 8000 });

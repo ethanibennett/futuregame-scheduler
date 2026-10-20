@@ -734,7 +734,7 @@ function scan(rootSel) {
   const cashScreen = async (label, steps) => {
     try {
       await openResults();
-      await p.locator('.results-kind-tabs button:has-text("Cash")').first().click({ timeout: 4000 });
+      await openSection(p, 'Cash');
       await p.waitForTimeout(1500);
       for (const sel of steps) {
         await p.locator(sel).first().click({ timeout: 4000 });
@@ -759,9 +759,9 @@ function scan(rootSel) {
   if (on('cash')) await cashScreen('cash add', [back, '.cs-head button[title="Add a past session"]', '.cs-form-foot button']);
   if (on('cash-bar')) try {
     await openResults();
-    await p.locator('.results-kind-tabs button:has-text("Cash")').first().click({ timeout: 4000 });
+    await openSection(p, 'Cash');
     await p.waitForTimeout(1200);
-    await p.locator('.results-kind-tabs button:has-text("Tournaments")').first().click({ timeout: 4000 });
+    await openSection(p, 'MTT');
     await p.waitForTimeout(800);
     await run('cash bar', CASH);
   } catch (e) {
@@ -834,13 +834,12 @@ function scan(rootSel) {
         try {
           await openResults();
           if (where === 'results') {
-            const tour = p.locator('.results-kind-tabs button:has-text("Tournaments"):not(.active)');
-            if (await tour.count()) { await tour.first().click({ timeout: 4000 }); await p.waitForTimeout(900); }
+            if (!(await p.locator('.results-kind-tabs .kind-toggle.active:has-text("MTT")').count())) { await openSection(p, 'MTT'); await p.waitForTimeout(900); }
             const edit = p.locator('.tracking-actions button:has-text("Edit")').filter({ visible: true }).first();
             await edit.scrollIntoViewIfNeeded({ timeout: 4000 });
             await edit.click({ timeout: 4000 });
           } else {
-            await p.locator('.results-kind-tabs button:has-text("Cash")').first().click({ timeout: 4000 });
+            await openSection(p, 'Cash');
             await p.waitForTimeout(1500);
             await p.locator('.cs-head button:has-text("Sessions")').first().click({ timeout: 4000 });
             await p.waitForTimeout(700);
@@ -857,7 +856,7 @@ function scan(rootSel) {
         await run(label, '.bn');
       } catch (e) { console.log(`  (${label} skipped: ${e.message.split('\n')[0]})`); }
       // The Results tab remembers its half per device: back to Tournaments, which the passes after need.
-      if (where === 'cash') await p.locator('.results-kind-tabs button:has-text("Tournaments")').first().click({ timeout: 3000 }).catch(() => {});
+      if (where === 'cash') await openSection(p, 'MTT').catch(() => {});
     }
   }
 
