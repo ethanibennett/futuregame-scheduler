@@ -356,9 +356,12 @@ function TotalFigures({ feed, total }) {
 /** Settled (owner, 2026-10-19): the backer's half of the handshake, under the settlement bar. The
  *  balance goes to $0 once the player has pressed it too (Bankroll > Backers); either side can undo
  *  its press until then. utils/backer-settle.js words it; lib/staking/backer-settle.js keeps it. */
-function SettleRow({ token, feed, total, onChange }) {
+function SettleRow({ token, feed, onChange }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+  // What a press settles: what earlier weeks owe, never this week's (owner, 2026-10-20). The server
+  // works the same figure out (lib/staking/backer-settle.js dueCents) and refuses a different one.
+  const total = weekRunning(feed, Date.now()).carriedCents;
   const v = settleView({ settlement: feed.settlement, totalCents: total, side: 'backer' });
   if (!v) return null;
   const press = async () => {
@@ -372,7 +375,7 @@ function SettleRow({ token, feed, total, onChange }) {
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { if (toast) toast.error(d.error || 'That did not go through. Try again.'); }
-      else if (d.completed && toast) toast.success('Settled. The balance is back to $0.');
+      else if (d.completed && toast) toast.success('Settled. Last week is cleared; this week carries on.');
       onChange();
     } catch { if (toast) toast.error('That did not go through. Check your connection.'); }
     finally { setBusy(false); }
@@ -537,7 +540,7 @@ export default function BackerPage({ token }) {
               ) : `Opening balance · no sessions yet`}
             </div>
             <SettlementBar />
-            <SettleRow token={token} feed={feed} total={sum.total} onChange={reload} />
+            <SettleRow token={token} feed={feed} onChange={reload} />
           </section>
         )}
 

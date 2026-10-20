@@ -18,7 +18,7 @@ const B = (o = {}) => ({
 
 test('normalise: the server\'s figures pass through untouched, in cents', () => {
   const [b] = normalise({ backers: [B()] });
-  assert.deepEqual(b, { ...B(), settlement: null });
+  assert.deepEqual(b, { ...B(), dueCents: B().cumulativeCents, settlement: null });
   const s = { open: { amountCents: 100, backerAt: 'x', ownerAt: null }, last: null, settledCents: 0 };
   assert.deepEqual(normalise({ backers: [{ ...B(), settlement: s }] })[0].settlement, s);
 });

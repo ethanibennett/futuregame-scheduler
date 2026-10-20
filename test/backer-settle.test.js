@@ -147,6 +147,20 @@ const BACKER_EP = 'https://push.example.test/sam-page';
       assert.strictEqual(await mainBalance(), before - 600);
       assert.strictEqual((await card()).cumulativeCents, 0);
     });
+    await test('a session recorded this week is not settled: it rolls on, and the page keeps it', async () => {
+      await srv.stop();
+      const d = scratch.open();
+      d.run(`INSERT INTO backer_events (id, token, session_id, ts, date, game, venue, hours, session_result_cents, pct, share_cents, source)
+             VALUES (?, ?, 'fg-cs-3', ?, '2026-10-20', '2/5 NLH', 'Parx', 5, 100000, 20, 20000, 'ledger')`, [`${TOK}:fg-cs-3`, TOK, Date.now() - 60000]);
+      scratch.save(d); d.close();
+      srv = await boot(scratch.dbPath, { ...ENV, CONSOLE_OWNER_USER_ID: String(ham) }, { ports: PORTS, preloads: [STUB] });
+      servers.push(srv);
+      assert.strictEqual((await feed()).cumulativeCents, 20000, 'the page shows this week +$200');
+      const c = await card();
+      assert.strictEqual(c.dueCents, 0, 'nothing from earlier weeks is due');
+      const r = await backer('confirm', 20000);
+      assert.strictEqual(r.status, 409, 'this week cannot be settled yet');
+    });
     await test('nothing to settle at $0', async () => {
       const r = await backer('confirm', 0);
       assert.strictEqual(r.status, 409);

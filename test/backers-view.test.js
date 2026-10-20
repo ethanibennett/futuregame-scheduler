@@ -21,7 +21,7 @@ const fx = require('./helpers/backer-fixtures');
 
 const PW = 'backers-view-test-password-1';
 const LINK = 'https://futurega.me/b/';
-const KEYS = ['cumulativeCents', 'delivery', 'hours', 'id', 'link', 'name', 'openingCents', 'played', 'sessions', 'shares', 'stakes'];
+const KEYS = ['cumulativeCents', 'delivery', 'dueCents', 'hours', 'id', 'link', 'name', 'openingCents', 'played', 'sessions', 'shares', 'stakes'];
 const SHARE_KEYS = ['date', 'game', 'hours', 'pct', 'sessionResultCents', 'shareCents', 'venue'];
 const PHONES = { one: '+15555550123', two: '+15555550124' };
 const ADDRESSES = ['sam.okafor@example.test', 'mo.chen@example.test'];

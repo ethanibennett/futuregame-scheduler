@@ -61,7 +61,7 @@ function BackerCard({ b, open, onToggle, thisYear, onCopy, onSettle, settling })
   const bbs = bbItems(b);
   const delivery = deliveryText(b.delivery);
   const more = moreLine(b);
-  const settle = settleView({ settlement: b.settlement, totalCents: b.cumulativeCents, side: 'owner', backer: b.name || 'your backer' });
+  const settle = settleView({ settlement: b.settlement, totalCents: b.dueCents, side: 'owner', backer: b.name || 'your backer' });
   return (
     <li className={'bl-item bb-item' + (open ? ' is-open' : '')}>
       <button type="button" className={'bl-card' + (bbs.length ? ' has-bb' : '')} aria-expanded={open} aria-controls={open ? id : undefined} onClick={onToggle}>
@@ -172,11 +172,11 @@ export default function BankrollBackers({ bk }) {
       const res = await fetch(`${API_URL}/staking/standing/backers/${encodeURIComponent(b.id)}/settle`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${bk.token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: v.button.action, amountCents: b.cumulativeCents }),
+        body: JSON.stringify({ action: v.button.action, amountCents: b.dueCents }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) toast.error(data.error || 'That did not go through. Try again.');
-      else if (data.completed) toast.success(`Settled with ${b.name || 'your backer'}. The balance is back to $0.`);
+      else if (data.completed) toast.success(`Settled with ${b.name || 'your backer'}. Last week is cleared.`);
       setReloadKey((k) => k + 1);
     } catch { toast.error('That did not go through. Check your connection.'); }
     finally { setSettling(false); }

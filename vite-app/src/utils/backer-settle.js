@@ -30,7 +30,7 @@ export function settleView({ settlement, totalCents, side, player = 'Ethan', bac
   const me = side === 'owner' ? 'ownerAt' : 'backerAt';
   const them = side === 'owner' ? 'backerAt' : 'ownerAt';
   const other = side === 'owner' ? backer : player;
-  const done = 'The balance goes to $0 once you have both confirmed.';
+  const done = "Last week's balance clears once you have both confirmed; this week carries on.";
   // Who sends the money: + = the player pays the backer.
   const question = side === 'owner'
     ? (total > 0 ? `Confirm you have paid ${backer} ${amt}?` : `Confirm ${backer} has paid you ${amt}?`)

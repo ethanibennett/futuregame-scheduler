@@ -49,6 +49,8 @@ export function normalise(data) {
     stakes: text(b.stakes).trim(),
     openingCents: num(b.openingCents),
     cumulativeCents: num(b.cumulativeCents),
+    // What Settled settles: the total less this week's shares (server: lib/staking/backer-settle.js).
+    dueCents: b.dueCents == null ? num(b.cumulativeCents) : num(b.dueCents),
     sessions: Math.max(0, Math.floor(num(b.sessions))),
     hours: num(b.hours),
     shares: (Array.isArray(b.shares) ? b.shares : []).filter((s) => s && typeof s === 'object').map((s) => ({
