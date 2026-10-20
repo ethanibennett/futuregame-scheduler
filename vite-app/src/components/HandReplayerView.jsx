@@ -414,28 +414,22 @@ function findStudBringIn(hand, isRazz) {
   return worstIdx;
 }
 
-function scoreStudBoard(cards) {
-  const rankValues = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':14 };
+/* A visible stud board's score: the category first (no pair < pair < two pair < trips < full house
+   < quads), then every rank, grouped ranks before kickers, highest first. Each category sits above
+   anything the ranks can add, so an unpaired A-K no longer outscores 9-9, and every kicker counts
+   (entry audit D2 / evaluation audit D7, 2026-10-20). aceLow: the ace is a one (Razz); a low game
+   takes the lowest score. */
+function scoreStudBoard(cards, aceLow = false) {
+  const rankValues = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':aceLow ? 1 : 14 };
   if (!cards.length) return 0;
   const counts = {};
   cards.forEach(c => { const r = rankValues[c.rank] || 0; counts[r] = (counts[r] || 0) + 1; });
-  const pairs = [], trips = [], quads = [], kickers = [];
-  Object.keys(counts).forEach(r => {
-    const rv = parseInt(r);
-    if (counts[r] === 4) quads.push(rv);
-    else if (counts[r] === 3) trips.push(rv);
-    else if (counts[r] === 2) pairs.push(rv);
-    else kickers.push(rv);
-  });
-  pairs.sort((a,b) => b-a); trips.sort((a,b) => b-a); kickers.sort((a,b) => b-a);
-  if (quads.length) return 7000000 + quads[0]*100;
-  if (trips.length && pairs.length) return 6000000 + trips[0]*100 + pairs[0];
-  if (trips.length) return 5000000 + trips[0]*100;
-  if (pairs.length >= 2) return 4000000 + pairs[0]*100 + pairs[1];
-  if (pairs.length === 1) return 3000000 + pairs[0]*100 + (kickers[0]||0);
-  const allRanks = Object.keys(counts).map(Number).sort((a,b)=>b-a);
-  let score = 1000000;
-  for (let i = 0; i < allRanks.length; i++) score += allRanks[i] * Math.pow(100, 4-i);
+  const groups = Object.keys(counts).map(Number).map(r => [r, counts[r]]).sort((a, b) => b[1] - a[1] || b[0] - a[0]);
+  const shape = groups.map(g => g[1]);
+  const cat = shape[0] === 4 ? 6 : shape[0] === 3 ? (shape[1] === 2 ? 5 : 4) : shape[0] === 2 ? (shape[1] === 2 ? 3 : 2) : 1;
+  const P = 15;
+  let score = cat * Math.pow(P, 5);
+  groups.forEach((g, i) => { score += g[0] * Math.pow(P, 4 - i); });
   return score;
 }
 
@@ -457,7 +451,7 @@ function findStudBestBoard(hand, streetIdx, foldedSet, isLowGame) {
         oCards.forEach(c => { if (c.suit !== 'x') visible.push(c); });
       }
     }
-    const score = scoreStudBoard(visible);
+    const score = scoreStudBoard(visible, isLowGame && hand.gameType !== '2-7 Razz');
     if (isLowGame ? score < bestScore : score > bestScore) { bestIdx = pi; bestScore = score; }
   }
   return bestIdx;
@@ -1119,7 +1113,7 @@ function generateCommentary(hand, streetIdx, actionIdx, pot, stacks) {
     if (category === 'stud') {
       const _ante = (hand.blinds || {}).ante || 0;
       if (streetIdx === 0) {
-        const _isRazz = hand.gameType === 'Razz' || hand.gameType === '2-7 Razz';
+        const _isRazz = /(^|\s)(2-7 )?Razz$/.test(hand.gameType || '');
         const _biIdx = findStudBringIn(hand, _isRazz);
         let doorInfo = '';
         if (_biIdx >= 0 && hand.players[_biIdx]) {
@@ -2677,7 +2671,8 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     return a;
   }, [currentStacks, foldedSet]);
 
-  const isRazz = hand.gameType === 'Razz' || hand.gameType === '2-7 Razz';
+  // NL and PL Razz are Razz too: they took the high game's bring-in and first actor (entry audit D3).
+  const isRazz = /(^|\s)(2-7 )?Razz$/.test(hand.gameType || '');
   const isStudLow = isRazz;
 
   const priorStreetFoldedSet = useMemo(() => {
