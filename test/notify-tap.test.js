@@ -85,7 +85,10 @@ function seed(db, { ham, plain }) {
   };
   // Net after tips and expenses: 1,800 - 1,000 - 40 - 60 = +700 (the table did +800).
   ids.cs1 = CS({ start: '2026-10-08T22:00:00Z', end: '2026-10-09T03:00:00Z', day: '2026-10-08', room: 'Parx Casino', game: 'NLH', stakes: '2/5', buyIn: 1000, cashOut: 1800, tips: 40, expenses: 60 });
-  ids.cs2 = CS({ start: '2026-10-14T20:00:00Z', end: null, day: '2026-10-14', room: 'Parx Casino', game: 'NLH', stakes: '2/5', buyIn: 500, cashOut: null });
+  // Still at the table: started three hours before the run, since the server ends a session against
+  // the real clock and refuses one over 72 hours (a fixed date here failed once it was a week old).
+  const liveStart = new Date(Date.now() - 3 * 3600e3);
+  ids.cs2 = CS({ start: liveStart.toISOString(), end: null, day: liveStart.toISOString().slice(0, 10), room: 'Parx Casino', game: 'NLH', stakes: '2/5', buyIn: 500, cashOut: null });
 
   // Q7: the PLO event is also in a series agreement, for a backer of the same name as a standing one.
   db.run("INSERT INTO staking_series (user_id, name, currency, status) VALUES (?, 'Fall Series', 'USD', 'active')", [ham]);

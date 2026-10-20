@@ -380,6 +380,9 @@ async function integration() {
     console.log('server-sent events under compression');
 
     await test('/api/events is NOT compressed and an event arrives promptly', async () => {
+      // Any seeded event will do; its id depends on which seed files load first, so ask for one.
+      const list = await request('GET', TOURN, { headers: auth });
+      const anyId = (Array.isArray(list.json) ? list.json : list.json.tournaments || [])[0].id;
       const result = await new Promise((resolve, reject) => {
         const req = http.request({
           host: '127.0.0.1', port: PORT, method: 'GET',
@@ -399,7 +402,7 @@ async function integration() {
           });
           // Headers are flushed immediately; fire a broadcast once we're subscribed.
           setTimeout(() => {
-            request('PUT', '/api/tournaments/1/total-entries', { body: { totalEntries: 1234 }, headers: adminAuth })
+            request('PUT', `/api/tournaments/${anyId}/total-entries`, { body: { totalEntries: 1234 }, headers: adminAuth })
               .then((r) => { if (r.status !== 200) reject(new Error(`trigger ${r.status} ${r.buf}`)); }, reject);
           }, 200);
         });

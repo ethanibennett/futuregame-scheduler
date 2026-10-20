@@ -952,6 +952,13 @@
       line-height: calc(var(--subrow) * 2);
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
+    /* A result card's money (TrackingView): "30th · cashed $812" and a large figure are wider than
+       the 6g money column; wrapped, the line climbed over the figure above it, and kept on one line
+       WebKit spilled it past the card's right edge (owner, 2026-10-20). The cell spans the whole row
+       instead, still right-aligned on the same edge, so both lines run left into the empty space
+       (the time holds only the first track, at the left). */
+    .tr-card .cal-event-money { grid-column: 1 / -1; }
+    .tr-card .cal-event-gtd { white-space: nowrap; }
 
     /* Event number and game variants were grey pills, distinguishable from
        each other only by 3% of background alpha - four of them diluting the
