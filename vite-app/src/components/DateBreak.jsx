@@ -66,8 +66,9 @@ export default function DateBreak({
         </button>
       ) : pill}
 
-      {eventCount !== null && (
-        <span className="date-break-count">{eventCount} event{eventCount !== 1 ? 's' : ''}</span>
+      {/* A day of one event says nothing with "1 event" (owner, 2026-10-20): the count shows from two. */}
+      {eventCount !== null && eventCount > 1 && (
+        <span className="date-break-count">{eventCount} events</span>
       )}
 
       <span className="date-break-end">
