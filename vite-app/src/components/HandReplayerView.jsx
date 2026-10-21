@@ -6862,6 +6862,37 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   };
 
   // Hand name at showdown
+  /* Who took each board or run (owner, 2026-10-21), as a tag beside each row at the showdown: the
+     player's name, "Split" for a tie, "Hi … · Lo …" for a hi-lo run. Settled as the pot is, board by
+     board among everyone still in; none for a hi-lo double board, whose one ultimate high and low span
+     both boards, or while anyone's cards are unknown. */
+  const boardWinnerTags = () => {
+    if (!showResult || category !== 'community' || boardCount(hand) < 2) return null;
+    const cfg = gameEvalFor(hand.gameType, hand);
+    if (!cfg || cfg.type === 'split-badugi' || (cfg.type === 'hilo' && combinesHiLo(hand))) return null;
+    const live = hand.players.map((_, i) => i).filter(i => !folded.has(i));
+    if (live.length < 2) return null;
+    const bySeat = {};
+    for (const pi of live) {
+      const raw = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
+      const parsed = raw && raw !== 'MUCK' ? parseCardNotation(raw).filter(c => c.suit !== 'x') : [];
+      if (parsed.length < (gameCfg.heroCards || 2)) return null;
+      bySeat[pi] = parsed;
+    }
+    const boards = handBoards(hand, streetIdx).map(b => parseCardNotation(b).filter(c => c.suit !== 'x'));
+    const ev = multiBoardEvals(cfg, bySeat, boards);
+    const nameOf = (i) => (i === replayHeroIdx ? 'Hero' : houseName(hand.players[i]?.name || 'Player'));
+    const who = (ws) => (ws.length > 1 ? 'Split' : ws.length ? nameOf(ws[0]) : null);
+    return ev.per.map(per => {
+      const { hiWinners, loWinners } = hiLoWinnersAmong(per, live);
+      if (cfg.type === 'hilo') {
+        const h = who(hiWinners), l = who(loWinners);
+        return l ? 'Hi ' + h + ' · Lo ' + l : h;
+      }
+      return who(hiWinners);
+    });
+  };
+
   const getPlayerHandName = (playerIdx, useShort) => {
     if (!showResult || folded.has(playerIdx)) return null;
     const pCards = playerIdx === replayHeroIdx ? heroCards : (opponentCards[playerIdx] || '');
@@ -8660,6 +8691,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             return <img key={key} {...slot} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank + c.suit} loading="eager" />;
           };
           const unit = hand.doubleBoard ? 'Board' : 'Run';
+          const tags = extra.length ? boardWinnerTags() : null;
+          const tag = (i) => (tags && tags[i] ? <span className="replayer-board-winner">{tags[i]}</span> : null);
           return (
             <div className={'replayer-board-area' + boardAnimClass + (extra.length ? ' is-multi' + (extra.length > 1 ? ' is-multi-3' : '') : '')}>
               {/* 24: .replayer-street-label, its pop keyframe and three theme
@@ -8671,10 +8704,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   top:28%, where it would have sat on the pot eyebrow. */}
               <div className="card-row replayer-board-spaced" ref={boardRowRef} aria-label={extra.length ? unit + ' 1' : undefined}>
                 {parsed.map((c, i) => renderCard(c, i, c.rank + c.suit + '_' + i, true))}
+                {tag(0)}
               </div>
               {extra.map((b, bi) => (
                 <div key={'board-' + (bi + 2)} className="card-row replayer-board-spaced replayer-board-extra" aria-label={unit + ' ' + (bi + 2)}>
                   {b.map((c, i) => renderCard(c, i, 'b' + (bi + 2) + '_' + c.rank + c.suit + '_' + i, false))}
+                  {tag(bi + 1)}
                 </div>
               ))}
             </div>

@@ -6478,6 +6478,22 @@
     /* A line per board (Top / Bottom): a size smaller, so two lines stay about a plaque wide and a side
        seat's label stays on the screen. */
     .replayer-seat-hand-name.is-boards { font-size: clamp(7px, 2.3cqmin, 18px); }
+    /* Who took each board (HandReplayerView boardWinnerTags): a tag just right of its row, in the hand
+       name's colours and face, so the board and its winner read as one line. Out of the row's flow, so
+       the row stays centred on the felt. */
+    .replayer-board-area .card-row:has(> .replayer-board-winner) { position: relative; }
+    .replayer-board-winner {
+      position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+      margin-left: 1.2cqmin;
+      font-family: var(--font-display); font-size: clamp(7px, 2.6cqmin, 20px); line-height: 1.3;
+      color: #eab308; white-space: nowrap;
+      background: linear-gradient(180deg, rgba(28,22,6,0.94), rgba(16,12,2,0.94));
+      border: var(--bw-hair) solid rgba(234,179,8,0.55);
+      border-radius: var(--radius-sm);
+      padding: 0.17em 0.52em;
+      box-shadow: var(--elev-1);
+      animation: turnRiverSlide var(--dur-base) var(--ease-object) both;
+    }
     .replayer-seat.loser .replayer-seat-hand-name { color:#f87171; border-color:rgba(248,113,113,0.4); }
     .replayer-seat.split .replayer-seat-hand-name { color:#facc15; border-color:rgba(250,204,21,0.4); }
 
