@@ -63,7 +63,7 @@ export default function DesktopEventDetail({
   return (
     <div className="dk-detail">
       <div className="dk-pane-head">
-        <h2 className="dk-pane-title">Event</h2>
+        <h2 className="dk-pane-title">Selected event</h2>
         <button type="button" className="dk-pane-close" onClick={() => onSelect(null)} aria-label="Close event (Esc)" title="Close (Esc)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
         </button>

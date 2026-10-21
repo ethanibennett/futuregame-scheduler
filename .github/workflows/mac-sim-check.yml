@@ -58,7 +58,9 @@ jobs:
         run: |
           set -euo pipefail
           UDID='${{ steps.sim.outputs.udid }}'
-          mkdir -p shots
+          # The runner keeps its workspace between runs: start from an empty folder, or an earlier
+          # run's shots ride along in this run's artifact.
+          rm -rf shots && mkdir -p shots
           # The link's #h/ part stays; ?at= goes before it.
           BASE="${URL%%#*}"; HASH="#${URL#*#}"
           case "$BASE" in *\?*) SEP='&' ;; *) SEP='?' ;; esac

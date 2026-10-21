@@ -17386,7 +17386,9 @@
       margin: 0;
       font-family: var(--font-title);
       font-weight: var(--fw-regular);
-      font-size: var(--fs-xl);
+      /* The wordmark's size (owner, 2026-10-21: "wordmark sized and baskerville"): the header's
+         futurega.me is calc(var(--col) * 0.169) (.top-bar-title h1). */
+      font-size: calc(var(--col) * 0.169);
       line-height: 1;
       color: var(--text);
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
@@ -17475,7 +17477,9 @@
     }
     /* 4r between the selected event and My Schedule (owner, 2026-10-13): the details' own foot, so it
        grows and shrinks with the open / close move and is gone when nothing is selected. */
-    .dk-pane-detail > .dk-detail-block > .dk-detail { padding-bottom: calc(var(--subrow) * 4); }
+    /* + 2r of the pane's own ground under the event before the band (owner, 2026-10-21): the foot is
+       6r and the band's shadow (below) still covers only its last 4r. */
+    .dk-pane-detail > .dk-detail-block > .dk-detail { padding-bottom: calc(var(--subrow) * 6); }
     .dk-pane-detail > .dk-detail-block.is-closing { pointer-events: none; }
     .dk-pane-detail > .dk-mine-block { flex: 1 1 0; }
     /* No rule between them: the 4r above My Schedule is the divider, in the header's colour like the
@@ -17491,6 +17495,30 @@
         0 calc(var(--bw-hair) * -1) 0 0 var(--border),
         0 calc(var(--subrow) * -4) 0 0 var(--surface),
         0 calc(var(--subrow) * -4 - var(--bw-hair)) 0 0 var(--border);
+      /* The band's lines stop at the pane's edges (owner, 2026-10-21: "clip the hairlines that cross over
+         the spaces between panes"): clipped to the block's own width, open only upward for the band. The
+         pane's overflow clip should already hold them, and does in WebKit here, but the owner's screen
+         showed them running across the 1g gap. */
+      clip-path: inset(calc(var(--subrow) * -4 - var(--bw-hair) * 2) 0 0 0);
+    }
+    /* My Schedule's heading in the right pane matches the selected event's (owner, 2026-10-21): Baskerville
+       at the wordmark's size; its count stays the small Univers beside it. */
+    /* Seated, not centred: a block (text-box-trim is inert on the flex it was) trimmed to cap and
+       baseline, at the header's foot less 1r, so its baseline is on r5 of the 2r..6r header beside the
+       centred buttons (centred it fell on r4.66). */
+    :root:not([data-theme^="swiss"]) .dk-mine-block .schedule-sticky-header .section-header > h2 {
+      font-family: var(--font-title);
+      font-weight: var(--fw-regular);
+      font-size: calc(var(--col) * 0.169);
+      display: block !important;
+      align-self: flex-end;
+      line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      margin-bottom: var(--subrow);
+    }
+    :root:not([data-theme^="swiss"]) .dk-mine-block .schedule-sticky-header .section-header > h2 > span {
+      font-family: var(--font-condensed);
+      margin-left: calc(var(--subrow) * 0.75);
     }
     /* ══ end Desktop layout ══════════════════════════════════════════════════ */
 
