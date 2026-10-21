@@ -46,14 +46,21 @@ jobs:
           d = json.load(sys.stdin)['devices']
           want = os.environ['DEVICE']
           rows = [x for rt, xs in d.items() if 'iOS' in rt for x in xs if x['name'] == want]
-          rows = rows or [x for rt, xs in d.items() if 'iOS' in rt for x in xs if x['name'].startswith('iPhone')]
+          fam = 'iPad' if want.startswith('iPad') else 'iPhone'
+          rows = rows or [x for rt, xs in d.items() if 'iOS' in rt for x in xs if x['name'].startswith(fam)]
+          if not rows:
+              print('available: ' + ', '.join(sorted({x['name'] for rt, xs in d.items() if 'iOS' in rt for x in xs})), file=sys.stderr)
           print(rows[-1]['udid'] if rows else '')
           ")
-          if [ -z "$UDID" ]; then echo "no iPhone simulator found" >&2; exit 1; fi
+          if [ -z "$UDID" ]; then echo "no simulator found for $DEVICE" >&2; exit 1; fi
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          # Erased every run: Safari's cache and the app's service worker otherwise serve the page as it
+          # was at the last run, not as it is live (2026-10-21: a check showed the previous CSS).
+          xcrun simctl shutdown "$UDID" 2>/dev/null || true
+          xcrun simctl erase "$UDID"
           xcrun simctl boot "$UDID" 2>/dev/null || true
           xcrun simctl bootstatus "$UDID" -b
-          echo "booted $DEVICE ($UDID)"
+          echo "booted $(xcrun simctl list devices | grep "$UDID" | sed 's/ (.*//' | xargs) ($UDID), erased"
       - name: Photograph each moment
         run: |
           set -euo pipefail
