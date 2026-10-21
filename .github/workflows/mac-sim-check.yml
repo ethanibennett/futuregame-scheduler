@@ -71,6 +71,10 @@ jobs:
           # The link's #h/ part stays; ?at= goes before it.
           BASE="${URL%%#*}"; HASH="#${URL#*#}"
           case "$BASE" in *\?*) SEP='&' ;; *) SEP='?' ;; esac
+          # A fresh device's Safari shows a first-run tip over the page on its first load: load once and
+          # let it settle before the shots (the tip goes with the next navigation).
+          xcrun simctl openurl "$UDID" "${BASE}${HASH}"
+          sleep 10
           for AT in $ATS; do
             xcrun simctl openurl "$UDID" "${BASE}${SEP}at=${AT}${HASH}"
             sleep 14
