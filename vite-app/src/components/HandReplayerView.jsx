@@ -6579,6 +6579,20 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     if (isHiLo) setTimeout(() => setHiloAnimate(true), 100);
   };
 
+  /* ?at=flop|turn|river|end on a replay link opens the hand there (that street after its action, or
+     the showdown): one address per moment, which is how the Mac's simulator check
+     (.github/workflows/mac-sim-check.yml) photographs a replay it cannot tap through. */
+  useEffect(() => {
+    let at = null;
+    try { at = new URLSearchParams(window.location.search).get('at'); } catch { /* no window */ }
+    if (!at) return;
+    if (at === 'end') { goToEnd(); return; }
+    const si = { preflop: 0, flop: 1, turn: 2, river: 3 }[at];
+    if (si == null || si >= hand.streets.length) return;
+    setStreetIdx(si);
+    setActionIdx((hand.streets[si]?.actions?.length || 0) - 1);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   /* 50: at the result an effect forces playing false and stepForward's last
      branch pauses, so pressing play set playing true, ticked once, and paused
      again — a flicker and a no-op, under a glyph still showing a play

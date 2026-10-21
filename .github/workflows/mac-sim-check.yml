@@ -1,0 +1,76 @@
+# The replayer in the iPhone simulator, on the Mac (owner, 2026-10-21: "always run these replayer
+# tests in the iphone simulator on the mac first"). Runs on the same self-hosted Mac runner as the
+# TestFlight build: boots an iPhone simulator, opens a replay link once per moment (the replayer's
+# ?at=flop|turn|river|end), screenshots each, and uploads them as the run's artifact.
+#
+# Dispatch from Windows (one line):
+#   gh api repos/ethanibennett/futuregame-scheduler/dispatches -f event_type=sim-check \
+#     -F 'client_payload[url]=https://futurega.me/#h/...' -F 'client_payload[ats]=flop river end'
+# then: gh run download <run id> -n sim-shots
+name: Replayer in the iPhone simulator
+
+on:
+  repository_dispatch:
+    types: [sim-check]
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'A replay link (https://futurega.me/#h/...)'
+        required: true
+      ats:
+        description: 'Moments to photograph (space-separated: preflop flop turn river end)'
+        default: 'flop river end'
+      device:
+        description: 'Simulator device type'
+        default: 'iPhone 16 Pro'
+
+concurrency:
+  group: mac-sim-check
+  cancel-in-progress: false
+
+jobs:
+  shots:
+    runs-on: [self-hosted, macOS]
+    timeout-minutes: 15
+    env:
+      URL: ${{ github.event.client_payload.url || inputs.url }}
+      ATS: ${{ github.event.client_payload.ats || inputs.ats || 'flop river end' }}
+      DEVICE: ${{ github.event.client_payload.device || inputs.device || 'iPhone 16 Pro' }}
+    steps:
+      - name: Boot the simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices available -j | /usr/bin/python3 -c "
+          import json, os, sys
+          d = json.load(sys.stdin)['devices']
+          want = os.environ['DEVICE']
+          rows = [x for rt, xs in d.items() if 'iOS' in rt for x in xs if x['name'] == want]
+          rows = rows or [x for rt, xs in d.items() if 'iOS' in rt for x in xs if x['name'].startswith('iPhone')]
+          print(rows[-1]['udid'] if rows else '')
+          ")
+          if [ -z "$UDID" ]; then echo "no iPhone simulator found" >&2; exit 1; fi
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID" 2>/dev/null || true
+          xcrun simctl bootstatus "$UDID" -b
+          echo "booted $DEVICE ($UDID)"
+      - name: Photograph each moment
+        run: |
+          set -euo pipefail
+          UDID='${{ steps.sim.outputs.udid }}'
+          mkdir -p shots
+          # The link's #h/ part stays; ?at= goes before it.
+          BASE="${URL%%#*}"; HASH="#${URL#*#}"
+          case "$BASE" in *\?*) SEP='&' ;; *) SEP='?' ;; esac
+          for AT in $ATS; do
+            xcrun simctl openurl "$UDID" "${BASE}${SEP}at=${AT}${HASH}"
+            sleep 14
+            xcrun simctl io "$UDID" screenshot "shots/${AT}.png"
+            echo "shot ${AT}"
+          done
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim-shots
+          path: shots/
+          retention-days: 7
