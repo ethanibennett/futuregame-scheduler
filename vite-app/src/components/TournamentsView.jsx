@@ -1451,6 +1451,25 @@ export default function TournamentsView({
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
   }, [filters, search]);
+  /* And whenever the block itself changes height, on whichever node it is now (owner's phone, Swiss,
+     2026-10-21): a pin measured off a block that was taller then, or off a node since replaced, stayed
+     too low, which pushed the day's date down off its card's lines at rest and, scrolled, left a band
+     between the filters and the pinned date where the cards showed through. Every render checks the
+     node; the observer re-measures on any change of its size. */
+  const filtersObserved = useRef({ node: null, ro: null });
+  useEffect(() => {
+    const node = stickyFiltersRef.current, cur = filtersObserved.current;
+    if (node === cur.node || typeof ResizeObserver === 'undefined') return;
+    if (cur.ro) cur.ro.disconnect();
+    cur.node = node;
+    cur.ro = node ? new ResizeObserver(() => {
+      const h = node.getBoundingClientRect().height;
+      const mt = parseFloat(getComputedStyle(node).marginTop) || 0;
+      setDateBreakTop(h + mt);
+    }) : null;
+    if (cur.ro) cur.ro.observe(node, { box: 'border-box' });
+  });
+  useEffect(() => () => { if (filtersObserved.current.ro) filtersObserved.current.ro.disconnect(); }, []);
 
   const buyinOptions = useMemo(() =>
     [...new Set(tournaments.map(t => parseInt(t.buyin, 10)).filter(n => n > 0 && !isNaN(n)))].sort((a, b) => a - b),

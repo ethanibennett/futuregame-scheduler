@@ -1587,6 +1587,10 @@
   /* Pinned with its header while the day scrolls (owner, 2026-10-19): on the page's ground, so the
      cards' venue names pass under it, and the next day's date covers this one. */
   background: var(--sw-ground) !important;
+  /* The ground runs 0.9r past the date's baseline (owner, 2026-10-21: "scrolled events still peeking
+     through"): ending AT the baseline, a venue line scrolling up met the figures' foot and showed
+     under them. 0.9r stops short of the first card's own venue line, whose capitals start at r6.94. */
+  box-shadow: 0 calc(var(--subrow) * 0.9) 0 0 var(--sw-ground);
 }
 :root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) .date-break-label { gap: calc(var(--gu) * 0.25); align-items: baseline; }
 :root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) .date-break-day {
@@ -1882,8 +1886,10 @@
    money column's right edge, over a guarantee where there is one. Open or closed, they sit on the meta
    line at the title column's right end (26g..28g of the card), and the title stops 2g short of it. */
 :root[data-theme^="swiss"] .cal-event-row .cal-event-bar:has(.sw-card-title) { position: relative; }
-/* (.cal-event-row twice: it outranks the closed card's earlier rule, which put them at the right edge.) */
-:root[data-theme^="swiss"] .cal-event-row.cal-event-row.cal-event-row .cal-event-bar:has(.sw-card-title) > .cal-bar-row2:has(.cal-accolades) {
+/* Open cards only (owner, 2026-10-21: "these ring/bounty icons aren't where they should be"): a closed
+   card shows no guarantee, so its icons sit flush right under the price (the earlier closed-card rule,
+   right 1g), and only an open card's guarantee, 28.4g..34g on that line, moves them left of it. */
+:root[data-theme^="swiss"] .cal-event-row.cal-event-row.cal-event-row.open .cal-event-bar:has(.sw-card-title) > .cal-bar-row2:has(.cal-accolades) {
   position: absolute;
   top: calc(var(--subrow) * 4);
   right: calc(var(--gu) * 7);
