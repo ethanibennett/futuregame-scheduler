@@ -18187,7 +18187,7 @@
     }
 
     /* The location pickers in the bankroll switcher's tile (owner, 2026-10-20; Schedule and Cash): 5r,
-       a hairline box, a caps LOCATION label seated on r2 over the place in the money face on r4, the
+       a hairline box, a caps LOCATION label seated on r2 over the place on r4, the
        chevron at the right; no pin. The row's other controls grow to 5r with it. Swiss keeps its
        headline (theme-swiss.css), so the label and chevron are hidden there. */
     :root:not([data-theme^="swiss"]) .filter-chip.loc-tile {
@@ -18217,7 +18217,8 @@
       letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-muted);
     }
     :root:not([data-theme^="swiss"]) .loc-tile .loc-tile-value {
-      font-family: var(--serif) !important; font-size: var(--fs-sm) !important; font-weight: 700; color: var(--text);
+      /* Univers, as the chip was before the tile (owner, 2026-10-20: "keep this button shape but revert to univers"). */
+      font-family: var(--font-condensed) !important; font-size: var(--fs-sm) !important; font-weight: var(--fw-bold); color: var(--text);
       overflow: hidden; text-overflow: ellipsis;
       /* Its descenders painted: room below, cancelled (the clipping guard's rule). */
       padding-bottom: 0.3em; margin-bottom: -0.3em; height: auto;
