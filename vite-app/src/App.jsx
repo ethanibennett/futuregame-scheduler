@@ -1958,6 +1958,9 @@ function App() {
                 onSetPlayed={setNotPlayed}
                 onDeleteTracking={deleteTracking}
                 tournaments={tournaments}
+                shareBuddies={shareBuddies}
+                buddyLiveUpdates={buddyLiveUpdates}
+                buddyEvents={buddyEvents}
                 onToggle={toggleTournament}
                 onNavigate={(v) => {
                   if (v === '_liveUpdate') {
@@ -2101,7 +2104,7 @@ function App() {
                         ? <Suspense fallback={<LazyFallback />}><RazzTrainerView /></Suspense>
                         : handsTool === 'multiway' && isAdmin
                         ? <Suspense fallback={<LazyFallback />}><Multiway3TrainerView /></Suspense>
-                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setHandsTool('solver'); }) : undefined} quickAdd={isAdmin} /></Suspense>}
+                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setHandsTool('solver'); }) : undefined} quickAdd={isAdmin} schedule={mySchedule} updates={myActiveUpdates} /></Suspense>}
                     </div>
                   </div>
                 : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'calc(var(--subrow) * 7.5) calc(var(--subrow) * 2.5)',textAlign:'center'}}>

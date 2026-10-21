@@ -1800,6 +1800,9 @@ function finalize(c) {
   step('cash-live', () => nav('Cash'), 1);
   step('cash-heatmaps', async () => { await nav('Cash'); await click('.cash-mode-tabs button:has-text("Heatmaps")', 1500); }, 1);
   step('hands', () => nav('Hands'), 1);
+  // The New Hand variant picker's palette (VariantPicker.jsx), open; then with a search typed.
+  step('hands-palette', async () => { await nav('Hands'); await tap('.vp-launcher', 800); }, 1);
+  step('hands-palette-search', async () => { await nav('Hands'); await tap('.vp-launcher', 800); await p.locator('.vp-search input').fill('o8'); await p.waitForTimeout(400); }, 1);
   step('calendar', async () => { await nav('Schedule'); await click('.filter-chip-square[title="Calendar view"]', 1500); }, 1);
   step('calendar-filters', async () => {
     await nav('Schedule');

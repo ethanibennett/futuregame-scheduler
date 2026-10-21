@@ -1058,3 +1058,9 @@ button.hm-receipt:focus-visible { outline: var(--focus-ring); outline-offset: va
   .hm-noise:hover .hm-noise-t { text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: calc(var(--subrow) * 0.4); }
 }
 .hm-noise:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+/* ── Friends (HomeFriends.jsx; an Edit home option): the bankroll line's 35g x 5r bars, 1r apart.
+   The words take the room and clip; the LIVE / TODAY pill sits at the right. ── */
+.hm-friends-list { display: grid; row-gap: var(--subrow); }
+.hm-friends .hm-bank-col { flex: 1 1 auto; }
+.hm-friends .hm-bank-pill { margin-left: var(--gu); }

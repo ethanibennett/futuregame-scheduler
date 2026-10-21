@@ -1,0 +1,212 @@
+/* The New Hand variant picker (VariantPicker.jsx). Every size in g and r; controls are whole g x whole
+   r with their labels centred (owner rule); seated text sits on r lines. */
+
+/* ── The launcher: one 35g x 5r row ── */
+.vp-launcher {
+  display: flex;
+  align-items: center;
+  gap: var(--gu);
+  width: calc(var(--gu) * 35);
+  height: calc(var(--subrow) * 5);
+  box-sizing: border-box;
+  margin: var(--subrow) 0 0;
+  padding: 0 var(--gu);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.vp-launcher-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-condensed);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+.vp-launcher-name > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-block: 0.25em; margin-block: -0.25em; }
+.vp-chev { flex: none; width: calc(var(--gu) * 2); height: calc(var(--subrow) * 2); color: var(--text-muted); }
+.vp-kbd {
+  flex: none;
+  display: flex; align-items: center; justify-content: center;
+  width: calc(var(--gu) * 4); height: calc(var(--subrow) * 3);
+  border-radius: var(--radius-xs);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+}
+@media (hover: hover) and (pointer: fine) { .vp-launcher:hover { background-image: linear-gradient(var(--hover-overlay), var(--hover-overlay)); } }
+.vp-launcher:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+/* The family tag: 5g x 2r, the saved hands' strip colour, the abbreviation centred. */
+.vp-tag {
+  flex: none;
+  display: flex; align-items: center; justify-content: center;
+  width: calc(var(--gu) * 5); height: calc(var(--subrow) * 2);
+  border-radius: var(--radius-xs);
+  color: #ffffff;
+  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps); text-indent: var(--track-caps); text-transform: uppercase;
+  line-height: 1;
+}
+/* No overflow clip on the label: it cut the tops of the capitals (check:clipping). */
+.vp-tag > span { display: block; white-space: nowrap; }
+
+/* ── The best-guess card: a 2g strip, the reason on a 2r line, the game, a mix's chips ── */
+.vp-guess {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 2) minmax(0, 1fr);
+  width: calc(var(--gu) * 35);
+  box-sizing: border-box;
+  margin: var(--subrow) 0 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  overflow: hidden;
+}
+.vp-guess-strip { grid-row: 1 / span 2; }
+.vp-guess-main {
+  grid-column: 2;
+  display: grid;
+  grid-template-rows: calc(var(--subrow) * 3) calc(var(--subrow) * 3);
+  padding: 0 var(--gu);
+  border: 0; background: transparent; color: var(--text);
+  text-align: left; font: inherit; cursor: pointer;
+}
+.vp-guess-why, .vp-guess-name { display: flex; align-items: flex-end; min-width: 0; }
+.vp-guess-why > span {
+  display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--brand-ink, var(--brand));
+  line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+  padding-bottom: 0.3em; margin-bottom: -0.3em;
+}
+.vp-guess-name > span {
+  display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-family: var(--serif); font-size: var(--fs-lg); color: var(--text);
+  line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+  padding-bottom: 0.3em; margin-bottom: -0.3em;
+}
+.vp-guess-mix { color: var(--text-muted); }
+.vp-guess-chips {
+  grid-column: 2;
+  display: flex; flex-wrap: wrap;
+  gap: var(--subrow) var(--gu);
+  padding: var(--subrow) var(--gu) var(--subrow);
+}
+.vp-chip {
+  display: flex; align-items: center; justify-content: center;
+  width: calc(var(--gu) * 6); height: calc(var(--subrow) * 3);
+  box-sizing: border-box; margin: 0; padding: 0;
+  border: 0; border-radius: var(--radius-sm);
+  background: var(--surface2);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps); text-indent: var(--track-caps); text-transform: uppercase;
+  cursor: pointer;
+}
+.vp-chip.is-on { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-fine) var(--brand); color: var(--brand-ink, var(--brand)); }
+
+/* ── The palette: a bottom sheet on the phone, a centred 46g modal on desktop ── */
+.vp-scrim { position: fixed; inset: 0; z-index: 10000; background: rgba(0, 0, 0, 0.55); }
+.vp-sheet {
+  position: fixed;
+  left: calc(50% - var(--gu) * 18.5);
+  width: calc(var(--gu) * 37);
+  top: calc(var(--sa-t, 0px) + var(--subrow) * 12);
+  bottom: 0;
+  box-sizing: border-box;
+  display: flex; flex-direction: column;
+  padding: 0 var(--gu) var(--sa-b, 0px);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--bg);
+  box-shadow: 0 calc(var(--subrow) * -1) calc(var(--subrow) * 4) rgba(0, 0, 0, 0.35);
+}
+.vp-scrim.is-desktop .vp-sheet {
+  left: calc(50% - var(--gu) * 23);
+  width: calc(var(--gu) * 46);
+  top: calc(var(--subrow) * 12);
+  bottom: auto;
+  max-height: round(down, 100dvh - var(--subrow) * 24, var(--subrow));   /* whole r */
+  border-radius: var(--radius-lg);
+  padding-bottom: 0;
+}
+/* The grabber: a 2r band (so everything under it stays on r lines) with the 4g x 0.5r bar centred in it. */
+.vp-grabber { flex: none; position: relative; height: calc(var(--subrow) * 2); }
+.vp-grabber::after { content: ''; position: absolute; left: calc(50% - var(--gu) * 2); top: calc(var(--subrow) * 0.75); width: calc(var(--gu) * 4); height: calc(var(--subrow) * 0.5); border-radius: var(--subrow); background: var(--border-strong); }
+.vp-grabber + .vp-search { margin-top: 0; }
+.vp-search {
+  flex: none;
+  display: flex; align-items: center; gap: var(--gu);
+  height: calc(var(--subrow) * 5);
+  margin-top: var(--subrow);
+  padding: 0 var(--gu);
+  box-sizing: border-box;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+}
+.vp-search svg { flex: none; width: calc(var(--gu) * 2); height: calc(var(--subrow) * 2); color: var(--text-muted); }
+.vp-search input {
+  flex: 1 1 auto; min-width: 0; height: 100%;
+  border: 0; outline: 0; background: transparent; color: var(--text);
+  font-family: var(--font-condensed); font-size: var(--fs-md);
+}
+.vp-jumps { flex: none; display: flex; gap: var(--gu); margin-top: var(--subrow); }
+.vp-jump {
+  display: flex; align-items: center; justify-content: center;
+  flex: 0 0 calc(var(--gu) * 5);
+  height: calc(var(--subrow) * 3);
+  box-sizing: border-box; margin: 0; padding: 0;
+  border: 0; border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  cursor: pointer;
+}
+.vp-jump > span { display: block; overflow: hidden; white-space: nowrap; max-width: 100%; }
+.vp-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin-top: var(--subrow); padding-bottom: calc(var(--subrow) * 2); }
+.vp-sec {
+  display: flex; align-items: flex-end;
+  height: calc(var(--subrow) * 3);
+  color: var(--text-muted);
+  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps); text-transform: uppercase;
+}
+.vp-sec > span { display: block; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; padding-bottom: calc(var(--subrow) * 0.5); }
+.vp-mixname { display: flex; align-items: flex-end; height: calc(var(--subrow) * 3); padding-left: calc(var(--gu) * 3); color: var(--text-muted); font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold); }
+.vp-mixname > span { display: block; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; padding-bottom: calc(var(--subrow) * 0.5); }
+.vp-row {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 3) minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  height: calc(var(--subrow) * 4);
+  box-sizing: border-box; margin: 0; padding: 0 var(--gu) 0 0;
+  border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text);
+  text-align: left; font: inherit; cursor: pointer;
+}
+.vp-row-check { display: flex; justify-content: center; color: var(--brand); font-weight: var(--fw-bold); font-size: var(--fs-sm); }
+.vp-row-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-family: var(--font-condensed); font-size: var(--fs-sm); padding-block: 0.25em; margin-block: -0.25em; }
+.vp-row-mix, .vp-row-count { color: var(--text-muted); }
+.vp-row-count { font-family: var(--font-condensed); font-size: var(--fs-2xs); }
+.vp-row.is-on .vp-row-name { color: var(--brand-ink, var(--brand)); font-weight: var(--fw-bold); }
+.vp-row.is-hi, .vp-row:focus-visible { background: var(--brand-quiet); outline: none; }
+@media (hover: hover) and (pointer: fine) { .vp-row:hover { background: var(--hover-overlay); } .vp-row.is-hi:hover { background: var(--brand-quiet); } }
+.vp-mixrow .vp-row-check { color: var(--text-muted); }
+.vp-empty { padding: var(--subrow) 0; color: var(--text-muted); font-family: var(--font-condensed); font-size: var(--fs-sm); }
+.vp-foot {
+  flex: none;
+  display: flex; align-items: center;
+  height: calc(var(--subrow) * 4);
+  border-top: var(--bw-hair) solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-condensed); font-size: var(--fs-2xs);
+}

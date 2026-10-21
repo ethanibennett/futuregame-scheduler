@@ -827,7 +827,12 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                           style={{cursor:'pointer'}}
                           onClick={e => { e.stopPropagation(); setShowRakeBreakdown(v => !v); }}
                         >
-                          {tournament.rake_pct}% rake {showRakeBreakdown ? '\u25BE' : '\u25B8'}
+                          {tournament.rake_pct}% rake{' '}
+                          {/* The caret as a drawn triangle, not \u25B8/\u25BE: the glyph's blank side bearing put the
+                              label's ink 1.1px left of the pill's centre (check:controls). Its box is its ink. */}
+                          <svg className={'badge-rake-caret' + (showRakeBreakdown ? ' is-open' : '')} viewBox={showRakeBreakdown ? '0 0 6 3.6' : '0 0 3.6 6'} aria-hidden="true">
+                            <path d={showRakeBreakdown ? 'M0 0 H6 L3 3.6 Z' : 'M0 0 V6 L3.6 3 Z'} fill="currentColor" />
+                          </svg>
                         </span>
                       )}
                     </div>

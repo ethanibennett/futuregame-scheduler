@@ -17,6 +17,8 @@ import { resolveConditions, offLast, planKind, openBags } from '../utils/home-up
 import useLiveCashSession from '../hooks/useLiveCashSession.js';
 import useDisplayCurrency from '../hooks/useDisplayCurrency.js';
 import HomeCashCard from './HomeCashCard.jsx';
+import HomeFriends from './HomeFriends.jsx';
+import TableScanner from './TableScanner.jsx';
 import HomeNothingNext from './HomeNothingNext.jsx';
 import HomeToLog from './HomeToLog.jsx';
 import HomeLastResult from './HomeLastResult.jsx';
@@ -220,6 +222,9 @@ export default function DashboardView({
   onAddTracking, onNavigate, tournaments, onToggle, onRefresh,
   onOpenInSchedule, demoStates = false, demoCard = false,
   homeRight = null, // desktop: the second pane's element, which the NUMBERS column portals into
+  // The Friends section (an Edit home option): the people sharing with this account, their latest
+  // live updates, and who is on which event (App fetches all three for Schedule and Social anyway).
+  shareBuddies = null, buddyLiveUpdates = null, buddyEvents = null,
   // Step 3 (To log, Last result): admin gating for the cash/expense paths, the token for the
   // admin-only cash-sessions read, whether this account can log at all (guests cannot), the
   // route into Results' forms (App's resultsIntent) and the "Didn't play" flag.
@@ -1176,6 +1181,19 @@ export default function DashboardView({
     last: () => (onLog ? (
       <HomeLastResult key="last" results={trackingData} rates={dashRates} isAdmin={isAdmin} token={token} canLog={canLog} onLog={onLog} bk={bk} />
     ) : null),
+    // Friends and the Table scanner: Edit home options that start off (owner, 2026-10-20).
+    friends: () => (
+      <HomeFriends key="friends" buddies={shareBuddies} liveUpdates={buddyLiveUpdates} buddyEvents={buddyEvents}
+        tournaments={tournaments} today={todayISO} demo={!!demoStates} onOpenSocial={() => onNavigate && onNavigate('social')} />
+    ),
+    scanner: () => (
+      <section key="scanner" className="dashboard-section hm-scanner" aria-label="Table scanner">
+        <div className="dashboard-section-header hm-period-head">
+          <div className="hm-cell hm-sec-title"><span className="hm-clip">Table scanner</span></div>
+        </div>
+        <TableScanner />
+      </section>
+    ),
     // The bankroll line (admins; verdict section 4).
     bankroll: () => (num.admin ? <HomeBankrollLine key="bankroll" summary={bk.summary} onOpen={num.onOpenRules} /> : null),
     // The period block with its goals (section 5) and its noise line (section 6), which replaced the

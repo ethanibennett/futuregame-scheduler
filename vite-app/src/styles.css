@@ -12220,6 +12220,9 @@
     .cal-badges-left .badge-event { min-width: calc(var(--gu) * 4); padding: 0 calc(var(--gu) * 0.5); }
     /* The rake pill is 7g (20..27g). */
     .cal-event-detail .badge-rake { min-width: calc(var(--gu) * 7); padding: 0 calc(var(--gu) * 0.4); }
+    /* The caret (CalendarEventRow): a triangle the size the ▸ glyph drew, its box exactly its ink. */
+    .badge-rake-caret { display: inline-block; height: 0.6em; width: 0.36em; flex: none; }
+    .badge-rake-caret.is-open { height: 0.36em; width: 0.6em; }
     .cal-badges-left .cal-meta-line {
       display: block;
       box-sizing: border-box;
@@ -17054,6 +17057,15 @@
 
     /* --bg, so the shell to the right of a capped single pane reads as page, not as a gap. */
     .dk-body { flex: 1; min-height: 0; display: flex; align-items: stretch; background: var(--bg); }
+    /* The panes end on an r line: a window is rarely a whole number of r tall (900px is 109.09r), so
+       the body's foot, and every control anchored to a pane's bottom (the +, the Next pill, the Hands
+       tools, the admin toggles), sat 0.59r off the grid. The body's bottom padding takes the window's
+       remainder (mod: Safari 15.4+, Chrome 125+; older browsers keep the old fractional foot). */
+    .dk-body { box-sizing: border-box; padding-bottom: mod(100dvh, var(--subrow)); }
+    /* With the panes ending on an r line, the phone's --nav-snap (the window's remainder over r, for a
+       bottom nav desktop does not have) would put back what the foot took out: the controls inside a
+       pane (fixed, but held by the pane) count whole r from its bottom. */
+    .app-shell.is-desktop .dk-body { --nav-snap: 0px; }
 
     /* ── Rail: 10g = one 8g column inside 1g margins ── */
     .dk-rail {
@@ -17185,9 +17197,11 @@
     /* The same 1g of header colour under the panes as between them, so the bottom hairlines stand
        off the window's edge instead of sitting on its last pixel row. */
     :root:not([data-theme^="swiss"]) .dk-body {
-      padding-bottom: var(--gu);
+      /* 1g of the header's colour, plus the remainder that ends the panes on an r line (above). */
+      --dk-foot: calc(var(--gu) + mod(100dvh - var(--gu), var(--subrow)));
+      padding-bottom: var(--dk-foot);
       box-sizing: border-box;
-      background: linear-gradient(var(--surface), var(--surface)) bottom / 100% var(--gu) no-repeat, var(--bg);
+      background: linear-gradient(var(--surface), var(--surface)) bottom / 100% var(--dk-foot) no-repeat, var(--bg);
     }
     /* + --dk-sb-g: a classic scrollbar's width in g (0 where scrollbars overlay), so the content
        beside the scrollbar keeps the whole 9N+1 g (useDesktopLayout.js measureScrollbarG). */
@@ -17250,7 +17264,7 @@
        from the foot of the window, plus the fraction of an r that puts its top on a line counted
        from the bar. Outranks the phone's raise for the live cash bar (CashSessions.css): the bar
        sits under the list pane, not this one. */
-    .app-shell.is-desktop .dk-pane-detail .back-to-today-fab { bottom: calc(var(--subrow) * 4 + mod(100dvh - var(--sa-t), var(--subrow))); }
+    .app-shell.is-desktop .dk-pane-detail .back-to-today-fab { bottom: calc(var(--subrow) * 4); }   /* the pane ends on an r line (.dk-body) */
 
     /* scrollbar-gutter: a classic scrollbar (a Mac with a mouse, Windows) takes width only on
        desktop, where --dk-sb-g widens the pane to hold it. Reserving it even when a view does not
@@ -18201,6 +18215,9 @@
       border-radius: var(--radius-xs);
       text-align: left;
     }
+    /* A location set made the tile .active, and the chip's active ring is the accent, bright enough to
+       outshine everything on the row (owner, 2026-10-20: "dial down the brightness"): the strong border. */
+    :root:not([data-theme^="swiss"]) .filter-chip.loc-tile.active { border-color: var(--border-strong); }
     :root:not([data-theme^="swiss"]) .loc-tile-label,
     :root:not([data-theme^="swiss"]) .loc-tile .loc-tile-value {
       display: block;

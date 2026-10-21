@@ -692,3 +692,93 @@ export function assignNeutralSuits(handCards, usedCardKeys, boardSuits) {
   }
   return assigned;
 }
+
+/* ── Double board (owner, 2026-10-20) ──────────────────────────────────────────────────────────
+   A double-board hand deals two boards; every player plays the same hole cards against each.
+   - A high (or low) game splits each pot layer in half, one half per board, each board judged on
+     its own (an odd chip goes to board 1).
+   - A hi-lo game has ONE ultimate high and ONE ultimate low over both boards (owner: "one ultimate
+     high and one ultimate low overall for both boards"): a player's high is the better of their two
+     boards' highs, their low the better of their two qualifying lows, and the layer splits hi/lo once.
+   cardsBySeat maps seat -> parsed hole cards; board1/board2 are parsed boards. */
+function scoreOnBoard(cfg, cards, board) {
+  var all = board.length ? cards.concat(board) : cards;
+  if (cfg.type === 'high') { var h = bestHighFor(cfg, cards, board); return { hi: h ? h.score : null, lo: null, hiEval: h, loEval: null }; }
+  if (cfg.type === 'hilo') {
+    var hh = bestHighFor(cfg, cards, board), ll = bestLow8For(cfg, cards, board);
+    var q = ll && ll.qualified ? ll : null;
+    return { hi: hh ? hh.score : null, lo: q ? q.score : null, hiEval: hh, loEval: q };
+  }
+  if (cfg.type === 'low') { var lw = cfg.lowType === 'a5' ? bestLowA5Hand(all, false) : bestLow27Hand(all); return { hi: null, lo: lw ? lw.score : null, hiEval: null, loEval: lw }; }
+  return null;
+}
+
+export function doubleBoardEvals(cfg, cardsBySeat, board1, board2) {
+  var b1 = {}, b2 = {}, combined = {};
+  Object.keys(cardsBySeat).forEach(function(k) {
+    var cards = cardsBySeat[k];
+    var s1 = scoreOnBoard(cfg, cards, board1), s2 = scoreOnBoard(cfg, cards, board2);
+    if (!s1 || !s2) return;
+    b1[k] = s1; b2[k] = s2;
+    var hi = s1.hi == null ? s2.hi : (s2.hi == null ? s1.hi : Math.max(s1.hi, s2.hi));
+    var lo = s1.lo == null ? s2.lo : (s2.lo == null ? s1.lo : Math.min(s1.lo, s2.lo));
+    combined[k] = {
+      hi: hi, lo: lo,
+      hiEval: hi == null ? null : (s1.hi === hi ? s1.hiEval : s2.hiEval),
+      loEval: lo == null ? null : (s1.lo === lo ? s1.loEval : s2.loEval),
+    };
+  });
+  return { b1: b1, b2: b2, combined: combined };
+}
+
+/** Pot layers settled for a double-board hand, in computePotAwards' shape. */
+export function doubleBoardShaped(cfg, layers, evals, contesting) {
+  return (layers || []).reduce(function(out, l) {
+    var players = l.players || contesting;
+    if (cfg.type === 'hilo') {
+      out.push(Object.assign({ amount: l.amount }, hiLoWinnersAmong(evals.combined, players)));
+    } else {
+      var a = Math.max(0, Math.round(l.amount || 0));
+      var h1 = Math.ceil(a / 2);
+      out.push(Object.assign({ amount: h1 }, hiLoWinnersAmong(evals.b1, players)));
+      out.push(Object.assign({ amount: a - h1 }, hiLoWinnersAmong(evals.b2, players)));
+    }
+    return out;
+  }, []);
+}
+
+/** The stored winners of a double-board showdown: { playerIdx, split, hi, lo, boards, label }. */
+export function doubleBoardWinners(gameType, playerHands, board1, board2, hand, nameOf) {
+  var cfg = gameEvalFor(gameType, hand);
+  if (!cfg || !playerHands.length) return [];
+  var bySeat = {};
+  playerHands.forEach(function(ph) { bySeat[ph.idx] = ph.cards; });
+  var ev = doubleBoardEvals(cfg, bySeat, board1, board2);
+  var seats = playerHands.map(function(ph) { return ph.idx; });
+  var name = function(i) { return nameOf ? nameOf(i) : 'Seat ' + (i + 1); };
+  if (cfg.type === 'hilo') {
+    var w = hiLoWinnersAmong(ev.combined, seats);
+    var ids = Array.from(new Set(w.hiWinners.concat(w.loWinners)));
+    var scoop = ids.length === 1 && w.hiWinners.length === 1 && (w.loWinners.length === 0 || w.loWinners[0] === ids[0]);
+    return ids.map(function(i) {
+      var hi = w.hiWinners.indexOf(i) >= 0, lo = w.loWinners.indexOf(i) >= 0;
+      var parts = [];
+      if (hi) parts.push('Hi: ' + (ev.combined[i].hiEval.shortName || ev.combined[i].hiEval.name));
+      if (lo) parts.push('Lo: ' + ev.combined[i].loEval.name);
+      return { playerIdx: i, split: !scoop, hi: hi, lo: lo, label: name(i) + ' wins ' + parts.join(', ') };
+    });
+  }
+  var w1 = hiLoWinnersAmong(ev.b1, seats), w2 = hiLoWinnersAmong(ev.b2, seats);
+  var win1 = cfg.type === 'low' ? w1.loWinners : w1.hiWinners, win2 = cfg.type === 'low' ? w2.loWinners : w2.hiWinners;
+  var all = Array.from(new Set(win1.concat(win2)));
+  var scoop2 = all.length === 1 && win1.length === 1 && win2.length === 1;
+  return all.map(function(i) {
+    var boards = [];
+    if (win1.indexOf(i) >= 0) boards.push(1);
+    if (win2.indexOf(i) >= 0) boards.push(2);
+    return {
+      playerIdx: i, split: !scoop2, boards: boards,
+      label: name(i) + (boards.length === 2 ? (scoop2 ? ' scoops both boards' : ' wins both boards (split)') : ' wins board ' + boards[0]),
+    };
+  });
+}

@@ -26,6 +26,10 @@ export const HOME_SECTIONS = [
   { id: 'period',   name: 'This month',      note: 'Or your trip or series',   pane: 'numbers', who: 'all' },
   { id: 'noise',    name: 'Signal or noise',                                   parent: 'period', who: 'admin' },
   { id: 'goals',    name: 'Goals',           note: 'When you have set some',   parent: 'period', who: 'admin' },
+  // Brought back as options (owner, 2026-10-20: "bring back the option to add friends events to the
+  // dashboard, and the tablescanner"), off until switched on in Edit home: defaultOff.
+  { id: 'friends',  name: 'Friends',         note: 'Playing now, or on today', pane: 'now',     who: 'registered', defaultOff: true },
+  { id: 'scanner',  name: 'Table scanner',   note: 'Read a table screenshot',  pane: 'now',     who: 'registered', defaultOff: true },
 ];
 
 export const LAYOUT_VERSION = 1;
@@ -79,7 +83,7 @@ export function normalise(raw) {
 
 /** The default document (what null stands for). */
 export function defaultDoc() {
-  return { v: LAYOUT_VERSION, sections: HOME_SECTIONS.map((s) => ({ id: s.id, on: true })) };
+  return { v: LAYOUT_VERSION, sections: HOME_SECTIONS.map((s) => ({ id: s.id, on: !s.defaultOff })) };
 }
 
 // id -> on, from a (normalised) document; an id it does not mention is on.
@@ -88,7 +92,8 @@ function onMap(doc) {
   if (doc && Array.isArray(doc.sections)) for (const e of doc.sections) m.set(e.id, !!e.on);
   return m;
 }
-const isOn = (m, id) => (BY_ID.get(id) && BY_ID.get(id).locked ? true : (m.has(id) ? m.get(id) : true));
+// A section the document does not mention is on, unless the registry says it starts off.
+const isOn = (m, id) => (BY_ID.get(id) && BY_ID.get(id).locked ? true : (m.has(id) ? m.get(id) : !(BY_ID.get(id) && BY_ID.get(id).defaultOff)));
 
 /**
  * The full top-level order: the saved ids (parts left out; unknown ids keep their places), then
@@ -210,7 +215,7 @@ export function isDefault(doc, ctx) {
   if (!d) return true;
   const m = onMap(d);
   const avail = available(ctx);
-  if (avail.some((s) => !isOn(m, s.id))) return false;
+  if (avail.some((s) => isOn(m, s.id) !== !s.defaultOff)) return false;
   const order = movable(fullOrder(d), ctx, null);
   const def = avail.filter((s) => !s.parent).map((s) => s.id);
   return order.length === def.length && order.every((id, i) => id === def[i]);

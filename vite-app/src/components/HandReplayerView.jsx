@@ -3,7 +3,9 @@ import { createPortal, flushSync } from 'react-dom';
 import ShortDeckRuleDialog from './ShortDeckRuleDialog.jsx';
 import Icon from './Icon.jsx';
 import { API_URL, SITE_URL } from '../utils/api.js';
-import { HAND_CONFIG, HAND_CONFIG_DEFAULT, getGamePills, haptic, getVariantStrip, canonicalGameType, canonicalHand } from '../utils/utils.js';
+import { HAND_CONFIG, HAND_CONFIG_DEFAULT, getGamePills, haptic, getVariantStrip, canonicalGameType, canonicalHand, getToday } from '../utils/utils.js';
+import { STRUCTURE_GAME_MAP, DEFAULT_STRUCTURE, FIXED_STRUCTURE as FIXED_STRUCTURE_MAP, RAZZ_VARIANTS as RAZZ_LIST, buildCatalog, buildMixes, bestGuess } from '../utils/variant-catalog.js';
+import { Palette, GuessCard, Launcher } from './VariantPicker.jsx';
 import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL, gameEvalFor,
          bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestBadugiHand,
          computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot,
@@ -4491,7 +4493,7 @@ class ReplayErrorBoundary extends React.Component {
 // ══════════════════════════════════════════════════════════
 // ── Main Hand Replayer View ──────────────────────────────
 // ══════════════════════════════════════════════════════════
-export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, linkedReplay, quickAdd }) {
+export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, linkedReplay, quickAdd, schedule = null, updates = null }) {
   const toast = useToast();
   const [mode, setMode] = useState(initialHand ? 'replay' : 'list');
   const [quickVoice, setQuickVoice] = useState(false);   // quick add opened by Say (listening at once)
@@ -4542,68 +4544,17 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   const [customCategory, setCustomCategory] = useState('community');
   const [customStreetNames, setCustomStreetNames] = useState('');
 
-  // Game selection config
-  const structureGameMap = {
-    'No Limit':  { "Hold'em": 'NLH', 'Pineapple': 'NLH', 'Short Deck': 'Short Deck',
-      'Omaha': 'PLO', 'Omaha 8/b': 'NLO8', 'Big O': 'Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
-      'Double Board Bomb Pot': 'PLO', 'Courchevel': 'PLO',
-      'Stud Hi': 'NL Stud Hi', 'Stud 8/b': 'NL Stud 8', 'Razz': 'NL Razz',
-      'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': 'Razz',
-      'Razzdugi': 'Badugi', 'Razzdeucy': 'Badeucy',
-      '2-7 Triple Draw': '2-7 TD', '2-7 Single Draw': 'NL 2-7 SD',
-      'A-5 Triple Draw': 'A-5 TD', 'A-5 Single Draw': 'A-5 TD',
-      'Badugi': 'Badugi', 'Badeucy': 'Badeucy', 'Badacey': 'Badacy',
-      'Archie 66': 'Badugi', 'Archie 99': 'Badugi', 'Ari': 'Badugi',
-      '5-Card Draw': 'PL 5CD Hi', 'OFC': 'OFC',
-      'Dramaha Hi': 'PLO', 'Dramaha 2-7': 'PLO', 'Dramaha 49': 'PLO', 'Dramaha 0': 'PLO', 'Dramadugi': 'PLO', 'Omajack': 'PLO' },
-    'Pot Limit': { "Hold'em": 'PLH', 'Pineapple': 'PLH', 'Short Deck': 'Short Deck',
-      'Omaha': 'PLO', 'Omaha 8/b': 'PLO8', 'Big O': 'Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
-      'Double Board Bomb Pot': 'PLO', 'Courchevel': 'PLO',
-      'Stud Hi': 'PL Stud Hi', 'Stud 8/b': 'PL Stud 8', 'Razz': 'PL Razz',
-      'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': 'Razz',
-      'Razzdugi': 'Badugi', 'Razzdeucy': 'Badeucy',
-      '2-7 Triple Draw': 'PL 2-7 TD', '2-7 Single Draw': 'NL 2-7 SD',
-      'A-5 Triple Draw': 'A-5 TD', 'A-5 Single Draw': 'A-5 TD',
-      'Badugi': 'Badugi', 'Badeucy': 'Badeucy', 'Badacey': 'Badacy',
-      'Archie 66': 'Badugi', 'Archie 99': 'Badugi', 'Ari': 'Badugi',
-      '5-Card Draw': 'PL 5CD Hi', 'OFC': 'OFC',
-      'Dramaha Hi': 'PLO', 'Dramaha 2-7': 'PLO', 'Dramaha 49': 'PLO', 'Dramaha 0': 'PLO', 'Dramadugi': 'PLO', 'Omajack': 'PLO' },
-    'Limit':     { "Hold'em": 'LHE', 'Pineapple': 'LHE', 'Short Deck': 'Short Deck',
-      'Omaha': 'LO Hi', 'Omaha 8/b': 'O8', 'Big O': 'Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
-      'Double Board Bomb Pot': 'PLO', 'Courchevel': 'PLO',
-      'Stud Hi': 'Stud Hi', 'Stud 8/b': 'Stud 8', 'Razz': 'Razz',
-      'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': 'Razz',
-      'Razzdugi': 'Badugi', 'Razzdeucy': 'Badeucy',
-      '2-7 Triple Draw': '2-7 TD', '2-7 Single Draw': 'NL 2-7 SD',
-      'A-5 Triple Draw': 'A-5 TD', 'A-5 Single Draw': 'A-5 TD',
-      'Badugi': 'Badugi', 'Badeucy': 'Badeucy', 'Badacey': 'Badacy',
-      'Archie 66': 'Badugi', 'Archie 99': 'Badugi', 'Ari': 'Badugi',
-      '5-Card Draw': 'PL 5CD Hi', 'OFC': 'OFC',
-      'Dramaha Hi': 'PLO', 'Dramaha 2-7': 'PLO', 'Dramaha 49': 'PLO', 'Dramaha 0': 'PLO', 'Dramadugi': 'PLO', 'Omajack': 'PLO' },
-  };
-  const defaultStructure = {
-    "Hold'em": 'No Limit', 'Pineapple': 'No Limit', 'Short Deck': 'No Limit',
-    'Omaha': 'Pot Limit', 'Omaha 8/b': 'Pot Limit', 'Big O': 'Pot Limit', 'PLO6 8/b': 'Pot Limit',
-    'PLO5': 'Pot Limit', 'PLO6': 'Pot Limit',
-    'Double Board Bomb Pot': 'No Limit', 'Courchevel': 'Pot Limit',
-    'Stud Hi': 'Limit', 'Stud 8/b': 'Limit', 'Razz': 'Limit',
-    'Stud Hi/Lo Regular': 'Limit', '2-7 Razz': 'Limit',
-    'Razzdugi': 'Limit', 'Razzdeucy': 'Limit',
-    '2-7 Triple Draw': 'Limit', '2-7 Single Draw': 'No Limit',
-    'A-5 Triple Draw': 'Limit', 'A-5 Single Draw': 'No Limit',
-    'Badugi': 'Limit', 'Badeucy': 'Limit', 'Badacey': 'Limit',
-    'Archie 66': 'Limit', 'Archie 99': 'Limit', 'Ari': 'Limit',
-    '5-Card Draw': 'No Limit', 'OFC': 'No Limit',
-    'Dramaha Hi': 'Pot Limit', 'Dramaha 2-7': 'Pot Limit', 'Dramaha 49': 'Pot Limit',
-    'Dramaha 0': 'Pot Limit', 'Dramadugi': 'Pot Limit', 'Omajack': 'Pot Limit',
-  };
+  // Game selection config: the shared maps (utils/variant-catalog.js), so the picker's rows and
+  // the entry's game types are one table.
+  const structureGameMap = STRUCTURE_GAME_MAP;
+  const defaultStructure = DEFAULT_STRUCTURE;
 
   /* Games that are played one way only, with that structure. Their rows offer no other, and the
      label is the game's own name: "PLO6 8/b", not "Limit PLO6 8/b". (Short Deck is a no-limit game,
      with a button blind and an ante; PLO5, PLO6 and PLO6 8/b are pot-limit.) */
-  const FIXED_STRUCTURE = { 'Short Deck': 'No Limit', 'PLO5': 'Pot Limit', 'PLO6': 'Pot Limit', 'PLO6 8/b': 'Pot Limit' };
+  const FIXED_STRUCTURE = FIXED_STRUCTURE_MAP;
 
-  const RAZZ_VARIANTS = ['Razz', '2-7 Razz', 'Razzdugi', 'Razzdeucy'];
+  const RAZZ_VARIANTS = RAZZ_LIST;
 
   const variantDisplayName = useMemo(() => {
     const isRazz = RAZZ_VARIANTS.includes(selectedGame);
@@ -4670,9 +4621,9 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     return result;
   }, [gameHistory, FAVE_DEFAULTS]);
 
-  const recordGameUse = (game, structure) => {
+  const recordGameUse = (game, structure, mix = null) => {
     setGameHistory(prev => {
-      const next = [{ game, structure }, ...prev].slice(0, 20);
+      const next = [{ game, structure, ...(mix ? { mix } : {}) }, ...prev].slice(0, 20);
       try { localStorage.setItem('replayer_game_history', JSON.stringify(next)); } catch {}
       return next;
     });
@@ -4703,6 +4654,51 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     const map = structureGameMap[s];
     if (map && map[selectedGame]) setSelectedGameType(map[selectedGame]);
   };
+
+  // ── The variant picker (VariantPicker.jsx, utils/variant-catalog.js) ──
+  // The mix a hand was dealt in (HORSE, 8-Game...), saved with it as hand.mix; null for a single game.
+  const [selectedMix, setSelectedMix] = useState(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [pendingCreate, setPendingCreate] = useState(false);
+  const catalog = useMemo(() => buildCatalog(games.map(g => g.name || g.game_name).filter(Boolean)), [games]);
+  const mixes = useMemo(() => buildMixes(catalog), [catalog]);
+  const guess = useMemo(() => bestGuess({ rows: catalog, schedule: schedule || [], updates: updates || [], today: getToday() }),
+    [catalog, schedule, updates]);
+  const currentRow = useMemo(() => {
+    const r = catalog.find(x => x.game === selectedGame && x.structure === bettingStructure)
+      || catalog.find(x => x.game === selectedGame);
+    return r ? { ...r, mix: selectedMix } : null;
+  }, [catalog, selectedGame, bettingStructure, selectedMix]);
+  // A row from the palette or the guess: the game, its structure (its own row's), and the mix. From
+  // the palette it also makes the hand, once the state above has caught up (pendingCreate).
+  const pickVariant = (row, { mix = null, create = false } = {}) => {
+    handleGameSelect(row.game);
+    if (!row.custom && STRUCTURE_GAME_MAP[row.structure]?.[row.game]) {
+      setBettingStructure(row.structure);
+      setSelectedGameType(STRUCTURE_GAME_MAP[row.structure][row.game]);
+    }
+    setSelectedMix(mix);
+    setPaletteOpen(false);
+    // Short Deck asks its rule first (ShortDeckRuleDialog); the Create button makes it after.
+    if (create && row.game !== 'Short Deck') setPendingCreate(true);
+  };
+  // The guess is the starting pick, once per visit to the list (never over a choice made since).
+  const guessApplied = useRef(false);
+  useEffect(() => {
+    if (guessApplied.current || !guess || mode !== 'list') return;
+    guessApplied.current = true;
+    pickVariant(guess.row, { mix: guess.mix });
+  }, [guess, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ⌘K / Ctrl+K or "/" opens the palette on the list (desktop keyboards).
+  useEffect(() => {
+    if (mode !== 'list') return undefined;
+    const onKey = (e) => {
+      const typing = e.target && (e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName));
+      if (((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') || (!typing && e.key === '/')) { e.preventDefault(); setPaletteOpen(true); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mode]);
 
   // Fetch saved hands
   const fetchHands = useCallback(async () => {
@@ -4879,8 +4875,9 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       const isRazzGame = RAZZ_VARIANTS.includes(selectedGame);
       if (studAction && isRazzGame) hand.gameType = 'Action ' + hand.gameType;
       if (studSuper && selectedCategory === 'Stud') hand.gameType = 'Super ' + hand.gameType;
+      if (selectedMix) hand.mix = selectedMix;
       setCurrentHand(hand);
-      recordGameUse(selectedGame, bettingStructure);
+      recordGameUse(selectedGame, bettingStructure, selectedMix);
     }
     setCurrentHandId(null);
     setHandIsShared(false);
@@ -4889,6 +4886,12 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     setIsPublic(false);
     setMode('entry');
   };
+  // A palette pick makes the hand once its game, structure and mix are in state (pickVariant).
+  useEffect(() => {
+    if (!pendingCreate) return;
+    setPendingCreate(false);
+    startNewHand();
+  }, [pendingCreate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Replay mode ──
   if (mode === 'replay' && currentHand) {
@@ -5120,144 +5123,34 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       <div className="replayer-list-new">
         <div className="replayer-list-head">
           <div className="replayer-list-title"><span>New Hand</span></div>
-          <div className="replayer-list-variant"><span>{variantDisplayName}</span></div>
         </div>
-        {/* Favorites row — above the full picker */}
-        <div className="game-subheading"><span>Favorites</span></div>
-        <div className="game-faves-row">
-          {favorites.map(fav => {
-            const label = structureGameMap[fav.structure]?.[fav.game] || fav.game;
-            const isActive = selectedGame === fav.game && bettingStructure === fav.structure;
-            return (
-              <button key={fav.game + '|' + fav.structure}
-                className={`game-fave-btn${isActive ? ' active' : ''}`}
-                onClick={() => {
-                  handleGameSelect(fav.game);
-                  setBettingStructure(fav.structure);
-                  const map = structureGameMap[fav.structure];
-                  if (map?.[fav.game]) setSelectedGameType(map[fav.game]);
-                }}
-              ><span>{label}</span></button>
-            );
-          })}
-        </div>
-        {/* Game picker: tab bar + checklist */}
-        <div className="game-subheading"><span>Games</span></div>
-        <div className="game-picker">
-          {/* Category tabs */}
-          <div className="game-tab-bar">
-            {categoryGroups.map(cat => (
-              <button key={cat.label}
-                className={`game-tab-btn${selectedCategory === cat.label ? ' active' : ''}`}
-                onClick={() => {
-                  const allGames = [...cat.games, ...(cat.more || []), ...(cat.hidden || [])];
-                  if (!allGames.includes(selectedGame)) handleGameSelect(cat.games[0]);
-                  setSelectedCategory(cat.label);
-                  setStudSuper(false);
-                  if (showMoreFor !== cat.label) setShowMoreFor(null);
-                }}
-              ><span>{cat.label}</span></button>
-            ))}
+        {/* The variant picker (owner, 2026-10-20; VariantPicker.jsx, utils/variant-catalog.js): the best
+            guess from My Schedule, then the launcher that opens the palette. They replace the
+            favourites, the family tabs, More and the Structure block. */}
+        <GuessCard guess={guess} current={currentRow} onPick={pickVariant} />
+        <Launcher current={currentRow} name={variantDisplayName + (selectedMix ? ' · ' + selectedMix : '')} onOpen={() => setPaletteOpen(true)} />
+        {/* Stud's modifiers, under the launcher while a stud game is picked. */}
+        {selectedCategory === 'Stud' && (
+          <div className="game-picker vp-stud">
+            <div className="game-check-group">
+              {[['Super', studSuper, () => setStudSuper(p => !p), false],
+                ['Action', studAction, () => setStudAction(p => !p), !RAZZ_VARIANTS.includes(selectedGame)]].map(([label, checked, onToggle, disabled]) => (
+                <div key={label} className={`game-check-row has-check${checked ? ' selected' : ''}`}
+                  style={{opacity: disabled ? 0.35 : 1, cursor: disabled ? 'default' : 'pointer'}}
+                  onClick={disabled ? undefined : onToggle}>
+                  <div className={`game-check-box${checked ? ' checked' : ''}`}>
+                    {checked && <span style={{color:'#fff',fontSize:'calc(var(--subrow) * 1.125)',lineHeight:1,fontWeight:700}}>✓</span>}
+                  </div>
+                  <span className={`game-check-row-label is-caps${checked ? ' selected' : ''}`}>{label}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          {/* Games in selected category — radio checklist */}
-          {(() => {
-            const cat = categoryGroups.find(c => c.label === selectedCategory);
-            if (!cat) return null;
-            const moreGames = cat.more || [];
-            const moreSelected = moreGames.includes(selectedGame);
-            const studModifiers = selectedCategory === 'Stud' && (studSuper || studAction);
-            const moreOpen = showMoreFor === selectedCategory || moreSelected || studModifiers;
-            const checkboxRow = (label, checked, onToggle, disabled) => (
-              <div key={label} className={`game-check-row has-check${checked ? ' selected' : ''}`}
-                style={{opacity: disabled ? 0.35 : 1, cursor: disabled ? 'default' : 'pointer'}}
-                onClick={disabled ? undefined : onToggle}
-              >
-                {/* Grid: the box sits in the 1..3g gutter so the label keeps the
-                    3g line every other row's label is on. */}
-                <div className={`game-check-box${checked ? ' checked' : ''}`}>
-                  {checked && <span style={{color:'#fff',fontSize:'calc(var(--subrow) * 1.125)',lineHeight:1,fontWeight:700}}>✓</span>}
-                </div>
-                <span className={`game-check-row-label is-caps${checked ? ' selected' : ''}`}>{label}</span>
-              </div>
-            );
-            return (<>
-              {cat.games.map(game => {
-                const isSelected = selectedGame === game;
-                return (
-                  <div key={game}
-                    className={`game-check-row${isSelected ? ' selected' : ''}`}
-                    onClick={() => handleGameSelect(game)}
-                  >
-                    <div className={`game-check-radio${isSelected ? ' selected' : ''}`}>
-                      {isSelected && <div className="game-check-radio-dot"/>}
-                    </div>
-                    <span className={`game-check-row-label${isSelected ? ' selected' : ''}`}>{game}</span>
-                  </div>
-                );
-              })}
-              {/* More dropdown — includes variant games + Stud modifiers */}
-              {moreGames.length > 0 && (<>
-                {moreOpen && (<>
-                  {moreGames.map(game => (
-                    <div key={game}
-                      className={`game-check-row${selectedGame === game ? ' selected' : ''}`}
-                      onClick={() => handleGameSelect(game)}
-                    >
-                      <div className={`game-check-radio${selectedGame === game ? ' selected' : ''}`}>
-                        {selectedGame === game && <div className="game-check-radio-dot"/>}
-                      </div>
-                      <span className={`game-check-row-label${selectedGame === game ? ' selected' : ''}`}>{game}</span>
-                    </div>
-                  ))}
-                  {selectedCategory === 'Stud' && (
-                    <div className="game-check-group">
-                      {checkboxRow('Super', studSuper, () => setStudSuper(p => !p), false)}
-                      {checkboxRow('Action', studAction, () => setStudAction(p => !p), !RAZZ_VARIANTS.includes(selectedGame))}
-                    </div>
-                  )}
-                </>)}
-                <div className="game-check-more-row"
-                  onClick={() => {
-                    if (moreOpen && !moreSelected && !studModifiers) setShowMoreFor(null);
-                    else if (!moreOpen) setShowMoreFor(selectedCategory);
-                  }}
-                >
-                  <span className="game-check-more-btn">
-                    {moreOpen && !moreSelected && !studModifiers ? '▲ Less' : '▼ More'}
-                  </span>
-                </div>
-              </>)}
-            </>);
-          })()}
-          {/* Betting structure — hidden for OFC */}
-          {selectedGame !== 'OFC' && (()=> {
-            const fixed = FIXED_STRUCTURE[selectedGame];
-            const dimmed = new Set(
-              fixed                           ? ['No Limit', 'Pot Limit', 'Limit'].filter(x => x !== fixed) :
-              selectedCategory === 'Stud'     ? ['No Limit', 'Pot Limit'] :
-              selectedCategory === "Hold'em"  ? ['Pot Limit'] :
-              /* No-limit Omaha is a game now, but only the hi-lo one (NLO8). */
-              selectedCategory === 'Omaha'    ? (selectedGame === 'Omaha 8/b' ? [] : ['No Limit']) : []
-            );
-            return (
-              <>
-                <div className="game-check-section-label"><span>Structure</span></div>
-                {['No Limit', 'Pot Limit', 'Limit'].map(s => (
-                  <div key={s}
-                    className={`game-check-row${bettingStructure === s ? ' selected' : ''}`}
-                    style={{opacity: dimmed.has(s) ? 0.35 : 1}}
-                    onClick={() => handleStructureChange(s)}
-                  >
-                    <div className={`game-check-radio${bettingStructure === s ? ' selected' : ''}`}>
-                      {bettingStructure === s && <div className="game-check-radio-dot"/>}
-                    </div>
-                    <span className={`game-check-row-label is-caps${bettingStructure === s ? ' selected' : ''}`}>{s}</span>
-                  </div>
-                ))}
-              </>
-            );
-          })()}
-        </div>
+        )}
+        {paletteOpen && (
+          <Palette rows={catalog} mixes={mixes} history={gameHistory} current={currentRow}
+            onPick={pickVariant} onClose={() => setPaletteOpen(false)} />
+        )}
         <div className="replayer-list-create">
           <button className="btn btn-primary btn-sm" onClick={startNewHand}><span>Create {variantDisplayName} Hand</span></button>
         </div>

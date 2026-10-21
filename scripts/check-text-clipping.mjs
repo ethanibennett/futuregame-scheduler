@@ -421,6 +421,19 @@ function scan(rootSel) {
     await p.waitForTimeout(800);
     await run('hands scanner', '.hands-scan');
   } catch (e) { console.log(`  (hands scanner skipped: ${e.message.split('\n')[0]})`); }
+  // Hands: the New Hand variant picker (VariantPicker.jsx): its launcher, then the palette open, then
+  // a search ("o8": rows and the mixes that deal it).
+  if (on('hands-palette')) try {
+    await openTab('Hands');
+    await p.locator('.vp-launcher').first().click({ timeout: 4000 });
+    await p.waitForTimeout(800);
+    await run('hands palette', '.vp-sheet');
+    await p.locator('.vp-search input').fill('o8');
+    await p.waitForTimeout(400);
+    await run('hands palette, search', '.vp-sheet');
+    await p.keyboard.press('Escape');
+    await p.locator('.vp-scrim').first().click({ position: { x: 5, y: 5 }, timeout: 2000 }).catch(() => {});
+  } catch (e) { console.log(`  (hands palette skipped: ${e.message.split('\n')[0]})`); }
   // Hands: the Export for PokerTracker sheet (its body copy and the not-exported list wrap),
   // and a replay's Share sheet (the hand-history tile's description is a reason when it is off).
   // (staged: the account's hands plus one of every kind the sheet sorts, scripts/hands-states.mjs)

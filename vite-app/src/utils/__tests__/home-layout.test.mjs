@@ -12,11 +12,15 @@ const USER = { admin: false, registered: true };
 const GUEST = { admin: false, registered: false };
 const doc = (...ids) => ({ v: 1, sections: ids.map((x) => (typeof x === 'string' ? { id: x, on: true } : x)) });
 const ids = (d) => d.sections.map((e) => e.id);
-const top = (d) => fullOrder(d);
+// friends and scanner (2026-10-20) start off and sit at the end; the older cases below keep their
+// original lists by leaving them out, and the default-off test at the foot covers them.
+const LATE = new Set(['friends', 'scanner']);
+const only = (a) => a.filter((id) => !LATE.has(id));
+const top = (d) => only(fullOrder(d));
 
 test('defaults per viewer: admin 7 entries, registered 4, a guest Up Next and the period block', () => {
-  assert.deepEqual(available(ADMIN).map((s) => s.id), ['upnext', 'tolog', 'last', 'bankroll', 'period', 'noise', 'goals']);
-  assert.deepEqual(available(USER).map((s) => s.id), ['upnext', 'tolog', 'last', 'period']);
+  assert.deepEqual(only(available(ADMIN).map((s) => s.id)), ['upnext', 'tolog', 'last', 'bankroll', 'period', 'noise', 'goals']);
+  assert.deepEqual(only(available(USER).map((s) => s.id)), ['upnext', 'tolog', 'last', 'period']);
   assert.deepEqual(available(GUEST).map((s) => s.id), ['upnext', 'period']);
   // The default home resolves to the registry's order, split by pane.
   const r = resolve(null, ADMIN);
@@ -95,7 +99,9 @@ test('a desktop group move rewrites only that group\'s slots', () => {
   assert.deepEqual(top(moveTo(d, 'last', 0, ADMIN, { group: 'now' })), ['bankroll', 'last', 'period', 'upnext', 'tolog']);
   assert.deepEqual(top(moveTo(d, 'last', 0, ADMIN)), ['last', 'bankroll', 'upnext', 'period', 'tolog']);
   // A move clamps to its list.
-  assert.deepEqual(top(moveTo(d, 'upnext', 99, ADMIN, { group: 'now' })), ['bankroll', 'tolog', 'period', 'last', 'upnext']);
+  // (friends and scanner, unmentioned, sit after period and take two of the NOW slots, so the group's
+  // order lands one slot later than it did without them.)
+  assert.deepEqual(top(moveTo(d, 'upnext', 99, ADMIN, { group: 'now' })), ['bankroll', 'period', 'tolog', 'last', 'upnext']);
 });
 
 test('toggle: a locked section is a no-op; parts follow their parent', () => {
@@ -117,8 +123,8 @@ test('toggle: a locked section is a no-op; parts follow their parent', () => {
   const rows = sheetRows(p, ADMIN);
   const period = rows.all.find((x) => x.id === 'period');
   assert.deepEqual(period.parts.map((x) => [x.id, x.enabled]), [['noise', false], ['goals', false]]);
-  assert.deepEqual(rows.now.map((x) => x.id), ['upnext', 'tolog', 'last']);
-  assert.deepEqual(sheetRows(null, USER).all.map((x) => x.id), ['upnext', 'tolog', 'last', 'period']);
+  assert.deepEqual(only(rows.now.map((x) => x.id)), ['upnext', 'tolog', 'last']);
+  assert.deepEqual(only(sheetRows(null, USER).all.map((x) => x.id)), ['upnext', 'tolog', 'last', 'period']);
   assert.deepEqual(sheetRows(null, USER).all.find((x) => x.id === 'period').parts, []);
 });
 
@@ -163,4 +169,17 @@ test('a layout from a newer build keeps its unknown ids in place on save; an old
   // An older layout (no 'last'): the section appears, on, at its default position.
   const older = doc('period', 'upnext', 'tolog');
   assert.deepEqual(resolve(older, USER).phone, ['period', 'upnext', 'tolog', 'last']);
+});
+
+test('friends and scanner start off: hidden on a default home, shown once switched on, and the home stays default', () => {
+  assert.deepEqual(available(GUEST).map((s) => s.id).filter((id) => LATE.has(id)), [], 'registered only');
+  assert.ok(!resolve(null, USER).phone.includes('friends') && !resolve(null, USER).phone.includes('scanner'));
+  assert.equal(isSwitchedOn(null, 'friends'), false);
+  // A layout saved before they existed does not mention them: still off.
+  assert.ok(!resolve(doc('upnext', 'tolog', 'last', 'period'), USER).phone.includes('scanner'));
+  assert.equal(isDefault(null, USER), true);
+  const on = toggle(null, 'friends', true, USER);
+  assert.equal(isSwitchedOn(on, 'friends'), true);
+  assert.ok(resolve(on, USER).now.includes('friends'));
+  assert.equal(isDefault(on, USER), false);
 });
