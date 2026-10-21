@@ -5829,10 +5829,31 @@
       z-index: var(--z-board); display:flex; flex-direction:column; align-items:center; gap: var(--space-xs);
     }
     .replayer-board-area .card-row { justify-content:center; flex-wrap:nowrap; }
-    /* Several boards (double board; run it twice or three times): the rows stack, the cards a size
-       smaller so two or three rows still clear the seats (HandReplayerView "Board"). */
-    .replayer-board-area.is-multi { --card-h: clamp(16px, 7.6cqmin, 100px); }
-    .replayer-board-area.is-multi-3 { --card-h: clamp(14px, 6cqmin, 80px); }
+    /* Several boards (double board; run it twice or three times): the rows stack at the board's own
+       card size, one card gap apart, as a row's cards are (owner, 2026-10-21: "two rows of the normal
+       sized cards using the same spacing"). Three rows take a size smaller to clear the seats. */
+    .replayer-board-area.is-multi { gap: var(--space-2xs); }
+    .replayer-board-area.is-multi-3 { --card-h: clamp(14px, 7.6cqmin, 100px); }
+    /* Landscape has no room above the board for a second full row (the top seat and the pot fill it),
+       so its rows stay a size smaller. */
+    .replayer-landscape .replayer-board-area.is-multi { --card-h: clamp(16px, 7.6cqmin, 100px); }
+    /* A card row's floor (4r) is a full-size card; smaller stacked cards would float in it and leave
+       the rows far apart. */
+    .replayer-board-area.is-multi .card-row { min-height: 0; }
+    /* Even so, landscape's two rows ran up into the pot (pot to 97px, board from 80px on an iPhone 13),
+       and there is no air above it under the top seat: the boards step down two rows of the table's
+       32 and the pill three, measured to clear the pot and the lower row. */
+    .replayer-landscape .replayer-board-area.is-multi { top: calc(47% + 6.25%); }
+    .replayer-landscape .replayer-table:has(.replayer-board-area.is-multi) .replayer-table-info { top: calc(59.375% + 9.375%); }
+    /* Portrait: the board stays centred and grows both ways, so the game-and-stakes pill under it
+       steps down by half the added height (one row and a gap for two boards; three smaller rows
+       less the single row for three). */
+    .replayer-replay:not(.replayer-landscape) .replayer-table:has(.replayer-board-area.is-multi) .replayer-table-info {
+      margin-top: calc((clamp(18px, 10.9375cqmin, 140px) + var(--space-2xs)) / 2);
+    }
+    .replayer-replay:not(.replayer-landscape) .replayer-table:has(.replayer-board-area.is-multi-3) .replayer-table-info {
+      margin-top: calc((3 * clamp(14px, 7.6cqmin, 100px) + 2 * var(--space-2xs) - clamp(18px, 10.9375cqmin, 140px)) / 2);
+    }
     /* The stacked boards are taller than one: the pot and its split pill move up to clear them. */
     .replayer-table:has(.replayer-board-area.is-multi) .replayer-pot-display { top: 33%; }
     .replayer-table:has(.replayer-board-area.is-multi-3) .replayer-pot-display { top: 29%; }
@@ -17220,7 +17241,9 @@
       --dk-foot: calc(var(--gu) + mod(100dvh - var(--gu), var(--subrow)));
       padding-bottom: var(--dk-foot);
       box-sizing: border-box;
-      background: linear-gradient(var(--surface), var(--surface)) bottom / 100% var(--dk-foot) no-repeat, var(--bg);
+      /* All of it the header's colour (owner, 2026-10-21): the rail and the panes paint their own --bg,
+         so what shows of the body is the gaps, the foot, and everything right of the rightmost pane. */
+      background: var(--surface);
     }
     /* + --dk-sb-g: a classic scrollbar's width in g (0 where scrollbars overlay), so the content
        beside the scrollbar keeps the whole 9N+1 g (useDesktopLayout.js measureScrollbarG). */

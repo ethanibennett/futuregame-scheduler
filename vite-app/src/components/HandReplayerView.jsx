@@ -1082,6 +1082,25 @@ function calcPotsAndStacks(hand, upToStreet, upToAction) {
   return { stacks, pot, folded };
 }
 
+/* Actions nobody could answer (owner, 2026-10-21): once every player still in but one is all in at
+   the end of a street, the later streets are dealt out with no betting. A hand entered before the
+   entry stopped asking can carry a bet there from the covering player; the replay drops it, as
+   the entry now never records one. */
+function dropDeadActions(hand) {
+  if (!hand || !Array.isArray(hand.streets)) return hand;
+  for (let si = 1; si < hand.streets.length; si++) {
+    const prev = hand.streets[si - 1];
+    const { stacks, folded } = calcPotsAndStacks(hand, si - 1, (prev.actions || []).length - 1);
+    const inHand = hand.players.map((_, i) => i).filter(i => !folded.has(i));
+    const withChips = inHand.filter(i => stacks[i] > 0);
+    if (inHand.length > 1 && withChips.length <= 1) {
+      if (!hand.streets.slice(si).some(s => (s.actions || []).length)) return hand;
+      return { ...hand, streets: hand.streets.map((s, i) => i < si ? s : { ...s, actions: [] }) };
+    }
+  }
+  return hand;
+}
+
 // ── Player street contribution ──
 function computePlayerContrib(hand, streetIdx, actions, upToIdx, playerIdx) {
   let total = 0;
@@ -2741,6 +2760,11 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   const currentActor = useMemo(() => {
     const actions = currentStreet.actions || [];
     if (actionOrder.length === 0) return -1;
+    /* Everyone else still in is all in: the one player with chips left acts only if a bet is still
+       theirs to call. Once they have matched it (or nobody bet), there is nobody left to bet into,
+       so the street needs no action from them (owner, 2026-10-21: the entry made the covering
+       player bet into an opponent with nothing left to call). */
+    if (actionOrder.length === 1 && streetBets.contrib[actionOrder[0]] >= streetBets.maxBet) return -1;
     let lastRaiserPlayer = -1, lastRaiseIdx = -1;
     /* The last aggression: a bet or raise, or an all-in that put in more than the price before it
        (an all-in that only calls reopens nothing). */
@@ -2778,7 +2802,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       if (lastActIdx === -1) return pidx;
     }
     return -1;
-  }, [actionOrder, seatOrder, foldedSet, allInSet, currentStreet.actions, isPreflop, category, hand.players, hand.blinds, bringInAmount]);
+  }, [actionOrder, seatOrder, foldedSet, allInSet, currentStreet.actions, isPreflop, category, hand.players, hand.blinds, bringInAmount, streetBets]);
 
   const isBettingComplete = currentActor === -1;
   const activePlayers = hand.players.filter((_, i) => !foldedSet.has(i));
@@ -5454,13 +5478,14 @@ function HandHistoryExportSheet({ rows, heroName, toast, onClose }) {
 // ══════════════════════════════════════════════════════════
 // ── Replay View Sub-component ────────────────────────────
 // ══════════════════════════════════════════════════════════
-function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolveSpot, linkedReplay, heroName, playedAt, sharedHand }) {
+function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, cardSplay, onSolveSpot, linkedReplay, heroName, playedAt, sharedHand }) {
   /* The GIF export's completion toasts referenced `toast` from inside this
      component, where it was never declared - the outer HandReplayerView owns
      the one call to useToast(). Optional chaining does not save an UNDECLARED
      identifier, so every successful GIF export ended in a ReferenceError
      inside onDone, which is why it never announced where the file went. */
   const toast = useToast();
+  const hand = useMemo(() => dropDeadActions(enteredHand), [enteredHand]);
   const [streetIdx, setStreetIdx] = useState(0);
   const [actionIdx, setActionIdx] = useState(-1);
   const [playing, setPlaying] = useState(false);

@@ -302,7 +302,16 @@ export function decodeHand(str) {
   if (starAt >= 0) { boardFlags = blindsStr.slice(starAt + 1); blindsStr = blindsStr.slice(0, starAt); }
   var straddleCode = '';
   var bangAt = blindsStr.indexOf('!');
-  if (bangAt >= 0) { straddleCode = blindsStr.slice(bangAt + 1); blindsStr = blindsStr.slice(0, bangAt); }
+  if (bangAt >= 0) {
+    /* The encoder writes the straddles BEFORE the stacks ('10-10!u~4000,...'), so the stacks are cut
+       back out of the straddle code: taking everything after the '!' lost every stack of a straddled
+       hand, which then replayed at the 50,000 default (owner's hand, 2026-10-21). */
+    straddleCode = blindsStr.slice(bangAt + 1);
+    var stackTail = '';
+    var tildeAt = straddleCode.indexOf('~');
+    if (tildeAt >= 0) { stackTail = straddleCode.slice(tildeAt); straddleCode = straddleCode.slice(0, tildeAt); }
+    blindsStr = blindsStr.slice(0, bangAt) + stackTail;
+  }
 
   var blindsParts = blindsStr.split('~');
   var blindNums = blindsParts[0].split('-').map(Number);

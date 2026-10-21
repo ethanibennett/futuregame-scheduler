@@ -125,3 +125,11 @@ test('the game codes stay one-to-one, so no two games share a header', () => {
   const codes = Object.values(SH.GAME_CODES);
   assert.equal(new Set(codes).size, codes.length);
 });
+
+test("a straddled hand keeps its stacks: the '!' code is written before the '~' stacks (owner's hand, 2026-10-21)", () => {
+  const h = SH.decodeHand('P84.10-10!u~4000,4000,4500,4000,7350,4000,9000,4000.AdAcQd9c,-,-,-,-,-,KcJhJsTc,-/bKdJdTh/bKh/bKs.1f,2r80,3f,4r280,5f,6r940,7f,0f,2f,4c670/6b2010,4r6400,6c4390/6b1650/.w6');
+  assert.deepEqual(h.players.map(p => p.startingStack), [4000, 4000, 4500, 4000, 7350, 4000, 9000, 4000]);
+  assert.ok(Object.keys(h.blinds).some(k => k.startsWith('straddle_') && h.blinds[k]), 'the straddle survives');
+  const back = SH.decodeHand(SH.encodeHand(h));
+  assert.deepEqual(back.players.map(p => p.startingStack), [4000, 4000, 4500, 4000, 7350, 4000, 9000, 4000]);
+});
