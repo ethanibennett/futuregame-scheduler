@@ -5836,6 +5836,10 @@
     /* The stacked boards are taller than one: the pot and its split pill move up to clear them. */
     .replayer-table:has(.replayer-board-area.is-multi) .replayer-pot-display { top: 33%; }
     .replayer-table:has(.replayer-board-area.is-multi-3) .replayer-pot-display { top: 29%; }
+    /* The lower boards' cards slide in as they are dealt (the spring deal runs on the top board's
+       row only); a card already there keeps its element, so only the new one moves. */
+    .replayer-board-extra > * { animation: turnRiverSlide var(--dur-base) var(--ease-object) both; }
+    @media (prefers-reduced-motion: reduce) { .replayer-board-extra > * { animation: none; } }
     /* Dead cards take the board's slot in stud and draw games. A stud hand can
        fold a lot of up cards (7 seats x 4), so they are smaller than board cards
        (about 2/3) and wrap inside 64% of the table instead of running into the
@@ -6450,6 +6454,9 @@
       text-overflow: ellipsis;
       box-shadow: var(--elev-1);
     }
+    /* A line per board (Top / Bottom): a size smaller, so two lines stay about a plaque wide and a side
+       seat's label stays on the screen. */
+    .replayer-seat-hand-name.is-boards { font-size: clamp(7px, 2.3cqmin, 18px); }
     .replayer-seat.loser .replayer-seat-hand-name { color:#f87171; border-color:rgba(248,113,113,0.4); }
     .replayer-seat.split .replayer-seat-hand-name { color:#facc15; border-color:rgba(250,204,21,0.4); }
 

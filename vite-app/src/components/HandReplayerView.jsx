@@ -6196,6 +6196,8 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const runout = allIn.size > 0 && (hand.players.length - folded.size - allIn.size) <= 0;
   const showdownEquity = useMemo(() => {
     if (!rSettings.showEquity || !gameEval) return null;
+    // Equity is one board's; with several boards it would be wrong, so it is not shown.
+    if (boardCount(hand) > 1) return null;
     if (!showResult && !runout) return null;
     try {
       return calcShowdownEquity(hand, heroCards, opponentCards, boardCards, gameCfg, gameEval, folded, replayHeroIdx);
@@ -6834,10 +6836,13 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
        each ("B1: Trip 9s" / "B2: Two Pair"; R1, R2 for runs). Board 1 alone named a hand that lost
        there and won the other. */
     if (category === 'community' && boardCount(hand) > 1) {
-      const tag = hand.doubleBoard ? 'B' : 'R';
-      const lines = handBoards(hand, streetIdx).map((b, i) => {
+      // Named by where the board sits on the felt (owner, 2026-10-21: "top and bottom instead of b1/b2").
+      const all = handBoards(hand, streetIdx);
+      const where = all.length === 3 ? ['Top', 'Middle', 'Bottom'] : ['Top', 'Bottom'];
+      const lines = all.map((b, i) => {
         const bd = parseCardNotation(b).filter(c => c.suit !== 'x');
-        const nm = (e) => (e ? (useShort ? (e.shortName || e.name) : e.name) : null);
+        // Two lines share the plaque's width: two pair loses its "Two Pair, " ("Ks & Qs" says it).
+        const nm = (e) => (e ? String(useShort ? (e.shortName || e.name) : e.name).replace(/^Two Pair, /, '') : null);
         let name = null;
         if (cfg.type === 'hilo') {
           const hiN = nm(bestHighFor(cfg, parsed, bd));
@@ -6845,7 +6850,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           name = [hiN, lo && lo.qualified !== false && lo.name ? lo.name : null].filter(Boolean).join(' / ');
         } else if (cfg.type === 'high') name = nm(bestHighFor(cfg, parsed, bd));
         else if (cfg.type === 'low') name = nm(cfg.lowType === 'a5' ? bestLowA5Hand(parsed.concat(bd), false) : bestLow27Hand(parsed.concat(bd)));
-        return name ? tag + (i + 1) + ': ' + name : null;
+        return name ? where[i] + ': ' + name : null;
       }).filter(Boolean);
       return lines.length ? lines.join('\n') : null;
     }
@@ -8708,7 +8713,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
             : null;
           // SPR moved to plain text above the pot's chip stack (2026-09-30).
           /* No street here (owner, 2026-10-15): the board itself says which street it is. */
-          const level = [hand.gameType, sizes].filter(Boolean).join('  ·  ');
+          // A hand with several boards says so on the felt (owner, 2026-10-21).
+          const boardsTag = hand.doubleBoard ? 'Double board' : Number(hand.runs) > 1 ? (Number(hand.runs) === 3 ? 'Run three times' : 'Run twice') : null;
+          const level = [hand.gameType, boardsTag, sizes].filter(Boolean).join('  ·  ');
           const meta = [
             hand.playersLeft ? hand.playersLeft + ' left' : null,
             hand.payoutNote || null,
@@ -9111,7 +9118,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                   result. So "CALL 12k" landed on top of "Two Pair, A & K".
                   The name is the newer and more important fact; the badge
                   stands down for it. */}
-              {handName && <div className="replayer-seat-hand-name">{handName}</div>}
+              {handName && <div className={'replayer-seat-hand-name' + (boardCount(hand) > 1 && category === 'community' ? ' is-boards' : '')}>{handName}</div>}
             </div>
           );
         })}
