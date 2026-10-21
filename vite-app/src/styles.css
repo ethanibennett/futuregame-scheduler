@@ -9435,7 +9435,8 @@
       box-sizing: border-box;
       box-shadow: inset 0 var(--bw-hair) 0 var(--border);
     }
-    .app-shell.is-desktop .hands-tool-row { height: calc(var(--subrow) * 5 + mod(100dvh - var(--sa-t), var(--subrow))); }
+    /* Whole r: the pane ends on an r line itself (.dk-body's foot takes the window's remainder). */
+    .app-shell.is-desktop .hands-tool-row { height: calc(var(--subrow) * 5); }
     .ctl {
       display: inline-flex;
       align-items: center;

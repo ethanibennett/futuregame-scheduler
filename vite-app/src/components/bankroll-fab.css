@@ -46,15 +46,15 @@
    block for fixed children (the full-bleed replayer must stay fixed to the window), so the + hangs
    absolute from the pane itself, as the admin dev keys do (styles.css .dk-pane-wide > .grid-dev-toggle):
    1g off the pane's content edge (a classic scrollbar's width, or the lane an overlay one floats
-   in, sits outside it) and 2r above the pane's foot, the window's, on the r line counted from the
+   in, sits outside it) and 2r above the pane's foot, which is on an r line (.dk-body's foot), counted from the
    top bar. Above the live cash bar (5r, its own snap) when one shows. */
 .app-shell.is-desktop .dk-pane-wide > .bk-fab--page {
   position: absolute;
   right: calc(var(--gu) * (1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0))));
-  bottom: calc(var(--subrow) * 2 + mod(100dvh - var(--sa-t), var(--subrow)));
+  bottom: calc(var(--subrow) * 2);
 }
 .app-shell.is-desktop:has(.cs-bar) .dk-pane-wide > .bk-fab--page {
-  bottom: calc(var(--subrow) * 7 + mod(100dvh - var(--sa-t), var(--subrow)));
+  bottom: calc(var(--subrow) * 7);
 }
 /* In the bankroll dashboard sheet (a fixed 37g column over the nav and the cash bar, so neither
    counts): inside the sheet, 1g off its right edge and 2r above its foot, on the r line the nav
