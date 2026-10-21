@@ -19,6 +19,7 @@ import { useDisplayName, DisplayNameProvider } from './contexts/DisplayNameConte
 import Icon from './components/Icon.jsx';
 import ThemeButton from './components/ThemeButton.jsx';
 import Avatar from './components/Avatar.jsx';
+import FitName from './components/FitName.jsx';
 import AuthScreen from './components/AuthScreen.jsx';
 import ForgotPasswordForm from './components/ForgotPasswordForm.jsx';
 import ResetPasswordForm from './components/ResetPasswordForm.jsx';
@@ -1700,6 +1701,12 @@ function App() {
   // TrackingView so the two never disagree. The balances are the server's combined ledger, so they
   // are refetched whenever the results change (version). For everyone else it fetches nothing.
   const bk = useBankrolls({ enabled: isAdmin, token, version: trackingData });
+  // ── Desktop layout (docs/desktop-layout.md) ──
+  // Wide landscape windows get a side rail + panes; everything else is the
+  // phone layout, unchanged. dk.desktop is false on every phone.
+  const dk = useDesktopLayout();
+  const isDesktop = dk.desktop;
+  // (Declared above the running head, which reads isDesktop.)
   // The Swiss theme's running head: the section, then its scope (catalogue item 7).
   const swissRunningHead = useMemo(() => {
     if (currentView === 'tracking') {
@@ -1717,8 +1724,9 @@ function App() {
     const season = String(seasonLabel || '')
       .replace(/\b([a-z])([a-z]{2})\b/g, (m, a, b) => a.toUpperCase() + b)
       .replace(/\s*-\s*/g, '\u2013');
-    return ['Schedule', season].filter(Boolean).join(' \u00b7 ');
-  }, [currentView, bk.enabled, bk.selected, bk.visible, bk.summary, cashMode, seasonLabel]);
+    // On a phone the years ran the line under the bell (owner's screenshot, 2026-10-20): months only.
+    return ['Schedule', isDesktop ? season : season.replace(/\s+\d{4}\b/g, '')].filter(Boolean).join(' \u00b7 ');
+  }, [currentView, bk.enabled, bk.selected, bk.visible, bk.summary, cashMode, seasonLabel, isDesktop]);
 
   // Edit home (utils/home-layout.js): which Dashboard sections show and in what order, per account
   // (cached locally, saved to the server). homeEdit: the sheet is open; homeEditOpener: the control
@@ -1748,11 +1756,6 @@ function App() {
     setDebugTimeKey(k => k + 1);
   }, [isAdmin]);
 
-  // ── Desktop layout (docs/desktop-layout.md) ──
-  // Wide landscape windows get a side rail + panes; everything else is the
-  // phone layout, unchanged. dk.desktop is false on every phone.
-  const dk = useDesktopLayout();
-  const isDesktop = dk.desktop;
   const [dkSelectedId, setDkSelectedId] = useState(null);
   // The home's second pane (its NUMBERS column), set by a callback ref once the pane mounts.
   const [dkHomeRight, setDkHomeRight] = useState(null);
@@ -2395,7 +2398,11 @@ function App() {
         <div className="top-bar-user">
           <button className="username-chip snap-g" onClick={() => setShowUserMenu(m => !m)} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',background:'none',border:'none',padding:0,cursor:'pointer',overflow:'hidden'}}>
             <Avatar src={avatar} username={username} size={22} style={{flexShrink:0}} />
-            <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nameMode === 'username' ? username : (realName || username)}</span>
+            {/* A real name shortens by the house order (FitName: "E. Bennett", then "Bennett") before
+                it is ever cut; it read "Ethan Be…" (owner, 2026-10-20). A username is one word. */}
+            {nameMode === 'username' || !realName
+              ? <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{username}</span>
+              : <FitName name={realName} />}
           </button>
           {showUserMenu && createPortal(
             <>

@@ -1364,7 +1364,9 @@
 :root[data-theme^="swiss"] .tr-head-row .filter-chip-square svg { color: var(--sw-g60); }
 
 /* The admin keys (D, #) sit quietly in the corner. */
-:root[data-theme^="swiss"] .grid-dev-toggle { background: transparent !important; border-color: transparent !important; box-shadow: none !important; color: var(--sw-g30) !important; }
+/* The admin toggles float over the list: on a transparent ground their letters printed over the cards
+   (owner's screenshot, 2026-10-20). The page's ground and a grey hairline, no shadow. */
+:root[data-theme^="swiss"] .grid-dev-toggle { background: var(--sw-ground) !important; border-color: transparent !important; box-shadow: inset 0 0 0 var(--bw-hair) var(--sw-g30) !important; color: var(--sw-g60) !important; }
 :root[data-theme^="swiss"] .grid-dev-toggle.is-on { color: var(--sw-red) !important; }
 /* A closed card has no arrow row: the whole card opens it. */
 :root[data-theme^="swiss"] .cal-event-row:not(.open) .cal-event-chevron { display: none; }
@@ -1870,3 +1872,36 @@
 /* --- The backer page: the totals flush on the margin, the theme key a grey glyph. ------------- */
 :root[data-theme^="swiss"] .bp-total { padding-left: 0 !important; padding-right: 0 !important; }
 :root[data-theme^="swiss"] .bp-top .btn-icon { border-color: transparent !important; color: var(--sw-g60); }
+
+/* ── Fixes from the owner's phone screenshot (2026-10-20, swiss-light, an open card) ─────────────── */
+/* The open card kept its room as the full name, which an 8g column cut ("WSOPC Turnin…"): an open card
+   keeps the short label the closed cards show. */
+:root[data-theme^="swiss"] .cal-event-row.open .venue-strip-sc { display: block; }
+:root[data-theme^="swiss"] .cal-venue-strip .venue-strip-full { display: none; }
+/* The accolade icons sat alone in a 2r row under an open card's guarantee, and on a closed card at the
+   money column's right edge, over a guarantee where there is one. Open or closed, they sit on the meta
+   line at the title column's right end (26g..28g of the card), and the title stops 2g short of it. */
+:root[data-theme^="swiss"] .cal-event-row .cal-event-bar:has(.sw-card-title) { position: relative; }
+/* (.cal-event-row twice: it outranks the closed card's earlier rule, which put them at the right edge.) */
+:root[data-theme^="swiss"] .cal-event-row.cal-event-row.cal-event-row .cal-event-bar:has(.sw-card-title) > .cal-bar-row2:has(.cal-accolades) {
+  position: absolute;
+  top: calc(var(--subrow) * 4);
+  right: calc(var(--gu) * 7);
+  height: calc(var(--subrow) * 2);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+:root[data-theme^="swiss"] .cal-event-bar:has(.cal-accolades) .sw-card-title { padding-right: calc(var(--gu) * 2); box-sizing: border-box; }
+/* The open card's ↑ stood alone on its own row: closed cards show no ↓, and the title closes the card
+   as it opens it. */
+:root[data-theme^="swiss"] .cal-event-row.open .cal-event-chevron { display: none; }
+/* Add and Edit kept the standard 6r button for an icon Swiss hides: 4r, the label's row. */
+:root[data-theme^="swiss"] .cal-action-row .cal-action-btn { height: calc(var(--subrow) * 4); }
+/* A day's date hangs 6r under its sticky header, outside the header's box, so the header stayed pinned
+   until its own 3r met the day's end and the next day's header slid over the date: a short day left its
+   red date half showing between the filters and the next header (owner's screenshot, 2026-10-20).
+   Sticky keeps the margin box inside the day, so a 6r bottom margin (cancelled by the first card's
+   -6r, the layout unchanged) makes the header and its date leave together. */
+:root[data-theme^="swiss"] [data-tab="tournaments"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) { margin-bottom: calc(var(--subrow) * 6); }
+:root[data-theme^="swiss"] [data-tab="tournaments"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) + * { margin-top: calc(var(--subrow) * -6); }
