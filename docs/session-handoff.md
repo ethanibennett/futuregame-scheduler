@@ -5,12 +5,56 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-10-20 (from Windows) — newest section first. Earlier notes: 2026-10-13, then 2026-09-30, live
+Last updated: 2026-10-21 (from Windows) — newest section first. Earlier notes: 2026-10-13, then 2026-09-30, live
 tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
 2026-08-30; "Seams to the dashboard" and "The build pipeline" were added from the
 wsop-console side and verified against both live services.
+
+---
+
+## 2026-10-21 — Replayer fixes, the Mac simulator check, desktop headings, 30 s ads
+
+**Shipped to master**
+- Hand entry stops asking for action once every other player still in is all in and the bet is matched
+  (the covering player was made to bet into nothing); the replay drops such a bet from hands saved
+  before (`dropDeadActions`).
+- **Straddled hands keep their stacks**: the decoder read the `~` stacks as part of the `!` straddle code
+  (`10-10!u~4000,...`), so every straddled link replayed at 50,000 (hand-shorthand test added).
+- Several boards: rows are the normal card size, a card gap apart (owner); the pill steps down in
+  portrait, the boards and pill step down in landscape (measured); a tag beside each row names who took
+  that board or run (not for a hi-lo double board). Labels are Top / Bottom (Middle for three).
+- Desktop: the header's right group ends on the rightmost pane; everything right of it is the header's
+  colour; "Selected event" and My Schedule headed in Baskerville at the wordmark's size (My Schedule
+  seated on r5); 2r more ground under the selected event; the band's hairlines clipped to the pane.
+- Swiss: the venue column shows the room's whole name, wrapped at 8g, its lines on r4 / r6 / r8; the
+  strip joins the row's flow so a three-line name makes a 10r card.
+- **The Mac simulator check** (`.github/workflows/mac-sim-check.yml`, owner: "always run these replayer
+  tests in the iphone simulator on the mac first"): `gh api repos/ethanibennett/futuregame-scheduler/
+  dispatches -f event_type=sim-check -F 'client_payload[url]=https://futurega.me/#h/…' -F
+  'client_payload[ats]=flop end'`, then `gh run download <id> -n sim-shots`. Replay links take
+  `?at=preflop|flop|turn|river|end`. The device is erased each run (a cached page showed old CSS) and
+  loaded once before the shots (Safari's first-run tip). It only checks prod, and a guest gets the
+  sign-in page, so it cannot yet photograph the logged-in desktop layout.
+
+**30 s ad cuts (owner's ask; first drafts, marketing/ is untracked)**
+- `weekly-graphics/ads/futuregame-ad{1,2,3,4,5,6,9}-…-30s.mp4`: each is the 15 s story, a second act
+  of four beats (five for Ad 4) of new tapes over the ad's own frozen picture (`src/thirty/ActTwo.tsx`,
+  shared), then the ad's own end card. Entries `src/adN-30-entry.ts`, compositions `src/adN/AdN_30.tsx`
+  (Ad 1: `src/Ad1_30.tsx`). Render: `npx remotion render src/ad5-30-entry.ts Ad5-30 <out.mp4>` with
+  the flags in package.json's render script. Act 2's sound is a synthesized slam per tape (placeholder).
+  Ad 4 is cut from the no-cash version and claims results only (bankroll, tax and cash are admin betas).
+  Ads 7, 8, 10, 12 need the owner; Ad 11 has no 15 s render.
+
+**Waiting on the owner**
+- Everything under 2026-10-20's list still stands (clash definition, Up Next, ledger editing, the
+  Discord env vars, the eval key).
+
+**Traps**
+- Remotion composition ids allow only letters, digits and `-` (`Ad5-30`, not `Ad5_30`).
+- Each ad loads its fonts under its own family name; the shared act-two tapes measure in Ad 5's and wait
+  for them.
 
 ---
 
