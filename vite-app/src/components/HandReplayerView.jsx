@@ -414,28 +414,22 @@ function findStudBringIn(hand, isRazz) {
   return worstIdx;
 }
 
-function scoreStudBoard(cards) {
-  const rankValues = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':14 };
+/* A visible stud board's score: the category first (no pair < pair < two pair < trips < full house
+   < quads), then every rank, grouped ranks before kickers, highest first. Each category sits above
+   anything the ranks can add, so an unpaired A-K no longer outscores 9-9, and every kicker counts
+   (entry audit D2 / evaluation audit D7, 2026-10-20). aceLow: the ace is a one (Razz); a low game
+   takes the lowest score. */
+function scoreStudBoard(cards, aceLow = false) {
+  const rankValues = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':aceLow ? 1 : 14 };
   if (!cards.length) return 0;
   const counts = {};
   cards.forEach(c => { const r = rankValues[c.rank] || 0; counts[r] = (counts[r] || 0) + 1; });
-  const pairs = [], trips = [], quads = [], kickers = [];
-  Object.keys(counts).forEach(r => {
-    const rv = parseInt(r);
-    if (counts[r] === 4) quads.push(rv);
-    else if (counts[r] === 3) trips.push(rv);
-    else if (counts[r] === 2) pairs.push(rv);
-    else kickers.push(rv);
-  });
-  pairs.sort((a,b) => b-a); trips.sort((a,b) => b-a); kickers.sort((a,b) => b-a);
-  if (quads.length) return 7000000 + quads[0]*100;
-  if (trips.length && pairs.length) return 6000000 + trips[0]*100 + pairs[0];
-  if (trips.length) return 5000000 + trips[0]*100;
-  if (pairs.length >= 2) return 4000000 + pairs[0]*100 + pairs[1];
-  if (pairs.length === 1) return 3000000 + pairs[0]*100 + (kickers[0]||0);
-  const allRanks = Object.keys(counts).map(Number).sort((a,b)=>b-a);
-  let score = 1000000;
-  for (let i = 0; i < allRanks.length; i++) score += allRanks[i] * Math.pow(100, 4-i);
+  const groups = Object.keys(counts).map(Number).map(r => [r, counts[r]]).sort((a, b) => b[1] - a[1] || b[0] - a[0]);
+  const shape = groups.map(g => g[1]);
+  const cat = shape[0] === 4 ? 6 : shape[0] === 3 ? (shape[1] === 2 ? 5 : 4) : shape[0] === 2 ? (shape[1] === 2 ? 3 : 2) : 1;
+  const P = 15;
+  let score = cat * Math.pow(P, 5);
+  groups.forEach((g, i) => { score += g[0] * Math.pow(P, 4 - i); });
   return score;
 }
 
@@ -457,7 +451,7 @@ function findStudBestBoard(hand, streetIdx, foldedSet, isLowGame) {
         oCards.forEach(c => { if (c.suit !== 'x') visible.push(c); });
       }
     }
-    const score = scoreStudBoard(visible);
+    const score = scoreStudBoard(visible, isLowGame && hand.gameType !== '2-7 Razz');
     if (isLowGame ? score < bestScore : score > bestScore) { bestIdx = pi; bestScore = score; }
   }
   return bestIdx;
@@ -1119,7 +1113,7 @@ function generateCommentary(hand, streetIdx, actionIdx, pot, stacks) {
     if (category === 'stud') {
       const _ante = (hand.blinds || {}).ante || 0;
       if (streetIdx === 0) {
-        const _isRazz = hand.gameType === 'Razz' || hand.gameType === '2-7 Razz';
+        const _isRazz = /(^|\s)(2-7 )?Razz$/.test(hand.gameType || '');
         const _biIdx = findStudBringIn(hand, _isRazz);
         let doorInfo = '';
         if (_biIdx >= 0 && hand.players[_biIdx]) {
@@ -2625,6 +2619,9 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   const [betAmount, setBetAmount] = useState('');
   const [showHeroCardPicker, setShowHeroCardPicker] = useState(false);
   const [studDealTarget, setStudDealTarget] = useState(0);
+  // The OFC entry phase's card picker. Declared with the other hooks: inside the phase's branch it
+  // changed the hook count when Next opened it, and React threw "Rendered more hooks" (entry audit D5).
+  const [ofcPickerState, setOfcPickerState] = useState(null);
   const activeSeatRef = useRef(null);
   // Buy-in cap: remembered across hands, and a one-tap way to put every seat
   // back on the cap (a fresh full-stack table).
@@ -2674,7 +2671,8 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     return a;
   }, [currentStacks, foldedSet]);
 
-  const isRazz = hand.gameType === 'Razz' || hand.gameType === '2-7 Razz';
+  // NL and PL Razz are Razz too: they took the high game's bring-in and first actor (entry audit D3).
+  const isRazz = /(^|\s)(2-7 )?Razz$/.test(hand.gameType || '');
   const isStudLow = isRazz;
 
   const priorStreetFoldedSet = useMemo(() => {
@@ -2739,21 +2737,43 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     const actions = currentStreet.actions || [];
     if (actionOrder.length === 0) return -1;
     let lastRaiserPlayer = -1, lastRaiseIdx = -1;
-    for (let i = actions.length - 1; i >= 0; i--) {
-      if (actions[i].action === 'raise' || actions[i].action === 'bet') { lastRaiseIdx = i; lastRaiserPlayer = actions[i].player; break; }
+    /* The last aggression: a bet or raise, or an all-in that put in more than the price before it
+       (an all-in that only calls reopens nothing). */
+    const before = new Array(hand.players.length).fill(0);
+    let priceBefore = 0;
+    if (isPreflop && category !== 'stud') {
+      const blinds = hand.blinds || {};
+      const sbIdx = hand.players.findIndex(p => p.position === 'SB' || p.position === 'BTN/SB');
+      const bbIdx = hand.players.findIndex(p => p.position === 'BB');
+      if (sbIdx >= 0) before[sbIdx] = blinds.sb || 0;
+      if (bbIdx >= 0) before[bbIdx] = blinds.bb || 0;
+      priceBefore = blinds.bb || 0;
+      getStraddles(hand.players, hand.blinds).forEach(st => { before[st.seat] = st.amount; if (st.amount > priceBefore) priceBefore = st.amount; });
     }
+    actions.forEach((a, i) => {
+      if (a.action === 'fold') return;
+      if (a.action === 'bring-in') { before[a.player] = a.amount || bringInAmount; priceBefore = Math.max(priceBefore, before[a.player]); return; }
+      const after = before[a.player] + (a.amount > 0 ? a.amount : 0);
+      if (a.action === 'raise' || a.action === 'bet' || (a.action === 'all-in' && after > priceBefore)) { lastRaiseIdx = i; lastRaiserPlayer = a.player; }
+      before[a.player] = after;
+      if (after > priceBefore) priceBefore = after;
+    });
+    /* Walk the FULL seat order from the seat after the raiser, skipping folded and all-in seats.
+       Searching the raiser in actionOrder failed whenever the raiser was all-in (they are not in it),
+       so the turn went back to the first seat: SB checks, BB shoves, and the SB was asked again
+       instead of the button (entry audit D1, 2026-10-20). */
     let startOi = 0;
-    if (lastRaiserPlayer >= 0) { const raiserPos = actionOrder.indexOf(lastRaiserPlayer); if (raiserPos >= 0) startOi = raiserPos + 1; }
-    for (let count = 0; count < actionOrder.length; count++) {
-      const oi = (startOi + count) % actionOrder.length;
-      const pidx = actionOrder[oi];
+    if (lastRaiserPlayer >= 0) { const raiserPos = seatOrder.indexOf(lastRaiserPlayer); if (raiserPos >= 0) startOi = raiserPos + 1; }
+    for (let count = 0; count < seatOrder.length; count++) {
+      const pidx = seatOrder[(startOi + count) % seatOrder.length];
+      if (foldedSet.has(pidx) || allInSet.has(pidx)) continue;
       let lastActIdx = -1;
       for (let j = actions.length - 1; j >= 0; j--) { if (actions[j].player === pidx) { lastActIdx = j; break; } }
       if (lastActIdx < lastRaiseIdx) return pidx;
       if (lastActIdx === -1) return pidx;
     }
     return -1;
-  }, [actionOrder, currentStreet.actions]);
+  }, [actionOrder, seatOrder, foldedSet, allInSet, currentStreet.actions, isPreflop, category, hand.players, hand.blinds, bringInAmount]);
 
   const isBettingComplete = currentActor === -1;
   const activePlayers = hand.players.filter((_, i) => !foldedSet.has(i));
@@ -3301,7 +3321,6 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     });
     const ofcAllRanks = 'AKQJT98765432'.split('');
     const ofcAllSuits = ['h', 'd', 'c', 's'];
-    const [ofcPickerState, setOfcPickerState] = useState(null);
     const ofcToggleCard = (rank, suit) => {
       if (!ofcPickerState) return;
       const card = rank + suit;
@@ -4550,7 +4569,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       '5-Card Draw': 'PL 5CD Hi', 'OFC': 'OFC',
       'Dramaha Hi': 'PLO', 'Dramaha 2-7': 'PLO', 'Dramaha 49': 'PLO', 'Dramaha 0': 'PLO', 'Dramadugi': 'PLO', 'Omajack': 'PLO' },
     'Limit':     { "Hold'em": 'LHE', 'Pineapple': 'LHE', 'Short Deck': 'Short Deck',
-      'Omaha': 'O8', 'Omaha 8/b': 'O8', 'Big O': 'Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
+      'Omaha': 'LO Hi', 'Omaha 8/b': 'O8', 'Big O': 'Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
       'Double Board Bomb Pot': 'PLO', 'Courchevel': 'PLO',
       'Stud Hi': 'Stud Hi', 'Stud 8/b': 'Stud 8', 'Razz': 'Razz',
       'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': 'Razz',

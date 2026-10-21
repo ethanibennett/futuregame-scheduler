@@ -83,7 +83,7 @@ export function evalHigh5(cards, rules) {
   // The ace plays low in the lowest straight: A-5-4-3-2 in a 52-card deck, A-9-8-7-6 in a short one.
   if (!isStraight && rules && rules.lowStraight) {
     if (vals[0] === 14 && vals[1] === 9 && vals[2] === 8 && vals[3] === 7 && vals[4] === 6) { isStraight = true; straightHigh = 9; }
-  } else if (!isStraight && vals[0] === 14 && vals[1] === 5 && vals[2] === 4 && vals[3] === 3 && vals[4] === 2) {
+  } else if (!isStraight && !(rules && rules.noWheel) && vals[0] === 14 && vals[1] === 5 && vals[2] === 4 && vals[3] === 3 && vals[4] === 2) {
     isStraight = true; straightHigh = 5;
   }
   const freq = {};
@@ -151,7 +151,13 @@ export function evalHigh5(cards, rules) {
 // A-5 lowball: aces low, straights/flushes ignored. Lower score = better.
 export function evalLowA5(cards, eightOrBetter) {
   const vals = cards.map(c => RANK_VAL[c.rank] === 14 ? 1 : RANK_VAL[c.rank]).sort((a, b) => b - a);
-  if (new Set(vals).size < 5) return { score: Infinity, name: null, qualified: false };
+  if (new Set(vals).size < 5) {
+    // An 8-or-better low needs five different ranks. A game with no qualifier (Razz, A-5 draw)
+    // still ranks a paired hand: below every unpaired one, one pair < two pair < trips < full house
+    // < quads, then the paired ranks and the kickers, lowest best (replayer audit D1/D2, 2026-10-20).
+    if (eightOrBetter) return { score: Infinity, name: null, qualified: false };
+    return pairedLowA5(vals);
+  }
   if (eightOrBetter && vals[0] > 8) return { score: Infinity, name: null, qualified: false };
   const P = 15;
   const score = vals[0] * Math.pow(P, 4) + vals[1] * Math.pow(P, 3) + vals[2] * Math.pow(P, 2) + vals[3] * P + vals[4];
@@ -163,6 +169,28 @@ export function evalLowA5(cards, eightOrBetter) {
   return { score, name, qualified: true };
 }
 
+// A paired A-5 low (vals: aces as 1, sorted high to low). Scores above every unpaired low.
+function pairedLowA5(vals) {
+  const counts = new Map();
+  for (const v of vals) counts.set(v, (counts.get(v) || 0) + 1);
+  // Groups by size, then by rank high to low: the biggest, worst-ranked group decides first.
+  const groups = [...counts].sort((a, b) => b[1] - a[1] || b[0] - a[0]);
+  const shape = groups.map((g) => g[1]).join('');
+  const cat = { 2111: 1, 221: 2, 311: 3, 32: 4, 41: 5 }[shape];
+  const P = 15;
+  const order = groups.map((g) => g[0]);
+  let score = cat * Math.pow(P, 5);
+  for (let i = 0; i < order.length; i++) score += order[i] * Math.pow(P, 4 - i);
+  const plural = (v) => rankPlural(v === 1 ? 14 : v);
+  const [a, b] = order;
+  const name = cat === 1 ? 'Pair of ' + plural(a)
+    : cat === 2 ? 'Two Pair, ' + plural(a) + ' and ' + plural(b)
+    : cat === 3 ? 'Three ' + plural(a)
+    : cat === 4 ? plural(a) + ' full of ' + plural(b)
+    : 'Four of a Kind, ' + plural(a);
+  return { score, name, qualified: true, paired: true };
+}
+
 // 2-7 lowball: aces high, straights/flushes count against. Lower score = better.
 export function evalLow27(cards) {
   const vals = cards.map(c => RANK_VAL[c.rank]).sort((a, b) => b - a);
@@ -171,7 +199,9 @@ export function evalLow27(cards) {
   let isStraight = false;
   if (vals[0] - vals[4] === 4 && new Set(vals).size === 5) isStraight = true;
   if (isFlush || isStraight || new Set(vals).size < 5) {
-    const hi = evalHigh5(cards);
+    // Aces are high in 2-7, so A-2-3-4-5 is no straight: suited it is an ace-high flush, not a
+    // straight flush (replayer audit D4, 2026-10-20).
+    const hi = evalHigh5(cards, { noWheel: true });
     // Named as the made hand alone ("Pair of Kings"), no "(bad low)" suffix (Ethan,
     // 2026-10-01); the score still ranks it below every real low.
     return { score: 1e9 + hi.score, name: hi.name };
