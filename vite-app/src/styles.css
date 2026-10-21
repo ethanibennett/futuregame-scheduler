@@ -17033,6 +17033,11 @@
     }
     .app-shell.is-desktop .top-bar-actions { margin-left: auto; gap: var(--gu); justify-content: flex-start; }
     .app-shell.is-desktop .top-bar-user { margin-left: calc(var(--gu) * 2); }
+    /* The header's right group ends where the rightmost pane does (owner, 2026-10-21: "the right part
+       of the header should always be aligned with the rightmost pane"), 1g inside its edge as on the
+       Schedule: --dk-head-inset is the whole g between that pane and the shell's right edge, measured
+       by App after each layout (a two-pane Schedule is 0; the Dashboard's and the wide panes' are not). */
+    .app-shell.is-desktop .top-bar-user { margin-right: var(--dk-head-inset, 0); }
     .app-shell.is-desktop .username-chip { max-width: calc(var(--gu) * 16); }
 
     /* The replayer's action row in the full-window desktop replayer, on the grid as the phone's

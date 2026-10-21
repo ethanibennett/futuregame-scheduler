@@ -1757,6 +1757,30 @@ function App() {
   }, [isAdmin]);
 
   const [dkSelectedId, setDkSelectedId] = useState(null);
+  // The header's right group ends on the rightmost pane's edge (styles.css --dk-head-inset): the whole
+  // g between that pane and the shell's right edge, measured after every layout and on resize.
+  useLayoutEffect(() => {
+    if (!isDesktop) return undefined;
+    const shell = document.querySelector('.app-shell.is-desktop');
+    const body = shell && shell.querySelector('.dk-body');
+    if (!shell || !body) return undefined;
+    const measure = () => {
+      const sr = shell.getBoundingClientRect();
+      const g = sr.width / (dk.shellG || 1);
+      const rights = [...body.querySelectorAll('.dk-pane')]
+        .filter(el => getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().width > 0)
+        .map(el => el.getBoundingClientRect().right);
+      if (!rights.length || !g) return;
+      const n = Math.max(0, Math.round((sr.right - Math.max(...rights)) / g));
+      shell.style.setProperty('--dk-head-inset', n ? `calc(var(--gu) * ${n})` : '0');
+    };
+    measure();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    if (ro) { ro.observe(body); [...body.children].forEach(c => ro.observe(c)); }
+    const mo = new MutationObserver(() => { measure(); if (ro) [...body.children].forEach(c => ro.observe(c)); });
+    mo.observe(body, { childList: true });
+    return () => { if (ro) ro.disconnect(); mo.disconnect(); };
+  }, [isDesktop, currentView, dk.shellG]);
   // The home's second pane (its NUMBERS column), set by a callback ref once the pane mounts.
   const [dkHomeRight, setDkHomeRight] = useState(null);
   // Closing an event animates like opening one, in reverse (owner, 2026-10-11): the details keep
