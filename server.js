@@ -1110,7 +1110,8 @@ async function findHendonUrl(name) {
 
   const ddgUrl = `https://duckduckgo.com/?q=${encodeURIComponent('\\ site:thehendonmob.com ' + name)}`;
   try {
-    const resp = await fetch(ddgUrl, { redirect: 'manual', headers: {
+    // 3 s at most: from Render DuckDuckGo stalls ~11 s and then answers without a result.
+    const resp = await fetch(ddgUrl, { redirect: 'manual', signal: AbortSignal.timeout(3000), headers: {
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }});
     const html = await resp.text();
@@ -1175,11 +1176,12 @@ app.get('/api/hendon-redirect', async (req, res) => {
   const name = req.query.name;
   if (!name) return res.status(400).send('name required');
 
-  const url = await findHendonUrl(name);
-  if (url) return res.redirect(url);
-
-  const ddgUrl = `https://duckduckgo.com/?q=${encodeURIComponent('site:thehendonmob.com ' + name)}`;
-  res.redirect(ddgUrl);
+  // At once: a profile already found, else DuckDuckGo's !ducky ("I'm feeling lucky"), which the player's own
+  // browser follows straight to the first Hendon Mob result. The server-side lookup took ~11 s from Render
+  // and then fell back to a plain search page (owner, 2026-10-21). The scanner now builds this link itself.
+  const key = String(name).toLowerCase().trim();
+  if (hendonCache.has(key)) return res.redirect(hendonCache.get(key));
+  res.redirect(`https://duckduckgo.com/?q=${encodeURIComponent('!ducky site:thehendonmob.com ' + name)}`);
 });
 
 // File upload configuration

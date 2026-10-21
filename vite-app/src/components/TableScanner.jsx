@@ -1,6 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { API_URL } from '../utils/api.js';
 
+/* A player's Hendon Mob page, found by the PLAYER's browser (owner, 2026-10-21: "Tablescanner hendon links
+   are not responding"): DuckDuckGo's !ducky ("I'm feeling lucky") jumps straight to the first thehendonmob.com
+   result. It was /api/hendon-redirect, which looked the name up from the server: DuckDuckGo stalls Render's
+   addresses (11 s, then a plain search page), and in the native app the relative URL resolved to
+   capacitor://localhost, so the tap opened nothing. */
+const hendonLink = (name) => 'https://duckduckgo.com/?q=' + encodeURIComponent('!ducky site:thehendonmob.com ' + name);
+
 function detectImageFormat(img) {
   var canvas = document.createElement('canvas');
   canvas.width = img.width;
@@ -578,7 +585,7 @@ export default function TableScanner({ initialFile = null } = {}) {
                       <button className="table-scanner-link"
                         disabled={isNickname}
                         style={{...(isNickname ? {cursor:'default'} : {}), ...(player.isHero ? {outline:'calc(var(--subrow) * 0.25) solid var(--accent)',outlineOffset:'calc(var(--subrow) * 0.25)'} : {})}}
-                        onClick={isNickname ? undefined : () => window.open(`/api/hendon-redirect?name=${encodeURIComponent(player.name)}`, '_blank', 'noopener,noreferrer')}>
+                        onClick={isNickname ? undefined : () => window.open(hendonLink(player.name), '_blank', 'noopener,noreferrer')}>
                         <span className="table-scanner-name-stack">
                           <span>{player.name}</span>
                           {player.chips && <span className="table-scanner-chips">{player.chips}{player.seat ? ` \u00B7 Seat ${player.seat}` : ''}</span>}
