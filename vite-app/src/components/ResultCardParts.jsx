@@ -68,7 +68,7 @@ export function CardStrip({ venue, property, room, open, onToggle }) {
   return (
     <div className={'cal-venue-strip' + (abbr ? '' : ' is-neutral')} aria-hidden="true" onClick={onToggle}
       style={{ background: abbr ? getVenueBrandColor(abbr) : 'var(--border-strong)', color: '#ffffff', cursor: 'pointer' }}>
-      <StripLabel text={abbr ? getStripAbbr(abbr) : ''} />
+      <StripLabel text={abbr ? getStripAbbr(abbr) : ''} long={name} />
       {open && <span className="venue-strip-full">{name}</span>}
     </div>
   );

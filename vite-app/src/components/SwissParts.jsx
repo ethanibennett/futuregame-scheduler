@@ -41,12 +41,14 @@ export function stripSentence(s) {
   return out.join(' ');
 }
 
-/** The strip's label: the capitals for every theme, the sentence-case twin for Swiss. */
-export function StripLabel({ text }) {
+/** The strip's label: the capitals for every theme, the sentence-case twin for Swiss, and the room's
+ *  whole name (`long`), which only Swiss shows (owner, 2026-10-21: wrapped in its 8g column). */
+export function StripLabel({ text, long }) {
   return (
     <>
       <span className="venue-strip-abbr">{text}</span>
       <span className="venue-strip-sc">{stripSentence(text)}</span>
+      {long ? <span className="venue-strip-long">{long}</span> : null}
     </>
   );
 }

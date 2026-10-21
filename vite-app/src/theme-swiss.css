@@ -1905,3 +1905,40 @@
    -6r, the layout unchanged) makes the header and its date leave together. */
 :root[data-theme^="swiss"] [data-tab="tournaments"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) { margin-bottom: calc(var(--subrow) * 6); }
 :root[data-theme^="swiss"] [data-tab="tournaments"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) + * { margin-top: calc(var(--subrow) * -6); }
+
+/* ── The room's whole name (owner, 2026-10-21: "show the unabbreviated venue name, wrapping after 8g") ──
+   The card's venue column shows the room's long name in place of the short label, wrapped in its 8g,
+   its lines 2r apart: the first on the line the short label sat on (r4, or r8 on a day's first card,
+   under the date), so a second line shares r6 with the flight and time. The text is trimmed to cap and
+   baseline and set down from the top by the row less one cap (the `cap` unit, the face's own capital;
+   Helvetica's 0.715em where it is missing), so the first baseline lands on the row's line whatever the
+   wrap. The strip joins the row's flow here (it is out of flow everywhere else, so a long rotated name
+   could not size a card; the content already sits in column 2), so a name of three lines makes the
+   card taller than its 8r, with the card's 2r foot under it (1r on a day's first card, whose 9r ends
+   1r under the r8 line). */
+:root[data-theme^="swiss"] .cal-venue-strip:has(> .venue-strip-long) .venue-strip-sc { display: none !important; }
+:root[data-theme^="swiss"] .cal-venue-strip:has(> .venue-strip-long) {
+  --sw-venue-r: 4;
+  --sw-venue-foot: 2;
+  grid-template-rows: minmax(calc(var(--subrow) * var(--sw-venue-r)), auto);
+  align-items: start;
+  position: relative; inset: auto; grid-row: 1;
+}
+:root[data-theme^="swiss"] .schedule-date-break:not(.tr-month-break):not(.bp-month-break):not(.dk-mine-block .schedule-date-break) + * .cal-venue-strip:has(> .venue-strip-long) {
+  --sw-venue-r: 8;
+  --sw-venue-foot: 1;
+  grid-template-rows: minmax(calc(var(--subrow) * 8), auto);
+}
+:root[data-theme^="swiss"] .cal-venue-strip > .venue-strip-long {
+  display: block; grid-area: 1 / 1; align-self: start;
+  width: var(--col); max-width: var(--col); box-sizing: border-box;
+  white-space: normal; overflow-wrap: anywhere; text-align: left;
+  writing-mode: horizontal-tb; transform: none; text-indent: 0;
+  line-height: calc(var(--subrow) * 2);
+  text-box-trim: trim-both; text-box-edge: cap alphabetic;
+  margin-top: calc(var(--subrow) * var(--sw-venue-r, 4) - 0.715em);
+  margin-top: calc(var(--subrow) * var(--sw-venue-r, 4) - 1cap);
+  padding-bottom: calc(var(--subrow) * var(--sw-venue-foot, 2));
+  color: var(--sw-g60); font-weight: var(--sw-thin); letter-spacing: 0;
+}
+:root[data-theme^="swiss"] .cal-event-row.saved.is-today > .cal-venue-strip > .venue-strip-long { color: var(--sw-red); }
