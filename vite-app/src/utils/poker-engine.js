@@ -693,14 +693,43 @@ export function assignNeutralSuits(handCards, usedCardKeys, boardSuits) {
   return assigned;
 }
 
-/* ── Double board (owner, 2026-10-20) ──────────────────────────────────────────────────────────
-   A double-board hand deals two boards; every player plays the same hole cards against each.
-   - A high (or low) game splits each pot layer in half, one half per board, each board judged on
-     its own (an odd chip goes to board 1).
-   - A hi-lo game has ONE ultimate high and ONE ultimate low over both boards (owner: "one ultimate
-     high and one ultimate low overall for both boards"): a player's high is the better of their two
-     boards' highs, their low the better of their two qualifying lows, and the layer splits hi/lo once.
-   cardsBySeat maps seat -> parsed hole cards; board1/board2 are parsed boards. */
+/* ── Multiple boards: double board, and running it twice or three times (owner, 2026-10-20) ─────
+   A hand can carry up to three boards. Each street keeps its first board in cards.board and the
+   others in cards.board2 / cards.board3; a street without them shares the first board's cards (so a
+   run-it-twice hand only fills the streets dealt after the all-in, and a double-board hand fills
+   every street). Every player plays the same hole cards against each board.
+   - Each board (each run) takes an equal share of every pot layer, judged on its own; odd chips go
+     to the earlier boards. A hi-lo RUN splits its share hi/lo within itself, as at the table.
+   - A hi-lo DOUBLE BOARD has one ultimate high and one ultimate low over both boards (owner: "one
+     ultimate high and one ultimate low overall for both boards"): a player's high is the better of
+     their boards' highs, their low the better of their qualifying lows, split hi/lo once.
+   cardsBySeat maps seat -> parsed hole cards; boards is an array of parsed boards. */
+export function boardCount(hand) {
+  if (!hand) return 1;
+  if (hand.doubleBoard) return 2;
+  var r = Number(hand.runs) || 1;
+  return r >= 2 && r <= 3 ? r : 1;
+}
+const BOARD_KEYS = ['board', 'board2', 'board3'];
+export function boardKey(k) { return BOARD_KEYS[k] || 'board'; }
+/** Each board's cards, cumulative through street `upTo` (all streets when omitted): strings. */
+export function handBoards(hand, upTo) {
+  var n = boardCount(hand);
+  var last = upTo == null ? (hand.streets || []).length - 1 : upTo;
+  var out = [];
+  for (var k = 0; k < n; k++) {
+    var b = '';
+    for (var si = 0; si <= last && si < (hand.streets || []).length; si++) {
+      var c = hand.streets[si].cards || {};
+      b += (k > 0 && c[BOARD_KEYS[k]]) ? c[BOARD_KEYS[k]] : (c.board || '');
+    }
+    out.push(b);
+  }
+  return out;
+}
+/** Whether the hi-lo halves are settled over all boards at once (double board) or per board (runs). */
+export const combinesHiLo = (hand) => !!(hand && hand.doubleBoard);
+
 function scoreOnBoard(cfg, cards, board) {
   var all = board.length ? cards.concat(board) : cards;
   if (cfg.type === 'high') { var h = bestHighFor(cfg, cards, board); return { hi: h ? h.score : null, lo: null, hiEval: h, loEval: null }; }
@@ -713,50 +742,52 @@ function scoreOnBoard(cfg, cards, board) {
   return null;
 }
 
-export function doubleBoardEvals(cfg, cardsBySeat, board1, board2) {
-  var b1 = {}, b2 = {}, combined = {};
+export function multiBoardEvals(cfg, cardsBySeat, boards) {
+  var per = boards.map(function() { return {}; }), combined = {};
   Object.keys(cardsBySeat).forEach(function(k) {
     var cards = cardsBySeat[k];
-    var s1 = scoreOnBoard(cfg, cards, board1), s2 = scoreOnBoard(cfg, cards, board2);
-    if (!s1 || !s2) return;
-    b1[k] = s1; b2[k] = s2;
-    var hi = s1.hi == null ? s2.hi : (s2.hi == null ? s1.hi : Math.max(s1.hi, s2.hi));
-    var lo = s1.lo == null ? s2.lo : (s2.lo == null ? s1.lo : Math.min(s1.lo, s2.lo));
-    combined[k] = {
-      hi: hi, lo: lo,
-      hiEval: hi == null ? null : (s1.hi === hi ? s1.hiEval : s2.hiEval),
-      loEval: lo == null ? null : (s1.lo === lo ? s1.loEval : s2.loEval),
-    };
+    var ss = boards.map(function(b) { return scoreOnBoard(cfg, cards, b); });
+    if (ss.some(function(s) { return !s; })) return;
+    ss.forEach(function(s, i) { per[i][k] = s; });
+    var best = { hi: null, lo: null, hiEval: null, loEval: null };
+    ss.forEach(function(s) {
+      if (s.hi != null && (best.hi == null || s.hi > best.hi)) { best.hi = s.hi; best.hiEval = s.hiEval; }
+      if (s.lo != null && (best.lo == null || s.lo < best.lo)) { best.lo = s.lo; best.loEval = s.loEval; }
+    });
+    combined[k] = best;
   });
-  return { b1: b1, b2: b2, combined: combined };
+  return { per: per, combined: combined };
 }
 
-/** Pot layers settled for a double-board hand, in computePotAwards' shape. */
-export function doubleBoardShaped(cfg, layers, evals, contesting) {
+/** Pot layers settled over several boards, in computePotAwards' shape. */
+export function multiBoardShaped(cfg, layers, evals, contesting, combineHiLo) {
+  var n = evals.per.length;
   return (layers || []).reduce(function(out, l) {
     var players = l.players || contesting;
-    if (cfg.type === 'hilo') {
+    if (combineHiLo && cfg.type === 'hilo') {
       out.push(Object.assign({ amount: l.amount }, hiLoWinnersAmong(evals.combined, players)));
-    } else {
-      var a = Math.max(0, Math.round(l.amount || 0));
-      var h1 = Math.ceil(a / 2);
-      out.push(Object.assign({ amount: h1 }, hiLoWinnersAmong(evals.b1, players)));
-      out.push(Object.assign({ amount: a - h1 }, hiLoWinnersAmong(evals.b2, players)));
+      return out;
     }
+    var a = Math.max(0, Math.round(l.amount || 0));
+    var base = Math.floor(a / n), extra = a - base * n;
+    evals.per.forEach(function(ev, i) {
+      out.push(Object.assign({ amount: base + (i < extra ? 1 : 0) }, hiLoWinnersAmong(ev, players)));
+    });
     return out;
   }, []);
 }
 
-/** The stored winners of a double-board showdown: { playerIdx, split, hi, lo, boards, label }. */
-export function doubleBoardWinners(gameType, playerHands, board1, board2, hand, nameOf) {
+/** The stored winners of a multi-board showdown: { playerIdx, split, hi, lo, boards, label }. */
+export function multiBoardWinners(gameType, playerHands, boards, hand, nameOf) {
   var cfg = gameEvalFor(gameType, hand);
-  if (!cfg || !playerHands.length) return [];
+  if (!cfg || !playerHands.length || !boards.length) return [];
   var bySeat = {};
   playerHands.forEach(function(ph) { bySeat[ph.idx] = ph.cards; });
-  var ev = doubleBoardEvals(cfg, bySeat, board1, board2);
+  var ev = multiBoardEvals(cfg, bySeat, boards);
   var seats = playerHands.map(function(ph) { return ph.idx; });
   var name = function(i) { return nameOf ? nameOf(i) : 'Seat ' + (i + 1); };
-  if (cfg.type === 'hilo') {
+  var unit = hand && hand.doubleBoard ? 'board' : 'run';
+  if (combinesHiLo(hand) && cfg.type === 'hilo') {
     var w = hiLoWinnersAmong(ev.combined, seats);
     var ids = Array.from(new Set(w.hiWinners.concat(w.loWinners)));
     var scoop = ids.length === 1 && w.hiWinners.length === 1 && (w.loWinners.length === 0 || w.loWinners[0] === ids[0]);
@@ -768,17 +799,17 @@ export function doubleBoardWinners(gameType, playerHands, board1, board2, hand, 
       return { playerIdx: i, split: !scoop, hi: hi, lo: lo, label: name(i) + ' wins ' + parts.join(', ') };
     });
   }
-  var w1 = hiLoWinnersAmong(ev.b1, seats), w2 = hiLoWinnersAmong(ev.b2, seats);
-  var win1 = cfg.type === 'low' ? w1.loWinners : w1.hiWinners, win2 = cfg.type === 'low' ? w2.loWinners : w2.hiWinners;
-  var all = Array.from(new Set(win1.concat(win2)));
-  var scoop2 = all.length === 1 && win1.length === 1 && win2.length === 1;
+  // Per board: who took something on which board (a hi-lo run's halves both count as that run).
+  var won = {};
+  ev.per.forEach(function(pe, bi) {
+    var r = hiLoWinnersAmong(pe, seats);
+    Array.from(new Set(r.hiWinners.concat(r.loWinners))).forEach(function(i) { (won[i] = won[i] || []).push(bi + 1); });
+  });
+  var all = Object.keys(won).map(Number);
+  var scoopAll = all.length === 1 && won[all[0]].length === boards.length;
   return all.map(function(i) {
-    var boards = [];
-    if (win1.indexOf(i) >= 0) boards.push(1);
-    if (win2.indexOf(i) >= 0) boards.push(2);
-    return {
-      playerIdx: i, split: !scoop2, boards: boards,
-      label: name(i) + (boards.length === 2 ? (scoop2 ? ' scoops both boards' : ' wins both boards (split)') : ' wins board ' + boards[0]),
-    };
+    var bs = won[i];
+    var where = bs.length === boards.length ? 'every ' + unit : unit + (bs.length > 1 ? 's ' : ' ') + bs.join(' and ');
+    return { playerIdx: i, split: !scoopAll, boards: bs, label: name(i) + (scoopAll ? ' scoops ' : ' wins ') + where };
   });
 }

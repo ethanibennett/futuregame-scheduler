@@ -112,6 +112,11 @@ export function encodeHand(hand) {
   } else if (!allSame) {
     blindStr += '~' + stacks.join(',');
   }
+  /* Several boards (owner, 2026-10-20) ride at the end of the blind field after a '*': D for a double
+     board, R2 or R3 for a hand run twice or three times. Each street's extra boards are its 'y' (board
+     2) and 'z' (board 3) tokens; neither letter starts a card ('x' is a face-down card). */
+  if (hand.doubleBoard) blindStr += '*D';
+  else if (Number(hand.runs) > 1) blindStr += '*R' + Number(hand.runs);
   parts.push(blindStr);
 
   var streets = hand.streets || [];
@@ -132,6 +137,8 @@ export function encodeHand(hand) {
     if (cards.board) {
       streetCards.push('b' + cards.board);
     }
+    if (cards.board2) streetCards.push('y' + cards.board2);
+    if (cards.board3) streetCards.push('z' + cards.board3);
     cardParts.push(streetCards.join(','));
   }
   parts.push(cardParts.join('/'));
@@ -290,6 +297,9 @@ export function decodeHand(str) {
   var heroIdx = parseInt(headerStr.charAt(codeLen + 1), 16);
   if (isNaN(heroIdx)) heroIdx = 0;
 
+  var boardFlags = '';
+  var starAt = blindsStr.indexOf('*');
+  if (starAt >= 0) { boardFlags = blindsStr.slice(starAt + 1); blindsStr = blindsStr.slice(0, starAt); }
   var straddleCode = '';
   var bangAt = blindsStr.indexOf('!');
   if (bangAt >= 0) { straddleCode = blindsStr.slice(bangAt + 1); blindsStr = blindsStr.slice(0, bangAt); }
@@ -343,7 +353,12 @@ export function decodeHand(str) {
     var hero = '';
     var opponents = Array.from({ length: numPlayers - 1 }, function() { return ''; });
     var board = '';
+    var board2 = '', board3 = '';
     var rawCards = cardStreets[idx] ? cardStreets[idx].split(',') : [];
+    rawCards.forEach(function(tok) {
+      if (tok && tok.charAt(0) === 'y') board2 = tok.substring(1);
+      if (tok && tok.charAt(0) === 'z') board3 = tok.substring(1);
+    });
 
     if (idx === 0 || category === 'stud') {
       var cardIdx = 0;
@@ -352,7 +367,7 @@ export function decodeHand(str) {
       }
       cardIdx++;
       for (var oi = 0; oi < numPlayers - 1; oi++) {
-        if (rawCards[cardIdx] && rawCards[cardIdx] !== '-' && rawCards[cardIdx].charAt(0) !== 'b') {
+        if (rawCards[cardIdx] && rawCards[cardIdx] !== '-' && 'byz'.indexOf(rawCards[cardIdx].charAt(0)) < 0) {
           opponents[oi] = rawCards[cardIdx];
         }
         cardIdx++;
@@ -372,7 +387,7 @@ export function decodeHand(str) {
 
     return {
       name: streetName,
-      cards: { hero: hero, opponents: opponents, board: board },
+      cards: Object.assign({ hero: hero, opponents: opponents, board: board }, board2 ? { board2: board2 } : {}, board3 ? { board3: board3 } : {}),
       actions: [],
       draws: []
     };
@@ -503,7 +518,13 @@ export function decodeHand(str) {
     })(),
     streets: streets,
     heroIdx: heroIdx,
-    result: result
+    result: result,
+    ...(boardFlags === 'D' ? { doubleBoard: true } : {}),
+    ...(/^R[23]$/.test(boardFlags) ? (function() {
+      var runs = Number(boardFlags.charAt(1));
+      var from = streets.findIndex(function(s) { return !!s.cards.board2; });
+      return { runs: runs, runsFrom: from >= 0 ? from : undefined };
+    })() : {})
   };
 }
 

@@ -31,6 +31,17 @@ wsop-console side and verified against both live services.
   they clicked "Cash"/"Tournaments" buttons that no longer exist. Both now use `openSection`. Results from
   any guard run before `8354f64` covered far fewer views than they said.
 
+**Later on 10-20 (shipped)**
+- The audit fixes merged (`f2b6f62`). The new variant picker (`VariantPicker.jsx`, `utils/variant-catalog.js`):
+  launcher, palette (sheet / Cmd-K), best guess from My Schedule, hands keep their mix (`hand.mix`).
+- Dashboard: Friends and Table scanner are Edit home sections again, `defaultOff` (home-layout.js).
+- **Several boards** (`utils/poker-engine.js` "Multiple boards"): `hand.doubleBoard` or `hand.runs` (2/3,
+  `runsFrom`); extra boards in `cards.board2/board3`, a street without them shares board 1. Each board or
+  run takes an equal share of every pot layer; a hi-lo DOUBLE BOARD has one ultimate high and low over
+  both boards (owner). Entry: the Double board toggle (Bomb Pot sets it), "Run it once / twice / three
+  times" after an all-in, a board/run switch. Links carry them (`*D` / `*R2|3`, `y`/`z` tokens); the
+  PokerStars export refuses them ('multi-board'). Tests: multi-board, multi-board-link, variant-catalog.
+
 **Waiting on the owner**
 - Branch `replayer-audit-fixes` (pushed, NOT merged): fixes from three audits plus their reports and
   `docs/audit-2026-10-20-summary.md` (10 fixed, 10 open, 31 questions). Merge when reviewed.

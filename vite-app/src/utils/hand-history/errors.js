@@ -9,6 +9,8 @@ const COPY = {
   'not-yours':            { short: 'Only hands you saved can be exported', message: () => "A hand shared with you isn't one of yours to export" },
   // v.why and v.short come from ps-format.js NOT_WRITTEN: a game the app plays that the writer says so about.
   'unsupported-game':     { short: 'No PokerStars format for this game', message: (v) => v.why || ('PokerStars format has no ' + (v.game || 'such game')) },
+  // Double board, and a hand run twice or three times: one board per hand in PokerStars text as PT4 reads it.
+  'multi-board':          { short: 'Several boards: PokerTracker reads one', message: (v) => (v.double ? 'A double-board hand' : 'A hand run ' + (v.runs === 3 ? 'three times' : 'twice')) + " can't be written in the PokerStars format PokerTracker reads" },
   'unsupported-currency': { short: 'Its currency has no PokerStars form', message: (v) => 'PokerStars format has no ' + (v.currency || '') + ' cash games' },
   'seating':              { short: "The seats can't be placed", message: (v) => "The players' positions don't fit a " + (v.n || '') + '-handed table' },
   'stack-missing':        { short: 'A stack is missing', message: (v) => (v.name || 'A player') + "'s stack isn't recorded" },

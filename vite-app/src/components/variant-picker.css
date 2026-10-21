@@ -210,3 +210,21 @@
   color: var(--text-muted);
   font-family: var(--font-condensed); font-size: var(--fs-2xs);
 }
+
+/* ── The entry's board step with several boards (HandReplayerView board_entry): "Run it once | Twice |
+   Three times" and the board/run switch. 10g x 4r segments, 1g apart, centred; labels centred. ── */
+.gto-runs { display: flex; justify-content: center; gap: var(--gu); margin: var(--subrow) 0 0; }
+.gto-runs-btn {
+  display: flex; align-items: center; justify-content: center;
+  flex: 0 0 calc(var(--gu) * 10);
+  height: calc(var(--subrow) * 4);
+  box-sizing: border-box; margin: 0; padding: 0;
+  border: 0; border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold);
+  cursor: pointer;
+}
+.gto-runs-btn.is-on { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-fine) var(--brand); color: var(--brand-ink, var(--brand)); }
+.gto-board-slots .gto-runs-btn { flex-basis: calc(var(--gu) * 8); }

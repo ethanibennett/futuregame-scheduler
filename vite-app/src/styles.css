@@ -5829,6 +5829,13 @@
       z-index: var(--z-board); display:flex; flex-direction:column; align-items:center; gap: var(--space-xs);
     }
     .replayer-board-area .card-row { justify-content:center; flex-wrap:nowrap; }
+    /* Several boards (double board; run it twice or three times): the rows stack, the cards a size
+       smaller so two or three rows still clear the seats (HandReplayerView "Board"). */
+    .replayer-board-area.is-multi { --card-h: clamp(16px, 7.6cqmin, 100px); }
+    .replayer-board-area.is-multi-3 { --card-h: clamp(14px, 6cqmin, 80px); }
+    /* The stacked boards are taller than one: the pot and its split pill move up to clear them. */
+    .replayer-table:has(.replayer-board-area.is-multi) .replayer-pot-display { top: 33%; }
+    .replayer-table:has(.replayer-board-area.is-multi-3) .replayer-pot-display { top: 29%; }
     /* Dead cards take the board's slot in stud and draw games. A stud hand can
        fold a lot of up cards (7 seats x 4), so they are smaller than board cards
        (about 2/3) and wrap inside 64% of the table instead of running into the

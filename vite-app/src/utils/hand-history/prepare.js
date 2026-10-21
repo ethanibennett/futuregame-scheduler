@@ -230,6 +230,8 @@ export function prepareHand(input, opts = {}) {
   if (opts.shared) throw new HandExportError('not-yours');
   const warnings = new Set();
   const { hand: raw, legacySplit } = normalizeInput(input);
+  // Several boards (double board, run it twice or three times): not written (errors.js 'multi-board').
+  if (raw.doubleBoard || Number(raw.runs) > 1) throw new HandExportError('multi-board', { double: !!raw.doubleBoard, runs: Number(raw.runs) || 1 });
   if (NOT_WRITTEN[raw.gameType]) throw new HandExportError('unsupported-game', { game: raw.gameType, ...NOT_WRITTEN[raw.gameType] });
   const cfg0 = gameConfig(raw.gameType);
   if (!cfg0 || !GAME_TABLE[raw.gameType]) throw new HandExportError('unsupported-game', { game: raw.gameType || 'game' });

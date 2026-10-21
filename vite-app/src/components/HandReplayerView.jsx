@@ -9,6 +9,7 @@ import { Palette, GuessCard, Launcher } from './VariantPicker.jsx';
 import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL, gameEvalFor,
          bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestBadugiHand,
          computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot,
+         boardKey, handBoards, boardCount, multiBoardWinners, multiBoardEvals, multiBoardShaped, combinesHiLo,
          seatOrderFromButton } from '../utils/poker-engine.js';
 import { encodeHand, decodeHand, GAME_CODES, VISUAL_SWITCHES } from '../utils/hand-shorthand.js';
 import { loadCardImages, ensureExportFonts } from '../utils/export.js';
@@ -2624,6 +2625,8 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   // The OFC entry phase's card picker. Declared with the other hooks: inside the phase's branch it
   // changed the hook count when Next opened it, and React threw "Rendered more hooks" (entry audit D5).
   const [ofcPickerState, setOfcPickerState] = useState(null);
+  // Which board the board step is dealing to: double board's 2nd, or a run's (utils/poker-engine.js).
+  const [boardSlot, setBoardSlot] = useState(0);
   const activeSeatRef = useRef(null);
   // Buy-in cap: remembered across hands, and a one-tap way to put every seat
   // back on the cap (a fresh full-stack table).
@@ -3500,12 +3503,21 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   if (phase === 'board_entry') {
     const nextStreet = currentStreetIdx + 1;
     const streetName = (hand.streets[nextStreet] && hand.streets[nextStreet].name) || 'Next Street';
-    const boardVal = (hand.streets[nextStreet] && hand.streets[nextStreet].cards.board) || '';
     const maxCards = streetDef.boardCards ? streetDef.boardCards[nextStreet] : 1;
+    /* Several boards (owner, 2026-10-20): double board deals two on every street; running it twice or
+       three times deals the remaining streets once per run, from the street after the all-in. Betting
+       is over when someone is all in and at most one player still has chips. */
+    const nonFolded = hand.players.map((_, i) => i).filter(i => !foldedSet.has(i));
+    const runItOffered = !hand.doubleBoard && allInSet.size >= 1 && nonFolded.filter(i => !allInSet.has(i)).length <= 1;
+    const runsFrom = hand.runs > 1 ? (hand.runsFrom ?? nextStreet) : null;
+    const slots = hand.doubleBoard ? 2 : (hand.runs > 1 && nextStreet >= runsFrom ? hand.runs : 1);
+    const slot = Math.min(boardSlot, slots - 1);
+    const key = boardKey(slot);
+    const boardVal = (hand.streets[nextStreet] && hand.streets[nextStreet].cards[key]) || '';
     const usedCards = new Set();
     hand.streets.forEach(s => {
       parseCardNotation(s.cards.hero || '').forEach(c => { if (c.suit !== 'x') usedCards.add(c.rank + c.suit); });
-      parseCardNotation(s.cards.board || '').forEach(c => { if (c.suit !== 'x') usedCards.add(c.rank + c.suit); });
+      ['board', 'board2', 'board3'].forEach(k => parseCardNotation(s.cards[k] || '').forEach(c => { if (c.suit !== 'x') usedCards.add(c.rank + c.suit); }));
       (s.cards.opponents || []).forEach(opp => { parseCardNotation(opp || '').forEach(c => { if (c.suit !== 'x') usedCards.add(c.rank + c.suit); }); });
     });
     const currentBoardCards = parseCardNotation(boardVal).filter(c => c.suit !== 'x').map(c => c.rank + c.suit);
@@ -3513,29 +3525,61 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     currentBoardCards.forEach(c => usedCards.delete(c));
     const allRanks = ranksFor(hand.gameType);
     const allSuits = [{key:'h',color:'#ef4444'},{key:'d',color:'#3b82f6'},{key:'c',color:'#22c55e'},{key:'s',color:'var(--text)'}];
-
+    const setBoard = (val) => setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === nextStreet ? { ...s, cards: { ...s.cards, [key]: val } } : s) }));
     const toggleCard = (card) => {
-      if (currentBoardSet.has(card)) {
-        const remaining = currentBoardCards.filter(c => c !== card);
-        setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === nextStreet ? { ...s, cards: { ...s.cards, board: remaining.join('') } } : s) }));
-      } else {
-        if (currentBoardCards.length >= maxCards) return;
-        setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === nextStreet ? { ...s, cards: { ...s.cards, board: boardVal + card } } : s) }));
-      }
+      if (currentBoardSet.has(card)) setBoard(currentBoardCards.filter(c => c !== card).join(''));
+      else if (currentBoardCards.length < maxCards) setBoard(boardVal + card);
     };
+    // Running it N times: chosen on the first street dealt after the all-in; Once clears the extra runs.
+    const chooseRuns = (n) => {
+      setBoardSlot(0);
+      setHand(prev => {
+        const next = { ...prev };
+        if (n > 1) { next.runs = n; next.runsFrom = nextStreet; }
+        else { delete next.runs; delete next.runsFrom; }
+        next.streets = prev.streets.map(s => {
+          const cards = { ...s.cards };
+          if (n < 3) delete cards.board3;
+          if (n < 2) delete cards.board2;
+          return { ...s, cards };
+        });
+        return next;
+      });
+    };
+    const shownBoards = handBoards(hand, currentStreetIdx);
+    const shownSoFar = shownBoards[Math.min(slot, shownBoards.length - 1)] || '';
+    const slotLabel = (k) => (hand.doubleBoard ? 'Board ' : 'Run ') + (k + 1);
+    const slotFull = (k) => parseCardNotation((hand.streets[nextStreet] && hand.streets[nextStreet].cards[boardKey(k)]) || '').filter(c => c.suit !== 'x').length >= maxCards;
+    const allDealt = Array.from({ length: slots }, (_, k) => slotFull(k)).every(Boolean);
 
     return (
       <div className="gto-entry">
         <div className="gto-phase-card">
           <div className="replayer-section" style={{textAlign:'center'}}>
-            <div className="gto-street-label">Deal the {streetName}</div>
+            <div className="gto-street-label">Deal the {streetName}{slots > 1 ? ' · ' + slotLabel(slot) : ''}</div>
+            {runItOffered && (runsFrom == null || runsFrom === nextStreet) && (
+              <div className="gto-runs" role="radiogroup" aria-label="Run it">
+                {[[1, 'Run it once'], [2, 'Twice'], [3, 'Three times']].map(([n, label]) => (
+                  <button key={n} type="button" role="radio" aria-checked={(hand.runs || 1) === n}
+                    className={'gto-runs-btn' + ((hand.runs || 1) === n ? ' is-on' : '')} onClick={() => chooseRuns(n)}><span>{label}</span></button>
+                ))}
+              </div>
+            )}
+            {slots > 1 && (
+              <div className="gto-runs gto-board-slots" role="tablist" aria-label="Board">
+                {Array.from({ length: slots }, (_, k) => (
+                  <button key={k} type="button" role="tab" aria-selected={k === slot}
+                    className={'gto-runs-btn' + (k === slot ? ' is-on' : '')} onClick={() => setBoardSlot(k)}><span>{slotLabel(k)}</span></button>
+                ))}
+              </div>
+            )}
             <div className="gto-board-deal">
-              {cumulativeBoard && <CardRow text={cumulativeBoard} max={5} />}
+              {shownSoFar && <CardRow text={shownSoFar} max={5} />}
               {boardVal && <CardRow text={boardVal} max={maxCards} />}
             </div>
             <div className="replayer-field">
-              <label>{streetName} Cards</label>
-              <input type="text" placeholder={nextStreet === 1 ? 'Qh7d2c' : 'Ts'} value={boardVal} onChange={e => setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === nextStreet ? { ...s, cards: { ...s.cards, board: e.target.value } } : s) }))} />
+              <label>{streetName} Cards{slots > 1 ? ' · ' + slotLabel(slot) : ''}</label>
+              <input type="text" placeholder={nextStreet === 1 ? 'Qh7d2c' : 'Ts'} value={boardVal} onChange={e => setBoard(e.target.value)} />
             </div>
             <div className={pickerGridClass(allRanks)}>
               {allSuits.map(suit => (
@@ -3555,7 +3599,11 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
         </div>
         <div className="gto-btn-row">
           <button className="gto-undo-btn" onClick={undoLastAction}>Undo</button>
-          <button className="btn btn-primary btn-sm" disabled={parseCardNotation(boardVal).filter(c => c.suit !== 'x').length < maxCards} onClick={() => { setCurrentStreetIdx(nextStreet); setPhase('action'); }}>Continue</button>
+          {slots > 1 && slot < slots - 1 && slotFull(slot) ? (
+            <button className="btn btn-primary btn-sm" onClick={() => setBoardSlot(slot + 1)}>Next: {slotLabel(slot + 1)}</button>
+          ) : (
+            <button className="btn btn-primary btn-sm" disabled={!allDealt} onClick={() => { setBoardSlot(0); setCurrentStreetIdx(nextStreet); setPhase('action'); }}>Continue</button>
+          )}
         </div>
       </div>
     );
@@ -3738,6 +3786,15 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             let fullBoardStr = '';
             hand.streets.forEach(s => { if (s.cards.board) fullBoardStr += s.cards.board; });
             const boardParsed = parseCardNotation(fullBoardStr).filter(c => c.suit !== 'x');
+            // Several boards (double board, run it twice or three times): every board judged, the
+            // winners named per board or run (utils/poker-engine.js multiBoardWinners).
+            if (boardCount(hand) > 1 && playerHands.length > 1) {
+              const boards = handBoards(hand).map(b => parseCardNotation(b).filter(c => c.suit !== 'x'));
+              const winners = multiBoardWinners(hand.gameType, playerHands, boards, hand, (i) => houseName(hand.players[i].name));
+              if (winners.length > 0) setHand(prev => ({ ...prev, result: { ...prev.result, winners } }));
+              setPhase('result');
+              return;
+            }
             if (playerHands.length === 1) {
               setHand(prev => ({ ...prev, result: { ...prev.result, winners: [{ playerIdx: playerHands[0].idx, split: false }] } }));
             } else if (playerHands.length > 1) {
@@ -4658,6 +4715,9 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   // ── The variant picker (VariantPicker.jsx, utils/variant-catalog.js) ──
   // The mix a hand was dealt in (HORSE, 8-Game...), saved with it as hand.mix; null for a single game.
   const [selectedMix, setSelectedMix] = useState(null);
+  // Double board (owner, 2026-10-20): a flop game dealt two boards. The Bomb Pot row turns it on;
+  // any hold'em or Omaha game can have it from the toggle under the launcher.
+  const [doubleBoard, setDoubleBoard] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [pendingCreate, setPendingCreate] = useState(false);
   const catalog = useMemo(() => buildCatalog(games.map(g => g.name || g.game_name).filter(Boolean)), [games]);
@@ -4678,6 +4738,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       setSelectedGameType(STRUCTURE_GAME_MAP[row.structure][row.game]);
     }
     setSelectedMix(mix);
+    if (row.game === 'Double Board Bomb Pot') setDoubleBoard(true);
+    else if (!['holdem', 'omaha'].includes(row.family)) setDoubleBoard(false);
     setPaletteOpen(false);
     // Short Deck asks its rule first (ShortDeckRuleDialog); the Create button makes it after.
     if (create && row.game !== 'Short Deck') setPendingCreate(true);
@@ -4876,6 +4938,11 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       if (studAction && isRazzGame) hand.gameType = 'Action ' + hand.gameType;
       if (studSuper && selectedCategory === 'Stud') hand.gameType = 'Super ' + hand.gameType;
       if (selectedMix) hand.mix = selectedMix;
+      // Double board: a second board on every street (utils/poker-engine.js handBoards).
+      if (doubleBoard && currentRow && ['holdem', 'omaha'].includes(currentRow.family)) {
+        hand.doubleBoard = true;
+        hand.streets = hand.streets.map(s => ({ ...s, cards: { ...s.cards, board2: '' } }));
+      }
       setCurrentHand(hand);
       recordGameUse(selectedGame, bettingStructure, selectedMix);
     }
@@ -5129,6 +5196,19 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             favourites, the family tabs, More and the Structure block. */}
         <GuessCard guess={guess} current={currentRow} onPick={pickVariant} />
         <Launcher current={currentRow} name={variantDisplayName + (selectedMix ? ' · ' + selectedMix : '')} onOpen={() => setPaletteOpen(true)} />
+        {/* Double board, under the launcher while a flop game is picked. */}
+        {currentRow && ['holdem', 'omaha'].includes(currentRow.family) && (
+          <div className="game-picker vp-stud">
+            <div className="game-check-group">
+              <div className={`game-check-row has-check${doubleBoard ? ' selected' : ''}`} onClick={() => setDoubleBoard(d => !d)}>
+                <div className={`game-check-box${doubleBoard ? ' checked' : ''}`}>
+                  {doubleBoard && <span style={{color:'#fff',fontSize:'calc(var(--subrow) * 1.125)',lineHeight:1,fontWeight:700}}>✓</span>}
+                </div>
+                <span className={`game-check-row-label is-caps${doubleBoard ? ' selected' : ''}`}>Double board</span>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Stud's modifiers, under the launcher while a stud game is picked. */}
         {selectedCategory === 'Stud' && (
           <div className="game-picker vp-stud">
@@ -6236,7 +6316,25 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     }
 
     let shaped;
-    if (readable && Object.keys(scores).length === contesting.length) {
+    // Several boards (double board; run it twice or three times): each pot layer settled over every
+    // board by utils/poker-engine.js (a share per board or run; a hi-lo double board's one ultimate
+    // high and low), from the cards when everyone still in shows.
+    if (category === 'community' && boardCount(hand) > 1 && cfg && cfg.type !== 'split-badugi') {
+      const bySeat = {};
+      let ok = true;
+      contesting.forEach(pi => {
+        const raw = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
+        const parsed = raw && raw !== 'MUCK' ? parseCardNotation(raw).filter(c => c.suit !== 'x') : [];
+        if (parsed.length < (gameCfg.heroCards || 2)) ok = false; else bySeat[pi] = parsed;
+      });
+      if (ok) {
+        const boards = handBoards(hand, streetIdx).map(b => parseCardNotation(b).filter(c => c.suit !== 'x'));
+        shaped = multiBoardShaped(cfg, layers, multiBoardEvals(cfg, bySeat, boards), contesting, combinesHiLo(hand));
+      }
+    }
+    if (shaped) {
+      // settled above
+    } else if (readable && Object.keys(scores).length === contesting.length) {
       // Cards shown for everyone still in: they are the authority, per layer.
       shaped = layers.map(l => ({ amount: l.amount, ...hiLoWinnersAmong(scores, l.players || contesting) }));
     } else {
@@ -6254,7 +6352,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     const { awards } = computePotAwards(shaped, { order: seatOrderFromButton(hand.players.length, btnIdx) });
     return awards;
   }, [showResult, flaggedWinners, hand, allPotLayers, settled, folded, category, boardCards,
-      heroCards, opponentCards, replayHeroIdx, gameCfg]);
+      heroCards, opponentCards, replayHeroIdx, gameCfg, streetIdx]);
 
   /* The plaque shows what a player HAS, and calcPotsAndStacks only ever
      subtracts: it takes every wager out and never puts a pot back, so at
@@ -8481,8 +8579,26 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
         {category === 'community' && (() => {
           const parsed = parseCardNotation(boardCards);
           if (parsed.length === 0) return null;
+          /* Several boards (owner, 2026-10-20): double board, or a hand run twice or three times. The
+             first board is the row the deal animations play on; the others stack under it, cards a
+             size smaller so the stack still clears the seats. A run repeats the shared streets. */
+          const extra = boardCount(hand) > 1 ? handBoards(hand, streetIdx).slice(1).map(b => parseCardNotation(b)).filter(b => b.length) : [];
+          const renderCard = (c, i, key, withSlot) => {
+            const slot = withSlot ? { 'data-slot': i, 'data-ck': key } : {};
+            if (c.suit === 'x') return <div key={key} {...slot} className="card-unknown" />;
+            if (cardTheme === 'classic') {
+              return (
+                <div key={key} {...slot} className={'card-classic card-classic-' + c.suit}>
+                  <span className="card-classic-rank">{c.rank.toUpperCase()}</span>
+                  <span className="card-classic-suit">{{h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'}[c.suit] || ''}</span>
+                </div>
+              );
+            }
+            return <img key={key} {...slot} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank + c.suit} loading="eager" />;
+          };
+          const unit = hand.doubleBoard ? 'Board' : 'Run';
           return (
-            <div className={'replayer-board-area' + boardAnimClass}>
+            <div className={'replayer-board-area' + boardAnimClass + (extra.length ? ' is-multi' + (extra.length > 1 ? ' is-multi-3' : '') : '')}>
               {/* 24: .replayer-street-label, its pop keyframe and three theme
                   overrides all existed, an effect set and cleared animStreetLabel
                   on a 450ms timer — and no JSX ever emitted the element, so the
@@ -8490,28 +8606,14 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                   only street context during replay was the prose below the
                   table. It renders under the board rather than at the CSS's
                   top:28%, where it would have sat on the pot eyebrow. */}
-              <div className="card-row replayer-board-spaced" ref={boardRowRef}>
-                {parsed.map((c, i) => {
-                  const key = c.rank + c.suit + '_' + i;
-                  // Flop | turn | river. Grouping is how every broadcast graphic
-                  // and every real table shows which street the hand is on; the
-                  // gap class existed for it and had never been rendered.
-                  let card;
-                  if (c.suit === 'x') {
-                    card = <div key={key} data-slot={i} data-ck={key} className="card-unknown" />;
-                  } else if (cardTheme === 'classic') {
-                    card = (
-                      <div key={key} data-slot={i} data-ck={key} className={'card-classic card-classic-' + c.suit}>
-                        <span className="card-classic-rank">{c.rank.toUpperCase()}</span>
-                        <span className="card-classic-suit">{{h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'}[c.suit] || ''}</span>
-                      </div>
-                    );
-                  } else {
-                    card = <img key={key} data-slot={i} data-ck={key} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank+c.suit} loading="eager" />;
-                  }
-                  return card;
-                })}
+              <div className="card-row replayer-board-spaced" ref={boardRowRef} aria-label={extra.length ? unit + ' 1' : undefined}>
+                {parsed.map((c, i) => renderCard(c, i, c.rank + c.suit + '_' + i, true))}
               </div>
+              {extra.map((b, bi) => (
+                <div key={'board-' + (bi + 2)} className="card-row replayer-board-spaced replayer-board-extra" aria-label={unit + ' ' + (bi + 2)}>
+                  {b.map((c, i) => renderCard(c, i, 'b' + (bi + 2) + '_' + c.rank + c.suit + '_' + i, false))}
+                </div>
+              ))}
             </div>
           );
         })()}
