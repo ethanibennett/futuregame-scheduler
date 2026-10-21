@@ -6830,6 +6830,25 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     const parsed = parseCardNotation(pCards).filter(c => c.suit !== 'x');
     if (parsed.length < (gameCfg.heroCards || 2)) return null;
     const board = category === 'community' ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
+    /* Several boards (double board; run it twice or three times): the hand on each board, one line
+       each ("B1: Trip 9s" / "B2: Two Pair"; R1, R2 for runs). Board 1 alone named a hand that lost
+       there and won the other. */
+    if (category === 'community' && boardCount(hand) > 1) {
+      const tag = hand.doubleBoard ? 'B' : 'R';
+      const lines = handBoards(hand, streetIdx).map((b, i) => {
+        const bd = parseCardNotation(b).filter(c => c.suit !== 'x');
+        const nm = (e) => (e ? (useShort ? (e.shortName || e.name) : e.name) : null);
+        let name = null;
+        if (cfg.type === 'hilo') {
+          const hiN = nm(bestHighFor(cfg, parsed, bd));
+          const lo = bestLow8For(cfg, parsed, bd);
+          name = [hiN, lo && lo.qualified !== false && lo.name ? lo.name : null].filter(Boolean).join(' / ');
+        } else if (cfg.type === 'high') name = nm(bestHighFor(cfg, parsed, bd));
+        else if (cfg.type === 'low') name = nm(cfg.lowType === 'a5' ? bestLowA5Hand(parsed.concat(bd), false) : bestLow27Hand(parsed.concat(bd)));
+        return name ? tag + (i + 1) + ': ' + name : null;
+      }).filter(Boolean);
+      return lines.length ? lines.join('\n') : null;
+    }
     if (cfg.type === 'hilo') {
       const hiEv = bestHighFor(cfg, parsed, board);
       const loEv = bestLow8For(cfg, parsed, board);
