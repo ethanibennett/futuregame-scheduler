@@ -4694,8 +4694,10 @@ app.post('/api/upload-schedule', authenticateToken, requireRegistered, requireEv
 // Live tournament clocks for the dashboard (lib/live-clocks.js): the real level, blinds, time left
 // and registration close, in place of estimateBlindLevel(). The client names the started events on
 // its dashboard and the venue coordinates it already knows (getVenueCoords), which is how a Bravo
-// room is found; a PokerAtlas event carries its own clock_ref from the feed. Capped at 40 events a
-// call, and upstream answers are cached per clock, so polling is cheap however many are open.
+// room is found; a PokerAtlas event carries its own clock_ref from the feed; a WSOP-run series is
+// found on WSOP+ by the room's name and the event by its number (lib/wsop-live-clocks.js). Capped at
+// 40 events a call, and upstream answers are cached per clock, so polling is cheap however many are
+// open.
 //
 // Completion: Bravo drops a tournament's clock when it finishes, so a clock seen running and then
 // ABSENT from an answering provider for 5 minutes marks the event completed (clock_ended_at). A
@@ -4731,7 +4733,7 @@ app.post('/api/live-clocks', authenticateToken, async (req, res) => {
     const id = Number(e && e.id);
     if (!Number.isInteger(id)) return;
     let row = null;
-    const sel = db.prepare('SELECT id, event_number, event_name, property, clock_ref, clock_ended_at, clock_seen_at FROM tournaments WHERE id = ?');
+    const sel = db.prepare('SELECT id, event_number, event_name, venue, property, buyin, clock_ref, clock_ended_at, clock_seen_at FROM tournaments WHERE id = ?');
     sel.bind([id]);
     if (sel.step()) row = sel.getAsObject();
     sel.free();
@@ -4762,7 +4764,7 @@ app.post('/api/live-clocks', authenticateToken, async (req, res) => {
   res.json({ clocks, serverNow: Date.now() });
 });
 
-// Reachability probe for the two clock providers, FROM WHEREVER THIS RUNS. Bravo sits behind
+// Reachability probe for the three clock providers, FROM WHEREVER THIS RUNS. Bravo sits behind
 // Cloudflare, which answered the Windows box but may treat Render's datacentre addresses
 // differently, and nothing else would say so: a blocked provider just reads as "no clock". Gated
 // like the feed seam (x-sync-token), and it returns only counts and states, never payloads.
@@ -4771,7 +4773,8 @@ app.get('/api/admin/live-clocks/probe', async (req, res) => {
   if (!expected || req.get('x-sync-token') !== expected) return res.status(403).json({ error: 'Forbidden' });
   const casino = String(req.query.casino || 'JCIN').slice(0, 12);
   const tc = String(req.query.tc || '').slice(0, 64);
-  res.json(await probeProviders(casino, tc || null));
+  const series = /^\d{1,6}$/.test(String(req.query.series || '')) ? Number(req.query.series) : null;
+  res.json(await probeProviders(casino, tc || null, series));
 });
 
 // Get all tournaments with filters

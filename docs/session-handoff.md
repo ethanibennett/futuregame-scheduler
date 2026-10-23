@@ -5,7 +5,7 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-10-21 (from Windows) — newest section first. Earlier notes: 2026-10-13, then 2026-09-30, live
+Last updated: 2026-10-23 (from Windows) — newest section first. Earlier notes: 2026-10-21, 2026-10-13, then 2026-09-30, live
 tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
@@ -13,6 +13,31 @@ Below it the 2026-09-25 Schedule grid sweep, then the dated sections back throug
 wsop-console side and verified against both live services.
 
 ---
+
+## 2026-10-23 — WSOP+ (WSOP Live) is the third live-clock source
+
+- **Why:** on 2026-10-21 the owner saw Turning Stone's Circuit PLO8 running in the WSOP LIVE app while
+  our server found no clock (Bravo lists the room, TSTN, with no clocks; no PokerAtlas clock_ref).
+  WSOP-run series keep their clocks in GGPoker's WSOP+ system, which no other provider carries.
+- **How it was found:** the app ignores the iPhone's Wi-Fi proxy, so the 2026-10-22 capture went
+  through a WireGuard tunnel to this box and mitmproxy (the owner's phone, two minutes). The capture
+  held the owner's login token and was deleted once the protocol was written up; the WireGuard keys
+  were deleted the same night. Nothing shipped uses the login: the series list, flight lists, blind
+  structures and the clock hub all answer to the app's public `x-api-key` alone.
+- **Shipped:** `lib/wsop-live-clocks.js` (its own MessagePack codec, the REST calls, the SignalR hub
+  client, `pickWsopSeries` / `matchWsopFlight` / `normalizeWsopClock`), wired into `clockForEvent`
+  between PokerAtlas and Bravo; the admin probe gained `wsop` (`?series=76`); `test:clocks` +48
+  cases, the captured Clock frame and the client's Subscribe bytes among them. Protocol, payloads and
+  the matching table: `docs/wsop-live-clock.md`.
+- **Checked live (00:35 ET):** the hub returned six Turning Stone clocks; #10 Day 1 on its break at
+  level 15 (next 4,000/8,000), the $140 Nightly at level 15 (10,000/20,000/20,000, 6 of 96 left),
+  the Main Event Day 1B/1C preset at level 1 not started. Every numbered feed row matched its
+  flight (Flight A/B/C ↔ Day1A/B/C, Day 2/3 ↔ Day2/Final Day); dailies match by name + price + hour.
+- **Traps:** the hub's WebSocket needs BOTH the api key header and the negotiate reply's `AWSALB`
+  cookie (non-101 without either); server frames are wrapped (flag byte, uint32 LE length) before the
+  standard SignalR framing; `levelIndex` counts breaks, `level` does not; the Clock carries no
+  blinds (structure) and no field (flight detail). A WSOP+ match never falls through to Bravo: a
+  Bravo "no clock" for a WSOP event would end it after 5 min.
 
 ## 2026-10-21 — Replayer fixes, the Mac simulator check, desktop headings, 30 s ads
 

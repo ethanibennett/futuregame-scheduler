@@ -27,7 +27,7 @@
     "test:hh-io": "node --test test/hh-io.test.mjs",
     "test:watchdog": "node test/testflight-watchdog-predicate.js && node test/testflight-watchdog-decisions.js",
     "test:testflight-nightly": "node test/testflight-nightly.js",
-    "test:clocks": "node test/live-clocks.test.js",
+    "test:clocks": "node test/live-clocks.test.js && node test/wsop-live-clocks.test.js",
     "test:sse": "node test/sse-ticket.test.js",
     "test:account": "node test/account-delete.test.js",
     "test:analytics": "node test/analytics.test.js",

@@ -179,12 +179,16 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
 - **Live tournament clocks (in, on demand)**: `lib/live-clocks.js` behind `POST /api/live-clocks`.
   The dashboard polls it every 15 s for selected events past their start (and PokerAtlas-clocked
   events up to 6 h before) and drives the Level/Clock stats and the late-reg bar from the room's
-  real clock instead of `estimateBlindLevel()`. Two providers, neither needing a login:
+  real clock instead of `estimateBlindLevel()`. Three providers, none needing a login:
   PokerAtlas/TableCaptain over `wss://tourn-clock.pokeratlas.com` by the event's `clock_ref`
-  (`pa:<tc_id>`, carried by the MTT feed since 2026-09-29), and Bravo's
-  `GetClocksByCasinoDetailID`, with the room found from the venue's coordinates in Bravo's
-  roster and the event matched by event number. Recon and payloads:
-  mtt-series-watcher `docs/pokeratlas-clock.md` and `docs/bravo-tournaments-blocker.md`.
+  (`pa:<tc_id>`, carried by the MTT feed since 2026-09-29); **WSOP+** (`lib/wsop-live-clocks.js`,
+  2026-10-23) for any WSOP-run series — Circuit stops, Vegas, Paradise — found by the room's name
+  in the app's series list and the event by its number, the clocks read from the app's anonymous
+  SignalR hub (one short connection per series per 10 s; a match is final, never falling through
+  to Bravo); and Bravo's `GetClocksByCasinoDetailID`, with the room found from the venue's
+  coordinates in Bravo's roster and the event matched by event number. Recon and payloads:
+  mtt-series-watcher `docs/pokeratlas-clock.md` and `docs/bravo-tournaments-blocker.md`, and
+  `docs/wsop-live-clock.md` here. `npm run test:clocks`.
 - **Backer surface stays here**: `/b/:token` public pages, Sunday weekly digest, backer
   web-push (`backer_push_subs`), `console_records` store='backers' (fed by seam #3).
   The page is the vite app since 2026-10-13 (`components/BackerPage.jsx`, rendered by App.jsx's
