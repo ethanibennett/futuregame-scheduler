@@ -17518,6 +17518,18 @@
          showed them running across the 1g gap. */
       clip-path: inset(calc(var(--subrow) * -4 - var(--bw-hair) * 2) 0 0 0);
     }
+    /* And the pane's side hairlines break across that band (owner, 2026-10-22: "hairlines still bridging
+       the gap"): the band is a gap like the 1g between panes, so the pane's edges stop at its top line and
+       resume at its bottom one. --dk-band-at is My Schedule's top in the pane (App measures it); the top
+       line sits 4r above it, the bottom line a hair above it. */
+    :root:not([data-theme^="swiss"]) .dk-pane-detail:has(> .dk-detail-block + .dk-mine-block)::before {
+      -webkit-mask:
+        linear-gradient(#000 0 0) top / 100% calc(var(--dk-band-at, 0px) - var(--subrow) * 4) no-repeat,
+        linear-gradient(#000 0 0) bottom / 100% calc(100% - var(--dk-band-at, 0px) + var(--bw-hair)) no-repeat;
+      mask:
+        linear-gradient(#000 0 0) top / 100% calc(var(--dk-band-at, 0px) - var(--subrow) * 4) no-repeat,
+        linear-gradient(#000 0 0) bottom / 100% calc(100% - var(--dk-band-at, 0px) + var(--bw-hair)) no-repeat;
+    }
     /* My Schedule's heading in the right pane matches the selected event's (owner, 2026-10-21): Baskerville
        at the wordmark's size; its count stays the small Univers beside it. */
     /* Seated, not centred: a block (text-box-trim is inert on the flex it was) trimmed to cap and

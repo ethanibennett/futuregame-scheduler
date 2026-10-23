@@ -1781,6 +1781,25 @@ function App() {
     mo.observe(body, { childList: true });
     return () => { if (ro) ro.disconnect(); mo.disconnect(); };
   }, [isDesktop, currentView, dk.shellG]);
+  // Where My Schedule's block starts in the right pane (styles.css --dk-band-at), so the pane's side
+  // hairlines break across the band between it and the selected event, as the band's lines break at the
+  // pane's edges (owner, 2026-10-22). Re-measured as the event's block resizes, its open/close included.
+  useLayoutEffect(() => {
+    if (!isDesktop || currentView !== 'tournaments') return undefined;
+    const pane = document.querySelector('.dk-pane-detail');
+    if (!pane) return undefined;
+    const measure = () => {
+      const mine = pane.querySelector(':scope > .dk-mine-block');
+      if (mine) pane.style.setProperty('--dk-band-at', mine.offsetTop + 'px');
+    };
+    measure();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    const watch = () => { if (ro) { ro.disconnect(); [...pane.children].forEach(c => ro.observe(c)); } measure(); };
+    watch();
+    const mo = new MutationObserver(watch);
+    mo.observe(pane, { childList: true });
+    return () => { if (ro) ro.disconnect(); mo.disconnect(); };
+  }, [isDesktop, currentView]);
   // The home's second pane (its NUMBERS column), set by a callback ref once the pane mounts.
   const [dkHomeRight, setDkHomeRight] = useState(null);
   // Closing an event animates like opening one, in reverse (owner, 2026-10-11): the details keep
