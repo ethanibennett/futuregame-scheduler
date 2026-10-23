@@ -11736,7 +11736,14 @@
       transform: translate(calc(var(--gu) * 0.95 - var(--subrow) * 0.8534), calc(var(--subrow) * 1.0152));
     }
     .cal-accolades svg[data-icon="satellite"] { transform: translateX(calc(var(--gu) * 0.95 - var(--subrow) * 0.9267)); }
-    .cal-accolades svg[data-icon="restart"] { transform: translate(calc(var(--gu) * 0.95 - var(--subrow) * 0.8233), calc(var(--subrow) * 0.176)); }
+    /* Restart art 1g tall (owner, 2026-10-23): painted 2.125..21.875 (19.75 units: the 9-unit circle
+       at (12,12) plus half the 1.75 stroke) -> svg 24/19.75 g = 1.2152g. The same seating:
+         down  (24 - 21.875)/24 x 1.2152g = 0.1076g
+         right g - 1.2152g/2 + 0.1076g - 0.05g = 0.45g */
+    .cal-accolades svg[data-icon="restart"] {
+      --icon-size: calc(var(--gu) * 1.2152);
+      transform: translate(calc(var(--gu) * 0.45), calc(var(--gu) * 0.1076));
+    }
 
 
     .cal-bounty-icon { color: var(--text); opacity: 0.5; }
