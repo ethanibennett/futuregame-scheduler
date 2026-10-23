@@ -12,6 +12,7 @@ import {
   parseTournamentTime, findClosestFlight, extractConditions, detectConflicts,
   measureStickyStack,
 } from '../utils/utils.js';
+import { clockAskable } from '../utils/live-clocks.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -463,10 +464,11 @@ export default function ScheduleView({
                 <DateBreak date={group.date} top={schedDateTop} isToday={isGroupToday} />
                 {group.events.map(({ t, globalIdx: gIdx }) => {
                   if (gIdx >= visibleCount) return null;
-                  // Today's rows need the full component for MiniLateRegBar timers.
+                  // Today's rows need the full component for MiniLateRegBar timers, and so does
+                  // yesterday's event still running past midnight (its live clock).
                   // Focused rows need full component for auto-expand.
                   // Activated rows have been tapped open at least once.
-                  const needsFull = isGroupToday || activatedIds.has(t.id) || focusEventId === t.id;
+                  const needsFull = isGroupToday || activatedIds.has(t.id) || focusEventId === t.id || (past && clockAskable(t));
                   return (
                   // A row not yet rendered stands in at a whole 13r (a 12r card and its 1r gap, as
                   // the Schedule tab's list does): at 11.75r every unrendered row above the one

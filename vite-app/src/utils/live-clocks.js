@@ -12,6 +12,21 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { fetchApi } from './api.js';
+import { parseTournamentTime } from './utils.js';
+
+/** How long after its start an event is worth asking the room's clock about. A Day 1 that starts
+ *  at 4 PM plays past 2 AM, so this is NOT "today's events": until 2026-10-23 a card asked only
+ *  while its date group was today, and an event running past midnight lost its clock at 00:00
+ *  (owner: the Turning Stone NLH/PLO Mix, live in the WSOP app, showed none). */
+export const CLOCK_ASK_WINDOW_MS = 18 * 60 * 60 * 1000;
+
+/** Should a card ask for this event's clock? A live-room event (not online, not Personal) that has
+ *  started within the window and is not already known to be complete. */
+export function clockAskable(t, now = Date.now()) {
+  if (!t || t.venue === 'Personal' || t.is_online || t.clock_ended_at) return false;
+  const s = parseTournamentTime(t);
+  return Number.isFinite(s) && s <= now && now - s < CLOCK_ASK_WINDOW_MS;
+}
 
 const POLL_MS = 15000;
 const CHUNK = 40; // the server's per-call cap

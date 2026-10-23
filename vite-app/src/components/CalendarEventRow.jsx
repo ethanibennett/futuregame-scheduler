@@ -14,7 +14,7 @@ import {
   VENUE_TO_SERIES, VENUE_BRAND_VAR, isPOYEligible, calculatePOYPoints, isSixMax,
   HAND_CONFIG, HAND_CONFIG_DEFAULT, splitEventStage, formatChips, getVenueCoords, getToday,
 } from '../utils/utils.js';
-import { registerClock, useClockStore, useSecondTick, liveView, clockRegEnd, fmtClock, isCompleted } from '../utils/live-clocks.js';
+import { registerClock, useClockStore, useSecondTick, liveView, clockRegEnd, fmtClock, isCompleted, clockAskable } from '../utils/live-clocks.js';
 import { API_URL } from '../utils/api.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -610,22 +610,21 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
     cell.style.minHeight = `calc(var(--subrow) * ${2 + (lines - 1) * 3})`;
   }, [open, tournament.notes]);
 
-  /* Live clock (utils/live-clocks.js). A card asks only while it is on screen and its event is
-     today's and past its start, so a day of 150 events costs the dozen the user can see. */
+  /* Live clock (utils/live-clocks.js). A card asks only while it is on screen and its event has
+     started within the clock window (18 h, whatever its date group: a Day 1 runs past midnight), so
+     a day of 150 events costs the dozen the user can see. Online rooms and Personal events have no
+     clock to ask for; an event already known to be complete (clock_ended_at) is not asked again. */
   const [onScreen, setOnScreen] = useState(false);
+  const askable = clockAskable(tournament);
   useEffect(() => {
     const el = rowRef.current;
-    if (!showMiniLateReg || !el || typeof IntersectionObserver !== 'function') return undefined;
+    if (!askable || !el || typeof IntersectionObserver !== 'function') return undefined;
     const io = new IntersectionObserver(([e]) => setOnScreen(e.isIntersecting), { rootMargin: '200px 0px' });
     io.observe(el);
     return () => io.disconnect();
-  }, [showMiniLateReg]);
-  // Bravo and PokerAtlas clock live rooms only; an online event never has one to ask for.
-  const startMsForClock = showMiniLateReg && tournament.venue !== 'Personal' && !tournament.is_online ? parseTournamentTime(tournament) : NaN;
-  // An event already known to be complete (clock_ended_at) is not asked about again.
-  const clockCandidate = onScreen && Number.isInteger(tournament.id) && Number.isFinite(startMsForClock)
-    && !tournament.clock_ended_at
-    && startMsForClock <= Date.now() && Date.now() - startMsForClock < 18 * 60 * 60 * 1000;
+  }, [askable]);
+  const startMsForClock = askable ? parseTournamentTime(tournament) : NaN;
+  const clockCandidate = onScreen && askable && Number.isInteger(tournament.id) && Number.isFinite(startMsForClock);
   useEffect(() => {
     if (!clockCandidate) return undefined;
     return registerClock(tournament.id, { ...getVenueCoords(tournament.venue, tournament.property), startMs: startMsForClock });

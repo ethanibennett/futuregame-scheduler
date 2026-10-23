@@ -43,6 +43,11 @@ wsop-console side and verified against both live services.
   and carried to prod by the boot push. Also found: 21 `node server.js` scratch servers from
   2–6 September still running (1.3 GB, one re-ingesting the feed hourly into its own scratch DB);
   stopped.
+- **Also found (owner: "clock is not showing for Turning Stone NLH/PLO Mix", live in the WSOP app at
+  2 AM):** a Schedule card asked for its clock only while its date group was TODAY, so an event
+  running past midnight lost its clock at 00:00, and yesterday's group rendered the Lite row anyway.
+  `clockAskable(t)` (utils/live-clocks.js: a live-room event started within 18 h, not known complete)
+  now decides both the ask and the full row, whatever the date; the mini late-reg bar stays today-only.
 - **Traps:** the hub's WebSocket needs BOTH the api key header and the negotiate reply's `AWSALB`
   cookie (non-101 without either); server frames are wrapped (flag byte, uint32 LE length) before the
   standard SignalR framing; `levelIndex` counts breaks, `level` does not; the Clock carries no
