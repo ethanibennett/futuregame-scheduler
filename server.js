@@ -695,17 +695,21 @@ app.get('/api/backer/:token/live', (req, res) => {
 // The message names the backer and the amount, never a token.
 function notifySettle(token, notice) {
   if (!notice) return;
-  const amt = '$' + Math.round(Math.abs(Number(notice.amountCents) || 0) / 100).toLocaleString('en-US');
+  const usd = (c) => '$' + Math.round(Math.abs(Number(c) || 0) / 100).toLocaleString('en-US');
+  const amt = usd(notice.amountCents);
+  // A part (owner, 2026-10-23): "marked $500 of $1,200 settled"; cleared, "$700 remains".
+  const of = notice.partial ? ` of ${usd(notice.balanceCents)}` : '';
+  const left = notice.partial ? ` ${usd(notice.remainingCents)} remains.` : '';
   const who = notice.name || 'Your backer';
   if (notice.side === 'backer') {
     const [title, body] = notice.action === 'undo' ? ['Settled withdrawn', `${who} withdrew Settled (${amt}).`]
-      : notice.completed ? ['Settled', `${who} confirmed: ${amt} settled. Their balance is back to $0.`]
-        : ['Settled?', `${who} marked ${amt} settled. Confirm in Bankroll › Backers.`];
+      : notice.completed ? ['Settled', notice.partial ? `${who} confirmed: ${amt} settled.${left}` : `${who} confirmed: ${amt} settled. Their balance is back to $0.`]
+        : ['Settled?', `${who} marked ${amt}${of} settled. Confirm in Bankroll › Backers.`];
     sendPushToAdmin(title, body, '/#bankroll/backers').catch((err) => console.error('[backers] settle notice to the player failed:', err && err.message));
   } else {
     const [title, body] = notice.action === 'undo' ? ['Settled withdrawn', `Ethan withdrew Settled (${amt}).`]
-      : notice.completed ? ['Settled', `${amt} settled. Your balance is back to $0.`]
-        : ['Settled?', `Ethan marked ${amt} settled. Confirm on your page.`];
+      : notice.completed ? ['Settled', notice.partial ? `${amt} settled.${left}` : `${amt} settled. Your balance is back to $0.`]
+        : ['Settled?', `Ethan marked ${amt}${of} settled. Confirm on your page.`];
     sendBackerPush(token, title, body, `/b/${token}`)
       .then((r) => { if (r && r.changed) saveDatabase().catch(() => {}); })
       .catch((err) => console.error('[backers] settle notice to the backer failed:', err && err.message));

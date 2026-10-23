@@ -64,8 +64,8 @@ const BACKER_EP = 'https://push.example.test/sam-page';
     const other = await login('otheradm@x.test');
     const feed = async () => (await api(`/api/backer/${TOK}/feed`)).json;
     const card = async () => (await api('/api/staking/standing/backers', { token: owner })).json.backers.find((b) => b.id === REC);
-    const backer = (action, amountCents) => api(`/api/backer/${TOK}/settle`, { method: 'POST', body: { action, amountCents } });
-    const mine = (action, amountCents, token = owner) => api(`/api/staking/standing/backers/${REC}/settle`, { token, method: 'POST', body: { action, amountCents } });
+    const backer = (action, amountCents, extra = {}) => api(`/api/backer/${TOK}/settle`, { method: 'POST', body: { action, amountCents, ...extra } });
+    const mine = (action, amountCents, token = owner, extra = {}) => api(`/api/staking/standing/backers/${REC}/settle`, { token, method: 'POST', body: { action, amountCents, ...extra } });
     const mainBalance = async () => (await api('/api/bankrolls/summary', { token: owner })).json.bankrolls.find((b) => b.id === 'main').balance;
 
     await test('a page never settled carries no settlement field: byte for byte as before', async () => {
@@ -164,6 +164,61 @@ const BACKER_EP = 'https://push.example.test/sam-page';
     await test('nothing to settle at $0', async () => {
       const r = await backer('confirm', 0);
       assert.strictEqual(r.status, 409);
+    });
+    // ── A part (owner, 2026-10-23: Zelle limits) ──
+    await test('a part: an earlier week owes $1,000; a part over it, or the wrong way, is refused', async () => {
+      await srv.stop();
+      const d = scratch.open();
+      d.run(`INSERT INTO backer_events (id, token, session_id, ts, date, game, venue, hours, session_result_cents, pct, share_cents, source)
+             VALUES (?, ?, 'fg-cs-4', 3, '2026-10-03', '2/5 NLH', 'Parx', 6, 500000, 20, 100000, 'ledger')`, [`${TOK}:fg-cs-4`, TOK]);
+      scratch.save(d); d.close();
+      srv = await boot(scratch.dbPath, { ...ENV, CONSOLE_OWNER_USER_ID: String(ham) }, { ports: PORTS, preloads: [STUB] });
+      servers.push(srv);
+      assert.strictEqual((await card()).dueCents, 100000);
+      assert.strictEqual((await backer('confirm', 100000, { settleCents: 150000 })).status, 400, 'over the balance');
+      assert.strictEqual((await backer('confirm', 100000, { settleCents: -40000 })).status, 400, 'the wrong way');
+      assert.strictEqual((await backer('confirm', 100000, { settleCents: 0 })).status, 400, 'nothing');
+    });
+    await test('the backer marks $400 of $1,000: open for $400 against $1,000; the player is told the part', async () => {
+      const m0 = mark();
+      const r = await backer('confirm', 100000, { settleCents: 40000 });
+      await settle();
+      assert.strictEqual(r.status, 200, r.text);
+      assert.deepStrictEqual([r.json.completed, r.json.partial, r.json.amountCents], [false, true, 40000]);
+      assert.deepStrictEqual(pushes(m0), [['Settled?', 'owner']]);
+      const c = await card();
+      assert.deepStrictEqual([c.settlement.open.amountCents, c.settlement.open.balanceCents], [40000, 100000]);
+      assert.strictEqual(c.dueCents, 100000, 'nothing has cleared yet');
+    });
+    await test('the owner confirming a different part is refused, with the open one', async () => {
+      const r = await mine('confirm', 100000, owner, { settleCents: 50000 });
+      assert.strictEqual(r.status, 409);
+      assert.strictEqual(r.json.openAmountCents, 40000);
+    });
+    await test('the owner confirms the part: $400 clears, $600 stays owed, one part leaves Main', async () => {
+      const before = await mainBalance();
+      const m0 = mark();
+      const r = await mine('confirm', 100000);
+      await settle();
+      assert.strictEqual(r.status, 200, r.text);
+      assert.deepStrictEqual([r.json.completed, r.json.partial, r.json.amountCents, r.json.dueCents], [true, true, 40000, 60000]);
+      assert.deepStrictEqual(pushes(m0), [['Settled', 'backer']]);
+      const f = await feed();
+      assert.strictEqual(f.cumulativeCents, 80000, '$1,000 due + $200 this week - $400');
+      assert.strictEqual(f.settlement.open, null);
+      assert.deepStrictEqual([f.settlement.last.amountCents, f.settlement.settledCents], [40000, 100000]);
+      const adj = q("SELECT amount, note FROM bankroll_adjustments WHERE settlement_ref LIKE 'bks:%' ORDER BY id DESC LIMIT 1");
+      assert.deepStrictEqual([adj[0].amount, adj[0].note], [-400, 'Settled (part): paid Sam Settle']);
+      assert.strictEqual(await mainBalance(), before - 400);
+      assert.strictEqual((await card()).dueCents, 60000);
+    });
+    await test('the rest settles as a whole: both press Settled for $600', async () => {
+      assert.strictEqual((await mine('confirm', 60000)).status, 200);
+      const r = await backer('confirm', 60000);
+      assert.deepStrictEqual([r.status, r.json.completed, r.json.partial], [200, true, false]);
+      const f = await feed();
+      assert.strictEqual(f.cumulativeCents, 20000, 'only this week is left');
+      assert.strictEqual((await card()).dueCents, 0);
     });
     await test('an unknown link is a 404', async () => {
       assert.strictEqual((await api('/api/backer/NoSuchLink99/settle', { method: 'POST', body: { action: 'confirm', amountCents: 1 } })).status, 404);

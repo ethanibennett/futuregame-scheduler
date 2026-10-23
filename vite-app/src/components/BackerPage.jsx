@@ -9,7 +9,7 @@ import useInkBalance from '../hooks/useInkBalance.js';
 import useThemeChoice from '../hooks/useThemeChoice.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { API_URL } from '../utils/api.js';
-import { settleView } from '../utils/backer-settle.js';
+import { settleView, partCents } from '../utils/backer-settle.js';
 import { VENUE_MAP, getVenueBrandColor, getVenueInfo, getStripAbbr } from '../utils/utils.js';
 import {
   summarize, groupByMonth, shareSeries, rangeOptions, stripFor, monthLabel, RANGE_NOUN,
@@ -366,27 +366,46 @@ function SettleRow({ token, feed, onChange }) {
   const total = weekRunning(feed, Date.now()).carriedCents;
   const v = settleView({ settlement: feed.settlement, totalCents: total, side: 'backer' });
   if (!v) return null;
-  const press = async () => {
-    if (!v.button || busy) return;
-    if (v.confirm && !window.confirm(v.confirm)) return;
+  // settleCents: a part of the balance (owner, 2026-10-23: Zelle limits); omitted = all of it, or
+  // the part the other side marked.
+  const send = async (action, settleCents) => {
     setBusy(true);
     try {
       const r = await fetch(`${API_URL}/backer/${token}/settle`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
-        body: JSON.stringify({ action: v.button.action, amountCents: total }),
+        body: JSON.stringify({ action, amountCents: total, ...(settleCents != null ? { settleCents } : {}) }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { if (toast) toast.error(d.error || 'That did not go through. Try again.'); }
-      else if (d.completed && toast) toast.success('Settled. Last week is cleared; this week carries on.');
+      else if (d.completed && toast) {
+        toast.success(d.partial ? `${fmtSignedCents(Math.abs(d.amountCents)).replace(/^\+/, '')} settled. ${fmtSignedCents(Math.abs(d.dueCents)).replace(/^\+/, '')} still to settle.`
+          : 'Settled. Last week is cleared; this week carries on.');
+      }
       onChange();
     } catch { if (toast) toast.error('That did not go through. Check your connection.'); }
     finally { setBusy(false); }
+  };
+  const press = () => {
+    if (!v.button || busy) return;
+    if (v.confirm && !window.confirm(v.confirm)) return;
+    send(v.button.action);
+  };
+  const pressPart = () => {
+    if (!v.part || busy) return;
+    const cents = partCents(window.prompt(v.part.prompt), total);
+    if (cents == null) { if (toast) toast.error('Enter a dollar amount under the balance; Settled covers all of it.'); return; }
+    send('confirm', cents);
   };
   return (
     <div className="bp-settled-row">
       {v.button && (
         <button type="button" className={'bp-settled-btn' + (v.button.primary ? ' is-primary' : '')} onClick={press} disabled={busy}>
           {v.button.label}
+        </button>
+      )}
+      {v.part && (
+        <button type="button" className="bp-settled-btn bp-settled-part" onClick={pressPart} disabled={busy} title="Settle part of the balance">
+          {v.part.label}
         </button>
       )}
       <span className="an-cell bp-settled-status an-clip" title={v.status}>{v.status}</span>

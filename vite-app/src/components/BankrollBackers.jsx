@@ -6,7 +6,7 @@ import {
   fmtSignedCents, plural,
 } from '../utils/bankroll-backers.js';
 import { useToast } from '../contexts/ToastContext.jsx';
-import { settleView } from '../utils/backer-settle.js';
+import { settleView, partCents } from '../utils/backer-settle.js';
 import './analytics.css';
 import './bankroll-locations.css';
 import './bankroll-backers.css';
@@ -108,6 +108,10 @@ function BackerCard({ b, open, onToggle, thisYear, onCopy, onSettle, settling })
             <button type="button" className={'bk-btn bl-more bb-settle-btn' + (settle.button.primary ? ' is-primary' : '')}
               disabled={settling} onClick={() => onSettle(b, settle)}><span>{settle.button.label}</span></button>
           )}
+          {settle.part && (
+            <button type="button" className="bk-btn bl-more bb-settle-btn bb-settle-part" title="Settle part of the balance"
+              disabled={settling} onClick={() => onSettle(b, settle, true)}><span>{settle.part.label}</span></button>
+          )}
           <span className="an-cell bl-count bb-settle-status an-clip" title={settle.status}>{settle.status}</span>
         </div>
       )}
@@ -165,18 +169,27 @@ export default function BankrollBackers({ bk }) {
 
   // A Settled press: sends the balance this card shows, then reloads the list (the figures come from
   // the server, so the card reads exactly what the backer's page does).
-  const settle = useCallback(async (b, v) => {
-    if (v.confirm && !window.confirm(v.confirm)) return;
+  const settle = useCallback(async (b, v, part = false) => {
+    // part (owner, 2026-10-23: Zelle limits): a dollar amount short of the balance; the backer confirms it.
+    let settleCents = null;
+    if (part) {
+      settleCents = partCents(window.prompt(v.part.prompt), b.dueCents);
+      if (settleCents == null) { toast.error('Enter a dollar amount under the balance; Settled covers all of it.'); return; }
+    } else if (v.confirm && !window.confirm(v.confirm)) return;
     setSettling(true);
     try {
       const res = await fetch(`${API_URL}/staking/standing/backers/${encodeURIComponent(b.id)}/settle`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${bk.token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: v.button.action, amountCents: b.dueCents }),
+        body: JSON.stringify({ action: part ? 'confirm' : v.button.action, amountCents: b.dueCents, ...(settleCents != null ? { settleCents } : {}) }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) toast.error(data.error || 'That did not go through. Try again.');
-      else if (data.completed) toast.success(`Settled with ${b.name || 'your backer'}. Last week is cleared.`);
+      else if (data.completed) {
+        const usd = (c) => '$' + Math.round(Math.abs(Number(c) || 0) / 100).toLocaleString('en-US');
+        toast.success(data.partial ? `${usd(data.amountCents)} settled with ${b.name || 'your backer'}. ${usd(data.dueCents)} still to settle.`
+          : `Settled with ${b.name || 'your backer'}. Last week is cleared.`);
+      }
       setReloadKey((k) => k + 1);
     } catch { toast.error('That did not go through. Check your connection.'); }
     finally { setSettling(false); }

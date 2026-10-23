@@ -51,6 +51,11 @@ wsop-console side and verified against both live services.
 - **My Schedule's Travel / Day Off / Export** are in the kind toggles' style (owner: "match the
   satellites/restarts buttons"): `kind-toggle sched-hdr-toggle`, 2r tall at 5g / 6g / 7g, the header
   row pinned at 4r so they centre on the grid. Checked with `check:controls --only myschedule…`.
+- **Partial settlement (owner: "for when we hit Zelle limits"):** a Part button beside Settled on the
+  backer page and the Backers card asks for a dollar amount short of the balance; the other side confirms
+  that amount, it comes off the running total and the rest stays owed (`settleCents` in the settle body;
+  `balance_cents` column, migration name bumped so the idempotent migrate runs once more; notices say
+  "$500 of $1,200" and "$700 remains"). `test:backer-settle` +5 cases.
 - **Traps:** the hub's WebSocket needs BOTH the api key header and the negotiate reply's `AWSALB`
   cookie (non-101 without either); server frames are wrapped (flag byte, uint32 LE length) before the
   standard SignalR framing; `levelIndex` counts breaks, `level` does not; the Clock carries no

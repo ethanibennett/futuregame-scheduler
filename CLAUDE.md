@@ -238,7 +238,12 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   own press or of a repeated tap (`notifySettle` in server.js). Test: `npm run test:backer-settle`.
   Settled clears only what EARLIER weeks owe (`dueCents`: the total less shares recorded since Sunday noon New
   York); the week in progress rolls on. The page shows "To be settled from last week" over "This week" while
-  earlier weeks owe anything.
+  earlier weeks owe anything. **A part** (owner, 2026-10-23, for Zelle limits): the Part button beside a fresh
+  Settled, on the page and on the card, asks for a dollar amount short of the balance and sends it as
+  `settleCents`; the other side's Confirm clears that amount (a confirm naming a different part is a 409 with
+  `openAmountCents`), the running total comes down by it and the rest stays owed for the next press.
+  `backer_page_settlements.balance_cents` keeps the balance the part was taken from. Wording: `settleView`
+  and `partCents` in `utils/backer-settle.js`.
   **Settling-day Discord DM** (owner, 2026-10-20; `lib/discord-settle.js`): Sunday 09:00 ET, a DM to the player
   listing each backer not at $0 and who pays whom (names and amounts, never a link). A bot, not a webhook:
   `DISCORD_BOT_TOKEN` + `DISCORD_USER_ID` on Render only (the bot must share a server with the player); on where
