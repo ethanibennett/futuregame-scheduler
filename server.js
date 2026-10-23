@@ -573,6 +573,7 @@ app.use('/api/cash', authenticateToken, (req, res) => {
 // these win.
 const { checkDashboardToken, makePreviousTokenWarner } = require('./lib/dashboard-token');
 const { clockForEvent, probeProviders } = require('./lib/live-clocks');
+const { retainsPastFeedRow, RETAIN_DAYS } = require('./lib/feed-prune');
 const bankrolls = require('./lib/bankrolls');
 const bankrollLedger = require('./lib/bankroll-ledger');
 const bankrollManagement = require('./lib/bankroll-management');
@@ -11188,21 +11189,28 @@ function pruneFeedVenues(keepVenues, label, tag = 'mtt-feed') {
   const guard = feedRefGuardSql();
   let pruned = 0, skipped = 0;
   const liveByVenue = t => keep.has(t.venue);
+  let keptPast = 0;
   for (const [venue] of distinct[0].values) {
     if (keep.has(venue)) continue;
     remapStaleReferences('venue = ?', [venue], tag, liveByVenue, label);
-    const before = db.exec(
-      "SELECT COUNT(*) FROM tournaments WHERE source_pdf = ? AND venue = ?",
-      [tag, venue]
-    )[0].values[0][0];
-    db.run(`DELETE FROM tournaments WHERE source_pdf = ? AND venue = ?${guard}`, [tag, venue]);
+    // A dropped series' rows go — except its events of the last 14 days, which stay in the
+    // Schedule until they age out (lib/feed-prune.js, owner 2026-10-23). This runs every ingest, so
+    // the retained rows fall out on their own.
+    const res = db.exec('SELECT id, date, timezone FROM tournaments WHERE source_pdf = ? AND venue = ?', [tag, venue]);
+    const rows = res.length ? res[0].values.map(([id, date, timezone]) => ({ id, date, timezone })) : [];
+    const doomed = rows.filter(r => !retainsPastFeedRow(r));
+    keptPast += rows.length - doomed.length;
+    if (!doomed.length) continue;
+    const idPh = doomed.map(() => '?').join(', ');
+    db.run(`DELETE FROM tournaments WHERE id IN (${idPh})${guard}`, doomed.map(r => r.id));
     const gone = db.getRowsModified();
     pruned += gone;
-    skipped += before - gone;
+    skipped += doomed.length - gone;
   }
   if (skipped > 0) {
     console.log(`[${label}] kept ${skipped} row(s) from dropped series — referenced by saved schedules or results`);
   }
+  if (keptPast > 0) console.log(`[${label}] kept ${keptPast} recent past row(s) from dropped series (${RETAIN_DAYS}-day retention)`);
   return { pruned, skipped };
 }
 
@@ -11220,7 +11228,7 @@ function pruneFeedVenues(keepVenues, label, tag = 'mtt-feed') {
 // empty-manifest guard). Returns rows deleted.
 function reconcileFeedSeries(seenByVenue, label, tag) {
   const guard = feedRefGuardSql();
-  let pruned = 0, skipped = 0;
+  let pruned = 0, skipped = 0, keptPast = 0;
   for (const [venue, seen] of seenByVenue) {
     if (!seen || seen.size === 0) continue; // no rows this run for this series — leave it untouched
     const nums = [...seen];
@@ -11229,21 +11237,30 @@ function reconcileFeedSeries(seenByVenue, label, tag) {
     // or a row of a series this run did not touch.
     const isLive = t => { const sv = seenByVenue.get(t.venue); return sv ? sv.has(t.event_number) : true; };
     remapStaleReferences(`venue = ? AND event_number NOT IN (${ph})`, [venue, ...nums], tag, isLive, label);
-    const before = db.exec(
-      `SELECT COUNT(*) FROM tournaments WHERE source_pdf = ? AND venue = ? AND event_number NOT IN (${ph})`,
+    // A stale row dated before today (its room's zone) is a past event that aged out of the source's
+    // ~30 h window, not one the source dropped: it stays 14 days (lib/feed-prune.js; before
+    // 2026-10-23 every event vanished the morning after it ran).
+    const stale = db.exec(
+      `SELECT id, date, timezone FROM tournaments WHERE source_pdf = ? AND venue = ? AND event_number NOT IN (${ph})`,
       [tag, venue, ...nums]
-    )[0].values[0][0];
-    if (!before) continue;
+    );
+    const staleRows = stale.length ? stale[0].values.map(([id, date, timezone]) => ({ id, date, timezone })) : [];
+    if (!staleRows.length) continue;
+    const current = staleRows.filter(r => !retainsPastFeedRow(r));
+    keptPast += staleRows.length - current.length;
+    if (!current.length) continue;
+    const idPh = current.map(() => '?').join(', ');
     db.run(
-      `DELETE FROM tournaments WHERE source_pdf = ? AND venue = ? AND event_number NOT IN (${ph})${guard}`,
-      [tag, venue, ...nums]
+      `DELETE FROM tournaments WHERE id IN (${idPh})${guard}`,
+      current.map(r => r.id)
     );
     const gone = db.getRowsModified();
     pruned += gone;
-    skipped += before - gone;
+    skipped += current.length - gone;
   }
   if (pruned > 0) console.log(`[${label}] pruned ${pruned} stale row(s) from series still in the feed`);
   if (skipped > 0) console.log(`[${label}] kept ${skipped} stale row(s) — referenced by saved schedules or results`);
+  if (keptPast > 0) console.log(`[${label}] kept ${keptPast} past row(s) the feed no longer carries (${RETAIN_DAYS}-day retention)`);
   return pruned;
 }
 

@@ -33,6 +33,16 @@ wsop-console side and verified against both live services.
   level 15 (next 4,000/8,000), the $140 Nightly at level 15 (10,000/20,000/20,000, 6 of 96 left),
   the Main Event Day 1B/1C preset at level 1 not started. Every numbered feed row matched its
   flight (Flight A/B/C ↔ Day1A/B/C, Day 2/3 ↔ Day2/Final Day); dailies match by name + price + hour.
+- **Found on the way (owner: "there is nothing in the schedule on 10/22", with clocks still
+  running):** the within-series feed prune deleted every row the feed no longer carried, and the
+  watcher carries an event for only ~30 h after its start, so each day's events vanished the next
+  morning (65 rows at the 00:46 restart, mirrored to prod). **Owner's rule: an event stays in the
+  schedule 14 days after its date, then falls out.** Both prunes (`reconcileFeedSeries`,
+  `pruneFeedVenues`) now keep a row dated before today and within 14 days, in its room's zone
+  (`lib/feed-prune.js`, `test:feed-prune`); the 66 rows of 10/22 were put back from a scratch copy
+  and carried to prod by the boot push. Also found: 21 `node server.js` scratch servers from
+  2–6 September still running (1.3 GB, one re-ingesting the feed hourly into its own scratch DB);
+  stopped.
 - **Traps:** the hub's WebSocket needs BOTH the api key header and the negotiate reply's `AWSALB`
   cookie (non-101 without either); server frames are wrapped (flag byte, uint32 LE length) before the
   standard SignalR framing; `levelIndex` counts breaks, `level` does not; the Clock carries no

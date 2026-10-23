@@ -392,7 +392,11 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   `backer_event_*` or `swap_suggestions` — a series leaving the window usually means it
   ENDED, and those are exactly the events someone has results for. Prune is skipped
   entirely unless the push actually upserted rows, so a malformed payload can't empty
-  production.
+  production. **An event stays in the Schedule for 14 days after its date, then falls out**
+  (owner, 2026-10-23; `lib/feed-prune.js` `retainsPastFeedRow`, used by both prunes): the
+  watcher emits an event for only ~30 h after its start, so until then every event vanished
+  the morning after it ran, clocks still going. Today's and future rows the feed dropped are
+  still pruned at once. `npm run test:feed-prune`.
 - Console/dashboard code was stripped (PR #44, 2026-08-10) — don't re-add console routes
   here; that's the wsop-console repo's job.
 
