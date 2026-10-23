@@ -364,6 +364,13 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   `GET /api/subscription/apple/account-token`, `POST /api/subscription/apple/verify`, `POST
   /api/subscription/apple/webhook`. Product ids: `docs/app-store-listing.md`. Test: `npm run
   test:apple-billing` (a TEST ONLY chain in `test/fixtures/apple-test-chain`).
+- **The MCP endpoint** (owner, 2026-10-23; `lib/mcp/index.js`, `docs/mcp.md`): claude.ai's custom connector
+  speaks MCP over Streamable HTTP to `POST /mcp/<MCP_TOKEN>` (stateless, JSON responses; `MCP_TOKEN_PREVIOUS`
+  for rotation; unset or wrong = 404; 60/min/IP; never logged). It acts as the console owner: each tool
+  mints a 2-minute JWT and calls the app's own API on 127.0.0.1, so every route's checks apply. Tools:
+  `find_events`, `my_schedule`, `add_to_schedule`, `remove_from_schedule`, `live_clock`, `bankroll_summary`,
+  `recent_results`, `backers` (links and tokens stripped). Money is never written here. `MCP_TOKEN` goes on
+  the futurega.me Render service only; this box stays OFF. `npm run test:mcp`.
 - **Parser eval from Admin** (`lib/admin-eval.js`): `POST/GET /api/admin/quick-add-eval` (app admins) runs
   `test/quick-add/eval.js` in the background with the server's own ANTHROPIC_API_KEY, one run at a time;
   the Admin screen's "Hand parser, live eval" section starts it and shows the report.

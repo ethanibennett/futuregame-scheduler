@@ -14389,6 +14389,12 @@ app.get('/shared/:token', serveIndex);
 // Start server
 initDatabase().then(() => {
   resolveHamOwnerId(); // console owner id, for cookie-SSO + Basic-Auth id-pinning
+  // The MCP endpoint for claude.ai's custom connector (lib/mcp, docs/mcp.md): /mcp/<MCP_TOKEN>, acting
+  // as the owner through the app's own API. OFF without the token.
+  require('./lib/mcp').mountMcp(app, {
+    getDb: () => db, getOwnerId: () => HAM_OWNER_ID, port: PORT,
+    signToken: (payload, opts) => jwt.sign(payload, JWT_SECRET, opts),
+  });
   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
     // Weekly backer email digest — Sunday 18:00 ET.

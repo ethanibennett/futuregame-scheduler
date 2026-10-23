@@ -56,6 +56,12 @@ wsop-console side and verified against both live services.
   that amount, it comes off the running total and the rest stays owed (`settleCents` in the settle body;
   `balance_cents` column, migration name bumped so the idempotent migrate runs once more; notices say
   "$500 of $1,200" and "$700 remains"). `test:backer-settle` +5 cases.
+- **The MCP endpoint (owner: "an MCP so that I can use Claude chat to communicate with the app"):**
+  `lib/mcp/index.js` at `POST /mcp/<MCP_TOKEN>`, `@modelcontextprotocol/sdk` 1.32 stateless Streamable
+  HTTP, eight tools that call the app's own API as the owner. **Waiting on the owner:** generate the
+  secret, set `MCP_TOKEN` on Render, add the custom connector in claude.ai with the URL and no auth
+  (`docs/mcp.md`). Not an OAuth server: claude.ai sends no custom header, so the secret is the path, as a
+  backer link's is. `test:mcp` (6, ports 4760-4769).
 - **Traps:** the hub's WebSocket needs BOTH the api key header and the negotiate reply's `AWSALB`
   cookie (non-101 without either); server frames are wrapped (flag byte, uint32 LE length) before the
   standard SignalR framing; `levelIndex` counts breaks, `level` does not; the Clock carries no
