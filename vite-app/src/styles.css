@@ -10089,6 +10089,14 @@
     /* Online: one 8g cell split into two controls side by side — the toggle on the left 6g, the
        caret on the right 2g — so each box is on the grid and the label centres on its own 6g. The
        pair keeps the one-box look: the toggle's right edge is the caret's divider. */
+    /* My Schedule's Travel / Day Off / Export in the kind toggles' style (owner, 2026-10-23): the
+       same 2r box, hairline and condensed capitals, at the widths the header gives them (5g, 6g,
+       7g inline). The Export glyph is 1r, a half-g before its label. */
+    .sched-hdr-toggle { flex: 0 0 auto; gap: calc(var(--gu) * 0.5); }
+    /* The header row was 4r because the old 4r buttons were its tallest child; the 2r toggles would
+       let it fall to the title's 3.4r and centre at .7r. Pinned at 4r, they centre 1r in, on the grid. */
+    .schedule-sticky-header > .section-header { height: calc(var(--subrow) * 4); box-sizing: border-box; }
+    .sched-hdr-toggle-icon { width: var(--subrow); height: var(--subrow); display: block; flex: 0 0 auto; }
     .kind-toggle-split { display: flex; width: var(--col); height: calc(var(--subrow) * 2); }
     .kind-toggle-split > .kind-toggle {
       width: calc(var(--gu) * 6);

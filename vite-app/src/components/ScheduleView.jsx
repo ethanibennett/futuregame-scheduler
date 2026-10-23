@@ -388,27 +388,29 @@ export default function ScheduleView({
           </h2>
           {onAddPersonalEvent && (
             <>
-              <button className="btn btn-ghost btn-sm"
-                style={{width:'calc(var(--gu) * 5)',flex:'0 0 auto',gap:'calc(var(--subrow) * 0.5)',fontSize:'calc(var(--gu) * 1.149)',padding:0}}
+              {/* The Schedule's kind toggles' style (Satellites / Restarts): 2r tall, hairline,
+                  condensed capitals (owner, 2026-10-23); widths stay 5g / 6g / 7g. */}
+              <button type="button" className="kind-toggle sched-hdr-toggle"
+                style={{width:'calc(var(--gu) * 5)'}}
                 onClick={() => setShowTravelPicker(v => !v)}>
-                Travel
+                <span className="kind-toggle-label">Travel</span>
               </button>
-              <button className="btn btn-ghost btn-sm"
-                style={{width:'calc(var(--gu) * 6)',flex:'0 0 auto',gap:'calc(var(--subrow) * 0.5)',fontSize:'calc(var(--gu) * 1.149)',padding:0}}
+              <button type="button" className="kind-toggle sched-hdr-toggle"
+                style={{width:'calc(var(--gu) * 6)'}}
                 onClick={() => dayOffDateRef.current?.showPicker()}>
-                Day Off
+                <span className="kind-toggle-label">Day Off</span>
               </button>
               <input ref={dayOffDateRef} type="date"
                 style={{position:'absolute', opacity:0, pointerEvents:'none', width:0, height:0}}
                 onChange={e => { if (e.target.value) { onAddPersonalEvent(e.target.value, 'Day Off'); e.target.value = ''; }}} />
             </>
           )}
-          <button className="btn btn-ghost btn-sm"
-            style={{width:'calc(var(--gu) * 7)',flex:'0 0 auto',gap:'calc(var(--subrow) * 0.5)',fontSize:'calc(var(--gu) * 1.149)',padding:0}}
+          <button type="button" className="kind-toggle sched-hdr-toggle"
+            style={{width:'calc(var(--gu) * 7)'}}
             onClick={() => setShowExportModal(true)}
             title="Export schedule">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
+            <svg className="sched-hdr-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span className="kind-toggle-label">Export</span>
           </button>
         </div>
       </div>

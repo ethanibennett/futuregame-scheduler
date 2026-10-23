@@ -48,6 +48,9 @@ wsop-console side and verified against both live services.
   running past midnight lost its clock at 00:00, and yesterday's group rendered the Lite row anyway.
   `clockAskable(t)` (utils/live-clocks.js: a live-room event started within 18 h, not known complete)
   now decides both the ask and the full row, whatever the date; the mini late-reg bar stays today-only.
+- **My Schedule's Travel / Day Off / Export** are in the kind toggles' style (owner: "match the
+  satellites/restarts buttons"): `kind-toggle sched-hdr-toggle`, 2r tall at 5g / 6g / 7g, the header
+  row pinned at 4r so they centre on the grid. Checked with `check:controls --only myschedule…`.
 - **Traps:** the hub's WebSocket needs BOTH the api key header and the negotiate reply's `AWSALB`
   cookie (non-101 without either); server frames are wrapped (flag byte, uint32 LE length) before the
   standard SignalR framing; `levelIndex` counts breaks, `level` does not; the Clock carries no
