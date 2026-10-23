@@ -20,6 +20,7 @@ import {
   matchesBuyin,
   siteRuleIsEmpty,
 } from '../utils/utils.js';
+import { clockAskable } from '../utils/live-clocks.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
   fetchServerLocation, sameLocation, readLocalFilters, writeLocalFilters } from '../utils/location-prefs.js';
 import { API_URL } from '../utils/api.js';
@@ -1846,7 +1847,9 @@ export default function TournamentsView({
                 <div key={group.date} ref={needsRef ? todayScrollRef : undefined} data-today-scroll={needsRef ? 'true' : undefined} data-date-group={group.date} style={{marginTop: gi === 0 ? 0 : 'var(--subrow)'}}>
                   <DateBreak date={group.date} top={dateBreakTop} isToday={isToday} eventCount={dayEventCount} collapsed={isCollapsed} onToggle={() => toggleDateCollapsed(group.date)} onPillClick={(e) => { e.stopPropagation(); const grp = e.currentTarget.closest('[data-date-group]'); if (grp) scrollDateGroupToTop(grp); }} />
                   {!isCollapsed && group.events.map(t => {
-                    const needsFull = isToday || activatedIds.has(t.id) || focusEventId === t.id;
+                    // Yesterday's event still running past midnight needs the full row for its live
+                    // clock too (clockAskable: started within 18 h, not known complete).
+                    const needsFull = isToday || activatedIds.has(t.id) || focusEventId === t.id || clockAskable(t);
                     return (
                     <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto calc(var(--subrow) * 13)'}}>
                       {needsFull ? (
