@@ -159,6 +159,27 @@ export function bbStats(events) {
 
 /** Sessions grouped by calendar month, newest month first and newest session first inside it,
  *  each with the month's share and hours: [{ key: 'YYYY-MM', events, shareCents, hours }]. */
+/** The month groups with the payment records laid in (owner, 2026-10-24: "a record, in the same form as a
+ *  session card, in the list of sessions to reflect payments/settlements"). Each group gains `items`,
+ *  newest first: { type: 'session', e } | { type: 'payment', p }; on one date the payment comes first
+ *  (it follows the play). A month with only payments gets a group of its own. The month's count and net
+ *  stay the sessions': a payment moves money, it is not a result. Pure. */
+export function withPayments(months, payments) {
+  const out = (months || []).map((g) => ({ ...g, items: g.events.map((e) => ({ type: 'session', e, date: String(e.date || '') })) }));
+  const byKey = new Map(out.map((g) => [g.key, g]));
+  for (const p of Array.isArray(payments) ? payments : []) {
+    const key = String(p.date || '').slice(0, 7) || 'undated';
+    let g = byKey.get(key);
+    if (!g) { g = { key, events: [], shareCents: 0, hours: 0, items: [] }; byKey.set(key, g); out.push(g); }
+    g.items.push({ type: 'payment', p, date: String(p.date || '') });
+  }
+  for (const g of out) {
+    g.items.sort((a, b) => b.date.localeCompare(a.date) || (a.type === b.type ? 0 : a.type === 'payment' ? -1 : 1));
+  }
+  out.sort((a, b) => b.key.localeCompare(a.key));
+  return out;
+}
+
 export function groupByMonth(events) {
   const out = [];
   const byKey = new Map();
@@ -339,7 +360,10 @@ export function weekRunning(feed, nowMs) {
   const f = feed || {};
   const since = weekStart(nowMs);
   const events = Array.isArray(f.events) ? f.events : [];
-  const weekCents = events.reduce((a, e) => a + (Number(e.ts) >= since ? Math.round(Number(e.shareCents) || 0) : 0), 0);
+  // What this week's payments took off this week (lib/staking/backer-settle.js weekPaidCents): a mid-week
+  // partial payment lowers "This week", never turns "from last week" into a debt the other way.
+  const weekPaid = Math.round(Number(f.settlement && f.settlement.weekPaidCents) || 0);
+  const weekCents = events.reduce((a, e) => a + (Number(e.ts) >= since ? Math.round(Number(e.shareCents) || 0) : 0), 0) - weekPaid;
   const total = Math.round(Number(f.cumulativeCents) || 0);
   const carriedCents = total - weekCents;
   return { show: whole(carriedCents) !== 0, weekCents, carriedCents, since };

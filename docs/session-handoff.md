@@ -14,6 +14,18 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-24 — Partial payments from either side, any time; payment records in the session lists
+
+- **Why:** the owner could not find the Part button. It showed only when EARLIER weeks owed something, and
+  all three backers' balances were this week's, so mid-week (when a Zelle limit bites) there was nowhere to
+  enter a payment. Owner: "both sides need to be able to enter partial payments", and "add a record, in the
+  same form as a session card, in the list of sessions to reflect payments/settlements".
+- **Shipped:** Partial payment (renamed from Part) on the backer page and the Backers card whenever the running
+  total is not $0, against the running total; the other side confirms it. `kind` and `week_cents` columns on
+  `backer_page_settlements`; `dueCents` adds back what this week's payments took off this week. The feed's
+  `payments` list (settlements, partial payments, payouts) as PAID cards in the page's month list and rows on
+  the owner's card. `test:backer-settle` 17, `test:backers` all green.
+
 ## 2026-10-23 — WSOP+ (WSOP Live) is the third live-clock source
 
 - **Why:** on 2026-10-21 the owner saw Turning Stone's Circuit PLO8 running in the WSOP LIVE app while

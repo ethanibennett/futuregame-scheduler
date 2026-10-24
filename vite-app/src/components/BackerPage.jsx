@@ -9,10 +9,10 @@ import useInkBalance from '../hooks/useInkBalance.js';
 import useThemeChoice from '../hooks/useThemeChoice.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { API_URL } from '../utils/api.js';
-import { settleView, partCents } from '../utils/backer-settle.js';
+import { settleView, partCents, paymentView, usd } from '../utils/backer-settle.js';
 import { VENUE_MAP, getVenueBrandColor, getVenueInfo, getStripAbbr } from '../utils/utils.js';
 import {
-  summarize, groupByMonth, shareSeries, rangeOptions, stripFor, monthLabel, RANGE_NOUN,
+  summarize, groupByMonth, withPayments, shareSeries, rangeOptions, stripFor, monthLabel, RANGE_NOUN,
   fmtSignedCents, fmtHours, fmtDay, plural, tone, bbStats, eventBb, settlementCountdown, weekRunning,
 } from '../utils/backer-page.js';
 import './backer-page.css';
@@ -308,6 +308,37 @@ function SessionCard({ e }) {
   );
 }
 
+/** A payment in the session list (owner, 2026-10-24): the session card's form, so it sits in the list
+ *  like one: a neutral strip reading PAID, the date where the time goes, who paid whom as the title, the
+ *  amount where the share goes and what it was (Settled, Partial payment, Payout) under it. It is not a
+ *  result, so it carries no tone and opens nothing. */
+function PaymentCard({ p }) {
+  const v = paymentView(p, { side: 'backer' });
+  return (
+    <li className="cal-event-row bp-session bp-payment">
+      <div className="cal-venue-strip is-neutral" aria-hidden="true"
+        style={{ background: 'var(--border-strong)', color: '#ffffff' }}>
+        <span className="venue-strip-abbr">PAID</span>
+      </div>
+      <div className="cal-event-row-content">
+        <div className="cal-event-bar" aria-label={`${v.kind}: ${v.title} ${v.amount}`}>
+          <div className="cal-bar-row1">
+            <span className="cal-event-time">{fmtDay(p.date)}</span>
+            <SwissLines name={v.title} stage={''} time={fmtDay(p.date)} />
+            <span className="cal-event-money">
+              <span className="cal-event-buyin bp-amt">{v.amount}</span>
+              <span className="cal-event-gtd">{v.kind}</span>
+            </span>
+          </div>
+          <div className="cal-bar-row2">
+            <span className="cal-event-name" title={v.title}>{v.title}</span>
+          </div>
+        </div>
+      </div>
+    </li>
+  );
+}
+
 /** The time until settlement (owner, 2026-10-15: "we settle on Sundays at noon"), at the foot of the
  *  running total card: the Schedule's late-reg bar (styles.css .late-reg-*), its label and countdown on
  *  one 2r row and the bar under it, draining from a full week to empty at Sunday noon, Eastern. */
@@ -364,23 +395,24 @@ function SettleRow({ token, feed, onChange }) {
   // What a press settles: what earlier weeks owe, never this week's (owner, 2026-10-20). The server
   // works the same figure out (lib/staking/backer-settle.js dueCents) and refuses a different one.
   const total = weekRunning(feed, Date.now()).carriedCents;
-  const v = settleView({ settlement: feed.settlement, totalCents: total, side: 'backer' });
+  const running = Math.round(Number(feed.cumulativeCents) || 0);
+  const v = settleView({ settlement: feed.settlement, totalCents: total, runningCents: running, side: 'backer' });
   if (!v) return null;
-  // settleCents: a part of the balance (owner, 2026-10-23: Zelle limits); omitted = all of it, or
-  // the part the other side marked.
-  const send = async (action, settleCents) => {
+  // amountCents: the balance this side was shown (the server refuses another); settleCents: a partial
+  // payment's amount (owner, 2026-10-24: either side, any time).
+  const send = async (action, amountCents, settleCents) => {
     setBusy(true);
     try {
       const r = await fetch(`${API_URL}/backer/${token}/settle`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
-        body: JSON.stringify({ action, amountCents: total, ...(settleCents != null ? { settleCents } : {}) }),
+        body: JSON.stringify({ action, amountCents, ...(settleCents != null ? { settleCents } : {}) }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { if (toast) toast.error(d.error || 'That did not go through. Try again.'); }
       else if (d.completed && toast) {
-        toast.success(d.partial ? `${fmtSignedCents(Math.abs(d.amountCents)).replace(/^\+/, '')} settled. ${fmtSignedCents(Math.abs(d.dueCents)).replace(/^\+/, '')} still to settle.`
+        toast.success(d.partial ? `${usd(d.amountCents)} payment recorded. The balance is now ${fmtSignedCents(d.balanceCents)}.`
           : 'Settled. Last week is cleared; this week carries on.');
-      }
+      } else if (settleCents != null && toast) toast.success(`${usd(settleCents)} payment marked. It counts once Ethan confirms.`);
       onChange();
     } catch { if (toast) toast.error('That did not go through. Check your connection.'); }
     finally { setBusy(false); }
@@ -388,13 +420,15 @@ function SettleRow({ token, feed, onChange }) {
   const press = () => {
     if (!v.button || busy) return;
     if (v.confirm && !window.confirm(v.confirm)) return;
-    send(v.button.action);
+    send(v.button.action, v.sendCents);
   };
   const pressPart = () => {
     if (!v.part || busy) return;
-    const cents = partCents(window.prompt(v.part.prompt), total);
-    if (cents == null) { if (toast) toast.error('Enter a dollar amount under the balance; Settled covers all of it.'); return; }
-    send('confirm', cents);
+    const answer = window.prompt(v.part.prompt);
+    if (answer == null) return;
+    const cents = partCents(answer, v.part.maxCents);
+    if (cents == null) { if (toast) toast.error(`Enter a dollar amount up to ${usd(v.part.maxCents)}.`); return; }
+    send('confirm', running, cents);
   };
   return (
     <div className="bp-settled-row">
@@ -404,7 +438,7 @@ function SettleRow({ token, feed, onChange }) {
         </button>
       )}
       {v.part && (
-        <button type="button" className="bp-settled-btn bp-settled-part" onClick={pressPart} disabled={busy} title="Settle part of the balance">
+        <button type="button" className="bp-settled-btn bp-settled-part" onClick={pressPart} disabled={busy} title="Record a payment for part of the balance">
           {v.part.label}
         </button>
       )}
@@ -507,7 +541,7 @@ export default function BackerPage({ token }) {
     const r = options.some(([k]) => k === range) ? range : 'all';
     const series = shareSeries(events, { base: sum.base, range: r, today });
     // The player's bb/hr over the sessions the page holds (the newest 200), from the feed as it is.
-    return { events, sum, options, range: r, series, months: groupByMonth(events), bbs: bbStats(events) };
+    return { events, sum, options, range: r, series, months: withPayments(groupByMonth(events), feed.payments), bbs: bbStats(events) };
   }, [feed, range, today]);
 
   useEffect(() => {
@@ -583,7 +617,9 @@ export default function BackerPage({ token }) {
                 <div key={g.key} className="bp-month">
                   <MonthBreak g={g} />
                   <ul className="bp-cards">
-                    {g.events.map((e, i) => <SessionCard key={(e.ts || '') + ':' + e.date + ':' + i} e={e} />)}
+                    {g.items.map((it, i) => (it.type === 'payment'
+                      ? <PaymentCard key={'p:' + (it.p.at || it.p.date) + ':' + i} p={it.p} />
+                      : <SessionCard key={(it.e.ts || '') + ':' + it.e.date + ':' + i} e={it.e} />))}
                   </ul>
                 </div>
               ))}

@@ -165,8 +165,8 @@ const BACKER_EP = 'https://push.example.test/sam-page';
       const r = await backer('confirm', 0);
       assert.strictEqual(r.status, 409);
     });
-    // ── A part (owner, 2026-10-23: Zelle limits) ──
-    await test('a part: an earlier week owes $1,000; a part over it, or the wrong way, is refused', async () => {
+    // ── Partial payments (owner, 2026-10-23/24: Zelle limits; either side, any time) ──
+    await test('a partial payment: earlier weeks owe $1,000, this week +$200; over the running total, the wrong way, or $0 is refused', async () => {
       await srv.stop();
       const d = scratch.open();
       d.run(`INSERT INTO backer_events (id, token, session_id, ts, date, game, venue, hours, session_result_cents, pct, share_cents, source)
@@ -174,51 +174,66 @@ const BACKER_EP = 'https://push.example.test/sam-page';
       scratch.save(d); d.close();
       srv = await boot(scratch.dbPath, { ...ENV, CONSOLE_OWNER_USER_ID: String(ham) }, { ports: PORTS, preloads: [STUB] });
       servers.push(srv);
-      assert.strictEqual((await card()).dueCents, 100000);
-      assert.strictEqual((await backer('confirm', 100000, { settleCents: 150000 })).status, 400, 'over the balance');
-      assert.strictEqual((await backer('confirm', 100000, { settleCents: -40000 })).status, 400, 'the wrong way');
-      assert.strictEqual((await backer('confirm', 100000, { settleCents: 0 })).status, 400, 'nothing');
+      const c = await card();
+      assert.deepStrictEqual([c.dueCents, c.cumulativeCents], [100000, 120000]);
+      assert.strictEqual((await backer('confirm', 120000, { settleCents: 150000 })).status, 400, 'over the running total');
+      assert.strictEqual((await backer('confirm', 120000, { settleCents: -40000 })).status, 400, 'the wrong way');
+      assert.strictEqual((await backer('confirm', 120000, { settleCents: 0 })).status, 400, 'nothing');
+      assert.strictEqual((await backer('confirm', 100000, { settleCents: 40000 })).status, 409, 'against the due, not the running total');
     });
-    await test('the backer marks $400 of $1,000: open for $400 against $1,000; the player is told the part', async () => {
+    await test('the backer marks a $400 payment: open for $400 against $1,200; the player is told', async () => {
       const m0 = mark();
-      const r = await backer('confirm', 100000, { settleCents: 40000 });
+      const r = await backer('confirm', 120000, { settleCents: 40000 });
       await settle();
       assert.strictEqual(r.status, 200, r.text);
       assert.deepStrictEqual([r.json.completed, r.json.partial, r.json.amountCents], [false, true, 40000]);
       assert.deepStrictEqual(pushes(m0), [['Settled?', 'owner']]);
       const c = await card();
-      assert.deepStrictEqual([c.settlement.open.amountCents, c.settlement.open.balanceCents], [40000, 100000]);
+      assert.deepStrictEqual([c.settlement.open.amountCents, c.settlement.open.balanceCents, c.settlement.open.kind], [40000, 120000, 'part']);
       assert.strictEqual(c.dueCents, 100000, 'nothing has cleared yet');
     });
-    await test('the owner confirming a different part is refused, with the open one', async () => {
-      const r = await mine('confirm', 100000, owner, { settleCents: 50000 });
-      assert.strictEqual(r.status, 409);
-      assert.strictEqual(r.json.openAmountCents, 40000);
+    await test('while it waits, the owner cannot press Settled over it, nor confirm a different amount', async () => {
+      assert.strictEqual((await mine('confirm', 120000, owner, { settleCents: 50000 })).status, 409);
     });
-    await test('the owner confirms the part: $400 clears, $600 stays owed, one part leaves Main', async () => {
+    await test('the owner confirms: $400 comes off what earlier weeks owe ($600 left), this week untouched, one payment leaves Main', async () => {
       const before = await mainBalance();
       const m0 = mark();
-      const r = await mine('confirm', 100000);
+      const r = await mine('confirm', 120000);
       await settle();
       assert.strictEqual(r.status, 200, r.text);
       assert.deepStrictEqual([r.json.completed, r.json.partial, r.json.amountCents, r.json.dueCents], [true, true, 40000, 60000]);
       assert.deepStrictEqual(pushes(m0), [['Settled', 'backer']]);
       const f = await feed();
-      assert.strictEqual(f.cumulativeCents, 80000, '$1,000 due + $200 this week - $400');
+      assert.strictEqual(f.cumulativeCents, 80000, '$1,000 + $200 this week - $400');
       assert.strictEqual(f.settlement.open, null);
-      assert.deepStrictEqual([f.settlement.last.amountCents, f.settlement.settledCents], [40000, 100000]);
+      assert.ok(!('weekPaidCents' in f.settlement), 'none of it went into this week');
       const adj = q("SELECT amount, note FROM bankroll_adjustments WHERE settlement_ref LIKE 'bks:%' ORDER BY id DESC LIMIT 1");
-      assert.deepStrictEqual([adj[0].amount, adj[0].note], [-400, 'Settled (part): paid Sam Settle']);
+      assert.deepStrictEqual([adj[0].amount, adj[0].note], [-400, 'Settled (partial payment): paid Sam Settle']);
       assert.strictEqual(await mainBalance(), before - 400);
-      assert.strictEqual((await card()).dueCents, 60000);
     });
-    await test('the rest settles as a whole: both press Settled for $600', async () => {
+    await test('Settled clears the rest of earlier weeks ($600); this week is left', async () => {
       assert.strictEqual((await mine('confirm', 60000)).status, 200);
       const r = await backer('confirm', 60000);
       assert.deepStrictEqual([r.status, r.json.completed, r.json.partial], [200, true, false]);
       const f = await feed();
-      assert.strictEqual(f.cumulativeCents, 20000, 'only this week is left');
+      assert.strictEqual(f.cumulativeCents, 20000);
       assert.strictEqual((await card()).dueCents, 0);
+    });
+    await test('mid-week, nothing due from earlier weeks: the owner records a $150 payment, the backer confirms; it comes off this week', async () => {
+      const r1 = await mine('confirm', 20000, owner, { settleCents: 15000 });
+      assert.strictEqual(r1.status, 200, r1.text);
+      const r2 = await backer('confirm', 20000);
+      assert.deepStrictEqual([r2.status, r2.json.completed, r2.json.partial], [200, true, true]);
+      const f = await feed();
+      assert.strictEqual(f.cumulativeCents, 5000);
+      assert.strictEqual(f.settlement.weekPaidCents, 15000, 'the whole payment went into this week');
+      assert.strictEqual((await card()).dueCents, 0, 'earlier weeks still owe nothing: no debt the other way');
+    });
+    await test('the session list carries every payment, newest first, with its kind', async () => {
+      const f = await feed();
+      assert.deepStrictEqual(f.payments.map((p) => [p.amountCents, p.kind]), [[15000, 'part'], [60000, 'settled'], [40000, 'part'], [60000, 'settled']]);
+      assert.ok(f.payments.every((p) => /^\d{4}-\d{2}-\d{2}$/.test(p.date)));
+      assert.deepStrictEqual((await card()).payments.map((p) => p.kind), ['part', 'settled', 'part', 'settled']);
     });
     await test('an unknown link is a 404', async () => {
       assert.strictEqual((await api('/api/backer/NoSuchLink99/settle', { method: 'POST', body: { action: 'confirm', amountCents: 1 } })).status, 404);

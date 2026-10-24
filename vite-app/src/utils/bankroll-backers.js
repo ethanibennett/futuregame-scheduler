@@ -62,7 +62,20 @@ export function normalise(data) {
     link: /^https:\/\//.test(text(b.link)) ? text(b.link) : '',
     // The Settled handshake's state (lib/staking/backer-settle.js), as the backer's page has it.
     settlement: b.settlement && typeof b.settlement === 'object' ? b.settlement : null,
+    // Payment records (owner, 2026-10-24): completed settlements, partial payments and payouts.
+    payments: (Array.isArray(b.payments) ? b.payments : []).filter((x) => x && typeof x === 'object').map((x) => ({
+      date: text(x.date), at: text(x.at), amountCents: num(x.amountCents), kind: text(x.kind),
+    })),
   }));
+}
+
+/** The open card's rows: the shares shown with the payments of the same span laid in by date, newest
+ *  first, a payment above the sessions of its day. [{ type: 'share', s } | { type: 'payment', p }] */
+export function cardRows(b) {
+  const shares = b.shares.map((s) => ({ type: 'share', s, date: s.date }));
+  const oldest = shares.length ? shares[shares.length - 1].date : '';
+  const pays = b.payments.filter((p) => !oldest || p.date >= oldest).map((p) => ({ type: 'payment', p, date: p.date }));
+  return [...shares, ...pays].sort((a, c) => c.date.localeCompare(a.date) || (a.type === c.type ? 0 : a.type === 'payment' ? -1 : 1));
 }
 
 /** The card's title: the backer's name, or a stand-in for a record that has none. */

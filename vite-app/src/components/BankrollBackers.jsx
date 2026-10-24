@@ -4,9 +4,10 @@ import { getToday } from '../utils/utils.js';
 import {
   normalise, displayName, stakesLine, statItems, bbItems, deliveryText, shareRow, moreLine, listSummary, toneClass,
   fmtSignedCents, plural,
+  cardRows,
 } from '../utils/bankroll-backers.js';
 import { useToast } from '../contexts/ToastContext.jsx';
-import { settleView, partCents } from '../utils/backer-settle.js';
+import { settleView, partCents, paymentView } from '../utils/backer-settle.js';
 import './analytics.css';
 import './bankroll-locations.css';
 import './bankroll-backers.css';
@@ -61,7 +62,7 @@ function BackerCard({ b, open, onToggle, thisYear, onCopy, onSettle, settling })
   const bbs = bbItems(b);
   const delivery = deliveryText(b.delivery);
   const more = moreLine(b);
-  const settle = settleView({ settlement: b.settlement, totalCents: b.dueCents, side: 'owner', backer: b.name || 'your backer' });
+  const settle = settleView({ settlement: b.settlement, totalCents: b.dueCents, runningCents: b.cumulativeCents, side: 'owner', backer: b.name || 'your backer' });
   return (
     <li className={'bl-item bb-item' + (open ? ' is-open' : '')}>
       <button type="button" className={'bl-card' + (bbs.length ? ' has-bb' : '')} aria-expanded={open} aria-controls={open ? id : undefined} onClick={onToggle}>
@@ -109,7 +110,7 @@ function BackerCard({ b, open, onToggle, thisYear, onCopy, onSettle, settling })
               disabled={settling} onClick={() => onSettle(b, settle)}><span>{settle.button.label}</span></button>
           )}
           {settle.part && (
-            <button type="button" className="bk-btn bl-more bb-settle-btn bb-settle-part" title="Settle part of the balance"
+            <button type="button" className="bk-btn bl-more bb-settle-btn bb-settle-part" title="Record a payment for part of the balance"
               disabled={settling} onClick={() => onSettle(b, settle, true)}><span>{settle.part.label}</span></button>
           )}
           <span className="an-cell bl-count bb-settle-status an-clip" title={settle.status}>{settle.status}</span>
@@ -117,11 +118,28 @@ function BackerCard({ b, open, onToggle, thisYear, onCopy, onSettle, settling })
       )}
       {open && (
         <div className="bl-detail bb-detail" id={id}>
-          {b.shares.length === 0 ? (
+          {b.shares.length === 0 && b.payments.length === 0 ? (
             <p className="an-p bb-none">No shares recorded yet. A share appears here once a session is notified.</p>
           ) : (
             <ul className="bb-shares" aria-label={`${name}'s last ${plural(b.shares.length, 'share')}, newest first`}>
-              {b.shares.map((s, i) => {
+              {cardRows(b).map((row, i) => {
+                if (row.type === 'payment') {
+                  // A payment record (owner, 2026-10-24): the share row's form; who paid whom where the game
+                  // goes, the amount where the share goes, what it was under it.
+                  const v = paymentView(row.p, { side: 'owner', backer: b.name || 'your backer' });
+                  const d = shareRow({ date: row.p.date }, thisYear).date;
+                  return (
+                    <li key={'p' + i} className="bb-share bb-payment">
+                      <span className="an-cell bl-res-date an-clip bb-date">{d}</span>
+                      <span className="an-cell an-td an-clip bb-game" title={v.title}>{v.title}</span>
+                      <span className="an-cell an-td an-num bl-res-amt an-clip bb-cut">{v.amount}</span>
+                      <span className="an-cell an-note an-clip bb-hours">Paid</span>
+                      <span className="an-cell an-note an-clip bb-venue">{v.kind}</span>
+                      <span className="an-cell an-note an-num an-clip bb-of"></span>
+                    </li>
+                  );
+                }
+                const s = row.s;
                 const r = shareRow(s, thisYear);
                 return (
                   <li key={i} className="bb-share">
@@ -170,26 +188,29 @@ export default function BankrollBackers({ bk }) {
   // A Settled press: sends the balance this card shows, then reloads the list (the figures come from
   // the server, so the card reads exactly what the backer's page does).
   const settle = useCallback(async (b, v, part = false) => {
-    // part (owner, 2026-10-23: Zelle limits): a dollar amount short of the balance; the backer confirms it.
+    // A partial payment (owner, 2026-10-24: either side, any time): dollars up to the running total; the
+    // backer confirms it. Settled: what earlier weeks owe. amountCents is the balance the press was shown.
     let settleCents = null;
     if (part) {
-      settleCents = partCents(window.prompt(v.part.prompt), b.dueCents);
-      if (settleCents == null) { toast.error('Enter a dollar amount under the balance; Settled covers all of it.'); return; }
+      const answer = window.prompt(v.part.prompt);
+      if (answer == null) return;
+      settleCents = partCents(answer, v.part.maxCents);
+      if (settleCents == null) { toast.error(`Enter a dollar amount up to $${Math.round(Math.abs(v.part.maxCents) / 100).toLocaleString('en-US')}.`); return; }
     } else if (v.confirm && !window.confirm(v.confirm)) return;
     setSettling(true);
     try {
       const res = await fetch(`${API_URL}/staking/standing/backers/${encodeURIComponent(b.id)}/settle`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${bk.token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: part ? 'confirm' : v.button.action, amountCents: b.dueCents, ...(settleCents != null ? { settleCents } : {}) }),
+        body: JSON.stringify({ action: part ? 'confirm' : v.button.action, amountCents: part ? b.cumulativeCents : v.sendCents, ...(settleCents != null ? { settleCents } : {}) }),
       });
       const data = await res.json().catch(() => ({}));
+      const usd = (c) => '$' + Math.round(Math.abs(Number(c) || 0) / 100).toLocaleString('en-US');
       if (!res.ok) toast.error(data.error || 'That did not go through. Try again.');
       else if (data.completed) {
-        const usd = (c) => '$' + Math.round(Math.abs(Number(c) || 0) / 100).toLocaleString('en-US');
-        toast.success(data.partial ? `${usd(data.amountCents)} settled with ${b.name || 'your backer'}. ${usd(data.dueCents)} still to settle.`
+        toast.success(data.partial ? `${usd(data.amountCents)} payment recorded with ${b.name || 'your backer'}.`
           : `Settled with ${b.name || 'your backer'}. Last week is cleared.`);
-      }
+      } else if (part) toast.success(`${usd(settleCents)} payment marked. It counts once ${b.name || 'your backer'} confirms.`);
       setReloadKey((k) => k + 1);
     } catch { toast.error('That did not go through. Check your connection.'); }
     finally { setSettling(false); }

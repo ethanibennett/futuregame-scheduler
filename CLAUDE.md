@@ -238,12 +238,18 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   own press or of a repeated tap (`notifySettle` in server.js). Test: `npm run test:backer-settle`.
   Settled clears only what EARLIER weeks owe (`dueCents`: the total less shares recorded since Sunday noon New
   York); the week in progress rolls on. The page shows "To be settled from last week" over "This week" while
-  earlier weeks owe anything. **A part** (owner, 2026-10-23, for Zelle limits): the Part button beside a fresh
-  Settled, on the page and on the card, asks for a dollar amount short of the balance and sends it as
-  `settleCents`; the other side's Confirm clears that amount (a confirm naming a different part is a 409 with
-  `openAmountCents`), the running total comes down by it and the rest stays owed for the next press.
-  `backer_page_settlements.balance_cents` keeps the balance the part was taken from. Wording: `settleView`
-  and `partCents` in `utils/backer-settle.js`.
+  earlier weeks owe anything. **Partial payments** (owner, 2026-10-23/24, for Zelle limits: "both sides need
+  to be able to enter partial payments"): a Partial payment button on the page and on the card whenever the
+  RUNNING TOTAL is not $0 (this week included) and nothing is waiting, alone when earlier weeks owe nothing.
+  It asks for dollars up to the running total and sends `settleCents` with `amountCents` = the running
+  total; the other side's Confirm clears that amount (kind `'part'` in `backer_page_settlements`; Settled is
+  kind `'due'`/NULL; one kind waits for the other). A completed payment's `week_cents` is what went past what
+  earlier weeks owed into the week in progress; `dueCents` adds back this week's, and the feed's
+  `settlement.weekPaidCents` lowers the page's "This week", so a mid-week payment never shows as a debt the
+  other way. **Payment records** (owner, 2026-10-24): the feed carries `payments` (completed settlements,
+  partial payments, standing payouts; only when there are any) and both lists lay them in by date: a
+  `PaymentCard` in the session card's form on the page, a share row on the card (`cardRows`). Wording:
+  `settleView`, `partCents`, `paymentView` in `utils/backer-settle.js`.
   **Settling-day Discord DM** (owner, 2026-10-20; `lib/discord-settle.js`): Sunday 09:00 ET, a DM to the player
   listing each backer not at $0 and who pays whom (names and amounts, never a link). A bot, not a webhook:
   `DISCORD_BOT_TOKEN` + `DISCORD_USER_ID` on Render only (the bot must share a server with the player); on where

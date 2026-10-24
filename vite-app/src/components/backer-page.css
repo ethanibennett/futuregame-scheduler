@@ -411,8 +411,12 @@
   cursor: pointer;
 }
 .bp-settled-btn.is-primary { border-color: var(--brand); background: var(--brand); color: var(--on-brand); }
-/* Part (owner, 2026-10-23): a narrower second button, for settling part of the balance. */
-.bp-settled-btn.bp-settled-part { width: calc(var(--gu) * 6); }
+/* Partial payment (owner, 2026-10-23/24): the second button, the same 11g; alone when earlier weeks owe
+   nothing. */
+.bp-settled-btn.bp-settled-part { width: calc(var(--gu) * 11); }
+/* A payment record in the session list (owner, 2026-10-24): the session card's form, a neutral strip,
+   no detail to open. */
+.bp-payment .cal-event-bar { cursor: default; }
 .bp-settled-btn:disabled { opacity: 0.6; cursor: default; }
 .bp-settled-btn:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 @media (hover: hover) and (pointer: fine) { .bp-settled-btn.is-primary:hover:not(:disabled) { background: var(--brand-hover); } }
