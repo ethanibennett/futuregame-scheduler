@@ -490,6 +490,121 @@ function studHasOpenPairOn4th(hand) {
 const SOLVER_GAME_MAP = { 'Stud 8': 'stud8', 'Razz': 'razz' };
 function solverGameFor(gameType) { return SOLVER_GAME_MAP[gameType] || null; }
 
+// ── DRAW STUDY handoff ──────────────────────────────────────────────────────
+// The draw study tool prices EVERY betting and drawing option at one decision,
+// including the ones the blueprint cannot offer (it offers at most 2 of 6 draw
+// counts with one card-set each, so 2 of the 32 legal discard subsets in 2-7).
+// Reading that as a table is the hard part, so the replayer hands it a spot the
+// way it already hands one to the stud solver.
+//
+// 🛑 FIXED-LIMIT ONLY, AND THAT IS NOT A DETAIL. The solver's draw games are
+// fixed-limit with a 4-bet cap (SMALL_BET 2, BIG_BET 4). A pot-limit or no-limit
+// hand has a different betting tree, so 'PL 2-7 TD' and 'NL 2-7 SD' are
+// deliberately absent -- handing one over would produce a confident number for a
+// game that was not played. Badeucy/Badacy are split games with no single solver
+// game, and are absent for the same reason.
+const DRAW_STUDY_GAME_MAP = {
+  '2-7 TD': 'td27',
+  'L 2-7 TD': 'td27',
+  'A-5 TD': 'a5td',
+  'Badugi': 'badugi',
+};
+function drawStudyGameFor(gameType) { return DRAW_STUDY_GAME_MAP[gameType] || null; }
+
+// Replayer action type -> the engine's betting alphabet (fold/check/call/bet/raise).
+const DRAW_ACT_TOKEN = { fold: 'f', check: 'k', call: 'c', bet: 'b', raise: 'r' };
+
+// parseCardNotation returns [{rank, suit}], NOT strings, and an unknown suit
+// comes back as 'x'. The study tool wants '7h 5c 4d' (rank upper, suit lower),
+// which is what this produces -- and it reports the unknowns rather than
+// silently shipping an 'x' the solver would reject.
+function drawCardsToStudy(str) {
+  const cards = parseCardNotation(str) || [];
+  const out = [], unknown = [];
+  for (const c of cards) {
+    if (!c.suit || c.suit === 'x') { unknown.push(c.rank); continue; }
+    out.push(c.rank + c.suit);
+  }
+  return { cards: out, unknown: unknown };
+}
+
+/* Build a draw-study spot from the replay state at `streetIdx`.
+
+   hero  the hero's hand AS IT STOOD at the start of this street, so the draw
+         about to be made is still open -- computeDrawHand(..., streetIdx - 1),
+         the same expression the replay view itself uses to render it.
+   hist  both seats' actions in engine order, betting then draws, for every
+         street BEFORE this one. A discard whose cards are known becomes an
+         explicit `d:<cards>` token, which is precisely the input the study tool
+         exists to price and the drill cannot offer.
+   notes what was assumed, in buildSolverSpot's style -- never silent.
+
+   ⚠ The draw solver is HEADS-UP. A multiway hand still hands over, with a note,
+   because the hero's own cards and draws are unchanged; what is lost is the
+   other opponents, and saying so beats refusing. */
+function buildDrawStudySpot({ hand, game, streetIdx, replayHeroIdx, liveCount }) {
+  const notes = [];
+  const base = (hand.streets[0] && hand.streets[0].cards && hand.streets[0].cards.hero) || '';
+  const heroStr = computeDrawHand(base, getPlayerDrawsByStreet(hand, replayHeroIdx),
+    streetIdx - 1, hand.gameType);
+  const hero = drawCardsToStudy(heroStr);
+  if (hero.unknown.length) {
+    notes.push(hero.unknown.length + " of the hero's cards have no suit recorded ("
+      + hero.unknown.join(',') + ') — fill them in before pricing.');
+  }
+  if (liveCount > 2) {
+    notes.push('Hand is ' + liveCount + '-way; the draw solver is heads-up. The hero\'s own '
+      + 'cards and draws carry over unchanged, but the other opponents do not.');
+  }
+
+  const hist = [];
+  let sawAllIn = false, dropped = 0, unknownDiscards = 0;
+  for (let si = 0; si < streetIdx; si++) {
+    const st = hand.streets[si];
+    if (!st) continue;
+    for (const a of (st.actions || [])) {
+      const tok = DRAW_ACT_TOKEN[a.type];
+      if (tok) { hist.push(tok); continue; }
+      if (a.type === 'all-in') { hist.push('b'); sawAllIn = true; continue; }
+      dropped++;
+    }
+    for (const d of (st.draws || [])) {
+      const n = d.discarded || 0;
+      if (d.discardedCards) {
+        const dc = drawCardsToStudy(d.discardedCards);
+        if (dc.unknown.length) unknownDiscards++;
+        hist.push(dc.cards.length ? 'd:' + dc.cards.join('') : 'd' + n);
+      } else {
+        hist.push('d' + n);
+      }
+    }
+  }
+  if (sawAllIn) {
+    notes.push('An all-in was mapped to a bet: these games are fixed-limit in the solver, so '
+      + 'there is no all-in sizing to carry over.');
+  }
+  if (dropped) {
+    notes.push(dropped + ' action(s) had no engine equivalent and were dropped — check the '
+      + 'history before trusting the table.');
+  }
+  if (unknownDiscards) {
+    notes.push(unknownDiscards + ' discard(s) had an unrecorded suit and fell back to a COUNT, '
+      + 'which is what the drill already grades — the explicit cards are what this tool adds.');
+  }
+  notes.push('The engine re-assigns every actor from the history, so if a seat shown in the '
+    + 'study view disagrees with the replay, the history is wrong rather than the engine.');
+
+  return {
+    game: game,
+    hero: hero.cards.join(' '),
+    seat: 0,
+    hist: hist.join(' '),
+    notes: notes,
+    source: hand.gameType + ' hand, '
+      + ((STREET_DEFS.draw_triple.streets[streetIdx]) || ('street ' + streetIdx)),
+  };
+}
+
 // Stud card-string layout (cards accumulated across streets, in deal
 // order). For the HERO the full 7-card string is: index 0,1 = the two
 // DOWN hole cards (3rd street), index 2 = the door card (first UP card,
@@ -4574,7 +4689,7 @@ class ReplayErrorBoundary extends React.Component {
 // ══════════════════════════════════════════════════════════
 // ── Main Hand Replayer View ──────────────────────────────
 // ══════════════════════════════════════════════════════════
-export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, linkedReplay, quickAdd, schedule = null, updates = null }) {
+export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, onStudyDraw, linkedReplay, quickAdd, schedule = null, updates = null }) {
   const toast = useToast();
   const [mode, setMode] = useState(initialHand ? 'replay' : 'list');
   const [quickVoice, setQuickVoice] = useState(false);   // quick add opened by Say (listening at once)
@@ -5013,6 +5128,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             onBack={() => { setMode('list'); fetchHands(); }}
             cardSplay={cardSplay}
             onSolveSpot={onSolveSpot}
+            onStudyDraw={onStudyDraw}
             linkedReplay={linkedReplay}
             sharedHand={handIsShared}
           />
@@ -5478,7 +5594,7 @@ function HandHistoryExportSheet({ rows, heroName, toast, onClose }) {
 // ══════════════════════════════════════════════════════════
 // ── Replay View Sub-component ────────────────────────────
 // ══════════════════════════════════════════════════════════
-function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, cardSplay, onSolveSpot, linkedReplay, heroName, playedAt, sharedHand }) {
+function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, cardSplay, onSolveSpot, onStudyDraw, linkedReplay, heroName, playedAt, sharedHand }) {
   /* The GIF export's completion toasts referenced `toast` from inside this
      component, where it was never declared - the outer HandReplayerView owns
      the one call to useToast(). Optional chaining does not save an UNDECLARED
@@ -6144,6 +6260,21 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       hand, game: solverGame, streetIdx, heroCards, opponentCards, replayHeroIdx, folded, pot,
     }));
   }, [canSolveSpot, onSolveSpot, hand, solverGame, streetIdx, heroCards, opponentCards, replayHeroIdx, folded, pot]);
+
+  // "Study this draw" -> Draw Study handoff. Enabled only for the fixed-limit
+  // draw games the solver has trees for, and only at a street where a draw is
+  // still to come: at the Third Draw's betting round there is no draw left to
+  // price, which is the street-3 case the exact oracle already covers.
+  const drawStudyGame = drawStudyGameFor(hand.gameType);
+  const liveSeatCount = (hand.players || []).filter((_, pi) => !folded.has(pi)).length;
+  const canStudyDraw = !!onStudyDraw && !!drawStudyGame && streetIdx < 3;
+  const handleStudyDraw = useCallback(() => {
+    if (!canStudyDraw) return;
+    haptic();
+    onStudyDraw(buildDrawStudySpot({
+      hand, game: drawStudyGame, streetIdx, replayHeroIdx, liveCount: liveSeatCount,
+    }));
+  }, [canStudyDraw, onStudyDraw, hand, drawStudyGame, streetIdx, replayHeroIdx, liveSeatCount]);
 
   // Player last action
   const playerLastAction = useMemo(() => {
@@ -9466,6 +9597,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               re-sharing chrome. Ethan: drop Back/Edit/Share on a linked replay. */}
           {!linkedReplay && <button className="btn btn-ghost btn-sm rab-back" onClick={onBack}><span className="rs-t">Back</span></button>}
           {!linkedReplay && <button className="btn btn-ghost btn-sm rab-edit" onClick={onEdit}><span className="rs-t">Edit</span></button>}
+          {onStudyDraw && drawStudyGame && (
+            <button className={'btn btn-sm rab-solve ' + (canStudyDraw ? 'btn-primary' : 'btn-ghost')}
+              onClick={handleStudyDraw} disabled={!canStudyDraw}
+              title={canStudyDraw ? 'Price every betting and drawing option at this decision'
+                : 'No draw is left to price at the final betting round'}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="12" height="16" rx="2"/><path d="M15 8h4a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-4"/></svg>
+              <span className="rs-t">Study this draw</span>
+            </button>
+          )}
           {onSolveSpot && (
             <button className={'btn btn-sm rab-solve ' + (canSolveSpot ? 'btn-primary' : 'btn-ghost')}
               onClick={handleSolveSpot} disabled={!canSolveSpot}>
@@ -9488,6 +9628,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             on this app. */}
         {onSolveSpot && !canSolveSpot && (
           <div className="replayer-bar-note"><span className="rs-t">Solving is available for stud8 and razz spots.</span></div>
+        )}
+        {/* The same courtesy the Solve note gets: a disabled button with no
+            reason is invisible on touch, where most of this app is used. The two
+            reasons are different and the message says which. */}
+        {onStudyDraw && !canStudyDraw && (
+          <div className="replayer-bar-note"><span className="rs-t">{drawStudyGame
+            ? 'No draw is left to price at the final betting round — that is the street the exact oracle already covers.'
+            : 'Draw study covers fixed-limit 2-7 TD, A-5 TD and Badugi. Pot-limit and no-limit draw games have a different betting tree.'}</span></div>
         )}
         {/* 79: the exports, in the sheet grammar the app already uses. */}
         {showExportMenu && createPortal(

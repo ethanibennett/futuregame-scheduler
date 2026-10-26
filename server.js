@@ -9871,10 +9871,24 @@ app.post('/api/solver/draw-study', authenticateToken, (req, res) => {
   let bpEmpty = true;
   for (const k in bpRaw) { bpEmpty = false; break; }
   if (bpEmpty) {
+    // ⚠ HONEST IS NOT THE SAME AS ACTIONABLE. This refused correctly but said
+    // nothing about WHY one game in the dropdown behaves differently from the
+    // other two: a5td's blueprint is 44 MB, gitignored, and therefore absent
+    // from solver/strategies, which is the only place `loadSolverStrategy`
+    // looks. Measured: the exact grade WORKS for a5td when pointed at the
+    // staged file, so the game is fine and only the deployment is not.
+    // Per CLAUDE.md the staging is a per-deployment operator decision, so this
+    // names it rather than wiring a 44 MB path on its own.
     return res.status(503).json({
-      error: `${gameId} blueprint is unavailable on this server`,
-      detail: 'the villain continuation and the sigma fill both need it. Refusing rather '
-        + 'than playing a uniform-random bot and calling the result an EV.',
+      error: `${gameId} blueprint is not installed on this server`,
+      detail: gameId === 'a5td'
+        ? 'a5td\'s blueprint is 44 MB and gitignored, so it is not in solver/strategies. '
+          + 'The solver itself handles a5td fine (verified against the staged copy); only '
+          + 'this deployment lacks the file. Staging it is an operator decision.'
+        : 'the villain continuation and the sigma fill both need it. Refusing rather than '
+          + 'playing a uniform-random bot and calling the result an EV.',
+      game: gameId,
+      installed: false,
     });
   }
   const smap = drawPlay.strategyMapOf(bpRaw);
@@ -10097,6 +10111,407 @@ app.post('/api/solver/draw-study', authenticateToken, (req, res) => {
       rangeSeeds: rangeSeeds, seed: seed, caps: DRAW_STUDY_CAP },
   });
 });
+
+// ── DRAW STUDY: the EXACT last-draw grade ───────────────────────────────────
+//
+//   POST /api/solver/draw-study/exact
+//     { game, hero, opp?, hist, seat, options:[...], cap?, iters?, particles? }
+//
+// The Monte-Carlo table (/api/solver/draw-study) prices every option but cannot
+// certify the LEVEL of any of them. This certifies a shortlist: for each option
+// it builds that option's post-draw hero range and solves the final betting
+// round EXACTLY. Division of labour, and it is the point of having both -- cheap
+// MC for breadth across all 32 subsets, the exact grade for the handful the band
+// cannot separate.
+//
+// 🛑 THREE REFUSALS, EVERY ONE STRUCTURAL. None is a budget choice, and each
+// would otherwise produce a confident number for a different question:
+//
+//  1. LAST DRAW ONLY (street 2). After it comes the final betting round, which
+//     is what `resolve_draw_final` solves. A street-0 or street-1 draw has
+//     further draws ahead and needs the 2-round tree or a certified net leaf.
+//
+//  2. SEAT 0 ONLY, and this one is subtle enough to be worth the paragraph.
+//     MEASURED on all three games: after `c k` the engine fills seat 1's draw
+//     and then gives seat 0 the action -- seat 1 (the BB) draws FIRST. So with
+//     the hero at seat 0 the villain has ALREADY drawn when the hero decides,
+//     which makes the particle posterior a POST-draw range and exactly what the
+//     exact grade needs. With the hero at seat 1 the villain draws AFTERWARDS,
+//     the posterior is a PRE-draw range, and feeding it in would silently answer
+//     a different question -- the villain's own draw would never be applied.
+//     Projecting it is a real computation, not a flag, so this refuses.
+//
+//  3. EXPLICIT DISCARDS ONLY. A count (`d2`) does not say WHICH cards go, and
+//     naming the cards is the entire distinction this tool adds over the drill.
+//     `d:Kd` and `d0` are accepted; a bare count is refused with that reason.
+//
+// ⚠ Certified means: the final betting round, EXACT given both post-draw ranges.
+// The opponent range comes from the particle filter, so it is a POSTERIOR, not
+// an equilibrium range -- `provenance` carries that and the client must not
+// relabel it.
+app.post('/api/solver/draw-study/exact', authenticateToken, (req, res) => {
+  const b = req.body || {};
+  const gameId = String(b.game || 'td27');
+  const game = drawStudyGame(gameId, res);
+  if (!game) return;
+
+  const bpRaw = getTrainerBp(gameId);
+  let bpEmpty = true;
+  for (const k in bpRaw) { bpEmpty = false; break; }
+  if (bpEmpty) {
+    // same refusal as the Monte-Carlo route, same reason -- see it for why this
+    // names the staging rather than wiring a path.
+    return res.status(503).json({
+      error: `${gameId} blueprint is not installed on this server`,
+      detail: gameId === 'a5td'
+        ? 'a5td\'s blueprint is 44 MB and gitignored. The solver handles a5td fine; this '
+          + 'deployment lacks the file, and staging it is an operator decision.'
+        : 'the exact grade needs the blueprint for the opponent posterior.',
+      game: gameId, installed: false,
+    });
+  }
+  const smap = drawPlay.strategyMapOf(bpRaw);
+
+  let hero;
+  try { hero = drawStudyLine.parseCards(String(b.hero || ''), 'hero'); }
+  catch (e) { return res.status(400).json({ error: e.message, field: 'hero' }); }
+
+  const seat = b.seat === undefined ? 0 : Number(b.seat);
+  if (seat !== 0) {
+    return res.status(422).json({
+      error: 'the exact last-draw grade is available for seat 0 only',
+      detail: 'Measured on all three games: seat 1 (the BB) draws FIRST, so at seat 0 the '
+        + 'villain has already drawn and the particle posterior is a POST-draw range -- which '
+        + 'is what the exact solve needs. At seat 1 the villain draws afterwards, the '
+        + 'posterior is PRE-draw, and using it would silently never apply the villain\'s own '
+        + 'draw. Projecting it is a real computation rather than a flag.',
+    });
+  }
+
+  const parsed = drawStudyLine.parseHist(b.hist === undefined ? '' : String(b.hist));
+  const hist = parsed.hist;
+  const seed = Number.isFinite(Number(b.seed)) ? Number(b.seed) : 777;
+  const particles = Math.max(30, Math.min(400, Number(b.particles) || 200));
+
+  // the villain: explicit, or rejection-sampled so the entered history is legal
+  let opp = null;
+  if (b.opp) {
+    try { opp = drawStudyLine.parseCards(String(b.opp), 'opp'); }
+    catch (e) { return res.status(400).json({ error: e.message, field: 'opp' }); }
+  } else {
+    const want = game.cfg.handSize || 5;
+    for (let k = 0; k < 400; k++) {
+      const used = new Set(hero);
+      const cand = drawStudyLine.remainingDeck([hero, []], seed + k * 7919)
+        .filter((c) => !used.has(c)).slice(0, want);
+      const hs = [hero, cand];
+      try {
+        drawStudyLine.validateHands(game, hs);
+        drawStudyWalk.buildLine(game, smap, hs, [], seat,
+          { seed: seed, hist: hist, future: drawStudyLine.remainingDeck(hs, seed) });
+        opp = cand; break;
+      } catch (e) { /* this villain cannot take the entered line */ }
+    }
+    if (!opp) {
+      return res.status(422).json({ error: 'no villain hand is consistent with that history' });
+    }
+  }
+
+  const hands = [hero, opp];
+  try { drawStudyLine.validateHands(game, hands); }
+  catch (e) { return res.status(400).json({ error: e.message }); }
+  const future = drawStudyLine.remainingDeck(hands, seed * 7 + 3);
+
+  // find the OPEN decision and insist it is a last-draw node
+  let built;
+  try {
+    built = drawStudyWalk.buildLine(game, smap, hands, [], seat,
+      { seed: seed, hist: hist, future: future });
+  } catch (e) {
+    return res.status(400).json({ error: e.message, where: 'buildLine' });
+  }
+  if (built.terminal) {
+    return res.status(422).json({ error: 'the hand is already over at that history' });
+  }
+  // 🛑 A MADE HAND'S LAST DRAW IS NOT THE OPEN DECISION, AND IT IS THE SPOT THIS
+  // TOOL EXISTS FOR. The solver's draw action IS the count, so a made hand gets
+  // `drawOptions == [0]` -- stand pat and nothing else -- and `buildLine`
+  // auto-applies that forced node, leaving `endState` at street 3. The refusal
+  // below is then TRUE and useless: the open decision really is street 3 bet.
+  // MEASURED share of street-2 hero draw nodes with exactly one legal action
+  // (solver/draw-trainer/measure/pat-node-incidence.js, 3,000 deals/game):
+  // td27 8.58%, a5td 19.85%, badugi 0.00%. So this reached ~9% and ~20% of the
+  // decisions the exact path serves, and they are the ones where the abstraction
+  // offers least and this tool has most to say.
+  //
+  // ✅ The capability was already there and unused: `walk.js:223-245` prices these
+  // from `built.forcedHeroDraws`, which stores the FULL CLONED STATE. The CLI uses
+  // it; this route never called `walk` at all.
+  //
+  // ⚠ USE `f.gradeIdx` UNCLAMPED. walk.js records the lesson in its own comment: a
+  // `Math.min(f.gradeIdx, decs.length - 1)` clamp "looked safe and was a WRONG
+  // POSTERIOR" -- when the forced node is the last reached, f.gradeIdx ===
+  // decisions.length, and the clamp walked the belief one decision SHORT, dropping
+  // the villain action that closed the previous betting round. It "mis-priced
+  // exactly the 'should I break this made hand?' table (ess 313.7 printed vs 298.9
+  // correct)", and was audited safe unclamped over 758 forced nodes.
+  let st = built.endState;
+  let forcedGi = null;
+  let forcedOnly = null;
+  if (st.street !== 2 || st.phase !== 'draw') {
+    const f = (built.forcedHeroDraws || []).find(
+      (x) => x && x.street === 2 && x.state && x.state.phase === 'draw'
+             && Number(x.state.toAct) === seat);
+    if (f) {
+      st = f.state;
+      forcedGi = f.gradeIdx;
+      forcedOnly = f.only;
+    }
+  }
+  if (st.street !== 2 || st.phase !== 'draw') {
+    return res.status(422).json({
+      error: 'the exact grade covers the LAST draw only',
+      detail: `the open decision is street ${st.street} ${st.phase}. After the last draw `
+        + '(street 2) comes the final betting round, which is what the exact resolver solves; '
+        + 'an earlier draw has further draws ahead of it.',
+      openStreet: st.street, openPhase: st.phase,
+      // Say whether a forced last draw was looked for and not found, so a reader
+      // can tell "wrong street" from "pat node the search missed".
+      forcedLastDrawFound: false,
+    });
+  }
+  // ⚠ THIS CHECK CANNOT CURRENTLY FIRE, AND IT IS KEPT ANYWAY — but do NOT count it
+  // as defence in depth. A 2026-10-26 audit reported it as "a second, independent
+  // backstop" that would catch a seat-0 claim over a seat-1 node. It would not:
+  // `buildLine`'s only non-terminal exit is
+  // `if (st.toAct === heroSeat) { if (!heroQueue.length) break; }` (walk.js:144-146),
+  // and this route passes `heroActions = []`, so the queue is always empty and the
+  // walk can only stop where the hero is already to act. MEASURED, not read:
+  // 0 mismatches over 146 non-terminal exits across all three games and both seats
+  // (scratch harness replicating this call shape).
+  //
+  // So the real seat protection is the 422 at the top of this route, and this is an
+  // INVARIANT ASSERTION rather than a guard. It is worth keeping for one reason: the
+  // forced-last-draw path above can now reassign `st` from `built.forcedHeroDraws`,
+  // and it filters on `state.toAct === seat` itself. If that filter is ever dropped,
+  // this line is what catches it. That is a narrow and real purpose, and it is not
+  // the one the audit credited it with.
+  if (st.toAct !== seat) {
+    return res.status(422).json({
+      error: 'the open decision is not the hero\'s',
+      detail: 'invariant violated: the walk or the forced-last-draw lookup produced a'
+        + ' node where the hero is not to act. This is not expected to be reachable.',
+      toAct: st.toAct, seat: seat,
+    });
+  }
+
+  // ── the options, as KEEP sets ────────────────────────────────────────────
+  const cardStr = drawCardStrFn();
+  const heroNow = (st.hands[seat] || []).slice();
+  const heroStrs = heroNow.map(cardStr);
+  const rawOpts = Array.isArray(b.options) ? b.options : [];
+  if (!rawOpts.length) {
+    return res.status(400).json({
+      error: 'missing `options`',
+      detail: 'send the actions to certify -- typically the band the Monte-Carlo table could '
+        + 'not separate. Each is a full exact solve (~0.2-6 s), so the caller chooses which.',
+      heroAtDecision: heroStrs,
+    });
+  }
+  const keeps = [];
+  const labels = [];
+  for (const raw of rawOpts) {
+    const tok = String(raw);
+    if (tok === 'd0' || tok === 'd:') { keeps.push(heroStrs.slice()); labels.push(tok); continue; }
+    if (tok.slice(0, 2) === 'd:') {
+      let thrown;
+      try { thrown = drawPlay.parseDiscard(tok).map(cardStr); }
+      catch (e) { return res.status(400).json({ error: `cannot read discard ${tok}: ${e.message}` }); }
+      const bad = thrown.filter((c) => heroStrs.indexOf(c) < 0);
+      if (bad.length) {
+        return res.status(400).json({
+          error: `discard ${tok} names ${bad.join(',')}, which the hero does not hold`,
+          heroAtDecision: heroStrs,
+        });
+      }
+      const set = new Set(thrown);
+      keeps.push(heroStrs.filter((c) => !set.has(c)));
+      labels.push(tok);
+      continue;
+    }
+    // 🛑 A BARE COUNT IS REFUSED, ON PURPOSE. `d2` does not say which two cards
+    // go, and naming them is the whole distinction this tool adds over the drill
+    // -- silently picking for the caller (as chooseKeep does) would answer a
+    // question they did not ask and look like an exact grade while doing it.
+    return res.status(400).json({
+      error: `option ${tok} is a COUNT, not a discard`,
+      detail: 'the exact grade needs to know WHICH cards go: pass d:<cards> (e.g. d:Kd) or d0. '
+        + 'A count would make this pick the cards for you, which is exactly what the drill '
+        + 'already does and what this tool exists to go beyond.',
+    });
+  }
+
+  // ── the opponent's POST-draw range, from the particle posterior ──────────
+  // `particlesToRange` is grade.js's own sampler and is used rather than a new
+  // one: it takes a SYSTEMATIC (evenly-strided) sample across the reach-sorted
+  // range, NOT a top-K-by-mass head, because top-K biases the solve on a flat
+  // range -- the "flat-range top-K trap" the stud oracle already demonstrated.
+  const instr = { fallbacks: 0, collapses: 0 };
+  let post;
+  try {
+    const rec = drawPlay.buildHandRecord(
+      { hands: hands.map((h) => h.slice()), future: future },
+      built.line, { game: game, heroSeat: seat });
+    // At a forced last-draw node the belief must be walked to THAT node, not to
+    // the end of the record. Unclamped, per walk.js's audited note above.
+    let gi = forcedGi === null ? rec.decisions.length : forcedGi;
+    post = drawGrade.buildPosterior(game, smap, rec, gi, seat, particles,
+      makeSolverRng(seed * 7919 + 11), instr);
+  } catch (e) {
+    return res.status(500).json({ error: 'could not build the opponent posterior: ' + e.message });
+  }
+  if (!post || !post.parts || !post.parts.length) {
+    return res.status(422).json({ error: 'the opponent posterior is empty at that history' });
+  }
+  const oppCap = Math.max(8, Math.min(60, Number(b.oppCap) || 40));
+  const { range, distinct } = drawGrade.particlesToRange(post.parts, oppCap);
+  if (!range.length) {
+    return res.status(422).json({ error: 'the opponent range came out empty' });
+  }
+  const oppRange = range.map((r) => [r.hand.map(cardStr), r.w]);
+
+  // ── the exact solve, through the SAME bridge production uses ─────────────
+  const bridge = require('./solver/razz-trainer/oracle-bridge');
+  const cap = Math.max(90, Math.min(360, Number(b.cap) || 180));
+  const iters = Math.max(50, Math.min(800, Number(b.iters) || 200));
+  // a full CFR solve per option: ~0.2 s pat, ~1 s for a 1-card draw, ~5 s for a
+  // 2-card draw at cap 180. The per-request override exists because the worker
+  // default is 20 s and a timeout here falls back SILENTLY.
+  const timeoutMs = Math.min(240000, 20000 + keeps.length * 25000);
+  const contrib = st.contrib ? [st.contrib[0], st.contrib[1]] : [2, 2];
+
+  // 🛑 SEND THE NODE'S POSITION. WITHOUT IT THE SOLVE ROOTS THE FINAL BETTING
+  // ROUND WITH THE WRONG PLAYER, AND EVERY "CERTIFIED" NUMBER THIS ROUTE RETURNS
+  // IS A LEVEL ERROR. Found by a 16-agent adversarial audit, 2026-10-26:
+  //   this payload            no `to_act` -- it forwarded `contrib`, so POSITION
+  //                           was the one piece of the node left behind
+  //   oracle_worker.py:233    start["toAct"] = int(req.get("to_act", 0))  ->  0
+  //   resolve_draw_final.py:94-99  final_round_start's docstring: "seat 0 to act
+  //                           first (the oracle convention: seat 0 = hero)"
+  //   draw-game.js:103-108,160-167  after seat 0 completes the street-2 draw:
+  //                           n.street++; n.phase='bet'; n.toAct = 1  <- the VILLAIN
+  // MEASURED by solver/draw-trainer/measure/exact-draw-toact-gate.js: 0.0666 chips
+  // on one option, and over 6 nodes x every option, gap mean 0.0802 and max 0.2410
+  // -- 32% and 96% of the 0.25 SB budget. The ARGMAX held 0 of 6, so this is a
+  // LEVEL error rather than a recommendation error; but 0/6 bounds the flip rate at
+  // only <= 39% (95%), so that is "none observed", not "none".
+  //
+  // ⚠ THE FIX BELONGS HERE, NOT IN THE PYTHON. `toAct = 0` is a module-wide
+  // convention in resolve_draw_final.py (nine self-test starts, plus
+  // draw_root_action_ev), and the street-3 production path inherits it CORRECTLY
+  // because there the hero genuinely is to act. The convention is right where it
+  // was written and wrong where it was reused -- so the caller supplies the node.
+  //
+  // ⚠ ASK THE ENGINE, DO NOT COMPUTE `1 - st.toAct`. That arithmetic happens to
+  // agree at every node this route accepts (the seat guard forces st.toAct === 0,
+  // and the engine always opens street 3 with seat 1), which is exactly what makes
+  // it a guess that tests clean. Applying a legal draw and reading the result back
+  // is the engine's own answer and survives a rules change. Verified on all three
+  // games: the draw node has toAct 0, and after the draw the engine reports
+  // street 3 / phase bet / toAct 1 / bets 0 / acted [false,false].
+  // `bets` and `acted` travel with it because a betting round is not defined by
+  // who acts first alone -- the street-2 draw has just closed, so street 3 opens
+  // fresh.
+  let toActNext = 1 - Number(st.toAct || 0);
+  let betsNext = 0;
+  let actedNext = [false, false];
+  try {
+    const probe = (game.legalActions(st) || [])[0];
+    if (probe !== undefined) {
+      const after = game.applyAction(st, probe);
+      if (after && after.street === 3 && after.phase === 'bet') {
+        toActNext = Number(after.toAct);
+        betsNext = Number(after.bets || 0);
+        actedNext = Array.isArray(after.acted) ? after.acted.map(Boolean) : [false, false];
+      }
+    }
+  } catch (e) {
+    // Fall through to the arithmetic. It is right for every node this route
+    // accepts; the probe is the belt, not the only trousers.
+  }
+
+  // SEND THE HERO'S OWN DEAD CARDS. The worker already accepts them
+  // (oracle_worker.py:255 -> exact_draw_grade(..., dead=...), which blocks
+  // `set(hero) | set(dead)` when it deals the villain's replacements); this
+  // route simply never filled the field, so the solve drew the villain's new
+  // cards from a deck that still contained cards the hero had thrown away.
+  //
+  // ⚠ HERO'S ONLY -- the villain's discards are hidden information. Sending
+  // both seats would make this grade better-informed than the player it grades
+  // for, which is a worse bug than the one being fixed. `discards[p]` is named
+  // "hero's own dead cards" at draw-game.js:282 and accumulates across every
+  // draw this hand, all of which are genuinely known and genuinely gone.
+  //
+  // This is a CONSISTENCY fix: the opponent range is built from
+  // `unseenUniverse(st, seat)`, which already excludes these cards, so the
+  // range and the replacement deck disagreed with each other. Measured by
+  // solver/draw-trainer/measure/dead-pool-gate.js: EV 1.5266 (sampled 47) with
+  // the field empty vs 1.5347 (sampled 45) with it filled -- 0.0081 chips, i.e.
+  // 3.2% of the 0.25 SB budget. Small, which is why it is landed as correctness
+  // rather than sold as an improvement; the sampled count moving 47 -> 45 is the
+  // mechanism showing itself, since two fewer cards are available to deal.
+  const heroDead = (st.discards && st.discards[seat] ? st.discards[seat] : []).map(cardStr);
+
+  bridge.oracleSend(null, {
+    mode: 'drawoptions', game: gameId, street: 2, draws_remaining: 1,
+    me: heroStrs, opp_range: oppRange, dead: heroDead,
+    options: keeps, contrib: contrib, cap: cap, iters: iters,
+    to_act: toActNext, bets: betsNext, acted: actedNext,
+  }, { timeoutMs: timeoutMs }).then((out) => {
+    if (!out.ok) {
+      // 🛑 NEVER present a failure as a grade. A timeout or a dead worker is the
+      // documented silent-fallback failure, so it is surfaced as an error with
+      // its kind rather than as an empty table.
+      return res.status(502).json({
+        error: 'the exact grade did not complete',
+        failure: out.failure || null,
+        detail: out.failure && out.failure.kind === 'timeout'
+          ? `no answer within ${timeoutMs} ms for ${keeps.length} option(s) — send fewer, or `
+            + 'lower cap/iters'
+          : 'the oracle worker is unavailable; the Monte-Carlo table is unaffected',
+      });
+    }
+    const r = out.res || {};
+    res.json({
+      ok: true, game: gameId, seat: seat,
+      heroAtDecision: heroStrs,
+      // echoed because it CHANGES THE ANSWER: an input that moves the EV and
+      // appears nowhere in the response is exactly how the missing `to_act`
+      // went unnoticed through a certified-looking route.
+      deadSent: heroDead,
+      street: st.street, phase: st.phase,
+      options: (r.per_option || []).map((o, i) => Object.assign({}, o, {
+        label: labels[keeps.findIndex((k) => k.join(',') === (o.keep || []).join(','))] || null,
+      })),
+      best: r.best || null,
+      oppRange: { kept: oppRange.length, distinct: distinct, cap: oppCap,
+        sampler: 'systematic strided over the reach-sorted posterior (not top-K by mass)' },
+      posterior: { particles: particles, collapses: instr.collapses,
+        ess: (post.ess || []).slice(-1)[0] },
+      provenance: Object.assign({}, r.provenance || {}, {
+        opponent: 'a PARTICLE POSTERIOR from the entered history, not an equilibrium range',
+        drawOrder: 'seat 1 draws first (measured), so at seat 0 the villain has already drawn '
+          + 'and this posterior is POST-draw',
+      }),
+      budget: { cap: cap, iters: iters, timeoutMs: timeoutMs, options: keeps.length },
+    });
+  }).catch((e) => {
+    res.status(500).json({ error: 'exact grade failed: ' + (e && e.message) });
+  });
+});
+
+// cardStr is required lazily so this block stays independent of load order.
+function drawCardStrFn() { return require('./solver/engine/cards').cardStr; }
 
 const play3 = require('./solver/multiway/play3');
 const grade3 = require('./solver/multiway/grade3');

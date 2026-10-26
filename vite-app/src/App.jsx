@@ -66,6 +66,7 @@ const HandReplayerView = lazy(() => import('./components/HandReplayerView.jsx'))
 const SolverTrainerView = lazy(() => import('./components/SolverTrainerView.jsx'));
 const SolverPlayView = lazy(() => import('./components/SolverPlayView.jsx'));
 const SolverView = lazy(() => import('./components/SolverView.jsx'));
+const DrawStudyView = lazy(() => import('./components/DrawStudyView.jsx'));
 const RazzTrainerView = lazy(() => import('./components/RazzTrainerView.jsx'));
 const Multiway3TrainerView = lazy(() => import('./components/Multiway3TrainerView.jsx'));
 const StakingView = lazy(() => import('./components/StakingView.jsx'));
@@ -336,6 +337,9 @@ function App() {
 
   // Hands tab tool: hand replayer or CFR solver trainer
   const [handsTool, setHandsTool] = useState('replayer');
+  // Set by the replayer's "Study this draw" button and consumed by
+  // DrawStudyView on mount, mirroring pendingSolverSpot.
+  const [pendingDrawSpot, setPendingDrawSpot] = useState(null);
 
   // "Solve this spot" handoff: a frozen replayer spot, mapped to
   // SolverView's inputs. Set by the replayer's Solve-this-spot button
@@ -2147,7 +2151,9 @@ function App() {
                         ? <Suspense fallback={<LazyFallback />}><RazzTrainerView /></Suspense>
                         : handsTool === 'multiway' && isAdmin
                         ? <Suspense fallback={<LazyFallback />}><Multiway3TrainerView /></Suspense>
-                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setHandsTool('solver'); }) : undefined} quickAdd={isAdmin} schedule={mySchedule} updates={myActiveUpdates} /></Suspense>}
+                        : handsTool === 'study' && isAdmin
+                        ? <Suspense fallback={<LazyFallback />}><DrawStudyView pendingSpot={pendingDrawSpot} onConsumeSpot={() => setPendingDrawSpot(null)} /></Suspense>
+                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setHandsTool('solver'); }) : undefined} onStudyDraw={isAdmin ? (spot => { setPendingDrawSpot(spot); setHandsTool('study'); }) : undefined} quickAdd={isAdmin} schedule={mySchedule} updates={myActiveUpdates} /></Suspense>}
                     </div>
                   </div>
                 : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'calc(var(--subrow) * 7.5) calc(var(--subrow) * 2.5)',textAlign:'center'}}>
@@ -2293,7 +2299,7 @@ function App() {
           {currentView === 'hands' && isAdmin && (
             <div className="hands-tool-row" style={{display:'flex',gap:'var(--gu)',overflowX:'auto',whiteSpace:'nowrap',background:'var(--bg)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
               {/* Each pill a whole-g box (its width in g beside its label), the label centred in it. */}
-              {[['replayer','Replayer',6],['scanner','Scanner',6],['solver','Solver',5],['trainer','Solver Trainer',8],['watch','Watch Solver',8],['razz-trainer','Trainer',5],['multiway','3-Way',5]].map(([id,lbl,w]) => (
+              {[['replayer','Replayer',6],['scanner','Scanner',6],['solver','Solver',5],['trainer','Solver Trainer',8],['watch','Watch Solver',8],['razz-trainer','Trainer',5],['multiway','3-Way',5],['study','Draw Study',8]].map(([id,lbl,w]) => (
                 <button key={id} className="ctl" onClick={() => setHandsTool(id)}
                   style={{flex:'0 0 auto',width:`calc(var(--gu) * ${w})`,height:'calc(var(--subrow) * 3)',boxSizing:'border-box',padding:0,borderRadius:'var(--radius)',fontFamily:'inherit',fontSize:'calc(var(--gu) * 1.031)',fontWeight:'var(--fw-bold)',cursor:'pointer',
                     border:'var(--bw-hair) solid ' + (handsTool === id ? 'var(--accent)' : 'var(--border)'),
