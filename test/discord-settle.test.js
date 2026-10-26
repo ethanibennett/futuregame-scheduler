@@ -75,6 +75,62 @@ async function test(name, fn) {
     assert.match(calls[1].body.content, /^_\(test\)_ /);
   });
 
+  // ── Sunday noon, both parties (owner, 2026-10-25) ──
+  const noon = Date.UTC(2026, 10, 1, 17, 0); // Sun 1 Nov 2026, 12:00 New York (EST)
+  const noonBackers = [
+    { name: 'Sam Okafor', dueCents: 734890, token: 'TokSam00001' },
+    { name: 'Dan Whitcombe', dueCents: -49925, token: 'TokDan00001' },
+    { name: 'Priya Raman', dueCents: 0, token: 'TokPri00001' },
+    { name: 'Lee Nogood', dueCents: 10000, token: 'TokLee00001' },
+  ];
+  await test('a backer\'s Discord id: digits only, set and cleared, shown by its last four', () => {
+    assert.strictEqual(ds.setBackerDiscord(db, 'TokSam00001', 'not-an-id').ok, false);
+    assert.strictEqual(ds.setBackerDiscord(db, 'TokSam00001', '111111111111111111').ok, true);
+    assert.strictEqual(ds.setBackerDiscord(db, 'TokDan00001', '222222222222223333').ok, true);
+    assert.strictEqual(ds.discordHint(db, 'TokDan00001'), '3333');
+    assert.strictEqual(ds.setBackerDiscord(db, 'TokPri00001', '444444444444444444').ok, true);
+    assert.deepStrictEqual(ds.setBackerDiscord(db, 'TokPri00001', ''), { ok: true, cleared: true });
+    assert.strictEqual(ds.backerDiscordId(db, 'TokPri00001'), null);
+  });
+  await test('the gentle texts: each backer in their own terms; the player hears who pays whom and who was reached', () => {
+    assert.strictEqual(ds.noonBackerText(noonBackers[0]), 'Hi Sam, a gentle reminder that today is settling day. Ethan owes you $7,349 for the week. Once it arrives, press Settled on your page.');
+    assert.strictEqual(ds.noonBackerText(noonBackers[1]), 'Hi Dan, a gentle reminder that today is settling day. The week comes to $499 from you to Ethan. Once it is sent, press Settled on your page, or Partial payment if it goes in parts.');
+    assert.strictEqual(ds.noonBackerText(noonBackers[2]), null);
+    assert.strictEqual(ds.noonPlayerText(noonBackers, ['Sam Okafor']),
+      '**A gentle reminder: it is settling day.**\n• You pay Sam Okafor $7,349\n• Dan Whitcombe pays you $499\n• You pay Lee Nogood $100\nReminded on Discord: Sam Okafor.');
+  });
+  await test('the owner\'s test goes to the player only, never to a backer', async () => {
+    calls.length = 0;
+    const r = await ds.runNoonReminder(db, { backers: () => noonBackers, nowMs: noon, env: ENV, force: true });
+    assert.strictEqual(r.sent, true);
+    const opens = calls.filter((c) => c.url === '/users/@me/channels');
+    assert.deepStrictEqual(opens.map((c) => c.body.recipient_id), [ENV.DISCORD_USER_ID]);
+    const text = calls.find((c) => c.url === '/channels/777/messages').body.content;
+    assert.match(text, /^_\(test\)_ /);
+    assert.match(text, /Lee Nogood \(no Discord id on file, would not be sent\)/);
+  });
+  await test('Sunday noon: each backer with an id and a balance gets their DM, then the player; once per Sunday', async () => {
+    calls.length = 0;
+    const r = await ds.runNoonReminder(db, { backers: () => noonBackers, nowMs: noon, env: ENV });
+    assert.deepStrictEqual([r.sent, r.reached, r.missing, r.failed], [true, ['Sam Okafor', 'Dan Whitcombe'], ['Lee Nogood'], []]);
+    const opens = calls.filter((c) => c.url === '/users/@me/channels').map((c) => c.body.recipient_id);
+    assert.deepStrictEqual(opens, ['111111111111111111', '222222222222223333', ENV.DISCORD_USER_ID]);
+    const texts = calls.filter((c) => c.url === '/channels/777/messages').map((c) => c.body.content);
+    assert.match(texts[0], /^Hi Sam/);
+    assert.match(texts[1], /^Hi Dan/);
+    assert.match(texts[2], /Reminded on Discord: Sam Okafor, Dan Whitcombe\./);
+    assert.ok(texts.every((t) => !/\/b\//.test(t) && !/Tok[A-Z]/.test(t)), 'no link, no token');
+    calls.length = 0;
+    const again = await ds.runNoonReminder(db, { backers: () => noonBackers, nowMs: noon + 600e3, env: ENV });
+    assert.strictEqual(calls.length, 0, 'nobody hears twice');
+    assert.strictEqual(again.why, 'already sent today');
+  });
+  await test('everyone at $0: nothing at noon', async () => {
+    calls.length = 0;
+    const r = await ds.runNoonReminder(db, { backers: () => [{ name: 'P', dueCents: 0, token: 'TokP0000001' }], nowMs: noon + 7 * 86400e3, env: ENV });
+    assert.deepStrictEqual([r.sent, r.why, calls.length], [false, 'every backer is at $0', 0]);
+  });
+
   stub.close();
   console.log(`\ndiscord-settle.test.js - ${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

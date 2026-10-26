@@ -62,6 +62,8 @@ export function normalise(data) {
     link: /^https:\/\//.test(text(b.link)) ? text(b.link) : '',
     // The Settled handshake's state (lib/staking/backer-settle.js), as the backer's page has it.
     settlement: b.settlement && typeof b.settlement === 'object' ? b.settlement : null,
+    // The Sunday noon Discord reminder: the id's last four digits when one is on file, else null.
+    discord: b.discord && typeof b.discord === 'object' && text(b.discord.hint) ? { hint: text(b.discord.hint) } : null,
     // Payment records (owner, 2026-10-24): completed settlements, partial payments and payouts.
     payments: (Array.isArray(b.payments) ? b.payments : []).filter((x) => x && typeof x === 'object').map((x) => ({
       date: text(x.date), at: text(x.at), amountCents: num(x.amountCents), kind: text(x.kind),

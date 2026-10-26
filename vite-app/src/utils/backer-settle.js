@@ -101,9 +101,10 @@ export function partCents(answer, maxCents) {
 export function paymentView(p, { side, player = 'Ethan', backer = 'your backer' }) {
   const cents = Math.round(Number(p && p.amountCents) || 0);
   const playerPaid = cents > 0;
+  // The backer's page says "sent" (owner, 2026-10-25); the owner's card keeps "paid".
   const title = side === 'owner'
     ? (playerPaid ? `Paid ${backer}` : `${backer} paid you`)
-    : (playerPaid ? `${player} paid you` : `You paid ${player}`);
+    : (playerPaid ? `${player} sent you` : `You sent ${player}`);
   const kind = p && p.kind === 'part' ? 'Partial payment' : p && p.kind === 'payout' ? 'Payout' : 'Settled';
   return { title, amount: usd(cents), kind, playerPaid };
 }

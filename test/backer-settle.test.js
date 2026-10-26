@@ -235,6 +235,18 @@ const BACKER_EP = 'https://push.example.test/sam-page';
       assert.ok(f.payments.every((p) => /^\d{4}-\d{2}-\d{2}$/.test(p.date)));
       assert.deepStrictEqual((await card()).payments.map((p) => p.kind), ['part', 'settled', 'part', 'settled']);
     });
+    // ── The Sunday noon Discord reminder: the backer's id, set from their card (owner, 2026-10-25) ──
+    await test('a backer Discord id: the owner sets it, the card shows its last four, nobody else can, bad ids are refused, empty clears', async () => {
+      const put = (userId, token = owner) => api(`/api/staking/standing/backers/${REC}/discord`, { token, method: 'PUT', body: { userId } });
+      assert.strictEqual((await put('123456789012345678', other)).status, 403);
+      assert.strictEqual((await put('nope')).status, 400);
+      const r = await put('123456789012345678');
+      assert.deepStrictEqual([r.status, r.json.hint, r.json.cleared], [200, '5678', false]);
+      assert.deepStrictEqual((await card()).discord, { hint: '5678' });
+      assert.ok(!JSON.stringify(await feed()).includes('123456789012345678'), 'the backer page never carries it');
+      assert.strictEqual((await put('')).json.cleared, true);
+      assert.ok(!('discord' in await card()));
+    });
     await test('an unknown link is a 404', async () => {
       assert.strictEqual((await api('/api/backer/NoSuchLink99/settle', { method: 'POST', body: { action: 'confirm', amountCents: 1 } })).status, 404);
     });

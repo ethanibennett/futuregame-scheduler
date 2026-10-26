@@ -255,6 +255,12 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   `DISCORD_BOT_TOKEN` + `DISCORD_USER_ID` on Render only (the bot must share a server with the player); on where
   RENDER is set, `DISCORD_DM=1|0` overrides; every boot logs `[discord] settling-day DM is ON|OFF`. Once per
   Sunday (`discord_reminders`). `POST /api/admin/discord-settle/test` (owner) sends it now, marked as a test.
+  **Sunday noon, both parties** (owner, 2026-10-25): at settlement time a gentle DM to each backer whose
+  balance is not $0 and whose Discord user id is on file (`backer_discord`, keyed by the link and re-keyed on
+  rotation; set from their Backers card's Discord button, `PUT /api/staking/standing/backers/:id/discord`,
+  shown as its last four digits), in their own terms, then one to the player listing who pays whom and who
+  was reached. Same bot and gate; the bot must share a server with each backer. Once per recipient per
+  Sunday. `…/discord-settle/test?noon=1` sends what everyone would get to the player only.
   Test: `npm run test:discord-settle`.
   **Bankroll merge, Phase 2** (`docs/bankroll-merge.md`; code in `lib/backer-surface.js`):
   - **Delivery is gated.** Push, SMS and the Sunday email go out only where `BACKER_DELIVERY` is on

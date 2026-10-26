@@ -309,7 +309,7 @@ function SessionCard({ e }) {
 }
 
 /** A payment in the session list (owner, 2026-10-24): the session card's form, so it sits in the list
- *  like one: a neutral strip reading PAID, the date where the time goes, who paid whom as the title, the
+ *  like one: a neutral strip reading SENT (owner, 2026-10-25: "Sent", not "Paid"), the date where the time goes, who paid whom as the title, the
  *  amount where the share goes and what it was (Settled, Partial payment, Payout) under it. It is not a
  *  result, so it carries no tone and opens nothing. */
 function PaymentCard({ p }) {
@@ -318,7 +318,7 @@ function PaymentCard({ p }) {
     <li className="cal-event-row bp-session bp-payment">
       <div className="cal-venue-strip is-neutral" aria-hidden="true"
         style={{ background: 'var(--border-strong)', color: '#ffffff' }}>
-        <span className="venue-strip-abbr">PAID</span>
+        <span className="venue-strip-abbr">SENT</span>
       </div>
       <div className="cal-event-row-content">
         <div className="cal-event-bar" aria-label={`${v.kind}: ${v.title} ${v.amount}`}>

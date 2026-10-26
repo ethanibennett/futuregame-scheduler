@@ -14,6 +14,15 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-25 — Sunday noon Discord reminder to both parties; "Sent" on the backer page
+
+- **Shipped:** `runNoonReminder` in `lib/discord-settle.js`, scheduled Sunday 12:00 ET beside the 09:00
+  player DM: a gentle DM to each backer with a balance and a Discord id on file, then the player's list
+  with who was reached. Ids live in `backer_discord`, set from the Backers card (Discord button). The
+  backer page's payment card reads SENT / "You sent Ethan" (owner); the owner's card keeps "Paid".
+- **Waiting on the owner:** each backer's Discord user id on their card, and the bot sharing a server with
+  them. First run: Sunday 1 Nov, noon ET. The 09:00 heads-up still runs; drop it if two DMs is one too many.
+
 ## 2026-10-24 — Partial payments from either side, any time; payment records in the session lists
 
 - **Why:** the owner could not find the Part button. It showed only when EARLIER weeks owed something, and

@@ -54,7 +54,7 @@ async function copyText(value) {
   } catch (_) { return false; }
 }
 
-function BackerCard({ b, open, onToggle, thisYear, onCopy, onSettle, settling }) {
+function BackerCard({ b, open, onToggle, thisYear, onCopy, onSettle, settling, onDiscord }) {
   const id = 'bb-shares-' + b.id.replace(/[^\w-]+/g, '-');
   const name = displayName(b);
   const items = statItems(b);
@@ -118,6 +118,14 @@ function BackerCard({ b, open, onToggle, thisYear, onCopy, onSettle, settling })
       )}
       {open && (
         <div className="bl-detail bb-detail" id={id}>
+          {/* The Sunday noon reminder on Discord (owner, 2026-10-25): the backer's Discord user id, set here. */}
+          <div className="bl-pager bb-actions bb-discord">
+            <button type="button" className="bk-btn bl-more" onClick={() => onDiscord(b)}
+              aria-label={`Set ${name}'s Discord user id`}><span>Discord</span></button>
+            <span className="an-cell bl-count bb-settle-status an-clip">
+              {b.discord ? `Sunday noon reminder on · id ending ${b.discord.hint}` : 'No Discord id: no Sunday reminder'}
+            </span>
+          </div>
           {b.shares.length === 0 && b.payments.length === 0 ? (
             <p className="an-p bb-none">No shares recorded yet. A share appears here once a session is notified.</p>
           ) : (
@@ -216,6 +224,24 @@ export default function BankrollBackers({ bk }) {
     finally { setSettling(false); }
   }, [bk.token, toast]);
 
+  // A backer's Discord user id, for the Sunday noon reminder: set, change, or clear (an empty answer).
+  const setDiscord = useCallback(async (b) => {
+    const who = b.name || 'this backer';
+    const answer = window.prompt(`${who}'s Discord user id, for the Sunday noon reminder. In Discord: Settings > Advanced > Developer Mode on, then right-click their name > Copy User ID. The bot must share a server with them. Leave it empty to turn their reminder off.`, '');
+    if (answer == null) return;
+    try {
+      const res = await fetch(`${API_URL}/staking/standing/backers/${encodeURIComponent(b.id)}/discord`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${bk.token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: answer.trim() || null }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) toast.error(data.error || 'That did not go through. Try again.');
+      else toast.success(data.cleared ? `${who}'s Sunday reminder is off.` : `${who} gets the Sunday noon reminder on Discord.`);
+      setReloadKey((k) => k + 1);
+    } catch { toast.error('That did not go through. Check your connection.'); }
+  }, [bk.token, toast]);
+
   const list = state.backers;
   const sum = useMemo(() => listSummary(list), [list]);
   const toggle = useCallback((id) => setOpen((prev) => {
@@ -260,7 +286,7 @@ export default function BankrollBackers({ bk }) {
           <ul className="bl-list">
             {list.map((b) => (
               <BackerCard key={b.id} b={b} open={open.has(b.id)} onToggle={() => toggle(b.id)}
-                thisYear={thisYear} onCopy={copy} onSettle={settle} settling={settling} />
+                thisYear={thisYear} onCopy={copy} onSettle={settle} settling={settling} onDiscord={setDiscord} />
             ))}
           </ul>
         </>

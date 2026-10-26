@@ -9793,6 +9793,311 @@ app.post('/api/solver/razz-trainer/step', authenticateToken, (req, res) => {
 // is framed as EV-loss-vs-the-stated-profile; the exploitability number is
 // carried as a per-seat LOWER bound (exploitLowerBound). No "GTO"/"equilibrium"/
 // "optimal"/"solved" strings anywhere in this section or its payloads.
+// ── DRAW STUDY: price EVERY betting and drawing option at one decision ──────
+//
+//   POST /api/solver/draw-study
+//     { game, hero, opp?, hist?, seat?, mode: 'steps'|'now', shuffles?, particles?,
+//       rangeSeeds?, seed? }
+//
+// The HTTP face of `solver/draw-trainer/study/` (whose CLI is study/cli.js). It
+// answers the four things that tool exists for: play a hand from any street and
+// either seat, offer EVERY betting and drawing option, give the EV of each
+// against the others, and take a hand history up to the 3rd draw and price the
+// decision you are FACING.
+//
+// WHY IT PRICES MORE THAN THE BLUEPRINT OFFERS. `cfg.drawOptions` offers at most
+// 2 of 6 draw counts with ONE card-set each from `chooseKeep` — 2 of the 32 legal
+// discard subsets in td27/a5td, 2 of 16 in badugi — and a made hand gets [0]
+// only, a forced pat. The drill therefore grades a student against two options
+// and clamps anything better away (`grade.js` does `Math.max(0, best - chosen)`).
+// `study/ev.allActions` replaces that with every subset, so the table can show
+// the best play was not on the menu. `offered` per row is what the drill could
+// have named.
+//
+// TWO MODES, AND NO THIRD. `steps` runs `buildLine` only — no pricing, instant —
+// and reports whose turn it is, what is legal, and which actions the BLUEPRINT
+// guessed. `now` runs `walk({skipPast:true})`, pricing only the open decision.
+// There is deliberately no server-side `auto`: the CLI's --auto is a loop with
+// its own tied-band guard, and the UI gets play-to-showdown for free and better
+// by appending the hero's CHOSEN action to `hist` and re-posting — the user
+// picks, instead of the blueprint picking for them.
+//
+// 🛑 TWO HONESTY RULES THIS ENDPOINT MUST NOT BREAK:
+//  1. Only street-3 BETTING is exact — the one deal-free betting round, so its
+//     forward pass samples no chance nodes. `exactForward` comes from the
+//     engine's own flag via evTable, NEVER from a table here: hardcoding a
+//     per-street accuracy map is how `_NET_CERT_SB = 0.059` once shipped against
+//     a measured 0.47-0.51 SB. Everything else is Monte-Carlo and UNCERTIFIED,
+//     and `trust` says so in the payload rather than leaving it implied.
+//  2. The tied band is not a ranking. Rows inside it are not separable at the
+//     evidence bought, and row ORDER inside it is noise. `tied` and `bandWidth`
+//     carry that so the client can render them as equals.
+//
+// ⚠ CONCURRENCY. This box also runs datagen, so shuffles/particles/rangeSeeds are
+// CAPPED — a browser must not be able to start an unbounded solve. `budget` in
+// the payload reports what was actually used, not what was asked for, because a
+// silently downgraded request that still prints confident numbers is the failure
+// mode this whole tool has been correcting.
+const drawStudyLine = require('./solver/draw-trainer/study/line');
+const drawStudyEv = require('./solver/draw-trainer/study/ev');
+const drawStudyWalk = require('./solver/draw-trainer/study/walk');
+const drawLbr = require('./solver/lbr-draw');
+const { cardStr: drawCardStr } = require('./solver/engine/cards');
+
+const DRAW_STUDY_GAMES = { td27: 1, a5td: 1, badugi: 1 };
+const DRAW_STUDY_CAP = { shuffles: 16, particles: 400, rangeSeeds: 4, rows: 40 };
+const _drawStudyMemo = {};
+
+function drawStudyGame(gameId, res) {
+  if (!DRAW_STUDY_GAMES[gameId]) {
+    res.status(404).json({ error: `draw study supports td27, a5td and badugi — not '${gameId}'` });
+    return null;
+  }
+  const game = solverGames[gameId];
+  if (!game) { res.status(404).json({ error: `unknown game '${gameId}'` }); return null; }
+  if (!_drawStudyMemo[gameId]) { drawLbr.memoizeCfg(game); _drawStudyMemo[gameId] = 1; }
+  return game;
+}
+
+app.post('/api/solver/draw-study', authenticateToken, (req, res) => {
+  const b = req.body || {};
+  const gameId = String(b.game || 'td27');
+  const game = drawStudyGame(gameId, res);
+  if (!game) return;
+
+  // the blueprint through the SAME lazy loader and memory guard the trainer
+  // routes use — never a second copy of a 10-60 MB file in this process
+  const bpRaw = getTrainerBp(gameId);
+  let bpEmpty = true;
+  for (const k in bpRaw) { bpEmpty = false; break; }
+  if (bpEmpty) {
+    return res.status(503).json({
+      error: `${gameId} blueprint is unavailable on this server`,
+      detail: 'the villain continuation and the sigma fill both need it. Refusing rather '
+        + 'than playing a uniform-random bot and calling the result an EV.',
+    });
+  }
+  const smap = drawPlay.strategyMapOf(bpRaw);
+
+  let hero, opp = null;
+  try { hero = drawStudyLine.parseCards(String(b.hero || ''), 'hero'); }
+  catch (e) { return res.status(400).json({ error: e.message, field: 'hero' }); }
+  if (b.opp) {
+    try { opp = drawStudyLine.parseCards(String(b.opp), 'opp'); }
+    catch (e) { return res.status(400).json({ error: e.message, field: 'opp' }); }
+  }
+  const seat = b.seat === undefined ? 0 : Number(b.seat);
+  if (!(seat === 0 || seat === 1)) {
+    return res.status(400).json({ error: '`seat` must be 0 or 1 (heads-up)', field: 'seat' });
+  }
+
+  // ⚠ The `*` in a history is a PROVENANCE MARKER, not noise: the tool prints it
+  // on actions the BLUEPRINT guessed. `normalizeHist` strips it so the token is
+  // legal AND reports how many carried it, so a round trip cannot silently
+  // relabel the blueprint's guesses as things the user entered.
+  const parsed = drawStudyLine.parseHist(b.hist === undefined ? '' : String(b.hist));
+  const hist = parsed.hist;
+
+  const seed = Number.isFinite(Number(b.seed)) ? Number(b.seed) : 777;
+  const cap = (v, d, m) => Math.max(1, Math.min(m, Number.isFinite(Number(v)) ? Number(v) : d));
+  const shuffles = cap(b.shuffles, 8, DRAW_STUDY_CAP.shuffles);
+  const particles = cap(b.particles, 200, DRAW_STUDY_CAP.particles);
+  const rangeSeeds = cap(b.rangeSeeds, 1, DRAW_STUDY_CAP.rangeSeeds);
+  const mode = b.mode === 'now' ? 'now' : 'steps';
+
+  // ── a villain the entered history is actually POSSIBLE for ───────────────
+  // The villain's own hand governs their draw legality (`legalActions` consults
+  // only `cfg.drawOptions(hand)`), so an invented villain usually cannot take the
+  // count a history records — measured at 136 of 200 sampled hands. Rejection-
+  // sample rather than fail with a message that blames the wrong thing.
+  let oppTries = 0;
+  if (!opp) {
+    const want = game.cfg.handSize || 5;
+    for (let k = 0; k < 400; k++) {
+      const used = new Set(hero);
+      const cand = drawStudyLine.remainingDeck([hero, []], seed + k * 7919)
+        .filter((c) => !used.has(c)).slice(0, want);
+      const hs = seat === 0 ? [hero, cand] : [cand, hero];
+      try {
+        drawStudyLine.validateHands(game, hs);
+        drawStudyWalk.buildLine(game, smap, hs, [], seat,
+          { seed: seed, hist: hist, future: drawStudyLine.remainingDeck(hs, seed) });
+        opp = cand; oppTries = k + 1; break;
+      } catch (e) { /* this villain cannot take the entered line; draw another */ }
+    }
+    if (!opp) {
+      return res.status(422).json({
+        error: 'no villain hand is consistent with that history',
+        detail: 'the villain\'s own cards govern their draw legality, so a history recording '
+          + 'a count their hand cannot take is unreachable. Pass `opp` explicitly, or check '
+          + 'the draw counts in the history.',
+      });
+    }
+  }
+
+  const hands = seat === 0 ? [hero, opp] : [opp, hero];
+  try { drawStudyLine.validateHands(game, hands); }
+  catch (e) { return res.status(400).json({ error: e.message }); }
+  const future = drawStudyLine.remainingDeck(hands, seed * 7 + 3);
+
+  // ── run it ───────────────────────────────────────────────────────────────
+  // `steps` uses buildLine ALONE. walk() has no "don't price" option -- checked
+  // rather than assumed: its options are N/evParticles/future/game/hands/
+  // heroActions/heroSeat/hist/onlyLast/rangeSeeds/repeats/seed/shuffles/
+  // skipPast/strategyMap -- so routing `steps` through walk would pay for pricing
+  // nobody asked for and make the instant mode seconds slow.
+  const common = {
+    game: game, strategyMap: smap, hands: hands, heroSeat: seat,
+    hist: hist, seed: seed, N: particles, shuffles: shuffles,
+    repeats: 8, evParticles: 60, rangeSeeds: rangeSeeds, future: future,
+  };
+  let built, openTable = null, openRefused = null;
+  try {
+    built = drawStudyWalk.buildLine(game, smap, hands, [], seat,
+      { seed: seed, hist: hist, future: future });
+  } catch (e) {
+    return res.status(400).json({ error: e.message, where: 'buildLine' });
+  }
+
+  if (mode === 'now' && !built.terminal) {
+    // 🛑 THE OPEN DECISION IS NOT IN THE RECORD, and `skipPast: true` alone
+    // returns NO table at all -- I wrote that first and a standalone check said
+    // "0 priced table(s)". `buildLine` breaks when the hero queue empties BEFORE
+    // recording the node it stopped at, so there is nothing for walk() to price.
+    // The CLI's fix is the one to mirror: OPEN that node with a placeholder legal
+    // action so it lands in the record, then price only the last table.
+    // `evTable` prices every action at a decision regardless of which was taken,
+    // so the placeholder cannot bias the answer.
+    let legal = [];
+    try { legal = game.legalActions(built.endState); } catch (e) { legal = []; }
+    // No non-hero branch: `buildLine` breaks only at `st.toAct === heroSeat` with
+    // an empty hero queue -- a villain node is always filled from sigma and walked
+    // past -- so a non-terminal endState is ALWAYS the hero's.
+    if (legal.length >= 2) {
+      let w2 = null;
+      try {
+        w2 = drawStudyWalk.walk(Object.assign({}, common,
+          { heroActions: [legal[0]], onlyLast: true }));
+      } catch (e) { openRefused = e.message; }
+      const last = w2 && w2.tables && w2.tables.length
+        ? w2.tables[w2.tables.length - 1] : null;
+      if (!last || !last.table || last.table.error) {
+        openRefused = openRefused
+          || (last && last.table && last.table.error) || 'no table came back';
+      } else if (last.table.street !== built.endState.street
+                 || last.table.phase !== built.endState.phase) {
+        // refuse rather than guess: a table from a different node would be a
+        // confident answer to a question nobody asked
+        openRefused = 'the table came back at street ' + last.table.street + ' '
+          + last.table.phase + ' but the open decision is street '
+          + built.endState.street + ' ' + built.endState.phase;
+      } else {
+        openTable = last.table;
+      }
+    } else {
+      openRefused = legal.length === 1
+        ? 'the open node has ONE legal action, so it is forced, not a decision'
+        : 'the open node has no legal actions';
+    }
+  }
+
+  const steps = (built.line || []).map((x, i) => ({
+    i: i, actor: x.actor, action: x.action, src: x.src,
+    guessed: x.src === 'sigma', you: x.actor === seat,
+  }));
+
+  let next = null;
+  if (!built.terminal && built.endState) {
+    let legal = [];
+    try { legal = game.legalActions(built.endState); } catch (e) { legal = []; }
+    next = {
+      seat: built.endState.toAct, you: built.endState.toAct === seat,
+      street: built.endState.street, phase: built.endState.phase, legal: legal,
+      // at a draw node the UI may also send an explicit `d:<cards>` — that is the
+      // whole point of the tool, and the engine applies it via keepForDiscard
+      acceptsExplicitDiscard: built.endState.phase === 'draw',
+      hand: (built.endState.hands || [])[built.endState.toAct] ? undefined : undefined,
+    };
+  }
+
+  let table = null;
+  if (openTable && openTable.rows) {
+    const t = openTable;
+    table = {
+      street: t.street, phase: t.phase,
+      rows: t.rows.slice(0, DRAW_STUDY_CAP.rows).map((r) => ({
+        action: r.action, ev: r.ev, evBB: r.ev / 4,
+        sd: r.sd, se: r.se, seIsLowerBound: !!r.seIsLowerBound,
+        diff: r.diff, tied: !!r.tied, offered: !!r.offered,
+      })),
+      nRows: t.rows.length, bandWidth: t.bandWidth,
+      wide: !!t.wide, offeredActions: t.offered || [],
+      bandRule: t.bandRule || null, seRule: t.seRule || null, gates: t.gates || null,
+      exactForward: t.exactForward === true,
+    };
+  }
+
+  const utility = built.terminal && built.endState ? game.utility(built.endState) : null;
+  const folded = built.endState && built.endState.folded !== null
+    && built.endState.folded !== undefined ? built.endState.folded : null;
+
+  const trust = {
+    level: table && table.exactForward ? 'exact-forward' : 'monte-carlo-uncertified',
+    note: table && table.exactForward
+      ? 'Street-3 betting is the one deal-free betting round, so the forward pass samples no '
+        + 'chance nodes. Certified against the exact post-last-draw oracle (worst |diff| '
+        + '8.9e-15) and deterministic across repeat counts.'
+      : 'MONTE-CARLO FORWARD: the continuation samples chance nodes. No draw phase has ever '
+        + 'been scored against an exact solve, so treat the LEVEL as uncertified. The tied '
+        + 'band remains a valid statement about SEPARATION.',
+    bandIsNotARanking: true,
+    seCoversRangeAxis: !!(table && table.seRule && table.seRule.lowerBound === false),
+    villainContinuation: 'blueprint, not equilibrium — right for grading play against this '
+      + 'bot, wrong to quote as GTO (measured gap up to 18.9 chips)',
+    deadCards: 'excluded from the EV evaluation; the blueprint POLICY cannot see them '
+      + '(bounded at ~0.46 chips and behaving like zero)',
+  };
+
+  const warnings = [];
+  if (parsed.nGuessed) {
+    warnings.push(parsed.nGuessed + ' entered token(s) carried a `*`, meaning the blueprint '
+      + 'guessed them on an earlier run. They are being replayed as if you entered them.');
+  }
+  if (built.histLeft > 0) {
+    warnings.push(built.histLeft + ' entered action(s) were NEVER USED — the hand ended first.');
+  }
+  if (built.forcedDuringHist > 0) {
+    warnings.push(built.forcedDuringHist + ' FORCED node(s) were auto-applied while your '
+      + 'history was read, which shifts every later token onto the other seat.');
+  }
+  if (table && table.gates && table.gates.ok === false) {
+    warnings.push('POSTERIOR GATE FAILED (ess ' + table.gates.essLast + ' vs floor '
+      + table.gates.essFloor + '): the opponent range collapsed, so the table is effectively '
+      + 'answering from a fresh random deal. Raise particles.');
+  }
+  if (oppTries > 1) {
+    warnings.push('the villain hand was rejection-sampled (' + oppTries + ' draws) to make '
+      + 'your history legal for them; pass `opp` to pin it.');
+  }
+  if (openRefused) {
+    warnings.push('the open decision was NOT priced: ' + openRefused);
+  }
+
+  res.json({
+    ok: true, game: gameId, seat: seat,
+    hero: hero.map(drawCardStr), opp: opp.map(drawCardStr),
+    histEntered: hist, nGuessedIn: parsed.nGuessed,
+    steps: steps, next: next,
+    terminal: !!built.terminal, utility: utility,
+    heroBB: Array.isArray(utility) ? utility[seat] / 4 : null,
+    folded: folded,
+    line: steps.map((s) => s.actor + ':' + s.action + (s.guessed ? '*' : '')).join(' '),
+    table: table, trust: trust, warnings: warnings,
+    budget: { mode: mode, shuffles: shuffles, particles: particles,
+      rangeSeeds: rangeSeeds, seed: seed, caps: DRAW_STUDY_CAP },
+  });
+});
+
 const play3 = require('./solver/multiway/play3');
 const grade3 = require('./solver/multiway/grade3');
 // The multiway grade (grade3.gradeHand3) is ~5.8s median / ~13.5s worst — heavy
