@@ -14,6 +14,23 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-11-01 — Deploys had failed silently since 10-26; the draw study's solver modules are optional now
+
+- **What happened:** on 2026-10-26 the Discord commit (`6e3a26d`) was staged with `git add server.js` while
+  the solver session's uncommitted draw-study routes were in that file, so it shipped
+  `require('./solver/draw-trainer/study/*')` and `./solver/lbr-draw`. Those files are in the local solver
+  checkout but not on GitHub (futuregame-solver has ~1,100 unpushed commits), and Render's build clones
+  the solver from GitHub: every deploy built, exited 1 at the require (`update_failed`), and production
+  stayed on the 10-24 build. Nothing said so: the deploy watchdog is not armed here.
+- **Fix (`5ae1c8d`, live):** those requires are optional (`requireSolverOptional` in server.js); without
+  them the two study routes answer 503 and the server logs four `[draw-study] … off` lines (as production
+  does now). The study comes back on Render once the solver repo is pushed.
+- **Also seen in production's boot log:** `DISCORD_BOT_TOKEN is not set`, so neither the 09:00 nor the noon
+  Sunday DM has ever gone out on Render; `MCP_TOKEN is not set` (the connector is waiting on the owner).
+- **Lesson:** stage files by hunk or check `git diff --stat` before `git add` of server.js; another session's
+  work can be sitting in it. `RENDER_API_KEY` IS in this box's shell environment (not in the pm2 config):
+  `api.render.com/v1/services/srv-d6b8ujfgi27c73d5v3p0/deploys` and `/v1/logs` answer with it.
+
 ## 2026-11-01 — A Didn't play day with no venue, in the bankroll tracker
 
 - **Owner:** "the option for a blank-venue did-not-play session card in the bankroll tracker." Log Result
