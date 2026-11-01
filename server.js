@@ -9848,11 +9848,27 @@ app.post('/api/solver/razz-trainer/step', authenticateToken, (req, res) => {
 // the payload reports what was actually used, not what was asked for, because a
 // silently downgraded request that still prints confident numbers is the failure
 // mode this whole tool has been correcting.
-const drawStudyLine = require('./solver/draw-trainer/study/line');
-const drawStudyEv = require('./solver/draw-trainer/study/ev');
-const drawStudyWalk = require('./solver/draw-trainer/study/walk');
-const drawLbr = require('./solver/lbr-draw');
+// OPTIONAL on purpose (2026-11-01). Render clones the solver from GitHub at build time (build.js), and
+// the draw study's modules can be ahead of that clone (they were: every deploy from 2026-10-26 to
+// 2026-11-01 built, then exited 1 at this require, and production stayed on the 10-24 build without a
+// word). A missing study module logs once and turns the two study routes into a 503; nothing else
+// about the server depends on them. Any other failure in these modules still throws, as before.
+function requireSolverOptional(p) {
+  try { return require(p); } catch (e) {
+    if (e && e.code === 'MODULE_NOT_FOUND' && String(e.message).includes(p.replace(/^\.\//, ''))) {
+      console.warn(`[draw-study] ${p} is not in this build's solver: the draw study routes are off`);
+      return null;
+    }
+    throw e;
+  }
+}
+const drawStudyLine = requireSolverOptional('./solver/draw-trainer/study/line');
+const drawStudyEv = requireSolverOptional('./solver/draw-trainer/study/ev');
+const drawStudyWalk = requireSolverOptional('./solver/draw-trainer/study/walk');
+const drawLbr = requireSolverOptional('./solver/lbr-draw');
 const { cardStr: drawCardStr } = require('./solver/engine/cards');
+const drawStudyReady = !!(drawStudyLine && drawStudyEv && drawStudyWalk && drawLbr);
+const drawStudyOff = (res) => res.status(503).json({ error: 'The draw study is not available on this build.' });
 
 const DRAW_STUDY_GAMES = { td27: 1, a5td: 1, badugi: 1 };
 const DRAW_STUDY_CAP = { shuffles: 16, particles: 400, rangeSeeds: 4, rows: 40 };
@@ -9870,6 +9886,7 @@ function drawStudyGame(gameId, res) {
 }
 
 app.post('/api/solver/draw-study', authenticateToken, (req, res) => {
+  if (!drawStudyReady) return drawStudyOff(res);
   const b = req.body || {};
   const gameId = String(b.game || 'td27');
   const game = drawStudyGame(gameId, res);
@@ -10160,6 +10177,7 @@ app.post('/api/solver/draw-study', authenticateToken, (req, res) => {
 // an equilibrium range -- `provenance` carries that and the client must not
 // relabel it.
 app.post('/api/solver/draw-study/exact', authenticateToken, (req, res) => {
+  if (!drawStudyReady) return drawStudyOff(res);
   const b = req.body || {};
   const gameId = String(b.game || 'td27');
   const game = drawStudyGame(gameId, res);
