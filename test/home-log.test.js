@@ -160,6 +160,24 @@ async function down(child) {
       assert.strictEqual(await flagOf(L, T[2]), 0);
     });
 
+    await test("a Didn't play day with no venue (owner, 2026-11-01): born not played with its note, one per day, edited through /played, deleted as a personal event", async () => {
+      const del = (p, h) => request('DELETE', p, { headers: h });
+      const made = await post('/api/personal-event', L, { date: '2026-10-30', type: "Didn't play", notes: '  Sat out, watched the final table  ' });
+      assert.strictEqual(made.status, 201, made.body);
+      const id = made.json.tournamentId;
+      const row = (await mine(L)).find((x) => x.id === id);
+      assert.deepStrictEqual([row.venue, row.event_name, row.not_played, row.not_played_note, row.notes], ['Personal', "Didn't play", 1, 'Sat out, watched the final table', '']);
+      assert.strictEqual((await post('/api/personal-event', L, { date: '2026-10-30', type: "Didn't play" })).status, 409, 'one per day');
+      assert.strictEqual((await post('/api/personal-event', L, { date: '2026-10-31', type: "Didn't play" })).status, 201, 'another day is fine');
+      const edited = await put(`/api/schedule/${id}/played`, L, { notPlayed: true, note: 'Sat out' });
+      assert.strictEqual(edited.status, 200);
+      assert.strictEqual((await mine(L)).find((x) => x.id === id).not_played_note, 'Sat out');
+      assert.strictEqual((await mine(O)).some((x) => x.id === id), false, 'nobody else sees it');
+      assert.strictEqual((await del(`/api/personal-event/${id}`, O)).status, 404, 'nobody else deletes it');
+      assert.strictEqual((await del(`/api/personal-event/${id}`, L)).status, 200);
+      assert.strictEqual((await mine(L)).some((x) => x.id === id), false);
+      assert.strictEqual((await post('/api/personal-event', L, { date: '2026-10-30', type: 'Lunch' })).status, 400, 'other types are still refused');
+    });
     await test('POST /api/tracking ifAbsent: logs when nothing is there, and says which row it made', async () => {
       const r = await post('/api/tracking', L, { tournamentId: T[0], numEntries: 2, cashed: false, cashAmount: 0, ifAbsent: true });
       assert.strictEqual(r.status, 201, r.body);

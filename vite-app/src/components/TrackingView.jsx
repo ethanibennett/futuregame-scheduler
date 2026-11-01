@@ -363,6 +363,8 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
 // details and Edit / Delete are behind the chevron. tracking-cards.css holds the little that differs.
 // The card parts (strip, name, chevron, month break) live in ResultCardParts.jsx, shared with Cash.
 
+import { DNP_TYPE, isDnpMarker } from '../utils/didnt-play.js';
+
 // ── Didn't play (owner, 2026-10-16) ──────────────────────────
 // Results' Didn't play: the event stays on the schedule, marked not played
 // (user_schedules.not_played, the home's To log action), with the note this card asks for. It is
@@ -397,20 +399,24 @@ function DidNotPlayForm({ event, initialNote = '', onSave, onCancel }) {
   );
 }
 
-function DidNotPlayRow({ event, onEdit, onPlayed, busy }) {
+function DidNotPlayRow({ event, onEdit, onPlayed, onDelete, busy }) {
   const [open, setOpen] = useState(false);
   const toggle = () => setOpen((v) => !v);
   const note = (event.not_played_note || '').trim();
+  // A no-venue marker (utils/didnt-play.js): a blank strip, and Delete where Played it would be.
+  const marker = isDnpMarker(event);
   return (
-    <div className={'cal-event-row tr-card tr-card-dnp' + (open ? ' open' : '')} data-not-played={event.id}>
-      <CardStrip venue={event.venue} property={event.property} open={open} onToggle={toggle} />
+    <div className={'cal-event-row tr-card tr-card-dnp' + (marker ? ' tr-card-dnp-marker' : '') + (open ? ' open' : '')} data-not-played={event.id}>
+      {marker
+        ? <div className="cal-venue-strip is-neutral" aria-hidden="true" onClick={toggle} style={{ background: 'var(--border-strong)', color: '#ffffff', cursor: 'pointer' }} />
+        : <CardStrip venue={event.venue} property={event.property} open={open} onToggle={toggle} />}
       <div className="cal-event-row-content">
         <div className="cal-event-bar" onClick={toggle} role="button" tabIndex={0} aria-expanded={open} onKeyDown={barKeys(toggle)}>
           <div className="cal-bar-row1">
             <span className="cal-event-time">{fmtDay(isoDay(event.date))}</span>
             <SwissLines name={event.event_name} time={fmtDay(isoDay(event.date))} />
             <span className="cal-event-money">
-              <span className="cal-event-gtd">Didn&rsquo;t play</span>
+              <span className="cal-event-gtd">{marker ? 'No venue' : 'Didn\u2019t play'}</span>
             </span>
           </div>
           <div className="cal-bar-row2">
@@ -424,8 +430,13 @@ function DidNotPlayRow({ event, onEdit, onPlayed, busy }) {
               {note && <p className="tr-seat tr-seat-2 tr-card-notes">{note}</p>}
               <div className="tracking-actions">
                 <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 5)'}} onClick={stop(onEdit)} disabled={busy}>Edit</button>
-                <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 8)'}} onClick={stop(onPlayed)} disabled={busy}
-                  aria-label={`Played ${event.event_name}: ask for its result again`}>Played it</button>
+                {marker ? (
+                  <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 8)'}} onClick={stop(onDelete)} disabled={busy}
+                    aria-label="Delete this Didn\u2019t play day">Delete</button>
+                ) : (
+                  <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 8)'}} onClick={stop(onPlayed)} disabled={busy}
+                    aria-label={`Played ${event.event_name}: ask for its result again`}>Played it</button>
+                )}
               </div>
             </div>
           </div>
@@ -435,8 +446,39 @@ function DidNotPlayRow({ event, onEdit, onPlayed, busy }) {
   );
 }
 
+// A Didn't play day with no venue (owner, 2026-11-01): the day and a note, nothing else. Saved as a
+// Personal event already marked not played (POST /api/personal-event, type "Didn't play").
+function DidNotPlayDayForm({ onSave, onCancel }) {
+  const [date, setDate] = useState(() => getToday());
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const field = {padding:'var(--space-ml) var(--space-lg)',border:'var(--bw-1) solid var(--border)',borderRadius:'var(--radius-sm)',
+    background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.325)',width:'100%'};
+  return (
+    <form className="tracking-card" style={{marginBottom:'calc(var(--subrow) * 2)'}}
+      onSubmit={async (e) => { e.preventDefault(); if (busy || !date) return; setBusy(true); await onSave(date, note); setBusy(false); }}>
+      <div style={{fontSize:'calc(var(--gu) * 1.325)',fontWeight:700,color:'var(--text)',lineHeight:'calc(var(--subrow) * 3)',marginBottom:'var(--subrow)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+        Didn&rsquo;t play
+      </div>
+      <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
+        <label htmlFor="dnp-day-date">Day</label>
+        <input id="dnp-day-date" type="date" value={date} required onChange={(e) => setDate(e.target.value)} style={field} />
+      </div>
+      <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
+        <label htmlFor="dnp-day-note">Notes (optional)</label>
+        <input id="dnp-day-note" type="text" value={note} maxLength={1000} onChange={(e) => setNote(e.target.value)}
+          placeholder="Why you sat out, what you did instead" style={field} />
+      </div>
+      <div style={{display:'flex',gap:'var(--gu)'}}>
+        <button type="submit" className="btn btn-primary btn-sm" style={{width:'calc(var(--gu) * 10)',padding:0}} disabled={busy || !date}>Save</button>
+        <button type="button" className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 6)',padding:0}} onClick={onCancel}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
 // ── Tracking View (main export) ─────────────────────────────
-export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone, onLog, deepLink = null, onSetPlayed = null }) {
+export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone, onLog, deepLink = null, onSetPlayed = null, onAddDnp = null, onDeleteDnp = null }) {
   const toast = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -444,6 +486,8 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   // Didn't play (owner, 2026-10-16): the form open for an event ({ event, note }), and a write in flight.
   const [dnpForm, setDnpForm] = useState(null);
   const [dnpBusy, setDnpBusy] = useState(false);
+  // What Log Result opens: a result, or a Didn't play day with no venue (owner, 2026-11-01).
+  const [addKind, setAddKind] = useState('result');
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showWrapUp, setShowWrapUp] = useState(false);
   const [showTaxReport, setShowTaxReport] = useState(false);
@@ -552,6 +596,17 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
     if (ok) setDnpForm(null);
     else toast?.error('Could not save it');
   };
+  const saveDnpDay = async (date, note) => {
+    if (!onAddDnp) return;
+    const ok = await onAddDnp(date, note);
+    if (ok) { setShowAddForm(false); setAddKind('result'); }
+    else toast?.error('Could not save it (one Didn\u2019t play per day)');
+  };
+  const deleteDnpDay = async (event) => {
+    if (!onDeleteDnp || dnpBusy) return;
+    setDnpBusy(true);
+    try { await onDeleteDnp(event.id); } finally { setDnpBusy(false); }
+  };
   const markPlayed = async (event) => {
     if (!onSetPlayed || dnpBusy) return;
     setDnpBusy(true);
@@ -562,7 +617,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   // The not-played events, newest first, each placed among the results before the first older one
   // (the results keep the order they come in).
   const notPlayedEvents = useMemo(() => (mySchedule || [])
-    .filter((e) => Number(e.not_played) && e.venue !== 'Personal' && !Number(e.is_restart))
+    .filter((e) => Number(e.not_played) && (e.venue !== 'Personal' || isDnpMarker(e)) && !Number(e.is_restart))
     .sort((a, b) => (isoDay(b.date) || '').localeCompare(isoDay(a.date) || '')), [mySchedule]);
   const listItems = useMemo(() => {
     const out = [];
@@ -918,7 +973,22 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       )}
 
       {showAddForm && (
-        <TrackingEntryForm
+        <>
+          {/* Result, or a Didn't play day with no venue (owner, 2026-11-01): the Schedule's kind toggles. */}
+          {onAddDnp && (
+            <div className="kind-toggles tr-add-kind">
+              <button type="button" className={'kind-toggle' + (addKind === 'result' ? ' active' : '')} aria-pressed={addKind === 'result'} onClick={() => setAddKind('result')}>
+                <span className="kind-toggle-label">Result</span>
+              </button>
+              <button type="button" className={'kind-toggle' + (addKind === 'dnp' ? ' active' : '')} aria-pressed={addKind === 'dnp'} onClick={() => setAddKind('dnp')}>
+                <span className="kind-toggle-label">Didn&rsquo;t play</span>
+              </button>
+            </div>
+          )}
+          {addKind === 'dnp' && onAddDnp ? (
+            <DidNotPlayDayForm onSave={saveDnpDay} onCancel={() => { setShowAddForm(false); setAddKind('result'); }} />
+          ) : (
+<TrackingEntryForm
           previewToken={isAdmin ? token : null}
           tournaments={tournaments}
           mySchedule={mySchedule}
@@ -928,6 +998,8 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
           onSubmit={(data) => { onAdd(data); setShowAddForm(false); }}
           onCancel={() => setShowAddForm(false)}
         />
+          )}
+        </>
       )}
       </div>
 
@@ -951,7 +1023,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
                   ) : (
                     <DidNotPlayRow event={dnp} busy={dnpBusy}
                       onEdit={() => setDnpForm({ event: dnp, note: dnp.not_played_note || '', fromList: true })}
-                      onPlayed={() => markPlayed(dnp)} />
+                      onPlayed={() => markPlayed(dnp)} onDelete={() => deleteDnpDay(dnp)} />
                   )}
                 </div>
               ) : (

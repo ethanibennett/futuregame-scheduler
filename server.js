@@ -5024,7 +5024,11 @@ app.delete('/api/schedule/:tournamentId/condition', authenticateToken, async (re
 app.post('/api/personal-event', authenticateToken, requireRegistered, async (req, res) => {
   try {
     const { date, type, notes } = req.body;
-    if (!['Travel Day', 'Day Off'].includes(type)) {
+    // "Didn't play" (owner, 2026-11-01): a no-venue Didn't play card for the Results list, kept as a
+    // Personal event already marked not played, its note in not_played_note (the card's Edit path,
+    // PUT /api/schedule/:id/played). vite-app/src/utils/didnt-play.js keeps it off every other screen.
+    const isDnp = type === "Didn't play";
+    if (!['Travel Day', 'Day Off'].includes(type) && !isDnp) {
       return res.status(400).json({ error: 'Invalid event type' });
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -5055,7 +5059,7 @@ app.post('/api/personal-event', authenticateToken, requireRegistered, async (req
     db.run(
       `INSERT INTO tournaments (stable_id, event_number, event_name, date, time, buyin, game_variant, venue, notes, uploaded_by)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [personalSid, '', type, humanDate, '12:00 AM', 0, 'Personal', 'Personal', notes || '', req.user.id]
+      [personalSid, '', type, humanDate, '12:00 AM', 0, 'Personal', 'Personal', isDnp ? '' : (notes || ''), req.user.id]
     );
 
     const idStmt = db.prepare('SELECT last_insert_rowid() as id');
@@ -5063,9 +5067,15 @@ app.post('/api/personal-event', authenticateToken, requireRegistered, async (req
     const { id: tournamentId } = idStmt.getAsObject();
     idStmt.free();
 
-    // Add to user's schedule
-    db.run('INSERT INTO user_schedules (user_id, tournament_id) VALUES (?, ?)',
-      [req.user.id, tournamentId]);
+    // Add to user's schedule (a Didn't play marker is born not played, with its note).
+    if (isDnp) {
+      const note = typeof notes === 'string' ? (notes.trim().slice(0, 1000) || null) : null;
+      db.run('INSERT INTO user_schedules (user_id, tournament_id, not_played, not_played_note) VALUES (?, ?, 1, ?)',
+        [req.user.id, tournamentId, note]);
+    } else {
+      db.run('INSERT INTO user_schedules (user_id, tournament_id) VALUES (?, ?)',
+        [req.user.id, tournamentId]);
+    }
 
     await saveDatabase();
     res.status(201).json({ message: `${type} created`, tournamentId });

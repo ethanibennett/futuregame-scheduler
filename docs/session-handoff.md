@@ -14,6 +14,17 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-11-01 — A Didn't play day with no venue, in the bankroll tracker
+
+- **Owner:** "the option for a blank-venue did-not-play session card in the bankroll tracker." Log Result
+  now opens with a Result | Didn't play switch (the Schedule's kind toggles); Didn't play asks for the day
+  and a note and saves a Personal event named "Didn't play", born not played with its note
+  (`POST /api/personal-event`, type "Didn't play"; `utils/didnt-play.js`). The card sits in the results
+  list by date with a blank strip, "No venue" where the result goes, the note behind the chevron, Edit
+  (the note, the existing /played path) and Delete (the personal-event delete). Every other screen
+  (Schedule, Calendar, home, staking, exports) gets `scheduleShown`, the schedule without these markers.
+  `test:home-log` covers the route; one per day (409).
+
 ## 2026-10-25 — Sunday noon Discord reminder to both parties; "Sent" on the backer page
 
 - **Shipped:** `runNoonReminder` in `lib/discord-settle.js`, scheduled Sunday 12:00 ET beside the 09:00

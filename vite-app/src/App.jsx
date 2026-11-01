@@ -8,6 +8,7 @@ import { API_URL } from './utils/api.js';
 import { parseDeepLink } from './utils/deep-links.js';
 import { resetPath } from './utils/reset-results.js';
 import { haptic, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones, registerVenueCoords, getDebugNow, setDebugNow } from './utils/utils.js';
+import { DNP_TYPE, withoutDnpMarkers } from './utils/didnt-play.js';
 import { decodeHand } from './utils/hand-shorthand.js';
 import { detectMilestones } from './utils/milestones.js';
 import { moveDetailBlock, settleDetailBlock, detailBlockMoving, resizeDetailBlock } from './utils/detail-motion.js';
@@ -662,6 +663,9 @@ function App() {
     } catch (e) { console.error('Fetch tournaments:', e); toast.error('Failed to load tournaments'); }
   };
 
+  // The schedule every screen but Results shows: the no-venue Didn't play markers stay off the
+  // Schedule, the Calendar, the home, staking and the exports (utils/didnt-play.js).
+  const scheduleShown = useMemo(() => withoutDnpMarkers(mySchedule), [mySchedule]);
   const fetchMySchedule = async () => {
     try {
       const res = await guardedFetch(`${API_URL}/my-schedule`, {
@@ -1241,10 +1245,11 @@ function App() {
       if (!res.ok) {
         const data = await res.json();
         setError(data.error || 'Failed to create personal event');
-        return;
+        return false;
       }
       fetchMySchedule();
-    } catch { setError('Failed to create personal event'); }
+      return true;
+    } catch { setError('Failed to create personal event'); return false; }
   }, [token]);
 
   const updatePersonalEvent = useCallback(async (tournamentId, notes) => {
@@ -1987,7 +1992,7 @@ function App() {
                 demoStates={isAdmin && demoStates}
                 demoCard={isAdmin && /[?&]democard(=|&|$)/.test(window.location.search)}
                 onOpenInSchedule={(id) => { setScheduleFocusId(id); setCurrentView('schedule'); }}
-                mySchedule={mySchedule}
+                mySchedule={scheduleShown}
                 myActiveUpdates={myActiveUpdates}
                 trackingData={trackingData}
                 homeRight={isDesktop ? dkHomeRight : null}
@@ -2030,7 +2035,7 @@ function App() {
               <TournamentsView
                 key={debugTimeKey}
                 tournaments={tournaments}
-                mySchedule={mySchedule}
+                mySchedule={scheduleShown}
                 onToggle={toggleTournament}
                 gameVariants={gameVariants}
                 venues={venues}
@@ -2060,7 +2065,7 @@ function App() {
                 onNavigate={(v) => setCurrentView(v)}
                 focusTournamentId={scheduleFocusId}
                 onFocusConsumed={clearScheduleFocus}
-                mySchedule={mySchedule}
+                mySchedule={scheduleShown}
                 onToggle={toggleTournament}
                 shareBuddies={shareBuddies}
                 pendingIncoming={pendingIncoming}
@@ -2091,7 +2096,7 @@ function App() {
                 key={debugTimeKey}
                 token={token}
                 allTournaments={tournaments}
-                mySchedule={mySchedule}
+                mySchedule={scheduleShown}
                 onToggle={toggleTournament}
                 gameVariants={gameVariants}
                 venues={venues}
@@ -2127,6 +2132,8 @@ function App() {
                 onIntentDone={clearResultsIntent}
                 onLog={logIntoResults}
                 onSetPlayed={setNotPlayed}
+                onAddDnp={(date, note) => addPersonalEvent(date, DNP_TYPE, note)}
+                onDeleteDnp={toggleTournament}
               />
             )}
             </div>
@@ -2224,7 +2231,7 @@ function App() {
                   onSelectBatch={openBatch}
                   onShowInSchedule={applyFindLink}
                   tournaments={tournaments}
-                  mySchedule={mySchedule}
+                  mySchedule={scheduleShown}
                   onToggle={toggleTournament}
                   isAdmin={isAdmin}
                   onAdminEdit={canEditEvents ? adminEditTournament : undefined}
@@ -2243,7 +2250,7 @@ function App() {
             <div className={'tab-panel' + (currentView === 'staking' ? ' tab-active' : '')} data-tab="staking" style={{display: currentView === 'staking' ? undefined : 'none', height: currentView === 'staking' ? '100%' : undefined}}>
             {visitedTabs.has('staking') && (
               isAdmin
-                ? <Suspense fallback={<LazyFallback />}><StakingView token={token} tournaments={tournaments} mySchedule={mySchedule} deepLink={isAdmin ? deepLink : null} /></Suspense>
+                ? <Suspense fallback={<LazyFallback />}><StakingView token={token} tournaments={tournaments} mySchedule={scheduleShown} deepLink={isAdmin ? deepLink : null} /></Suspense>
                 : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'calc(var(--subrow) * 7.5) calc(var(--subrow) * 2.5)',textAlign:'center'}}>
                     <h2 style={{fontFamily:"'Univers Condensed', 'Univers', sans-serif",fontSize:'calc(var(--gu) * 1.914)',fontWeight:700,color:'var(--text)',margin:'0 0 calc(var(--subrow) * 1)'}}>Staking</h2>
                     <p style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.325)',margin:0}}>Coming Soon</p>
@@ -2354,7 +2361,7 @@ function App() {
       selectedId={dkShownId}
       onSelect={selectEvent}
       tournaments={tournaments}
-      mySchedule={mySchedule}
+      mySchedule={scheduleShown}
       onToggle={toggleTournament}
       onSetCondition={setCondition}
       onRemoveCondition={removeCondition}
@@ -2373,7 +2380,7 @@ function App() {
     <ScheduleView
       key={debugTimeKey}
       onNavigate={(v) => setCurrentView(v)}
-      mySchedule={mySchedule}
+      mySchedule={scheduleShown}
       onToggle={toggleTournament}
       shareBuddies={shareBuddies}
       pendingIncoming={pendingIncoming}
@@ -2440,7 +2447,7 @@ function App() {
             {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}
           </button>
           <LiveUpdatePanel
-            mySchedule={mySchedule}
+            mySchedule={scheduleShown}
             myActiveUpdates={myActiveUpdates}
             onPost={postLiveUpdate}
             onAddTracking={addTracking}
