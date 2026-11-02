@@ -31,6 +31,7 @@
     "test:feed-prune": "node test/feed-prune.test.js",
     "test:bankroll-import": "node test/bankroll-ledger.test.js && cd vite-app && node --test src/utils/__tests__/bankroll-csv.test.mjs",
     "test:mcp": "node test/mcp.test.js",
+    "test:session-bridge": "node test/session-bridge.test.js",
     "test:sse": "node test/sse-ticket.test.js",
     "test:account": "node test/account-delete.test.js",
     "test:analytics": "node test/analytics.test.js",

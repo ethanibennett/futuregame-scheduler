@@ -14,6 +14,21 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-11-02 — The session bridge: Claude chat ↔ a Claude Code session on the PC
+
+- **Owner:** "build the MCP connector so that I can talk to this code session with Claude chat." Built as a relay:
+  four connector tools on futurega.me, table `session_bridge`, and a Claude Code channel on the PC
+  (`scripts/session-bridge-channel.mjs`) that polls it, pushes messages into the session and returns replies and
+  tool approvals. `docs/session-bridge.md`; `test:session-bridge` (7, the channel driven over real stdio MCP).
+- **Facts that shaped it** (Claude Code docs, 2026-11-02): regular claude.ai chat cannot reach a session (Remote
+  Control serves claude.ai/code and the mobile apps); channels are a CLI-only research preview, so the desktop app's
+  sessions can't be bridged; a custom channel needs the development-channels flag and a one-time confirm.
+- **Not done here, on purpose:** a launcher script that runs Claude Code with the development-channels flag was
+  refused by the session's safety check, so the owner runs that command himself (doc step 4).
+- **Waiting on the owner:** `BRIDGE_TOKEN` on Render and in `.session-bridge.env`, `MCP_TOKEN` + the claude.ai
+  connector (docs/mcp.md), then starting the bridged session.
+- The heads-up cap question (every street or the last only) is still open; the 2-7 TD report was an all-in.
+
 ## 2026-11-01 — Cash sessions in the CSV import; walkthroughs for the four biggest trackers
 
 - **Owner:** extend the Poker Bankroll Tracker import to cash games, and "simple walkthroughs for the 3-4

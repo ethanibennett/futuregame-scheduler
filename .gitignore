@@ -167,3 +167,6 @@ hh-samples/
 
 # Generated from vite-app/index.html before each build (vite-app/scripts/make-live-html.mjs)
 vite-app/live.html
+
+# The session bridge's token on this PC (docs/session-bridge.md)
+.session-bridge.env

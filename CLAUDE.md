@@ -383,6 +383,13 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   `find_events`, `my_schedule`, `add_to_schedule`, `remove_from_schedule`, `live_clock`, `bankroll_summary`,
   `recent_results`, `backers` (links and tokens stripped). Money is never written here. `MCP_TOKEN` goes on
   the futurega.me Render service only; this box stays OFF. `npm run test:mcp`.
+- **The session bridge** (owner, 2026-11-02; `lib/session-bridge.js`, `docs/session-bridge.md`): talk to a Claude
+  Code session on this PC from claude.ai chat. The connector's `session_send` / `session_read` / `session_approve` /
+  `session_status` queue through table `session_bridge` on futurega.me; `scripts/session-bridge-channel.mjs`, a
+  Claude Code **channel** (research preview, CLI only, loaded with the development-channels flag, confirmed once at
+  start), polls `/api/session-bridge/*` with `BRIDGE_TOKEN` (Render + the gitignored `.session-bridge.env`; unset = 404)
+  and pushes messages into the session; replies and tool approvals come back the same way. The owner starts the
+  bridged session in tmux himself (doc step 4). `npm run test:session-bridge`.
 - **Parser eval from Admin** (`lib/admin-eval.js`): `POST/GET /api/admin/quick-add-eval` (app admins) runs
   `test/quick-add/eval.js` in the background with the server's own ANTHROPIC_API_KEY, one run at a time;
   the Admin screen's "Hand parser, live eval" section starts it and shows the report.

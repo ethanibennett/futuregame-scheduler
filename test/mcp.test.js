@@ -69,7 +69,8 @@ const TOKEN = 'McpTestToken0123456789';
       const client = await connect(TOKEN);
       const { tools } = await client.listTools();
       assert.deepStrictEqual(tools.map((t) => t.name).sort(),
-        ['add_to_schedule', 'backers', 'bankroll_summary', 'find_events', 'live_clock', 'my_schedule', 'recent_results', 'remove_from_schedule']);
+        ['add_to_schedule', 'backers', 'bankroll_summary', 'find_events', 'live_clock', 'my_schedule', 'recent_results', 'remove_from_schedule',
+          'session_approve', 'session_read', 'session_send', 'session_status']);
     });
 
     await test('find_events: words match name, series and room; online rooms only when asked', async () => {

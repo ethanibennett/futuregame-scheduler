@@ -15140,9 +15140,12 @@ initDatabase().then(() => {
   // The MCP endpoint for claude.ai's custom connector (lib/mcp, docs/mcp.md): /mcp/<MCP_TOKEN>, acting
   // as the owner through the app's own API. OFF without the token.
   require('./lib/mcp').mountMcp(app, {
-    getDb: () => db, getOwnerId: () => HAM_OWNER_ID, port: PORT,
+    getDb: () => db, getOwnerId: () => HAM_OWNER_ID, port: PORT, saveDatabase,
     signToken: (payload, opts) => jwt.sign(payload, JWT_SECRET, opts),
   });
+  // The session bridge's PC side (lib/session-bridge.js; docs/session-bridge.md): OFF without BRIDGE_TOKEN.
+  try { require('./lib/session-bridge').migrate(db); } catch (e) { console.error('[session-bridge] table:', e.message); }
+  require('./lib/session-bridge').mountRoutes(app, { getDb: () => db, saveDatabase });
   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
     // Weekly backer email digest — Sunday 18:00 ET.
