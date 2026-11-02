@@ -14,6 +14,23 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-11-01 — Cash sessions in the CSV import; walkthroughs for the four biggest trackers
+
+- **Owner:** extend the Poker Bankroll Tracker import to cash games, and "simple walkthroughs for the 3-4
+  biggest bankroll trackers". Done in Bankroll › Import › Import CSV (admins, like the rest of the import).
+- **Cash sessions:** `POST /api/bankrolls/import` takes `type: 'cash'` rows into `cash_sessions` (ended,
+  their own currency, deduped by start/room/stakes/buy-in/cash-out). PBT's cash rows map so the app's net
+  is PBT's netprofit and its result PBT's grossprofit, checked on the vendor's sample
+  (`buy-in = buyin + rebuycosts`, `cash out = cashout + expensesfromstack`, `tips = expensesfromstack`); a
+  row whose net would differ is flagged in the preview. Length = playingminutes. PBT tags become session tags.
+- **Column matching** gained "Rows are": tournament results, cash sessions, both (a type column says
+  which), deposits. Cash reads a start with its time, an end or hours, room, stakes, game, buy-in, cash out, tips.
+- **Walkthroughs** (`utils/import-guides.js`): PBT, Pokerbase, Poker Analytics, Poker Income, each step
+  sourced (the file names its sources). Only PBT publishes its columns, so only it is recognised on sight.
+- Tests: `npm run test:bankroll-import` (the server import incl. cash, 27; the parser on the vendor sample, 7).
+  Guards: `bankroll-import` clean at both widths, no clipping. Pre-existing, not from this: desktop
+  `check:controls` flags the Bankroll header's "MTT" toggle label 0.8px off centre (since 2026-10-19).
+
 ## 2026-11-01 — Deploys had failed silently since 10-26; the draw study's solver modules are optional now
 
 - **What happened:** on 2026-10-26 the Discord commit (`6e3a26d`) was staged with `git add server.js` while

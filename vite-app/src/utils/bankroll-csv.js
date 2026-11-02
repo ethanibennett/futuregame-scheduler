@@ -4,6 +4,8 @@
 // /api/bankrolls/import takes (lib/bankroll-import.js):
 //   { type: 'tournament', date, name, buyin (per entry), entries, cash, place, field, game, currency, note }
 //   { type: 'deposit' | 'withdrawal', date, amount (> 0), currency, note }
+//   { type: 'cash', date (the local day it started), startedAt, endedAt (ISO instants), room, game,
+//     stakes, buyin (TOTAL put on the table), rebuys, cashout, tips, expenses, currency, note }
 //
 // PRESETS — only formats whose columns are published by their maker:
 //   Poker Bankroll Tracker (PBT) export / import file
@@ -31,8 +33,15 @@
 //     cost, so the cost always survives exactly as buyin x num_entries.
 //   - cash = cashout + bounties: both apps list bounty winnings in their own column beside the
 //     cashout. PBT's bountycosts is not added to the cost (its relation to buyin is not documented).
-//   - cash-game rows are SKIPPED with a reason (cash sessions belong to the cash-sessions ledger
-//     source), as are PBT's Costs / Casino Games / Jackpot rows.
+//   - cash-game rows become CASH SESSIONS (owner, 2026-11-01): the cash-sessions ledger source, as if
+//     logged in the app. PBT's own arithmetic, checked against its sample (netprofit and grossprofit):
+//       net   = cashout - (buyin + rebuycosts)          (cashout is what left the table)
+//       gross = net + expensesfromstack                  (tips and the like, paid from the stack)
+//     so a session is buy-in = buyin + rebuycosts, cash out = cashout + expensesfromstack, tips =
+//     expensesfromstack, expenses = expenses: the app's net (cash out - buy-in - tips - expenses) is
+//     PBT's net, and its result (cash out - buy-in) PBT's gross. The length is playingminutes (breaks
+//     out) when PBT gives it, else end - start. Times carry no zone: they are read in the browser's.
+//     PBT's Costs / Casino Games / Jackpot rows are still skipped.
 //   - a PBT "Deposit/Payout" row moves money by cashout - buyin: positive is a deposit into the
 //     roll, negative a withdrawal.
 
@@ -113,6 +122,82 @@ const n0 = (v) => { const n = parseNumber(v); return Number.isFinite(n) ? n : 0;
 const int0 = (v) => { const n = parseNumber(v); return Number.isFinite(n) && n > 0 ? Math.round(n) : 0; };
 const intOrNull = (v) => { const n = parseNumber(v); return Number.isFinite(n) && n > 0 ? Math.round(n) : null; };
 
+// ── Cash sessions ─────────────────────────────────────────────────────────────────────────
+/** 'YYYY-MM-DD HH:MM[:SS]' (or T), 'YYYY/MM/DD …', a date alone (noon) → { at: Date, timed } in the
+ *  browser's zone, or null. N/N/YYYY dates follow dayFirst as parseDate does. */
+export function parseLocalDateTime(raw, { dayFirst = false } = {}) {
+  const s = String(raw || '').trim();
+  const day = parseDate(s, { dayFirst });
+  if (!day) return null;
+  const t = /(?:[ T])(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?\s*$/i.exec(s);
+  const [y, m, d] = day.split('-').map(Number);
+  if (!t) return { at: new Date(y, m - 1, d, 12, 0, 0), timed: false };
+  let h = Number(t[1]);
+  const ap = (t[4] || '').toLowerCase();
+  if (ap === 'pm' && h < 12) h += 12;
+  if (ap === 'am' && h === 12) h = 0;
+  if (h > 23 || Number(t[2]) > 59) return null;
+  return { at: new Date(y, m - 1, d, h, Number(t[2]), Number(t[3] || 0)), timed: true };
+}
+const pad2 = (n) => String(n).padStart(2, '0');
+const localDay = (dt) => `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+const blind = (v) => { const n = parseNumber(v); return Number.isFinite(n) && n > 0 ? String(Math.round(n * 100) / 100) : null; };
+/** Blinds → "1/2", "0.5/1", "1/2/5" (a third blind or straddle when given), else ''. */
+export function stakesFrom(sb, bb, third) {
+  const a = blind(sb), b = blind(bb), c = blind(third);
+  if (!a || !b) return '';
+  return c ? `${a}/${b}/${c}` : `${a}/${b}`;
+}
+/** A game and its limit as the app names cash games (NLH, PLO, PLO8, LHE…), else both as written. */
+export function gameLabel(game, limit) {
+  const g = norm(game).replace(/[^a-z0-9/ ]/g, ''), l = norm(limit);
+  const lim = /no ?limit|^nl$/.test(l) ? 'NL' : /pot ?limit|^pl$/.test(l) ? 'PL' : /fixed|^limit$|^fl$/.test(l) ? 'L' : '';
+  const hold = /hold ?em|holdem|nlh|nlhe/.test(g);
+  const omaha = /omaha|plo/.test(g);
+  const hilo = /hi ?\/? ?lo|8 ?or ?better|o8|\/8/.test(g);
+  const five = /5 ?card|plo5|five/.test(g), six = /6 ?card|plo6|six/.test(g);
+  if (hold) return lim === 'L' ? 'LHE' : lim === 'PL' ? 'PLH' : 'NLH';
+  if (omaha) {
+    if (lim === 'L') return hilo ? 'O8' : 'LO';
+    return (five ? 'PLO5' : six ? 'PLO6' : 'PLO') + (hilo ? (five || six ? ' 8/b' : '8') : '');
+  }
+  if (/stud/.test(g)) return hilo ? 'Stud 8' : 'Stud Hi';
+  if (/razz/.test(g)) return 'Razz';
+  if (/big ?o/.test(g)) return 'Big O';
+  if (/mix|horse|dealer/.test(g)) return 'Mixed';
+  return [limit, game].map((x) => String(x || '').trim()).filter(Boolean).join(' ').slice(0, 24) || 'NLH';
+}
+/**
+ * One cash session. start / end are raw strings; minutes (playing time) wins over end when given; hours
+ * (a number) when there is no end. Amounts are in the file's currency. → { row } | { error }.
+ */
+function cashRow({ start, end, minutes, hours, room, game, stakes, buyin, rebuys, cashout, tips, expenses, currency, note, tags, dayFirst = false }) {
+  const st = parseLocalDateTime(start, { dayFirst });
+  if (!st) return { error: `Unreadable start "${String(start || '').trim()}"` };
+  let ms = null;
+  if (Number.isFinite(minutes) && minutes > 0) ms = minutes * 60000;
+  else if (end) {
+    const en = parseLocalDateTime(end, { dayFirst });
+    if (!en || !en.timed) return { error: `Unreadable end "${String(end).trim()}"` };
+    ms = en.at - st.at;
+  } else if (Number.isFinite(hours) && hours > 0) ms = hours * 3600000;
+  if (ms == null) return { error: 'No end time or length' };
+  if (ms <= 0) return { error: 'Ends before it starts' };
+  if (ms > 72 * 3600000) return { error: 'Longer than 72 hours' };
+  if (!Number.isFinite(buyin) || buyin < 0) return { error: 'No buy-in' };
+  if (!Number.isFinite(cashout) || cashout < 0) return { error: 'No cash out' };
+  return {
+    row: {
+      type: 'cash', date: localDay(st.at), startedAt: st.at.toISOString(), endedAt: new Date(st.at.getTime() + ms).toISOString(),
+      room: String(room || '').trim().slice(0, 60), game: game || 'NLH', stakes: String(stakes || '').trim().slice(0, 20),
+      buyin, rebuys: Number.isInteger(rebuys) && rebuys > 0 ? rebuys : 0, cashout,
+      tips: Number.isFinite(tips) && tips > 0 ? tips : 0, expenses: Number.isFinite(expenses) && expenses > 0 ? expenses : 0,
+      currency: (currency || 'USD').toUpperCase(), note: String(note || '').trim().slice(0, 500),
+      tags: String(tags || '').split(/[,;]/).map((t) => t.trim()).filter(Boolean).slice(0, 10),
+    },
+  };
+}
+
 function tournamentRow({ date, name, buyin, rebuyCost, addonCost, rebuys, cashout, bounties, place, field, game, currency, note }) {
   if (!date) return { error: 'No readable date' };
   let entries = 1 + rebuys;
@@ -163,7 +248,23 @@ export const PRESETS = [
         if (!net) return { skip: 'Deposit/Payout of 0' };
         return { row: { type: net > 0 ? 'deposit' : 'withdrawal', date, amount: Math.abs(net), currency: (r.currency || 'USD').toUpperCase(), note: r.sessionnote || 'Poker Bankroll Tracker' } };
       }
-      if (variant === 'cash game') return { skip: 'Cash game session (cash sessions are not imported here)' };
+      if (variant === 'cash game') {
+        const fromStack = n0(r.expensesfromstack);
+        const res = cashRow({
+          start: r.starttime, end: r.endtime, minutes: parseNumber(r.playingminutes),
+          room: r.location, game: gameLabel(r.game, r.limit), stakes: stakesFrom(r.smallblind, r.bigblind, r['3rdblind']),
+          buyin: n0(r.buyin) + n0(r.rebuycosts), rebuys: int0(r.rebuys), cashout: n0(r.cashout) + fromStack,
+          tips: fromStack, expenses: n0(r.expenses), currency: r.currency,
+          note: [r.sessionnote, r.notes].filter(Boolean).join(' · '), tags: r.tags,
+        });
+        // PBT states its own net: say so when ours (cash out - buy-in - tips - expenses) would differ.
+        const pbtNet = parseNumber(r.netprofit);
+        if (res.row && Number.isFinite(pbtNet)) {
+          const ours = res.row.cashout - res.row.buyin - res.row.tips - res.row.expenses;
+          if (Math.abs(ours - pbtNet) > 1) res.warn = `PBT's net is ${pbtNet}, this reads ${Math.round(ours * 100) / 100}`;
+        }
+        return res;
+      }
       return { skip: `${r.variant || 'Unknown'} row (only tournaments and deposits/payouts import)` };
     },
   },
@@ -222,9 +323,35 @@ export const FIELDS = [
   { key: 'field', label: 'Field size', synonyms: ['field', 'field size', 'entrants', 'players', 'total entries'] },
   { key: 'amount', label: 'Amount (+ in, − out)', synonyms: ['amount', 'net', 'value', 'deposit', 'profit'] },
   { key: 'currency', label: 'Currency', synonyms: ['currency', 'currency code', 'ccy'] },
+  // Cash sessions (owner, 2026-11-01), and a type column for a file holding both kinds.
+  { key: 'kind', label: 'Type (cash or tournament)', synonyms: ['type', 'session type', 'kind', 'category', 'format'] },
+  { key: 'end', label: 'End (date and time)', synonyms: ['end', 'endtime', 'end time', 'end date', 'finished', 'stop'] },
+  { key: 'hours', label: 'Hours played', synonyms: ['hours', 'duration', 'length', 'hours played', 'time played'] },
+  { key: 'room', label: 'Room / location', synonyms: ['location', 'room', 'casino', 'venue', 'place played', 'site'] },
+  { key: 'stakes', label: 'Stakes (1/2)', synonyms: ['stakes', 'stake', 'blinds', 'limit level', 'level'] },
+  { key: 'tips', label: 'Tips / costs', synonyms: ['tips', 'tip', 'dealer tips', 'expenses', 'costs'] },
   { key: 'game', label: 'Game', synonyms: ['game', 'variant', 'game type'] },
-  { key: 'note', label: 'Note', synonyms: ['note', 'notes', 'comment', 'comments', 'memo', 'location', 'venue'] },
+  { key: 'note', label: 'Note', synonyms: ['note', 'notes', 'comment', 'comments', 'memo'] },
 ];
+/** Which fields each kind of row reads. */
+export const FIELDS_FOR = {
+  tournament: ['date', 'name', 'buyin', 'entries', 'cash', 'place', 'field', 'room', 'currency', 'game', 'note'],
+  cash: ['date', 'end', 'hours', 'room', 'game', 'stakes', 'buyin', 'cash', 'tips', 'currency', 'note'],
+  adjustment: ['date', 'amount', 'currency', 'note', 'name'],
+  mixed: ['kind', 'date', 'end', 'hours', 'name', 'room', 'game', 'stakes', 'buyin', 'entries', 'cash', 'tips', 'place', 'field', 'currency', 'note'],
+};
+/** A field's label where its meaning changes with the kind of row. */
+export const FIELD_LABELS = {
+  cash: { date: 'Start (date and time)', buyin: 'Buy-in (total)', cash: 'Cash out' },
+  mixed: { date: 'Date / start', buyin: 'Buy-in', cash: 'Cash / cash out' },
+};
+/** A type column's value: 'cash' | 'tournament' | null (neither: skipped, with its value). */
+export function kindOf(v) {
+  const t = norm(v);
+  if (/tourn|mtt|sng|sit ?(and|&|n) ?go|satellite|spin/.test(t)) return 'tournament';
+  if (/cash|ring|live game|session/.test(t)) return 'cash';
+  return null;
+}
 
 /** First header matching each field's synonyms: { field: columnIndex | -1 }. */
 export function guessMapping(headers) {
@@ -251,11 +378,29 @@ export function applyMapping(rows, mapping, { rowsAre = 'tournament', currency =
   for (let i = headerRow + 1; i < rows.length; i++) {
     const r = rows[i];
     const line = i + 1;
-    const date = parseDate(col(r, 'date'), { dayFirst });
-    if (!date) { out.push({ line, error: `Unreadable date "${col(r, 'date')}"` }); continue; }
+    let kind = rowsAre;
+    if (rowsAre === 'mixed') {
+      kind = kindOf(col(r, 'kind'));
+      if (!kind) { out.push({ line, skip: `Type "${col(r, 'kind') || 'blank'}" (only cash and tournament rows import)` }); continue; }
+    }
     const cur = (col(r, 'currency') || currency).toUpperCase();
     const note = col(r, 'note');
-    if (rowsAre === 'adjustment') {
+    if (kind === 'cash') {
+      const tips = parseNumber(col(r, 'tips'));
+      out.push({
+        line,
+        ...cashRow({
+          start: col(r, 'date'), end: col(r, 'end'), hours: parseNumber(col(r, 'hours')),
+          room: col(r, 'room'), game: gameLabel(col(r, 'game'), ''), stakes: col(r, 'stakes'),
+          buyin: parseNumber(col(r, 'buyin')), cashout: parseNumber(col(r, 'cash')),
+          tips: Number.isFinite(tips) ? tips : 0, currency: cur, note: [col(r, 'name'), note].filter(Boolean).join(' · '), dayFirst,
+        }),
+      });
+      continue;
+    }
+    const date = parseDate(col(r, 'date'), { dayFirst });
+    if (!date) { out.push({ line, error: `Unreadable date "${col(r, 'date')}"` }); continue; }
+    if (kind === 'adjustment') {
       const amt = parseNumber(col(r, 'amount'));
       if (!Number.isFinite(amt)) { out.push({ line, error: 'No amount' }); continue; }
       if (amt === 0) { out.push({ line, skip: 'Amount of 0' }); continue; }
@@ -272,7 +417,8 @@ export function applyMapping(rows, mapping, { rowsAre = 'tournament', currency =
         type: 'tournament', date, name: col(r, 'name') || 'Imported tournament', game: col(r, 'game'),
         buyin, entries: Number.isFinite(entries) && entries >= 1 ? Math.round(entries) : 1,
         cash: Number.isFinite(cash) && cash > 0 ? cash : 0,
-        place: intOrNull(col(r, 'place')), field: intOrNull(col(r, 'field')), currency: cur, note,
+        place: intOrNull(col(r, 'place')), field: intOrNull(col(r, 'field')), currency: cur,
+        note: [col(r, 'room'), note].filter(Boolean).join(' · '),
       },
     });
   }

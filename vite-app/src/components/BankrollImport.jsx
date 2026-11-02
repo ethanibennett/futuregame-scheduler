@@ -1,7 +1,8 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { formatCurrencyAmount, CURRENCY_CONFIG } from '../utils/utils.js';
 import { BANKROLL_ALL, BANKROLL_MAIN } from '../utils/bankrolls.js';
-import { parseCsv, detectPreset, applyPreset, guessMapping, applyMapping, FIELDS } from '../utils/bankroll-csv.js';
+import { parseCsv, detectPreset, applyPreset, guessMapping, applyMapping, FIELDS, FIELDS_FOR, FIELD_LABELS } from '../utils/bankroll-csv.js';
+import { IMPORT_GUIDES } from '../utils/import-guides.js';
 
 /**
  * CSV import into the ledger (beta, app admins) — the dashboard's import step.
@@ -12,6 +13,46 @@ import { parseCsv, detectPreset, applyPreset, guessMapping, applyMapping, FIELDS
  *   4. import the new rows. Re-importing the same file finds them all and imports nothing.
  */
 const STATUS = { new: 'New', duplicate: 'Have it', error: 'Error', skip: 'Skipped', bad: 'Unread' };
+// What the rows of an unrecognised file are (the column matching's first question).
+const ROWS_ARE = [
+  ['tournament', 'Tournament results'],
+  ['cash', 'Cash sessions'],
+  ['mixed', 'Both (a column says which)'],
+  ['adjustment', 'Deposits and withdrawals'],
+];
+const ROWS_HINT = {
+  tournament: 'One tournament per row: buy-in per entry, entries (default 1) and the total cashed (0 for a bust).',
+  cash: 'One cash session per row: when it started (with the time), when it ended or how many hours, the total bought in and the cash out. Tips and costs are optional.',
+  mixed: 'One session per row, cash or tournament as the type column says; other types (deposits, expenses) are left out.',
+  adjustment: 'One signed amount per row: positive is a deposit, negative a withdrawal, in the bankroll\u2019s currency.',
+};
+
+/** "Moving from another app?": the four biggest trackers' export steps (utils/import-guides.js), one at a
+ *  time, as the Schedule's kind toggles. */
+function ImportGuides() {
+  const [open, setOpen] = useState(null);
+  const g = IMPORT_GUIDES.find((x) => x.id === open);
+  return (
+    <section className="bd-section" style={{ marginTop: 0 }} aria-labelledby="bd-guides">
+      <h3 className="an-cell an-sec" id="bd-guides">Moving from another app</h3>
+      <p className="an-p">Pick the app you use for how to export from it.</p>
+      <div className="kind-toggles bd-block" role="tablist" aria-label="Your current app" style={{ marginBottom: 'calc(var(--subrow) * 2)' }}>
+        {IMPORT_GUIDES.map((x) => (
+          <button key={x.id} type="button" role="tab" aria-selected={open === x.id} title={x.name}
+            className={'kind-toggle' + (open === x.id ? ' active' : '')} onClick={() => setOpen(open === x.id ? null : x.id)}>
+            <span className="kind-toggle-label">{x.tab}</span>
+          </button>
+        ))}
+      </div>
+      {g && (
+        <div role="tabpanel" aria-label={g.name}>
+          <p className="an-p"><strong>{g.name}</strong>{g.recognised ? ' · recognised on sight' : ''}</p>
+          {g.steps.map((t, i) => <p key={i} className="an-p">{i + 1}. {t}</p>)}
+        </div>
+      )}
+    </section>
+  );
+}
 
 export default function BankrollImport({ bk, toast, defaultKey, onDone }) {
   const fileRef = useRef(null);
@@ -76,8 +117,13 @@ export default function BankrollImport({ bk, toast, defaultKey, onDone }) {
       if (!i.row) return { line: i.line, status: i.skip ? 'skip' : 'bad', what: i.skip || i.error, date: '', amount: null };
       const s = preview.server.rows[k++] || {};
       const r = i.row;
-      const amount = r.type === 'tournament' ? r.cash - r.buyin * r.entries : (r.type === 'deposit' ? r.amount : -r.amount);
-      return { line: i.line, status: s.status, what: s.error || (r.type === 'tournament' ? r.name + (s.note ? ` (${r.currency} to USD)` : '') : r.type === 'deposit' ? 'Deposit' : 'Withdrawal'), date: r.date, amount, cur: r.currency };
+      const amount = r.type === 'tournament' ? r.cash - r.buyin * r.entries
+        : r.type === 'cash' ? r.cashout - r.buyin - r.tips - r.expenses
+          : (r.type === 'deposit' ? r.amount : -r.amount);
+      const label = r.type === 'tournament' ? r.name + (s.note ? ` (${r.currency} to USD)` : '')
+        : r.type === 'cash' ? ['Cash', r.stakes, r.game, r.room ? `· ${r.room}` : ''].filter(Boolean).join(' ')
+          : r.type === 'deposit' ? 'Deposit' : 'Withdrawal';
+      return { line: i.line, status: s.status, what: s.error || (i.warn ? `${label} (${i.warn})` : label), date: r.date, amount, cur: r.currency };
     });
   }, [preview]);
   const clientSkips = preview ? preview.items.filter((i) => !i.row).length : 0;
@@ -92,7 +138,8 @@ export default function BankrollImport({ bk, toast, defaultKey, onDone }) {
 
   return (
     <>
-      <section className="bd-section" style={{ marginTop: 0 }} aria-labelledby="bd-imp">
+      <ImportGuides />
+      <section className="bd-section" aria-labelledby="bd-imp">
         <h3 className="an-cell an-sec" id="bd-imp">Import CSV</h3>
         <div className="bk-fields bd-fields">
           {field('Into bankroll', (
@@ -112,13 +159,14 @@ export default function BankrollImport({ bk, toast, defaultKey, onDone }) {
         {file && preset && (
           <p className="an-p">
             Recognised a <strong>{preset.preset.name}</strong> file (its columns are published: {preset.preset.evidence}).
-            Tournaments: cost = buy-in + rebuys + add-ons, cash = cashout + bounties. Cash-game rows are skipped.
+            Tournaments: cost = buy-in + rebuys + add-ons, cash = cashout + bounties. Cash games become cash
+            sessions with the same net as in the app you are leaving.
           </p>
         )}
         {file && !preset && (
           <p className="an-p">
-            Not a format we recognise, so pick a column for each field. Poker Income and Poker Analytics publish no
-            column list, so their files go through this mapping too.
+            Not a format we recognise, so say what the rows are and pick a column for each field. Pokerbase, Poker
+            Analytics and Poker Income publish no column list, so their files come through here.
           </p>
         )}
       </section>
@@ -139,18 +187,15 @@ export default function BankrollImport({ bk, toast, defaultKey, onDone }) {
       {file && !(preset && usePreset) && (
         <section className="bd-section" aria-labelledby="bd-map">
           <h3 className="an-cell an-sec" id="bd-map">Columns</h3>
-          <div className="bd-seg2" role="radiogroup" aria-label="Rows are">
-            {[['tournament', 'Results'], ['adjustment', 'Deposits (±)']].map(([v, text]) => (
-              <button key={v} type="button" role="radio" aria-checked={rowsAre === v}
-                className={'bk-seg-btn' + (rowsAre === v ? ' is-on' : '')} onClick={() => { setRowsAre(v); setPreview(null); }}>
-                <span>{text}</span>
-              </button>
-            ))}
+          <div className="bk-fields bd-fields">
+            {field('Rows are', (
+              <select value={rowsAre} onChange={(e) => { setRowsAre(e.target.value); setPreview(null); }}>
+                {ROWS_ARE.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+              </select>
+            ), 'rows-are')}
           </div>
           <div className="bk-fields bd-fields bd-block">
-            {FIELDS.filter((f) => (rowsAre === 'adjustment'
-              ? ['date', 'amount', 'currency', 'note', 'name'].includes(f.key)
-              : f.key !== 'amount')).map((f) => field(f.label + (f.required ? ' *' : ''), (
+            {FIELDS_FOR[rowsAre].map((k) => FIELDS.find((f) => f.key === k)).filter(Boolean).map((f) => field(((FIELD_LABELS[rowsAre] || {})[f.key] || f.label) + (f.required || (rowsAre === 'mixed' && f.key === 'kind') ? ' *' : ''), (
               <select value={String(mapping[f.key] ?? -1)} onChange={(e) => { setMapping({ ...mapping, [f.key]: Number(e.target.value) }); setPreview(null); }}>
                 <option value="-1">—</option>
                 {headers.map((h, i) => <option key={i} value={String(i)}>{h || `Column ${i + 1}`}</option>)}
@@ -168,9 +213,7 @@ export default function BankrollImport({ bk, toast, defaultKey, onDone }) {
               </select>
             ), 'df')}
           </div>
-          <p className="an-p">{rowsAre === 'adjustment'
-            ? 'One signed amount per row: positive is a deposit, negative a withdrawal, in the bankroll’s currency.'
-            : 'One tournament per row: buy-in per entry, entries (default 1) and the total cashed (0 for a bust).'}</p>
+          <p className="an-p">{ROWS_HINT[rowsAre]}</p>
         </section>
       )}
 
@@ -215,7 +258,8 @@ export default function BankrollImport({ bk, toast, defaultKey, onDone }) {
           <p className="an-p">
             Tournament results are filed as private events (only you see them) and appear on the Results tab. A result
             in another currency is converted to USD at today&rsquo;s rate, with the original amounts kept in its notes.
-            Deposits and withdrawals must be in the bankroll&rsquo;s currency.
+            Cash sessions land on the Cash tab in their own currency, as if you had logged them there. Deposits and
+            withdrawals must be in the bankroll&rsquo;s currency.
           </p>
         </section>
       )}

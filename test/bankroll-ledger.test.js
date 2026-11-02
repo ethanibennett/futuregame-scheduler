@@ -471,5 +471,31 @@ async function routes(tmp, srcDir) {
       const r = await post('/api/bankrolls/import', A, { bankroll: staked.id, rows: [{ type: 'withdrawal', date: '2025-06-03', amount: 50 }], commit: true });
       assert.strictEqual(r.json.imported, 1);
     });
+    await test('import: cash sessions (owner, 2026-11-01) land on the Cash tab and in the ledger; a re-import finds them', async () => {
+      const cashRows = [
+        // The vendor sample's first PBT cash session, as the client reads it (buy-in 105 + rebuy 100).
+        { type: 'cash', date: '2025-07-04', startedAt: '2025-07-04T22:51:57.000Z', endedAt: '2025-07-05T07:43:57.000Z',
+          room: 'Valentino', game: 'nlh', stakes: '$0.5/$0.5', buyin: 205, rebuys: 1, cashout: 687, tips: 7, expenses: 0,
+          currency: 'USD', note: 'from PBT', tags: ['BHD Asch 2024'] },
+        { type: 'cash', date: '2025-07-06', startedAt: '2025-07-06T20:00:00.000Z', endedAt: '2025-07-06T19:00:00.000Z', buyin: 1, cashout: 1 },
+        { type: 'cash', date: '2025-07-07', startedAt: '2025-07-07T20:00:00.000Z', endedAt: '2025-07-08T01:00:00.000Z', buyin: 300 },
+      ];
+      const pre = await post('/api/bankrolls/import', A, { bankroll: staked.id, rows: cashRows });
+      assert.strictEqual(pre.status, 200, pre.body);
+      assert.deepStrictEqual(pre.json.counts, { new: 1, duplicate: 0, error: 2 });
+      assert.deepStrictEqual(pre.json.rows.filter((r) => r.error).map((r) => r.error), ['Ends before it starts', 'Cash out is required']);
+      const c = await post('/api/bankrolls/import', A, { bankroll: staked.id, rows: cashRows, commit: true });
+      assert.strictEqual(c.json.imported, 1);
+      const sessions = (await get(`/api/cash-sessions?bankroll=${staked.id}`, A)).json.sessions;
+      const s = sessions.find((x) => x.room === 'Valentino');
+      assert.ok(s, 'the session is on the Cash tab');
+      assert.deepStrictEqual([s.game, s.stakes, s.buy_in, s.rebuys, s.cash_out, s.tips, s.currency, s.session_date, s.tags, s.net, s.hours],
+        ['NLH', '0.5/0.5', 205, 1, 687, 7, 'USD', '2025-07-04', ['BHD Asch 2024'], 475, 8.867]);
+      assert.match(s.notes, /from PBT · Imported/);
+      // net (475, PBT's own) = cash out - buy-in - tips - expenses: the cash ledger source's formula. This
+      // server's ledger loads a fixture set of sources without that one, so the session's net stands in.
+      const again = await post('/api/bankrolls/import', A, { bankroll: staked.id, rows: cashRows, commit: true });
+      assert.deepStrictEqual([again.json.imported, again.json.counts.duplicate], [0, 1]);
+    });
   } finally { await down(child); }
 }
