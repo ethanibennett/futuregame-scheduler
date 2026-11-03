@@ -450,7 +450,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
     <div key={t.id} className={`condition-sat-item ${selected ? 'selected' : ''}`} onClick={onPick}>
       <span className="cp-item-lead">{lead}</span>
       <span className="cp-item-name">{t.event_name}</span>
-      <span className="cp-item-price">{currencySymbol(t.venue)}{Number(t.buyin).toLocaleString()}</span>
+      <span className="cp-item-price">{currencySymbol(t.venue, t.currency)}{Number(t.buyin).toLocaleString()}</span>
     </div>
   );
 
@@ -717,7 +717,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                 <SwissLines name={tournament.event_name} time={timeLabel} />
                 {live && <ClockLine live={live} />}
                 <span className="cal-event-money">
-                  <span className="cal-event-buyin">{currencySymbol(tournament.venue)}{Number(tournament.buyin).toLocaleString()}</span>
+                  <span className="cal-event-buyin">{currencySymbol(tournament.venue, tournament.currency)}{Number(tournament.buyin).toLocaleString()}</span>
                   {Number(tournament.prize_pool) > 0 && (
                     <span className="cal-event-gtd">{formatGuarantee(tournament.prize_pool, tournament.venue)}</span>
                   )}
@@ -878,19 +878,19 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                     {showRakeBreakdown && tournament.buyin > 0 && tournament.rake_dollars > 0 && (
                       <div className="cal-detail-item">
                         <span className="cal-detail-label">Prize Pool</span>
-                        <span className="cal-detail-value">{currencySymbol(tournament.venue)}{(Number(tournament.buyin) - Number(tournament.rake_dollars)).toLocaleString()}</span>
+                        <span className="cal-detail-value">{currencySymbol(tournament.venue, tournament.currency)}{(Number(tournament.buyin) - Number(tournament.rake_dollars)).toLocaleString()}</span>
                       </div>
                     )}
                     {showRakeBreakdown && tournament.house_fee > 0 && (
                       <div className="cal-detail-item">
                         <span className="cal-detail-label">House Fee</span>
-                        <span className="cal-detail-value">{currencySymbol(tournament.venue)}{Number(tournament.house_fee).toLocaleString()}</span>
+                        <span className="cal-detail-value">{currencySymbol(tournament.venue, tournament.currency)}{Number(tournament.house_fee).toLocaleString()}</span>
                       </div>
                     )}
                     {showRakeBreakdown && tournament.opt_add_on > 0 && (
                       <div className="cal-detail-item">
                         <span className="cal-detail-label">Staff Fee</span>
-                        <span className="cal-detail-value">{currencySymbol(tournament.venue)}{Number(tournament.opt_add_on).toLocaleString()}</span>
+                        <span className="cal-detail-value">{currencySymbol(tournament.venue, tournament.currency)}{Number(tournament.opt_add_on).toLocaleString()}</span>
                       </div>
                     )}
                   </div>
@@ -1310,7 +1310,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
                 <span className="cal-event-time">{timeLabel}</span>
                 <SwissLines name={tournament.event_name} time={timeLabel} />
                 <span className="cal-event-money">
-                  <span className="cal-event-buyin">{currencySymbol(tournament.venue)}{Number(tournament.buyin).toLocaleString()}</span>
+                  <span className="cal-event-buyin">{currencySymbol(tournament.venue, tournament.currency)}{Number(tournament.buyin).toLocaleString()}</span>
                   {Number(tournament.prize_pool) > 0 && (
                     <span className="cal-event-gtd">{formatGuarantee(tournament.prize_pool, tournament.venue)}</span>
                   )}

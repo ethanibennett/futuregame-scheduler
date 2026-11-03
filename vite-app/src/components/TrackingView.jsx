@@ -113,7 +113,7 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
             <option value="">Select event...</option>
             {tournamentOptions.map(t => (
               <option key={t.id} value={t.id}>
-                #{t.event_number} &mdash; {t.event_name} ({t.date}) &mdash; {currencySymbol(t.venue)}{Number(t.buyin).toLocaleString()}
+                #{t.event_number} &mdash; {t.event_name} ({t.date}) &mdash; {currencySymbol(t.venue, t.currency)}{Number(t.buyin).toLocaleString()}
               </option>
             ))}
           </select>
@@ -209,7 +209,7 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
         return (
           <Suspense fallback={null}>
             <PostsToBackers token={previewToken} query={tournamentPreviewQuery({
-              tournament: t, numEntries, cashed, cashAmount, currency: t ? nativeCurrency(t.venue) : 'USD',
+              tournament: t, numEntries, cashed, cashAmount, currency: t ? nativeCurrency(t.venue, t.currency) : 'USD',
             })} />
           </Suspense>
         );

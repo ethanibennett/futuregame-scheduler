@@ -97,7 +97,7 @@ export default function SwapModal({ buddy, tournament, token, onClose }) {
               <div style={{display:'flex',alignItems:'center',gap:'var(--space-xs)'}}>
                 <input type="number" min="0" value={cbCap} onChange={e => setCbCap(e.target.value)} placeholder={'\u2014'}
                   style={{width:'100%',height:'calc(var(--subrow) * 4.5)',boxSizing:'border-box',padding:'0 var(--space-md)',background:'var(--surface2)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius-sm)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.473)',textAlign:'center'}} />
-                <span style={{color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>{currencySymbol(tournament.venue)}</span>
+                <span style={{color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>{currencySymbol(tournament.venue, tournament.currency)}</span>
               </div>
             </div>
           </div>

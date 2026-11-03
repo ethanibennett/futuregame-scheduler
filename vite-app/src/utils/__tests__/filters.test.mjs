@@ -365,6 +365,15 @@ eq('Liechtenstein is Swiss francs', currencySymbol('2026-27 WSOP International C
 eq('a peso venue gets ₱, not the $ fallback', currencySymbol('APPT Manila 2026'), '₱');
 eq('a row declaring nothing stays dollars', nativeCurrency('Borgata Poker Open'), 'USD');
 eq('the curated table still answers for its venues', nativeCurrency('Irish Poker Open'), 'EUR');
+// A series can mix currencies: APT Taipei prices its Natural8 Cup events in USD beside TWD ones.
+registerRowCurrencies([
+  { venue: 'APT Championship, Taipei 2026', currency: 'TWD' },
+  { venue: 'APT Championship, Taipei 2026', currency: 'USD' },
+  { venue: 'APT Championship, Taipei 2026', currency: 'TWD' },
+]);
+eq('a mixed series answers its majority currency at venue level', nativeCurrency('APT Championship, Taipei 2026'), 'TWD');
+eq('a row\'s own currency wins over the venue\'s', currencySymbol('APT Championship, Taipei 2026', 'USD'), '$');
+eq('and the majority shows where only the venue is known', currencySymbol('APT Championship, Taipei 2026'), 'NT$');
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

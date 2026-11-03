@@ -1874,13 +1874,24 @@ export const VENUE_CURRENCY = { 'Irish Poker Open': 'EUR', 'Irish Poker Open 202
    Learned as the list arrives (registerRowCurrencies), the same way registerRowTimezones learns
    zones, so every caller that knows only the venue string — buy-in labels, the bankroll and tax
    conversions — gets the right currency without passing the row. A declared currency outranks
-   the curated table; rows that predate the column declare nothing. */
+   the curated table; rows that predate the column declare nothing.
+   A series can MIX currencies — the APT Championship in Taipei prices its Natural8 Cup events in
+   USD beside 232 TWD events — so the venue-level answer is its MAJORITY currency, and callers
+   that hold the row pass its own currency (second argument), which wins. */
 const ROW_CURRENCY = new Map();
 export function registerRowCurrencies(rows) {
   if (!Array.isArray(rows)) return;
-  for (const t of rows) if (t && t.venue && t.currency) ROW_CURRENCY.set(t.venue, t.currency);
+  const counts = new Map();
+  for (const t of rows) {
+    if (!t || !t.venue || !t.currency) continue;
+    const c = counts.get(t.venue) || counts.set(t.venue, new Map()).get(t.venue);
+    c.set(t.currency, (c.get(t.currency) || 0) + 1);
+  }
+  for (const [venue, c] of counts) ROW_CURRENCY.set(venue, [...c].sort((a, b) => b[1] - a[1])[0][0]);
 }
-export function nativeCurrency(venue) { return ROW_CURRENCY.get(venue) || VENUE_CURRENCY[venue] || 'USD'; }
+export function nativeCurrency(venue, currency) {
+  return currency || ROW_CURRENCY.get(venue) || VENUE_CURRENCY[venue] || 'USD';
+}
 export const CURRENCY_CONFIG = {
   USD: { symbol: '$', pos: 'pre', label: 'US Dollar' },
   EUR: { symbol: '\u20ac', pos: 'pre', label: 'Euro' },
@@ -1909,7 +1920,7 @@ export const CURRENCY_CONFIG = {
   NZD: { symbol: 'NZ$', pos: 'pre', label: 'New Zealand Dollar' },
   HUF: { symbol: 'Ft', pos: 'suf', label: 'Hungarian Forint' },
 };
-export function currencySymbol(venue) { return (CURRENCY_CONFIG[nativeCurrency(venue)] || CURRENCY_CONFIG.USD).symbol; }
+export function currencySymbol(venue, currency) { return (CURRENCY_CONFIG[nativeCurrency(venue, currency)] || CURRENCY_CONFIG.USD).symbol; }
 // U+2212 MINUS SIGN, not the ASCII hyphen. Measured from the bundled faces:
 // the hyphen advances 313 units in Baskerville where the plus advances 667 and
 // digits 500; in Univers Condensed it is 333 against 500. So a losing row's
