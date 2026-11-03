@@ -8,7 +8,7 @@ import { API_URL } from '../utils/api.js';
 import {
   getVenueInfo, normaliseDate, getToday, parseTournamentTime, extractConditions,
   THEME_ORDER, THEME_LABEL, THEME_ICON, getStoredSeasonLabel,
-  registerRowTimezones,
+  registerRowTimezones, registerRowCurrencies,
 } from '../utils/utils.js';
 
 export default function SharedScheduleView({ shareToken }) {
@@ -24,7 +24,13 @@ export default function SharedScheduleView({ shareToken }) {
   useEffect(() => {
     fetch(`${API_URL}/shared/${shareToken}`)
       .then(r => { if (!r.ok) throw new Error('Schedule not found'); return r.json(); })
-      .then(d => { registerRowTimezones(Object.values(d || {}).filter(Array.isArray).flat()); setData(d); setLoading(false); })
+      .then(d => {
+        const rows = Object.values(d || {}).filter(Array.isArray).flat();
+        registerRowTimezones(rows);
+        registerRowCurrencies(rows);
+        setData(d);
+        setLoading(false);
+      })
       .catch(e => { setError(e.message); setLoading(false); });
   }, [shareToken]);
 

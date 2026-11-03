@@ -3500,6 +3500,16 @@ async function initDatabase() {
       }
     },
     {
+      // ISO 4217 of a feed row's buyin/prize_pool/house_fee. The watcher keeps amounts in the room's
+      // own units, and before this every one of them displayed as dollars — Middelkerke's €550
+      // Knockout read "$550", Liechtenstein's Swiss-franc prices too. Null = USD (rows before it).
+      name: 'tournaments-currency-2026-11',
+      fn: () => {
+        db.run('ALTER TABLE tournaments ADD COLUMN currency TEXT');
+        console.log('Added tournaments.currency');
+      }
+    },
+    {
       // The feed's `venue` is a SERIES title; `property` is the hosting poker room's name
       // (from the watcher's PokerAtlas directory data). The venue strip shows it for series
       // with no curated VENUE_MAP entry, instead of abbreviating the series title.
@@ -12395,7 +12405,7 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
              property = ?, is_online = ?, site = ?,
              -- A clock id only ever arrives; a snapshot without one must not erase it.
              clock_ref = COALESCE(?, clock_ref),
-             timezone = ?,
+             timezone = ?, currency = ?,
              source_pdf = ?, stable_id = COALESCE(stable_id, ?),
              -- Feed value wins when the feed has one. When it carries null, a locally
              -- attached sheet (a schedule-docs file name, from the structure upload)
@@ -12414,7 +12424,7 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
            t.house_fee, t.opt_add_on, t.rake_pct, t.rake_dollars, t.is_deepstack || 0,
            t.property || null, t.is_online || 0, t.site || null,
            t.clock_ref || null,
-           t.timezone || null,
+           t.timezone || null, t.currency || null,
            t.source_pdf || tag, feedStableId(t, idPrefix), t.structure_sheet_path || null, t.structure_sheet_path || null,
            t.venue, t.event_number]
         );
@@ -12425,15 +12435,15 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
            game_variant, venue, notes, category, is_satellite, target_event,
            is_restart, parent_event, prize_pool, house_fee, opt_add_on,
            rake_pct, rake_dollars, source_pdf, is_deepstack, stable_id, structure_sheet_path, property,
-           is_online, site, clock_ref, timezone)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           is_online, site, clock_ref, timezone, currency)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [t.event_number || '', t.event_name, t.date, t.time, t.buyin,
            t.starting_chips, t.level_duration, t.reentry, t.late_reg, t.late_reg_end,
            t.game_variant, t.venue, t.notes, t.category, t.is_satellite || 0, t.target_event,
            t.is_restart || 0, t.parent_event, t.prize_pool, t.house_fee, t.opt_add_on,
            t.rake_pct, t.rake_dollars, t.source_pdf, t.is_deepstack || 0, feedStableId(t, idPrefix),
            t.structure_sheet_path || null, t.property || null,
-           t.is_online || 0, t.site || null, t.clock_ref || null, t.timezone || null]
+           t.is_online || 0, t.site || null, t.clock_ref || null, t.timezone || null, t.currency || null]
         );
         inserts++;
         } catch (rowErr) {
@@ -14273,8 +14283,8 @@ async function upsertTournamentsByStableId(tournaments, source) {
     sel.free();
 
     db.run(
-      `INSERT INTO tournaments (stable_id, event_number, event_name, date, time, buyin, starting_chips, level_duration, reentry, late_reg, late_reg_end, game_variant, venue, notes, category, is_satellite, target_event, is_restart, parent_event, day_length, prize_pool, house_fee, opt_add_on, rake_pct, rake_dollars, is_deepstack, source_pdf, structure_sheet_path, property, is_online, site, clock_ref, timezone)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO tournaments (stable_id, event_number, event_name, date, time, buyin, starting_chips, level_duration, reentry, late_reg, late_reg_end, game_variant, venue, notes, category, is_satellite, target_event, is_restart, parent_event, day_length, prize_pool, house_fee, opt_add_on, rake_pct, rake_dollars, is_deepstack, source_pdf, structure_sheet_path, property, is_online, site, clock_ref, timezone, currency)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(stable_id) DO UPDATE SET
          event_number=excluded.event_number, event_name=excluded.event_name, date=excluded.date,
          time=excluded.time, buyin=excluded.buyin, starting_chips=excluded.starting_chips,
@@ -14286,7 +14296,8 @@ async function upsertTournamentsByStableId(tournaments, source) {
          opt_add_on=excluded.opt_add_on, rake_pct=excluded.rake_pct, rake_dollars=excluded.rake_dollars,
          is_deepstack=excluded.is_deepstack, structure_sheet_path=excluded.structure_sheet_path,
          property=excluded.property, is_online=excluded.is_online, site=excluded.site,
-         clock_ref=COALESCE(excluded.clock_ref, tournaments.clock_ref), timezone=excluded.timezone`,
+         clock_ref=COALESCE(excluded.clock_ref, tournaments.clock_ref), timezone=excluded.timezone,
+         currency=excluded.currency`,
       [
         t.stable_id, t.event_number || '', t.event_name, t.date, t.time || '12:00 PM',
         t.buyin || 0, t.starting_chips || null, t.level_duration || null,
@@ -14297,7 +14308,8 @@ async function upsertTournamentsByStableId(tournaments, source) {
         t.prize_pool || null, t.house_fee || null, t.opt_add_on || null,
         t.rake_pct || null, t.rake_dollars || null, t.is_deepstack ? 1 : 0,
         t.source_pdf || null, t.structure_sheet_path || null, t.property || null,
-        t.is_online ? 1 : 0, t.site || null, t.clock_ref || null, t.timezone || null
+        t.is_online ? 1 : 0, t.site || null, t.clock_ref || null, t.timezone || null,
+        t.currency || null
       ]
     );
     if (existing) updated++; else { inserted++; newIds.push(t.stable_id); }

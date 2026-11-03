@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom';
 import { API_URL } from './utils/api.js';
 import { parseDeepLink } from './utils/deep-links.js';
 import { resetPath } from './utils/reset-results.js';
-import { haptic, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones, registerVenueCoords, getDebugNow, setDebugNow } from './utils/utils.js';
+import { haptic, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones, registerRowCurrencies, registerVenueCoords, getDebugNow, setDebugNow } from './utils/utils.js';
 import { DNP_TYPE, withoutDnpMarkers } from './utils/didnt-play.js';
 import { decodeHand } from './utils/hand-shorthand.js';
 import { detectMilestones } from './utils/milestones.js';
@@ -657,8 +657,10 @@ function App() {
       if (!res) return;
       const data = await res.json();
       registerVenueCoords(await coordsP);
-      // Before render: every start time and zone label reads the zone the row declares.
+      // Before render: every start time and zone label reads the zone the row declares, and every
+      // amount the currency it declares.
       registerRowTimezones(Array.isArray(data) ? data : []);
+      registerRowCurrencies(Array.isArray(data) ? data : []);
       setTournaments(Array.isArray(data) ? data : []);
     } catch (e) { console.error('Fetch tournaments:', e); toast.error('Failed to load tournaments'); }
   };

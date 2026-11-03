@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { API_URL } from '../utils/api.js';
-import { getToday, normaliseDate, registerRowTimezones } from '../utils/utils.js';
+import { getToday, normaliseDate, registerRowTimezones, registerRowCurrencies } from '../utils/utils.js';
 import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
 import DateBreak from './DateBreak.jsx';
 
@@ -103,6 +103,7 @@ export default function AdminBatchesView({ token, batchId, onSelectBatch, onShow
     authed(`/admin/batches/${shownId}`).then((j) => {
       if (!live) return;
       registerRowTimezones((j.series || []).flatMap((s) => s.events || []));
+      registerRowCurrencies((j.series || []).flatMap((s) => s.events || []));
       setDetail(j);
     }).catch((e) => { if (live) setError(e.message); });
     return () => { live = false; };

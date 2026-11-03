@@ -3,7 +3,7 @@
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 
 // Dynamic, because a static import is hoisted above the stub above it.
-const { isOnline, isWsopOnline, matchesLocation, matchesOnline, getVenueTimezone, eventAvailability, isSeriesEvent, isBraceletEvent, isRingEvent, isWsopOnlineCircuit, shortEventNumber, eventPillWidthG, describeGame, getGamePills } =
+const { isOnline, isWsopOnline, matchesLocation, matchesOnline, getVenueTimezone, eventAvailability, isSeriesEvent, isBraceletEvent, isRingEvent, isWsopOnlineCircuit, shortEventNumber, eventPillWidthG, describeGame, getGamePills, registerRowCurrencies, nativeCurrency, currencySymbol } =
   await import('../utils.js');
 
 let pass = 0, fail = 0;
@@ -349,6 +349,22 @@ eq('getGamePills: a mix gives its games', getGamePills('Mixed', '9-Game Mixed Ch
 eq('getGamePills: a single game gives itself', getGamePills('2-7 Triple Draw', 'x').join(','), '2-7 TD');
 eq('getGamePills: an unspelled mix gives its name', getGamePills('Circus Mix', 'Super Circus Mix').join(','), 'Circus Mix');
 eq('getGamePills: no variant', getGamePills('', 'Main Event').length, 0);
+
+console.log('currency — feed rows declare it; amounts are in the room\'s own units');
+// Before the column every uncurated venue fell to USD: Middelkerke's €550 Knockout read "$550".
+eq('an undeclared venue is dollars', nativeCurrency('2026-27 WSOP International Circuit Belgium'), 'USD');
+registerRowCurrencies([
+  { venue: '2026-27 WSOP International Circuit Belgium', currency: 'EUR' },
+  { venue: '2026-27 WSOP International Circuit Liechtenstein', currency: 'CHF' },
+  { venue: 'APPT Manila 2026', currency: 'PHP' },
+  { venue: 'Borgata Poker Open', currency: null },
+]);
+eq('a declared euro venue', nativeCurrency('2026-27 WSOP International Circuit Belgium'), 'EUR');
+eq('and its symbol', currencySymbol('2026-27 WSOP International Circuit Belgium'), '€');
+eq('Liechtenstein is Swiss francs', currencySymbol('2026-27 WSOP International Circuit Liechtenstein'), 'CHF');
+eq('a peso venue gets ₱, not the $ fallback', currencySymbol('APPT Manila 2026'), '₱');
+eq('a row declaring nothing stays dollars', nativeCurrency('Borgata Poker Open'), 'USD');
+eq('the curated table still answers for its venues', nativeCurrency('Irish Poker Open'), 'EUR');
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

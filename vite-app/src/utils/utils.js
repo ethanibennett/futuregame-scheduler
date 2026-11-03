@@ -1868,7 +1868,19 @@ export function detectConflicts(schedule) {
 
 // ── Currency helpers ────────────────────────────────────────
 export const VENUE_CURRENCY = { 'Irish Poker Open': 'EUR', 'Irish Poker Open 2027': 'EUR', 'Irish Open Marrakech 2026': 'EUR', 'WSOP Europe': 'EUR' };
-export function nativeCurrency(venue) { return VENUE_CURRENCY[venue] || 'USD'; }
+/* venue → the ISO currency its feed rows DECLARE (tournaments.currency). The watcher keeps amounts
+   in the room's own units, and with only the four curated venues above every other one fell to
+   USD: Middelkerke's €550 Knockout showed "$550", Liechtenstein's Swiss-franc prices likewise.
+   Learned as the list arrives (registerRowCurrencies), the same way registerRowTimezones learns
+   zones, so every caller that knows only the venue string — buy-in labels, the bankroll and tax
+   conversions — gets the right currency without passing the row. A declared currency outranks
+   the curated table; rows that predate the column declare nothing. */
+const ROW_CURRENCY = new Map();
+export function registerRowCurrencies(rows) {
+  if (!Array.isArray(rows)) return;
+  for (const t of rows) if (t && t.venue && t.currency) ROW_CURRENCY.set(t.venue, t.currency);
+}
+export function nativeCurrency(venue) { return ROW_CURRENCY.get(venue) || VENUE_CURRENCY[venue] || 'USD'; }
 export const CURRENCY_CONFIG = {
   USD: { symbol: '$', pos: 'pre', label: 'US Dollar' },
   EUR: { symbol: '\u20ac', pos: 'pre', label: 'Euro' },
@@ -1888,6 +1900,14 @@ export const CURRENCY_CONFIG = {
   MXN: { symbol: 'MX$', pos: 'pre', label: 'Mexican Peso' },
   INR: { symbol: '\u20b9', pos: 'pre', label: 'Indian Rupee' },
   CNY: { symbol: '\u00a5', pos: 'pre', label: 'Chinese Yuan' },
+  // Currencies the feed declares for the Asian tour stops and Oceania (PokerStars Live APPT, the
+  // Asian Poker Tour); without an entry here they would fall back to "$".
+  PHP: { symbol: '\u20b1', pos: 'pre', label: 'Philippine Peso' },
+  KRW: { symbol: '\u20a9', pos: 'pre', label: 'South Korean Won' },
+  TWD: { symbol: 'NT$', pos: 'pre', label: 'New Taiwan Dollar' },
+  MOP: { symbol: 'MOP$', pos: 'pre', label: 'Macanese Pataca' },
+  NZD: { symbol: 'NZ$', pos: 'pre', label: 'New Zealand Dollar' },
+  HUF: { symbol: 'Ft', pos: 'suf', label: 'Hungarian Forint' },
 };
 export function currencySymbol(venue) { return (CURRENCY_CONFIG[nativeCurrency(venue)] || CURRENCY_CONFIG.USD).symbol; }
 // U+2212 MINUS SIGN, not the ASCII hyphen. Measured from the bundled faces:
