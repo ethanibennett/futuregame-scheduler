@@ -9592,6 +9592,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         {/* 80: the ONLY explanation of why Solve is dead was a title
             attribute — invisible to every touch user, which is most of them
             on this app. */}
+        {((onSolveSpot && !canSolveSpot && !(onStudyDraw && drawStudyGame)) || (onStudyDraw && !canStudyDraw)) && <div className="replayer-bar-notes snap-place">
         {onSolveSpot && !canSolveSpot && !(onStudyDraw && drawStudyGame) && (
           <div className="replayer-bar-note"><span className="rs-t">Solving is available for stud8 and razz spots.</span></div>
         )}
@@ -9603,6 +9604,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             ? drawStudySpot && drawStudySpot.refused
             : 'Draw study covers fixed-limit 2-7 TD, A-5 TD and Badugi. Pot-limit and no-limit draw games have a different betting tree.'}</span></div>
         )}
+        </div>}
         {/* 79: the exports, in the sheet grammar the app already uses. */}
         {showExportMenu && createPortal(
           <>

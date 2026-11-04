@@ -3474,6 +3474,7 @@
       align-items: center; flex-wrap: wrap;
     }
     /* 80 */
+    .replayer-bar-notes { display: contents; }
     .replayer-bar-note {
       text-align: center; margin-top: var(--space-xs);
       font-size: var(--fs-2xs); color: var(--text-muted);
@@ -17121,6 +17122,25 @@
     .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.has-solve .rab-share { grid-column: 25 / 31; }
     .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.has-solve .rab-gear,
     .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.is-linked .rab-gear  { grid-column: 32 / 36; }
+    /* The notes sit to the right of the bar, out of the row: in it, a note appearing on the last street
+       re-centred the row and threw the whole bar 28g left and off its g lines. 62g is the transport's 27g
+       and the bar's 35g, which the row centres about the window's middle. */
+    .app-shell.is-desktop .replayer-landscape .replayer-bottom-fixed > .replayer-bar-notes {
+      position: absolute;
+      left: calc(50% + var(--gu) * 32);
+      width: calc(50% - var(--gu) * 33);
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0;
+    }
+    .app-shell.is-desktop .replayer-landscape .replayer-bar-note {
+      margin: 0;
+      text-align: left;
+      line-height: calc(var(--subrow) * 2);
+    }
     .app-shell.is-desktop .replayer-landscape .replayer-actions-bar .btn,
     .app-shell.is-desktop .replayer-landscape .replayer-actions-bar .replayer-gear-btn {
       display: flex; align-items: center; justify-content: center;

@@ -40,6 +40,9 @@ the junction hides anything missing from git.
   a no-op in the belief. It would matter the moment `drawReweight` is enabled, and fail silently (its note to the solver
   repo). **Lesson: compare a Monte Carlo gap to the same input under another seed before believing it.** That control
   moves the worst row 4 to 6 chips, so read the study tool's figures with its band, not row by row.
+- **A note in the desktop bar's row moved the bar.** `.replayer-bar-note` was a flex sibling of the transport and the
+  actions bar, and `snap-place` only re-places on the box's own resize, so a note appearing on the last street threw the
+  bar 330 px left and off the grid, with its offset stale. The notes now sit out of the row (`.replayer-bar-notes`).
 - **"Study this draw" (the replayer's button) never worked past the deal, and could not be pressed at all.** Fixed the
   same day (owner: yes); CLAUDE.md "Study this draw" has the design. What was wrong, all of it found by using it: it read
   `a.type` where hands store `a.action`, so the history lost every bet; it stopped BEFORE the street's betting, so the open
