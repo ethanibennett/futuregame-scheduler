@@ -6,6 +6,7 @@ import { API_URL, SITE_URL } from '../utils/api.js';
 import { HAND_CONFIG, HAND_CONFIG_DEFAULT, getGamePills, haptic, getVariantStrip, canonicalGameType, canonicalHand, getToday } from '../utils/utils.js';
 import { STRUCTURE_GAME_MAP, DEFAULT_STRUCTURE, FIXED_STRUCTURE as FIXED_STRUCTURE_MAP, RAZZ_VARIANTS as RAZZ_LIST, buildCatalog, buildMixes, bestGuess } from '../utils/variant-catalog.js';
 import { Palette, GuessCard, Launcher } from './VariantPicker.jsx';
+import { buildDrawStudySpot } from '../utils/draw-study-spot';
 import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL, gameEvalFor,
          bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestBadugiHand,
          computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot,
@@ -511,100 +512,6 @@ const DRAW_STUDY_GAME_MAP = {
   'Badugi': 'badugi',
 };
 function drawStudyGameFor(gameType) { return DRAW_STUDY_GAME_MAP[gameType] || null; }
-
-// Replayer action type -> the engine's betting alphabet (fold/check/call/bet/raise).
-const DRAW_ACT_TOKEN = { fold: 'f', check: 'k', call: 'c', bet: 'b', raise: 'r' };
-
-// parseCardNotation returns [{rank, suit}], NOT strings, and an unknown suit
-// comes back as 'x'. The study tool wants '7h 5c 4d' (rank upper, suit lower),
-// which is what this produces -- and it reports the unknowns rather than
-// silently shipping an 'x' the solver would reject.
-function drawCardsToStudy(str) {
-  const cards = parseCardNotation(str) || [];
-  const out = [], unknown = [];
-  for (const c of cards) {
-    if (!c.suit || c.suit === 'x') { unknown.push(c.rank); continue; }
-    out.push(c.rank + c.suit);
-  }
-  return { cards: out, unknown: unknown };
-}
-
-/* Build a draw-study spot from the replay state at `streetIdx`.
-
-   hero  the hero's hand AS IT STOOD at the start of this street, so the draw
-         about to be made is still open -- computeDrawHand(..., streetIdx - 1),
-         the same expression the replay view itself uses to render it.
-   hist  both seats' actions in engine order, betting then draws, for every
-         street BEFORE this one. A discard whose cards are known becomes an
-         explicit `d:<cards>` token, which is precisely the input the study tool
-         exists to price and the drill cannot offer.
-   notes what was assumed, in buildSolverSpot's style -- never silent.
-
-   ⚠ The draw solver is HEADS-UP. A multiway hand still hands over, with a note,
-   because the hero's own cards and draws are unchanged; what is lost is the
-   other opponents, and saying so beats refusing. */
-function buildDrawStudySpot({ hand, game, streetIdx, replayHeroIdx, liveCount }) {
-  const notes = [];
-  const base = (hand.streets[0] && hand.streets[0].cards && hand.streets[0].cards.hero) || '';
-  const heroStr = computeDrawHand(base, getPlayerDrawsByStreet(hand, replayHeroIdx),
-    streetIdx - 1, hand.gameType);
-  const hero = drawCardsToStudy(heroStr);
-  if (hero.unknown.length) {
-    notes.push(hero.unknown.length + " of the hero's cards have no suit recorded ("
-      + hero.unknown.join(',') + ') — fill them in before pricing.');
-  }
-  if (liveCount > 2) {
-    notes.push('Hand is ' + liveCount + '-way; the draw solver is heads-up. The hero\'s own '
-      + 'cards and draws carry over unchanged, but the other opponents do not.');
-  }
-
-  const hist = [];
-  let sawAllIn = false, dropped = 0, unknownDiscards = 0;
-  for (let si = 0; si < streetIdx; si++) {
-    const st = hand.streets[si];
-    if (!st) continue;
-    for (const a of (st.actions || [])) {
-      const tok = DRAW_ACT_TOKEN[a.type];
-      if (tok) { hist.push(tok); continue; }
-      if (a.type === 'all-in') { hist.push('b'); sawAllIn = true; continue; }
-      dropped++;
-    }
-    for (const d of (st.draws || [])) {
-      const n = d.discarded || 0;
-      if (d.discardedCards) {
-        const dc = drawCardsToStudy(d.discardedCards);
-        if (dc.unknown.length) unknownDiscards++;
-        hist.push(dc.cards.length ? 'd:' + dc.cards.join('') : 'd' + n);
-      } else {
-        hist.push('d' + n);
-      }
-    }
-  }
-  if (sawAllIn) {
-    notes.push('An all-in was mapped to a bet: these games are fixed-limit in the solver, so '
-      + 'there is no all-in sizing to carry over.');
-  }
-  if (dropped) {
-    notes.push(dropped + ' action(s) had no engine equivalent and were dropped — check the '
-      + 'history before trusting the table.');
-  }
-  if (unknownDiscards) {
-    notes.push(unknownDiscards + ' discard(s) had an unrecorded suit and fell back to a COUNT, '
-      + 'which is what the drill already grades — the explicit cards are what this tool adds.');
-  }
-  notes.push('The engine re-assigns every actor from the history, so if a seat shown in the '
-    + 'study view disagrees with the replay, the history is wrong rather than the engine.');
-
-  return {
-    game: game,
-    hero: hero.cards.join(' '),
-    seat: 0,
-    hist: hist.join(' '),
-    notes: notes,
-    source: hand.gameType + ' hand, '
-      + ((STREET_DEFS.draw_triple.streets[streetIdx]) || ('street ' + streetIdx)),
-  };
-}
 
 // Stud card-string layout (cards accumulated across streets, in deal
 // order). For the HERO the full 7-card string is: index 0,1 = the two
@@ -6282,20 +6189,19 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     }));
   }, [canSolveSpot, onSolveSpot, hand, solverGame, streetIdx, heroCards, opponentCards, replayHeroIdx, folded, pot]);
 
-  // "Study this draw" -> Draw Study handoff. Enabled only for the fixed-limit
-  // draw games the solver has trees for, and only at a street where a draw is
-  // still to come: at the Third Draw's betting round there is no draw left to
-  // price, which is the street-3 case the exact oracle already covers.
+  // "Study this draw" -> Draw Study handoff, for the fixed-limit draw games the
+  // solver has trees for: the hero's draw at the end of the street on screen. The
+  // spot says why when it cannot be priced (utils/draw-study-spot.js).
   const drawStudyGame = drawStudyGameFor(hand.gameType);
-  const liveSeatCount = (hand.players || []).filter((_, pi) => !folded.has(pi)).length;
-  const canStudyDraw = !!onStudyDraw && !!drawStudyGame && streetIdx < 3;
+  const drawStudySpot = useMemo(() => (onStudyDraw && drawStudyGame
+    ? buildDrawStudySpot({ hand, game: drawStudyGame, streetIdx, heroIdx: replayHeroIdx })
+    : null), [onStudyDraw, drawStudyGame, hand, streetIdx, replayHeroIdx]);
+  const canStudyDraw = !!drawStudySpot && !drawStudySpot.refused;
   const handleStudyDraw = useCallback(() => {
     if (!canStudyDraw) return;
     haptic();
-    onStudyDraw(buildDrawStudySpot({
-      hand, game: drawStudyGame, streetIdx, replayHeroIdx, liveCount: liveSeatCount,
-    }));
-  }, [canStudyDraw, onStudyDraw, hand, drawStudyGame, streetIdx, replayHeroIdx, liveSeatCount]);
+    onStudyDraw(drawStudySpot);
+  }, [canStudyDraw, onStudyDraw, drawStudySpot]);
 
   // Player last action
   const playerLastAction = useMemo(() => {
@@ -9637,13 +9543,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           {onStudyDraw && drawStudyGame && (
             <button className={'btn btn-sm rab-solve ' + (canStudyDraw ? 'btn-primary' : 'btn-ghost')}
               onClick={handleStudyDraw} disabled={!canStudyDraw}
-              title={canStudyDraw ? 'Price every betting and drawing option at this decision'
-                : 'No draw is left to price at the final betting round'}>
+              title={canStudyDraw ? 'Price every discard at your draw on this street'
+                : (drawStudySpot && drawStudySpot.refused) || undefined}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="12" height="16" rx="2"/><path d="M15 8h4a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-4"/></svg>
               <span className="rs-t">Study this draw</span>
             </button>
           )}
-          {onSolveSpot && (
+          {/* One button in this cell: both are .rab-solve, and in a draw game Solve (stud only) was
+              always dead and sat on top of Study, which nobody could therefore press. */}
+          {onSolveSpot && !(onStudyDraw && drawStudyGame) && (
             <button className={'btn btn-sm rab-solve ' + (canSolveSpot ? 'btn-primary' : 'btn-ghost')}
               onClick={handleSolveSpot} disabled={!canSolveSpot}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -9663,7 +9571,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         {/* 80: the ONLY explanation of why Solve is dead was a title
             attribute — invisible to every touch user, which is most of them
             on this app. */}
-        {onSolveSpot && !canSolveSpot && (
+        {onSolveSpot && !canSolveSpot && !(onStudyDraw && drawStudyGame) && (
           <div className="replayer-bar-note"><span className="rs-t">Solving is available for stud8 and razz spots.</span></div>
         )}
         {/* The same courtesy the Solve note gets: a disabled button with no
@@ -9671,7 +9579,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             reasons are different and the message says which. */}
         {onStudyDraw && !canStudyDraw && (
           <div className="replayer-bar-note"><span className="rs-t">{drawStudyGame
-            ? 'No draw is left to price at the final betting round — that is the street the exact oracle already covers.'
+            ? drawStudySpot && drawStudySpot.refused
             : 'Draw study covers fixed-limit 2-7 TD, A-5 TD and Badugi. Pot-limit and no-limit draw games have a different betting tree.'}</span></div>
         )}
         {/* 79: the exports, in the sheet grammar the app already uses. */}

@@ -66,6 +66,14 @@ sessions opened here own scheduler work.
   `./solver`). Guards' views `replayer-drill-*` (canned answers, `scripts/drill-states.mjs`);
   `scripts/drive-replayer-drill.mjs` plays whole hands in a browser against a real solver and checks the table's chips
   against the server's. a5td and stud8 answer 503 where their blueprints are gitignored, here and on Render.
+- **Study this draw** (the replayer's button, app admins; fixed 2026-11-04; `utils/draw-study-spot.js`, `replayRealHand` in
+  `lib/drill-study.js`): a saved hand's draw on the Draw Study page, priced on the cards really held. The spot is the hero's
+  draw at the end of the street on screen, sent as the STARTING hand, both seats' tokens with their seats, and the hero's
+  real replacements (`drawn` on `POST /api/solver/draw-study` and `/exact`), which the server places in a built deck. The
+  opponent goes as counts, never cards, with a sampled stand-in who can take them. It refuses, saying why, rather than
+  price other cards: unrecorded draws, more than two players with chips in, and **a hero who broke a made hand** (td27: any
+  8-low or better), which the engine can only stand pat. At a made hand's own draw it prices breaking it, and only the pat
+  can be taken. Tests in `npm run test:replayer-drill`.
 
 ## Runs 24/7 on this box (don't duplicate)
 pm2 app **futuregame-scheduler** serves this checkout on **port 3001**, restarting

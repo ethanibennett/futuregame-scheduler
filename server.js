@@ -9882,7 +9882,7 @@ function requireSolverOptional(p) {
     throw e;
   }
 }
-const { priceDrillDraw } = require('./lib/drill-study');
+const { priceDrillDraw, replayRealHand, priceForcedDraw, parseSeatedHist } = require('./lib/drill-study');
 const drawStudyLine = requireSolverOptional('./solver/draw-trainer/study/line');
 const drawStudyEv = requireSolverOptional('./solver/draw-trainer/study/ev');
 const drawStudyWalk = requireSolverOptional('./solver/draw-trainer/study/walk');
@@ -9904,6 +9904,39 @@ function drawStudyGame(gameId, res) {
   if (!game) { res.status(404).json({ error: `unknown game '${gameId}'` }); return null; }
   if (!_drawStudyMemo[gameId]) { drawLbr.memoizeCfg(game); _drawStudyMemo[gameId] = 1; }
   return game;
+}
+
+// `drawn` in a study request: the hero's real replacements, from the replayer's "Study this draw". Then
+// the hand is the one that was played, not one dealt from an invented deck (lib/drill-study.js).
+// -> the replay, or null with the refusal already sent.
+function drawStudyRealHand(res, { game, smap, b, hero, opp, seat, seed }) {
+  let drawn;
+  try { drawn = drawStudyLine.parseCards(String(b.drawn || ''), 'drawn'); }
+  catch (e) { res.status(400).json({ error: e.message, field: 'drawn' }); return null; }
+  const tokens = parseSeatedHist(b.hist);
+  if (!tokens) {
+    res.status(400).json({ error: 'with real cards, every history token needs its seat, as in 1:k 0:b', field: 'hist' });
+    return null;
+  }
+  const real = replayRealHand({
+    game, smap, walk: drawStudyWalk, play: drawPlay, L: drawStudyLine, cardStr: drawCardStr,
+    hero, opp, heroSeat: seat, tokens, drawn, seed, pickSeed: seed,
+  });
+  if (real.refused) {
+    res.status(422).json({ error: 'This hand cannot be replayed in the solver', detail: real.refused });
+    return null;
+  }
+  if (b.spotStreet !== undefined && b.spotStreet !== null) {
+    const at = real.at;
+    if (at.phase !== 'draw' || at.toAct !== seat || at.street !== Number(b.spotStreet)) {
+      res.status(422).json({
+        error: 'This history does not reach your draw',
+        detail: `it stops at street ${at.street} ${at.phase}, seat ${at.toAct} to act. Check the betting recorded on this street.`,
+      });
+      return null;
+    }
+  }
+  return real;
 }
 
 function drawStudyTableOut(t) {
@@ -9992,9 +10025,15 @@ app.post('/api/solver/draw-study', authenticateToken, (req, res) => {
   // legal AND reports how many carried it, so a round trip cannot silently
   // relabel the blueprint's guesses as things the user entered.
   const parsed = drawStudyLine.parseHist(b.hist === undefined ? '' : String(b.hist));
-  const hist = parsed.hist;
 
   const seed = Number.isFinite(Number(b.seed)) ? Number(b.seed) : 777;
+  let real = null;
+  if (b.drawn !== undefined) {
+    real = drawStudyRealHand(res, { game, smap, b, hero, opp, seat, seed });
+    if (!real) return;
+    opp = real.hands[1 - seat];
+  }
+  const hist = real ? real.hist : parsed.hist;
   const cap = (v, d, m) => Math.max(1, Math.min(m, Number.isFinite(Number(v)) ? Number(v) : d));
   const shuffles = cap(b.shuffles, 8, DRAW_STUDY_CAP.shuffles);
   const particles = cap(b.particles, 200, DRAW_STUDY_CAP.particles);
@@ -10034,7 +10073,7 @@ app.post('/api/solver/draw-study', authenticateToken, (req, res) => {
   const hands = seat === 0 ? [hero, opp] : [opp, hero];
   try { drawStudyLine.validateHands(game, hands); }
   catch (e) { return res.status(400).json({ error: e.message }); }
-  const future = drawStudyLine.remainingDeck(hands, seed * 7 + 3);
+  const future = real ? real.future : drawStudyLine.remainingDeck(hands, seed * 7 + 3);
 
   // ── run it ───────────────────────────────────────────────────────────────
   // `steps` uses buildLine ALONE. walk() has no "don't price" option -- checked
@@ -10055,7 +10094,18 @@ app.post('/api/solver/draw-study', authenticateToken, (req, res) => {
     return res.status(400).json({ error: e.message, where: 'buildLine' });
   }
 
-  if (mode === 'now' && !built.terminal) {
+  // A made hand's draw from the replayer: the walk has gone on past it, so the spot is that node.
+  const forcedOpen = real && real.forcedOpen ? real.forcedOpen : null;
+  if (mode === 'now' && forcedOpen) {
+    try {
+      const t = priceForcedDraw({
+        game, smap, ev: drawStudyEv, play: drawPlay, real, heroSeat: seat,
+        budget: { shuffles, particles, rangeSeeds, seed },
+      });
+      if (t && t.rows && !t.error) openTable = t;
+      else openRefused = (t && t.error) || 'no table came back';
+    } catch (e) { openRefused = e.message; }
+  } else if (mode === 'now' && !built.terminal) {
     // 🛑 THE OPEN DECISION IS NOT IN THE RECORD, and `skipPast: true` alone
     // returns NO table at all -- I wrote that first and a standalone check said
     // "0 priced table(s)". `buildLine` breaks when the hero queue empties BEFORE
@@ -10097,13 +10147,18 @@ app.post('/api/solver/draw-study', authenticateToken, (req, res) => {
     }
   }
 
-  const steps = (built.line || []).map((x, i) => ({
+  const steps = (forcedOpen ? built.line.slice(0, forcedOpen.gradeIdx) : (built.line || [])).map((x, i) => ({
     i: i, actor: x.actor, action: x.action, src: x.src,
     guessed: x.src === 'sigma', you: x.actor === seat,
   }));
 
   let next = null;
-  if (!built.terminal && built.endState) {
+  if (forcedOpen) {
+    next = {
+      seat: seat, you: true, street: forcedOpen.street, phase: 'draw', legal: [forcedOpen.only],
+      acceptsExplicitDiscard: false, forced: true,
+    };
+  } else if (!built.terminal && built.endState) {
     let legal = [];
     try { legal = game.legalActions(built.endState); } catch (e) { legal = []; }
     next = {
@@ -10118,8 +10173,9 @@ app.post('/api/solver/draw-study', authenticateToken, (req, res) => {
 
   const table = openTable && openTable.rows ? drawStudyTableOut(openTable) : null;
 
-  const utility = built.terminal && built.endState ? game.utility(built.endState) : null;
-  const folded = built.endState && built.endState.folded !== null
+  const ended = built.terminal && !forcedOpen;
+  const utility = ended && built.endState ? game.utility(built.endState) : null;
+  const folded = !forcedOpen && built.endState && built.endState.folded !== null
     && built.endState.folded !== undefined ? built.endState.folded : null;
 
   const trust = drawStudyTrust(table);
@@ -10132,7 +10188,12 @@ app.post('/api/solver/draw-study', authenticateToken, (req, res) => {
   if (built.histLeft > 0) {
     warnings.push(built.histLeft + ' entered action(s) were NEVER USED — the hand ended first.');
   }
-  if (built.forcedDuringHist > 0) {
+  if (forcedOpen) {
+    warnings.push('This is a made hand, and the solver only ever stands a made hand pat. The table '
+      + 'prices breaking it anyway; the hand cannot be played on from a break.');
+  }
+  // With real cards the line was already checked seat by seat, so a forced node shifted nothing.
+  if (built.forcedDuringHist > 0 && !real) {
     warnings.push(built.forcedDuringHist + ' FORCED node(s) were auto-applied while your '
       + 'history was read, which shifts every later token onto the other seat.');
   }
@@ -10152,9 +10213,10 @@ app.post('/api/solver/draw-study', authenticateToken, (req, res) => {
   res.json({
     ok: true, game: gameId, seat: seat,
     hero: hero.map(drawCardStr), opp: opp.map(drawCardStr),
+    heroNow: real && real.heroNow ? real.heroNow.map(drawCardStr) : null,
     histEntered: hist, nGuessedIn: parsed.nGuessed,
     steps: steps, next: next,
-    terminal: !!built.terminal, utility: utility,
+    terminal: !!ended, utility: utility,
     heroBB: Array.isArray(utility) ? utility[seat] / 4 : null,
     folded: folded,
     line: steps.map((s) => s.actor + ':' + s.action + (s.guessed ? '*' : '')).join(' '),
@@ -10302,7 +10364,6 @@ app.post('/api/solver/draw-study/exact', authenticateToken, (req, res) => {
   }
 
   const parsed = drawStudyLine.parseHist(b.hist === undefined ? '' : String(b.hist));
-  const hist = parsed.hist;
   const seed = Number.isFinite(Number(b.seed)) ? Number(b.seed) : 777;
   const particles = Math.max(30, Math.min(400, Number(b.particles) || 200));
 
@@ -10311,7 +10372,15 @@ app.post('/api/solver/draw-study/exact', authenticateToken, (req, res) => {
   if (b.opp) {
     try { opp = drawStudyLine.parseCards(String(b.opp), 'opp'); }
     catch (e) { return res.status(400).json({ error: e.message, field: 'opp' }); }
-  } else {
+  }
+  let real = null;
+  if (b.drawn !== undefined) {
+    real = drawStudyRealHand(res, { game, smap, b, hero, opp, seat, seed });
+    if (!real) return;
+    opp = real.hands[1 - seat];
+  }
+  const hist = real ? real.hist : parsed.hist;
+  if (!opp) {
     const want = game.cfg.handSize || 5;
     for (let k = 0; k < 400; k++) {
       const used = new Set(hero);
@@ -10333,7 +10402,7 @@ app.post('/api/solver/draw-study/exact', authenticateToken, (req, res) => {
   const hands = [hero, opp];
   try { drawStudyLine.validateHands(game, hands); }
   catch (e) { return res.status(400).json({ error: e.message }); }
-  const future = drawStudyLine.remainingDeck(hands, seed * 7 + 3);
+  const future = real ? real.future : drawStudyLine.remainingDeck(hands, seed * 7 + 3);
 
   // find the OPEN decision and insist it is a last-draw node
   let built;

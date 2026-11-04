@@ -40,6 +40,8 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot }) {
   const [opp, setOpp] = useState('');
   const [seat, setSeat] = useState(0);
   const [hist, setHist] = useState('c k');
+  // The hero's real replacement cards, from the replayer; null for a hand typed in, whose draws the tool deals.
+  const [drawn, setDrawn] = useState(null);
   const [shuffles, setShuffles] = useState(8);
   const [particles, setParticles] = useState(200);
   const [rangeSeeds, setRangeSeeds] = useState(1);
@@ -53,20 +55,18 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot }) {
 
   // ── A SPOT HANDED OVER BY THE REPLAYER ─────────────────────────────────
   // Reading a 32-row table is the hard part of this tool, so the replayer's
-  // "Study this draw" button sends the hand you are LOOKING at: the hero's cards
-  // as they stood at that street, and both seats' actions in engine order with
-  // each discard as an explicit `d:<cards>` token. The notes travel with it,
-  // because what was assumed in the conversion matters as much as the numbers --
-  // a multiway hand loses its extra opponents, an all-in becomes a bet, and a
-  // discard with no recorded suit falls back to a COUNT, which is the very thing
-  // the drill already grades.
+  // "Study this draw" button sends the hand you are LOOKING at (utils/draw-study-spot.js):
+  // the STARTING hand, both seats' actions in engine order, and the cards the hero
+  // really drew, so the priced hand is the one in the replay. The notes travel with
+  // it, because what was assumed in the conversion matters as much as the numbers.
   useEffect(() => {
     if (!pendingSpot) return;
     if (pendingSpot.game) setGame(pendingSpot.game);
     if (pendingSpot.hero) setHero(pendingSpot.hero);
     if (pendingSpot.seat !== undefined) setSeat(Number(pendingSpot.seat));
     setHist(pendingSpot.hist || '');
-    setOpp('');            // the replay rarely records the villain's holding
+    setDrawn(pendingSpot.drawn === undefined ? null : pendingSpot.drawn);
+    setOpp('');            // the opponent's cards stay out: the hero did not know them
     setData(null);
     setErr(null);
     setHandoff(pendingSpot);
@@ -81,6 +81,9 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot }) {
       shuffles, particles, rangeSeeds,
     };
     if (opp.trim()) body.opp = opp;
+    if (drawn !== null) body.drawn = drawn;
+    // While the history is still the one handed over, it must land on that draw.
+    if (handoff && handoff.street !== undefined && body.hist === handoff.hist) body.spotStreet = handoff.street;
     try {
       const res = await fetchApi('/solver/draw-study', { method: 'POST', body });
       const json = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
@@ -124,6 +127,7 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot }) {
     setExactBusy(true); setExactErr(null); setExact(null);
     const body = { game, hero, seat, hist, options: opts, particles };
     if (opp.trim()) body.opp = opp;
+    if (drawn !== null) body.drawn = drawn;
     try {
       const res = await fetchApi('/solver/draw-study/exact', { method: 'POST', body });
       const json = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
@@ -136,9 +140,11 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot }) {
   }
 
   // Clicking an action is the play-through: append it and ask again.
+  // From the line the server just read, guessed actions included, and not from the box: the box can
+  // stop short of the opponent's next action, and a token added there would land on the opponent.
   function take(action) {
-    const next = (hist.trim() ? hist.trim() + ' ' : '') + action;
-    run('now', next);
+    const sofar = data && data.line !== undefined ? data.line : hist.trim();
+    run('now', (sofar ? sofar + ' ' : '') + seat + ':' + action);
   }
 
   const t = data && data.table;
@@ -165,10 +171,16 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot }) {
             <option value={1}>1 — BB, draws first</option>
           </select>
         </label>
-        <label style={lbl}>Your hand
+        <label style={lbl}>{drawn === null ? 'Your hand' : 'Your starting hand'}
           <input value={hero} onChange={(e) => setHero(e.target.value)} style={inp}
             placeholder="7h 5c 4d 2s Kh" />
         </label>
+        {drawn !== null && (
+          <label style={lbl}>Cards you drew, in order
+            <input value={drawn} onChange={(e) => setDrawn(e.target.value)} style={inp}
+              placeholder="none yet" />
+          </label>
+        )}
         <label style={lbl}>Villain <span style={{ opacity: 0.55 }}>(optional)</span>
           <input value={opp} onChange={(e) => setOpp(e.target.value)} style={inp}
             placeholder="sampled if blank" />
@@ -205,7 +217,8 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot }) {
         <div style={{ ...card, background: 'rgba(120,150,190,.09)', borderColor: 'rgba(120,150,190,.45)' }}>
           <div style={h3}>From the replayer — {handoff.source || 'a replayed hand'}</div>
           <div style={{ fontSize: 12.5, opacity: 0.8, marginBottom: 6 }}>
-            Hand and history are pre-filled below. Check them, then price the spot.
+            {handoff.now && <>Your hand at this draw: <b>{handoff.now}</b>. </>}
+            Hand and history are pre-filled above. Check them, then price the spot.
           </div>
           {(handoff.notes || []).length > 0 && (
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, opacity: 0.85 }}>
@@ -314,7 +327,10 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot }) {
                             : <span style={{ opacity: 0.5 }}>no — drill cannot suggest it</span>}
                         </td>
                         <td style={td}>
-                          <button onClick={() => take(r.action)} disabled={!!busy} style={btnTiny}>take</button>
+                          {/* A made hand's table prices breaking it, but the engine can only play on from the pat. */}
+                          {(!data.next || !data.next.forced || r.action === 'd0' || r.action === 'd:') && (
+                            <button onClick={() => take(r.action)} disabled={!!busy} style={btnTiny}>take</button>
+                          )}
                         </td>
                       </tr>
                     ))}

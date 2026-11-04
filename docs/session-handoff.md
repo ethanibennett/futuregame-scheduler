@@ -40,10 +40,17 @@ the junction hides anything missing from git.
   a no-op in the belief. It would matter the moment `drawReweight` is enabled, and fail silently (its note to the solver
   repo). **Lesson: compare a Monte Carlo gap to the same input under another seed before believing it.** That control
   moves the worst row 4 to 6 chips, so read the study tool's figures with its band, not row by row.
-- **"Study this draw" (the replayer's button) is broken past the first street**, and always was: `buildDrawStudySpot`
-  reads `a.type` where hands store `a.action`, so the history loses every bet; and it passes the hero's CURRENT hand with
-  a history that throws cards from earlier hands, and the route's invented deck would deal other replacements anyway.
-  NOT fixed here: it needs the route to accept real replacements, or a new shape. The owner decides.
+- **"Study this draw" (the replayer's button) never worked past the deal, and could not be pressed at all.** Fixed the
+  same day (owner: yes); CLAUDE.md "Study this draw" has the design. What was wrong, all of it found by using it: it read
+  `a.type` where hands store `a.action`, so the history lost every bet; it stopped BEFORE the street's betting, so the open
+  decision was never the draw; `seat` was always 0; it sent the hero's CURRENT hand with a history that threw cards from
+  earlier hands, against an invented deck; all-ins became `b` even facing a bet; and in a draw game Solve (dead there) sat
+  in the same grid cell as Study, on top of it (found only by clicking it in a browser). The page's `take` also appended
+  to the box rather than the line just read, so a token could land on the opponent; it now uses the line.
+  **Open, the owner's to call:** a hand where the hero broke a made hand (td27: 8-low or better) refuses from that draw on,
+  because the engine's forced stand pat cannot play it. `drawOptionsV2` in the solver offers a rough 8-7 the break; a real
+  fix belongs in the solver repo. Note the Monte-Carlo band at the default budget can be wide: 32 of 32 rows tied on one
+  first draw. That is the tool saying it cannot separate them; raise Shuffles.
 - The replayer's amounts are the chips an action ADDS, never "raise to". A raise to 4 from the big blind is 2.
 - **Antes were left out of the award at every showdown** in the replayer (`settled.contested`), on every saved hand with
   antes: the winner was paid short and the seats did not sum. Fixed; the driver asserts the seats to the chip.
