@@ -51,6 +51,20 @@ sessions opened here own scheduler work.
   text quick add's fast path (`lib/quick-add/hh.js`) already reads; why they stay two, and the test
   that holds them together, are in the doc (§8). `npm run test:hh-io`; design, grammar sources and the
   owner's PT4 check: `docs/hand-history-io.md`.
+- **The replayer drill** (owner, 2026-11-03: "play through a hand like in the drill trainer, just using the
+  replayer platform"; `components/ReplayerDrill.jsx`, `utils/replayer-drill.js`, `lib/drill-study.js`): Hands →
+  **Play a hand** (app admins; the solver routes are admin-only). The Trainer's deal/step routes play the hand on
+  the replayer's own table (`HandReplayerReplayView`'s `drill` prop: the hand grows with each answer, plays to its
+  edge, and the action bar takes the transport's place until it is over), graded when it ends, saved to the Trainer's
+  history and scoreboard. **A draw is graded by both tools, each labelled** (owner): the drill grader (its source named;
+  a caveat when its floor at 0 hid a discard that beat all its options) and the study tool over every discard (`POST
+  /api/solver/trainer/:game/study-draw`), which says **Not rankable** inside the band it cannot separate, with no figure.
+  That route replays the seed's REAL deal, checks it reaches the hero's real cards, and prices on the **public history**
+  including the opponent's forced stand pats, which the engine does not record: without them the table moved up to 3.56
+  chips with the opponent's real hand, which is hindsight. `npm run test:replayer-drill` holds both on real hands (needs
+  `./solver`). Guards' views `replayer-drill-*` (canned answers, `scripts/drill-states.mjs`);
+  `scripts/drive-replayer-drill.mjs` plays whole hands in a browser against a real solver and checks the table's chips
+  against the server's. a5td and stud8 answer 503 where their blueprints are gitignored, here and on Render.
 
 ## Runs 24/7 on this box (don't duplicate)
 pm2 app **futuregame-scheduler** serves this checkout on **port 3001**, restarting

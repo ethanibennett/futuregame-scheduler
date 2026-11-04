@@ -80,6 +80,7 @@
     "test:growth": "node test/growth.test.js && node test/attribution.test.js",
     "test:apple-billing": "node test/apple-billing.test.js && node test/billing-features.test.js",
     "test:admin-eval": "node test/admin-eval.test.js",
+    "test:replayer-drill": "node test/replayer-drill.test.js && node vite-app/src/utils/__tests__/replayer-drill.test.mjs",
     "test:backer-live": "node test/backer-live.test.js"
   },
   "keywords": [],

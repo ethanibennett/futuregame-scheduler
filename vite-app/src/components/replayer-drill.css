@@ -1,0 +1,87 @@
+/* The replayer drill. Everything is whole g and r: the controls are the Trainer's .hs-btn, the bar and
+   the review its .hs-view, on the 3..34g content column. */
+.hs-view.rd-bar {
+  overflow: visible; /* .hs-view scrolls; this is a row of controls, and a thrown card drops 1r */
+  box-sizing: border-box;
+  width: calc(var(--gu) * 31);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--subrow);
+  padding-block: var(--subrow);
+}
+.rd-status { color: var(--text-muted); }
+
+.rd-bar .rd-act,
+.rd-bar .hs-btn,
+.rd-review .hs-btn,
+.rd-setup .hs-btn { --hs-h: 5; }
+.rd-bar .rd-act { --hs-edge: var(--accent); }
+.hs-view .rd-primary { --hs-edge: transparent; --hs-fill: var(--brand); --hs-ink: var(--on-brand); }
+/* These labels are short and never truncate, so they do not need the trainer's clip. */
+.hs-view.rd-bar .hs-btn > .hs-t,
+.hs-view.rd-setup .hs-btn > .hs-t,
+.hs-view.rd-review .hs-btn > .hs-t { overflow: visible; }
+
+/* The hand to throw from, flush left on the column: centred, five cards land on half a g. A row for the
+   card's height and the 1r a thrown one drops. */
+.rd-cards {
+  display: flex;
+  justify-content: flex-start;
+  column-gap: var(--gu);
+  align-items: flex-start;
+  padding-bottom: var(--subrow);
+}
+.rd-card {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: var(--radius-xs);
+  transition: transform var(--dur-fast, .1s) ease;
+}
+.rd-card.is-thrown { transform: translateY(var(--subrow)); box-shadow: 0 0 0 calc(var(--subrow) * 0.25) var(--neg, #ef4444); }
+.rd-card:disabled { cursor: default; opacity: 0.6; }
+
+/* Landscape, and so every desktop window: the replayer gives its bar one 7.25r row, so the drill's
+   sits in it side by side. */
+.replayer-landscape .replayer-bottom-fixed > .rd-bar {
+  flex-direction: row;
+  align-items: flex-start;
+  width: auto;
+  margin: 0;
+  padding-block: 0;
+  column-gap: calc(var(--gu) * 2);
+  flex: none;
+}
+.replayer-landscape .rd-bar .hs-cols,
+.replayer-landscape .rd-bar .hs-cols3 { display: flex; column-gap: var(--gu); }
+.replayer-landscape .rd-bar .hs-btn { width: calc(var(--gu) * 10); }
+.replayer-landscape .rd-bar .rd-status { flex: none; width: calc(var(--gu) * 20); white-space: nowrap; }
+.replayer-landscape .rd-bar .rd-cards { padding-bottom: 0; }
+
+.rd-setup,
+.rd-review {
+  box-sizing: border-box;
+  width: calc(var(--gu) * 31);
+  margin-inline: auto;
+  padding-block: calc(var(--subrow) * 2);
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--subrow);
+}
+.rd-decision { display: flex; flex-direction: column; row-gap: var(--subrow); margin-top: var(--subrow); }
+.rd-study { --hs-edge: var(--border); }
+
+/* Prose wraps; a wrapped line takes whole r. */
+.rd-wrap { white-space: normal; line-height: calc(var(--subrow) * 2); }
+.rd-warn { color: var(--warn, #f59e0b); }
+.rd-error { width: calc(var(--gu) * 31); margin: var(--subrow) auto 0; }
+
+.rd-verdict.is-not-rankable { color: var(--accent); }
+.rd-verdict.is-below { color: var(--neg, #ef4444); }
+.rd-verdict.is-best { color: var(--pos, #22c55e); }

@@ -5,12 +5,48 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-10-23 (from Windows) — newest section first. Earlier notes: 2026-10-21, 2026-10-13, then 2026-09-30, live
+Last updated: 2026-11-04 (from Windows) — newest section first. Earlier notes: 2026-10-21, 2026-10-13, then 2026-09-30, live
 tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
 2026-08-30; "Seams to the dashboard" and "The build pipeline" were added from the
 wsop-console side and verified against both live services.
+
+---
+
+## 2026-11-04 — The replayer drill, and the solver is on GitHub
+
+The owner asked a few times to "play through a hand like in the drill trainer, just using the replayer platform", and it
+kept getting dropped. Built: Hands → Play a hand (CLAUDE.md, "The replayer drill"). Owner's decisions: draws graded by
+**both** tools, labelled; push the solver.
+
+**The solver.** `origin/master` was 1,099 commits behind local until a push at 22:43 ET on 11-03 (from this box's solver
+clone, not from this repo's session). Render rebuilt from it and no longer logs `[draw-study] … off`, so the study
+routes work on futurega.me for the first time. Before that push a clean clone was booted here, as Render would build
+it: the trainer plays through and the study route answers. **Deploying from a clean clone is the check that matters**:
+the junction hides anything missing from git.
+
+**Traps found on the way, all measured:**
+- `/api/solver/draw-study` takes a hand TYPED IN: it replays from the hero's STARTING hand and deals replacements from a
+  deck it invents, so past the first draw its cards are not the hand's. The drill does not use it: its own route passes
+  the seed's real deal and deck, and refuses rather than price other cards. 0 refusals in 2,333 draws (td27, badugi).
+- **A forced stand pat leaves no token.** A made hand has one draw option, the engine applies it unrecorded, and the
+  belief walk never sees it, though the hero saw it at the table. In td27 that is about 5% of draws. On the recorded
+  history the table moved 1.78 to 3.56 chips with the opponent's real hand; on the public history, three other hands
+  gave identical tables. `lib/drill-study.js` has the fix for the study tool's price. **The drill grader's own posterior
+  walks the same decisions and has not been measured for this**: that is for the solver repo.
+- **"Study this draw" (the replayer's button) is broken past the first street**, and always was: `buildDrawStudySpot`
+  reads `a.type` where hands store `a.action`, so the history loses every bet; and it passes the hero's CURRENT hand with
+  a history that throws cards from earlier hands, and the route's invented deck would deal other replacements anyway.
+  NOT fixed here: it needs the route to accept real replacements, or a new shape. The owner decides.
+- The replayer's amounts are the chips an action ADDS, never "raise to". A raise to 4 from the big blind is 2.
+- **Antes were left out of the award at every showdown** in the replayer (`settled.contested`), on every saved hand with
+  antes: the winner was paid short and the seats did not sum. Fixed; the driver asserts the seats to the chip.
+- The clipping guard did not know a `position: fixed` box escapes its ancestors' overflow; it reported the replayer's
+  whole bottom bar as cut off. Fixed in the guard.
+
+**Not exercised:** a5td and stud8 in the browser (no blueprint here or on Render: the setup screen shows the server's
+503). Their paths are shared with td27 and razz. Pro-mode oracle grading is not offered in the drill.
 
 ---
 

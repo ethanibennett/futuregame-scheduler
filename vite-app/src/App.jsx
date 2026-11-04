@@ -2162,7 +2162,7 @@ function App() {
                         ? <Suspense fallback={<LazyFallback />}><Multiway3TrainerView /></Suspense>
                         : handsTool === 'study' && isAdmin
                         ? <Suspense fallback={<LazyFallback />}><DrawStudyView pendingSpot={pendingDrawSpot} onConsumeSpot={() => setPendingDrawSpot(null)} /></Suspense>
-                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setHandsTool('solver'); }) : undefined} onStudyDraw={isAdmin ? (spot => { setPendingDrawSpot(spot); setHandsTool('study'); }) : undefined} quickAdd={isAdmin} schedule={mySchedule} updates={myActiveUpdates} /></Suspense>}
+                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setHandsTool('solver'); }) : undefined} onStudyDraw={isAdmin ? (spot => { setPendingDrawSpot(spot); setHandsTool('study'); }) : undefined} quickAdd={isAdmin} drillEnabled={isAdmin} schedule={mySchedule} updates={myActiveUpdates} /></Suspense>}
                     </div>
                   </div>
                 : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'calc(var(--subrow) * 7.5) calc(var(--subrow) * 2.5)',textAlign:'center'}}>

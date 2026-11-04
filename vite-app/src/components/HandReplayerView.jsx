@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import ShortDeckRuleDialog from './ShortDeckRuleDialog.jsx';
 import Icon from './Icon.jsx';
@@ -29,6 +29,7 @@ import { parseHandText } from '../utils/hand-text-parser.js';
 import QuickAddView from './QuickAddView.jsx';
 import { checkExportable } from '../utils/hand-history/index.js';
 import { exportHandHistory, playedAtOf, handOfRow, handsFileName } from '../utils/hand-history/save.js';
+const ReplayerDrill = lazy(() => import('./ReplayerDrill.jsx'));
 
 /* The ranks a game deals, high to low, for its card pickers. Short Deck plays a 36-card deck, the
    twos to fives taken out, so its pickers have nine ranks to a suit and say so in a class that
@@ -4689,7 +4690,7 @@ class ReplayErrorBoundary extends React.Component {
 // ══════════════════════════════════════════════════════════
 // ── Main Hand Replayer View ──────────────────────────────
 // ══════════════════════════════════════════════════════════
-export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, onStudyDraw, linkedReplay, quickAdd, schedule = null, updates = null }) {
+export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, onStudyDraw, linkedReplay, quickAdd, drillEnabled = false, schedule = null, updates = null }) {
   const toast = useToast();
   const [mode, setMode] = useState(initialHand ? 'replay' : 'list');
   const [quickVoice, setQuickVoice] = useState(false);   // quick add opened by Say (listening at once)
@@ -5306,6 +5307,18 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     );
   }
 
+  // ── The drill: a hand played against the solver, on this table ──
+  if (mode === 'drill') {
+    return (
+      <ReplayErrorBoundary onBack={() => { setMode('list'); fetchHands(); }}>
+        <Suspense fallback={null}>
+          <ReplayerDrill Replay={HandReplayerReplayView} sortDrawHand={sortDrawHand} token={token} heroName={heroName} cardSplay={cardSplay}
+            onBack={() => { setMode('list'); fetchHands(); }} />
+        </Suspense>
+      </ReplayErrorBoundary>
+    );
+  }
+
   // ── List mode ──
   return (
     <div className="replayer-view is-list">
@@ -5314,6 +5327,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       {quickAdd && (
         <div className="qa-entry">
           {/* Two ways in (owner, 2026-10-16): type the hand, or say it. */}
+          {drillEnabled && <button type="button" className="qa-chip" onClick={() => setMode('drill')}><span>Play a hand</span></button>}
           <button type="button" className="qa-chip" onClick={() => { setQuickVoice(false); setMode('quick'); }}><span>Type a hand</span></button>
           <button type="button" className="qa-chip" onClick={() => { setQuickVoice(true); setMode('quick'); }}>
             <svg className="qa-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="22"/></svg>
@@ -5594,7 +5608,7 @@ function HandHistoryExportSheet({ rows, heroName, toast, onClose }) {
 // ══════════════════════════════════════════════════════════
 // ── Replay View Sub-component ────────────────────────────
 // ══════════════════════════════════════════════════════════
-function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, cardSplay, onSolveSpot, onStudyDraw, linkedReplay, heroName, playedAt, sharedHand }) {
+function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, cardSplay, onSolveSpot, onStudyDraw, linkedReplay, heroName, playedAt, sharedHand, drill = null }) {
   /* The GIF export's completion toasts referenced `toast` from inside this
      component, where it was never declared - the outer HandReplayerView owns
      the one call to useToast(). Optional chaining does not save an UNDECLARED
@@ -5605,7 +5619,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const [streetIdx, setStreetIdx] = useState(0);
   const [actionIdx, setActionIdx] = useState(-1);
   const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1000);
+  /* The drill plays the opponent's actions at twice the pace: it is a hand being played, not watched. */
+  const [speed, setSpeed] = useState(drill ? 500 : 1000);
   const [showResult, setShowResult] = useState(false);
   const [hiloAnimate, setHiloAnimate] = useState(false);
   /* A landscape screen gets a landscape table, on a phone held sideways and on
@@ -6146,7 +6161,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const cap = sorted.length > 1 ? sorted[1] : 0;
     const contrib = raw.map(c => Math.min(c, cap));
     const uncalled = raw.map((c, i) => c - contrib[i]);
-    return { contrib, uncalled, contested: contrib.reduce((a, b) => a + b, 0) };
+    /* Antes are in the pot and in no seat's street contribution, so the total has to add them: they
+       ride in the main pot (reconcileLayersToPot below). Without them the winner was paid short and
+       the chips left the table, on every hand with antes. Stud antes per seat, a big-blind ante once,
+       as calcPotsAndStacks takes them. */
+    const ante = (hand.blinds && hand.blinds.ante) || 0;
+    const dead = getGameCategory(hand.gameType) === 'stud' ? ante * hand.players.length : ante;
+    return { contrib, uncalled, contested: contrib.reduce((a, b) => a + b, 0) + dead };
   }, [hand, streetIdx, actionIdx, showResult]);
 
   const displayPot = useMemo(() => {
@@ -6693,7 +6714,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   }, [isHiLo, showResult, flaggedWinners]);
 
   // Navigation
-  const canGoForward = streetIdx < totalStreets - 1 || actionIdx < currentActions.length - 1 || !showResult;
+  /* In a drill the hand ends where it has got to, until it is over: the next action is the player's. */
+  const atDrillEdge = !!drill && !drill.over;
+  const canGoForward = streetIdx < totalStreets - 1 || actionIdx < currentActions.length - 1 || (!showResult && !atDrillEdge);
   const canGoBack = streetIdx > 0 || actionIdx >= 0 || showResult;
 
   // Update refs inline during render — guaranteed current before any async code runs.
@@ -6703,9 +6726,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const stepForward = useCallback(() => {
     if (actionIdx < currentActions.length - 1) setActionIdx(a => a + 1);
     else if (streetIdx < totalStreets - 1) { setStreetIdx(s => s + 1); setActionIdx(-1); }
+    else if (atDrillEdge) setPlaying(false);
     else if (!showResult) { setShowResult(true); if (isHiLo) setTimeout(() => setHiloAnimate(true), 100); }
     else setPlaying(false);
-  }, [actionIdx, currentActions.length, streetIdx, totalStreets, showResult, isHiLo]);
+  }, [actionIdx, currentActions.length, streetIdx, totalStreets, showResult, isHiLo, atDrillEdge]);
   // Update inline so the export loop always gets the latest closure
   stepForwardRef.current = stepForward;
 
@@ -6853,6 +6877,17 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   }, [playing, tabHidden, speed, streetIdx, actionIdx, showResult, currentActions.length, totalStreets, rSettings.animateDeal]);
 
   useEffect(() => { if (showResult && playing) setPlaying(false); }, [showResult, playing]);
+
+  /* The drill: every answer from the server plays forward to the new edge of the hand, and the
+     player's buttons wait until it has got there. Back from the grades, the table is at the result. */
+  const drillRev = drill ? drill.rev : null;
+  const drillBackAtEnd = !!(drill && drill.startAtEnd);
+  useLayoutEffect(() => { // before paint, so the buttons never flash live ahead of the table
+    if (drillRev == null) return;
+    if (drillBackAtEnd) { goToEnd(); return; }
+    setPlaying(true);
+  }, [drillRev]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (atDrillEdge && playing && !canGoForward) setPlaying(false); }, [atDrillEdge, playing, canGoForward]);
 
   // Trigger draw discard animation when entering a draw street
   useEffect(() => {
@@ -9538,7 +9573,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         {/* snap-place: centred, the capsule lands wherever the window's width puts it; this sets
             it on the g and r lines so its whole-g, whole-r buttons are on them (a no-op on a phone,
             where the 27g capsule is already 5g in). */}
-        <div className="replayer-controls snap-place">
+        {atDrillEdge && (playing ? React.cloneElement(drill.bar, { busy: true }) : drill.bar)}
+        {!atDrillEdge && <div className="replayer-controls snap-place">
           <button onClick={goToStart} disabled={!canGoBack} title="Start">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="19 20 9 12 19 4"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
           </button>
@@ -9584,14 +9620,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               </button>
             );
           })()}
-        </div>
+        </div>}
+        {drill && drill.over && drill.overBar}
         {/* 79: Back, Edit, Solve, Link, image share, WebM, GIF and the gear
             sat in ONE inline flex row with no wrap plan, so at 320px eight
             controls either overflowed or crushed each other — and four of the
             eight were exports, which is a task, not a navigation control. The
             row is navigation now; the exports live behind one Share button in
             the sheet the app already ships for exactly this. */}
-        <div className={'replayer-actions-bar snap-place' + (onSolveSpot ? ' has-solve' : '') + (linkedReplay ? ' is-linked' : '')}>
+        {!drill && <div className={'replayer-actions-bar snap-place' + (onSolveSpot ? ' has-solve' : '') + (linkedReplay ? ' is-linked' : '')}>
           {/* A shared link is a clean view of one hand — no navigating back to a
               list that is not there, no editing someone else's hand, no
               re-sharing chrome. Ethan: drop Back/Edit/Share on a linked replay. */}
@@ -9622,7 +9659,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
             </svg>
           </button>
-        </div>
+        </div>}
         {/* 80: the ONLY explanation of why Solve is dead was a title
             attribute — invisible to every touch user, which is most of them
             on this app. */}

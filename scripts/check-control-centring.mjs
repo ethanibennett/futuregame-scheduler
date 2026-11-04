@@ -162,6 +162,7 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { stageHome, routeHomeLayout } from './home-states.mjs';
 import { stageNotify } from './notify-states.mjs';
+import { stageDrill } from './drill-states.mjs';
 
 // The Bankroll sections are grouped (owner, 2026-10-20; CashLive.jsx ResultsKindTabs): a section is a
 // chip, or the shown label of its group's split chip, or an item in that group's caret menu.
@@ -2371,6 +2372,10 @@ function finalize(c) {
   // (without a solver, its error and empty states).
   for (const [id, label] of [['solver', 'Solver'], ['solver-trainer', 'Solver Trainer'], ['watch-solver', 'Watch Solver'], ['trainer', 'Trainer'], ['3-way', '3-Way']]) {
     step('hands-tool-' + id, async () => { await nav('Hands'); await tap(`.hands-tool-row button:text-is("${label}")`, 2000); }, 1);
+  }
+  // The replayer drill, on canned answers (drill-states.mjs): every state of its controls.
+  for (const stage of ['setup', 'bet', 'draw', 'over', 'review']) {
+    step('replayer-drill-' + stage, async () => { await nav('Hands'); await stageDrill(p, stage, { force: overlay || desktop }); }, stage === 'review' ? 2 : 0);
   }
   const openHand = async () => { await nav('Hands'); await tap('.replayer-hand-card.is-row', 2000); };
   step('replayer', async () => {

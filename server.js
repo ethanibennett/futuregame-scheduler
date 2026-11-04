@@ -9193,6 +9193,9 @@ function replayDraw(seed, heroActions, game) {
   const rng = makeRazzRng(seed >>> 0);
   let state = game.newHand(rng);
   const decisions = [];
+  // What the table saw, in order: `decisions` plus the opponent's forced stand pats, which the
+  // engine applies without recording (lib/drill-study.js says why the study needs them).
+  const publicLine = [];
   let idx = 0;
   let guard = 0;
 
@@ -9200,7 +9203,13 @@ function replayDraw(seed, heroActions, game) {
     if (++guard > 500) break;
     if (game.isChance(state)) { state = game.sampleChance(state, rng); continue; }
     const acts = game.legalActions(state);
-    if (acts.length <= 1) { state = game.applyAction(state, acts[0]); continue; }
+    if (acts.length <= 1) {
+      if (state.phase === 'draw' && game.currentPlayer(state) !== heroSeat) {
+        publicLine.push({ actor: game.currentPlayer(state), action: acts[0] });
+      }
+      state = game.applyAction(state, acts[0]);
+      continue;
+    }
 
     const actor = game.currentPlayer(state);
     const key = game.infosetKey(state);
@@ -9211,7 +9220,7 @@ function replayDraw(seed, heroActions, game) {
     let chosen;
     if (actor === heroSeat) {
       if (idx >= heroActions.length) {
-        return { done: false, heroSeat, state: snap, acts: acts.slice(), decisions };
+        return { done: false, heroSeat, state: snap, acts: acts.slice(), decisions, publicLine };
       }
       chosen = heroActions[idx++];
       // FULL DISCARD CONTROL: at a DRAW node the hero may submit an EXPLICIT
@@ -9240,6 +9249,7 @@ function replayDraw(seed, heroActions, game) {
       chosen = acts[drawPlay.sampleIndex(strat.probs, rng)];
     }
 
+    publicLine.push({ actor, action: chosen });
     decisions.push({
       actor,
       isHero: actor === heroSeat,
@@ -9872,6 +9882,7 @@ function requireSolverOptional(p) {
     throw e;
   }
 }
+const { priceDrillDraw } = require('./lib/drill-study');
 const drawStudyLine = requireSolverOptional('./solver/draw-trainer/study/line');
 const drawStudyEv = requireSolverOptional('./solver/draw-trainer/study/ev');
 const drawStudyWalk = requireSolverOptional('./solver/draw-trainer/study/walk');
@@ -9893,6 +9904,40 @@ function drawStudyGame(gameId, res) {
   if (!game) { res.status(404).json({ error: `unknown game '${gameId}'` }); return null; }
   if (!_drawStudyMemo[gameId]) { drawLbr.memoizeCfg(game); _drawStudyMemo[gameId] = 1; }
   return game;
+}
+
+function drawStudyTableOut(t) {
+  return {
+    street: t.street, phase: t.phase,
+    rows: t.rows.slice(0, DRAW_STUDY_CAP.rows).map((r) => ({
+      action: r.action, ev: r.ev, evBB: r.ev / 4,
+      sd: r.sd, se: r.se, seIsLowerBound: !!r.seIsLowerBound,
+      diff: r.diff, tied: !!r.tied, offered: !!r.offered,
+    })),
+    nRows: t.rows.length, bandWidth: t.bandWidth,
+    wide: !!t.wide, offeredActions: t.offered || [],
+    bandRule: t.bandRule || null, seRule: t.seRule || null, gates: t.gates || null,
+    exactForward: t.exactForward === true,
+  };
+}
+
+function drawStudyTrust(table) {
+  return {
+    level: table && table.exactForward ? 'exact-forward' : 'monte-carlo-uncertified',
+    note: table && table.exactForward
+      ? 'Street-3 betting is the one deal-free betting round, so the forward pass samples no '
+        + 'chance nodes. Certified against the exact post-last-draw oracle (worst |diff| '
+        + '8.9e-15) and deterministic across repeat counts.'
+      : 'MONTE-CARLO FORWARD: the continuation samples chance nodes. No draw phase has ever '
+        + 'been scored against an exact solve, so treat the LEVEL as uncertified. The tied '
+        + 'band remains a valid statement about SEPARATION.',
+    bandIsNotARanking: true,
+    seCoversRangeAxis: !!(table && table.seRule && table.seRule.lowerBound === false),
+    villainContinuation: 'blueprint, not equilibrium — right for grading play against this '
+      + 'bot, wrong to quote as GTO (measured gap up to 18.9 chips)',
+    deadCards: 'excluded from the EV evaluation; the blueprint POLICY cannot see them '
+      + '(bounded at ~0.46 chips and behaving like zero)',
+  };
 }
 
 app.post('/api/solver/draw-study', authenticateToken, (req, res) => {
@@ -10071,43 +10116,13 @@ app.post('/api/solver/draw-study', authenticateToken, (req, res) => {
     };
   }
 
-  let table = null;
-  if (openTable && openTable.rows) {
-    const t = openTable;
-    table = {
-      street: t.street, phase: t.phase,
-      rows: t.rows.slice(0, DRAW_STUDY_CAP.rows).map((r) => ({
-        action: r.action, ev: r.ev, evBB: r.ev / 4,
-        sd: r.sd, se: r.se, seIsLowerBound: !!r.seIsLowerBound,
-        diff: r.diff, tied: !!r.tied, offered: !!r.offered,
-      })),
-      nRows: t.rows.length, bandWidth: t.bandWidth,
-      wide: !!t.wide, offeredActions: t.offered || [],
-      bandRule: t.bandRule || null, seRule: t.seRule || null, gates: t.gates || null,
-      exactForward: t.exactForward === true,
-    };
-  }
+  const table = openTable && openTable.rows ? drawStudyTableOut(openTable) : null;
 
   const utility = built.terminal && built.endState ? game.utility(built.endState) : null;
   const folded = built.endState && built.endState.folded !== null
     && built.endState.folded !== undefined ? built.endState.folded : null;
 
-  const trust = {
-    level: table && table.exactForward ? 'exact-forward' : 'monte-carlo-uncertified',
-    note: table && table.exactForward
-      ? 'Street-3 betting is the one deal-free betting round, so the forward pass samples no '
-        + 'chance nodes. Certified against the exact post-last-draw oracle (worst |diff| '
-        + '8.9e-15) and deterministic across repeat counts.'
-      : 'MONTE-CARLO FORWARD: the continuation samples chance nodes. No draw phase has ever '
-        + 'been scored against an exact solve, so treat the LEVEL as uncertified. The tied '
-        + 'band remains a valid statement about SEPARATION.',
-    bandIsNotARanking: true,
-    seCoversRangeAxis: !!(table && table.seRule && table.seRule.lowerBound === false),
-    villainContinuation: 'blueprint, not equilibrium — right for grading play against this '
-      + 'bot, wrong to quote as GTO (measured gap up to 18.9 chips)',
-    deadCards: 'excluded from the EV evaluation; the blueprint POLICY cannot see them '
-      + '(bounded at ~0.46 chips and behaving like zero)',
-  };
+  const trust = drawStudyTrust(table);
 
   const warnings = [];
   if (parsed.nGuessed) {
@@ -10147,6 +10162,66 @@ app.post('/api/solver/draw-study', authenticateToken, (req, res) => {
     budget: { mode: mode, shuffles: shuffles, particles: particles,
       rangeSeeds: rangeSeeds, seed: seed, caps: DRAW_STUDY_CAP },
   });
+});
+
+// ── THE REPLAYER DRILL: the study tool's price for a draw the hero really faced ──
+// POST /api/solver/trainer/:game/study-draw { seed, heroActions, index }
+// `index` is the hero's draw within `heroActions`; everything before it replays the hand. The same
+// budget as the Draw Study page's defaults, so the two answers read alike. See lib/drill-study.js.
+app.post('/api/solver/trainer/:game/study-draw', authenticateToken, (req, res) => {
+  if (!drawStudyReady) return drawStudyOff(res);
+  const gameId = String(req.params.game || '');
+  const game = drawStudyGame(gameId, res);
+  if (!game) return;
+  const bpRaw = getTrainerBp(gameId);
+  let bpEmpty = true;
+  for (const k in bpRaw) { bpEmpty = false; break; }
+  if (bpEmpty) return res.status(503).json({ error: `${gameId} blueprint is not installed on this server` });
+
+  const body = req.body || {};
+  if (body.seed == null) return res.status(400).json({ error: 'seed is required' });
+  const seed = body.seed | 0;
+  const heroActions = Array.isArray(body.heroActions) ? body.heroActions.map(String) : [];
+  const index = Number(body.index);
+  if (!Number.isInteger(index) || index < 0 || index >= heroActions.length) {
+    return res.status(400).json({ error: '`index` must point at one of heroActions' });
+  }
+
+  try {
+    let r;
+    try {
+      r = replayDraw(seed, heroActions.slice(0, index), game);
+    } catch (e) {
+      if (e.illegal) return res.status(400).json({ error: e.message });
+      throw e;
+    }
+    if (r.done || r.state.phase !== 'draw') {
+      return res.status(400).json({ error: 'that action is not one of your draws in this hand' });
+    }
+    const budget = { shuffles: 8, particles: 200, rangeSeeds: 1, seed: 777 };
+    const start = game.newHand(makeRazzRng(seed >>> 0));
+    const priced = priceDrillDraw({
+      game, smap: drawPlay.strategyMapOf(bpRaw), walk: drawStudyWalk, makeRng: makeRazzRng,
+      start: { hands: start.hands, deck: start.deck },
+      heroSeat: r.heroSeat, publicLine: r.publicLine, heroHand: r.state.hands[r.heroSeat],
+      legal: r.acts, budget,
+    });
+    if (priced.refused) return res.status(422).json({ error: 'not priced', detail: priced.refused });
+
+    const table = drawStudyTableOut(priced.table);
+    const warnings = [];
+    if (table.gates && table.gates.ok === false) {
+      warnings.push('The opponent range collapsed at this decision, so the table is effectively '
+        + 'answering from a fresh random deal.');
+    }
+    res.json({
+      ok: true, game: gameId, street: r.state.street, phase: r.state.phase,
+      heroAction: heroActions[index], table, trust: drawStudyTrust(table), warnings, budget,
+    });
+  } catch (error) {
+    console.error(`${gameId} drill study error:`, error);
+    res.status(500).json({ error: 'Failed to price that draw' });
+  }
 });
 
 // ── DRAW STUDY: the EXACT last-draw grade ───────────────────────────────────

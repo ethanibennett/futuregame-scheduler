@@ -36,6 +36,7 @@ import { stageHands, SHARED_HAND_CODE } from './hands-states.mjs';
 import { createRequire } from 'node:module';
 import { stageHome, routeHomeLayout } from './home-states.mjs';
 import { stageNotify } from './notify-states.mjs';
+import { stageDrill } from './drill-states.mjs';
 
 // The Bankroll sections are grouped (owner, 2026-10-20; CashLive.jsx ResultsKindTabs): a section is a
 // chip, or the shown label of its group's split chip, or an item in that group's caret menu.
@@ -90,6 +91,17 @@ function scan(rootSel) {
     const [t, rr, b = t, l = rr] = v.length === 1 ? [v[0], v[0], v[0], v[0]] : v.length === 2 ? [v[0], v[1], v[0], v[1]] : v;
     return { top: r.top + t, bottom: r.bottom - b, left: r.left + l, right: r.right - rr };
   };
+  // A fixed box is laid out against the viewport, so an ancestor's overflow does not clip it, unless
+  // something between them gives it a containing block of its own (a transform, a filter, contain).
+  // The replayer's full-bleed table is one: its bar sits past the bottom of .content-area, fully painted.
+  const escapesAncestors = (el) => {
+    if (getComputedStyle(el).position !== 'fixed') return false;
+    for (let b = el.parentElement; b && b !== document.documentElement; b = b.parentElement) {
+      const s = getComputedStyle(b);
+      if (s.transform !== 'none' || s.filter !== 'none' || s.perspective !== 'none' || /paint|strict|content/.test(s.contain)) return false;
+    }
+    return true;
+  };
   for (const root of roots) {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     for (let n = walker.nextNode(); n; n = walker.nextNode()) {
@@ -113,7 +125,8 @@ function scan(rootSel) {
       const hr = host.getBoundingClientRect();
       if (hr.bottom <= 0 || hr.top >= innerHeight || hr.right <= 0 || hr.left >= innerWidth) continue;
       for (let a = host; a && a !== document.body; a = a.parentElement) {
-        if (!clips(a)) continue;
+        const last = escapesAncestors(a);
+        if (!clips(a)) { if (last) break; continue; }
         const box = a.getBoundingClientRect();
         if (box.height === 0) break;
         const ar = clipRect(a);
@@ -136,6 +149,7 @@ function scan(rootSel) {
           });
           break;
         }
+        if (last) break;
       }
     }
   }
@@ -421,6 +435,16 @@ function scan(rootSel) {
     await p.waitForTimeout(800);
     await run('hands scanner', '.hands-scan');
   } catch (e) { console.log(`  (hands scanner skipped: ${e.message.split('\n')[0]})`); }
+  // Hands: the replayer drill, on canned answers (drill-states.mjs): its bars and the graded review.
+  for (const [stage, root] of [['setup', '.rd-setup'], ['bet', '.rd-bar'], ['draw', '.rd-bar'], ['over', '.rd-bar'], ['review', '.rd-review']]) {
+    if (on('replayer-drill')) try {
+      await p.goto(p.url().split('#')[0]);
+      await p.waitForTimeout(1200);
+      await openTab('Hands');
+      await stageDrill(p, stage, { force: true });
+      await run('replayer drill, ' + stage, root);
+    } catch (e) { console.log(`  (replayer drill ${stage} skipped: ${e.message.split('\n')[0]})`); }
+  }
   // Hands: the New Hand variant picker (VariantPicker.jsx): its launcher, then the palette open, then
   // a search ("o8": rows and the mixes that deal it).
   if (on('hands-palette')) try {

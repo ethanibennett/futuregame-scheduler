@@ -154,7 +154,7 @@ const emptySession = () => ({
   leaks: {},
 });
 
-function loadSession(game) {
+export function loadSession(game) {
   try {
     const raw = localStorage.getItem(ssKey(game));
     if (!raw) return emptySession();
@@ -167,12 +167,12 @@ function loadSession(game) {
   }
 }
 
-function saveSession(game, s) {
+export function saveSession(game, s) {
   try { localStorage.setItem(ssKey(game), JSON.stringify(s)); } catch { /* quota / private mode */ }
 }
 
 // Fold one hand's grades into the running session totals (immutable).
-function applyHandToSession(prev, grades, game) {
+export function applyHandToSession(prev, grades, game) {
   const s = {
     hands: prev.hands + 1,
     totalEvLoss: prev.totalEvLoss,
@@ -982,7 +982,7 @@ function sideWinnerLabel(who) {
 //   show BOTH boards: the hi winner + winning hi hand, and the lo winner +
 //   qualifying low (or "no qualifier").
 // Grid: panel 2r × 2g; 3r headline line (headline | ± chips), then 1r-spaced rows.
-function ResultBanner({ result, heroSeat, game }) {
+export function ResultBanner({ result, heroSeat, game }) {
   const delta = +result.heroDelta || 0;
   const sd = result.showdown || {};
   const isStud8 = game === 'stud8';
@@ -1115,7 +1115,7 @@ function Stud8Boards({ sd }) {
 // shows a range-degraded / low-confidence badge when grade.confidence==='low'.
 // Grid: panel 2r × 2g; 3r header line (head | EV-loss), [badges], then a 2r bar
 // row per action (+ a 2r EV line), 1r apart; rule-topped footers.
-function GradeCard({ g, game }) {
+export function GradeCard({ g, game }) {
   const mix = g.gtoMix || { actions: [], labels: [], probs: [] };
   const acts = mix.actions || [];
   const labels = mix.labels || [];
