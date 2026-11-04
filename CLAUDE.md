@@ -56,7 +56,9 @@ sessions opened here own scheduler work.
   **Play a hand** (app admins; the solver routes are admin-only). The Trainer's deal/step routes play the hand on
   the replayer's own table (`HandReplayerReplayView`'s `drill` prop: the hand grows with each answer, plays to its
   edge, and the action bar takes the transport's place until it is over), graded when it ends, saved to the Trainer's
-  history and scoreboard. **A draw is graded by both tools, each labelled** (owner): the drill grader (its source named;
+  history and scoreboard. **Discards are marked by tapping the cards on the felt** (owner, 2026-11-04; `drill.discard`,
+  `CardRow`'s `onCardTap`, class `card-tap`): a marked card lifts and dims as a real throw does; the bar holds only Stand
+  pat / Draw N. **A draw is graded by both tools, each labelled** (owner): the drill grader (its source named;
   a caveat when its floor at 0 hid a discard that beat all its options) and the study tool over every discard (`POST
   /api/solver/trainer/:game/study-draw`), which says **Not rankable** inside the band it cannot separate, with no figure.
   That route replays the seed's REAL deal, checks it reaches the hero's real cards, and prices on the **public history**

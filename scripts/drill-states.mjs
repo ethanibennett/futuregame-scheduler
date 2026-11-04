@@ -89,11 +89,11 @@ export async function stageDrill(p, stage, { force = false } = {}) {
   await live();
   await p.waitForTimeout(800);
   if (stage === 'draw') {
-    await click(p.locator('.rd-cards .rd-card'));
+    await click(p.locator('.replayer-seat.is-hero .card-tap').last());
     await p.waitForTimeout(300);
     return;
   }
-  await click(p.locator('.rd-cards .rd-card'));
+  await click(p.locator('.replayer-seat.is-hero .card-tap').last());
   await click(p.locator('.rd-bar button.rd-primary'));
   await p.waitForTimeout(300);
   await live();

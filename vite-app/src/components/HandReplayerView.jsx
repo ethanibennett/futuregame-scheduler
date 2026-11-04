@@ -1807,7 +1807,7 @@ function DealerGlyph() {
 const FAN_SLIDE_MS = 460;
 const FAN_SLIDE_SAMPLES = 16;
 
-function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, cardTheme, reverseZ, discardIdx }) {
+function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, cardTheme, reverseZ, discardIdx, onCardTap }) {
   /* Draw-game re-sort. A card keeps its DOM element for as long as it stays in
      the hand (keyed by identity, below), so when a draw puts a new card among
      them this can see where each surviving card was and where it is now, and
@@ -1936,7 +1936,19 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, car
         const splayStyle = { '--ci': i, ...(splay
           ? getSplayStyle(i, cards.length, splay, studYOffset, rowReverseZ, max, splayScale)
           : getFlatStyle(i, cards.length, studYOffset, rowReverseZ)),
-          ...(isDiscard ? { opacity: 0.4, transition: 'transform 260ms var(--ease-out), opacity 260ms var(--ease-out)' } : null) };
+          ...(isDiscard ? { opacity: 0.4 } : null),
+          // A card marked on the felt eases back when it is unmarked, as well as out.
+          ...(isDiscard || onCardTap ? { transition: 'transform 260ms var(--ease-out), opacity 260ms var(--ease-out)' } : null) };
+        /* The drill's draw: the card itself is the control (owner, 2026-11-04). Fanned cards overlap, and
+           each takes the taps on the part of it that shows. */
+        const id = c.rank + c.suit;
+        const tap = onCardTap ? {
+          role: 'button', tabIndex: 0, draggable: false, 'aria-pressed': !!isDiscard,
+          'aria-label': (isDiscard ? 'Throwing ' : 'Keeping ') + id,
+          onClick: (e) => { e.stopPropagation(); onCardTap(id); },
+          onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onCardTap(id); } },
+        } : null;
+        const tapClass = tap ? ' card-tap' : '';
         if (c.suit === 'x' || (isDown && c.suit === 'x')) {
           return <div key={k} data-ck={k} className="card-unknown" style={splayStyle} />;
         }
@@ -1945,17 +1957,17 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, car
           // As and Ac — pixel-identical apart from a ~9px glyph, which is not
           // a suit signal at the speed a replay runs.
           return (
-            <div key={k} data-ck={k} className={'card-classic card-classic-' + c.suit}
-              style={splayStyle}>
+            <div key={k} data-ck={k} className={'card-classic card-classic-' + c.suit + tapClass}
+              style={splayStyle} {...tap}>
               <span className="card-classic-rank">{c.rank.toUpperCase()}</span>
               <span className="card-classic-suit">{SUIT_SYMBOLS[c.suit] || ''}</span>
             </div>
           );
         }
-        return <img key={k} data-ck={k} className="card-img"
+        return <img key={k} data-ck={k} className={'card-img' + tapClass}
           src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'}
           alt={c.rank+c.suit} loading="eager"
-          style={splayStyle} />;
+          style={splayStyle} {...tap} />;
       })}
     </div>
   );
@@ -5219,7 +5231,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     return (
       <ReplayErrorBoundary onBack={() => { setMode('list'); fetchHands(); }}>
         <Suspense fallback={null}>
-          <ReplayerDrill Replay={HandReplayerReplayView} sortDrawHand={sortDrawHand} token={token} heroName={heroName} cardSplay={cardSplay}
+          <ReplayerDrill Replay={HandReplayerReplayView} token={token} heroName={heroName} cardSplay={cardSplay}
             onBack={() => { setMode('list'); fetchHands(); }} />
         </Suspense>
       </ReplayErrorBoundary>
@@ -8937,6 +8949,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               if (set.size) discardIdx = set;
             }
           }
+          /* The drill's open draw: the cards marked so far lift and dim exactly as a real throw does, once the
+             hand has played to its edge. */
+          const drillThrow = pi === replayHeroIdx && drill && drill.discard && !playing && !canGoForward ? drill.discard : null;
+          if (drillThrow && cards) {
+            const set = new Set();
+            parseCardNotation(cards).forEach((c, i) => { if (drillThrow.thrown.has(c.rank + c.suit)) set.add(i); });
+            discardIdx = set.size ? set : null;
+          }
           /* An opponent's up cards are public in stud — the door card and 4th
              through 6th sit face up on the table — and the string entered for
              an opponent IS those up cards, accumulated street by street. Only
@@ -9079,6 +9099,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   cardTheme={cardTheme}
                   reverseZ={pi !== replayHeroIdx}
                   discardIdx={discardIdx}
+                  onCardTap={drillThrow && !drillThrow.disabled ? (id) => { haptic(); drillThrow.toggle(id); } : undefined}
                   /* The hero used to fan wider than everybody else — a bigger
                      arc and a wider allowance, on the grounds that the bottom
                      seat has no neighbour to crowd. It just made one hand at

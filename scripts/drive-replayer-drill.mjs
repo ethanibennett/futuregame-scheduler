@@ -60,6 +60,22 @@ await p.getByRole('button', { name: 'Play a hand', exact: true }).click({ timeou
 await p.waitForTimeout(600);
 await snap('setup');
 
+// For each card on the felt: a point on it that is really the top thing there, and how wide that part is.
+const tapPoints = (sel) => [...document.querySelectorAll(sel)].map((el) => {
+  const r = el.getBoundingClientRect();
+  const g = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gu')) || innerWidth / 37;
+  let best = null;
+  for (let y = r.top + 2; y < r.bottom; y += 3) {
+    let run = 0, runStart = 0;
+    for (let x = r.left; x <= r.right + 1; x += 1) {
+      if (x <= r.right && document.elementFromPoint(x, y) === el) { if (!run) runStart = x; run += 1; continue; }
+      if (run && (!best || run > best.w)) best = { w: run, x: runStart + run / 2, y };
+      run = 0;
+    }
+  }
+  return { id: el.alt, x: best ? best.x : 0, y: best ? best.y : 0, gs: best ? +(best.w / g).toFixed(2) : 0, px: best ? best.w : 0 };
+});
+
 const grades = { hands: 0, decisions: 0, draws: 0 };
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
 
@@ -80,15 +96,44 @@ for (let h = 0; h < HANDS; h++) {
     const step = lastStep();
 
     // The table's cards, at the end of what has played, against what the server says the hero holds.
-    const cards = await p.locator('.rd-cards .rd-card').count();
-    if (cards) {
-      check(cards === (step.drawDecision.heroCards || []).length, `draw offered ${cards} cards, server says ${step.drawDecision.heroCards.length}`);
-      if (!shotDraw) { await p.waitForTimeout(400); await snap(`hand${h + 1}-draw`); shotDraw = true; }
+    const felt = '.replayer-seat.is-hero .card-tap';
+    const cards = await p.locator(felt).count();
+    if (await p.locator('.rd-bar button.rd-primary').count()) {
+      check(cards === (step.drawDecision.heroCards || []).length, `draw offered ${cards} cards on the felt, server says ${step.drawDecision.heroCards.length}`);
+      if (!shotDraw) { await p.waitForTimeout(400); await snap(`hand${h + 1}-draw`); }
+      // The tap lands where the finger would: on the part of the card that shows.
+      const widths = await p.evaluate(tapPoints, felt);
+      for (const w of widths) { grades.minTap = Math.min(grades.minTap ?? 1e9, w.gs); if (!w.x) check(false, `${w.id} shows nowhere on the felt`); }
+      const tap = async (i) => {
+        const pts = await p.evaluate(tapPoints, felt);
+        if (desktop) await p.mouse.click(pts[i].x, pts[i].y); else await p.touchscreen.tap(pts[i].x, pts[i].y);
+        await p.waitForTimeout(60);
+      };
+      const marked = () => p.locator(`${felt}[aria-pressed="true"]`).evaluateAll((els) => els.map((e) => e.alt || e.dataset.ck.split('#')[0]));
+      // Every card answers, and a second tap takes the mark off.
+      if (!grades.toggled) {
+        for (let i = 0; i < cards; i++) {
+          await tap(i);
+          check((await marked()).length === 1, `tapping card ${i} marks it alone`);
+          await tap(i);
+          check((await marked()).length === 0, `tapping card ${i} again unmarks it`);
+        }
+        grades.toggled = true;
+      }
       // Throw the last card or two on some draws, and stand pat on others.
-      const n = guard % 3;
-      for (let i = 0; i < n; i++) await p.locator('.rd-cards .rd-card').nth(cards - 1 - i).click();
-      if (n && !shotDraw) await snap(`hand${h + 1}-thrown`);
+      const n = (grades.drawsSeen = (grades.drawsSeen || 0) + 1) % 3;
+      for (let i = 0; i < n; i++) await tap(cards - 1 - i);
+      const want = (await marked()).sort();
+      check(want.length === n, `marked ${want.length}, tapped ${n}`);
+      if (n && !shotDraw) { await p.waitForTimeout(300); await snap(`hand${h + 1}-thrown`); }
+      shotDraw = true;
+      const label = (await p.locator('.rd-bar button.rd-primary').textContent()).trim();
+      check(label === (n ? `Draw ${n}` : 'Stand pat'), `the button says ${label} with ${n} marked`);
+      const sent = p.waitForRequest((r) => /\/step$/.test(r.url()));
       await p.locator('.rd-bar button.rd-primary').click();
+      const last = (await sent).postDataJSON().heroActions.at(-1);
+      const thrown = (last.slice(2).match(/.{2}/g) || []).sort();
+      check(thrown.join() === want.join(), `sent ${last}, marked ${want.join()}`);
       await p.waitForTimeout(150);
       continue;
     }

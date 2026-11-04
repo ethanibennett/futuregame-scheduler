@@ -5,7 +5,6 @@
 // The table is HandReplayerView's, handed in as `Replay` so the two files do not import each other.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchApi } from '../utils/api.js';
-import Card from './SolverCard.jsx';
 import { GradeCard, ResultBanner, applyHandToSession, loadSession, saveSession } from './RazzTrainerView.jsx';
 import {
   DRILL_GAMES, drillGame, drillStart, drillStep, buildDrillHand, encodeDiscard, opponentDrawNote,
@@ -37,39 +36,17 @@ async function postJson(path, body) {
 }
 
 // The action bar, in the replayer's bottom slot while the hand is live.
-function DrillBar({ drill, game, sortDrawHand, busy, onAct }) {
+function DrillBar({ drill, game, thrown, busy, onAct }) {
   const { state, legalActions, drawDecision } = drill;
-  const [thrown, setThrown] = useState(() => new Set());
-  const handKey = drawDecision ? (drawDecision.heroCards || []).join('') + state.street : '';
-  useEffect(() => { setThrown(new Set()); }, [handKey]);
-  const toggle = (c) => setThrown((prev) => {
-    const next = new Set(prev);
-    if (next.has(c)) next.delete(c); else next.add(c);
-    return next;
-  });
-
   const note = opponentDrawNote(state);
   const dead = state.deadCards && state.deadCards.length ? state.deadCards : null;
 
   if (drawDecision) {
-    // The hand in the order the table shows it.
-    const held = (drawDecision.heroCards || []).join('');
-    const cards = sortDrawHand ? sortDrawHand(held, game.gameType).match(/.{2}/g) || [] : drawDecision.heroCards || [];
+    // The cards themselves are on the felt: the table marks them (HandReplayerView's `drill.discard`).
     const n = thrown.size;
     return (
       <div className="hs-view rd-bar snap-place">
-        <div className="hs-t hs-sm rd-status" style={T(2)}>{note ? note + '. ' : ''}Tap the cards to throw</div>
-        <div className="rd-cards">
-          {cards.map((c) => {
-            const on = thrown.has(c);
-            return (
-              <button key={c} type="button" className={'rd-card' + (on ? ' is-thrown' : '')} aria-pressed={on}
-                aria-label={(on ? 'Throwing ' : 'Keeping ') + c} disabled={busy} onClick={() => toggle(c)}>
-                <Card str={c} dim={on} />
-              </button>
-            );
-          })}
-        </div>
+        <div className="hs-t hs-sm rd-status" style={T(2)}>{note ? note + '. ' : ''}Tap your cards to throw</div>
         <button type="button" className="hs-btn rd-primary" disabled={busy} onClick={() => onAct(encodeDiscard([...thrown]))}>
           <span className="hs-t" style={T(3)}>{n === 0 ? 'Stand pat' : `Draw ${n}`}</span>
         </button>
@@ -173,7 +150,7 @@ function DrillReview({ drill, study, onTable, onDeal, onBack, busy }) {
   );
 }
 
-export default function ReplayerDrill({ Replay, sortDrawHand, token, heroName, cardSplay, onBack }) {
+export default function ReplayerDrill({ Replay, token, heroName, cardSplay, onBack }) {
   const [game, setGame] = useState(storedGame);
   const [drill, setDrill] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -181,7 +158,17 @@ export default function ReplayerDrill({ Replay, sortDrawHand, token, heroName, c
   const [reviewing, setReviewing] = useState(false);
   const [returned, setReturned] = useState(false);
   const [study, setStudy] = useState({});
+  const [thrown, setThrown] = useState(() => new Set());
   const dealGen = useRef(0);
+
+  // The cards marked to throw, tapped on the felt. Each draw starts with none.
+  const drawKey = drill && drill.drawDecision ? `${drill.seed}/${drill.heroActions.length}` : '';
+  useEffect(() => { setThrown(new Set()); }, [drawKey]);
+  const toggleThrown = useCallback((c) => setThrown((prev) => {
+    const next = new Set(prev);
+    if (next.has(c)) next.delete(c); else next.add(c);
+    return next;
+  }), []);
 
   const deal = useCallback(async (g) => {
     const gen = ++dealGen.current;
@@ -254,10 +241,11 @@ export default function ReplayerDrill({ Replay, sortDrawHand, token, heroName, c
       rev: drill.rev,
       over: drill.handOver,
       startAtEnd: returned,
-      bar: <DrillBar drill={drill} game={drillGame(drill.game)} sortDrawHand={sortDrawHand} busy={busy} onAct={act} />,
+      discard: drill.drawDecision ? { thrown, toggle: toggleThrown, disabled: busy } : null,
+      bar: <DrillBar drill={drill} game={drillGame(drill.game)} thrown={thrown} busy={busy} onAct={act} />,
       overBar: <DrillOverBar busy={busy} onBack={onBack} onDeal={() => deal(drill.game)} onReview={() => setReviewing(true)} />,
     };
-  }, [drill, sortDrawHand, busy, act, returned, onBack, deal]);
+  }, [drill, thrown, toggleThrown, busy, act, returned, onBack, deal]);
 
   if (!drill || !hand) {
     return (
