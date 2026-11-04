@@ -30,11 +30,16 @@ the junction hides anything missing from git.
 - `/api/solver/draw-study` takes a hand TYPED IN: it replays from the hero's STARTING hand and deals replacements from a
   deck it invents, so past the first draw its cards are not the hand's. The drill does not use it: its own route passes
   the seed's real deal and deck, and refuses rather than price other cards. 0 refusals in 2,333 draws (td27, badugi).
-- **A forced stand pat leaves no token.** A made hand has one draw option, the engine applies it unrecorded, and the
-  belief walk never sees it, though the hero saw it at the table. In td27 that is about 5% of draws. On the recorded
-  history the table moved 1.78 to 3.56 chips with the opponent's real hand; on the public history, three other hands
-  gave identical tables. `lib/drill-study.js` has the fix for the study tool's price. **The drill grader's own posterior
-  walks the same decisions and has not been measured for this**: that is for the solver repo.
+- **A forced stand pat leaves no token, and that costs nothing today.** A made hand has one draw option, the engine
+  applies it unrecorded (`play.js:162`), though the hero saw it at the table. In td27 that is about 5% of draws. The
+  drill prices on the public history anyway, because on it the table is identical whatever the opponent holds.
+  **A WITHDRAWN CLAIM:** commit `19aa1ca` and this session's first report called the gap between the two histories
+  hindsight, "1.78 to 3.56 chips". It was noise: the sampling seed includes the decision's index, so one more token
+  changes the random stream. Over 16 seeds a side, 0 of 128 rows differed at |z| > 3 (4 hands; levels z -0.60 to +1.69,
+  mixed signs). The solver session caught it by reading `grade.js`: with `drawReweight` off (the default) a stand pat is
+  a no-op in the belief. It would matter the moment `drawReweight` is enabled, and fail silently (its note to the solver
+  repo). **Lesson: compare a Monte Carlo gap to the same input under another seed before believing it.** That control
+  moves the worst row 4 to 6 chips, so read the study tool's figures with its band, not row by row.
 - **"Study this draw" (the replayer's button) is broken past the first street**, and always was: `buildDrawStudySpot`
   reads `a.type` where hands store `a.action`, so the history loses every bet; and it passes the hero's CURRENT hand with
   a history that throws cards from earlier hands, and the route's invented deck would deal other replacements anyway.

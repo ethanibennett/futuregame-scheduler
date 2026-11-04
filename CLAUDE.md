@@ -60,8 +60,9 @@ sessions opened here own scheduler work.
   a caveat when its floor at 0 hid a discard that beat all its options) and the study tool over every discard (`POST
   /api/solver/trainer/:game/study-draw`), which says **Not rankable** inside the band it cannot separate, with no figure.
   That route replays the seed's REAL deal, checks it reaches the hero's real cards, and prices on the **public history**
-  including the opponent's forced stand pats, which the engine does not record: without them the table moved up to 3.56
-  chips with the opponent's real hand, which is hindsight. `npm run test:replayer-drill` holds both on real hands (needs
+  including the opponent's forced stand pats, which the engine does not record; on that line the table does not depend on
+  the opponent's cards at all. A single-seed gap between two histories is noise, not a finding: the same history under
+  another seed moves its worst row 4 to 6 chips. `npm run test:replayer-drill` holds both on real hands (needs
   `./solver`). Guards' views `replayer-drill-*` (canned answers, `scripts/drill-states.mjs`);
   `scripts/drive-replayer-drill.mjs` plays whole hands in a browser against a real solver and checks the table's chips
   against the server's. a5td and stud8 answer 503 where their blueprints are gitignored, here and on Render.
