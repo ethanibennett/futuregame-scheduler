@@ -9,9 +9,8 @@ export default function BottomNav({ current, onChange, scheduleCount, newShareCo
     // tracker's home. Social moved to the username menu.
     { id: 'tracking', label: 'Bankroll', icon: Icon.tracking },
     { id: 'dashboard', label: 'Dashboard', icon: Icon.home },
-    // Hand Replayer — admin-only entry in the footer until the
-    // feature ships to all users.
-    ...(isAdmin ? [{ id: 'hands', label: 'Hands', icon: Icon.cards }] : []),
+    // Hands, for everyone since 2026-11-05 (owner): the replayer. Its Study and Scanner tools stay with admins.
+    { id: 'hands', label: 'Hands', icon: Icon.cards },
     // Cash watcher replaced Staking in this slot — admin-only for now.
     ...(isAdmin ? [{ id: 'cash', label: 'Cash', icon: Icon.dollarSign }] : []),
   ];

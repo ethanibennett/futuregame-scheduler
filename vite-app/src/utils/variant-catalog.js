@@ -13,37 +13,37 @@ import { MULTI_GAME_MAP, describeGame, getVariantStrip, normaliseDate, parseTour
 // ── The picker's maps (moved here from HandReplayerView; the component imports them) ───────────
 export const STRUCTURE_GAME_MAP = {
   'No Limit':  { "Hold'em": 'NLH', 'Pineapple': 'NLH', 'Short Deck': 'Short Deck',
-    'Omaha': 'PLO', 'Omaha 8/b': 'NLO8', 'Big O': 'Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
+    'Omaha': 'NLO', 'Omaha 8/b': 'NLO8', 'Big O': 'NL Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
     'Double Board Bomb Pot': 'PLO', 'Courchevel': 'PLO',
     'Stud Hi': 'NL Stud Hi', 'Stud 8/b': 'NL Stud 8', 'Razz': 'NL Razz',
-    'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': 'Razz',
+    'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': '2-7 Razz',
     'Razzdugi': 'Badugi', 'Razzdeucy': 'Badeucy',
     '2-7 Triple Draw': '2-7 TD', '2-7 Single Draw': 'NL 2-7 SD',
-    'A-5 Triple Draw': 'A-5 TD', 'A-5 Single Draw': 'A-5 TD',
+    'A-5 Triple Draw': 'A-5 TD', 'A-5 Single Draw': 'NL A-5 SD',
     'Badugi': 'Badugi', 'Badeucy': 'Badeucy', 'Badacey': 'Badacy',
     'Archie 66': 'Badugi', 'Archie 99': 'Badugi', 'Ari': 'Badugi',
-    '5-Card Draw': 'PL 5CD Hi', 'OFC': 'OFC',
+    '5-Card Draw': 'NL 5CD Hi', 'OFC': 'OFC',
     'Dramaha Hi': 'PLO', 'Dramaha 2-7': 'PLO', 'Dramaha 49': 'PLO', 'Dramaha 0': 'PLO', 'Dramadugi': 'PLO', 'Omajack': 'PLO' },
   'Pot Limit': { "Hold'em": 'PLH', 'Pineapple': 'PLH', 'Short Deck': 'Short Deck',
     'Omaha': 'PLO', 'Omaha 8/b': 'PLO8', 'Big O': 'Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
     'Double Board Bomb Pot': 'PLO', 'Courchevel': 'PLO',
     'Stud Hi': 'PL Stud Hi', 'Stud 8/b': 'PL Stud 8', 'Razz': 'PL Razz',
-    'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': 'Razz',
+    'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': '2-7 Razz',
     'Razzdugi': 'Badugi', 'Razzdeucy': 'Badeucy',
     '2-7 Triple Draw': 'PL 2-7 TD', '2-7 Single Draw': 'NL 2-7 SD',
-    'A-5 Triple Draw': 'A-5 TD', 'A-5 Single Draw': 'A-5 TD',
+    'A-5 Triple Draw': 'A-5 TD', 'A-5 Single Draw': 'NL A-5 SD',
     'Badugi': 'Badugi', 'Badeucy': 'Badeucy', 'Badacey': 'Badacy',
     'Archie 66': 'Badugi', 'Archie 99': 'Badugi', 'Ari': 'Badugi',
     '5-Card Draw': 'PL 5CD Hi', 'OFC': 'OFC',
     'Dramaha Hi': 'PLO', 'Dramaha 2-7': 'PLO', 'Dramaha 49': 'PLO', 'Dramaha 0': 'PLO', 'Dramadugi': 'PLO', 'Omajack': 'PLO' },
   'Limit':     { "Hold'em": 'LHE', 'Pineapple': 'LHE', 'Short Deck': 'Short Deck',
-    'Omaha': 'LO Hi', 'Omaha 8/b': 'O8', 'Big O': 'Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
+    'Omaha': 'LO Hi', 'Omaha 8/b': 'O8', 'Big O': 'L Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
     'Double Board Bomb Pot': 'PLO', 'Courchevel': 'PLO',
     'Stud Hi': 'Stud Hi', 'Stud 8/b': 'Stud 8', 'Razz': 'Razz',
-    'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': 'Razz',
+    'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': '2-7 Razz',
     'Razzdugi': 'Badugi', 'Razzdeucy': 'Badeucy',
     '2-7 Triple Draw': '2-7 TD', '2-7 Single Draw': 'NL 2-7 SD',
-    'A-5 Triple Draw': 'A-5 TD', 'A-5 Single Draw': 'A-5 TD',
+    'A-5 Triple Draw': 'A-5 TD', 'A-5 Single Draw': 'NL A-5 SD',
     'Badugi': 'Badugi', 'Badeucy': 'Badeucy', 'Badacey': 'Badacy',
     'Archie 66': 'Badugi', 'Archie 99': 'Badugi', 'Ari': 'Badugi',
     '5-Card Draw': 'PL 5CD Hi', 'OFC': 'OFC',
@@ -53,7 +53,7 @@ export const DEFAULT_STRUCTURE = {
   "Hold'em": 'No Limit', 'Pineapple': 'No Limit', 'Short Deck': 'No Limit',
   'Omaha': 'Pot Limit', 'Omaha 8/b': 'Pot Limit', 'Big O': 'Pot Limit', 'PLO6 8/b': 'Pot Limit',
   'PLO5': 'Pot Limit', 'PLO6': 'Pot Limit',
-  'Double Board Bomb Pot': 'No Limit', 'Courchevel': 'Pot Limit',
+  'Double Board Bomb Pot': 'Pot Limit', 'Courchevel': 'Pot Limit',
   'Stud Hi': 'Limit', 'Stud 8/b': 'Limit', 'Razz': 'Limit',
   'Stud Hi/Lo Regular': 'Limit', '2-7 Razz': 'Limit',
   'Razzdugi': 'Limit', 'Razzdeucy': 'Limit',
@@ -74,7 +74,7 @@ const NAME_OVERRIDES = {
   'Pot Limit|Omaha': 'Pot Limit Omaha', 'Pot Limit|Omaha 8/b': 'PLO8', 'Pot Limit|Big O': 'Big O',
   'No Limit|Omaha': 'No Limit Omaha', 'No Limit|Omaha 8/b': 'NLO8', 'No Limit|Big O': 'No Limit Big O',
   'Limit|Omaha': 'Limit Omaha Hi', 'Limit|Omaha 8/b': 'O8', 'Limit|Big O': 'Limit Big O',
-  'No Limit|Double Board Bomb Pot': 'Bomb Pot',
+  'Pot Limit|Double Board Bomb Pot': 'Bomb Pot',
   'Pot Limit|Courchevel': 'Courchevel',
 };
 
@@ -94,6 +94,15 @@ export const gameTypeOf = (game, structure) => (STRUCTURE_GAME_MAP[structure] ||
 // ── The families, in the order the palette lists them ─────────────────────────────────────────
 // Each game's rows: its usual structure first, then the others people play; `rare` ones (NL Stud,
 // PL Razz, NL Omaha hi) appear only in search results.
+/* Named games the engine has no rules for yet (owner, 2026-11-05: every game on offer has to work). Each one
+   used to be dealt and scored as a plainer game, so a hand could announce the wrong winner: Dramaha as PLO, Archie
+   as Badugi, Razzdugi as a draw game. They stay out of the picker until they are built. A saved hand of the game it
+   was played as still opens, and an account can still name its own custom game. */
+export const UNBUILT_GAMES = new Set([
+  'Pineapple', 'Courchevel', 'Stud Hi/Lo Regular', 'Razzdugi', 'Razzdeucy', 'Archie 66', 'Archie 99', 'Ari',
+  'Dramaha Hi', 'Dramaha 2-7', 'Dramaha 49', 'Dramaha 0', 'Dramadugi', 'Omajack',
+]);
+
 export const FAMILIES = [
   { id: 'holdem', label: "Hold'em", games: ["Hold'em", 'Pineapple', 'Short Deck'] },
   { id: 'omaha', label: 'Omaha', games: ['Omaha', 'Omaha 8/b', 'Big O', 'PLO5', 'PLO6', 'PLO6 8/b', 'Courchevel', 'Double Board Bomb Pot'] },
@@ -112,6 +121,7 @@ const ROWS_FOR = {
   'Stud 8/b': [['Limit'], ['No Limit', 'rare'], ['Pot Limit', 'rare']],
   'Razz': [['Limit'], ['No Limit', 'rare'], ['Pot Limit', 'rare']],
   '2-7 Triple Draw': [['Limit'], ['Pot Limit']],
+  '5-Card Draw': [['No Limit'], ['Pot Limit']],
 };
 // Search words beyond the name: the abbreviations and slang a player types.
 const ALIASES = {
@@ -129,7 +139,7 @@ const ALIASES = {
   'PLO5|Pot Limit': ['plo5', '5 card omaha', '5co'],
   'PLO6|Pot Limit': ['plo6', '6 card omaha'],
   'PLO6 8/b|Pot Limit': ['plo6 8', 'big easy', '6 card o8'],
-  'Double Board Bomb Pot|No Limit': ['bomb pot', 'double board'],
+  'Double Board Bomb Pot|Pot Limit': ['bomb pot', 'double board'],
   'Stud Hi|Limit': ['stud', 'seven card stud', '7 stud', '7cs'],
   'Stud 8/b|Limit': ['stud 8', 'stud hi lo', 'stud8', 'eight or better'],
   'Razz|Limit': ['razz', 'a5 stud'],
@@ -152,6 +162,7 @@ export function buildCatalog(customNames = []) {
   const rows = [];
   for (const fam of FAMILIES) {
     for (const game of fam.games) {
+      if (UNBUILT_GAMES.has(game)) continue;
       const specs = FIXED_STRUCTURE[game] ? [[FIXED_STRUCTURE[game]]] : (ROWS_FOR[game] || [[DEFAULT_STRUCTURE[game] || 'No Limit']]);
       for (const [structure, flag] of specs) {
         const key = game + '|' + structure;
@@ -170,7 +181,7 @@ export function buildCatalog(customNames = []) {
 }
 
 // Engine game types the schedule's mixes name that are spelled differently in the table.
-const TYPE_ALIASES = { 'Stud Hi-Lo': 'Stud 8', 'L 2-7 TD': '2-7 TD', 'NL 5CD': 'PL 5CD Hi' };
+const TYPE_ALIASES = { 'Stud Hi-Lo': 'Stud 8', 'L 2-7 TD': '2-7 TD', 'NL 5CD': 'NL 5CD Hi' };
 
 /** The usual row for an engine game type (a mix's "O8", a guess's "LHE"), or null. */
 export function rowForGameType(rows, gameType) {

@@ -157,8 +157,8 @@ export function removeCardFrom(str, key) {
 
 const RANK_SORT = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':14 };
 const SUIT_SORT = { s:4, h:3, d:2, c:1, x:0 };
-const ACE_LOW_DRAW = new Set(['A-5 TD', 'Badugi', 'Badacy']);
-const HIGH_DRAW = new Set(['PL 5CD Hi']);
+const ACE_LOW_DRAW = new Set(['A-5 TD', 'NL A-5 SD', 'Badugi', 'Badacy']);
+const HIGH_DRAW = new Set(['PL 5CD Hi', 'NL 5CD Hi']);
 const drawBase = (gameType) => String(gameType || '').replace(/^Super /, '');
 
 // Mirrors sortDrawHand.

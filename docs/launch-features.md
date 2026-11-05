@@ -35,18 +35,19 @@ What PokerAtlas does not offer comes first (plan, section 3): the clash, the pla
 | 11 | Built by a player | "A working pro built the app he wanted." | True today. This is Ad 12, launch-day anchor |
 | 12 | Free | "Free." until 1 March, then "Free to start." | Live |
 
-## 2. The hand replayer: needs one decision by you
+## 2. The hand replayer: open to everyone (owner, 2026-11-05)
 
-The plan's action 2, still open, and the listing's "Feature set" item. Open the Hands tab to everyone and these join the
-list as a fourth-week story (Ad 3, screenshot 9, the third preview, the keywords `replayer,hand`). Keep it closed and the
-keywords swap to `deepstack,stud`.
+A fourth-week story in the plan (Ad 3, screenshot 9, the third preview, the keywords `replayer,hand`). Hands is one tab
+for every account; Study, the Scanner, and typing or saying a hand stay with admins. `npm run check:replayer-games`
+plays every game on offer through the real screens.
 
 | Feature | The line | Status |
 |---|---|---|
-| Hand replayer | "Type the hand. Watch it play." | Admins only. Our most shareable feature |
-| Every game | "Hold'em, Omaha, stud, draw, mixed." | Admins only |
+| Hand replayer | "Replay any hand, in any game." | Open. Our most shareable feature. A guest can build and replay a hand; keeping one takes an account |
+| Every game | "Hold'em, Omaha, stud, draw, and more." | Open: 38 picker rows, played by 37 sets of rules. Fourteen named games with no rules yet are out of the picker (`UNBUILT_GAMES`, 16 rows), so don't claim "every game" for those |
+| Share a replay | "Send the hand in one link." | Open. Works signed out |
+| Export to PokerTracker | "Your saved hands, in PokerTracker and Hold'em Manager." | Open. PokerTracker analyses Hold'em and four-card Omaha; other games have no format or are skipped there, and the sheet says which |
 | Quick add, typed or spoken | "Say the hand. It builds the replay." | Admins only. The plan opens it only if the parser eval passes against the real model, with a daily cap per user |
-| Export to PokerTracker | "Your saved hands, in PokerTracker and Hold'em Manager." | Admins only. Hold'em and four-card Omaha only |
 
 ## 3. Play against the solver: not at launch
 
@@ -74,7 +75,7 @@ A strong later story for serious players, and the plan's mixed-game audience (se
 
 ## 5. Decisions and gaps this list turned up
 
-1. **Open Hands to everyone?** This decides section 2 and three store assets. Plan date passed (27 Oct).
+1. **Hands: decided, open to everyone (2026-11-05).** Fourteen named games (16 picker rows) and the Super and Action stud toggles are out until they have rules.
 2. **Conflict detection is on the paid side of `MONETIZATION-PLAN.md`,** and it is our lead feature. From 1 March, "see the
    clash" would be a paid claim beside "Free to start", and Pro is also where the plan puts more than 5 saved events and
    more than 5 results a month. Worth deciding before the screenshots are made.

@@ -14,8 +14,9 @@ Submission target: Fri 11 Dec 2026, manual release, for Tue 5 Jan 2027.
 - **Support URL and email.** A contact address for `futurega.me/support`.
 - **Demo account for review.** A fresh account with a few saved events, one bag/bust plan and one
   logged result, made after the store build is final. Credentials go in the review notes field only.
-- **Feature set (plan action 2).** Whether Hands (the replayer) opens to everyone decides keywords,
-  screenshot 9 and the third preview.
+- **Feature set (plan action 2): decided 2026-11-05.** Hands (the replayer) opens to everyone, so the keywords keep
+  `replayer,hand`, and screenshot 9 and the third preview are in. Typing or saying a hand stays closed until its
+  parser eval passes, so screenshot 9's caption has to change: "Type the hand. Watch it play." describes that.
 - **Right before submitting** (not earlier: TestFlight builds are the same binary):
   `webContentsDebuggingEnabled: false` in `capacitor.config.json`, and the display name
   `futurega.me β` becomes `futurega.me`. The bundle id stays `app.futurega.me.beta`.
@@ -37,8 +38,6 @@ Submission target: Fri 11 Dec 2026, manual release, for Tue 5 Jan 2027.
 ```
 schedule,calendar,tracker,bankroll,planner,mtt,late,reg,circuit,festival,flight,replayer,hand,horse
 ```
-
-If Hands stays closed at launch, swap `replayer,hand` for `deepstack,stud` (98 of 100).
 
 **Keywords, Spanish (Mexico)** (98 of 100):
 
@@ -137,10 +136,10 @@ is sample data and says so; no dollar figure leads any shot.
 | 6 | See where your friends are playing. | Social tab with demo friends |
 | 7 | Filter by the games you play. | The game filter with mixed games chosen |
 | 8 | Record every result. | Results tab: events, finishes, best finish (counts, no dollar hero) |
-| 9 | Type the hand. Watch it play. | Replayer, only if Hands opens |
+| 9 | Replay any hand, in any game. | Replayer at the showdown, 8-handed, from sample data |
 
 Preview videos (886 x 1920, 30 fps, 15 to 30 s, app footage only, overlays allowed): "Your whole poker
-calendar" 25 s, "Late reg" 15 s, "Replayer" 15 s if Hands opens. Cut from the ads once ad work resumes
+calendar" 25 s, "Late reg" 15 s, "Replayer" 15 s. Cut from the ads once ad work resumes
 (paused 2026-10-14).
 
 ## In-app purchases (for the 1 March paywall)

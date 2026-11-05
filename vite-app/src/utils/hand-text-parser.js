@@ -187,7 +187,7 @@ function getStreetNames(gameType) {
   if (cfg.hasBoard) return ['Preflop', 'Flop', 'Turn', 'River'];
   // Draw games
   const drawTriple = ['2-7 TD', 'PL 2-7 TD', 'L 2-7 TD', 'A-5 TD', 'Badeucy', 'Badacy', 'Badugi'];
-  const drawSingle = ['NL 2-7 SD', 'PL 5CD Hi'];
+  const drawSingle = ['NL 2-7 SD', 'PL 5CD Hi', 'NL 5CD Hi', 'NL A-5 SD'];
   if (drawTriple.includes(gameType)) return ['Pre-Draw', 'First Draw', 'Second Draw', 'Third Draw'];
   if (drawSingle.includes(gameType)) return ['Pre-Draw', 'Draw'];
   return ['Preflop', 'Flop', 'Turn', 'River'];

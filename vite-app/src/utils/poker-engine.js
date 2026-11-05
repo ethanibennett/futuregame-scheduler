@@ -321,11 +321,12 @@ export function bestBadugiHand(cards) {
 // Game variant evaluation config
 export const GAME_EVAL = {
   'NLH':{type:'high',method:'standard'},'LHE':{type:'high',method:'standard'},'PLH':{type:'high',method:'standard'},
-  'Stud Hi':{type:'high',method:'standard'},'PL 5CD Hi':{type:'high',method:'standard'},
-  'PLO':{type:'high',method:'omaha'},'LO Hi':{type:'high',method:'omaha'},
+  'Stud Hi':{type:'high',method:'standard'},'PL 5CD Hi':{type:'high',method:'standard'},'NL 5CD Hi':{type:'high',method:'standard'},
+  'PLO':{type:'high',method:'omaha'},'LO Hi':{type:'high',method:'omaha'},'NLO':{type:'high',method:'omaha'},
   'PLO8':{type:'hilo',method:'omaha'},'O8':{type:'hilo',method:'omaha'},'Big O':{type:'hilo',method:'omaha'},
+  'NL Big O':{type:'hilo',method:'omaha'},'L Big O':{type:'hilo',method:'omaha'},
   'Stud 8':{type:'hilo',method:'standard'},'Stud Hi-Lo':{type:'hilo',method:'standard'},
-  'Razz':{type:'low',lowType:'a5'},'A-5 TD':{type:'low',lowType:'a5'},
+  'Razz':{type:'low',lowType:'a5'},'A-5 TD':{type:'low',lowType:'a5'},'NL A-5 SD':{type:'low',lowType:'a5'},
   '2-7 TD':{type:'low',lowType:'27'},'PL 2-7 TD':{type:'low',lowType:'27'},'L 2-7 TD':{type:'low',lowType:'27'},
   'NL 2-7 SD':{type:'low',lowType:'27'},'2-7 Razz':{type:'low',lowType:'27'},
   'Badugi':{type:'badugi'},

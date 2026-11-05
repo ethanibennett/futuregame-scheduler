@@ -2358,14 +2358,18 @@ function finalize(c) {
   }, 1);
   step('hands-entry-plo', async () => {
     await nav('Hands');
-    await tap('.game-fave-btn:has-text("PLO")', 600);
-    await tap('button:has-text("Create ")', 1500);
+    await tap('.vp-launcher', 800);
+    await p.locator('.vp-search input').fill('PLO8');
+    await p.waitForTimeout(400);
+    await tap('.vp-list button:has(.vp-row-name:text-is("PLO8"))', 1500);
   }, 1);
   // Choosing Short Deck asks the room's rule (ShortDeckRuleDialog.jsx): the question and its two answers.
   step('hands-short-deck-rule', async () => {
     await nav('Hands');
-    await tap('.game-tab-btn:has-text("Hold")', 600);
-    await tap('.game-check-row:has(.game-check-row-label:text-is("Short Deck"))', 900);
+    await tap('.vp-launcher', 800);
+    await p.locator('.vp-search input').fill('Short Deck');
+    await p.waitForTimeout(400);
+    await tap('.vp-list button:has(.vp-row-name:text-is("Short Deck"))', 900);
     if (!(await exists('.sdr'))) throw new Error('no Short Deck rule question');
   }, 0);
   // The admin's Hands tools (the second footer row): each view as it renders against this server

@@ -187,7 +187,7 @@ function getGameCategory(gameType) {
   if (cfg.isStud) return 'stud';
   if (cfg.hasBoard) return 'community';
   if (['2-7 TD', 'PL 2-7 TD', 'L 2-7 TD', 'A-5 TD', 'Badeucy', 'Badacy'].includes(gameType)) return 'draw_triple';
-  if (['NL 2-7 SD', 'PL 5CD Hi'].includes(gameType)) return 'draw_single';
+  if (['NL 2-7 SD', 'PL 5CD Hi', 'NL 5CD Hi', 'NL A-5 SD'].includes(gameType)) return 'draw_single';
   if (gameType === 'Badugi') return 'draw_triple';
   if (!cfg.hasBoard && !cfg.isStud) {
     const customDef = STREET_DEFS['custom_' + gameType];
@@ -221,8 +221,8 @@ function sortHandByRank(cardStr) {
 /* Draw games sort high→low too, but the ace plays LOW in the A-5 family, so a
    wheel reads "5 4 3 2 A" there and "A K Q J T" in 2-7 or high draw. Face-down
    backs rank 0 and sit at the end, after every known card. */
-const ACE_LOW_DRAW = new Set(['A-5 TD', 'Badugi', 'Badacy']);
-const HIGH_DRAW = new Set(['PL 5CD Hi']);
+const ACE_LOW_DRAW = new Set(['A-5 TD', 'NL A-5 SD', 'Badugi', 'Badacy']);
+const HIGH_DRAW = new Set(['PL 5CD Hi', 'NL 5CD Hi']);
 const drawBase = (gameType) => String(gameType || '').replace(/^Super /, '');
 function sortDrawHand(cardStr, gameType) {
   const cards = parseCardNotation(cardStr || '');
@@ -396,7 +396,9 @@ function findStudBringIn(hand, isRazz) {
   const oppCards = (hand.streets[0] && hand.streets[0].cards.opponents) || [];
   const heroCards = parseCardNotation((hand.streets[0] && hand.streets[0].cards.hero) || '');
   const rankBadness = isRazz
-    ? { 'A':0,'2':1,'3':2,'4':3,'5':4,'6':5,'7':6,'8':7,'9':8,'T':9,'J':10,'Q':11,'K':12 }
+    ? (/2-7 Razz$/.test(hand.gameType || '')
+      ? { '2':0,'3':1,'4':2,'5':3,'6':4,'7':5,'8':6,'9':7,'T':8,'J':9,'Q':10,'K':11,'A':12 }
+      : { 'A':0,'2':1,'3':2,'4':3,'5':4,'6':5,'7':6,'8':7,'9':8,'T':9,'J':10,'Q':11,'K':12 })
     : { 'A':0,'K':1,'Q':2,'J':3,'T':4,'9':5,'8':6,'7':7,'6':8,'5':9,'4':10,'3':11,'2':12 };
   const suitBadness = isRazz ? { 'c':0,'d':1,'h':2,'s':3 } : { 's':0,'h':1,'d':2,'c':3 };
   let worstIdx = -1, worstRank = -1, worstSuit = -1;
@@ -1068,26 +1070,54 @@ function createEmptyHand(gameType, heroName) {
 }
 
 // ── Pot and stack calculation ──
+/* What a forced bet really takes: never more than the stack it comes from. A big blind with 800 was charged a
+   1,000 blind and a 1,000 ante, the stack read -1,200, and the pot paid the winner 1,200 chips that never existed.
+   A stack left blank (0, or a hand saved without one) is not a limit. Same order as the PokerTracker export
+   (hand-history/prepare.js): the blind first, and the ante takes what is left. */
+const capPost = (amount, stack) => {
+  const a = amount || 0;
+  return Number(stack) > 0 ? Math.min(a, Math.max(0, Number(stack))) : a;
+};
+/* The blind a seat really posted. */
+function blindPosted(hand, playerIdx) {
+  const p = hand.players[playerIdx];
+  const b = hand.blinds || {};
+  if (!p) return 0;
+  if (p.position === 'SB' || p.position === 'BTN/SB') return capPost(b.sb, p.startingStack);
+  if (p.position === 'BB') return capPost(b.bb, p.startingStack);
+  return 0;
+}
+/* Antes in the pot that are in no seat's street contribution: stud's from every seat, a big blind's once. */
+function antesPosted(hand) {
+  const ante = (hand.blinds && hand.blinds.ante) || 0;
+  if (!ante) return 0;
+  if (getGameCategory(hand.gameType) === 'stud') return hand.players.reduce((n, p) => n + capPost(ante, p.startingStack), 0);
+  const bb = hand.players.find(p => p.position === 'BB');
+  if (!bb) return ante;
+  const stack = Number(bb.startingStack);
+  return stack > 0 ? Math.min(ante, Math.max(0, stack - capPost(hand.blinds.bb, stack))) : ante;
+}
 function calcPotsAndStacks(hand, upToStreet, upToAction) {
   const blinds = hand.blinds || { sb: 0, bb: 0, ante: 0 };
   const stacks = hand.players.map(p => p.startingStack);
   const category = getGameCategory(hand.gameType);
   const isBBante = category !== 'stud' && (blinds.ante || 0) > 0;
-  if (!isBBante) stacks.forEach((_, i) => { stacks[i] -= (blinds.ante || 0); });
-  let pot = isBBante ? 0 : hand.players.length * (blinds.ante || 0);
+  let pot = 0;
+  const post = (i, amount) => { const paid = capPost(amount, stacks[i]); stacks[i] -= paid; pot += paid; };
+  if (!isBBante) stacks.forEach((_, i) => post(i, blinds.ante));
   if (hand.streets.length > 0 && hand.streets[0].actions) {
     if (category !== 'stud') {
       const sbIdx = hand.players.findIndex(p => p.position === 'SB' || p.position === 'BTN/SB');
       const bbIdx = hand.players.findIndex(p => p.position === 'BB');
-      if (sbIdx >= 0) { stacks[sbIdx] -= (blinds.sb || 0); pot += (blinds.sb || 0); }
+      if (sbIdx >= 0) post(sbIdx, blinds.sb);
       if (bbIdx >= 0) {
-        stacks[bbIdx] -= (blinds.bb || 0); pot += (blinds.bb || 0);
-        if (isBBante) { stacks[bbIdx] -= (blinds.ante || 0); pot += (blinds.ante || 0); }
+        const hadChips = Number(stacks[bbIdx]) > 0;
+        post(bbIdx, blinds.bb);
+        // A big blind all in on the blind has no ante to give (0 only means "no limit" before it posts).
+        if (isBBante && !(hadChips && stacks[bbIdx] <= 0)) post(bbIdx, blinds.ante);
       }
       /* Straddles post with the blinds, before a card is dealt. */
-      getStraddles(hand.players, blinds).forEach(st => {
-        stacks[st.seat] -= st.amount; pot += st.amount;
-      });
+      getStraddles(hand.players, blinds).forEach(st => post(st.seat, st.amount));
     }
   }
   const folded = new Set();
@@ -1127,14 +1157,12 @@ function computePlayerContrib(hand, streetIdx, actions, upToIdx, playerIdx) {
   let total = 0;
   const category = getGameCategory(hand.gameType);
   if (streetIdx === 0 && category !== 'stud') {
-    const pos = hand.players[playerIdx] && hand.players[playerIdx].position;
-    if (pos === 'SB' || pos === 'BTN/SB') total = (hand.blinds || {}).sb || 0;
-    else if (pos === 'BB') total = (hand.blinds || {}).bb || 0;
+    total = blindPosted(hand, playerIdx);
     /* A straddler is already in for their straddle before acting, which is
        what stops the app charging them the full amount again to call. No seat
        can be both, so this never doubles a blind. */
     const st = getStraddles(hand.players, hand.blinds).find(x => x.seat === playerIdx);
-    if (st) total = st.amount;
+    if (st) total = capPost(st.amount, hand.players[playerIdx].startingStack);
   }
   for (let i = 0; i <= upToIdx && i < actions.length; i++) {
     if (actions[i].player === playerIdx) {
@@ -4926,6 +4954,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         });
         if (res.ok) { const data = await res.json(); setCurrentHandId(data.id); }
       }
+      // A guest can build and replay a hand, but only an account keeps one (requireRegistered).
+      if (res.status === 403) { if (toast?.info) toast.info('Register to keep your hands. This one replays until you leave.'); setLoading(false); return; }
       if (!res.ok) throw new Error('HTTP ' + res.status);
       fetchHands();
       toast('Hand saved');
@@ -5282,8 +5312,10 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             </div>
           </div>
         )}
-        {/* Stud's modifiers, under the launcher while a stud game is picked. */}
-        {selectedCategory === 'Stud' && (
+        {/* Stud's modifiers, under the launcher while a stud game is picked. Off for now (owner, 2026-11-05: every
+            game on offer has to work): Super and Action only prefixed the game type, and the entry screen then dealt
+            the hand as a flop game. They come back with rules of their own. */}
+        {false && selectedCategory === 'Stud' && (
           <div className="game-picker vp-stud">
             <div className="game-check-group">
               {[['Super', studSuper, () => setStudSuper(p => !p), false],
@@ -6084,9 +6116,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
        ride in the main pot (reconcileLayersToPot below). Without them the winner was paid short and
        the chips left the table, on every hand with antes. Stud antes per seat, a big-blind ante once,
        as calcPotsAndStacks takes them. */
-    const ante = (hand.blinds && hand.blinds.ante) || 0;
-    const dead = getGameCategory(hand.gameType) === 'stud' ? ante * hand.players.length : ante;
-    return { contrib, uncalled, contested: contrib.reduce((a, b) => a + b, 0) + dead };
+    return { contrib, uncalled, contested: contrib.reduce((a, b) => a + b, 0) + antesPosted(hand) };
   }, [hand, streetIdx, actionIdx, showResult]);
 
   const displayPot = useMemo(() => {

@@ -58,19 +58,6 @@ export default function AdminView({ token, onNavigate }) {
 
   const sortArrow = (field) => sortField === field ? (sortAsc ? ' \u25b2' : ' \u25bc') : '';
 
-  const toggleReplayerAccess = async (userId, enabled) => {
-    try {
-      await fetch(`${API_URL}/admin/users/${userId}/replayer-access`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({ enabled })
-      });
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, hand_replayer_access: enabled ? 1 : 0 } : u));
-    } catch (e) {
-      console.error('Toggle replayer access error:', e);
-    }
-  };
-
   // Six rows shaped like real rows, rather than a bare string in an app that
   // ships a full skeleton kit.
   if (loading) return (
@@ -125,7 +112,6 @@ return (
               <th onClick={() => handleSort('username')}>Username{sortArrow('username')}</th>
               <th onClick={() => handleSort('real_name')}>Name{sortArrow('real_name')}</th>
               <th onClick={() => handleSort('email')}>Email{sortArrow('email')}</th>
-              <th style={{textAlign:'center',cursor:'default'}}>Replayer</th>
               <th style={{textAlign:'right'}} onClick={() => handleSort('created_at')}>Joined{sortArrow('created_at')}</th>
             </tr>
           </thead>
@@ -144,14 +130,6 @@ return (
                 </td>
                 <td style={{color:'var(--text-muted)'}}>{u.real_name || '\u2014'}</td>
                 <td style={{color:'var(--text-muted)'}}>{u.email}</td>
-                <td className="admin-toggle-cell" style={{textAlign:'center'}}>
-                  <button
-                    onClick={() => toggleReplayerAccess(u.id, !u.hand_replayer_access)}
-                    className={'settings-toggle admin-toggle' + (u.hand_replayer_access ? ' on' : '')}
-                    aria-pressed={!!u.hand_replayer_access}
-                    aria-label={`Replayer access for ${u.username}`}>
-                  </button>
-                </td>
                 <td style={{color:'var(--text-muted)',textAlign:'right',whiteSpace:'nowrap'}} title={u.created_at}>{timeAgo(u.created_at)}</td>
               </tr>
             ))}

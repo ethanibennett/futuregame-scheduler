@@ -5782,6 +5782,8 @@ app.post('/api/groups/:id/members', authenticateToken, requireRegistered, async 
       "INSERT INTO group_invites (group_id, invited_by, invited_user_id, status) VALUES (?, ?, ?, 'pending')",
       [groupId, req.user.id, targetUser.id]
     );
+    // Before saving, which resets it (above): the invite's id goes out with the notification.
+    const lastId = db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
     await saveDatabase();
 
     // Get group name for the SSE payload
@@ -5789,9 +5791,6 @@ app.post('/api/groups/:id/members', authenticateToken, requireRegistered, async 
     gStmt.bind([groupId]);
     const group = gStmt.step() ? gStmt.getAsObject() : null;
     gStmt.free();
-
-    // Get the invite ID
-    const lastId = db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
 
     // SSE: notify the invited user
     const invitedClients = sseClients.get(targetUser.id);
@@ -8601,12 +8600,13 @@ app.post('/api/hands', authenticateToken, requireRegistered, async (req, res) =>
       'INSERT INTO saved_hands (user_id, hand_data, game_type, title, notes, is_public) VALUES (?, ?, ?, ?, ?, ?)',
       [req.user.id, typeof handData === 'string' ? handData : JSON.stringify(handData), gameType, title || null, notes || null, isPublic ? 1 : 0]
     );
-    await saveDatabase();
-    // Get the inserted id
+    // Read the new id BEFORE saving: db.export() resets last_insert_rowid() to 0 (sql.js), and a hand saved with
+    // id 0 looks unsaved to the app, so the next edit made a second copy of it.
     const idStmt = db.prepare('SELECT last_insert_rowid() as id');
     idStmt.step();
     const { id } = idStmt.getAsObject();
     idStmt.free();
+    await saveDatabase();
     res.status(201).json({ message: 'Hand saved', id });
   } catch (error) {
     console.error(error);
@@ -8827,11 +8827,13 @@ app.post('/api/replayer/hands', authenticateToken, requireRegistered, async (req
       'INSERT INTO saved_hands (user_id, hand_data, game_type, title, notes, is_public) VALUES (?, ?, ?, ?, ?, ?)',
       [req.user.id, JSON.stringify(hand), gameType, title || hand.title || null, notes || hand.notes || null, isPublic ? 1 : 0]
     );
-    await saveDatabase();
+    // Read the new id BEFORE saving: db.export() resets last_insert_rowid() to 0 (sql.js), and a hand saved with
+    // id 0 looks unsaved to the app, so the next edit made a second copy of it.
     const idStmt = db.prepare('SELECT last_insert_rowid() as id');
     idStmt.step();
     const { id } = idStmt.getAsObject();
     idStmt.free();
+    await saveDatabase();
     res.status(201).json({ id });
   } catch (error) {
     console.error(error);
@@ -8895,11 +8897,13 @@ app.post('/api/replayer/games', authenticateToken, requireRegistered, async (req
     const game = req.body;
     db.run('INSERT INTO replayer_games (user_id, name, definition) VALUES (?, ?, ?)',
       [req.user.id, game.name || 'Custom Game', JSON.stringify(game)]);
-    await saveDatabase();
+    // Read the new id BEFORE saving: db.export() resets last_insert_rowid() to 0 (sql.js), and a hand saved with
+    // id 0 looks unsaved to the app, so the next edit made a second copy of it.
     const idStmt = db.prepare('SELECT last_insert_rowid() as id');
     idStmt.step();
     const { id } = idStmt.getAsObject();
     idStmt.free();
+    await saveDatabase();
     res.status(201).json({ id });
   } catch (error) {
     console.error(error);

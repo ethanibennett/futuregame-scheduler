@@ -2140,8 +2140,7 @@ function App() {
 
             <div className={'tab-panel' + (currentView === 'hands' ? ' tab-active' : '')} data-tab="hands" style={{display: currentView === 'hands' ? undefined : 'none', height: currentView === 'hands' ? '100%' : undefined}}>
             {visitedTabs.has('hands') && (
-              isAdmin || sharedHandArrived
-                ? <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
+                <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
                     {/* The tool selector (Replayer / Solver / …) now lives as a second
                         footer row above the bottom nav — see HANDS_TOOLS below — so it
                         stays put while the tool content scrolls. */}
@@ -2155,10 +2154,6 @@ function App() {
                             pendingDrawSpot={pendingDrawSpot} onConsumeDrawSpot={() => setPendingDrawSpot(null)} /></Suspense>
                         : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setStudyTool('solve'); setHandsTool('study'); }) : undefined} onStudyDraw={isAdmin ? (spot => { setPendingDrawSpot(spot); setStudyTool('draw'); setHandsTool('study'); }) : undefined} quickAdd={isAdmin} drillEnabled={isAdmin} drillAsk={drillAsk} onDrillAsked={() => setDrillAsk(false)} schedule={mySchedule} updates={myActiveUpdates} /></Suspense>}
                     </div>
-                  </div>
-                : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'calc(var(--subrow) * 7.5) calc(var(--subrow) * 2.5)',textAlign:'center'}}>
-                    <h2 style={{fontFamily:"'Univers Condensed', 'Univers', sans-serif",fontSize:'calc(var(--gu) * 1.914)',fontWeight:700,color:'var(--text)',margin:'0 0 calc(var(--subrow) * 1)'}}>Hand Replayer</h2>
-                    <p style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.325)',margin:0}}>Coming Soon</p>
                   </div>
             )}
             </div>

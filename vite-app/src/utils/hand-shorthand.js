@@ -10,6 +10,7 @@ export const GAME_CODES = {
   'Stud Hi-Lo':'SL', '2-7 Razz':'2R', '2-7 TD':'TD', 'NL 2-7 SD':'SD',
   'PL 2-7 TD':'PT', 'L 2-7 TD':'LT', 'A-5 TD':'A5', 'Badugi':'BG',
   'Badeucy':'BC', 'Badacy':'BA', 'PL 5CD Hi':'PD', 'OFC':'OF',
+  'NLO':'NQ', 'NL Big O':'NB', 'L Big O':'LB', 'NL 5CD Hi':'ND', 'NL A-5 SD':'AS',
   /* 'BE' is the code every link to a six-card PLO hi-lo hand has carried since it was called "Big
      Easy" (renamed PLO6 8/b, 2026-10-14). A code is a wire id, not a name anyone reads, and keeping
      it means a link made now still opens in an app build from before the rename. decodeHand maps it
@@ -47,7 +48,7 @@ function _shGetGameCategory(gameType) {
   if (cfg.isStud) return 'stud';
   if (cfg.hasBoard) return 'community';
   if (['2-7 TD', 'PL 2-7 TD', 'L 2-7 TD', 'A-5 TD', 'Badeucy', 'Badacy', 'Badugi'].indexOf(gameType) >= 0) return 'draw_triple';
-  if (['NL 2-7 SD', 'PL 5CD Hi'].indexOf(gameType) >= 0) return 'draw_single';
+  if (['NL 2-7 SD', 'PL 5CD Hi', 'NL 5CD Hi', 'NL A-5 SD'].indexOf(gameType) >= 0) return 'draw_single';
   if (!cfg.hasBoard && !cfg.isStud) {
     return 'community';
   }

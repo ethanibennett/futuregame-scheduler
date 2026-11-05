@@ -99,6 +99,11 @@ const VARIANT_STRIPS = {
   'Badeucy':            { abbr: 'BADEUCY',fam: 'draw',  shade: 1.30 },
   'Badacy':             { abbr: 'BADACY', fam: 'draw',  shade: 1.24 },
   'PL 5CD Hi':          { abbr: '5CD',    fam: 'draw',  shade: 0.72 },
+  'NL 5CD Hi':          { abbr: '5CD',    fam: 'draw',  shade: 0.72 },
+  'NL A-5 SD':          { abbr: 'A-5 SD', fam: 'draw',  shade: 0.90 },
+  'NLO':                { abbr: 'NLO',    fam: 'flop',  shade: 1.14 },
+  'NL Big O':           { abbr: 'BIG O',  fam: 'flop',  shade: 1.21 },
+  'L Big O':            { abbr: 'BIG O',  fam: 'flop',  shade: 1.21 },
   'HORSE':              { abbr: 'HORSE',  fam: 'mixed', shade: 1.00 },
   'TORSE':              { abbr: 'TORSE',  fam: 'mixed', shade: 1.14 },
   "Dealer's Choice":    { abbr: 'DC',     fam: 'mixed', shade: 0.86 },
@@ -127,11 +132,31 @@ export function canonicalGameType(gameType) {
   return typeof gameType === 'string' && Object.prototype.hasOwnProperty.call(LEGACY_GAME_NAMES, gameType)
     ? LEGACY_GAME_NAMES[gameType] : gameType;
 }
-/* The same hand with its game name canonical; the hand itself when nothing changes. */
+/* The same hand in today's shape; the hand itself when nothing changes. Beyond the game's name, the earliest saves
+   keyed an action by `playerIdx` and a result as { winner: i | -1, ... }. The export has always read those
+   (hand-history/prepare.js normalizeInput); the replay read `player` alone, so such a hand played with nobody acting:
+   the blinds went in and never came back. */
 export function canonicalHand(hand) {
   if (!hand || typeof hand !== 'object') return hand;
+  let out = hand;
   const g = canonicalGameType(hand.gameType);
-  return g === hand.gameType ? hand : { ...hand, gameType: g };
+  if (g !== hand.gameType) out = { ...out, gameType: g };
+  const oldKey = (o) => o && o.player == null && o.playerIdx != null;
+  const rekey = (o) => {
+    if (!oldKey(o)) return o;
+    const { playerIdx, ...rest } = o;
+    return { ...rest, player: Number(playerIdx), ...(o.amount != null ? { amount: Number(o.amount) || 0 } : {}) };
+  };
+  if (Array.isArray(hand.streets) && hand.streets.some(s => (s?.actions || []).some(oldKey) || (s?.draws || []).some(oldKey))) {
+    out = { ...out, streets: hand.streets.map(s => (s ? { ...s, actions: (s.actions || []).map(rekey), draws: (s.draws || []).map(rekey) } : s)) };
+  }
+  const r = hand.result;
+  if (r && typeof r === 'object' && !Array.isArray(r.winners) && 'winner' in r) {
+    const w = Number(r.winner);
+    // -1 was a split, with no record of who: an empty list leaves it to the showdown, as an unrecorded result does.
+    out = { ...out, result: { winners: Number.isInteger(w) && w >= 0 ? [{ playerIdx: w, split: false }] : [] } };
+  }
+  return out;
 }
 
 export function getVariantStrip(gameType) {
@@ -283,6 +308,11 @@ export const HAND_CONFIG = {
   'Badeucy':  { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: '23457hdcss' },
   'Badacy':   { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'A2345hdcss' },
   'PL 5CD Hi':{ heroCards: 5, hasBoard: false, boardMax: 0, betting: 'pl', heroPlaceholder: 'AKQJT hdcss' },
+  'NL 5CD Hi':{ heroCards: 5, hasBoard: false, boardMax: 0, betting: 'nl', heroPlaceholder: 'AKQJT hdcss' },
+  'NL A-5 SD':{ heroCards: 5, hasBoard: false, boardMax: 0, betting: 'nl', heroPlaceholder: 'A2345hdcss' },
+  'NLO':      { heroCards: 4, hasBoard: true, boardMax: 5, betting: 'nl', heroPlaceholder: 'AKQ9hdcs', boardPlaceholder: 'J72hds' },
+  'NL Big O': { heroCards: 5, hasBoard: true, boardMax: 5, betting: 'nl', heroPlaceholder: 'AK2Q9hdcsd', boardPlaceholder: 'J72hds' },
+  'L Big O':  { heroCards: 5, hasBoard: true, boardMax: 5, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'AK2Q9hdcsd', boardPlaceholder: 'J72hds' },
   '2-7 Razz': { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: '23x45x7TKhdscx' },
   'NL Stud Hi':  { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'nl', isStud: true, heroPlaceholder: 'A9xxAKQJThdcsx' },
   'NL Stud 8':   { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'nl', isStud: true, heroPlaceholder: 'A234567hdcshds' },

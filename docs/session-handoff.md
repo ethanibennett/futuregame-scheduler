@@ -40,6 +40,14 @@ the junction hides anything missing from git.
   a no-op in the belief. It would matter the moment `drawReweight` is enabled, and fail silently (its note to the solver
   repo). **Lesson: compare a Monte Carlo gap to the same input under another seed before believing it.** That control
   moves the worst row 4 to 6 chips, so read the study tool's figures with its band, not row by row.
+- **Hands is open to everyone, and every game on offer is tested (owner, 2026-11-05).** `check:replayer-games` found: new hands
+  saved with id 0 (`last_insert_rowid()` read after `saveDatabase()`, which resets it, so editing made a second copy: `test:hand-save`);
+  2-7 Razz paying by Razz rules; No Limit Omaha, No Limit and Limit Big O, No Limit 5-Card Draw and A-5 Single Draw played by the
+  wrong structure (each has its own type now); a big blind too short for the blind and the ante made chips appear (forced bets are
+  capped at the stack now, in the export's order: `capPost`); hands saved in the oldest shape played with nobody acting (`canonicalHand`
+  converts them); a guest's save said "HTTP 403". Fourteen named games with no rules (16 picker rows) are out of the picker
+  (`UNBUILT_GAMES`), and the Super and Action stud toggles are off: they dealt stud as a flop game. Trap: a harness chip check needs exact totals; 0.2% of 400,000
+  passed a 700 pot as landed and looked like a frozen replay.
 - **One training experience: Hands > Study (owner, 2026-11-04).** See CLAUDE.md. `test:money-import-review` is repaired
   (Import is a section chip since the sheet retired). Guards still flag: six Reports filter chips whose count is "1" (ink 0.9px
   left of centre against a 0.75px limit: that digit's blank right side, and the rule forbids a metric nudge inside a control).

@@ -22,7 +22,7 @@ export default function DesktopRail({ current, onChange, isAdmin }) {
     { id: 'tournaments', label: 'Schedule', icon: Icon.calendar },
     { id: 'tracking', label: 'Bankroll', icon: Icon.tracking },
     { id: 'dashboard', label: 'Dashboard', icon: Icon.home },
-    ...(isAdmin ? [{ id: 'hands', label: 'Hands', icon: Icon.cards }] : []),
+    { id: 'hands', label: 'Hands', icon: Icon.cards },
     ...(isAdmin ? [{ id: 'cash', label: 'Cash', icon: Icon.dollarSign }] : []),
   ];
   const secondary = [
