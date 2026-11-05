@@ -14,7 +14,7 @@ import {
   VENUE_TO_SERIES, VENUE_BRAND_VAR, isPOYEligible, calculatePOYPoints, isSixMax,
   HAND_CONFIG, HAND_CONFIG_DEFAULT, splitEventStage, formatChips, getVenueCoords, getToday,
 } from '../utils/utils.js';
-import { registerClock, useClockStore, useSecondTick, liveView, clockRegEnd, fmtClock, isCompleted, clockAskable } from '../utils/live-clocks.js';
+import { registerClock, useClockStore, useSecondTick, liveView, clockRegEnd, clockFieldLabel, fmtClock, isCompleted, clockAskable } from '../utils/live-clocks.js';
 import { API_URL } from '../utils/api.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -302,20 +302,22 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, co
   );
 }
 
-// ── Live clock line (running events) ──
-// The room's clock on the card's top line: "5k/10k/10k · 15:48", right-aligned to the third
-// primary column's right edge (27g), baseline on r4.
-// The level number and players left are not shown for now. A break shows "Break" in the blinds'
-// place; a paused clock shows "Paused" in the time's.
-function ClockLine({ live }) {
+// ── Live clock row (running events) ──
+// Everything the room's clock says, on one row at the card's foot (owner, 2026-11-05): the level,
+// the blinds, the time left, and the entries and players left where the room publishes them. A break
+// shows "Break" in the blinds' place; a paused clock shows "Paused" in the time's. Open, the row
+// moves down into the detail, under the late-reg bar.
+function ClockRow({ live }) {
   const blinds = live.onBreak ? 'Break'
     : `${formatChips(live.sb)}/${formatChips(live.bb)}${live.ante ? '/' + formatChips(live.ante) : ''}`;
+  const field = clockFieldLabel(live);
   return (
-    <span className="cal-event-clock" title="Live tournament clock">
+    <div className="cal-live-row" title="Live tournament clock">
+      <span className="cal-live-level">Level {live.level}</span>
       <span className="cal-clock-pt blinds">{blinds}</span>
-      {' \u00b7 '}
-      {live.state === 'paused' ? 'Paused' : fmtClock(live.remaining)}
-    </span>
+      <span className="cal-live-time">{live.state === 'paused' ? 'Paused' : fmtClock(live.remaining)}</span>
+      {field && <span className="cal-live-field">{field}</span>}
+    </div>
   );
 }
 
@@ -716,7 +718,6 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
               <div className="cal-bar-row1">
                 <span className="cal-event-time">{timeLabel}</span>
                 <SwissLines name={tournament.event_name} time={timeLabel} />
-                {live && <ClockLine live={live} />}
                 <span className="cal-event-money">
                   <span className="cal-event-buyin">{currencySymbol(tournament.venue, tournament.currency)}{Number(tournament.buyin).toLocaleString()}</span>
                   {Number(tournament.prize_pool) > 0 && (
@@ -737,6 +738,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                 )}
               </div>
               {showMiniLateReg && !open && <MiniLateRegBar completed={completed} lateRegEnd={(live && clockRegEnd(tournament, live)) || tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />}
+              {live && !open && <ClockRow live={live} />}
             </>
           )}
         </div>
@@ -916,6 +918,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                       then the stored late_reg_end. Reading only late_reg_end, an event whose
                       close came from the clock alone lost its bar the moment it was expanded. */}
                   <LateRegBar completed={completed} lateRegEnd={(live && clockRegEnd(tournament, live)) || tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />
+                  {live && open && <ClockRow live={live} />}
 
                   {buddyEvents && buddyEvents[tournament.id] && buddyEvents[tournament.id].length > 0 && (
                     <BuddyAvatarRow buddies={buddyEvents[tournament.id]} liveUpdates={buddyLiveUpdates}

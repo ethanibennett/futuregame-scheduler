@@ -11795,28 +11795,40 @@
       gap: 0;
     }
     .cal-event-time { grid-column: 1; grid-row: 1; }
-    /* The room's running clock (CalendarEventRow clockLine), sharing the time's cell: right-
-       aligned on 25g, 2g inside the third primary column's right edge (27g; moved in from there
-       2026-09-30). The cell ends on the money column's edge (29g), so two subcolumns of margin. Seated like the guarantee —
-       a 2r trimmed box, align-items:end — so its baseline lands on r4 with the time's and the
-       buy-in's. Real data, so full --text rather than the muted meta colour. */
-    .cal-event-clock {
-      grid-column: 1;
-      grid-row: 1;
-      justify-self: end;
-      margin-right: calc(var(--subcol) * 2);   /* right edge on 25g */
+    /* The room's running clock, one row at the card's foot (CalendarEventRow ClockRow; owner,
+       2026-11-05). A 2r row with its baselines on the bottom line, in whole-g cells that start in the
+       same place on every card: level 4g, blinds 10g, time 20g, and the field right-aligned on the
+       card's 35g edge. Real data, so full --text rather than the muted meta colour. */
+    .cal-live-row {
+      display: grid;
+      grid-template-columns: calc(var(--gu) * 6) calc(var(--gu) * 10) calc(var(--gu) * 5) minmax(0, 1fr);
+      align-items: end;
+      flex-shrink: 0;
+      height: calc(var(--subrow) * 2);
+      margin-top: auto;
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       font-weight: var(--fw-regular);
       letter-spacing: var(--track-tight);
-      line-height: calc(var(--subrow) * 2);
       color: var(--text);
       font-variant-numeric: tabular-nums;
+    }
+    .cal-live-row > span {
+      line-height: calc(var(--subrow) * 2);
       white-space: nowrap;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
-    /* The blinds: bold, at the start time's size; the dot and time stay regular. */
+    .cal-live-field { grid-column: 4; justify-self: end; }
+    /* The blinds: bold, at the start time's size; the rest stays regular. */
     .cal-clock-pt.blinds { font-size: var(--fs-sm); font-weight: var(--fw-bold); }
+    /* Always 2r clear of whatever else is in the card (owner, 2026-11-05). Closed, the row closes the
+       bar, 2r under the last thing in it. A flight card's late-reg bar keeps its r13 (the bar's fixed
+       13r, here a 17r floor so a title that wraps above the flight pushes the row down instead of being
+       cut). Open, the detail's column already spaces its blocks 1r apart, so 1r more on each side. */
+    .cal-event-row:not(.open):has(.cal-live-row) .cal-event-bar { padding-bottom: 0; }
+    .cal-event-row:not(.open) .cal-event-bar > .cal-live-row { margin-top: calc(var(--subrow) * 2); }
+    .cal-event-row:not(.open):has(.cal-event-stage):has(.mini-late-reg):has(.cal-live-row) .cal-event-bar { height: auto; min-height: calc(var(--subrow) * 17); }
+    .cal-event-detail > .cal-live-row { margin-block: var(--subrow); }
 
     /* Icons pin to the TITLE line, not the row's centre. formatEventName puts
        "- Flight A" on a second line, which doubles the row height and used to
@@ -13467,6 +13479,21 @@
       min-width: 0;
     }
 
+    /* 2r clear of the rest of the card, as the Schedule card's live row is: the card's column already
+       spaces its blocks 1r apart. */
+    .dash-live-field {
+      margin-top: var(--subrow);
+      height: calc(var(--subrow) * 2);
+      display: flex;
+      align-items: flex-end;
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      line-height: calc(var(--subrow) * 2);
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .dash-live-field:not(:last-child) { margin-bottom: var(--subrow); }
     .dash-stat-value {
       font-family: var(--font-condensed);
       font-size: var(--fs-md);

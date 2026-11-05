@@ -5,7 +5,7 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-11-04 (from Windows) — newest section first. Earlier notes: 2026-10-21, 2026-10-13, then 2026-09-30, live
+Last updated: 2026-11-05 (from Windows) — newest section first. Earlier notes: 2026-10-21, 2026-10-13, then 2026-09-30, live
 tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
@@ -13,6 +13,23 @@ Below it the 2026-09-25 Schedule grid sweep, then the dated sections back throug
 wsop-console side and verified against both live services.
 
 ---
+
+## 2026-11-05 — The live clock row on event cards
+
+Owner: all the live clock data on a row at the bottom of the event card, entries and players left where the room
+publishes them, always 2r clear of anything else in the card. Done (CLAUDE.md, "Live tournament clocks"). All three
+providers already sent `entries` and `playersLeft`; nothing on screen read them.
+
+- **A card with a clock grows when the answer lands.** The row moved off the card's top line, so a card is 4r taller
+  once its clock answers, ~250 ms after it comes within 200px of the screen. Scrolling up through running events can
+  therefore shift the list by whole rows. Not measured on a phone; the owner has been told.
+- **Bravo shows entries only.** Its `NumRemaining` is not players left: Borgata's Deepstack (218 entries, Level 4) read 3,
+  then 63 minutes later, and its Mini Main 5 of 27 at Level 1. PokerAtlas and WSOP+ read sensibly (178/134, 68/57).
+  `clockFieldLabel` drops it; the server still passes the raw figure.
+- **Trap:** the closed card's detail panel is always in the DOM at height 0, so anything rendered there needs `open` too,
+  or it counts twice in a measurement that only tests its own height.
+- **Seen, not touched:** a name over two lines shows part of a third line under the clamp on any Schedule card (the
+  "Qualifier to PSO Main Event…" row), with or without a clock.
 
 ## 2026-11-04 — The replayer drill, and the solver is on GitHub
 

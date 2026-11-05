@@ -218,7 +218,10 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
 - **Live tournament clocks (in, on demand)**: `lib/live-clocks.js` behind `POST /api/live-clocks`.
   The dashboard polls it every 15 s for selected events past their start (and PokerAtlas-clocked
   events up to 6 h before) and drives the Level/Clock stats and the late-reg bar from the room's
-  real clock instead of `estimateBlindLevel()`. Three providers, none needing a login:
+  real clock instead of `estimateBlindLevel()`. A Schedule card shows the clock as one row at its foot
+  (owner, 2026-11-05; `ClockRow`, `.cal-live-row`, `clockFieldLabel`): level, blinds, time, and entries and players
+  left where the room publishes them, always 2r clear of the rest of the card; the Dashboard card keeps its stat boxes
+  and adds the field under them. Three providers, none needing a login:
   PokerAtlas/TableCaptain over `wss://tourn-clock.pokeratlas.com` by the event's `clock_ref`
   (`pa:<tc_id>`, carried by the MTT feed since 2026-09-29); **WSOP+** (`lib/wsop-live-clocks.js`,
   2026-10-23) for any WSOP-run series — Circuit stops, Vegas, Paradise — found by the room's name

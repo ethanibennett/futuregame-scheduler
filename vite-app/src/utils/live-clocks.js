@@ -140,6 +140,20 @@ export function liveView(c) {
   return { ...c, remaining: Math.max(0, Math.round(c.remainingSecs - aged)) };
 }
 
+/** The field on the room's clock, for the card's live row: "187 left of 412", or whichever half the
+ *  room publishes. Null when it publishes neither; a 0 means not reported yet, never an empty event.
+ *  Nobody is out yet (left = entries), or a left above the entries, reads as the entries alone.
+ *  Bravo gives its entries only: its NumRemaining is not who is left. Measured 2026-11-05 at Borgata,
+ *  the Deepstack's 218 entries at Level 4 read 3 remaining, then 63 a few minutes later, rising. */
+export function clockFieldLabel(c) {
+  const entries = c && Number(c.entries) > 0 ? Number(c.entries) : null;
+  const left = c && c.source !== 'bravo' && Number(c.playersLeft) > 0 ? Number(c.playersLeft) : null;
+  const n = (v) => v.toLocaleString('en-US');
+  if (entries && left && left < entries) return `${n(left)} left of ${n(entries)}`;
+  if (entries) return `${n(entries)} ${entries === 1 ? 'entry' : 'entries'}`;
+  return left ? `${n(left)} left` : null;
+}
+
 /** Has the room's clock shown this tournament finished? Either stored on the row (clock_ended_at,
  *  from the tournament list) or just reported by a poll (state 'ended'). */
 export function isCompleted(t, c) {
