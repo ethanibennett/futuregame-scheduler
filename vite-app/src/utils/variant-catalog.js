@@ -12,42 +12,42 @@ import { MULTI_GAME_MAP, describeGame, getVariantStrip, normaliseDate, parseTour
 
 // ── The picker's maps (moved here from HandReplayerView; the component imports them) ───────────
 export const STRUCTURE_GAME_MAP = {
-  'No Limit':  { "Hold'em": 'NLH', 'Pineapple': 'NLH', 'Short Deck': 'Short Deck',
+  'No Limit':  { "Hold'em": 'NLH', 'Pineapple': 'NL Pineapple', 'Short Deck': 'Short Deck',
     'Omaha': 'NLO', 'Omaha 8/b': 'NLO8', 'Big O': 'NL Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
-    'Double Board Bomb Pot': 'PLO', 'Courchevel': 'PLO',
+    'Double Board Bomb Pot': 'PLO', 'Courchevel': 'Courchevel',
     'Stud Hi': 'NL Stud Hi', 'Stud 8/b': 'NL Stud 8', 'Razz': 'NL Razz',
-    'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': '2-7 Razz',
-    'Razzdugi': 'Badugi', 'Razzdeucy': 'Badeucy',
+    'Stud Hi/Lo Regular': 'Stud Regular', '2-7 Razz': '2-7 Razz',
+    'Razzdugi': 'Razzdugi', 'Razzdeucy': 'Razzdeucy',
     '2-7 Triple Draw': '2-7 TD', '2-7 Single Draw': 'NL 2-7 SD',
     'A-5 Triple Draw': 'A-5 TD', 'A-5 Single Draw': 'NL A-5 SD',
     'Badugi': 'Badugi', 'Badeucy': 'Badeucy', 'Badacey': 'Badacy',
-    'Archie 66': 'Badugi', 'Archie 99': 'Badugi', 'Ari': 'Badugi',
+    'Archie 66': 'Archie 66', 'Archie 99': 'Archie 99', 'Ari': 'Ari',
     '5-Card Draw': 'NL 5CD Hi', 'OFC': 'OFC',
-    'Dramaha Hi': 'PLO', 'Dramaha 2-7': 'PLO', 'Dramaha 49': 'PLO', 'Dramaha 0': 'PLO', 'Dramadugi': 'PLO', 'Omajack': 'PLO' },
-  'Pot Limit': { "Hold'em": 'PLH', 'Pineapple': 'PLH', 'Short Deck': 'Short Deck',
+    'Dramaha Hi': 'Dramaha Hi', 'Dramaha 2-7': 'Dramaha 2-7', 'Dramaha 49': 'Dramaha 49', 'Dramaha 0': 'Dramaha 0', 'Dramadugi': 'Dramadugi', 'Omajack': 'Omajack' },
+  'Pot Limit': { "Hold'em": 'PLH', 'Pineapple': 'PL Pineapple', 'Short Deck': 'Short Deck',
     'Omaha': 'PLO', 'Omaha 8/b': 'PLO8', 'Big O': 'Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
-    'Double Board Bomb Pot': 'PLO', 'Courchevel': 'PLO',
+    'Double Board Bomb Pot': 'PLO', 'Courchevel': 'Courchevel',
     'Stud Hi': 'PL Stud Hi', 'Stud 8/b': 'PL Stud 8', 'Razz': 'PL Razz',
-    'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': '2-7 Razz',
-    'Razzdugi': 'Badugi', 'Razzdeucy': 'Badeucy',
+    'Stud Hi/Lo Regular': 'Stud Regular', '2-7 Razz': '2-7 Razz',
+    'Razzdugi': 'Razzdugi', 'Razzdeucy': 'Razzdeucy',
     '2-7 Triple Draw': 'PL 2-7 TD', '2-7 Single Draw': 'NL 2-7 SD',
     'A-5 Triple Draw': 'A-5 TD', 'A-5 Single Draw': 'NL A-5 SD',
     'Badugi': 'Badugi', 'Badeucy': 'Badeucy', 'Badacey': 'Badacy',
-    'Archie 66': 'Badugi', 'Archie 99': 'Badugi', 'Ari': 'Badugi',
+    'Archie 66': 'Archie 66', 'Archie 99': 'Archie 99', 'Ari': 'Ari',
     '5-Card Draw': 'PL 5CD Hi', 'OFC': 'OFC',
-    'Dramaha Hi': 'PLO', 'Dramaha 2-7': 'PLO', 'Dramaha 49': 'PLO', 'Dramaha 0': 'PLO', 'Dramadugi': 'PLO', 'Omajack': 'PLO' },
-  'Limit':     { "Hold'em": 'LHE', 'Pineapple': 'LHE', 'Short Deck': 'Short Deck',
+    'Dramaha Hi': 'Dramaha Hi', 'Dramaha 2-7': 'Dramaha 2-7', 'Dramaha 49': 'Dramaha 49', 'Dramaha 0': 'Dramaha 0', 'Dramadugi': 'Dramadugi', 'Omajack': 'Omajack' },
+  'Limit':     { "Hold'em": 'LHE', 'Pineapple': 'L Pineapple', 'Short Deck': 'Short Deck',
     'Omaha': 'LO Hi', 'Omaha 8/b': 'O8', 'Big O': 'L Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
-    'Double Board Bomb Pot': 'PLO', 'Courchevel': 'PLO',
+    'Double Board Bomb Pot': 'PLO', 'Courchevel': 'Courchevel',
     'Stud Hi': 'Stud Hi', 'Stud 8/b': 'Stud 8', 'Razz': 'Razz',
-    'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': '2-7 Razz',
-    'Razzdugi': 'Badugi', 'Razzdeucy': 'Badeucy',
+    'Stud Hi/Lo Regular': 'Stud Regular', '2-7 Razz': '2-7 Razz',
+    'Razzdugi': 'Razzdugi', 'Razzdeucy': 'Razzdeucy',
     '2-7 Triple Draw': '2-7 TD', '2-7 Single Draw': 'NL 2-7 SD',
     'A-5 Triple Draw': 'A-5 TD', 'A-5 Single Draw': 'NL A-5 SD',
     'Badugi': 'Badugi', 'Badeucy': 'Badeucy', 'Badacey': 'Badacy',
-    'Archie 66': 'Badugi', 'Archie 99': 'Badugi', 'Ari': 'Badugi',
+    'Archie 66': 'Archie 66', 'Archie 99': 'Archie 99', 'Ari': 'Ari',
     '5-Card Draw': 'PL 5CD Hi', 'OFC': 'OFC',
-    'Dramaha Hi': 'PLO', 'Dramaha 2-7': 'PLO', 'Dramaha 49': 'PLO', 'Dramaha 0': 'PLO', 'Dramadugi': 'PLO', 'Omajack': 'PLO' },
+    'Dramaha Hi': 'Dramaha Hi', 'Dramaha 2-7': 'Dramaha 2-7', 'Dramaha 49': 'Dramaha 49', 'Dramaha 0': 'Dramaha 0', 'Dramadugi': 'Dramadugi', 'Omajack': 'Omajack' },
 };
 export const DEFAULT_STRUCTURE = {
   "Hold'em": 'No Limit', 'Pineapple': 'No Limit', 'Short Deck': 'No Limit',
@@ -94,14 +94,10 @@ export const gameTypeOf = (game, structure) => (STRUCTURE_GAME_MAP[structure] ||
 // ── The families, in the order the palette lists them ─────────────────────────────────────────
 // Each game's rows: its usual structure first, then the others people play; `rare` ones (NL Stud,
 // PL Razz, NL Omaha hi) appear only in search results.
-/* Named games the engine has no rules for yet (owner, 2026-11-05: every game on offer has to work). Each one
-   used to be dealt and scored as a plainer game, so a hand could announce the wrong winner: Dramaha as PLO, Archie
-   as Badugi, Razzdugi as a draw game. They stay out of the picker until they are built. A saved hand of the game it
-   was played as still opens, and an account can still name its own custom game. */
-export const UNBUILT_GAMES = new Set([
-  'Pineapple', 'Courchevel', 'Stud Hi/Lo Regular', 'Razzdugi', 'Razzdeucy', 'Archie 66', 'Archie 99', 'Ari',
-  'Dramaha Hi', 'Dramaha 2-7', 'Dramaha 49', 'Dramaha 0', 'Dramadugi', 'Omajack',
-]);
+/* A named game with no rules of its own stays out of the picker until it is built (owner, 2026-11-05: every game on
+   offer has to work): it would be dealt and scored as a plainer game, and announce the wrong winner. Every game the
+   catalog names has its rules now (docs/replayer-hidden-games.md), so this is empty; it stays as the place for the next. */
+export const UNBUILT_GAMES = new Set([]);
 
 export const FAMILIES = [
   { id: 'holdem', label: "Hold'em", games: ["Hold'em", 'Pineapple', 'Short Deck'] },
@@ -154,6 +150,15 @@ const ALIASES = {
   'Badeucy|Limit': ['badeucy'],
   'Badacey|Limit': ['badacy', 'badacey'],
   'OFC|No Limit': ['ofc', 'open face', 'chinese', 'pineapple ofc'],
+  'Dramaha Hi|Pot Limit': ['drawmaha', 'dramaha high'],
+  'Dramaha 2-7|Pot Limit': ['drawmaha 2-7', 'deuce dramaha'],
+  'Dramaha 49|Pot Limit': ['drawmaha 49'],
+  'Dramaha 0|Pot Limit': ['dramaha zero', 'drawmaha 0', 'drawmaha zero'],
+  'Dramadugi|Pot Limit': ['drawmaha dugi', 'dramaha badugi'],
+  'Omajack|Pot Limit': ['omahajack', 'omaha blackjack'],
+  'Stud Hi/Lo Regular|Limit': ['stud hi lo no qualifier', 'stud regular'],
+  'Archie 99|Limit': ['archie'],
+  'Archie 66|Limit': ['archie'],
 };
 
 /** Every row the picker offers: { key, game, structure, gameType, name, family, rare, aliases }.

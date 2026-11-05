@@ -84,7 +84,8 @@
     "test:apple-billing": "node test/apple-billing.test.js && node test/billing-features.test.js",
     "test:admin-eval": "node test/admin-eval.test.js",
     "test:replayer-drill": "node test/replayer-drill.test.js && node vite-app/src/utils/__tests__/replayer-drill.test.mjs && node vite-app/src/utils/__tests__/draw-study-spot.test.mjs",
-    "test:backer-live": "node test/backer-live.test.js"
+    "test:backer-live": "node test/backer-live.test.js",
+    "test:hidden-games": "node --test vite-app/src/utils/__tests__/hidden-games.test.mjs"
   },
   "keywords": [],
   "author": "",

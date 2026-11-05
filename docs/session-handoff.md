@@ -14,6 +14,13 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-11-05 — The fourteen hidden games
+
+Owner: look up how the games are played, and they will fill the gaps. All fourteen are built and in the picker; rules,
+sources and the defaults waiting on the owner are in `docs/replayer-hidden-games.md`. `check:replayer-games` holds each with a
+hand a neighbouring game's rules would pay differently. **Trap:** a closed-form check of a two-hand game needs its own
+hand: at first a Dramaha test hand made a wheel in Omaha and scooped, which read as an engine bug and was the hand.
+
 ## 2026-11-05 — The live clock row on event cards
 
 Owner: all the live clock data on a row at the bottom of the event card, entries and players left where the room

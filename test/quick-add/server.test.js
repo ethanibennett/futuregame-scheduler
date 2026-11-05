@@ -89,9 +89,13 @@ test('game table matches the replayer\'s HAND_CONFIG', async () => {
     eq(g.category === 'stud', !!cfg.isStud, `${name} stud`);
     eq(g.category === 'community', !!cfg.hasBoard, `${name} board`);
   }
-  // Everything the replayer plays is here, except OFC (no betting, its own shape).
+  // Everything the replayer plays is here, except OFC (no betting, its own shape) and the games of 2026-11-05
+  // (docs/replayer-hidden-games.md): a typed hand of those is still recorded as the nearest game plus a `variant`,
+  // until quick add can say a throw, a draw on a board, or a card before the first bet.
   const known = new Set(Object.keys(G.GAMES));
-  const missing = Object.keys(HAND_CONFIG).filter((k) => !known.has(k) && !/^OFC/.test(k));
+  // Nor are the picker's no-limit rows that became games of their own on 2026-11-05: NLO, NL and L Big O, NL 5CD Hi, NL A-5 SD.
+  const notTyped = /^(NL |PL |L )Pineapple$|^Courchevel$|^Stud Regular$|^Razzd|^Archie |^Ari$|^Drama|^Omajack$|^NL 5CD Hi$|^NL A-5 SD$|^NLO$|^NL Big O$|^L Big O$/;
+  const missing = Object.keys(HAND_CONFIG).filter((k) => !known.has(k) && !/^OFC/.test(k) && !notTyped.test(k));
   eq(missing, []);
   // No fallback table is left: a hand opens in the replayer under the name the parse gave it.
   assert.ok(!('REPLAYER_FALLBACK' in G) && !('replayerGame' in G), 'REPLAYER_FALLBACK is gone');

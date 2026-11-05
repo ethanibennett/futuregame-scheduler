@@ -8,7 +8,7 @@ import { STRUCTURE_GAME_MAP, DEFAULT_STRUCTURE, FIXED_STRUCTURE as FIXED_STRUCTU
 import { Palette, GuessCard, Launcher } from './VariantPicker.jsx';
 import { buildDrawStudySpot } from '../utils/draw-study-spot';
 import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL, gameEvalFor,
-         bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestBadugiHand,
+         bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestBadugiHand, scoreHalves, halvesWinnersAmong, halvesHandName,
          computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot,
          boardKey, handBoards, boardCount, multiBoardWinners, multiBoardEvals, multiBoardShaped, combinesHiLo,
          seatOrderFromButton } from '../utils/poker-engine.js';
@@ -90,7 +90,7 @@ function computeDrawHand(originalCards, draws, upToStreetIdx, gameType = '') {
        than vanishing, so a player who drew one three times still holds five. A back is 'Ax' —
        the parser pairs a rank with a suit, so a rankless 'xx' would be dropped — and
        sortDrawHand ranks suit 'x' lowest, so it sorts to the end and is never thrown first. */
-    else current = current + 'Ax'.repeat(draw.discarded);
+    else if (!(HAND_CONFIG[drawBase(gameType)] || {}).discardOnly) current = current + 'Ax'.repeat(draw.discarded);
   }
   return current;
 }
@@ -114,6 +114,7 @@ function drawDeadCards(hand, streetIdx, playerIdx) {
   };
   for (let si = 0; si <= streetIdx && si < hand.streets.length; si++) {
     for (const d of (hand.streets[si].draws || [])) add(d.discardedCards, 'already discarded');
+    add(hand.streets[si].cards && hand.streets[si].cards.board, 'on the board');
   }
   const s0 = (hand.streets[0] && hand.streets[0].cards) || {};
   hand.players.forEach((_, pi) => {
@@ -186,7 +187,7 @@ function getGameCategory(gameType) {
   if (gameType === 'OFC') return 'ofc';
   if (cfg.isStud) return 'stud';
   if (cfg.hasBoard) return 'community';
-  if (['2-7 TD', 'PL 2-7 TD', 'L 2-7 TD', 'A-5 TD', 'Badeucy', 'Badacy'].includes(gameType)) return 'draw_triple';
+  if (['2-7 TD', 'PL 2-7 TD', 'L 2-7 TD', 'A-5 TD', 'Badeucy', 'Badacy', 'Archie 99', 'Archie 66', 'Ari'].includes(gameType)) return 'draw_triple';
   if (['NL 2-7 SD', 'PL 5CD Hi', 'NL 5CD Hi', 'NL A-5 SD'].includes(gameType)) return 'draw_single';
   if (gameType === 'Badugi') return 'draw_triple';
   if (!cfg.hasBoard && !cfg.isStud) {
@@ -200,8 +201,16 @@ function getGameCategory(gameType) {
 function getStreetDef(gameType) {
   const customDef = STREET_DEFS['custom_' + gameType];
   if (customDef) return customDef;
-  return STREET_DEFS[getGameCategory(gameType)] || STREET_DEFS.community;
+  const base = STREET_DEFS[getGameCategory(gameType)] || STREET_DEFS.community;
+  // Community cards before the first bet come out of the street that would have dealt them.
+  const door = (HAND_CONFIG[gameType] || {}).doorBoard;
+  return door ? { ...base, boardCards: base.boardCards.map((n, i) => (i === 0 ? door : i === 1 && n ? n - door : n)) } : base;
 }
+/* A draw in a game with a board too (Dramaha, Pineapple) plays by the draw games' rules for the hand. */
+const hasDraws = (category, cfg) => category === 'draw_triple' || category === 'draw_single' || (cfg && cfg.drawAfter != null);
+/* The razz family: the highest door brings it in and the lowest board acts first. In the 2-7 games the ace is the worst card. */
+const LOW_STUD = /(^|\s)(2-7 )?Razz$|^Razzdugi$|^Razzdeucy$/;
+const ACE_HIGH_LOW_STUD = /2-7 Razz$|^Razzdeucy$/;
 
 // Sort a hand's cards for the replay display: rank high→low, then suit (spades
 // high), the way a stud hand already reads. Face-down backs sort equal, so an
@@ -222,7 +231,7 @@ function sortHandByRank(cardStr) {
    wheel reads "5 4 3 2 A" there and "A K Q J T" in 2-7 or high draw. Face-down
    backs rank 0 and sit at the end, after every known card. */
 const ACE_LOW_DRAW = new Set(['A-5 TD', 'NL A-5 SD', 'Badugi', 'Badacy']);
-const HIGH_DRAW = new Set(['PL 5CD Hi', 'NL 5CD Hi']);
+const HIGH_DRAW = new Set(['PL 5CD Hi', 'NL 5CD Hi', 'NL Pineapple', 'PL Pineapple', 'L Pineapple', 'Dramaha Hi', 'Dramaha 49', 'Archie 99', 'Archie 66', 'Ari']);
 const drawBase = (gameType) => String(gameType || '').replace(/^Super /, '');
 function sortDrawHand(cardStr, gameType) {
   const cards = parseCardNotation(cardStr || '');
@@ -396,7 +405,7 @@ function findStudBringIn(hand, isRazz) {
   const oppCards = (hand.streets[0] && hand.streets[0].cards.opponents) || [];
   const heroCards = parseCardNotation((hand.streets[0] && hand.streets[0].cards.hero) || '');
   const rankBadness = isRazz
-    ? (/2-7 Razz$/.test(hand.gameType || '')
+    ? (ACE_HIGH_LOW_STUD.test(hand.gameType || '')
       ? { '2':0,'3':1,'4':2,'5':3,'6':4,'7':5,'8':6,'9':7,'T':8,'J':9,'Q':10,'K':11,'A':12 }
       : { 'A':0,'2':1,'3':2,'4':3,'5':4,'6':5,'7':6,'8':7,'9':8,'T':9,'J':10,'Q':11,'K':12 })
     : { 'A':0,'K':1,'Q':2,'J':3,'T':4,'9':5,'8':6,'7':7,'6':8,'5':9,'4':10,'3':11,'2':12 };
@@ -458,7 +467,7 @@ function findStudBestBoard(hand, streetIdx, foldedSet, isLowGame) {
         oCards.forEach(c => { if (c.suit !== 'x') visible.push(c); });
       }
     }
-    const score = scoreStudBoard(visible, isLowGame && hand.gameType !== '2-7 Razz');
+    const score = scoreStudBoard(visible, isLowGame && !ACE_HIGH_LOW_STUD.test(hand.gameType || ''));
     if (isLowGame ? score < bestScore : score > bestScore) { bestIdx = pi; bestScore = score; }
   }
   return bestIdx;
@@ -1184,7 +1193,7 @@ function generateCommentary(hand, streetIdx, actionIdx, pot, stacks) {
     if (category === 'stud') {
       const _ante = (hand.blinds || {}).ante || 0;
       if (streetIdx === 0) {
-        const _isRazz = /(^|\s)(2-7 )?Razz$/.test(hand.gameType || '');
+        const _isRazz = LOW_STUD.test(hand.gameType || '');
         const _biIdx = findStudBringIn(hand, _isRazz);
         let doorInfo = '';
         if (_biIdx >= 0 && hand.players[_biIdx]) {
@@ -1323,7 +1332,7 @@ function estimateRange(hand, playerIdx, upToStreet, upToAction) {
 }
 
 function calcShowdownEquity(hand, heroCardsStr, opponentCardsArr, boardCardsStr, gameCfg, gameEval, folded, replayHeroIdx) {
-  if (!gameEval) return null;
+  if (!gameEval || gameEval.type === 'halves') return null;
   const bCards = boardCardsStr ? parseCardNotation(boardCardsStr).filter(c => c.suit !== 'x') : [];
   const getScore = (holeStr) => {
     try {
@@ -2757,7 +2766,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   }, [currentStacks, foldedSet]);
 
   // NL and PL Razz are Razz too: they took the high game's bring-in and first actor (entry audit D3).
-  const isRazz = /(^|\s)(2-7 )?Razz$/.test(hand.gameType || '');
+  const isRazz = LOW_STUD.test(hand.gameType || '');
   const isStudLow = isRazz;
 
   const priorStreetFoldedSet = useMemo(() => {
@@ -2875,14 +2884,26 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     if (!isBettingComplete) return;
     const nextStreet = currentStreetIdx + 1;
     if (nextStreet >= hand.streets.length) { setPhase('showdown'); return; }
-    if (category === 'community') setPhase('board_entry');
+    if (gameCfg.drawAfter === currentStreetIdx) setPhase('draw_discard');
+    else if (category === 'community') setPhase('board_entry');
     else if (category === 'stud') setPhase('stud_deal');
     else if (category === 'draw_triple' || category === 'draw_single') setPhase('draw_discard');
     else setCurrentStreetIdx(nextStreet);
   }, [isBettingComplete, phase, handOver]);
 
+  /* Pineapple: everyone still in throws one, so there is nothing to declare; only which card the hero threw is asked. */
   useEffect(() => {
-    if (['board_entry','stud_deal','draw_discard','draw_cards_entry','showdown','result'].includes(phase)) {
+    if (phase !== 'draw_discard' || !gameCfg.discardOnly) return;
+    setHand(prev => ({ ...prev, streets: prev.streets.map((s, si) => si !== currentStreetIdx ? s : {
+      ...s,
+      draws: hand.players.map((_, pi) => pi).filter(pi => !foldedSet.has(pi)).map(pi =>
+        (s.draws || []).find(d => d.player === pi) || { player: pi, discarded: 1, discardedCards: '', newCards: '' }),
+    }) }));
+    setPhase('draw_cards_entry');
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (['board_door','board_entry','stud_deal','draw_discard','draw_cards_entry','showdown','result'].includes(phase)) {
       const container = document.querySelector('.content-area');
       if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -3380,7 +3401,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
               — the phase existed and was unreachable. Its own Next button
               already reads "Enter Door Cards" for stud, so this is the order
               it was built for. */}
-          <button className="btn btn-primary btn-sm" onClick={() => setPhase(category === 'ofc' ? 'ofc_entry' : gameCfg.isStud ? 'hero_cards' : 'action')}>Next</button>
+          <button className="btn btn-primary btn-sm" onClick={() => setPhase(category === 'ofc' ? 'ofc_entry' : gameCfg.isStud ? 'hero_cards' : gameCfg.doorBoard ? 'board_door' : 'action')}>Next</button>
         </div>
       </div>
     );
@@ -3585,15 +3606,18 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   }
 
   // ── BOARD ENTRY PHASE ──
-  if (phase === 'board_entry') {
-    const nextStreet = currentStreetIdx + 1;
-    const streetName = (hand.streets[nextStreet] && hand.streets[nextStreet].name) || 'Next Street';
+  if (phase === 'board_entry' || phase === 'board_door') {
+    const isDoor = phase === 'board_door';
+    const nextStreet = isDoor ? 0 : currentStreetIdx + 1;
+    const streetName = isDoor ? (category === 'community' ? 'First Flop Card' : 'Community Card') : ((hand.streets[nextStreet] && hand.streets[nextStreet].name) || 'Next Street');
     const maxCards = streetDef.boardCards ? streetDef.boardCards[nextStreet] : 1;
     /* Several boards (owner, 2026-10-20): double board deals two on every street; running it twice or
        three times deals the remaining streets once per run, from the street after the all-in. Betting
        is over when someone is all in and at most one player still has chips. */
     const nonFolded = hand.players.map((_, i) => i).filter(i => !foldedSet.has(i));
-    const runItOffered = !hand.doubleBoard && allInSet.size >= 1 && nonFolded.filter(i => !allInSet.has(i)).length <= 1;
+    // Not with a card before the first bet, or two kinds of hand: a second run has no rules there.
+    const twoHands = (gameEvalFor(hand.gameType, hand) || {}).type === 'halves';
+    const runItOffered = !isDoor && !gameCfg.doorBoard && !twoHands && !hand.doubleBoard && allInSet.size >= 1 && nonFolded.filter(i => !allInSet.has(i)).length <= 1;
     const runsFrom = hand.runs > 1 ? (hand.runsFrom ?? nextStreet) : null;
     const slots = hand.doubleBoard ? 2 : (hand.runs > 1 && nextStreet >= runsFrom ? hand.runs : 1);
     const slot = Math.min(boardSlot, slots - 1);
@@ -3604,6 +3628,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       parseCardNotation(s.cards.hero || '').forEach(c => { if (c.suit !== 'x') usedCards.add(c.rank + c.suit); });
       ['board', 'board2', 'board3'].forEach(k => parseCardNotation(s.cards[k] || '').forEach(c => { if (c.suit !== 'x') usedCards.add(c.rank + c.suit); }));
       (s.cards.opponents || []).forEach(opp => { parseCardNotation(opp || '').forEach(c => { if (c.suit !== 'x') usedCards.add(c.rank + c.suit); }); });
+      (s.draws || []).forEach(d => { parseCardNotation((d.discardedCards || '') + (d.newCards || '')).forEach(c => { if (c.suit !== 'x') usedCards.add(c.rank + c.suit); }); });
     });
     const currentBoardCards = parseCardNotation(boardVal).filter(c => c.suit !== 'x').map(c => c.rank + c.suit);
     const currentBoardSet = new Set(currentBoardCards);
@@ -3632,7 +3657,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       });
     };
     const shownBoards = handBoards(hand, currentStreetIdx);
-    const shownSoFar = shownBoards[Math.min(slot, shownBoards.length - 1)] || '';
+    const shownSoFar = isDoor ? '' : (shownBoards[Math.min(slot, shownBoards.length - 1)] || '');
     const slotLabel = (k) => (hand.doubleBoard ? 'Board ' : 'Run ') + (k + 1);
     const slotFull = (k) => parseCardNotation((hand.streets[nextStreet] && hand.streets[nextStreet].cards[boardKey(k)]) || '').filter(c => c.suit !== 'x').length >= maxCards;
     const allDealt = Array.from({ length: slots }, (_, k) => slotFull(k)).every(Boolean);
@@ -3683,11 +3708,11 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
           </div>
         </div>
         <div className="gto-btn-row">
-          <button className="gto-undo-btn" onClick={undoLastAction}>Undo</button>
+          {isDoor ? <button className="btn btn-ghost btn-sm" onClick={() => setPhase('setup')}>Back</button> : <button className="gto-undo-btn" onClick={undoLastAction}>Undo</button>}
           {slots > 1 && slot < slots - 1 && slotFull(slot) ? (
             <button className="btn btn-primary btn-sm" onClick={() => setBoardSlot(slot + 1)}>Next: {slotLabel(slot + 1)}</button>
           ) : (
-            <button className="btn btn-primary btn-sm" disabled={!allDealt} onClick={() => { setBoardSlot(0); setCurrentStreetIdx(nextStreet); setPhase('action'); }}>Continue</button>
+            <button className="btn btn-primary btn-sm" disabled={!allDealt} onClick={() => { setBoardSlot(0); setCurrentStreetIdx(nextStreet); setPhase('action'); }}>{isDoor ? 'Start Action' : 'Continue'}</button>
           )}
         </div>
       </div>
@@ -3697,16 +3722,17 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   // ── SHOWDOWN PHASE ──
   if (phase === 'showdown') {
     const isStudShowdown = category === 'stud';
-    const isDrawShowdown = category === 'draw_triple' || category === 'draw_single';
+    const isDrawShowdown = hasDraws(category, gameCfg);
     // Collect used cards
     const sdUsedCards = new Set();
     hand.streets.forEach(s => {
       parseCardNotation(s.cards.hero || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); });
       parseCardNotation(s.cards.board || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); });
       (s.cards.opponents || []).forEach(opp => { parseCardNotation(opp || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); }); });
+      (s.draws || []).forEach(d => { parseCardNotation((d.discardedCards || '') + (d.newCards || '')).forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); }); });
     });
     const showdownPlayers = hand.players.map((p, i) => ({ player: p, idx: i })).filter(o => o.idx !== heroIdx && !foldedSet.has(o.idx));
-    const sdMaxCards = gameCfg.heroCards || 2;
+    const sdMaxCards = gameCfg.showCards || gameCfg.heroCards || 2;
     const sdAllRanks = ranksFor(hand.gameType);
     const sdAllSuits = [{key:'h'},{key:'d'},{key:'c'},{key:'s'}];
 
@@ -3905,6 +3931,13 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                   return w;
                 });
               }
+              if (_ec && _ec.type === 'halves') {
+                winners = winners.map(w => {
+                  const ph = playerHands.find(x => x.idx === w.playerIdx);
+                  const name = ph ? halvesHandName(_ec, scoreHalves(_ec, ph.cards, boardParsed), w.hi, w.lo, true) : null;
+                  return name && (w.hi || w.lo) ? { ...w, label: houseName(hand.players[w.playerIdx].name) + ' wins ' + name.replace(/\n/g, ', ') } : w;
+                });
+              }
               if (winners.length > 0) setHand(prev => ({ ...prev, result: { ...prev.result, winners } }));
             }
             setPhase('result');
@@ -4055,6 +4088,10 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   if (phase === 'draw_discard' || phase === 'draw_cards_entry') {
     const nextDrawStreet = currentStreetIdx + 1;
     const drawActivePlayers = seatOrder.filter(i => !foldedSet.has(i));
+    // On to the next street's betting, or, with a board too, to dealing it first.
+    const afterDraw = () => { if (category === 'community') setPhase('board_entry'); else { setCurrentStreetIdx(nextDrawStreet); setPhase('action'); } };
+    const heroThrow = (currentStreet.draws || []).find(d => d.player === (hand.heroIdx != null ? hand.heroIdx : 0));
+    const throwMissing = !!gameCfg.discardOnly && !!heroThrow && !!(hand.streets[0]?.cards.hero) && !parseCardNotation(heroThrow.discardedCards || '').length;
 
     const addDraw = (playerIdx, discardCount) => {
       setHand(prev => ({ ...prev, streets: prev.streets.map((s, si) => si !== currentStreetIdx ? s : { ...s, draws: [...(s.draws || []), { player: playerIdx, discarded: discardCount, discardedCards: '', newCards: '' }] }) }));
@@ -4087,7 +4124,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
         <div className="gto-entry">
           <div className="gto-phase-card"><div className="replayer-section">
             <div className="replayer-section-title">{'Card Details \u2014 ' + (currentStreet.name || 'Draw')}</div>
-            <p className="gto-entry-note">Optionally specify which cards were discarded and drawn. Skip to continue.</p>
+            <p className="gto-entry-note">{gameCfg.discardOnly ? 'Everyone throws one card before the flop. Tap the one you threw.' : 'Optionally specify which cards were discarded and drawn. Skip to continue.'}</p>
             {drawActivePlayers.map(pi => {
               const p = hand.players[pi];
               const de = (currentStreet.draws || []).find(d => d.player === pi);
@@ -4136,7 +4173,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                       </div>
                     );
                   })()}
-                  {isHeroDraw && !isPat && (
+                  {isHeroDraw && !isPat && !gameCfg.discardOnly && (
                     <div className="gto-dce-fields">
                       <div className="replayer-field">
                         <label>Discarded</label>
@@ -4157,8 +4194,8 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
           </div></div>
           <div className="gto-street-card">
             <div className="gto-btn-row">
-              <button className="btn btn-ghost btn-sm" onClick={() => setPhase('draw_discard')}>Back</button>
-              <button className="btn btn-primary btn-sm" onClick={() => { setCurrentStreetIdx(nextDrawStreet); setPhase('action'); }}>Continue</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => (gameCfg.discardOnly ? undoLastAction() : setPhase('draw_discard'))}>Back</button>
+              <button className="btn btn-primary btn-sm" disabled={throwMissing} onClick={afterDraw}>Continue</button>
             </div>
           </div>
         </div>
@@ -4235,9 +4272,9 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             <button className="btn btn-primary btn-sm" disabled={!allDrawsDeclared} onClick={() => {
               const hi = hand.heroIdx != null ? hand.heroIdx : 0;
               const heroDraw = (currentStreet.draws || []).find(d => d.player === hi);
-              if (heroDraw && heroDraw.discarded === 0) { setCurrentStreetIdx(nextDrawStreet); setPhase('action'); }
+              if (!heroDraw || heroDraw.discarded === 0) afterDraw();
               else setPhase('draw_cards_entry');
-            }}>{(() => { const hi = hand.heroIdx != null ? hand.heroIdx : 0; const hd = (currentStreet.draws||[]).find(d=>d.player===hi); return hd && hd.discarded === 0 ? 'Continue' : 'Enter Cards'; })()}</button>
+            }}>{(() => { const hi = hand.heroIdx != null ? hand.heroIdx : 0; const hd = (currentStreet.draws||[]).find(d=>d.player===hi); return !hd || hd.discarded === 0 ? 'Continue' : 'Enter Cards'; })()}</button>
           </div>
         </div>
       </div>
@@ -4352,7 +4389,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     <div className="gto-street-card gto-street-sticky">
       <div className="gto-street-bar">
         <span className="gto-street-name">{currentStreet.name}</span>
-        {category === 'community' && cumulativeBoard && <span className="gto-board-inline"><CardRow text={cumulativeBoard} max={5} /></span>}
+        {(category === 'community' || gameCfg.doorBoard) && cumulativeBoard && <span className="gto-board-inline"><CardRow text={cumulativeBoard} max={5} /></span>}
         <span className="gto-pot-label">{formatChipAmount(currentPot)}</span>
       </div>
     </div>
@@ -4383,7 +4420,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                   {i === heroIdx && !gameCfg.isStud && (() => {
                     const baseCards = hand.streets[0]?.cards.hero || '';
                     if (!baseCards) return null;
-                    const isDrawGameLocal = category === 'draw_triple' || category === 'draw_single';
+                    const isDrawGameLocal = hasDraws(category, gameCfg);
                     const displayCards = isDrawGameLocal ? computeDrawHand(baseCards, getPlayerDrawsByStreet(hand, i), currentStreetIdx - 1, hand.gameType) : baseCards;
                     return <span className="gto-seat-hero-cards"><CardRow text={displayCards} max={gameCfg.heroCards || 2} /></span>;
                   })()}
@@ -4428,7 +4465,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                     if (!accumulated) return null;
                     return <span className="gto-seat-hero-cards" style={dimStyle}><CardRow text={accumulated} stud={true} max={7} /></span>;
                   })()}
-                  {(category === 'draw_triple' || category === 'draw_single') && (() => {
+                  {hasDraws(category, gameCfg) && !gameCfg.discardOnly && (() => {
                     const dh = [];
                     for (let si = 0; si < currentStreetIdx; si++) {
                       const ps = hand.streets[si];
@@ -4447,12 +4484,14 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                   {/* Hero card picker — shows when hero is active */}
                   {i === heroIdx && isActive && !gameCfg.isStud && (() => {
                     const hcBase = (hand.streets[0] && hand.streets[0].cards.hero) || '';
-                    const isDrawGameLocal = category === 'draw_triple' || category === 'draw_single';
+                    const isDrawGameLocal = hasDraws(category, gameCfg);
                     const hcDisplay = isDrawGameLocal ? computeDrawHand(hcBase, getPlayerDrawsByStreet(hand, i), currentStreetIdx - 1, hand.gameType) : hcBase;
                     const hcParsed = parseCardNotation(hcDisplay);
                     const hcSet = new Set(hcParsed.map(c => c.rank + c.suit));
+                    const hcDoor = new Set(parseCardNotation(hand.streets[0]?.cards.board || '').map(c => c.rank + c.suit));
                     const hcMaxCards = gameCfg.heroCards || 2;
-                    const heroHasCards = hcParsed.length >= hcMaxCards;
+                    // The cards dealt, not those held: Pineapple's hero holds one fewer after the flop's throw.
+                    const heroHasCards = parseCardNotation(hcBase).length >= hcMaxCards;
                     const pickerOpen = showHeroCardPicker || !heroHasCards;
                     if (!pickerOpen) return null;
                     const hcRanks = ranksFor(hand.gameType);
@@ -4479,7 +4518,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                               {hcRanks.map(rank => {
                                 const card = rank + suit.key;
                                 const isSelected = hcSet.has(card);
-                                return <button key={card} className={'card-picker-btn' + (isSelected ? ' selected' : '')} onClick={() => toggleHCard(card)}>
+                                return <button key={card} className={'card-picker-btn' + (isSelected ? ' selected' : '') + (hcDoor.has(card) ? ' used' : '')} disabled={hcDoor.has(card)} onClick={() => toggleHCard(card)}>
                                   <img src={'/cards/cards_gui_' + rank + suit.key + '.svg'} alt={card} loading="eager" />
                                 </button>;
                               })}
@@ -5028,7 +5067,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       if (studSuper && selectedCategory === 'Stud') hand.gameType = 'Super ' + hand.gameType;
       if (selectedMix) hand.mix = selectedMix;
       // Double board: a second board on every street (utils/poker-engine.js handBoards).
-      if (doubleBoard && currentRow && ['holdem', 'omaha'].includes(currentRow.family)) {
+      if (doubleBoard && currentRow && ['holdem', 'omaha'].includes(currentRow.family) && !(HAND_CONFIG[selectedGameType] || {}).doorBoard) {
         hand.doubleBoard = true;
         hand.streets = hand.streets.map(s => ({ ...s, cards: { ...s.cards, board2: '' } }));
       }
@@ -5880,11 +5919,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const category = getGameCategory(hand.gameType);
   const streetDef = getStreetDef(hand.gameType);
   const gameEval = gameEvalFor(hand.gameType, hand);
-  const isHiLo = gameEval && (gameEval.type === 'hilo' || gameEval.type === 'split-badugi');
+  const isHiLo = gameEval && (gameEval.type === 'hilo' || gameEval.type === 'split-badugi' || gameEval.type === 'halves');
+  const finalCards = gameCfg.showCards || gameCfg.heroCards || 2;
+  const feltBoard = category === 'community' || !!gameCfg.doorBoard;
   const totalStreets = hand.streets.length;
   const currentStreet = hand.streets[streetIdx];
   const currentActions = currentStreet?.actions || [];
-  const isDrawGame = category === 'draw_triple' || category === 'draw_single';
+  const isDrawGame = hasDraws(category, gameCfg);
   const replayHeroIdx = hand.heroIdx != null ? hand.heroIdx : 0;
 
   // Street change animation
@@ -6017,13 +6058,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
 
   // Board cards
   const boardCards = useMemo(() => {
-    if (category !== 'community') return '';
+    if (!feltBoard) return '';
     let board = '';
     for (let si = 0; si <= streetIdx && si < hand.streets.length; si++) {
       if (hand.streets[si].cards.board) board += hand.streets[si].cards.board;
     }
     return board;
-  }, [hand, streetIdx, category]);
+  }, [hand, streetIdx, feltBoard]);
 
   // Hero cards
   const heroCards = useMemo(() => {
@@ -6267,8 +6308,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           const cfg = gameEvalFor(hand.gameType, hand);
           if (cfg) {
             const parsed = parseCardNotation(pCards).filter(c => c.suit !== 'x');
-            const board = category === 'community' ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
+            const board = feltBoard ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
             let ev = null;
+            if (cfg.type === 'halves') { const s = scoreHalves(cfg, parsed, board); ev = s.hiEv || s.loEv; }
             if (cfg.type === 'high' || cfg.type === 'hilo') ev = bestHighFor(cfg, parsed, board);
             else if (cfg.type === 'low') ev = cfg.lowType === 'a5' ? bestLowA5Hand(parsed.concat(board), false) : bestLow27Hand(parsed.concat(board));
             else if (cfg.type === 'badugi') ev = bestBadugiHand(parsed);
@@ -6289,9 +6331,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     if (!showResult || !gameEval) return null;
     // Full auto-evaluation
     const hCards = parseCardNotation(heroCards);
-    const bCards = gameCfg.hasBoard ? parseCardNotation(boardCards) : [];
+    const bCards = feltBoard ? parseCardNotation(boardCards) : [];
     if (gameCfg.hasBoard && bCards.length < 3) return null;
-    if (hCards.length < (gameCfg.isStud ? 5 : gameCfg.heroCards)) return null;
+    if (hCards.length < (gameCfg.isStud ? 5 : finalCards)) return null;
     const boardSuits = new Set(bCards.map(c => c.suit));
     const usedKeys = bCards.map(c => c.rank + c.suit);
     let hEval = gameCfg.isStud ? hCards.filter(c => c.suit !== 'x') : assignNeutralSuits(hCards, usedKeys, boardSuits);
@@ -6302,7 +6344,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       if (folded.has(pi)) continue;
       if (!opponentCards[pi]) continue;
       const oRaw = parseCardNotation(opponentCards[pi]);
-      if (oRaw.length < (gameCfg.isStud ? 5 : gameCfg.heroCards)) continue;
+      if (oRaw.length < (gameCfg.isStud ? 5 : finalCards)) continue;
       const oEval = gameCfg.isStud ? oRaw.filter(c => c.suit !== 'x') : assignNeutralSuits(oRaw, usedKeys, boardSuits);
       const ev = evaluateHand(hand.gameType, hEval, oEval, bCards, hand);
       if (ev && ev.result) results.push({ index: pi, ...ev });
@@ -6351,15 +6393,16 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      prefers, and fall back to the stored Hi/Lo flags when somebody mucked. */
   const hiLoHalves = useMemo(() => {
     const cfg = gameEvalFor(hand.gameType, hand);
-    if (!showResult || !cfg || cfg.type !== 'hilo') return null;
+    if (!showResult || !cfg || (cfg.type !== 'hilo' && cfg.type !== 'halves')) return null;
     const contesting = hand.players.map((_, pi) => pi).filter(pi => !folded.has(pi));
-    const board = category === 'community' ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
+    const board = feltBoard ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
     const map = {};
     let readable = true;
     contesting.forEach(pi => {
       const raw = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
       const parsed = raw && raw !== 'MUCK' ? parseCardNotation(raw).filter(c => c.suit !== 'x') : [];
-      if (parsed.length < (gameCfg.isStud ? 5 : (gameCfg.heroCards || 2))) { readable = false; return; }
+      if (parsed.length < (gameCfg.isStud ? 5 : finalCards)) { readable = false; return; }
+      if (cfg.type === 'halves') { map[pi] = scoreHalves(cfg, parsed, board); return; }
       const hi = bestHighFor(cfg, parsed, board);
       const lo = bestLow8For(cfg, parsed, board);
       map[pi] = { hi: hi ? hi.score : null, lo: lo && lo.qualified ? lo.score : null };
@@ -6411,9 +6454,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
        left the game), and once the layers over-counted the pot and collapsed, it
        was swept whole to the overall winner. Scores map seat -> { hi, lo } in
        the form hiLoWinnersAmong reads (best-high wins hi, best-low wins lo). */
-    const board = category === 'community' ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
+    const board = feltBoard ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
     const scoreHand = (parsed) => {
       if (!cfg) return null;
+      if (cfg.type === 'halves') return scoreHalves(cfg, parsed, board);
       const all = parsed.concat(board);
       if (cfg.type === 'high') {
         const hi = bestHighFor(cfg, parsed, board);
@@ -6442,9 +6486,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         if (!readable) return;
         const raw = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
         const parsed = raw && raw !== 'MUCK' ? parseCardNotation(raw).filter(c => c.suit !== 'x') : [];
-        if (parsed.length < (gameCfg.isStud ? 5 : (gameCfg.heroCards || 2))) { readable = false; return; }
+        if (parsed.length < (gameCfg.isStud ? 5 : finalCards)) { readable = false; return; }
         const s = scoreHand(parsed);
-        if (!s || (s.hi == null && s.lo == null)) { readable = false; return; }
+        // A hand of two halves can qualify for neither (Archie) and still be read.
+        if (!s || (s.hi == null && s.lo == null && cfg.type !== 'halves')) { readable = false; return; }
         scores[pi] = s;
       });
     }
@@ -6459,7 +6504,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       contesting.forEach(pi => {
         const raw = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
         const parsed = raw && raw !== 'MUCK' ? parseCardNotation(raw).filter(c => c.suit !== 'x') : [];
-        if (parsed.length < (gameCfg.heroCards || 2)) ok = false; else bySeat[pi] = parsed;
+        if (parsed.length < finalCards) ok = false; else bySeat[pi] = parsed;
       });
       if (ok) {
         const boards = handBoards(hand, streetIdx).map(b => parseCardNotation(b).filter(c => c.suit !== 'x'));
@@ -6470,7 +6515,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       // settled above
     } else if (readable && Object.keys(scores).length === contesting.length) {
       // Cards shown for everyone still in: they are the authority, per layer.
-      shaped = layers.map(l => ({ amount: l.amount, ...hiLoWinnersAmong(scores, l.players || contesting) }));
+      shaped = layers.map(l => ({ amount: l.amount, ...(cfg.type === 'halves' ? halvesWinnersAmong(cfg, scores, l.players || contesting) : hiLoWinnersAmong(scores, l.players || contesting)) }));
     } else {
       // Mucked or unscorable: settle from the stored winners, but hand a layer
       // no stored winner is eligible for back to its own eligible seats rather
@@ -6997,7 +7042,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     for (const pi of live) {
       const raw = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
       const parsed = raw && raw !== 'MUCK' ? parseCardNotation(raw).filter(c => c.suit !== 'x') : [];
-      if (parsed.length < (gameCfg.heroCards || 2)) return null;
+      if (parsed.length < finalCards) return null;
       bySeat[pi] = parsed;
     }
     const boards = handBoards(hand, streetIdx).map(b => parseCardNotation(b).filter(c => c.suit !== 'x'));
@@ -7021,8 +7066,11 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const cfg = gameEvalFor(hand.gameType, hand);
     if (!cfg) return null;
     const parsed = parseCardNotation(pCards).filter(c => c.suit !== 'x');
-    if (parsed.length < (gameCfg.heroCards || 2)) return null;
-    const board = category === 'community' ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
+    if (parsed.length < finalCards) return null;
+    const board = feltBoard ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
+    if (cfg.type === 'halves') {
+      return halvesHandName(cfg, scoreHalves(cfg, parsed, board), !hiLoHalves || hiLoHalves.hi.has(playerIdx), !hiLoHalves || hiLoHalves.lo.has(playerIdx), useShort);
+    }
     /* Several boards (double board; run it twice or three times): the hand on each board, one line
        each ("B1: Trip 9s" / "B2: Two Pair"; R1, R2 for runs). Board 1 alone named a hand that lost
        there and won the other. */
@@ -8500,7 +8548,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      Face-down cards ('x') are never dead-known. De-duplicated, then sorted by
      rank and suit (sortDeadCards: low to high in lowball). */
   const deadCards = (() => {
-    if (category !== 'stud' && !isDrawGame) return [];
+    if (category !== 'stud' && (!isDrawGame || category === 'community')) return [];
     const out = []; const seen = new Set();
     const add = (str) => { for (const c of parseCardNotation(str || '')) { const k = c.rank + c.suit; if (c.suit !== 'x' && !seen.has(k)) { seen.add(k); out.push(k); } } };
     if (isDrawGame) {
@@ -8637,6 +8685,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           const splitters = showResult ? halvedWinners.filter(w => w.split) : [];
           const isSplitResult = splitters.length >= 2;
           const _isHiLo = isSplitResult && isHiLo && splitters.some(w => w.hi || w.lo);
+          const halfLabels = (gameEval && gameEval.labels) || ['Hi', 'Lo'];
           /* The split display used to REPLACE the pot with a different object:
              its own dark lozenge carrying gold discs, no total, no side pots,
              a shape that appears nowhere else on the table — and it did that
@@ -8700,7 +8749,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                     its digits there directly (motion.writePot) rather than re-rendering. */}
                 <div className="replayer-pot-total" ref={potTotalRef}>
                   <span className="replayer-pot-cell-label">
-                    {isSplitResult ? (_isHiLo ? 'Hi/Lo Split' : 'Split Pot') : (potLayers.length > 1 ? 'Total' : 'Pot')}
+                    {isSplitResult ? (_isHiLo ? halfLabels.join('/') + ' Split' : 'Split Pot') : (potLayers.length > 1 ? 'Total' : 'Pot')}
                   </span>
                   {fmtChips(shownPot)}
                 </div>
@@ -8735,8 +8784,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               /* #94 recorded which half each winner took as flags, so the
                  tag is read rather than parsed back out of the label text. */
               let tag = '';
-              if (w.hi) tag = 'Hi';
-              if (w.lo) tag = tag ? 'Hi+Lo' : 'Lo';
+              if (w.hi) tag = halfLabels[0];
+              if (w.lo) tag = tag ? halfLabels.join('+') : halfLabels[1];
               /* potAwards is the authority on what anyone is paid: it settles
                  each pot layer among its own eligible seats, halves a hi-lo
                  layer before dividing either half, and places the odd chips.
@@ -8791,7 +8840,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         })()}
 
         {/* Board */}
-        {category === 'community' && (() => {
+        {feltBoard && (() => {
           const parsed = parseCardNotation(boardCards);
           if (parsed.length === 0) return null;
           /* Several boards (owner, 2026-10-20): double board, or a hand run twice or three times. The
@@ -9127,7 +9176,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   if (showdownOn) st['--showdown-delay'] = (dealOrder.indexOf(pi) * 70) + 'ms';
                   return st;
                 })()}>
-                <CardRow text={getGameCategory(hand.gameType) === 'community' ? sortHandByRank(cards) : cards} stud={gameCfg.isStud} max={gameCfg.heroCards}
+                <CardRow text={getGameCategory(hand.gameType) === 'community' && !isDrawGame ? sortHandByRank(cards) : cards} stud={gameCfg.isStud} max={gameCfg.heroCards}
                   /* Everyone is dealt the same cards at the same time, so a
                      face-down seat holds exactly what the hero holds right now.
                      This was gameCfg.heroCards — the size of a FINISHED hand —
@@ -9264,7 +9313,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                     The count alone at that size: "Drew 2" does not fit a
                     corner, and among seats showing 1, 2 and P the digit is
                     unambiguous. The full wording stays on the title. */}
-                {isDrawGame && (() => {
+                {isDrawGame && !gameCfg.discardOnly && (() => {
                   /* Every draw so far, not just this street's: D2, then D2/D1,
                      then D2/D1/PAT. A draw game is a sequence of decisions and
                      only the sequence is readable — "D1" alone cannot tell you

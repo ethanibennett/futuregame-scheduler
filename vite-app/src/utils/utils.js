@@ -110,6 +110,22 @@ const VARIANT_STRIPS = {
   'Mixed':              { abbr: 'MIX',    fam: 'mixed', shade: 0.93 },
   'OFC':                { abbr: 'OFC',    fam: 'mixed', shade: 1.24 },
   'OFC Pineapple':      { abbr: 'OFC P',  fam: 'mixed', shade: 1.30 },
+  'NL Pineapple':       { abbr: 'PINE',   fam: 'flop',  shade: 0.93 },
+  'PL Pineapple':       { abbr: 'PINE',   fam: 'flop',  shade: 0.93 },
+  'L Pineapple':        { abbr: 'PINE',   fam: 'flop',  shade: 0.93 },
+  'Courchevel':         { abbr: 'COUR',   fam: 'flop',  shade: 1.00 },
+  'Dramaha Hi':         { abbr: 'DRAM',   fam: 'flop',  shade: 1.10 },
+  'Dramaha 2-7':        { abbr: 'DRAM 7', fam: 'flop',  shade: 1.10 },
+  'Dramaha 49':         { abbr: 'DRAM 49',fam: 'flop',  shade: 1.10 },
+  'Dramaha 0':          { abbr: 'DRAM 0', fam: 'flop',  shade: 1.10 },
+  'Dramadugi':          { abbr: 'DRAM D', fam: 'flop',  shade: 1.10 },
+  'Omajack':            { abbr: 'OMAJ',   fam: 'flop',  shade: 1.21 },
+  'Stud Regular':       { abbr: 'STUD HL',fam: 'stud',  shade: 1.08 },
+  'Razzdugi':           { abbr: 'RAZZD',  fam: 'stud',  shade: 0.90 },
+  'Razzdeucy':          { abbr: 'RAZZD7', fam: 'stud',  shade: 0.78 },
+  'Archie 99':          { abbr: 'ARCH 99',fam: 'draw',  shade: 1.08 },
+  'Archie 66':          { abbr: 'ARCH 66',fam: 'draw',  shade: 1.08 },
+  'Ari':                { abbr: 'ARI',    fam: 'draw',  shade: 0.96 },
 };
 /* Lighten or darken the family hue by the variant's shade, in sRGB. A shade of
    1 is the family colour itself. */
@@ -320,6 +336,26 @@ export const HAND_CONFIG = {
   'PL Stud Hi':  { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'pl', isStud: true, heroPlaceholder: 'A9xxAKQJThdcsx' },
   'PL Stud 8':   { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'pl', isStud: true, heroPlaceholder: 'A234567hdcshds' },
   'PL Razz':     { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'pl', isStud: true, heroPlaceholder: 'A23x4567xhdscx' },
+  /* The games of 2026-11-05 (docs/replayer-hidden-games.md). Beyond the usual fields:
+     drawAfter: the street whose betting a draw follows, in a game with a board too (Dramaha after the flop).
+     discardOnly: that draw only throws cards away, nothing comes back (Pineapple); showCards is what is left to show.
+     doorBoard: community cards dealt before the first bet (Courchevel's first flop card, Ari's one card). */
+  'NL Pineapple': { heroCards: 3, showCards: 2, drawAfter: 0, discardOnly: true, hasBoard: true, boardMax: 5, betting: 'nl', heroPlaceholder: 'AKQhdc', boardPlaceholder: 'QJ6hch' },
+  'PL Pineapple': { heroCards: 3, showCards: 2, drawAfter: 0, discardOnly: true, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AKQhdc', boardPlaceholder: 'QJ6hch' },
+  'L Pineapple':  { heroCards: 3, showCards: 2, drawAfter: 0, discardOnly: true, hasBoard: true, boardMax: 5, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'AKQhdc', boardPlaceholder: 'QJ6hch' },
+  'Courchevel':   { heroCards: 5, doorBoard: 1, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AKQ98hdcsd', boardPlaceholder: 'J7hd' },
+  'Stud Regular': { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A234567hdcshds' },
+  'Razzdugi':     { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A23x4567xhdscx' },
+  'Razzdeucy':    { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: '23x45x7TKhdscx' },
+  'Archie 99':    { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'A2345hdcss' },
+  'Archie 66':    { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'A2345hdcss' },
+  'Ari':          { heroCards: 5, doorBoard: 1, hasBoard: false, boardMax: 1, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'A2345hdcss' },
+  'Dramaha Hi':   { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AKQ98hdcsd', boardPlaceholder: 'J72hds' },
+  'Dramaha 2-7':  { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: '23457hdcsd', boardPlaceholder: 'J72hds' },
+  'Dramaha 49':   { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'TT998hdcsd', boardPlaceholder: 'J72hds' },
+  'Dramaha 0':    { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'KQJA2hdcsd', boardPlaceholder: 'J72hds' },
+  'Dramadugi':    { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'A234Khdcss', boardPlaceholder: 'J72hds' },
+  'Omajack':      { heroCards: 5, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AKQ98hdcsd', boardPlaceholder: 'J72hds' },
 };
 
 // ── Venue Color + Abbreviation Map ───────────────────────

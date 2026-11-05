@@ -58,9 +58,35 @@ const BADACY = { hero: 'Ac2d3h4s9c', opp: '2c3d4h8sKd', discard: '9c', draw: '5d
 const DRAW_HI = (rounds) => ({ hero: 'AhAdKcQs9c', opp: 'KhKd7c8d2s', discard: '9c', draw: 'Ac', rounds, expect: 'hero' });
 
 // A row's own name can say more than its engine type knows.
+// Hands that tell the two-hand games from their neighbours: scored by a neighbour's rules, each pays someone else.
+const DRAMAHA_BOARD = [['AhKc9d', 'Jh', '8c']];
+const DRAMAHA = (opp) => ({ hero: 'AsAdQh6c2s', opp, discard: '2s', draw: '3s', rounds: 1, boards: DRAMAHA_BOARD, expect: 'split' });
 const TRUTH = {
   '2-7 Razz': { plan: RAZZ_27, why: 'in 2-7 Razz the ace is high' },
   'Double Board Bomb Pot': { plan: BOMB },
+  // The thrown ace is gone: kept, it would make hero's three aces; without it the kings win.
+  'Pineapple': { plan: { hero: 'QhQdAh', opp: 'KhKd', discard: 'Ah', boards: [['AdAc2s', '5h', '9c']], expect: 'opp' } },
+  // The first flop card goes out before the first bet.
+  'Courchevel': { plan: { hero: 'AhKh2c3d4c', opp: 'JsJdTc9c2s', boards: [['Jc', '5h9h', '3h', '8d']], expect: 'hero' } },
+  // A king-high low has no 8, and takes half here.
+  'Stud Hi/Lo Regular': { plan: { hero: ['Kd9h', '7s', '6c', '4d', '3h', 'Jc'], opp: ['AhAd', 'As', 'Kh', 'Ks', 'Qd', 'Qc'], expect: 'split' } },
+  // The wheel takes the razz half, the seven-card badugi the other.
+  'Razzdugi': { plan: { hero: ['As2s', '3s', '4c', '5c', '9c', 'Ks'], opp: ['2h3d', '7s', '8c', 'Th', 'Jd', 'Qh'], expect: 'split' } },
+  // In 2-7 the ace plays high, so the seven low takes that half from A-2-3-4-5.
+  'Razzdeucy': { plan: { hero: ['2c3c', '4c', '5c', '7d', '9d', 'Jd'], opp: ['Ah2h', '3s', '4s', '5d', 'Kh', 'Qh'], expect: 'split' } },
+  // The same two hands, one qualifier apart: sevens qualify for 66 and not for 99.
+  'Archie 66': { plan: { hero: '7h7dKcQh9c', opp: '2d3h4s5c8d', discard: '9c', draw: '2s', rounds: 3, expect: 'split' } },
+  'Archie 99': { plan: { hero: '7h7dKcQh9c', opp: '2d3h4s5c8d', discard: '9c', draw: '2s', rounds: 3, expect: 'opp' } },
+  // The community nine makes hero's qualifying pair; without it the low would scoop.
+  'Ari': { plan: { hero: '9hKdQc7s3c', opp: '2d3h4s5c8d', discard: '3c', draw: '4d', rounds: 3, boards: [['9d']], expect: 'split' } },
+  // Hero's three aces take the Omaha half every time; the draw half is the game's own.
+  'Dramaha Hi': { plan: DRAMAHA('KsKdKh5c6d') },
+  'Dramaha 2-7': { plan: DRAMAHA('2d3h4s5c7h') },
+  'Dramaha 49': { plan: DRAMAHA('TsTdTh9h9c') },
+  'Dramaha 0': { plan: DRAMAHA('KsKdQsJs2h') },
+  'Dramadugi': { plan: DRAMAHA('2d3h4s5c9h') },
+  // Three aces leave K-T-5, a bust; the opponent's nines leave K-Q-A, 21.
+  'Omajack': { plan: { hero: 'AsAdKhTc5c', opp: '9h9cKdQsAc', boards: [['Ah7d2c', '9s', '4c']], expect: 'split' } },
 };
 const BETTING = { 'No Limit': 'nl', 'Pot Limit': 'pl', 'Limit': 'fl' };
 
@@ -286,7 +312,7 @@ async function runRow(browser, row) {
           for (const c of cards(plan.boards[1][boardsAt])) await pick(c);
         }
         boardsAt++;
-        await tap(p.locator('.gto-btn-row button.btn-primary').filter({ hasText: 'Continue' }).first(), 'board Continue');
+        await tap(p.locator('.gto-btn-row button.btn-primary').filter({ hasText: /Continue|Start Action/ }).first(), 'board Continue');
         continue;
       }
       if (screen.section === 'Draw Round') {
@@ -374,6 +400,16 @@ async function runRow(browser, row) {
     if (!(await p.locator('button[title="End"]').count())) throw new Error('never reached the replay');
 
     // ── The replay, step by step ──
+    // What is on the felt before the first bet: a door card already out, Pineapple's three cards still held.
+    const feltNow = () => p.evaluate(() => ({
+      board: document.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > [data-slot]').length,
+      hero: document.querySelector('.replayer-seat.is-hero .card-row')?.querySelectorAll('.card-img, .card-classic').length ?? null,
+    }));
+    await p.locator('button[title="Start"], button[title="Restart"], button[title="Beginning"]').first().click({ force: true, timeout: 800 }).catch(() => {});
+    await p.waitForTimeout(250);
+    const atStart = await feltNow();
+    if (atStart.board !== (cfg.doorBoard || 0)) problem(`${atStart.board} board cards before the first bet, the game deals ${cfg.doorBoard || 0}`);
+    if (cfg.showCards && atStart.hero != null && atStart.hero !== cfg.heroCards) problem(`hero holds ${atStart.hero} cards before the throw, not ${cfg.heroCards}`);
     const forward = p.locator('button[title="Forward"]').first();
     for (let i = 0; i < 200; i++) {
       if (await forward.isDisabled()) break;
@@ -381,6 +417,10 @@ async function runRow(browser, row) {
       res.steps++;
       await p.waitForTimeout(70);
       if (await p.locator('text=/Something went wrong|could not be shown/i').count()) throw new Error('the replay crashed at step ' + i);
+    }
+    if (cfg.showCards) {
+      const atEnd = await feltNow();
+      if (atEnd.hero != null && atEnd.hero !== cfg.showCards) problem(`hero ends on ${atEnd.hero} cards, not ${cfg.showCards}`);
     }
     const seats = () => p.evaluate(() => [...document.querySelectorAll('.replayer-seat')].map((s) => ({
       name: s.querySelector('.replayer-seat-name')?.textContent.trim(),

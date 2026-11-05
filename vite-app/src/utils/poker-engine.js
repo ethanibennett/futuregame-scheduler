@@ -292,7 +292,8 @@ export function bestHighFor(cfg, hole, board) {
 export function bestLow8For(cfg, hole, board) {
   if (cfg.method === 'omaha') return bestOmahaLow(hole, board || []);
   const all = board && board.length ? hole.concat(board) : hole;
-  return bestLowA5Hand(all, true);
+  // Stud Hi/Lo Regular has no qualifier: any five cards play for low, a paired hand included.
+  return bestLowA5Hand(all, !cfg.anyLow);
 }
 
 export function bestLowA5Hand(cards, eightOrBetter) {
@@ -318,8 +319,145 @@ export function bestBadugiHand(cards) {
   return best;
 }
 
+/* ── Games of two halves ──────────────────────────────────────────────────────
+   A pot split between two different hands, where neither half is a plain high and an 8-or-better
+   low: Razzdugi, Archie, Dramaha, Omajack. A game names its halves in GAME_EVAL (type 'halves',
+   `a` and `b`, `labels` for what each is called on screen), and scoreHalves puts them in the form
+   hiLoWinnersAmong and computePotAwards already read: half A is the "hi" slot (highest score wins,
+   and it takes an odd chip), half B the "lo" slot (lowest wins). A half nobody can win is null, and
+   the other half then scoops, as a hi-lo pot with no low does. Rules and sources:
+   docs/replayer-hidden-games.md. */
+const PAIR_SCORE = (rank) => 2 * Math.pow(15, 5) + rank * Math.pow(15, 4);
+
+/* Points: J, Q and K are nothing, an ace is one, a ten is ten (Dramaha 49 and Zero: Card Player, Kevin
+   Haney). Every card counts. */
+const PIP_VALUE = { A: 1, T: 10, J: 0, Q: 0, K: 0 };
+export function pipTotal(cards) {
+  return cards.reduce((n, c) => n + (PIP_VALUE[c.rank] != null ? PIP_VALUE[c.rank] : Number(c.rank)), 0);
+}
+
+/* Blackjack: the best total of 21 or under, an ace worth 1 or 11, T J Q K worth 10. null is a bust. */
+export function blackjackTotal(cards) {
+  let total = 0, aces = 0;
+  for (const c of cards) {
+    if (c.rank === 'A') { aces++; total += 1; }
+    else total += ['T', 'J', 'Q', 'K'].includes(c.rank) ? 10 : Number(c.rank);
+  }
+  if (total > 21) return null;
+  return aces && total + 10 <= 21 ? total + 10 : total;
+}
+
+/* Omajack: the blackjack hand is the three hole cards the best Omaha hand does not use. A player cannot
+   play a weaker Omaha hand for a better total, only pick between pairs that make the same one (The
+   Festival's rules). */
+export function bestOmajack(hole, board) {
+  let best = null;
+  if (hole.length < 2 || board.length < 3) return null;
+  for (const h2 of combinations(hole, 2)) {
+    const rest = hole.filter((c) => !h2.includes(c));
+    let top = null;
+    for (const b3 of combinations(board, 3)) {
+      const ev = evalHigh5([...h2, ...b3]);
+      if (!top || ev.score > top.score) top = ev;
+    }
+    const total = blackjackTotal(rest);
+    if (!best || top.score > best.omaha.score || (top.score === best.omaha.score && (total || 0) > (best.total || 0))) {
+      best = { omaha: top, total };
+    }
+  }
+  return best;
+}
+
+/* One half's result, { ev: { name, shortName? }, score }, or null when this hand cannot win that half.
+   `good` is how good it is, bigger better; `dir` faces it for its slot (1: highest wins; -1: lowest wins). */
+function halfResult(half, hole, board, dir) {
+  const out = (ev, good) => (ev ? { ev, score: dir * good } : null);
+  switch (half.kind) {
+    case 'omaha': {
+      const ev = bestOmahaHigh(hole, board);
+      return out(ev, ev && ev.score);
+    }
+    case 'high': {
+      const ev = bestHighHand(half.board ? hole.concat(board) : hole);
+      if (!ev || (half.minPair && ev.score < PAIR_SCORE(half.minPair))) return null;
+      return out(ev, ev.score);
+    }
+    case 'low-a5': {
+      const ev = bestLowA5Hand(hole, false);
+      return out(ev, ev && -ev.score);
+    }
+    case 'low-8': {
+      const ev = bestLowA5Hand(hole, true);
+      return ev && ev.qualified ? out(ev, -ev.score) : null;
+    }
+    case 'low-27': {
+      const ev = bestLow27Hand(hole);
+      return out(ev, ev && -ev.score);
+    }
+    case 'badugi': {
+      const ev = bestBadugiHand(hole);
+      return ev && ev.numCards ? out(ev, -ev.score) : null;
+    }
+    case 'points-high': { const n = pipTotal(hole); return out({ name: String(n) }, n); }
+    case 'points-low': { const n = pipTotal(hole); return out({ name: String(n) }, -n); }
+    case 'blackjack': {
+      const o = bestOmajack(hole, board);
+      return o && o.total != null ? out({ name: String(o.total) }, o.total) : null;
+    }
+    default: return null;
+  }
+}
+
+/* A hand's two halves: { hi, lo } (the scores hiLoWinnersAmong reads, null for a half it cannot win)
+   and { hiEv, loEv } (what to call them). */
+export function scoreHalves(cfg, hole, board) {
+  const bd = board || [];
+  const a = hole.length ? halfResult(cfg.a, hole, bd, 1) : null;
+  const b = hole.length ? halfResult(cfg.b, hole, bd, -1) : null;
+  return { hi: a ? a.score : null, lo: b ? b.score : null, hiEv: a ? a.ev : null, loEv: b ? b.ev : null };
+}
+
+/* Who takes each half of one pot layer. Archie is the one game where nobody can win either half
+   (no qualifying high, no qualifying low): `neither: 'split'` shares the layer among everyone in it. */
+export function halvesWinnersAmong(cfg, evals, players) {
+  const w = hiLoWinnersAmong(evals, players);
+  if (!w.hiWinners.length && !w.loWinners.length && cfg.neither === 'split') return { hiWinners: players.slice(), loWinners: [] };
+  return w;
+}
+
+/* A hand's name at the showdown, one line per half it won. Won neither: the first half it has. */
+export function halvesHandName(cfg, s, wonHi, wonLo, useShort) {
+  const nm = (ev) => (useShort ? (ev.shortName || ev.name) : ev.name);
+  const parts = [];
+  if (s.hiEv && wonHi) parts.push(cfg.labels[0] + ': ' + nm(s.hiEv));
+  if (s.loEv && wonLo) parts.push(cfg.labels[1] + ': ' + nm(s.loEv));
+  if (parts.length) return parts.join('\n');
+  if (s.hiEv) return nm(s.hiEv);
+  return s.loEv ? nm(s.loEv) : null;
+}
+
+const DRAMAHA = (b, label) => ({ type: 'halves', a: { kind: 'omaha' }, b, labels: ['Omaha', label || 'Draw'] });
+const ARCHIE = (minPair, extra) => ({ type: 'halves', a: { kind: 'high', minPair, ...extra }, b: { kind: 'low-8' }, labels: ['Hi', 'Lo'], neither: 'split' });
+
 // Game variant evaluation config
 export const GAME_EVAL = {
+  // The games of two halves (see scoreHalves).
+  'Razzdugi': { type: 'halves', a: { kind: 'low-a5' }, b: { kind: 'badugi' }, labels: ['Razz', 'Badugi'] },
+  'Razzdeucy': { type: 'halves', a: { kind: 'low-27' }, b: { kind: 'badugi' }, labels: ['2-7', 'Badugi'] },
+  'Archie 99': ARCHIE(9),
+  'Archie 66': ARCHIE(6),
+  'Ari': ARCHIE(9, { board: true }),       // the community card plays for the high only
+  'Dramaha Hi': DRAMAHA({ kind: 'high' }),
+  'Dramaha 2-7': DRAMAHA({ kind: 'low-27' }),
+  'Dramaha 49': DRAMAHA({ kind: 'points-high' }, 'Points'),
+  'Dramaha 0': DRAMAHA({ kind: 'points-low' }, 'Points'),
+  'Dramadugi': DRAMAHA({ kind: 'badugi' }, 'Badugi'),
+  'Omajack': { type: 'halves', a: { kind: 'omaha' }, b: { kind: 'blackjack' }, labels: ['Omaha', 'Blackjack'] },
+  'Stud Regular': { type: 'hilo', method: 'standard', anyLow: true },
+  'Courchevel': { type: 'high', method: 'omaha' },
+  'NL Pineapple': { type: 'high', method: 'standard' },
+  'PL Pineapple': { type: 'high', method: 'standard' },
+  'L Pineapple': { type: 'high', method: 'standard' },
   'NLH':{type:'high',method:'standard'},'LHE':{type:'high',method:'standard'},'PLH':{type:'high',method:'standard'},
   'Stud Hi':{type:'high',method:'standard'},'PL 5CD Hi':{type:'high',method:'standard'},'NL 5CD Hi':{type:'high',method:'standard'},
   'PLO':{type:'high',method:'omaha'},'LO Hi':{type:'high',method:'omaha'},'NLO':{type:'high',method:'omaha'},
@@ -426,6 +564,23 @@ export function evaluateShowdown(gameType, playerHands, boardCards, hand) {
       if (winners.length === 1) winners[0].split = false;
     }
     return winners;
+  }
+
+  if (cfg.type === 'halves') {
+    var scored = {};
+    var idxs = playerHands.map(function(ph) { scored[ph.idx] = scoreHalves(cfg, ph.cards, boardCards); return ph.idx; });
+    var plain = hiLoWinnersAmong(scored, idxs);
+    if (!plain.hiWinners.length && !plain.loWinners.length) {
+      // Nobody can win either half: shared where the game says so, with neither half claimed.
+      return cfg.neither === 'split' ? idxs.map(function(i) { return { playerIdx: i, split: idxs.length > 1, hi: false, lo: false }; }) : [];
+    }
+    var halved = [];
+    idxs.forEach(function(i) {
+      var h = plain.hiWinners.indexOf(i) >= 0, l = plain.loWinners.indexOf(i) >= 0;
+      if (h || l) halved.push({ playerIdx: i, split: true, hi: h, lo: l });
+    });
+    if (halved.length === 1) halved[0].split = false;
+    return halved;
   }
 
   if (cfg.type === 'split-badugi') {
@@ -586,6 +741,17 @@ export function computePotAwards(layers, options) {
 export function evaluateHand(game, heroCards, opponentCards, boardCards, hand) {
   const cfg = gameEvalFor(game, hand);
   if (!cfg) return null;
+  if (cfg.type === 'halves') {
+    const w = evaluateShowdown(game, [{ idx: 0, cards: heroCards }, { idx: 1, cards: opponentCards }], boardCards, hand);
+    const [l0, l1] = cfg.labels;
+    const side = (i) => { const e = w.find((x) => x.playerIdx === i); return e && (e.hi || e.lo) ? e : null; };
+    const hero = side(0), opp = side(1);
+    if (hero && !opp) return { result: { outcome: 'hero', text: 'Hero wins', color: 'green' } };
+    if (opp && !hero) return { result: { outcome: 'opponent', text: 'Opp wins', color: 'red' } };
+    if (!hero && !opp) return { result: { outcome: 'chop', text: 'Chop, nobody qualifies', color: 'yellow' } };
+    const said = (e) => [e.hi ? l0 : null, e.lo ? l1 : null].filter(Boolean).join(' and ');
+    return { result: { outcome: 'split', text: 'Split: Hero wins ' + said(hero) + ', Opp wins ' + said(opp), color: 'yellow' } };
+  }
 
   const heroAll = boardCards.length ? [...heroCards, ...boardCards] : heroCards;
   const oppAll = boardCards.length ? [...opponentCards, ...boardCards] : opponentCards;

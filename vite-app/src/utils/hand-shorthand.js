@@ -18,7 +18,10 @@ export const GAME_CODES = {
   'PLO5':'P5', 'PLO6':'P6', 'PLO6 8/b':'BE', 'NLO8':'NO', 'Short Deck':'SK', 'Ultimate Big O':'UB',
   'Crazy Pineapple':'CP', 'Very Crazy Pineapple':'VP', 'Hideaway':'HW',
   'NL Stud Hi':'NS', 'PL Stud Hi':'PS', 'NL Stud 8':'N8', 'PL Stud 8':'G8',
-  'NL Razz':'NZ', 'PL Razz':'PZ'
+  'NL Razz':'NZ', 'PL Razz':'PZ',
+  'NL Pineapple':'NA', 'PL Pineapple':'PA', 'L Pineapple':'LA', 'Courchevel':'CV', 'Stud Regular':'SR',
+  'Razzdugi':'RD', 'Razzdeucy':'RC', 'Archie 99':'A9', 'Archie 66':'A6', 'Ari':'AR',
+  'Dramaha Hi':'DH', 'Dramaha 2-7':'DL', 'Dramaha 49':'DP', 'Dramaha 0':'DZ', 'Dramadugi':'DD', 'Omajack':'OJ'
 };
 
 export const GAME_CODES_REV = {};
@@ -47,7 +50,7 @@ function _shGetGameCategory(gameType) {
   if (gameType === 'OFC') return 'ofc';
   if (cfg.isStud) return 'stud';
   if (cfg.hasBoard) return 'community';
-  if (['2-7 TD', 'PL 2-7 TD', 'L 2-7 TD', 'A-5 TD', 'Badeucy', 'Badacy', 'Badugi'].indexOf(gameType) >= 0) return 'draw_triple';
+  if (['2-7 TD', 'PL 2-7 TD', 'L 2-7 TD', 'A-5 TD', 'Badeucy', 'Badacy', 'Badugi', 'Archie 99', 'Archie 66', 'Ari'].indexOf(gameType) >= 0) return 'draw_triple';
   if (['NL 2-7 SD', 'PL 5CD Hi', 'NL 5CD Hi', 'NL A-5 SD'].indexOf(gameType) >= 0) return 'draw_single';
   if (!cfg.hasBoard && !cfg.isStud) {
     return 'community';
