@@ -5773,6 +5773,18 @@
       display: flex; flex-direction: column; align-items: center;
       gap: var(--space-2xs);
     }
+    /* Centred on its row, the shares' extra height grew down into the cards: 1px on a desktop, more on an
+       iPhone's shorter table, 28px with side pots too. So it hangs from just above the board (centred at 47%,
+       its own card height tall) and grows upward. Stacked boards keep their own stops further down this file. */
+    .replayer-table:not(:has(.replayer-board-area.is-multi)) .replayer-split-pot {
+      top: calc(47% - clamp(18px, 10.9375cqmin, 140px) / 2 - var(--space-xs));
+      transform: translate(-50%, -100%);
+    }
+    /* A phone on its side has no height for three rows (side pots, total, shares reached the top seat by
+       6px at 844x390), and all the width it needs: the shares go beside the total. */
+    @media (orientation: landscape) and (max-height: 500px) {
+      .replayer-landscape .replayer-split-pot { flex-direction: row; gap: 2.1cqw; }
+    }
     /* Measured at 6-max portrait (393x852, table 373x742): the clear band
        between the innermost side furniture across the pot's own row is 162px,
        and the three discs this replaces already measured 165 — 2px INTO the
@@ -8942,6 +8954,12 @@
       padding: 0.3em 0.9em;
       max-width: 100%;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    /* A long line wraps, never cuts: on a portrait table the dot between the game and the stakes
+       becomes the line break. A landscape table is wide enough to keep it on one. */
+    .replayer-table-info .replayer-level-blinds.is-long { white-space: normal; }
+    .replayer-replay:not(.replayer-landscape) .replayer-level-blinds.is-long .replayer-level-sep {
+      display: block; height: 0; overflow: hidden;
     }
 
 

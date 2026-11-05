@@ -6373,6 +6373,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     return { hi: hiSet, lo: loSet };
   }, [showResult, hand, folded, boardCards, heroCards, opponentCards, replayHeroIdx, category, gameCfg, flaggedWinners]);
 
+  /* A share link says who won, never which half (hand-shorthand's "w1,0s"), so a hi-lo pot opened from
+     one read "Split pot, 2x 1/2" and its winners rose together. The cards still say: every link already
+     sent is put right here, and no link changes for an app build that reads them. */
+  const halvedWinners = useMemo(() => flaggedWinners.map(w => (
+    (w.hi || w.lo || !hiLoHalves) ? w : { ...w, hi: hiLoHalves.hi.has(w.playerIdx), lo: hiLoHalves.lo.has(w.playerIdx) }
+  )), [flaggedWinners, hiLoHalves]);
+
   /* What each winner is actually PAID.
 
      94: the split display divided the pot by the NUMBER of split winners. A
@@ -6654,12 +6661,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const hiloSide = useMemo(() => {
     const out = {};
     if (!isHiLo || !showResult) return out;
-    flaggedWinners.forEach(w => {
+    halvedWinners.forEach(w => {
       // A scoop wins both halves, so it rises with the highs.
       out[w.playerIdx] = (w.hi || !w.lo) ? 'high' : 'low';
     });
     return out;
-  }, [isHiLo, showResult, flaggedWinners]);
+  }, [isHiLo, showResult, halvedWinners]);
 
   // Navigation
   /* In a drill the hand ends where it has got to, until it is over: the next action is the player's. */
@@ -8627,7 +8634,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
 
         {/* Pot */}
         {(() => {
-          const splitters = showResult ? flaggedWinners.filter(w => w.split) : [];
+          const splitters = showResult ? halvedWinners.filter(w => w.split) : [];
           const isSplitResult = splitters.length >= 2;
           const _isHiLo = isSplitResult && isHiLo && splitters.some(w => w.hi || w.lo);
           /* The split display used to REPLACE the pot with a different object:
@@ -8903,7 +8910,11 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           /* No street here (owner, 2026-10-15): the board itself says which street it is. */
           // A hand with several boards says so on the felt (owner, 2026-10-21).
           const boardsTag = hand.doubleBoard ? 'Double board' : Number(hand.runs) > 1 ? (Number(hand.runs) === 3 ? 'Run three times' : 'Run twice') : null;
-          const level = [hand.gameType, boardsTag, sizes].filter(Boolean).join('  ·  ');
+          const named = [hand.gameType, boardsTag].filter(Boolean).join('  ·  ');
+          const level = [named, sizes].filter(Boolean).join('  ·  ');
+          /* A long line takes two on a portrait table, game over stakes, with no dot left hanging: at
+             one line the pill's width cut the stakes to "100/20...". */
+          const levelLong = !!(named && sizes) && level.replace(/\s+/g, ' ').length > 26;
           const meta = [
             hand.playersLeft ? hand.playersLeft + ' left' : null,
             hand.payoutNote || null,
@@ -8912,7 +8923,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           return (
             <div className="replayer-table-info">
               {hand.title && <span className="replayer-table-title-name">{hand.title}</span>}
-              {level && <span className="replayer-level-blinds">{level}</span>}
+              {level && (levelLong
+                ? <span className="replayer-level-blinds is-long">{named}<span className="replayer-level-sep">{'  ·  '}</span>{sizes}</span>
+                : <span className="replayer-level-blinds">{level}</span>)}
               {meta && <span className="replayer-level-meta">{meta}</span>}
             </div>
           );

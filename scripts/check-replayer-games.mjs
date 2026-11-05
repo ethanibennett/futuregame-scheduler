@@ -126,6 +126,32 @@ async function handNameTrouble(p) {
   });
 }
 
+// What sits on the felt at the end: the pot and its split shares clear of the board, and the game-and-stakes pill whole
+// (it used to cut the stakes on a long line, and a split's second row ran into the top of the cards).
+async function feltTrouble(p) {
+  return p.evaluate(() => {
+    const out = [];
+    const hit = (a, b) => a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
+    const rows = [...document.querySelectorAll('.replayer-board-area')].map((el) => el.getBoundingClientRect());
+    const plaques = [...document.querySelectorAll('.replayer-seat-info')].map((el) => el.getBoundingClientRect());
+    for (const el of document.querySelectorAll('.replayer-pot-display')) {
+      const r = el.getBoundingClientRect();
+      const what = `the pot${el.querySelector('.replayer-split-shares') ? ' and its split' : ''}`;
+      const row = rows.find((b) => hit(r, b));
+      if (row) out.push(`${what} runs into the cards (to ${r.bottom.toFixed(1)}, cards from ${row.top.toFixed(1)})`);
+      const plaque = plaques.find((b) => hit(r, b));
+      if (plaque) out.push(`${what} runs into a seat (from ${r.top.toFixed(1)}, seat to ${plaque.bottom.toFixed(1)})`);
+    }
+    for (const el of document.querySelectorAll('.replayer-level-blinds')) {
+      const text = el.textContent.replace(/\s+/g, ' ').trim();
+      if (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1) out.push(`"${text}" is cut short (${el.scrollWidth}x${el.scrollHeight} in ${el.clientWidth}x${el.clientHeight})`);
+      const r = el.getBoundingClientRect();
+      if (rows.some((b) => hit(r, b))) out.push(`"${text}" runs into the cards`);
+    }
+    return out;
+  });
+}
+
 async function runRow(browser, row) {
   const res = { row: row.label || row.name, game: row.game, gameType: row.gameType, rare: !!row.rare, steps: 0, problems: [], notes: [] };
   const problem = (m) => res.problems.push(m);
@@ -392,6 +418,7 @@ async function runRow(browser, row) {
     }
     if (end.length !== SEATS) problem(`${end.length} seats at a ${SEATS}-handed table`);
     for (const t of await handNameTrouble(p)) problem('hand name ' + t);
+    for (const t of await feltTrouble(p)) problem('felt: ' + t);
     if (cfg.betting && BETTING[row.structure] && BETTING[row.structure] !== cfg.betting) problem(`wrong betting: the row says ${row.structure}, it plays ${cfg.betting}`);
     if (OUT) await p.screenshot({ path: path.join(OUT, (row.label || row.name).replace(/[^\w]+/g, '-') + '.png') });
 
@@ -409,6 +436,9 @@ async function runRow(browser, row) {
       await p.waitForTimeout(2600);
       const again = (await seats()).map((s) => s.stack).join('|');
       if (again !== firstEnd) problem(`reopened, the chips differ: ${firstEnd} then ${again}`);
+      // What the ending SAYS, as well as what it pays: a share link once lost "Hi/Lo split" with the chips still right.
+      const ending = () => [...document.querySelectorAll('.replayer-pot-display, .replayer-seat-hand-name')].map((el) => el.textContent.replace(/\s+/g, ' ').trim()).join(' | ');
+      const sayingSaved = await p.evaluate(ending);
 
       // ── Share: the link opens for someone with no account, and shows the same ending ──
       await p.locator('button:has-text("Share")').first().click({ force: true });
@@ -434,6 +464,8 @@ async function runRow(browser, row) {
           await q.waitForTimeout(2600);
           const shared = await q.evaluate(() => [...document.querySelectorAll('.replayer-seat')].map((s) => s.querySelector('.replayer-seat-stack')?.textContent.trim()));
           if (shared.join('|') !== firstEnd) problem(`the shared link ends differently: ${firstEnd} then ${shared.join('|')}`);
+          const sayingShared = await q.evaluate(ending);
+          if (sayingShared !== sayingSaved) problem(`the shared link reads differently: ${sayingSaved} then ${sayingShared}`);
         }
         if (anonErrors.length) problem('page errors on the shared link: ' + [...new Set(anonErrors)].join(' | '));
         await anon.close();
@@ -608,6 +640,7 @@ if (!only || /fixtures/i.test(only)) {
       // Stacks read to the cent on a cash table, and whole on the rest.
       if (start && Math.abs(total - start) > Math.max(2, start * 0.0005)) res.problems.push(`chips do not balance: ${start} at the start, ${total} at the end (${stacks.map((s) => s.text).join(' ')})`);
       for (const t of await handNameTrouble(p)) res.problems.push('hand name ' + t);
+      for (const t of await feltTrouble(p)) res.problems.push('felt: ' + t);
       await p.locator('button:has-text("Back")').first().click({ force: true });
       await p.waitForTimeout(450);
     } catch (e) {
