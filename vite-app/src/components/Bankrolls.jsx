@@ -8,6 +8,7 @@
 //   BankrollPicker    the "Bankroll" field in the log / edit result form.
 // Data and API calls: hooks/useBankrolls.js. Arithmetic: utils/bankrolls.js. Server: lib/bankrolls.js.
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import Icon from './Icon.jsx';
 import { createPortal } from 'react-dom';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { CURRENCY_CONFIG, formatCurrencyAmount, getToday } from '../utils/utils.js';
@@ -243,7 +244,7 @@ function Ledger({ bk, rows, toast, onChanged }) {
           <span className={'bk-ledger-amt' + tone(a.amount)}>{signed(a.amount, curOf(a.bankroll_id))}</span>
           <button type="button" className="bk-ledger-x" aria-label={a.transfer_id ? 'Delete this transfer (both sides)' : 'Delete'}
             onClick={async () => { try { await bk.removeAdjustment(a.id); onChanged(); } catch (e) { toast.error(e.message); } }}>
-            <span>×</span>
+            <Icon.x />
           </button>
         </div>
       ))}

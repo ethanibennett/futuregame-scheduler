@@ -116,8 +116,16 @@ function scan(rootSel) {
       if (!/^horizontal/.test(hs.writingMode)) continue;
       const range = document.createRange();
       range.selectNodeContents(n);
-      const rects = [...range.getClientRects()].filter(r => r.width > 0 && r.height > 0);
+      let rects = [...range.getClientRects()].filter(r => r.width > 0 && r.height > 0);
       if (!rects.length) continue;
+      // A line-clamped name keeps its later lines laid out, hidden on purpose behind the ellipsis: only
+      // the lines it shows can be cut. Measured on the "Qualifier to PSO Main Event" cards, whose third
+      // line read as "cut 10.43px" while the card showed two whole lines and an ellipsis.
+      const clamp = parseInt(hs.webkitLineClamp, 10);
+      if (clamp > 0) {
+        const tops = [...new Set(rects.map(r => Math.round(r.top)))].sort((a, b) => a - b);
+        if (tops.length > clamp) rects = rects.filter(r => Math.round(r.top) <= tops[clamp - 1]);
+      }
       const top = Math.min(...rects.map(r => r.top)), bottom = Math.max(...rects.map(r => r.bottom));
       const left = Math.min(...rects.map(r => r.left)), right = Math.max(...rects.map(r => r.right));
       // Only text on screen: off-screen rows may skip rendering (content-visibility), and their

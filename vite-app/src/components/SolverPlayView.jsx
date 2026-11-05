@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchApi } from '../utils/api.js';
+import { StudyHead, StudyPills, shortGameName, useSolverAvailability, offered } from './StudyHead.jsx';
 import Card from './SolverCard.jsx';
 import StrategyRibbon from './StrategyRibbon.jsx';
 
@@ -33,7 +34,7 @@ function TableSeat({ player, isStud, active, badge, chipLabel, pos }) {
     : player.cards.map((c, i) => cardImg(c, i, false));
   return (
     <div className={'replayer-seat solver-rseat solver-rseat-' + pos + (active ? ' active-turn' : '')}
-      style={{ left: '50%', top: pos === 'top' ? '20%' : '80%' }}>
+      style={{ left: '50%', top: pos === 'top' ? 'calc(var(--subrow) * 8.5)' : 'calc(var(--subrow) * 33.5)' }}>
       <div className="replayer-seat-cards"><div className="card-row">{cards}</div></div>
       <div className="replayer-seat-info">
         <div className="replayer-seat-name">
@@ -48,7 +49,8 @@ function TableSeat({ player, isStud, active, badge, chipLabel, pos }) {
   );
 }
 
-export default function SolverPlayView() {
+export default function SolverPlayView({ onBack }) {
+  const avail = useSolverAvailability();
   const [games, setGames] = useState(null);
   const [gameId, setGameId] = useState(null);
   const [play, setPlay] = useState(null);   // current playout
@@ -111,26 +113,11 @@ export default function SolverPlayView() {
   );
 
   return (
-    <div className="hs-view" style={{ maxWidth: R(70) }}>
-      {/* Title: 4r block (baseline on its bottom); subtitle 2r caps line under it. */}
-      <h2 className="screen-title hs-t hs-title" style={T(4)}>Solver Self-Play</h2>
-      <p className="hs-t hs-cap" style={T(2, 2)}>Watch the trained strategy play both seats</p>
+    <div className="hs-view study-tool">
+      <StudyHead title="Watch the solver" onBack={onBack} note="It plays both seats, and says why at each decision." />
 
-      {/* Game picker — 4r pills on the four 8g rails, 1r between rows; 2r above. */}
       {games && games.length > 0 && (
-        <div className="hs-cols" style={{ '--hs-n': 4, marginTop: R(2) }}>
-          {games.map(g => (
-            <button key={g.id} className="hs-btn hs-pill" onClick={() => setGameId(g.id)} disabled={!g.trained}
-              style={{
-                '--hs-h': 4, padding: 0, fontSize: 'var(--fs-xs)',
-                '--hs-edge': g.id === gameId ? 'var(--accent)' : 'var(--border)',
-                '--hs-fill': g.id === gameId ? 'var(--accent)' : 'transparent',
-                '--hs-ink': g.id === gameId ? '#fff' : (g.trained ? 'var(--text)' : 'var(--text-muted)'),
-              }}>
-              <span className="hs-t" style={T(3)}>{g.name}{!g.trained && ' (untrained)'}</span>
-            </button>
-          ))}
-        </div>
+        <StudyPills games={games.filter((g) => g.trained && offered(avail, g.id)).map((g) => [g.id, shortGameName(g.name)])} value={gameId} onPick={setGameId} />
       )}
 
       {error && (
@@ -155,7 +142,7 @@ export default function SolverPlayView() {
               .solver-table: 35g × 41r, 1r above, 2r below; the felt, seats and
               cards inside scale with it (container units). */}
           <div className="solver-table">
-            <div className="replayer-table-rail" style={{ '--rail-color': '#6b5b8a' }} />
+            <div className="replayer-table-rail" style={{ '--rail-color': 'rgb(20,18,32)' }} />
             <div className="replayer-table-felt" />
             <div className="solver-tpot">POT {atEnd ? play.result.pot : step.pot}</div>
             <TableSeat pos="top" player={seats[1]} isStud={isStud}

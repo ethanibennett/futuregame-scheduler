@@ -4,6 +4,7 @@
 // is graded by both tools, each labelled: the drill grader, and the study tool over every discard.
 // The table is HandReplayerView's, handed in as `Replay` so the two files do not import each other.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSolverAvailability, offered } from './StudyHead.jsx';
 import { fetchApi } from '../utils/api.js';
 import { GradeCard, ResultBanner, applyHandToSession, loadSession, saveSession } from './RazzTrainerView.jsx';
 import {
@@ -151,6 +152,7 @@ function DrillReview({ drill, study, onTable, onDeal, onBack, busy }) {
 }
 
 export default function ReplayerDrill({ Replay, token, heroName, cardSplay, onBack }) {
+  const avail = useSolverAvailability();
   const [game, setGame] = useState(storedGame);
   const [drill, setDrill] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -252,9 +254,9 @@ export default function ReplayerDrill({ Replay, token, heroName, cardSplay, onBa
       <div className="replayer-view is-list">
         <div className="hs-view rd-setup">
           <h2 className="screen-title hs-t hs-title" style={T(4)}>Play a hand</h2>
-          <div className="hs-t hs-sm hs-mut rd-wrap">Heads up against the solver, on the replayer's table. Every decision is graded when the hand ends.</div>
+          <div className="hs-t hs-sm hs-mut rd-wrap">Heads up against the solver. Every decision is graded when the hand ends.</div>
           <div className="hs-cols" style={{ '--hs-n': 2 }}>
-            {DRILL_GAMES.map((g) => (
+            {DRILL_GAMES.filter((g) => offered(avail, g.id)).map((g) => (
               <button key={g.id} type="button" className={'hs-btn' + (g.id === game ? ' rd-primary' : '')} disabled={busy} onClick={() => pick(g.id)}>
                 <span className="hs-t" style={T(3)}>{g.label}</span>
               </button>

@@ -9812,6 +9812,22 @@ function requireTrainerBp(game, res) {
   res.status(503).json({ error: `${game.id} trainer is temporarily unavailable on this server (blueprint too large for this instance)` });
   return false;
 }
+// Which games this server can deal, from the files alone: loading a blueprint to find out would cost the
+// memory BP_MAX_BYTES is there to protect. Study hides the rest instead of answering 503 when one is tapped.
+app.get('/api/solver/availability', (req, res) => {
+  const fsSync = require('fs'); // top-level fs is the promises API
+  const cap = Number(process.env.BP_MAX_BYTES || 0);
+  const onDisk = (file) => {
+    try { const sz = fsSync.statSync(file).size; return !(cap > 0 && sz > cap); } catch { return false; }
+  };
+  const out = {};
+  for (const id of new Set([...Object.keys(TRAINER_GAMES), ...Object.keys(solverGames)])) {
+    out[id] = onDisk(path.join(__dirname, 'solver', 'strategies', `${id}.json`));
+  }
+  out.razz3 = onDisk(RAZZ3_BP_FILE);
+  res.set('Cache-Control', 'no-store');
+  res.json(out);
+});
 app.post('/api/solver/trainer/:game/deal', authenticateToken, (req, res) => {
   const game = resolveTrainerGame(req, res); if (!game) return;
   if (!requireTrainerBp(game, res)) return;

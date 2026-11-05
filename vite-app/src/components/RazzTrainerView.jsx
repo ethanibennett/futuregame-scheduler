@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { StudyHead, StudyPills, useSolverAvailability, offered } from './StudyHead.jsx';
 import { fetchApi } from '../utils/api.js';
 import Card from './SolverCard.jsx';
 import GridBadge from './GridBadge.jsx';
@@ -227,7 +228,8 @@ function ActionBar({ name, pct, best, marker }) {
   );
 }
 
-export default function RazzTrainerView() {
+export default function RazzTrainerView({ onBack }) {
+  const avail = useSolverAvailability();
   // selected game (Razz | Stud 8); the backend path uses this segment.
   const [game, setGame] = useState('razz');
   const [seed, setSeed] = useState(null);
@@ -396,31 +398,23 @@ export default function RazzTrainerView() {
           Grid: title 4r (baseline on its bottom), 2r, 4r pills on the four 8g rails
           (1r between rows), 1r, 2r caps subtitle lines, 1r, 2r trust lines, 2r. */}
       <div className="trainer-top">
-      <h2 className="screen-title hs-t hs-title" style={T(4)}>{gameName} Trainer</h2>
-      <div className="hs-cols" style={{ '--hs-n': 4, marginTop: R(2) }}>
-        {GAMES.map(([id, lbl]) => (
-          <button key={id} className="hs-btn hs-pill" onClick={() => selectGame(id)} disabled={loading || stepping} style={gamePill(game === id, loading || stepping)}>
-            <span className="hs-t" style={T(3)}>{lbl}</span>
-          </button>
-        ))}
-      </div>
-      <p className="hs-t hs-cap" style={{ ...T(2, 2), marginTop: 'var(--subrow)' }}>
-        Heads-up {gameName} · play vs the blueprint · range-aware EV grading
-        {game === 'stud8' ? ' · hi/lo split' : ''}
-        {cat === 'draw' ? ' · single low · hidden opponent' : ''}
-      </p>
+      <StudyHead title="Hand trainer" onBack={onBack}
+        note="Heads up against the solver, with a running score. Each decision is graded when the hand ends." />
+      <StudyPills games={GAMES.filter(([id]) => offered(avail, id))} value={game} onPick={selectGame} disabled={loading || stepping} />
 
       {/* Blueprint trust badge — how far to trust this game's EV-loss grades */}
       {GAME_TRUST[game] && (GAME_TRUST[game].ok ? (
-        <div className="hs-t hs-xs hs-mut" style={{ ...T(2, 2), marginTop: 'var(--subrow)' }}>
-          <span style={{ color: 'var(--pos, #22c55e)', marginRight: 'var(--gu)' }}>✓</span>
-          Trustworthy bot — {GAME_TRUST[game].expl < 0.5 ? '≈0' : `≥${GAME_TRUST[game].expl}`} chips/hand exploitable (best-response LBR, lower bound)
-        </div>
+        <details className="study-more" style={{ marginTop: 'var(--subrow)' }}>
+          <summary className="hs-t hs-xs" style={T(2)}>How far to trust these grades</summary>
+          <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>
+            A strong opponent could win {GAME_TRUST[game].expl < 0.5 ? 'almost nothing' : `at least ${GAME_TRUST[game].expl} chips a hand`} from this strategy (best-response LBR, a lower bound).
+          </div>
+        </details>
       ) : (
         <div className="hs-panel" style={{ marginTop: 'var(--subrow)', '--hs-edge': 'var(--warn, #f59e0b)', '--hs-bg': 'rgba(245,158,11,.10)' }}>
           <div className="hs-t hs-xs" style={T(2, 2)}>
             <span style={{ marginRight: 'var(--gu)' }}>⚠</span>
-            <b>Approximate grades.</b> The {gameName} bot is {GAME_TRUST[game].note} (≈{GAME_TRUST[game].expl} chips/hand exploitable). Use its EV-loss as a rough guide, not gospel — it’s being sharpened.
+            <b>Approximate grades.</b> The {gameName} strategy is {GAME_TRUST[game].note} (about {GAME_TRUST[game].expl} chips a hand exploitable). Use its grades as a rough guide. It is being sharpened.
           </div>
         </div>
       ))}
@@ -478,7 +472,7 @@ export default function RazzTrainerView() {
           <div className={legalActions.length === 3 ? 'hs-cols3' : 'hs-cols'} style={{ '--hs-n': 2, rowGap: 'var(--subrow)' }}>
             {legalActions.map((a) => (
               <button key={a.id} className="hs-btn" onClick={() => pickAction(a.id)} disabled={stepping}
-                style={{ '--hs-h': 5, '--hs-edge': 'var(--accent)', fontSize: 'var(--fs-md)', paddingInline: 0, cursor: stepping ? 'wait' : 'pointer', opacity: stepping ? 0.6 : 1 }}>
+                style={{ '--hs-h': 5, '--hs-edge': 'var(--accent)', fontSize: legalActions.length === 3 ? 'var(--fs-sm)' : 'var(--fs-md)', paddingInline: 0, cursor: stepping ? 'wait' : 'pointer', opacity: stepping ? 0.6 : 1 }}>
                 <span className="hs-t" style={T(3)}>{a.label}</span>
               </button>
             ))}
@@ -492,7 +486,7 @@ export default function RazzTrainerView() {
           <div className="hs-t hs-sm hs-mut" style={T(3, 3)}>{stepping ? 'Advancing the hand…' : 'Opponent to act…'}</div>
           {stepping && proMode && proModeAvailable(game) && (
             <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>
-              Pro mode — if the hand ends, each {oracleStreetLabel(game)} decision runs an exact GTO re-solve (~1–5s){game === 'badugi' ? '; each pre-last-draw bet is graded by the certified value net (~0.06 SB)' : ''}.
+              If the hand ends, each {oracleStreetLabel(game)} decision gets an exact solve, 1 to 5 seconds each{game === 'badugi' ? ', and each bet before the last draw a trained estimate (about 0.06 SB)' : ''}.
             </div>
           )}
         </div>
@@ -527,8 +521,8 @@ export default function RazzTrainerView() {
             <div className="hs-gbadges">
               {grades.some((g) => g.gradeSource === 'oracle') && (
                 <GridBadge edge="var(--accent)" ink="var(--accent)"
-                  title={`Pro mode — ${oracleStreetLabel(game)} decisions in this hand were graded by the exact GTO re-solve (oracle); other streets by the blueprint. Each card is tagged with its grade source.`}>
-                  pro · true-GTO {catOf(game) === 'draw' ? 'final' : '7th'}
+                  title={`Exact grading: ${oracleStreetLabel(game)} decisions in this hand were graded by an exact solve; other streets by the trained strategy. Each card says which.`}>
+                  exact {catOf(game) === 'draw' ? 'final' : '7th'}
                 </GridBadge>
               )}
               {/* CERTIFIED-NET provenance (first neural grade): pre-last-draw badugi
@@ -536,8 +530,8 @@ export default function RazzTrainerView() {
                   DISTINCT from 'true-GTO' — a certified approximator, not exact. */}
               {grades.some((g) => g.gradeSource === 'certified-net') && (
                 <GridBadge edge="var(--accent)" ink="var(--accent)" dashed
-                  title="Pro mode — pre-last-draw badugi bet decisions in this hand were graded by the CERTIFIED value net (a neural approximator of GTO, mean grade error ~0.06 small bets), NOT an exact re-solve. Each card is tagged with its grade source.">
-                  pro · certified net ~0.06 SB
+                  title="Exact grading: Badugi bets before the last draw were graded by a trained estimate (mean grade error about 0.06 small bets), not an exact solve. Each card says which.">
+                  estimate ~0.06 SB
                 </GridBadge>
               )}
               {/* 6th-STREET ORACLE provenance: bucketed 6th→7th re-solve, APPROXIMATE
@@ -545,14 +539,14 @@ export default function RazzTrainerView() {
                   from the solid-accent near-exact 7th 'true-GTO' and 'certified net'. */}
               {grades.some((g) => g.gradeSource === 'oracle-6th') && (
                 <GridBadge edge="var(--accent2, #eab308)" ink="var(--accent2, #eab308)" dashed
-                  title="Pro mode — 6th-street decisions in this hand were graded by the bucketed 6th→7th re-solve: APPROXIMATE (bucket abstraction), SHOWN but NOT charged to your score. Distinct from the near-exact 7th-street oracle. Each card is tagged with its grade source.">
-                  pro · 6th approx
+                  title="Exact grading: 6th-street decisions in this hand got an approximate solve, shown but not charged to your score. Each card says which.">
+                  6th approx
                 </GridBadge>
               )}
               {grades.some((g) => g.gradeSource === 'oracle-5th') && (
                 <GridBadge edge="var(--accent2, #eab308)" ink="var(--accent2, #eab308)" dashed
-                  title="Pro mode — 5th-street decisions were graded by a depth-limited re-solve with the 6th value net as the leaf: APPROXIMATE (net-leaf, no exact anchor below 6th), SHOWN but NOT charged. The softest tier.">
-                  pro · 5th laddered
+                  title="Exact grading: 5th-street decisions got the roughest approximate solve, shown but not charged to your score.">
+                  5th approx
                 </GridBadge>
               )}
             </div>
@@ -610,8 +604,7 @@ function ProModeToggle({ on, onToggle, disabled, game }) {
     }}>
       <div className="hs-gbadges" style={{ alignItems: 'flex-start' }}>
         {/* snap-g: a whole-g label, so the badge after it starts on a g line */}
-        <span className="hs-t hs-sm hs-bold snap-g" style={T(2)}>Pro mode</span>
-        <GridBadge edge="var(--accent)" ink="var(--accent)">true GTO</GridBadge>
+        <span className="hs-t hs-sm hs-bold snap-g" style={T(2)}>Exact grading</span>
       </div>
       {/* switch: 3r × 4g, knob 2r inset 0.5r */}
       <button
@@ -619,8 +612,8 @@ function ProModeToggle({ on, onToggle, disabled, game }) {
         disabled={disabled}
         role="switch"
         aria-checked={on}
-        aria-label="Pro mode — true-GTO grading"
-        title={on ? `Pro mode ON — ${streetLbl} decisions graded by exact GTO re-solve` : 'Pro mode OFF — blueprint grading (fast)'}
+        aria-label="Exact grading"
+        title={on ? `On: ${streetLbl} decisions get an exact solve` : 'Off: graded by the trained strategy (fast)'}
         style={{
           position: 'relative', width: 'calc(var(--gu) * 4)', height: R(3), borderRadius: 'var(--radius-pill)', border: 'none', margin: 0,
           boxShadow: 'inset 0 0 0 var(--bw-hair) ' + (on ? 'var(--accent)' : 'var(--border)'),
@@ -636,24 +629,15 @@ function ProModeToggle({ on, onToggle, disabled, game }) {
         }} />
       </button>
       {on && <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>
-        Grade {streetLbl} {isDraw ? 'bet' : ''} decisions against an <b style={{ color: 'var(--text)' }}>exact GTO re-solve</b> instead
-        of the blueprint bot. Much more accurate — but each {streetLbl} decision runs a full solve ({isDraw ? '~1–2s' : '~4–5s'}), so
-        finishing a hand is slower. {isDraw ? 'Earlier draws and every draw decision' : 'Earlier streets'} stay on the blueprint grade.
+        Grade {streetLbl} {isDraw ? 'bet' : ''} decisions against an <b style={{ color: 'var(--text)' }}>exact solve</b> instead
+        of the trained strategy. More accurate, but each one takes {isDraw ? '1 to 2' : '4 to 5'} seconds, so
+        finishing a hand is slower. {isDraw ? 'Earlier draws and every draw decision' : 'Earlier streets'} keep the trained strategy's grade.
       </div>}
     </div>
   );
 }
 
 // pill matching SolverView's game pills (filled when active): 4r, label 3r down.
-const gamePill = (active, disabled) => ({
-  '--hs-h': 4, padding: 0, fontSize: 'var(--fs-xs)', fontWeight: active ? 'var(--fw-bold)' : 'var(--fw-semibold, 600)', letterSpacing: '0.04em',
-  '--hs-edge': active ? 'var(--text)' : 'var(--border)',
-  '--hs-fill': active ? 'var(--text)' : 'transparent',
-  '--hs-ink': active ? 'var(--bg)' : 'var(--text-muted)',
-  cursor: disabled ? 'not-allowed' : 'pointer',
-  opacity: disabled && !active ? 0.5 : 1,
-});
-
 // Seat label row: 2r — caps name + a caps "to act" flag, both baselines on its bottom.
 function SeatLabel({ name, toAct, color }) {
   return (

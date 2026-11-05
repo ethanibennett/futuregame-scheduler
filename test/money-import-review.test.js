@@ -167,14 +167,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const shotsFrom = async (name, sel, pages = 3) => {
       if (!SHOTS) return;
       await p.evaluate((s) => {
-        const body = document.querySelector('.an-sheet .an-body');
+        const body = document.querySelector('.tab-panel.tab-active .content-area, .tab-panel.tab-active') || document.scrollingElement;
         const el = s && document.querySelector(s);
         if (body) body.scrollTop = el ? el.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 8 : 0;
       }, sel);
       await sleep(250);
       for (let i = 0; i < pages; i++) {
         await shot(`${name}${pages > 1 ? `-${i + 1}` : ''}`);
-        const moved = await p.evaluate((h) => { const s = document.querySelector('.an-sheet .an-body'); const b = s.scrollTop; s.scrollTop += Math.round(h * 0.8); return s.scrollTop !== b; }, H);
+        const moved = await p.evaluate((h) => { const s = document.querySelector('.tab-panel.tab-active .content-area, .tab-panel.tab-active') || document.scrollingElement; const b = s.scrollTop; s.scrollTop += Math.round(h * 0.8); return s.scrollTop !== b; }, H);
         if (!moved) break;
         await sleep(200);
       }
@@ -189,13 +189,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       const desktop = await p.evaluate(() => !!document.querySelector('.app-shell.is-desktop'));
       await p.locator(desktop ? '.dk-rail-item:has-text("Bankroll")' : '.bottom-nav .nav-tab:has-text("Bankroll")').first().click({ timeout: 8000, force: true });
       await sleep(1200);
-      await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 8000, force: true });
-      await p.locator('.an-sheet .bd-tabs').waitFor({ timeout: 8000 });
-      await p.locator('.an-sheet .bd-tabs [role="radio"]:has-text("Import")').first().click({ timeout: 8000, force: true });
-      await p.locator('.an-sheet section[aria-labelledby="bd-data"]').waitFor({ timeout: 8000 });
+      // Import is a section chip since the dashboard sheet retired (2026-10-16): in the caret menu of its group.
+      await p.locator('.results-kind-tabs .kind-toggle-caret[aria-label*="Import"]').first().click({ timeout: 8000, force: true });
+      await p.locator('.rk-menu .rk-menu-item:has-text("Import")').first().click({ timeout: 8000, force: true });
+      await p.locator('.bd-inline section[aria-labelledby="bd-data"]').waitFor({ timeout: 8000 });
       await sleep(900);
     };
-    const sec = () => p.locator('.an-sheet .bid');
+    const sec = () => p.locator('.bd-inline .bid');
     // Headings render in capitals (an-sec's text-transform), and innerText reads them so: the match
     // ignores case.
     const waitText = async (loc, re0, ms = 10000) => {
@@ -225,8 +225,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await test('another app admin: the routes answer 403 and the section is not shown at all', async () => {
       assert.strictEqual((await api('GET', BASE, undefined, otherToken)).status, 403);
       await openImport(otherToken, otherName);
-      assert.strictEqual(await p.locator('.an-sheet .bid').count(), 0);
-      assert.ok(await p.locator('.an-sheet section[aria-labelledby="bd-data"]').count(), 'the CSV import is still there');
+      assert.strictEqual(await p.locator('.bd-inline .bid').count(), 0);
+      assert.ok(await p.locator('.bd-inline section[aria-labelledby="bd-data"]').count(), 'the CSV import is still there');
     });
     await srv.stop();
 
@@ -398,9 +398,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       assert.strictEqual((await api('GET', BASE)).json.runs.find((r) => r.id === runId).status, 'committed', 'nothing undone');
       await shotsFrom('undo-refused', '.bid-undo-err', 2);
     });
-    await test('Open in Results closes the dashboard and opens that cash session', async () => {
+    await test('Open in Results leaves Import and opens that cash session', async () => {
       await sec().locator('.bid-undo-err button:has-text("Open in Results")').first().click();
-      await p.locator('.an-sheet').waitFor({ state: 'detached', timeout: 5000 });
+      await p.locator('.bd-inline .bid').waitFor({ state: 'detached', timeout: 5000 });
       await sleep(1200);
       await shot('open-in-results');
     });
@@ -469,7 +469,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       await waitText(sec(), new RegExp(`Imported: #${first}`));
       await undoNow(first, preFirst);
     });
-    await test('no script error on the page', () => { assert.deepStrictEqual(pageErrors, []); });
+    await test('no script error on the page', () => { // WebKit words a fetch cut off by a reload this way, same-origin as these are; openImport reloads the app.
+      assert.deepStrictEqual(pageErrors.filter((m) => !/due to access control checks/.test(m)), []); });
   } catch (e) {
     console.log('  FAIL (setup)', e && e.stack ? e.stack.split('\n').slice(0, 8).join('\n       ') : e);
     process.exitCode = 1;

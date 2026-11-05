@@ -4607,9 +4607,11 @@ class ReplayErrorBoundary extends React.Component {
 // ══════════════════════════════════════════════════════════
 // ── Main Hand Replayer View ──────────────────────────────
 // ══════════════════════════════════════════════════════════
-export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, onStudyDraw, linkedReplay, quickAdd, drillEnabled = false, schedule = null, updates = null }) {
+export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, onStudyDraw, linkedReplay, quickAdd, drillEnabled, drillAsk, onDrillAsked = false, schedule = null, updates = null }) {
   const toast = useToast();
   const [mode, setMode] = useState(initialHand ? 'replay' : 'list');
+  // Hands > Study > Play a hand.
+  useEffect(() => { if (drillAsk) { setMode('drill'); if (onDrillAsked) onDrillAsked(); } }, [drillAsk, onDrillAsked]);
   const [quickVoice, setQuickVoice] = useState(false);   // quick add opened by Say (listening at once)
   const [entryMode, setEntryMode] = useState('gto');
   const [entryTab, setEntryTab] = useState('form');

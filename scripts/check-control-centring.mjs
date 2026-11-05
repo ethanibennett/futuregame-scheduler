@@ -2370,8 +2370,9 @@ function finalize(c) {
   }, 0);
   // The admin's Hands tools (the second footer row): each view as it renders against this server
   // (without a solver, its error and empty states).
-  for (const [id, label] of [['solver', 'Solver'], ['solver-trainer', 'Solver Trainer'], ['watch-solver', 'Watch Solver'], ['trainer', 'Trainer'], ['3-way', '3-Way']]) {
-    step('hands-tool-' + id, async () => { await nav('Hands'); await tap(`.hands-tool-row button:text-is("${label}")`, 2000); }, 1);
+  step('hands-study', async () => { await nav('Hands'); await tap('.hands-tool-row button:text-is("Study")', 800); }, 0);
+  for (const [id, label] of [['solve', 'Solve a spot'], ['spots', 'Quick spots'], ['watch', 'Watch the solver'], ['hands', 'Hand trainer'], ['three-way', 'Three-way Razz'], ['draw', 'Price a draw']]) {
+    step('hands-study-' + id, async () => { await nav('Hands'); await tap('.hands-tool-row button:text-is("Study")', 800); await tap(`.study-row:has-text("${label}")`, 2000); }, 1);
   }
   // The replayer drill, on canned answers (drill-states.mjs): every state of its controls.
   for (const stage of ['setup', 'bet', 'draw', 'over', 'review']) {

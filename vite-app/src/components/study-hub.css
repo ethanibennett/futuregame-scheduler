@@ -1,0 +1,49 @@
+/* Hands > Study: the list and the header every Study tool shares (StudyHub.jsx, StudyHead.jsx). */
+
+/* These scroll with the page rather than inside it: a nested scroller stopped short of the bar under it,
+   leaving a dead band with the content cut off above it. */
+.hs-view.study-hub, .hs-view.study-tool, .hs-view.trainer-shell, .hs-view.hs-solver { height: auto; overflow-y: visible; }
+
+.study-hub { padding-top: var(--subrow); }
+.study-group + .study-group { margin-top: calc(var(--subrow) * 2); }
+.study-group { display: flex; flex-direction: column; row-gap: var(--subrow); }
+.hs-view .study-row { width: 100%; }
+
+/* Back, 5g, then the tool's name. */
+.study-head { padding-top: var(--subrow); }
+.study-head-row { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--gu); align-items: start; }
+.study-head-row > .hs-btn { width: calc(var(--gu) * 5); }
+.study-head-row > .hs-title { grid-column: 2; }
+.study-head-row > .hs-title:only-child { grid-column: 1 / -1; }
+
+/* A disclosure in a Study tool: the figures a player does not need first. */
+.hs-view .study-more > summary { cursor: pointer; list-style: none; color: var(--text-muted); }
+.hs-view .study-more > summary::-webkit-details-marker { display: none; }
+.hs-view .study-more > summary::after { content: ' \203A'; }
+.hs-view .study-more[open] > summary::after { content: ' \2039'; }
+
+/* Price a draw: its fields, on the same whole-g columns as the other tools. */
+.ds-field { display: flex; flex-direction: column; min-width: 0; font-size: var(--fs-xs); line-height: calc(var(--subrow) * 2); color: var(--text-muted); }
+.ds-field input, .ds-field select {
+  box-sizing: border-box; width: 100%; height: calc(var(--subrow) * 5); margin: 0; padding: 0 var(--gu);
+  border: var(--bw-hair) solid var(--border); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text); font-family: inherit; font-size: var(--fs-sm);
+}
+.ds-mono { font-family: ui-monospace, monospace; }
+.ds-panel { margin-top: var(--subrow); font-size: var(--fs-xs); line-height: calc(var(--subrow) * 2.5); }
+.ds-panel-title { font-size: var(--fs-sm); font-weight: var(--fw-bold); margin-bottom: var(--subrow); }
+.ds-note { margin-top: var(--subrow); padding: var(--subrow) var(--gu); border-radius: var(--radius-sm); font-size: var(--fs-xs); line-height: calc(var(--subrow) * 2.5); }
+.ds-note.is-warn { background: color-mix(in srgb, var(--warn, #f59e0b) 12%, transparent); box-shadow: inset 0 0 0 var(--bw-hair) var(--warn, #f59e0b); }
+.ds-note.is-bad { background: color-mix(in srgb, var(--neg) 12%, transparent); box-shadow: inset 0 0 0 var(--bw-hair) var(--neg); }
+.ds-note.is-good { background: color-mix(in srgb, var(--pos) 10%, transparent); box-shadow: inset 0 0 0 var(--bw-hair) var(--pos); }
+.ds-scroll { overflow-x: auto; }
+.ds-table { border-collapse: collapse; width: 100%; font-size: var(--fs-xs); }
+.ds-table th { text-align: left; font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: var(--track-caps); font-weight: var(--fw-regular); color: var(--text-muted); padding: calc(var(--subrow) * 0.5) var(--gu) calc(var(--subrow) * 0.5) 0; box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border); white-space: nowrap; }
+.ds-table td { padding: calc(var(--subrow) * 0.5) var(--gu) calc(var(--subrow) * 0.5) 0; box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border); }
+.ds-table .is-num { text-align: right; font-variant-numeric: tabular-nums; }
+.ds-table .is-dim { color: var(--text-muted); }
+.ds-table tr.is-level { background: color-mix(in srgb, var(--pos) 8%, transparent); }
+.hs-view .ds-take { --hs-h: 3; width: calc(var(--gu) * 5); padding: 0; }
+.ds-list { margin: var(--subrow) 0 0; padding-left: calc(var(--gu) * 2); }
+/* The phone's table holds what a choice needs: the spread is one disclosure too many at 33g. */
+@media (max-width: 1023px) { .ds-table .ds-sd { display: none; } }

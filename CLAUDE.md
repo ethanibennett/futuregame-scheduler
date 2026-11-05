@@ -68,6 +68,12 @@ sessions opened here own scheduler work.
   `./solver`). Guards' views `replayer-drill-*` (canned answers, `scripts/drill-states.mjs`);
   `scripts/drive-replayer-drill.mjs` plays whole hands in a browser against a real solver and checks the table's chips
   against the server's. a5td and stud8 answer 503 where their blueprints are gitignored, here and on Render.
+- **Hands > Study** (owner, 2026-11-04: one training experience; `components/StudyHub.jsx`, `StudyHead.jsx`, `study-hub.css`):
+  the Hands row is Replayer, Study, Scanner, and Study is one list of the solver tools: Practice (Play a hand, Hand trainer,
+  Quick spots, Three-way Razz), Look up (Watch the solver, Solve a spot, Price a draw). Each opens under the same header and
+  game pills, in player-facing wording (no blueprint, CFR, oracle or infoset on screen; a player's figures sit behind a
+  disclosure). `GET /api/solver/availability` says which blueprints are on disk, by file alone, and Study hides the rest:
+  a5td, stud8 and razz3 here and on Render.
 - **Study this draw** (the replayer's button, app admins; fixed 2026-11-04; `utils/draw-study-spot.js`, `replayRealHand` in
   `lib/drill-study.js`): a saved hand's draw on the Draw Study page, priced on the cards really held. The spot is the hero's
   draw at the end of the street on screen, sent as the STARTING hand, both seats' tokens with their seats, and the hero's
@@ -607,6 +613,7 @@ JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
   for the steps and what each replaces. Never write a bare literal for anything a
   token covers. Migration off the ~3,900 existing literals is in progress; the
   checklist at the foot of that doc tracks it.
+- **What we tout at launch:** `docs/launch-features.md`, with the plan's guardrails and what is open to everyone today.
 - Update this file when architecture or suite topology changes — it is the handoff.
 - **Session state** lives in `docs/session-handoff.md` — what shipped recently,
   what is waiting on Ethan, published artifact URLs, and the traps that have

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fetchApi } from '../utils/api.js';
 import Card from './SolverCard.jsx';
+import { StudyHead, StudyPills, shortGameName, useSolverAvailability, offered } from './StudyHead.jsx';
 
 // ── CFR Solver Trainer ──────────────────────────────────────
 // Quiz mode against pre-trained MCCFR strategies (2-7 Triple Draw,
@@ -18,7 +19,8 @@ import Card from './SolverCard.jsx';
 const T = (b, lh) => (lh ? { '--hs-b': b, '--hs-lh': lh } : { '--hs-b': b });
 const R = (n) => `calc(var(--subrow) * ${n})`;
 
-export default function SolverTrainerView() {
+export default function SolverTrainerView({ onBack }) {
+  const avail = useSolverAvailability();
   const [games, setGames] = useState(null);
   const [gameId, setGameId] = useState(null);
   const [spot, setSpot] = useState(null);
@@ -77,26 +79,11 @@ export default function SolverTrainerView() {
   const isStud = !!(d && Array.isArray(d.oppUp));
 
   return (
-    <div className="hs-view" style={{ maxWidth: R(70) }}>
-      {/* Title: 4r block, baseline 4r below the view top; subtitle 2r caps line under it. */}
-      <h2 className="screen-title hs-t hs-title" style={T(4)}>Solver Trainer</h2>
-      <p className="hs-t hs-cap" style={T(2, 2)}>Heads-up fixed limit · CFR strategies</p>
+    <div className="hs-view study-tool">
+      <StudyHead title="Quick spots" onBack={onBack} note="One decision at a time, then what the solver does there." />
 
-      {/* Game picker — 4r pills on the four 8g rails, 1r between rows; 2r above. */}
       {games && games.length > 0 && (
-        <div className="hs-cols" style={{ '--hs-n': 4, marginTop: R(2) }}>
-          {games.map(g => (
-            <button key={g.id} className="hs-btn hs-pill" onClick={() => setGameId(g.id)} disabled={!g.trained}
-              style={{
-                '--hs-h': 4, padding: 0, fontSize: 'var(--fs-xs)',
-                '--hs-edge': g.id === gameId ? 'var(--accent)' : 'var(--border)',
-                '--hs-fill': g.id === gameId ? 'var(--accent)' : 'transparent',
-                '--hs-ink': g.id === gameId ? '#fff' : (g.trained ? 'var(--text)' : 'var(--text-muted)'),
-              }}>
-              <span className="hs-t" style={T(3)}>{g.name}{!g.trained && ' (untrained)'}</span>
-            </button>
-          ))}
-        </div>
+        <StudyPills games={games.filter((g) => g.trained && offered(avail, g.id)).map((g) => [g.id, shortGameName(g.name)])} value={gameId} onPick={setGameId} />
       )}
 
       {error && (
@@ -108,7 +95,7 @@ export default function SolverTrainerView() {
 
       {game && (
         <div className="hs-t hs-cap" style={{ ...T(2, 2), marginTop: R(2) }}>
-          {game.stakes}{game.trained ? ` · ${game.iterations.toLocaleString()} iterations · ${game.infosets.toLocaleString()} infosets` : ''}
+          {game.stakes}
         </div>
       )}
 
@@ -204,7 +191,9 @@ export default function SolverTrainerView() {
               {score.spots > 0 && `${score.best}/${score.spots} matched solver · avg weight ${Math.round((score.probSum / score.spots) * 100)}%`}
             </span>
             <button className="hs-btn" onClick={() => dealSpot(gameId)}
-              style={{ '--hs-h': 5, gridColumn: '4', '--hs-edge': 'transparent', '--hs-fill': 'var(--brand)', '--hs-ink': 'var(--on-brand)' }}>
+              style={picked
+                ? { '--hs-h': 5, gridColumn: '4', '--hs-edge': 'transparent', '--hs-fill': 'var(--brand)', '--hs-ink': 'var(--on-brand)' }
+                : { '--hs-h': 5, gridColumn: '4', '--hs-ink': 'var(--text-muted)' }}>
               <span className="hs-t" style={T(3)}>{picked ? 'Next Spot' : 'Skip'}</span>
             </button>
           </div>

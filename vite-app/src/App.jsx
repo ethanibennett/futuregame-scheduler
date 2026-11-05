@@ -64,12 +64,7 @@ import MilestoneCelebration from './components/MilestoneCelebration.jsx';
 // bundle drops by several hundred KB. Each loads on first navigation to
 // its tab; subsequent visits are cached by the browser.
 const HandReplayerView = lazy(() => import('./components/HandReplayerView.jsx'));
-const SolverTrainerView = lazy(() => import('./components/SolverTrainerView.jsx'));
-const SolverPlayView = lazy(() => import('./components/SolverPlayView.jsx'));
-const SolverView = lazy(() => import('./components/SolverView.jsx'));
-const DrawStudyView = lazy(() => import('./components/DrawStudyView.jsx'));
-const RazzTrainerView = lazy(() => import('./components/RazzTrainerView.jsx'));
-const Multiway3TrainerView = lazy(() => import('./components/Multiway3TrainerView.jsx'));
+const StudyHub = lazy(() => import('./components/StudyHub.jsx'));
 const StakingView = lazy(() => import('./components/StakingView.jsx'));
 const AdminView = lazy(() => import('./components/AdminView.jsx'));
 const AdminBatchesView = lazy(() => import('./components/AdminBatchesView.jsx'));
@@ -338,13 +333,16 @@ function App() {
 
   // Hands tab tool: hand replayer or CFR solver trainer
   const [handsTool, setHandsTool] = useState('replayer');
+  // Hands > Study: which tool is open (null is its list), and a request to open the drill on the replayer.
+  const [studyTool, setStudyTool] = useState(null);
+  const [drillAsk, setDrillAsk] = useState(false);
   // Set by the replayer's "Study this draw" button and consumed by
   // DrawStudyView on mount, mirroring pendingSolverSpot.
   const [pendingDrawSpot, setPendingDrawSpot] = useState(null);
 
   // "Solve this spot" handoff: a frozen replayer spot, mapped to
   // SolverView's inputs. Set by the replayer's Solve-this-spot button
-  // (which also flips handsTool → 'solver'); consumed + cleared by
+  // (which also opens Study's Solve a spot); consumed + cleared by
   // SolverView on mount/update.
   const [pendingSolverSpot, setPendingSolverSpot] = useState(null);
 
@@ -2150,19 +2148,12 @@ function App() {
                     <div style={{flex:1,minHeight:0}}>
                       {handsTool === 'scanner' && isAdmin
                         ? <HandsScanner />
-                        : handsTool === 'solver' && isAdmin
-                        ? <Suspense fallback={<LazyFallback />}><SolverView pendingSpot={pendingSolverSpot} onConsumeSpot={() => setPendingSolverSpot(null)} /></Suspense>
-                        : handsTool === 'trainer' && isAdmin
-                        ? <Suspense fallback={<LazyFallback />}><SolverTrainerView /></Suspense>
-                        : handsTool === 'watch' && isAdmin
-                        ? <Suspense fallback={<LazyFallback />}><SolverPlayView /></Suspense>
-                        : handsTool === 'razz-trainer' && isAdmin
-                        ? <Suspense fallback={<LazyFallback />}><RazzTrainerView /></Suspense>
-                        : handsTool === 'multiway' && isAdmin
-                        ? <Suspense fallback={<LazyFallback />}><Multiway3TrainerView /></Suspense>
                         : handsTool === 'study' && isAdmin
-                        ? <Suspense fallback={<LazyFallback />}><DrawStudyView pendingSpot={pendingDrawSpot} onConsumeSpot={() => setPendingDrawSpot(null)} /></Suspense>
-                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setHandsTool('solver'); }) : undefined} onStudyDraw={isAdmin ? (spot => { setPendingDrawSpot(spot); setHandsTool('study'); }) : undefined} quickAdd={isAdmin} drillEnabled={isAdmin} schedule={mySchedule} updates={myActiveUpdates} /></Suspense>}
+                        ? <Suspense fallback={<LazyFallback />}><StudyHub tool={studyTool} onTool={setStudyTool} fallback={<LazyFallback />}
+                            onPlayHand={() => { setDrillAsk(true); setHandsTool('replayer'); }}
+                            pendingSolverSpot={pendingSolverSpot} onConsumeSolverSpot={() => setPendingSolverSpot(null)}
+                            pendingDrawSpot={pendingDrawSpot} onConsumeDrawSpot={() => setPendingDrawSpot(null)} /></Suspense>
+                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setStudyTool('solve'); setHandsTool('study'); }) : undefined} onStudyDraw={isAdmin ? (spot => { setPendingDrawSpot(spot); setStudyTool('draw'); setHandsTool('study'); }) : undefined} quickAdd={isAdmin} drillEnabled={isAdmin} drillAsk={drillAsk} onDrillAsked={() => setDrillAsk(false)} schedule={mySchedule} updates={myActiveUpdates} /></Suspense>}
                     </div>
                   </div>
                 : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'calc(var(--subrow) * 7.5) calc(var(--subrow) * 2.5)',textAlign:'center'}}>
@@ -2308,8 +2299,8 @@ function App() {
           {currentView === 'hands' && isAdmin && (
             <div className="hands-tool-row" style={{display:'flex',gap:'var(--gu)',overflowX:'auto',whiteSpace:'nowrap',background:'var(--bg)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
               {/* Each pill a whole-g box (its width in g beside its label), the label centred in it. */}
-              {[['replayer','Replayer',6],['scanner','Scanner',6],['solver','Solver',5],['trainer','Solver Trainer',8],['watch','Watch Solver',8],['razz-trainer','Trainer',5],['multiway','3-Way',5],['study','Draw Study',8]].map(([id,lbl,w]) => (
-                <button key={id} className="ctl" onClick={() => setHandsTool(id)}
+              {[['replayer','Replayer',6],['study','Study',5],['scanner','Scanner',6]].map(([id,lbl,w]) => (
+                <button key={id} className="ctl" onClick={() => { if (id === 'study') setStudyTool(null); setHandsTool(id); }}
                   style={{flex:'0 0 auto',width:`calc(var(--gu) * ${w})`,height:'calc(var(--subrow) * 3)',boxSizing:'border-box',padding:0,borderRadius:'var(--radius)',fontFamily:'inherit',fontSize:'calc(var(--gu) * 1.031)',fontWeight:'var(--fw-bold)',cursor:'pointer',
                     border:'var(--bw-hair) solid ' + (handsTool === id ? 'var(--accent)' : 'var(--border)'),
                     background: handsTool === id ? 'var(--accent)' : 'transparent',
@@ -2427,7 +2418,7 @@ function App() {
           {/* The cash tab is not seasonal, so its subtitle names the tab instead of the
               season's date range. The h2 inside CashView is dropped in favour of this. */}
           {currentView === 'cash' ? <small>{cashMode === 'heatmap' ? 'cash game history' : 'live cash games'}</small>
-            : currentView === 'hands' ? <small>hands archive</small>
+            : currentView === 'hands' ? <small>{handsTool === 'study' ? 'study' : handsTool === 'scanner' ? 'table scanner' : 'hands archive'}</small>
             : currentView === 'dashboard' ? <small>dashboard</small>
             : currentView === 'tracking' ? <small>bankroll</small>
             : currentView === 'social' ? <small>social</small>

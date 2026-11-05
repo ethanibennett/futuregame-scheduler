@@ -16225,6 +16225,20 @@
     }
     /* Seats reuse .replayer-seat / .replayer-seat-info / .card-row from the replayer */
     .solver-rseat { z-index: 3; }
+    /* The plaque on the grid, whatever the hand's name: 17g on the phone's 35g table, centred on whole g. */
+    .solver-rseat .replayer-seat-info {
+      box-sizing: border-box; width: calc(var(--gu) * 17); height: calc(var(--subrow) * 5);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    /* One line: the longest hand names say the same as the Why under the table, and wrapping hid the seat. */
+    .solver-rseat .replayer-seat-stack {
+      max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      padding-block: 0.3em; margin-block: -0.3em;
+    }
+    /* 36g on the desktop pane, so it centres on whole g too, with an 18g plaque. */
+    .app-shell.is-desktop .solver-table { width: calc(var(--gu) * 36); }
+    .app-shell.is-desktop .solver-rseat .replayer-seat-info { width: calc(var(--gu) * 18); }
+    .solver-table .replayer-table-felt { --felt-lit: rgb(39,34,42); --felt-shade: rgb(20,18,32); }
     /* Deleted rule, kept as a note: this set box-shadow wholesale on the
        acting seat, which REPLACES --plaque-bevel rather than layering on it -
        the exact defect the felt pass fixed and documented. It also won on
@@ -16339,7 +16353,12 @@
     }
     /* Three equal boxes inside a panel: 9g + 2g + 9g + 2g + 9g = 31g, edges on
        3 | 12, 14 | 23, 25 | 34 — all subcolumn lines. */
-    .hs-view .hs-cols3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: calc(var(--gu) * 2); }
+    /* Three whole-g columns (31g: 9 | 2 | 9 | 2 | 9; the desktop trainer's 30g: 8 | 3 | 8 | 3 | 8). */
+    .hs-view .hs-cols3 {
+      --hs-col3: round(down, calc((100% - var(--gu) * 4) / 3), var(--gu));
+      display: grid; grid-template-columns: repeat(3, var(--hs-col3));
+      column-gap: max(calc(var(--gu) * 2), round(down, calc((100% - 3 * var(--hs-col3)) / 2), var(--gu)));
+    }
 
     /* Panel: 2r × 2g padding, border as an inset shadow so it adds no size.
        Box on 1..36 → content on 3..34. */
@@ -18020,6 +18039,7 @@
     .bk-ledger-row > span { height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 3 - 1cap); font-size: var(--fs-xs); }
     .bk-ledger-date { color: var(--text-muted); font-variant-numeric: var(--num-tabular); }
     .bk-ledger-row > .bk-ledger-amt { text-align: right; font-weight: var(--fw-bold); font-size: var(--fs-sm); font-variant-numeric: var(--num-tabular); }
+    .bk-ledger-x svg { width: calc(var(--gu) * 1.5); height: calc(var(--gu) * 1.5); justify-self: center; }
     .bk-ledger-x {
       display: grid;
       align-items: center;

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { fetchApi } from '../utils/api.js';
 import Card from './SolverCard.jsx';
+import { StudyHead, studyPill } from './StudyHead.jsx';
 import StrategyRibbon from './StrategyRibbon.jsx';
 
 // ── Live Solver tool ────────────────────────────────────────
@@ -101,7 +102,7 @@ function summarize(res, pot) {
 const GAMES = [['razz', 'Razz'], ['stud8', 'Stud 8']];
 const STREETS = [3, 4, 5, 6, 7];
 
-export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
+export default function SolverView({ pendingSpot, onConsumeSpot, onBack } = {}) {
   const [game, setGame] = useState('razz');
   const [street, setStreet] = useState(7);
   const [mode, setMode] = useState('exact'); // 'exact' (node-locked) | 'range'
@@ -224,18 +225,16 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
       display: 'grid', rowGap: 'calc(var(--subrow) * 2)',
       alignContent: 'start',
     }}>
-      {/* Header — 5r row: title (baseline 4r down) on cols 1–2, game pills (5r) on cols 3–4 */}
-      <div style={{ ...full, display: 'grid', gridTemplateColumns: 'subgrid', height: 'calc(var(--subrow) * 5)' }}>
-        <h2 className="screen-title hs-t hs-title" style={{ ...T(4), gridColumn: '1 / 3' }}>Solver</h2>
-        <div className="hs-halves" style={{ gridColumn: '3 / -1' }}>
-          {GAMES.map(([id, lbl]) => (
-            <button key={id} className="hs-btn hs-pill" onClick={() => { setGame(id); if (id !== 'stud8') setAbstraction('hilo'); }} style={pill(game === id)}>
-              <span className="hs-t" style={T(3)}>{lbl}</span>
-            </button>
-          ))}
-        </div>
+      <div style={full}>
+        <StudyHead title="Solve a spot" onBack={onBack} note="Set up a spot and get the exact answer." />
       </div>
-      <p className="hs-t hs-cap" style={{ ...full, ...T(2, 2) }}>Live range-form CFR+ · exact subgame solve</p>
+      <div className="hs-halves" style={full}>
+        {GAMES.map(([id, lbl]) => (
+          <button key={id} className="hs-btn hs-pill" onClick={() => { setGame(id); if (id !== 'stud8') setAbstraction('hilo'); }} style={studyPill(game === id)}>
+            <span className="hs-t" style={T(3)}>{lbl}</span>
+          </button>
+        ))}
+      </div>
 
       {/* Handoff note — appears when a spot is imported from the replayer.
           Pre-filled from a frozen replay spot; spells out the up/down split
@@ -259,7 +258,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
 
       {/* Mode switch — two 5r buttons, each spanning 2 columns (17g) */}
       <div className="hs-halves" style={full}>
-        {[['exact', 'Node-locked'], ['range', 'Range vs range']].map(([id, lbl]) => (
+        {[['exact', 'Against set hands'], ['range', 'Range vs range']].map(([id, lbl]) => (
           <button key={id} className="hs-btn" onClick={() => setMode(id)}
             style={{
               '--hs-h': 5, '--hs-edge': mode === id ? 'var(--accent)' : 'var(--border)',
@@ -334,7 +333,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
         {/* Mode-specific range inputs */}
         {mode === 'exact' ? (
           <div style={{ ...full, display: 'flex', flexDirection: 'column' }}>
-            <FieldLab>Opponent range <span style={dim}>(node-locked — comma-separated)</span></FieldLab>
+            <FieldLab>Opponent's hands <span style={dim}>(comma-separated)</span></FieldLab>
             <input className="hs-input" value={oppRange} onChange={(e) => setOppRange(e.target.value)} placeholder="Kc Kd 2h, Qs Js Tc" />
             {/* 1r, then a 2r note line (baseline on its bottom). */}
             <div className="hs-t hs-xs hs-mut" style={{ ...T(2, 2), marginTop: 'var(--subrow)' }}>
@@ -473,7 +472,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
             )}
 
             {/* Full strategy tree */}
-            <div className="hs-t hs-cap" style={{ ...full, ...T(2), letterSpacing: '0.14em' }}>GTO strategy</div>
+            <div className="hs-t hs-cap" style={{ ...full, ...T(2), letterSpacing: '0.14em' }}>Solver strategy</div>
             {sortedNodes(result.decisions).map(([hist, node]) => (
               <div key={hist} style={full}>
                 <StrategyNode hist={hist} node={node} />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchApi } from '../utils/api.js';
+import { StudyHead } from './StudyHead.jsx';
 import Card from './SolverCard.jsx';
 import StrategyRibbon from './StrategyRibbon.jsx';
 import GridBadge from './GridBadge.jsx';
@@ -69,7 +70,7 @@ function lossColor(v) {
   return 'var(--neg, #ef4444)';
 }
 
-export default function Multiway3TrainerView() {
+export default function Multiway3TrainerView({ onBack }) {
   const [seed, setSeed] = useState(null);
   const [heroSeat, setHeroSeat] = useState(0);
   const [state, setState] = useState(null);
@@ -163,21 +164,13 @@ export default function Multiway3TrainerView() {
           Grid: 4r title line (title | tag, both baselines on its bottom), 1r,
           2r copy lines. */}
       <div className="trainer-top">
-      <div className="hs-split">
-        <h2 className="screen-title hs-t hs-title" style={T(4)}>3-Way Razz Trainer</h2>
-        
-      </div>
-      <p className="hs-t hs-xs hs-mut" style={{ ...T(2, 2), marginTop: 'var(--subrow)' }}>
-        You are the hero against two seats playing a fixed blueprint <b>profile</b>. Grades are the
-        certified EV-loss <b>versus that stated profile</b> — 3-player razz is general-sum, so there is
-        no single correct strategy. 7th-street decisions are graded by an exact oracle; earlier streets
-        are a Monte-Carlo estimate.
-      </p>
+      <StudyHead title="Three-way Razz" onBack={onBack}
+        note="Razz against two opponents playing a fixed strategy. Three-way there is no single right answer, so grades compare you to that strategy: exact on 7th street, an estimate before it." />
 
       {error && (
         <div className="hs-panel" style={{ marginTop: R(2), '--hs-edge': 'var(--neg, #ef4444)' }}>
           <div className="hs-t hs-sm" style={{ ...T(3, 3), color: 'var(--neg, #ef4444)' }}>
-            {error.offline ? 'Trainer unavailable on this server. ' : ''}{error.message}
+            {error.offline ? "Three-way Razz isn't available right now." : error.message}
           </div>
         </div>
       )}
@@ -324,7 +317,7 @@ function Felt3({ state, heroSeat, handOver, result }) {
 
       {/* Action log — hairline rule (inset, no height) + 1r, 2r lines, at most 17r. */}
       {state.log && state.log.length > 0 && (
-        <div className="hs-rule" style={{ maxHeight: R(17), overflowY: 'auto' }}>
+        <div className="hs-rule" style={{ maxHeight: R(18), overflowY: 'auto', paddingBottom: 'var(--subrow)', marginBottom: 'calc(var(--subrow) * -1)' }}>
           {state.log.map((e, i) => (
             <div key={i} className="hs-t hs-xs hs-mut" style={T(2, 2)}>
               <b style={{ color: e.seat === heroSeat ? POS : 'var(--accent)' }}>
@@ -365,10 +358,10 @@ function ResultBanner3({ result, heroSeat }) {
 function ProvenanceBadge({ g }) {
   const exact = g.forwardMode === 'exact-multiway-oracle';
   const bg = exact ? POS : 'var(--accent)';
-  const txt = exact ? 'exact multiway oracle' : 'blueprint estimate';
+  const txt = exact ? 'exact' : 'estimate';
   const sub = exact
     ? (g.exactPath === 'snapshot-exact' ? 'mid-round exact' : 'certificate')
-    : 'MC vs profile';
+    : 'against the strategy';
   return (
     <div className="hs-gbadges">
       <GridBadge edge={bg} ink="#fff" bg={bg}>{txt}</GridBadge>
@@ -493,8 +486,8 @@ function SessionScoreboard3({ session, onReset }) {
         ))}
       </div>
       <div className="hs-t hs-xs hs-mut" style={{ ...T(2, 2), marginTop: 'var(--subrow)' }}>
-        {s.exactGraded7th} of your 7th-street decisions this session were graded by the exact multiway
-        oracle. Earlier-street numbers are Monte-Carlo estimates vs the profile. Stored on this device only.
+        {s.exactGraded7th} of your 7th-street decisions this session were graded exactly. Earlier streets
+        are estimates against the strategy. Stored on this device only.
       </div>
     </div>
   );

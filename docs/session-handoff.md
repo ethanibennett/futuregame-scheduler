@@ -40,6 +40,12 @@ the junction hides anything missing from git.
   a no-op in the belief. It would matter the moment `drawReweight` is enabled, and fail silently (its note to the solver
   repo). **Lesson: compare a Monte Carlo gap to the same input under another seed before believing it.** That control
   moves the worst row 4 to 6 chips, so read the study tool's figures with its band, not row by row.
+- **One training experience: Hands > Study (owner, 2026-11-04).** See CLAUDE.md. `test:money-import-review` is repaired
+  (Import is a section chip since the sheet retired). Guards still flag: six Reports filter chips whose count is "1" (ink 0.9px
+  left of centre against a 0.75px limit: that digit's blank right side, and the rule forbids a metric nudge inside a control).
+  The launch list is `docs/launch-features.md`; its section 5 holds the owner's open decisions.
+  Trap: `/api/solver/availability` first answered false for everything (`fsSync` is local to functions in `server.js`) and a walk
+  still passed with no pills on screen, because its checks only looked at what was there. Assert the positive case.
 - **Sign-in and the tab title show the Schedule's date range (owner, 2026-11-04).** A first-time visitor has no events, so
   the server works it out from the same rows (`lib/season-label.js`, which `npm run test:season-label` holds to the client's
   `utils/season-label.js`) and writes it into the page. The native app's page ships in the app, so its sign-in asks
