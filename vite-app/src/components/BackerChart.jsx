@@ -55,7 +55,7 @@ export function RangeStrip({ options, value, onChange, label = 'Range' }) {
 const W = 35;
 const H = 16;
 
-export default function BackerChart({ series, label, today, baseNote = 'start', control = null }) {
+export default function BackerChart({ series, label, today, baseNote = 'start', control = null, hideTotal = false }) {
   const thisYear = today ? Number(String(today).slice(0, 4)) : null;
   const plotRef = useRef(null);
   const [sel, setSel] = useState(null);   // the index of the session being read, or null
@@ -109,7 +109,7 @@ export default function BackerChart({ series, label, today, baseNote = 'start', 
         ) : (
           <>
             <span className="an-cell an-sec an-clip">{label}</span>
-            <span className={'an-cell an-val bp-chart-change ' + up}>{fmtSignedCents(series.change)}</span>
+            {!hideTotal && <span className={'an-cell an-val bp-chart-change ' + up}>{fmtSignedCents(series.change)}</span>}
           </>
         )}
       </div>

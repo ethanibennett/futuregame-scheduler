@@ -165,7 +165,7 @@ export default function Multiway3TrainerView() {
       <div className="trainer-top">
       <div className="hs-split">
         <h2 className="screen-title hs-t hs-title" style={T(4)}>3-Way Razz Trainer</h2>
-        <span className="hs-t hs-xs hs-mut" style={{ ...T(4), whiteSpace: 'nowrap' }}>MVP · multiway</span>
+        
       </div>
       <p className="hs-t hs-xs hs-mut" style={{ ...T(2, 2), marginTop: 'var(--subrow)' }}>
         You are the hero against two seats playing a fixed blueprint <b>profile</b>. Grades are the

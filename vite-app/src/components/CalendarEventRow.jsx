@@ -670,6 +670,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
 
   const rowClasses = [
     'cal-event-row',
+    tournament.venue === 'Personal' ? 'is-personal' : '',
     open ? 'open' : '',
     detail ? 'is-detail' : '',
     selected ? 'is-selected' : '',
@@ -702,7 +703,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
           {tournament.venue === 'Personal' ? (
             <div className="cal-bar-row2" style={{display:'flex', alignItems:'center', gap:'calc(var(--subrow) * 1)'}}>
               <span className="cal-event-name" style={{fontSize:'calc(var(--gu) * 1.296)'}}>
-                {tournament.event_name === 'Travel Day' ? '\u2708\uFE0F' : '\uD83C\uDFD6\uFE0F'} {tournament.event_name}
+                {tournament.event_name === 'Travel Day' ? '\u2708\uFE0F ' : tournament.event_name === 'Day Off' ? '\uD83C\uDFD6\uFE0F ' : ''}{tournament.event_name}
               </span>
               {tournament.notes && (
                 <span style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', fontStyle:'italic', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
@@ -1278,6 +1279,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
     'cal-event-row',
     isInSchedule ? 'saved' : '',
     isInSchedule && normaliseDate(tournament.date) === getToday() ? 'is-today' : '',
+    tournament.venue === 'Personal' ? 'is-personal' : '',
     isAnchor ? 'anchor' : (hasConditions ? 'conditional' : ''),
     venueClass,
     bracelet ? 'bracelet' : '',
@@ -1296,7 +1298,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
           {tournament.venue === 'Personal' ? (
             <div className="cal-bar-row2" style={{display:'flex', alignItems:'center', gap:'calc(var(--subrow) * 1)'}}>
               <span className="cal-event-name" style={{fontSize:'calc(var(--gu) * 1.296)'}}>
-                {tournament.event_name === 'Travel Day' ? '✈️' : '🏖️'} {tournament.event_name}
+                {tournament.event_name === 'Travel Day' ? '✈️ ' : tournament.event_name === 'Day Off' ? '🏖️ ' : ''}{tournament.event_name}
               </span>
               {tournament.notes && (
                 <span style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', fontStyle:'italic', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>

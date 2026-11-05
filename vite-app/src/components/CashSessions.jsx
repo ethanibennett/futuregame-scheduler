@@ -175,7 +175,7 @@ function SessionForm({ bk, rooms, sessions, session, onSave, onCancel, busy, tok
         <Field label="Room" wide><RoomInput value={room} onChange={setRoom} rooms={rooms} /></Field>
         <Field label="Game"><GameSelect value={game} onChange={setGame} /></Field>
         <Field label="Stakes"><input value={stakes} maxLength={20} placeholder="e.g. 2/5" onChange={(e) => setStakes(e.target.value)} /></Field>
-        <Field label="Subheading" wide><input value={subtitle} maxLength={60} placeholder="Under the game on backer pages" onChange={(e) => setSubtitle(e.target.value)} /></Field>
+        <Field label="Subheading" wide><input value={subtitle} maxLength={60} placeholder="Shown under the game" onChange={(e) => setSubtitle(e.target.value)} /></Field>
         <Field label="Notes" wide note><Notes value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
         {more && (
           <>

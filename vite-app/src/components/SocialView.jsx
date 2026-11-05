@@ -714,17 +714,6 @@ export default function SocialView({
     </div>
   );
 
-  const shareSection = (
-    <>
-      <div className="dashboard-section-header social-section-gap">
-        <div className="dashboard-section-title">Share</div>
-      </div>
-      <div className="social-share-box">
-        <div className="social-cell">Social media integrations coming soon</div>
-      </div>
-    </>
-  );
-
   if (!hasBuddies && !hasGroups) {
     return (
       <div className="social-view">
@@ -735,7 +724,6 @@ export default function SocialView({
         <div className="social-empty">
           No connections yet. Search for friends above to get started.
         </div>
-        {shareSection}
       </div>
     );
   }
@@ -995,7 +983,6 @@ export default function SocialView({
       )}
 
       {/* Share section — social media integration placeholder */}
-      {shareSection}
 
       {/* Create Group Modal */}
       {showCreateGroup && createPortal(

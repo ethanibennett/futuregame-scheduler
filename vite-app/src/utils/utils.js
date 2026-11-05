@@ -501,6 +501,7 @@ export function deriveVenueInfo(v) {
     .replace(/\$[\d,.]+\s*(k|m|mil|million)?/gi, ' ')   // "$250,000", "$100K"
     .replace(/\b(19|20)\d{2}(\s*-\s*\d{2})?\b/g, ' ')   // "2026", "2026-27"
     .replace(/['’]\d{2}\b/g, ' ')                   // "'26"
+    .replace(/(\w)['’](\w)/g, '$1$2')               // "King's" is KINGS, not KING S
     .replace(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\b/gi, ' ')
     .replace(/[^\w\s&-]/g, ' ');
   // A lone "&" or "-" is not a word: "Borgata Hotel Casino & Spa" derived "BORGATA &", which is
@@ -1616,7 +1617,7 @@ export function formatSeasonLabel(tournaments) {
  * splash markup, which has to be static because it paints before any module
  * runs.
  */
-export const SEASON_FALLBACK = 'spring/summer 2026';
+export const SEASON_FALLBACK = 'the poker calendar';
 
 /**
  * The season label for screens that render before tournaments exist — the

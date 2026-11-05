@@ -2430,6 +2430,11 @@ function App() {
             : currentView === 'hands' ? <small>hands archive</small>
             : currentView === 'dashboard' ? <small>dashboard</small>
             : currentView === 'tracking' ? <small>bankroll</small>
+            : currentView === 'social' ? <small>social</small>
+            : currentView === 'staking' ? <small>staking</small>
+            : currentView === 'settings' ? <small>settings</small>
+            : currentView === 'admin' ? <small>admin</small>
+            : currentView === 'batches' ? <small>new events</small>
             : (seasonLabel ? <AlternatingSubtitle labels={[seasonLabel, 'scheduler']} /> : null)}
           {/* The Swiss theme's running head (theme-swiss.css; hidden in every other theme). */}
           <small className="sw-runhead">{swissRunningHead}</small>

@@ -215,9 +215,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     // ══ 1. the pull is off ═══════════════════════════════════════════════════════════════════
     console.log(`the pull is off (${W}x${H})`);
     srv = await bootWith({});
-    await test('without LEDGER_TOKEN: the section says the pull is off and why, and Fetch is disabled', async () => {
+    await test('without LEDGER_TOKEN: the section says the pull is off, names no secret, and Fetch is disabled', async () => {
       await openImport();
-      await waitText(sec(), /The pull is off on this server:\s*LEDGER_TOKEN is not set/);
+      await waitText(sec(), /The pull is off on this server\./);
+      assert.ok(!/LEDGER_TOKEN/.test(await sec().innerText()), 'the screen names no environment variable');
       assert.strictEqual(await sec().locator('button:has-text("Fetch from the dashboard")').isDisabled(), true);
       await shot('pull-off');
     });

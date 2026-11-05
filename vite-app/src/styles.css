@@ -16931,6 +16931,9 @@
     .qa-entry { box-sizing: content-box; height: calc(var(--subrow) * 5); padding-top: var(--subrow); }
     /* Type | Say (owner, 2026-10-16): two 17g buttons, 1g apart, across the 35g. */
     .qa-entry { display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 17)); column-gap: var(--gu); }
+    /* Play | Type | Say, for admins: three 11g buttons, 1g apart, across the 35g. Two rows here ran
+       into the fixed 5r and over the heading under it. */
+    .qa-entry.has-three { grid-template-columns: repeat(3, calc(var(--gu) * 11)); }
     .qa-entry > .qa-chip { width: 100%; }
     .qa-chip .qa-mic { flex: none; width: calc(var(--gu) * 1.5); height: calc(var(--gu) * 1.5); margin-right: calc(var(--gu) * 0.5); }
     .qa-speak { margin-bottom: var(--subrow); }
@@ -17462,6 +17465,8 @@
     .cal-event-row.is-detail .cal-event-chevron { display: none; }
     .cal-event-row.is-detail .cal-event-bar,
     .cal-event-row.is-detail .cal-venue-strip { cursor: default; }
+    /* A Personal row has one line, and its strip is as tall as the row: 8r holds "PERSONAL". */
+    .cal-event-row.is-personal:not(.open) { min-height: calc(var(--subrow) * 8); }
     @media (hover: hover) and (pointer: fine) {
       .cal-event-row.is-detail:hover { box-shadow: none; }
       .cal-event-row.is-detail:hover .cal-event-bar { background: none; }

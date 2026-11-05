@@ -790,9 +790,23 @@ function backerShell(html) {
       + '<meta name="referrer" content="no-referrer">\n'
       + `<meta name="build-version" content="${BUILD_VERSION}">\n</head>`);
 }
+// A link that could never be a backer's: a person followed it, so a page, not a bare "Not found". Says
+// the same as the page does for a link no roster knows (BackerPage.jsx).
+const BACKER_GONE_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer"><meta name="color-scheme" content="dark light"><title>futurega.me</title>
+<style>body{margin:0;padding:3rem 1.5rem;background:#f5f5f5;color:#1a1a1a;font-family:system-ui,sans-serif;line-height:1.5}
+h1{margin:0 0 .5rem;font:400 1.5rem Georgia,serif}p{margin:0;color:#666}
+@media(prefers-color-scheme:dark){body{background:#111;color:#eee}p{color:#999}}</style></head>
+<body><h1>This link isn&rsquo;t active</h1><p>Ask the player who sent it for a new one.</p></body></html>`;
 app.get('/b/:token', (req, res) => {
   const token = String(req.params.token || '');
-  if (!BACKER_TOKEN_RE.test(token)) return res.status(404).send('Not found');
+  if (!BACKER_TOKEN_RE.test(token)) {
+    res.set('Cache-Control', 'no-store');
+    res.set('X-Robots-Tag', 'noindex, nofollow');
+    res.set('Referrer-Policy', 'no-referrer');
+    return res.status(404).type('html').send(BACKER_GONE_HTML);
+  }
   let html;
   try {
     html = require('fs').readFileSync(path.join(__dirname, 'public-vite', 'index.html'), 'utf8');

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { fetchApi } from '../utils/api.js';
 import Card from './SolverCard.jsx';
 import GridBadge from './GridBadge.jsx';
@@ -380,6 +380,12 @@ export default function RazzTrainerView() {
   // nodes (in any game) use the generic action panel below.
   const isDrawNode = cat === 'draw' && state && state.phase === 'draw';
   const drawDecisionInTable = isDrawNode && heroOnTurn;
+  // On a phone the log grows street by street and pushes the decision below the fold: bring it just
+  // into view when it is the hero's turn. Nothing moves when it is already on screen.
+  const actionRef = useRef(null);
+  useEffect(() => {
+    if (heroOnTurn && actionRef.current) actionRef.current.scrollIntoView({ block: 'nearest' });
+  }, [heroOnTurn, state]);
 
   // ── render ──
   const gameName = GAME_LABEL[game] || game;
@@ -467,12 +473,12 @@ export default function RazzTrainerView() {
           Grid: 2r caps label, 1r, 5r buttons — 3 across on 9g + 2g + 9g + 2g + 9g,
           otherwise 2 across on 15g + 1g + 15g (content 3..34). ── */}
       {heroOnTurn && !drawDecisionInTable && (
-        <div className="hs-panel hs-stack" style={{ marginTop: 'var(--subrow)' }}>
+        <div ref={actionRef} className="hs-panel hs-stack" style={{ marginTop: 'var(--subrow)' }}>
           <div className="hs-t hs-cap" style={T(2)}>Your action {stepping ? '· …' : ''}</div>
           <div className={legalActions.length === 3 ? 'hs-cols3' : 'hs-cols'} style={{ '--hs-n': 2, rowGap: 'var(--subrow)' }}>
             {legalActions.map((a) => (
               <button key={a.id} className="hs-btn" onClick={() => pickAction(a.id)} disabled={stepping}
-                style={{ '--hs-h': 5, '--hs-edge': 'var(--accent)', fontSize: 'var(--fs-md)', cursor: stepping ? 'wait' : 'pointer', opacity: stepping ? 0.6 : 1 }}>
+                style={{ '--hs-h': 5, '--hs-edge': 'var(--accent)', fontSize: 'var(--fs-md)', paddingInline: 0, cursor: stepping ? 'wait' : 'pointer', opacity: stepping ? 0.6 : 1 }}>
                 <span className="hs-t" style={T(3)}>{a.label}</span>
               </button>
             ))}
@@ -629,11 +635,11 @@ function ProModeToggle({ on, onToggle, disabled, game }) {
           boxShadow: '0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,.3)',
         }} />
       </button>
-      <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>
+      {on && <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>
         Grade {streetLbl} {isDraw ? 'bet' : ''} decisions against an <b style={{ color: 'var(--text)' }}>exact GTO re-solve</b> instead
         of the blueprint bot. Much more accurate — but each {streetLbl} decision runs a full solve ({isDraw ? '~1–2s' : '~4–5s'}), so
         finishing a hand is slower. {isDraw ? 'Earlier draws and every draw decision' : 'Earlier streets'} stay on the blueprint grade.
-      </div>
+      </div>}
     </div>
   );
 }
@@ -662,7 +668,7 @@ function SeatLabel({ name, toAct, color }) {
 function ActionLog({ log, heroSeat, streetOf }) {
   if (!log || !log.length) return null;
   return (
-    <div className="hs-rule" style={{ maxHeight: R(17), overflowY: 'auto' }}>
+    <div className="hs-rule" style={{ maxHeight: R(18), overflowY: 'auto', paddingBottom: 'var(--subrow)', marginBottom: 'calc(var(--subrow) * -1)' }}>
       {log.map((e, i) => (
         <div key={i} className="hs-t hs-xs hs-mut" style={T(2, 2)}>
           <b style={{ color: e.seat === heroSeat ? 'var(--pos, #22c55e)' : 'var(--accent)' }}>
@@ -1397,8 +1403,8 @@ function SessionScoreboard({ session, onReset, gameName, game }) {
 function Stat({ label: lab, value, unit, tone }) {
   const color = tone === 'neg' ? 'var(--neg, #ef4444)' : tone === 'pos' ? 'var(--pos, #22c55e)' : 'var(--text)';
   return (
-    <div className="hs-box" style={{ '--hs-bg': 'var(--surface)', padding: 'var(--subrow) calc(var(--gu) * 2)' }}>
-      {/* wraps (2r lines) rather than clipping: the 5g text column fits "HANDS" but not "TOTAL EV-LOSS";
+    <div className="hs-box" style={{ '--hs-bg': 'var(--surface)', padding: 'var(--subrow) var(--gu)' }}>
+      {/* wraps (2r lines) rather than clipping: the text column fits "HANDS" but not "TOTAL EV-LOSS";
           the three boxes stretch to the tallest, which is whole r */}
       <div className="hs-t hs-cap" style={T(2, 2)}>{lab}</div>
       <div className="hs-t hs-md hs-bold hs-num hs-clip" style={{ ...T(3), color }}>

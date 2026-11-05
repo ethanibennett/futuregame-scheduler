@@ -522,7 +522,7 @@ export default function BackerPage({ token }) {
     fetch(`${API_URL}/backer/${token}/feed`, { cache: 'no-store' })
       .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then((d) => setFeed(d))
-      .catch(() => setFailed(true));
+      .catch((e) => setFailed(e && e.message === '404' ? 'gone' : true));
   }, [token]);
   useEffect(() => { load(); }, [load]);
   // After a Settled press: the feed again, without the skeleton in between.
@@ -550,7 +550,16 @@ export default function BackerPage({ token }) {
   }, [feed]);
 
   let body;
-  if (failed) {
+  // A link no roster knows, usually one replaced by a new link. The feed answers it as 200 with no name
+  // and no sessions (a real backer always has a name), and an ill-formed one as 404: nothing to retry.
+  if (failed === 'gone' || (feed && !feed.name && !(feed.events || []).length)) {
+    body = (
+      <section className="bp-message" aria-live="polite">
+        <h2 className="an-cell bp-message-title">This link isn&rsquo;t active</h2>
+        <p className="an-p">Ask the player who sent it for a new one.</p>
+      </section>
+    );
+  } else if (failed) {
     body = (
       <section className="bp-message" aria-live="polite">
         <h2 className="an-cell bp-message-title">This page did not load</h2>

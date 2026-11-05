@@ -862,7 +862,7 @@ export default function BankrollImportDashboard({ bk, onClose, onChanged }) {
           <p className="an-p bid-pull">
             {pull && pull.on
               ? <><strong>The pull is on.</strong> It reads the dashboard&rsquo;s export server to server; no file passes through a phone.{cr.committed ? ' A fetch after an import brings only what changed since.' : ''}</>
-              : <><strong>The pull is off on this server:</strong> {pull ? pull.why : 'unknown'}. It turns on once LEDGER_TOKEN is set on both Render services.</>}
+              : <><strong>The pull is off on this server.</strong> The server&rsquo;s log says why.</>}
           </p>
           <div className="bd-actions">
             <button type="button" className="bk-btn bk-btn--brand bid-w17" disabled={!pull || !pull.on || !!busy} onClick={doFetch}>

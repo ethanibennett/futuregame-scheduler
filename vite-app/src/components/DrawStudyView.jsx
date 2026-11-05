@@ -155,7 +155,7 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot }) {
       <h2 style={{ margin: '0 0 2px' }}>Draw study</h2>
       <p style={{ margin: '0 0 16px', opacity: 0.7, fontSize: 13 }}>
         Every betting and drawing option at one decision — including the ones the
-        blueprint cannot offer you. Click an action to take it and move on.
+        blueprint cannot offer you. Tap an action to take it and move on.
       </p>
 
       {/* ── inputs ───────────────────────────────────────────────────── */}
@@ -181,7 +181,7 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot }) {
               placeholder="none yet" />
           </label>
         )}
-        <label style={lbl}>Villain <span style={{ opacity: 0.55 }}>(optional)</span>
+        <label style={lbl}>Opponent <span style={{ opacity: 0.55 }}>(optional)</span>
           <input value={opp} onChange={(e) => setOpp(e.target.value)} style={inp}
             placeholder="sampled if blank" />
         </label>
@@ -244,7 +244,7 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot }) {
                   <tr key={s.i}>
                     <td style={{ ...td, width: 28, opacity: 0.5 }}>{s.i}</td>
                     <td style={{ ...td, width: 110 }}>
-                      seat {s.actor} {s.you ? <b>(you)</b> : <span style={{ opacity: 0.6 }}>(villain)</span>}
+                      seat {s.actor} {s.you ? <b>(you)</b> : <span style={{ opacity: 0.6 }}>(opponent)</span>}
                     </td>
                     <td style={{ ...td, fontFamily: 'ui-monospace, monospace', width: 90 }}>{s.action}</td>
                     <td style={{ ...td, fontSize: 12, opacity: s.guessed ? 1 : 0.55 }}>
@@ -264,7 +264,7 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot }) {
                   {data.heroBB !== null && <>You {data.heroBB >= 0 ? 'win' : 'lose'} {Math.abs(data.heroBB).toFixed(2)} BB.</>}
                 </div>
               : data.next && <div style={{ marginTop: 10 }}>
-                  <b>Next:</b> seat {data.next.seat} {data.next.you ? '(you)' : '(villain)'} at{' '}
+                  <b>Next:</b> seat {data.next.seat} {data.next.you ? '(you)' : '(opponent)'} at{' '}
                   {STREETS[data.next.street] || `street ${data.next.street}`} {data.next.phase}
                   {data.next.legal.length > 0 && <>
                     {' — '}<span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12.5 }}>
@@ -357,7 +357,7 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot }) {
             const why = !isLastDraw
               ? `Exact grading covers the LAST draw only. This is ${STREETS[t.street] || ('street ' + t.street)} ${t.phase}: earlier draws have further draws ahead of them.`
               : seat !== 0
-              ? 'Exact grading needs seat 0: seat 1 draws first, so only at seat 0 has the villain already drawn — which is what makes the opponent range a post-draw one.'
+              ? 'Exact grading needs seat 0: seat 1 draws first, so only at seat 0 has the opponent already drawn — which is what makes the opponent range a post-draw one.'
               : !bandOpts.length ? 'No explicit-discard options in the band.' : null;
             return (
               <div style={card}>
@@ -434,7 +434,7 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot }) {
               <div style={h3}>{uncertified ? 'These numbers are UNCERTIFIED' : 'Certified'}</div>
               <div style={{ fontSize: 13, marginBottom: 6 }}>{data.trust.note}</div>
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, opacity: 0.85 }}>
-                <li>Villain past your decision: {data.trust.villainContinuation}.</li>
+                <li>Opponent past your decision: {data.trust.villainContinuation}.</li>
                 <li>Dead cards: {data.trust.deadCards}.</li>
                 <li>
                   Error bar {data.trust.seCoversRangeAxis

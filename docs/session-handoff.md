@@ -40,6 +40,13 @@ the junction hides anything missing from git.
   a no-op in the belief. It would matter the moment `drawReweight` is enabled, and fail silently (its note to the solver
   repo). **Lesson: compare a Monte Carlo gap to the same input under another seed before believing it.** That control
   moves the worst row 4 to 6 chips, so read the study tool's figures with its band, not row by row.
+- **A screen-by-screen design pass, then its quick cleanup (2026-11-04).** Not taken yet, the owner's call: one training
+  experience built on Play a hand (the Hands tools still look like six apps), and one "selected" style, heading set and
+  desktop frame width. Traps from the pass: an unknown but well-formed `/b/` link gets feed 200 with no name and no events
+  (a test holds that), so the page says "This link isn't active" from that shape, and only an ill-formed one is a server
+  404. `position: sticky` in `.trainer-shell` stops short of the visible bottom and covered the hero's cards while every
+  measurement passed: look at the screenshot as well. A removed JSX const with a second use blanks the whole page for only
+  the users who reach it, so grep for every use.
 - **A note in the desktop bar's row moved the bar.** `.replayer-bar-note` was a flex sibling of the transport and the
   actions bar, and `snap-place` only re-places on the box's own resize, so a note appearing on the last street threw the
   bar 330 px left and off the grid, with its offset stale. The notes now sit out of the row (`.replayer-bar-notes`).
@@ -1717,10 +1724,11 @@ the `#h/` link.
 were true: the table was inside the viewport, and the furniture on it was on
 top of itself. The harness could not see it because the smoke hand's players
 are called **"Opp 1"** through **"Opp 5"** and the app's own
-`DEFAULT_OPP_NAMES` are **"Cristian Gutierrez"** and **"Keith McCormack"**. A
+`DEFAULT_OPP_NAMES` were **"Cristian Gutierrez"** and **"Keith McCormack"** (retired 2026-11-04: new
+hands now say "Opp 1" too, but people type real names, so test with long ones). A
 plaque is as wide as its name.
 
-**Any harness for the replayer must use `DEFAULT_OPP_NAMES`, not the shorthand
+**Any harness for the replayer must use long, real-length names, not the shorthand
 defaults.** `overlap.mjs` injects them at full length and reports every pair of
 table objects whose boxes intersect; zero is the pass condition.
 

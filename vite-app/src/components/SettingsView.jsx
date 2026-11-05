@@ -143,14 +143,10 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
             )}
           </div>
           <div className="settings-row settings-row--stack">
-            <span className="settings-row-label">Connect with a user</span>
+            <span className="settings-row-label">Connections</span>
             <p className="settings-help">
-              Send a request &mdash; if they accept, you both see each other's schedules.
+              Find people in Social. Once they accept, you both see each other's schedules.
             </p>
-            <form onSubmit={onSendShareRequest} className="settings-inline-row">
-              <input className="settings-debug-input settings-share-input" name="shareUsername" placeholder="Enter username" />
-              <button type="submit" className="btn btn-ghost btn-sm settings-btn"><span>Send</span></button>
-            </form>
             {pendingOutgoing && pendingOutgoing.length > 0 && (
               <div className="settings-people">
                 <span className="settings-people-hd">Pending</span>
@@ -311,7 +307,7 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
       <div className="settings-section">
         <div className="settings-about">
           <h3>futurega.me</h3>
-          <p>{seasonLabel || getStoredSeasonLabel()} &mdash; wsop tournament scheduler</p>
+          <p>{seasonLabel || getStoredSeasonLabel()}</p>
           <p className="settings-about-ver">v0.1.0</p>
         </div>
       </div>

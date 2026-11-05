@@ -258,8 +258,8 @@ export default function BankrollBackers({ bk }) {
     <section className="bd-section bl-locations bb-backers" aria-labelledby="bb-title">
       <h3 className="an-cell an-sec" id="bb-title">Backers</h3>
       <p className="an-p bb-note">
-        Read-only. Notify a result's backers from its edit form; add and edit backers on the dashboard app
-        until the bankroll merge moves that here. Each card shows what that backer's page shows.
+        Each card shows what that backer's page shows. Send a result's shares from its edit form; add
+        and edit backers in Staking, under Standing.
       </p>
 
       {state.status === 'error' && (

@@ -977,8 +977,6 @@ function nameBudgetFor(tableW, tableH, landscape) {
 
 
 // ── Player name helpers ──
-const DEFAULT_OPP_NAMES = ['Jason Blodgett', 'Keith McCormack', 'Alex Charron', 'Kevin DiPasquale', 'Cristian Gutierrez', 'Derek Nold', 'Anthony Hall', 'Aidan Long'];
-
 function getTableScanNames() {
   try {
     const raw = localStorage.getItem('tableScanPlayers');
@@ -1002,7 +1000,7 @@ function getSeatName(idx, heroIdx, heroName) {
     }
   }
   if (idx === 0) return heroName || 'Hero';
-  return DEFAULT_OPP_NAMES[idx - 1] || 'Opp ' + idx;
+  return 'Opp ' + idx;
 }
 
 // ── Create empty hand ──
@@ -5244,8 +5242,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       {/* Title dropped — the top-bar subtitle reads "hands archive" on this tab. */}
 
       {quickAdd && (
-        <div className="qa-entry">
-          {/* Two ways in (owner, 2026-10-16): type the hand, or say it. */}
+        <div className={'qa-entry' + (drillEnabled ? ' has-three' : '')}>
+          {/* Two ways in (owner, 2026-10-16): type the hand, or say it. Admins also get Play a hand. */}
           {drillEnabled && <button type="button" className="qa-chip" onClick={() => setMode('drill')}><span>Play a hand</span></button>}
           <button type="button" className="qa-chip" onClick={() => { setQuickVoice(false); setMode('quick'); }}><span>Type a hand</span></button>
           <button type="button" className="qa-chip" onClick={() => { setQuickVoice(true); setMode('quick'); }}>
@@ -9594,7 +9592,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             on this app. */}
         {((onSolveSpot && !canSolveSpot && !(onStudyDraw && drawStudyGame)) || (onStudyDraw && !canStudyDraw)) && <div className="replayer-bar-notes snap-place">
         {onSolveSpot && !canSolveSpot && !(onStudyDraw && drawStudyGame) && (
-          <div className="replayer-bar-note"><span className="rs-t">Solving is available for stud8 and razz spots.</span></div>
+          <div className="replayer-bar-note"><span className="rs-t">Solving covers Stud 8 and Razz.</span></div>
         )}
         {/* The same courtesy the Solve note gets: a disabled button with no
             reason is invisible on touch, where most of this app is used. The two
@@ -9602,7 +9600,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         {onStudyDraw && !canStudyDraw && (
           <div className="replayer-bar-note"><span className="rs-t">{drawStudyGame
             ? drawStudySpot && drawStudySpot.refused
-            : 'Draw study covers fixed-limit 2-7 TD, A-5 TD and Badugi. Pot-limit and no-limit draw games have a different betting tree.'}</span></div>
+            : 'Draw study covers fixed-limit 2-7 TD, A-5 TD and Badugi.'}</span></div>
         )}
         </div>}
         {/* 79: the exports, in the sheet grammar the app already uses. */}

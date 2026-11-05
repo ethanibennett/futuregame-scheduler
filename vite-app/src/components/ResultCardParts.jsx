@@ -15,7 +15,7 @@ const readRange = () => { try { const v = localStorage.getItem(RANGE_KEY); retur
  * remembered on this device. A range with nothing in it says so and keeps the strip, so the way back
  * is right there. Two or more sessions in all before it draws at all.
  */
-export function BankrollGraph({ events, label, control = null }) {
+export function BankrollGraph({ events, label, control = null, hideTotal = false }) {
   const [range, setRange] = React.useState(readRange);
   const today = getToday();
   const pick = (k) => { setRange(k); try { localStorage.setItem(RANGE_KEY, k); } catch { /* private mode */ } };
@@ -35,7 +35,7 @@ export function BankrollGraph({ events, label, control = null }) {
   }
   return (
     <div className="tr-chart">
-      <BackerChart series={series} label={label} today={today} baseNote="start" control={<>{strip}{control}</>} />
+      <BackerChart series={series} label={label} today={today} baseNote="start" hideTotal={hideTotal && range === 'all'} control={<>{strip}{control}</>} />
     </div>
   );
 }

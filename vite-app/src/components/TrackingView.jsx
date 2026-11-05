@@ -171,7 +171,7 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
       <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
         <label>Subheading (optional)</label>
         <input type="text" value={subtitle} maxLength={60} onChange={e => setSubtitle(e.target.value)}
-          placeholder="Under the game on backer pages"
+          placeholder="Shown under the game"
           style={{padding:'var(--space-ml) var(--space-lg)',border:'var(--bw-1) solid var(--border)',borderRadius:'var(--radius-sm)',
             background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.325)',width:'100%'}} />
       </div>
@@ -771,7 +771,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   // tab. Cash sessions and expenses hold it from their own views.
   const tournamentsHalf = !(isAdmin && resultsKind !== 'tournaments');
   const dashSection = bk.enabled && resultsKind !== 'tournaments' && resultsKind !== 'cash' && resultsKind !== 'all';
-  useHideBankrollFab((tournamentsHalf && (showAddForm || !!intentForm || !!pendingFormId || !!editingId)) || (showTaxReport && isAdmin));
+  useHideBankrollFab(!isAdmin || (tournamentsHalf && (showAddForm || !!intentForm || !!pendingFormId || !!editingId)) || (showTaxReport && isAdmin));
 
   if (showTaxReport && isAdmin) {
     return (
@@ -840,10 +840,10 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
           <div className="tracking-summary-head">
             <span className="tr-seat tr-seat-3" style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Profit</span>
             {exchangeRates && (
-              <select value={displayCurrency} onChange={e => onCurrencyChange(e.target.value)}
+              <select aria-label="Show amounts in" title="Show amounts in" value={displayCurrency} onChange={e => onCurrencyChange(e.target.value)}
                 style={{fontSize:'calc(var(--gu) * 1.031)',padding:'0 var(--space-sm)',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 0.75)',
                   background:'var(--surface)',color:'var(--text)',cursor:'pointer',fontWeight: 'var(--fw-bold)'}}>
-                <option value="NATIVE">Native</option>
+                <option value="NATIVE">As played</option>
                 {(exchangeRates ? Object.keys(CURRENCY_CONFIG) : ['USD','EUR']).map(c => (
                   <option key={c} value={c}>{(CURRENCY_CONFIG[c]||{}).symbol} {c}</option>
                 ))}
@@ -883,7 +883,8 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
         </div>
       )}
 
-      <BankrollGraph events={chartEvents} label="Profit" />
+      {/* The card above already says the profit: the chart under it does not say it again. */}
+      <BankrollGraph events={chartEvents} label="Over time" hideTotal={trackingData.length > 0} />
 
       {/* Analytics BETA: app admins only (staged rollout); everyone else sees no change. */}
       {isAdmin && trackingData.length > 0 && <AnalyticsLauncher bankroll={bk.selected} />}
