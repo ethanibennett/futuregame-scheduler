@@ -1,3 +1,4 @@
+import { seasonLabelOf } from './season-label.js';
 // ── Utils ─────────────────────────────────────────────────
 // Converted from public/js/utils.js — window globals removed, ES module exports added
 
@@ -1560,15 +1561,6 @@ export function normaliseDate(d) {
   return y + '-' + m + '-' + day;
 }
 
-/* Abbreviated: the season label sits under the wordmark in the header, where
-   "september-december 2026" is the longest string in a block that is otherwise
-   a logotype. Three letters each, so a two-month range is a fixed width no
-   matter which months it spans. Used only by formatSeasonLabel. */
-const MONTH_NAMES = [
-  'jan', 'feb', 'mar', 'apr', 'may', 'jun',
-  'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
-];
-
 /**
  * The header subtitle: the span the UPCOMING events cover, rather than a
  * hardcoded season that goes stale as the feed window moves.
@@ -1587,47 +1579,31 @@ const MONTH_NAMES = [
  * string comparison, with no Date parsing and no timezone rollover.
  *
  * Returns '' when there is nothing to describe. The pre-login screens have no
- * tournament data of their own — they read the last computed value back via
- * getStoredSeasonLabel().
+ * tournament data of their own: the server writes the same range into the page
+ * (lib/season-label.js), which getStoredSeasonLabel() reads.
  */
 export function formatSeasonLabel(tournaments) {
   if (!Array.isArray(tournaments) || tournaments.length === 0) return '';
-  const today = getToday();
-  let min = '';
-  let max = '';
-  for (const t of tournaments) {
-    const d = normaliseDate(t && t.date);
-    if (!d || d < today) continue;
-    if (!min || d < min) min = d;
-    if (!max || d > max) max = d;
-  }
-  if (!min) return '';
-  const fromYear = min.slice(0, 4);
-  const toYear = max.slice(0, 4);
-  const fromMonth = MONTH_NAMES[Number(min.slice(5, 7)) - 1];
-  const toMonth = MONTH_NAMES[Number(max.slice(5, 7)) - 1];
-  if (!fromMonth || !toMonth) return '';
-  if (fromYear !== toYear) return `${fromMonth} ${fromYear}-${toMonth} ${toYear}`;
-  return fromMonth === toMonth ? `${fromMonth} ${fromYear}` : `${fromMonth}-${toMonth} ${fromYear}`;
+  return seasonLabelOf(tournaments.map((t) => normaliseDate(t && t.date)), getToday());
 }
 
 /**
- * The wording the pre-login screens fall back to before any feed has loaded on
- * this device. Kept in step with the same literal inlined in index.html's
- * splash markup, which has to be static because it paints before any module
- * runs.
+ * The wording when no date range is to be had: no events upcoming, or the native
+ * app's first launch, whose page ships in the app. Kept in step with the same
+ * literal inlined in index.html, which the server replaces when it has a range.
  */
 export const SEASON_FALLBACK = 'the poker calendar';
 
 /**
- * The season label for screens that render before tournaments exist — the
- * login screen, the shared-schedule states, and the splash. App.jsx persists
- * formatSeasonLabel()'s output on every load, so this is the previous run's
- * answer: correct except on a first-ever visit, and one visit stale on the day
- * the feed window rolls into a new month.
+ * The season label for screens that render before tournaments exist: the login
+ * screen, the shared-schedule states, and the splash. On the web the server has
+ * written the current range into the page. The native app's page ships in the
+ * app, so there it is the previous run's answer, which App.jsx persists on every
+ * load and AuthScreen refreshes from the server.
  */
 export function getStoredSeasonLabel() {
-  return localStorage.getItem('seasonLabel') || SEASON_FALLBACK;
+  const meta = typeof document !== 'undefined' && document.querySelector('meta[name="season-label"]');
+  return (meta && meta.content) || localStorage.getItem('seasonLabel') || SEASON_FALLBACK;
 }
 
 export function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }

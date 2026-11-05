@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from './Icon.jsx';
 import { THEME_ORDER, THEME_LABEL, THEME_ICON, getStoredSeasonLabel } from '../utils/utils.js';
 import { nextTheme } from '../utils/theme.js';
+import { API_URL } from '../utils/api.js';
 
 // The sign-up's "How did you hear about us?" choices; the values are lib/growth.js HEARD.
 const HEARD_OPTIONS = [
@@ -14,6 +15,20 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
   const [isRegister, setIsRegister] = useState(!!initialRegister);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
   const nextThemeLabel = THEME_LABEL[nextTheme(theme)];
+  const [season, setSeason] = useState(getStoredSeasonLabel);
+  // The Schedule's date range. On the web it is already in the page; the native app's page ships in the
+  // app, so it asks, and a failed ask leaves the last label it knew.
+  useEffect(() => {
+    if (document.querySelector('meta[name="season-label"]')) return undefined;
+    let on = true;
+    fetch(`${API_URL}/public/live-summary`).then((r) => (r.ok ? r.json() : null)).then((d) => {
+      if (!on || !d || !d.seasonLabel) return;
+      setSeason(d.seasonLabel);
+      try { localStorage.setItem('seasonLabel', d.seasonLabel); } catch { /* private mode */ }
+      document.title = `futurega.me | ${d.seasonLabel}`;
+    }).catch(() => {});
+    return () => { on = false; };
+  }, []);
 
   return (
     <div className="auth-wrap">
@@ -25,7 +40,7 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
         </div>
         <div className="auth-logo">
           <h1>futurega.me</h1>
-          <p>{getStoredSeasonLabel()}</p>
+          <p>{season}</p>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}

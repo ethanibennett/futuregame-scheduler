@@ -40,6 +40,10 @@ the junction hides anything missing from git.
   a no-op in the belief. It would matter the moment `drawReweight` is enabled, and fail silently (its note to the solver
   repo). **Lesson: compare a Monte Carlo gap to the same input under another seed before believing it.** That control
   moves the worst row 4 to 6 chips, so read the study tool's figures with its band, not row by row.
+- **Sign-in and the tab title show the Schedule's date range (owner, 2026-11-04).** A first-time visitor has no events, so
+  the server works it out from the same rows (`lib/season-label.js`, which `npm run test:season-label` holds to the client's
+  `utils/season-label.js`) and writes it into the page. The native app's page ships in the app, so its sign-in asks
+  `/api/public/live-summary` (`seasonLabel`). "the poker calendar" remains the wording only when there is no range to show.
 - **A screen-by-screen design pass, then its quick cleanup (2026-11-04).** Not taken yet, the owner's call: one training
   experience built on Play a hand (the Hands tools still look like six apps), and one "selected" style, heading set and
   desktop frame width. Traps from the pass: an unknown but well-formed `/b/` link gets feed 200 with no name and no events

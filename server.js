@@ -978,10 +978,28 @@ app.get('/api/schedule/:token/upcoming', (req, res) => {
 
 // Serve index.html with injected build version to bust any cache
 const BUILD_VERSION = Date.now().toString();
+// The Schedule header's date range (lib/season-label.js), for the screens before sign-in. Ten minutes is
+// plenty for a range in months, and every page load asks.
+let seasonLabelCache = null;
+function currentSeasonLabel() {
+  const now = Date.now();
+  if (seasonLabelCache && now - seasonLabelCache.at < 10 * 60e3) return seasonLabelCache.label;
+  let label = '';
+  try { label = require('./lib/season-label').currentSeasonLabel(db, hiddenFeedIds); } catch (e) { return ''; } // the database is not up yet
+  if (label) seasonLabelCache = { at: now, label };
+  return label;
+}
 function serveIndex(req, res) {
   const fs = require('fs');
   let html = fs.readFileSync(path.join(__dirname, 'public-vite', 'index.html'), 'utf8');
   html = html.replace('</head>', `<meta name="build-version" content="${BUILD_VERSION}">\n</head>`);
+  // In the page itself, so a first-time visitor's tab, splash and sign-in are right from the first paint.
+  const season = currentSeasonLabel();
+  if (season) {
+    html = html.replace(/<title>[^<]*<\/title>/, `<title>futurega.me | ${season}</title>`)
+      .replace(/(id="splash-season"[^>]*>)[^<]*/, `$1${season}`)
+      .replace('</head>', `<meta name="season-label" content="${season}">\n</head>`);
+  }
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
@@ -1111,7 +1129,8 @@ app.get('/api/public/live-summary', (req, res) => {
     const id = String(process.env.APP_STORE_ID || '').trim(), pt = String(process.env.APP_STORE_PT || '').trim();
     const appStore = /^\d{6,12}$/.test(id) && /^[A-Za-z0-9]{3,32}$/.test(pt) ? { id, pt } : null;
     res.set('Cache-Control', 'public, max-age=600');
-    res.json({ ...liveSummaryCache.body, appStore });
+    // seasonLabel: for the native app's sign-in, whose page ships in the app and so has none in it.
+    res.json({ ...liveSummaryCache.body, appStore, seasonLabel: currentSeasonLabel() });
   } catch (e) {
     console.error('[live-summary]', e.message);
     res.status(500).json({ error: 'Something went wrong' });
