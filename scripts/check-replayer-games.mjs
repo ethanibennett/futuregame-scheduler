@@ -110,6 +110,22 @@ function fillerPool(plan, shortDeck) {
   return out;
 }
 
+// Every hand name at the showdown has to be on the screen and whole: the sentence the replay builds to. A name wider
+// than its plaque used to run off the left edge at a side seat, and the name cuts to an ellipsis at its cap.
+async function handNameTrouble(p) {
+  return p.evaluate(() => {
+    const vw = document.documentElement.clientWidth;
+    return [...document.querySelectorAll('.replayer-seat-hand-name')].flatMap((el) => {
+      const r = el.getBoundingClientRect();
+      const text = el.textContent.trim();
+      const out = [];
+      if (r.left < 0 || r.right > vw) out.push(`"${text}" runs off the screen (${r.left.toFixed(1)} to ${r.right.toFixed(1)} of ${vw})`);
+      if (el.scrollWidth > el.clientWidth + 1) out.push(`"${text}" is cut short (${el.scrollWidth} wide in ${el.clientWidth})`);
+      return out;
+    });
+  });
+}
+
 async function runRow(browser, row) {
   const res = { row: row.label || row.name, game: row.game, gameType: row.gameType, rare: !!row.rare, steps: 0, problems: [], notes: [] };
   const problem = (m) => res.problems.push(m);
@@ -375,6 +391,7 @@ async function runRow(browser, row) {
       if (end.length === SEATS && Math.abs(total - expectTotal) >= 1) problem(`chips do not balance: ${total} on the table, ${expectTotal} at the start`);
     }
     if (end.length !== SEATS) problem(`${end.length} seats at a ${SEATS}-handed table`);
+    for (const t of await handNameTrouble(p)) problem('hand name ' + t);
     if (cfg.betting && BETTING[row.structure] && BETTING[row.structure] !== cfg.betting) problem(`wrong betting: the row says ${row.structure}, it plays ${cfg.betting}`);
     if (OUT) await p.screenshot({ path: path.join(OUT, (row.label || row.name).replace(/[^\w]+/g, '-') + '.png') });
 
@@ -590,6 +607,7 @@ if (!only || /fixtures/i.test(only)) {
       const total = stacks.reduce((a, s) => a + (s.allIn ? 0 : num(s.text)), 0);
       // Stacks read to the cent on a cash table, and whole on the rest.
       if (start && Math.abs(total - start) > Math.max(2, start * 0.0005)) res.problems.push(`chips do not balance: ${start} at the start, ${total} at the end (${stacks.map((s) => s.text).join(' ')})`);
+      for (const t of await handNameTrouble(p)) res.problems.push('hand name ' + t);
       await p.locator('button:has-text("Back")').first().click({ force: true });
       await p.waitForTimeout(450);
     } catch (e) {

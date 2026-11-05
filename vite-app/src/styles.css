@@ -6422,7 +6422,8 @@
       position: absolute;
       left: 50%;
       top: 100%;
-      transform: translateX(-50%);
+      /* --hn-x, not a bare -50%: showdownRevealCentred holds its last frame, so its transform outlives this one. */
+      transform: translateX(var(--hn-x, -50%));
       /* 48: the sentence the entire replay is building to was set at
          --fs-2xs — smaller than the app's smallest body text — under the one
          plaque the winner shimmer is drawing the eye to. */
@@ -6466,12 +6467,12 @@
          here, so "Hi: Aces Up / Lo: 7-5-4-3-2" rendered as one 30-character
          strip across the felt at the exact moment the split is the result. */
       margin-top: 0.17em;
-      /* Measured at showdown across every short name the engine emits: the
-         longest, "Two Pair, Kings & Nines", is 126px against this 130px cap on
-         a phone — four pixels of room. white-space: pre cannot wrap, so a
-         longer name would spill past its own background rather than reflow.
-         The ellipsis bounds that: still one line, just a truncated one. */
-      max-width: min(calc(var(--subrow) * 18.75), 34cqmin);
+      /* In the same unit as the type (cqmin), so the cap scales with the words. It also took the phone's row
+         height (subrow * 18.75) and a smaller 34cqmin: on a desktop table, type twice the size met the phone's cap,
+         and nearly every name at a showdown was cut ("Hi: Straight, 7-…"). Measured: "Straight Flush, Q-high" is
+         12.7em, so the longest name the engine has, "Hi: Straight Flush, Q-high", is about 15em = 45cqmin.
+         white-space: pre cannot wrap; the ellipsis is only a bound now. check:replayer-games fails on a cut name. */
+      max-width: 48cqmin;
       overflow: hidden;
       text-overflow: ellipsis;
       box-shadow: var(--elev-1);
@@ -6479,6 +6480,10 @@
     /* A line per board (Top / Bottom): a size smaller, so two lines stay about a plaque wide and a side
        seat's label stays on the screen. */
     .replayer-seat-hand-name.is-boards { font-size: clamp(7px, 2.3cqmin, 18px); }
+    /* A side seat's plaque is anchored by its outer edge so a longer name grows inward; its hand name does the
+       same. Centred under the plaque, a name wider than the plaque ran off the screen ("Hi: Straight, 7-high"). */
+    .replayer-seat.seat-edge-left .replayer-seat-hand-name { left: 0; --hn-x: 0; }
+    .replayer-seat.seat-edge-right .replayer-seat-hand-name { left: auto; right: 0; --hn-x: 0; }
     /* Who took each board (HandReplayerView boardWinnerTags): a tag just right of its row, in the hand
        name's colours and face, so the board and its winner read as one line. Out of the row's flow, so
        the row stays centred on the felt. */
@@ -8069,8 +8074,8 @@
        as the action badge: the winner's hand name has been off-centre by half
        its width at the one moment the whole replay is building to. */
     @keyframes showdownRevealCentred {
-      0%   { opacity:0; transform:translateX(-50%) translateY(calc(var(--subrow) * 0.75)); }
-      100% { opacity:1; transform:translateX(-50%) translateY(0); }
+      0%   { opacity:0; transform:translateX(var(--hn-x, -50%)) translateY(calc(var(--subrow) * 0.75)); }
+      100% { opacity:1; transform:translateX(var(--hn-x, -50%)) translateY(0); }
     }
     .replayer-seat.winner .replayer-seat-hand-name {
       animation: showdownRevealCentred var(--dur-slow) var(--ease-label) 0.80s both;

@@ -40,6 +40,7 @@ the junction hides anything missing from git.
   a no-op in the belief. It would matter the moment `drawReweight` is enabled, and fail silently (its note to the solver
   repo). **Lesson: compare a Monte Carlo gap to the same input under another seed before believing it.** That control
   moves the worst row 4 to 6 chips, so read the study tool's figures with its band, not row by row.
+- **A hand's name at the showdown stays whole and on screen (2026-11-05).** The iPhone simulator caught what the guards could not (the clipping guard never reaches a replay's end): long names ran off a side seat's edge, the cap ellipsised nearly every desktop name, and a winning side seat's name stayed off screen because `showdownRevealCentred` holds its last frame (`--hn-x` now carries the offset through both). `check:replayer-games` fails on any of it, every game and every fixture.
 - **Hands is open to everyone, and every game on offer is tested (owner, 2026-11-05).** `check:replayer-games` found: new hands
   saved with id 0 (`last_insert_rowid()` read after `saveDatabase()`, which resets it, so editing made a second copy: `test:hand-save`);
   2-7 Razz paying by Razz rules; No Limit Omaha, No Limit and Limit Big O, No Limit 5-Card Draw and A-5 Single Draw played by the
