@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseCardNotation as P, GAME_EVAL, evaluateShowdown, scoreHalves, halvesWinnersAmong, pipTotal, blackjackTotal,
-  bestOmajack, computePotAwards,
+  bestOmajack, computePotAwards, halvesHandName,
 } from '../poker-engine.js';
 
 /* Who took what, heads up: [[seat, 'hi'], [seat, 'lo']] for each half won, 'chop' when nobody could win either. */
@@ -120,6 +120,12 @@ test('Stud Hi/Lo Regular: any low plays', () => {
   const noEight = 'Kd9h7s6c4d3hJc', fullHouse = 'AhAdAsKhKdKsQc';
   assert.deepEqual(halves('Stud Regular', fullHouse, noEight), SPLIT);
   assert.deepEqual(halves('Stud 8', fullHouse, noEight), [[0, 'hi']]);
+});
+
+test('a hand is named once', () => {
+  const cfg = GAME_EVAL.Razzdugi;
+  const s = scoreHalves(cfg, P('2h3d7s8cThJdQh'), []);
+  assert.equal(halvesHandName(cfg, s, false, true, true), 'Badugi: 8 7 3 2');
 });
 
 test('an odd chip goes to half A', () => {

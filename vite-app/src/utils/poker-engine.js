@@ -428,9 +428,11 @@ export function halvesWinnersAmong(cfg, evals, players) {
 /* A hand's name at the showdown, one line per half it won. Won neither: the first half it has. */
 export function halvesHandName(cfg, s, wonHi, wonLo, useShort) {
   const nm = (ev) => (useShort ? (ev.shortName || ev.name) : ev.name);
+  // "Badugi: 8 7 3 2", not "Badugi: 8 7 3 2 Badugi".
+  const said = (label, ev) => { const n = nm(ev); return label + ': ' + (n.endsWith(' ' + label) ? n.slice(0, -label.length - 1) : n); };
   const parts = [];
-  if (s.hiEv && wonHi) parts.push(cfg.labels[0] + ': ' + nm(s.hiEv));
-  if (s.loEv && wonLo) parts.push(cfg.labels[1] + ': ' + nm(s.loEv));
+  if (s.hiEv && wonHi) parts.push(said(cfg.labels[0], s.hiEv));
+  if (s.loEv && wonLo) parts.push(said(cfg.labels[1], s.loEv));
   if (parts.length) return parts.join('\n');
   if (s.hiEv) return nm(s.hiEv);
   return s.loEv ? nm(s.loEv) : null;
