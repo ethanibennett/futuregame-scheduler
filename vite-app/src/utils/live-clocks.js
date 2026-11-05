@@ -12,7 +12,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { fetchApi } from './api.js';
-import { parseTournamentTime } from './utils.js';
+import { parseLateRegEnd, parseTournamentTime } from './utils.js';
 
 /** How long after its start an event is worth asking the room's clock about. A Day 1 that starts
  *  at 4 PM plays past 2 AM, so this is NOT "today's events": until 2026-10-23 a card asked only
@@ -143,11 +143,12 @@ export function liveView(c) {
 /** The field on the room's clock, for the card's live row: "187 left of 412", or whichever half the
  *  room publishes. Null when it publishes neither; a 0 means not reported yet, never an empty event.
  *  Nobody is out yet (left = entries), or a left above the entries, reads as the entries alone.
- *  Bravo gives its entries only: its NumRemaining is not who is left. Measured 2026-11-05 at Borgata,
- *  the Deepstack's 218 entries at Level 4 read 3 remaining, then 63 a few minutes later, rising. */
-export function clockFieldLabel(c) {
+ *  Players left only once late reg is over (owner, 2026-11-05: `regOver`, see lateRegOver): before
+ *  then the rooms' figure is not who is left. Measured the same day at Borgata on Bravo, the Deepstack's
+ *  218 entries at Level 4 read 3 remaining, then 63 a few minutes later, rising. */
+export function clockFieldLabel(c, regOver = false) {
   const entries = c && Number(c.entries) > 0 ? Number(c.entries) : null;
-  const left = c && c.source !== 'bravo' && Number(c.playersLeft) > 0 ? Number(c.playersLeft) : null;
+  const left = regOver && c && Number(c.playersLeft) > 0 ? Number(c.playersLeft) : null;
   const n = (v) => v.toLocaleString('en-US');
   if (entries && left && left < entries) return `${n(left)} left of ${n(entries)}`;
   if (entries) return `${n(entries)} ${entries === 1 ? 'entry' : 'entries'}`;
@@ -192,6 +193,15 @@ export function clockRegEnd(t, live) {
   if (!levelSecs) return null;
   const secs = live.remaining + (closeAt - live.level - 1) * levelSecs;
   return new Date(Date.now() + secs * 1000).toISOString();
+}
+
+/** Is late registration known to be over, from the real clock first, then the event's own close?
+ *  False when nobody can say: an unknown close never counts as closed. */
+export function lateRegOver(t, live, now = Date.now()) {
+  const end = clockRegEnd(t, live) || (t && t.late_reg_end);
+  if (!end) return false;
+  const ms = parseLateRegEnd(end, t.date);
+  return !Number.isNaN(ms) && now > ms;
 }
 
 /** "17:04" / "1:02:30". */

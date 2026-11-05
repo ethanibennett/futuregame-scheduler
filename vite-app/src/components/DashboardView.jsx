@@ -26,7 +26,7 @@ import useHomeNumbers from './HomeNumbers.jsx';
 import HomeBankrollLine from './HomeBankrollLine.jsx';
 import HomePeriod from './HomePeriod.jsx';
 import { resolve as resolveLayout, bankrollAbovePeriod } from '../utils/home-layout.js';
-import { useLiveClocks, liveView, clockStartMs as clockStartFrom, clockRegEnd, clockFieldLabel, isCompleted } from '../utils/live-clocks.js';
+import { useLiveClocks, liveView, clockStartMs as clockStartFrom, clockRegEnd, clockFieldLabel, lateRegOver, isCompleted } from '../utils/live-clocks.js';
 import { hasVenueMap, venueRoomName } from '../utils/venue-place.js';
 import { openVenueMap } from '../utils/venue-map/open.js';
 import './home.css';
@@ -837,7 +837,7 @@ export default function DashboardView({
           </div>
         )}
         {/* The boxes above carry the rest of the room's clock: its field, where the room publishes it. */}
-        {isExpanded && live && clockFieldLabel(live) && <div className="dash-live-field"><span className="dash-t">{clockFieldLabel(live)}</span></div>}
+        {isExpanded && live && clockFieldLabel(live, lateRegOver(event, live)) && <div className="dash-live-field"><span className="dash-t">{clockFieldLabel(live, lateRegOver(event, live))}</span></div>}
 
         {event._type === 'bagged' && (() => {
           const restartT = (tournaments || []).find(t =>

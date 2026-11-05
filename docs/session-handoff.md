@@ -23,9 +23,9 @@ providers already sent `entries` and `playersLeft`; nothing on screen read them.
 - **A card with a clock grows when the answer lands.** The row moved off the card's top line, so a card is 4r taller
   once its clock answers, ~250 ms after it comes within 200px of the screen. Scrolling up through running events can
   therefore shift the list by whole rows. Not measured on a phone; the owner has been told.
-- **Bravo shows entries only.** Its `NumRemaining` is not players left: Borgata's Deepstack (218 entries, Level 4) read 3,
-  then 63 minutes later, and its Mini Main 5 of 27 at Level 1. PokerAtlas and WSOP+ read sensibly (178/134, 68/57).
-  `clockFieldLabel` drops it; the server still passes the raw figure.
+- **Players left only once late reg is over** (owner), on every provider, via `lateRegOver`; an unknown close counts as
+  open. Bravo's `NumRemaining` is not who is left before then: Borgata's Deepstack (218 entries, Level 4) read 3, then 63
+  minutes later, and its Mini Main 5 of 27 at Level 1. Not yet seen: Bravo's figure after a close at a room like Borgata.
 - **Trap:** the closed card's detail panel is always in the DOM at height 0, so anything rendered there needs `open` too,
   or it counts twice in a measurement that only tests its own height.
 - **Seen, not touched:** a name over two lines shows part of a third line under the clamp on any Schedule card (the

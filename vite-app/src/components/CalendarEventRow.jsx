@@ -14,7 +14,7 @@ import {
   VENUE_TO_SERIES, VENUE_BRAND_VAR, isPOYEligible, calculatePOYPoints, isSixMax,
   HAND_CONFIG, HAND_CONFIG_DEFAULT, splitEventStage, formatChips, getVenueCoords, getToday,
 } from '../utils/utils.js';
-import { registerClock, useClockStore, useSecondTick, liveView, clockRegEnd, clockFieldLabel, fmtClock, isCompleted, clockAskable } from '../utils/live-clocks.js';
+import { registerClock, useClockStore, useSecondTick, liveView, clockRegEnd, clockFieldLabel, lateRegOver, fmtClock, isCompleted, clockAskable } from '../utils/live-clocks.js';
 import { API_URL } from '../utils/api.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -304,13 +304,13 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, co
 
 // ── Live clock row (running events) ──
 // Everything the room's clock says, on one row at the card's foot (owner, 2026-11-05): the level,
-// the blinds, the time left, and the entries and players left where the room publishes them. A break
+// the blinds, the time left, the entries, and the players left once late reg is over. A break
 // shows "Break" in the blinds' place; a paused clock shows "Paused" in the time's. Open, the row
 // moves down into the detail, under the late-reg bar.
-function ClockRow({ live }) {
+function ClockRow({ live, tournament }) {
   const blinds = live.onBreak ? 'Break'
     : `${formatChips(live.sb)}/${formatChips(live.bb)}${live.ante ? '/' + formatChips(live.ante) : ''}`;
-  const field = clockFieldLabel(live);
+  const field = clockFieldLabel(live, lateRegOver(tournament, live));
   return (
     <div className="cal-live-row" title="Live tournament clock">
       <span className="cal-live-level">Level {live.level}</span>
@@ -738,7 +738,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                 )}
               </div>
               {showMiniLateReg && !open && <MiniLateRegBar completed={completed} lateRegEnd={(live && clockRegEnd(tournament, live)) || tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />}
-              {live && !open && <ClockRow live={live} />}
+              {live && !open && <ClockRow live={live} tournament={tournament} />}
             </>
           )}
         </div>
@@ -918,7 +918,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                       then the stored late_reg_end. Reading only late_reg_end, an event whose
                       close came from the clock alone lost its bar the moment it was expanded. */}
                   <LateRegBar completed={completed} lateRegEnd={(live && clockRegEnd(tournament, live)) || tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />
-                  {live && open && <ClockRow live={live} />}
+                  {live && open && <ClockRow live={live} tournament={tournament} />}
 
                   {buddyEvents && buddyEvents[tournament.id] && buddyEvents[tournament.id].length > 0 && (
                     <BuddyAvatarRow buddies={buddyEvents[tournament.id]} liveUpdates={buddyLiveUpdates}
