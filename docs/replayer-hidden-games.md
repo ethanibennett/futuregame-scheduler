@@ -36,13 +36,28 @@ only choose between pairs that make the same one.
   best high; Poker Game Database says the best high takes it. One switch: `neither` in `GAME_EVAL`.
 - **Ari's qualifiers:** a pair of 9s and 8-or-better, from Cardplayer Lifestyle's "the same" as its Archie, which is 9s.
 - **"Dramaha 0" is Dramaha Zero,** fewest points. The name is the picker's; the rule is Card Player's.
-- **Odd chip:** to the first half listed (Omaha, razz, 2-7, high). APT says so for Razzdugi and Razzdeucy, and for Archie
-  gives it to the high; the Dramaha and Omajack sources do not say.
 - **Courchevel is high only and five hole cards.** PokerListings' page says four once, under a heading saying five; the
   others say five. A hi-lo Courchevel exists and is not offered.
-- **Dramaha has one row, pot limit.** Card Player also writes up limit Dramaha.
 - **No limit on cards drawn in Dramaha 49.** "Draw2maha 49" caps it at two; the replayer records what was thrown and does
   not enforce a cap.
+
+## Decided by the owner
+
+- **Limit Dramaha** (2026-11-05): every Dramaha row has a Limit row beside its Pot Limit one (`L Dramaha Hi`, `L Dramaha 2-7`,
+  `L Dramaha 49`, `L Dramaha 0`, `L Dramadugi`), with the same rules. The small bet before the flop and on it, then the draw,
+  then the big bet on the turn and river (Barge rulebook).
+- **The odd chip** (2026-11-05: "always goes to the hand with the most unique cards"): read as the half using the most of the
+  player's own cards, not the table's (`oddChipToLo` in `poker-engine.js`). Level, it stays with the high half.
+
+  | Game | Takes the odd chip | Own cards |
+  |---|---|---|
+  | Dramaha Hi, 2-7, 49, 0 | The draw half | 5 against Omaha's 2 |
+  | Dramadugi | The badugi, if it has three or four cards | 3-4 against 2; level or fewer, Omaha |
+  | Omajack | The blackjack half | 3 against 2 |
+  | Ari | The low, when the high needs the community card | 5 against 4; otherwise level, the high |
+  | Razzdugi, Razzdeucy | The razz or 2-7 half | 5 against at most 4 of a badugi |
+  | Badeucy, Badacey | The low half (this used to be the badugi) | 5 against at most 4 |
+  | Archie, and ordinary hi-lo games | The high half | Level |
 
 ## How they fit the replayer
 
@@ -60,6 +75,7 @@ only choose between pairs that make the same one.
 - Razzdugi, Razzdeucy, Archie, Stud Hi/Lo Regular: Asian Poker Tour handbook, theasianpokertour.com/info/pokerhandbook
 - Archie and its qualifier: Card Player, "Spice Up Your Home Game: Archie And Its Variants"; pokergamedatabase.com/games/archie.html
 - Ari, Pineapple, Drawmaha family: Cardplayer Lifestyle, "Mixed Game Poker Rules"
-- Dramaha: Card Player, "Old School Dramaha", "Limit Dramaha: An Introduction", "Point Based Dramaha Variants"
+- Dramaha: Card Player, "Old School Dramaha", "Limit Dramaha: An Introduction", "Point Based Dramaha Variants"; limit's
+  betting: Barge rulebook, ts4z.github.io/barge-rulebook/dramaha.html
 - Omajack: The Festival, "The Festival Series Explains: Omahajack"
 - Courchevel: PokerListings; Martin Smith, "How to Play Courchevel"

@@ -8,7 +8,7 @@ import { STRUCTURE_GAME_MAP, DEFAULT_STRUCTURE, FIXED_STRUCTURE as FIXED_STRUCTU
 import { Palette, GuessCard, Launcher } from './VariantPicker.jsx';
 import { buildDrawStudySpot } from '../utils/draw-study-spot';
 import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL, gameEvalFor,
-         bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestBadugiHand, scoreHalves, halvesWinnersAmong, halvesHandName,
+         bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestBadugiHand, scoreHalves, halvesWinnersAmong, halvesHandName, oddChipToLo,
          computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot,
          boardKey, handBoards, boardCount, multiBoardWinners, multiBoardEvals, multiBoardShaped, combinesHiLo,
          seatOrderFromButton } from '../utils/poker-engine.js';
@@ -231,7 +231,7 @@ function sortHandByRank(cardStr) {
    wheel reads "5 4 3 2 A" there and "A K Q J T" in 2-7 or high draw. Face-down
    backs rank 0 and sit at the end, after every known card. */
 const ACE_LOW_DRAW = new Set(['A-5 TD', 'NL A-5 SD', 'Badugi', 'Badacy']);
-const HIGH_DRAW = new Set(['PL 5CD Hi', 'NL 5CD Hi', 'NL Pineapple', 'PL Pineapple', 'L Pineapple', 'Dramaha Hi', 'Dramaha 49', 'Archie 99', 'Archie 66', 'Ari']);
+const HIGH_DRAW = new Set(['PL 5CD Hi', 'NL 5CD Hi', 'NL Pineapple', 'PL Pineapple', 'L Pineapple', 'Dramaha Hi', 'Dramaha 49', 'L Dramaha Hi', 'L Dramaha 49', 'Archie 99', 'Archie 66', 'Ari']);
 const drawBase = (gameType) => String(gameType || '').replace(/^Super /, '');
 function sortDrawHand(cardStr, gameType) {
   const cards = parseCardNotation(cardStr || '');
@@ -6528,7 +6528,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     }
 
     const btnIdx = hand.players.findIndex(p => p.position === 'BTN' || p.position === 'BTN/SB');
-    const { awards } = computePotAwards(shaped, { order: seatOrderFromButton(hand.players.length, btnIdx) });
+    const oddChipped = shaped.map(s => ({ ...s, oddToLo: oddChipToLo(cfg, scores, s.hiWinners || [], s.loWinners || []) }));
+    const { awards } = computePotAwards(oddChipped, { order: seatOrderFromButton(hand.players.length, btnIdx) });
     return awards;
   }, [showResult, flaggedWinners, hand, allPotLayers, settled, folded, category, boardCards,
       heroCards, opponentCards, replayHeroIdx, gameCfg, streetIdx]);

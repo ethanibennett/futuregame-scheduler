@@ -20,6 +20,10 @@ Owner: look up how the games are played, and they will fill the gaps. All fourte
 sources and the defaults waiting on the owner are in `docs/replayer-hidden-games.md`. `check:replayer-games` holds each with a
 hand a neighbouring game's rules would pay differently. **Trap:** a closed-form check of a two-hand game needs its own
 hand: at first a Dramaha test hand made a wheel in Omaha and scooped, which read as an engine bug and was the hand.
+Owner's answers since: Limit Dramaha yes (five rows, `L Dramaha …`), and the odd chip goes to the hand with the most unique cards,
+built as the half using the most of the player's own cards. That moved it in Badeucy and Badacey too, from the badugi to the low. If
+the owner meant something else by "unique", `oddChipToLo` is the one place. **Trap:** `test:hilo` slices the replayer's `potAwards`
+memo and hands it every helper by name, so a new helper in that memo breaks it; it had been failing since double board (2026-10-20).
 
 ## 2026-11-05 — The live clock row on event cards
 

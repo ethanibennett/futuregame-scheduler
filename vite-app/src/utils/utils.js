@@ -119,6 +119,11 @@ const VARIANT_STRIPS = {
   'Dramaha 49':         { abbr: 'DRAM 49',fam: 'flop',  shade: 1.10 },
   'Dramaha 0':          { abbr: 'DRAM 0', fam: 'flop',  shade: 1.10 },
   'Dramadugi':          { abbr: 'DRAM D', fam: 'flop',  shade: 1.10 },
+  'L Dramaha Hi':       { abbr: 'DRAM',   fam: 'flop',  shade: 1.10 },
+  'L Dramaha 2-7':      { abbr: 'DRAM 7', fam: 'flop',  shade: 1.10 },
+  'L Dramaha 49':       { abbr: 'DRAM 49',fam: 'flop',  shade: 1.10 },
+  'L Dramaha 0':        { abbr: 'DRAM 0', fam: 'flop',  shade: 1.10 },
+  'L Dramadugi':        { abbr: 'DRAM D', fam: 'flop',  shade: 1.10 },
   'Omajack':            { abbr: 'OMAJ',   fam: 'flop',  shade: 1.21 },
   'Stud Regular':       { abbr: 'STUD HL',fam: 'stud',  shade: 1.08 },
   'Razzdugi':           { abbr: 'RAZZD',  fam: 'stud',  shade: 0.90 },
@@ -355,6 +360,12 @@ export const HAND_CONFIG = {
   'Dramaha 49':   { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'TT998hdcsd', boardPlaceholder: 'J72hds' },
   'Dramaha 0':    { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'KQJA2hdcsd', boardPlaceholder: 'J72hds' },
   'Dramadugi':    { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'A234Khdcss', boardPlaceholder: 'J72hds' },
+  // Limit Dramaha: the small bet before the flop and on it, the draw, the big bet on the turn and river.
+  'L Dramaha Hi':  { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'AKQ98hdcsd', boardPlaceholder: 'J72hds' },
+  'L Dramaha 2-7': { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: '23457hdcsd', boardPlaceholder: 'J72hds' },
+  'L Dramaha 49':  { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'TT998hdcsd', boardPlaceholder: 'J72hds' },
+  'L Dramaha 0':   { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'KQJA2hdcsd', boardPlaceholder: 'J72hds' },
+  'L Dramadugi':   { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'A234Khdcss', boardPlaceholder: 'J72hds' },
   'Omajack':      { heroCards: 5, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AKQ98hdcsd', boardPlaceholder: 'J72hds' },
 };
 

@@ -21,6 +21,7 @@ import {
   seatOrderFromButton, evaluateShowdown, parseCardNotation, GAME_EVAL, gameEvalFor,
   bestHighFor, bestLow8For, bestLow27Hand, bestBadugiHand,
   bestOmahaHigh, bestOmahaLow, bestHighHand, bestLowA5Hand,
+  boardCount, handBoards, multiBoardEvals, multiBoardShaped, combinesHiLo, scoreHalves, halvesWinnersAmong, oddChipToLo,
 } from '../vite-app/src/utils/poker-engine.js';
 
 const BTN_ORDER = seatOrderFromButton(4, 0); // 4-handed, button on seat 0 -> [1,2,3,0]
@@ -303,6 +304,8 @@ for (const c of CARD_CASES) {
     'GAME_EVAL', 'gameEvalFor', 'parseCardNotation', 'bestOmahaHigh', 'bestOmahaLow', 'bestHighHand',
     'bestLowA5Hand', 'hiLoWinnersAmong', 'potLayerWinners', 'computePotAwards',
     'reconcileLayersToPot', 'seatOrderFromButton', 'bestHighFor', 'bestLow8For', 'bestLow27Hand', 'bestBadugiHand',
+    'feltBoard', 'finalCards', 'streetIdx', 'boardCount', 'handBoards', 'multiBoardEvals', 'multiBoardShaped', 'combinesHiLo',
+    'scoreHalves', 'halvesWinnersAmong', 'oddChipToLo',
     slice('const potAwards = useMemo(() => {', '\n  }, [showResult, flaggedWinners'));
 
   const run = (winners, layers, pot, oppCards = 'Ad2d3c7h') => {
@@ -317,9 +320,31 @@ for (const c of CARD_CASES) {
       '5h8s4cKd9d', 'AsKsKc2h', [undefined, oppCards], 0, { heroCards: 4, isStud: false },
       GAME_EVAL, gameEvalFor, parseCardNotation, bestOmahaHigh, bestOmahaLow, bestHighHand,
       bestLowA5Hand, hiLoWinnersAmong, potLayerWinners, computePotAwards,
-      reconcileLayersToPot, seatOrderFromButton, bestHighFor, bestLow8For, bestLow27Hand, bestBadugiHand);
+      reconcileLayersToPot, seatOrderFromButton, bestHighFor, bestLow8For, bestLow27Hand, bestBadugiHand,
+      true, 4, undefined, boardCount, handBoards, multiBoardEvals, multiBoardShaped, combinesHiLo,
+      scoreHalves, halvesWinnersAmong, oddChipToLo);
     return awards || {};
   };
+
+  // The odd chip through the memo itself: to the half with the most of the player's own cards.
+  const oddPot = (gameType, hero, opp, board, heroCards) => {
+    const hand = { gameType, players: [{ position: 'BTN' }, { position: 'BB' }] };
+    hand.result = { winners: evaluateShowdown(gameType, [{ idx: 0, cards: parseCardNotation(hero) }, { idx: 1, cards: parseCardNotation(opp) }], parseCardNotation(board)) };
+    return potAwardsOf(
+      true, flagWinners(hand), hand, [{ amount: 401, players: [0, 1] }], 401, { contested: 401 }, new Set(), 'community',
+      board, hero, [undefined, opp], 0, { heroCards, isStud: false },
+      GAME_EVAL, gameEvalFor, parseCardNotation, bestOmahaHigh, bestOmahaLow, bestHighHand,
+      bestLowA5Hand, hiLoWinnersAmong, potLayerWinners, computePotAwards,
+      reconcileLayersToPot, seatOrderFromButton, bestHighFor, bestLow8For, bestLow27Hand, bestBadugiHand,
+      true, heroCards, undefined, boardCount, handBoards, multiBoardEvals, multiBoardShaped, combinesHiLo,
+      scoreHalves, halvesWinnersAmong, oddChipToLo) || {};
+  };
+  check('replayer memo: Limit Dramaha, the odd chip to the draw half (five own cards against two)',
+    [{ amount: 401 }], oddPot('L Dramaha Hi', 'AsAd8h6c3s', 'KsKdKh5c6d', 'Ah7d2c9s4c', 5), 0, { 0: 200, 1: 201 });
+  check('replayer memo: Omajack, the odd chip to the blackjack half (three against two)',
+    [{ amount: 401 }], oddPot('Omajack', 'AsAdKhTc5c', '9d9hKdQsAc', 'Ah7d2c9s4c', 5), 0, { 0: 200, 1: 201 });
+  check('replayer memo: Archie, level on own cards, the odd chip stays high',
+    [{ amount: 401 }], oddPot('Archie 99', '9s9dKh7c3c', '2d3h4s5c8d', '', 5), 0, { 0: 201, 1: 200 });
 
   // Seat 0 has trip kings and the nut low; seat 1 ties that low with A2.
   const evaluated = evaluateShowdown('O8',

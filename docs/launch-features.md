@@ -44,7 +44,7 @@ plays every game on offer through the real screens.
 | Feature | The line | Status |
 |---|---|---|
 | Hand replayer | "Replay any hand, in any game." | Open. Our most shareable feature. A guest can build and replay a hand; keeping one takes an account |
-| Every game | "Hold'em, Omaha, stud, draw, and more." | Open: 54 picker rows, every named game with its own rules (`docs/replayer-hidden-games.md`). Only the Super and Action stud toggles stay off |
+| Every game | "Hold'em, Omaha, stud, draw, and more." | Open: 59 picker rows, every named game with its own rules (`docs/replayer-hidden-games.md`). Only the Super and Action stud toggles stay off |
 | Share a replay | "Send the hand in one link." | Open. Works signed out |
 | Export to PokerTracker | "Your saved hands, in PokerTracker and Hold'em Manager." | Open. PokerTracker analyses Hold'em and four-card Omaha; other games have no format or are skipped there, and the sheet says which |
 | Quick add, typed or spoken | "Say the hand. It builds the replay." | Admins only. The plan opens it only if the parser eval passes against the real model, with a daily cap per user |

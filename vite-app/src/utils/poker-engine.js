@@ -323,10 +323,9 @@ export function bestBadugiHand(cards) {
    A pot split between two different hands, where neither half is a plain high and an 8-or-better
    low: Razzdugi, Archie, Dramaha, Omajack. A game names its halves in GAME_EVAL (type 'halves',
    `a` and `b`, `labels` for what each is called on screen), and scoreHalves puts them in the form
-   hiLoWinnersAmong and computePotAwards already read: half A is the "hi" slot (highest score wins,
-   and it takes an odd chip), half B the "lo" slot (lowest wins). A half nobody can win is null, and
-   the other half then scoops, as a hi-lo pot with no low does. Rules and sources:
-   docs/replayer-hidden-games.md. */
+   hiLoWinnersAmong and computePotAwards already read: half A is the "hi" slot (highest score wins),
+   half B the "lo" slot (lowest wins). A half nobody can win is null, and the other half then scoops,
+   as a hi-lo pot with no low does. Rules and sources: docs/replayer-hidden-games.md. */
 const PAIR_SCORE = (rank) => 2 * Math.pow(15, 5) + rank * Math.pow(15, 4);
 
 /* Points: J, Q and K are nothing, an ace is one, a ten is ten (Dramaha 49 and Zero: Card Player, Kevin
@@ -408,13 +407,43 @@ function halfResult(half, hole, board, dir) {
   }
 }
 
-/* A hand's two halves: { hi, lo } (the scores hiLoWinnersAmong reads, null for a half it cannot win)
-   and { hiEv, loEv } (what to call them). */
+/* How many of a half's cards are the player's own, not shared with the table: what the odd chip goes by.
+   Omaha plays two, Omajack's blackjack the three it leaves, a badugi however many it has; Ari's high plays
+   four when the hand needs the community card. Every other half is five of the player's own. */
+const OWN_CARDS = { omaha: 2, blackjack: 3, badugi: 4 };
+function ownCards(half, hole, ev) {
+  if (half.kind === 'badugi' && ev.numCards) return ev.numCards;
+  if (half.kind === 'high' && half.board) {
+    const alone = bestHighHand(hole);
+    return alone && alone.score === ev.score ? 5 : 4;
+  }
+  return OWN_CARDS[half.kind] || 5;
+}
+
+/* A hand's two halves: { hi, lo } (the scores hiLoWinnersAmong reads, null for a half it cannot win),
+   { hiEv, loEv } (what to call them) and { hiOwn, loOwn } (see ownCards). */
 export function scoreHalves(cfg, hole, board) {
   const bd = board || [];
   const a = hole.length ? halfResult(cfg.a, hole, bd, 1) : null;
   const b = hole.length ? halfResult(cfg.b, hole, bd, -1) : null;
-  return { hi: a ? a.score : null, lo: b ? b.score : null, hiEv: a ? a.ev : null, loEv: b ? b.ev : null };
+  return {
+    hi: a ? a.score : null, lo: b ? b.score : null, hiEv: a ? a.ev : null, loEv: b ? b.ev : null,
+    hiOwn: a ? ownCards(cfg.a, hole, a.ev) : null, loOwn: b ? ownCards(cfg.b, hole, b.ev) : null,
+  };
+}
+
+/* The odd chip goes to the half with the most of the player's own cards (owner, 2026-11-05), and to the "hi"
+   slot when they are level. A hand whose cards are not known counts as that half normally plays. Badeucy and
+   Badacey have no scores here: their "hi" slot is the badugi, at most four cards against the low's five. */
+export function oddChipToLo(cfg, scores, hiWinners, loWinners) {
+  if (!cfg) return false;
+  if (cfg.type === 'split-badugi') return true;
+  if (cfg.type !== 'halves') return false;
+  const most = (seats, key, half) => Math.max(...seats.map((p) => {
+    const own = scores && scores[p] && scores[p][key];
+    return own != null ? own : (OWN_CARDS[half.kind] || 5);
+  }));
+  return loWinners.length > 0 && hiWinners.length > 0 && most(loWinners, 'loOwn', cfg.b) > most(hiWinners, 'hiOwn', cfg.a);
 }
 
 /* Who takes each half of one pot layer. Archie is the one game where nobody can win either half
@@ -454,6 +483,11 @@ export const GAME_EVAL = {
   'Dramaha 49': DRAMAHA({ kind: 'points-high' }, 'Points'),
   'Dramaha 0': DRAMAHA({ kind: 'points-low' }, 'Points'),
   'Dramadugi': DRAMAHA({ kind: 'badugi' }, 'Badugi'),
+  'L Dramaha Hi': DRAMAHA({ kind: 'high' }),
+  'L Dramaha 2-7': DRAMAHA({ kind: 'low-27' }),
+  'L Dramaha 49': DRAMAHA({ kind: 'points-high' }, 'Points'),
+  'L Dramaha 0': DRAMAHA({ kind: 'points-low' }, 'Points'),
+  'L Dramadugi': DRAMAHA({ kind: 'badugi' }, 'Badugi'),
   'Omajack': { type: 'halves', a: { kind: 'omaha' }, b: { kind: 'blackjack' }, labels: ['Omaha', 'Blackjack'] },
   'Stud Regular': { type: 'hilo', method: 'standard', anyLow: true },
   'Courchevel': { type: 'high', method: 'omaha' },
@@ -619,7 +653,8 @@ export function evaluateShowdown(gameType, playerHands, boardCards, hand) {
    two tie the low, or $300 and $100/$100/$100 when three do.
 
    Conventions used here, both the standard house rules:
-   - The odd chip left by halving an unequal pot goes to the HIGH half.
+   - The odd chip left by halving an unequal pot goes to the HIGH half, unless
+     the layer says `oddToLo` (see oddChipToLo: the games of two different hands).
    - Odd chips left inside a half go one at a time to the tied players in
      `options.order` — the seats clockwise from the button, so the first player
      left of the button is paid first. With no order given (stud, or a hand
@@ -733,7 +768,7 @@ export function computePotAwards(layers, options) {
     // the other half's winners scoop the layer.
     if (!lo.length) { shareHalf(amount, hi, order, awards); return; }
     if (!hi.length) { shareHalf(amount, lo, order, awards); return; }
-    var hiHalf = amount - Math.floor(amount / 2); // odd chip to the high hand
+    var hiHalf = layer.oddToLo ? Math.floor(amount / 2) : amount - Math.floor(amount / 2);
     shareHalf(hiHalf, hi, order, awards);
     shareHalf(amount - hiHalf, lo, order, awards);
   });

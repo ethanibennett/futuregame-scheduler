@@ -47,7 +47,7 @@ export const STRUCTURE_GAME_MAP = {
     'Badugi': 'Badugi', 'Badeucy': 'Badeucy', 'Badacey': 'Badacy',
     'Archie 66': 'Archie 66', 'Archie 99': 'Archie 99', 'Ari': 'Ari',
     '5-Card Draw': 'PL 5CD Hi', 'OFC': 'OFC',
-    'Dramaha Hi': 'Dramaha Hi', 'Dramaha 2-7': 'Dramaha 2-7', 'Dramaha 49': 'Dramaha 49', 'Dramaha 0': 'Dramaha 0', 'Dramadugi': 'Dramadugi', 'Omajack': 'Omajack' },
+    'Dramaha Hi': 'L Dramaha Hi', 'Dramaha 2-7': 'L Dramaha 2-7', 'Dramaha 49': 'L Dramaha 49', 'Dramaha 0': 'L Dramaha 0', 'Dramadugi': 'L Dramadugi', 'Omajack': 'Omajack' },
 };
 export const DEFAULT_STRUCTURE = {
   "Hold'em": 'No Limit', 'Pineapple': 'No Limit', 'Short Deck': 'No Limit',
@@ -118,6 +118,11 @@ const ROWS_FOR = {
   'Razz': [['Limit'], ['No Limit', 'rare'], ['Pot Limit', 'rare']],
   '2-7 Triple Draw': [['Limit'], ['Pot Limit']],
   '5-Card Draw': [['No Limit'], ['Pot Limit']],
+  'Dramaha Hi': [['Pot Limit'], ['Limit']],
+  'Dramaha 2-7': [['Pot Limit'], ['Limit']],
+  'Dramaha 49': [['Pot Limit'], ['Limit']],
+  'Dramaha 0': [['Pot Limit'], ['Limit']],
+  'Dramadugi': [['Pot Limit'], ['Limit']],
 };
 // Search words beyond the name: the abbreviations and slang a player types.
 const ALIASES = {
@@ -155,6 +160,11 @@ const ALIASES = {
   'Dramaha 49|Pot Limit': ['drawmaha 49'],
   'Dramaha 0|Pot Limit': ['dramaha zero', 'drawmaha 0', 'drawmaha zero'],
   'Dramadugi|Pot Limit': ['drawmaha dugi', 'dramaha badugi'],
+  'Dramaha Hi|Limit': ['drawmaha', 'dramaha high', 'limit dramaha'],
+  'Dramaha 2-7|Limit': ['drawmaha 2-7', 'deuce dramaha', 'limit dramaha'],
+  'Dramaha 49|Limit': ['drawmaha 49', 'limit dramaha'],
+  'Dramaha 0|Limit': ['dramaha zero', 'drawmaha 0', 'drawmaha zero', 'limit dramaha'],
+  'Dramadugi|Limit': ['drawmaha dugi', 'dramaha badugi', 'limit dramaha'],
   'Omajack|Pot Limit': ['omahajack', 'omaha blackjack'],
   'Stud Hi/Lo Regular|Limit': ['stud hi lo no qualifier', 'stud regular'],
   'Archie 99|Limit': ['archie'],

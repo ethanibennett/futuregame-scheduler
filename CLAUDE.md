@@ -74,7 +74,7 @@ sessions opened here own scheduler work.
   its share link signed out; then every `test/hh-io/fixtures` hand through the replay, chips to the end (`--only fixtures`). Forced bets
   are capped at the stack, blind before ante, as in the export (`capPost`). A named game with no rules of its own goes in `UNBUILT_GAMES` (`utils/variant-catalog.js`), out of
   the picker, because it would be scored as a plainer game; none is there now. **The fourteen built 2026-11-05** (Pineapple, Courchevel, Stud Hi/Lo Regular, Razzdugi, Razzdeucy, Archie 66 and 99, Ari, the Dramahas, Dramadugi, Omajack):
-  rules, sources and the owner's open defaults in `docs/replayer-hidden-games.md`. A new game type goes in `HAND_CONFIG`, `GAME_EVAL`, the
+  rules, sources and the owner's open defaults in `docs/replayer-hidden-games.md`; every Dramaha row has a Limit row beside it, and in a game of two different hands the odd chip goes to the half using the most of the player's own cards (owner, `oddChipToLo`). A new game type goes in `HAND_CONFIG`, `GAME_EVAL`, the
   variant strips, `GAME_CODES` and, for a draw game, the category lists. Hands is one tab for every account; Study, the Scanner and
   typing or saying a hand stay with admins.
 - **Hands > Study** (owner, 2026-11-04: one training experience; `components/StudyHub.jsx`, `StudyHead.jsx`, `study-hub.css`):

@@ -6,8 +6,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseCardNotation as P, GAME_EVAL, evaluateShowdown, scoreHalves, halvesWinnersAmong, pipTotal, blackjackTotal,
-  bestOmajack, computePotAwards, halvesHandName,
+  bestOmajack, computePotAwards, halvesHandName, oddChipToLo,
 } from '../poker-engine.js';
+
+globalThis.localStorage = globalThis.localStorage || { getItem() { return null; }, setItem() {} };
+const { HAND_CONFIG } = await import('../utils.js');
+const { GAME_CODES } = await import('../hand-shorthand.js');
+const { buildCatalog, gameTypeOf, variantName } = await import('../variant-catalog.js');
 
 /* Who took what, heads up: [[seat, 'hi'], [seat, 'lo']] for each half won, 'chop' when nobody could win either. */
 function halves(game, hero, opp, board = '') {
@@ -128,7 +133,63 @@ test('a hand is named once', () => {
   assert.equal(halvesHandName(cfg, s, false, true, true), 'Badugi: 8 7 3 2');
 });
 
-test('an odd chip goes to half A', () => {
+test('an odd chip goes to the high half unless the layer says otherwise', () => {
   const r = computePotAwards([{ amount: 101, hiWinners: [0], loWinners: [1] }], { order: [0, 1] });
   assert.deepEqual(r.awards, { 0: 51, 1: 50 });
+  const lo = computePotAwards([{ amount: 101, hiWinners: [0], loWinners: [1], oddToLo: true }], { order: [0, 1] });
+  assert.deepEqual(lo.awards, { 0: 50, 1: 51 });
+});
+
+/* Who gets the odd chip when seat 0 takes half A and seat 1 half B. */
+const oddToB = (game, a, b, board = '') => {
+  const cfg = GAME_EVAL[game];
+  const scores = { 0: scoreHalves(cfg, P(a), P(board)), 1: scoreHalves(cfg, P(b), P(board)) };
+  return oddChipToLo(cfg, scores, [0], [1]);
+};
+
+test('the odd chip goes to the half with the most of the player\'s own cards', () => {
+  const board = 'Ah7d2c9s4c';
+  for (const g of ['Dramaha Hi', 'Dramaha 2-7', 'Dramaha 49', 'Dramaha 0', 'L Dramaha Hi', 'L Dramaha 2-7', 'L Dramaha 49', 'L Dramaha 0']) {
+    assert.equal(oddToB(g, 'AsAd8h6c3s', 'KsKdKh5c6d', board), true, g + ': five of the draw hand against two of the Omaha hand');
+  }
+  assert.equal(oddToB('Omajack', 'AsAdKhTc5c', '9d9hKdQsAc', board), true, 'three of the blackjack hand against two');
+  assert.equal(oddToB('Razzdugi', 'As2s3s4c5c9cKs', '2h3d7s8cThJdQh'), false, 'five of the razz hand against four of a badugi');
+  assert.equal(oddToB('Razzdeucy', '2c3c4c5c7d9dJd', 'Ah2h3s4s5dKhQh'), false, 'the same in 2-7');
+  assert.equal(oddChipToLo(GAME_EVAL.Badeucy, {}, [0], [1]), true, 'the low\'s five against the badugi\'s four');
+  assert.equal(oddChipToLo(GAME_EVAL.Badacy, {}, [0], [1]), true, 'the same in A-5');
+});
+
+test('level on own cards, the odd chip stays with the high half', () => {
+  assert.equal(oddToB('Archie 99', '9s9dKh7c3c', '2d3h4s5c8d'), false, 'five against five');
+  assert.equal(oddChipToLo(GAME_EVAL['Stud 8'], {}, [0], [1]), false, 'an ordinary hi-lo game is unchanged');
+  assert.equal(oddChipToLo(GAME_EVAL.O8, {}, [0], [1]), false);
+});
+
+test('a hand decides it where its own cards differ from the usual', () => {
+  // Dramadugi: a two-card badugi is level with Omaha's two; a one-card badugi has fewer.
+  const board = 'Ah7d2c9s4c';
+  assert.equal(oddToB('Dramadugi', 'AsAd8h6c3s', '2d3h4s5c9h', board), true, 'four against two');
+  assert.equal(oddToB('Dramadugi', 'AsAd8h6c3s', '2s5s7s8sKs', board), false, 'a one-card badugi against two');
+  // Ari: the high that needs the community card plays four of its own, against the low's five.
+  assert.equal(oddToB('Ari', '9sKdQh7c3c', '2d3h4s5c8d', '9d'), true, 'the community nine makes the pair');
+  assert.equal(oddToB('Ari', '9s9hKdQc7c', '2d3h4s5c8d', '2c'), false, 'the pair is in the hand: five against five');
+});
+
+test('a mucked winner counts as that half normally plays', () => {
+  assert.equal(oddChipToLo(GAME_EVAL['Dramaha Hi'], {}, [0], [1]), true);
+  assert.equal(oddChipToLo(GAME_EVAL['Archie 99'], {}, [0], [1]), false);
+});
+
+test('Limit Dramaha: five rows, the pot-limit rules, the small bet to the flop and the big bet after', () => {
+  for (const [row, limit] of [['Dramaha Hi', 'L Dramaha Hi'], ['Dramaha 2-7', 'L Dramaha 2-7'], ['Dramaha 49', 'L Dramaha 49'], ['Dramaha 0', 'L Dramaha 0'], ['Dramadugi', 'L Dramadugi']]) {
+    assert.equal(gameTypeOf(row, 'Limit'), limit);
+    assert.deepEqual(GAME_EVAL[limit], GAME_EVAL[row]);
+    assert.equal(HAND_CONFIG[limit].betting, 'fl');
+    assert.deepEqual(HAND_CONFIG[limit].flSmallStreets, [0, 1]);
+    assert.equal(HAND_CONFIG[limit].drawAfter, 1);
+    assert.ok(GAME_CODES[limit], limit + ' has a share code');
+    assert.ok(buildCatalog().some((r) => r.gameType === limit && r.structure === 'Limit' && !r.rare), limit + ' is in the picker');
+    assert.equal(variantName(row, 'Limit'), 'Limit ' + row);
+  }
+  assert.equal(new Set(Object.values(GAME_CODES)).size, Object.keys(GAME_CODES).length, 'no two games share a code');
 });
