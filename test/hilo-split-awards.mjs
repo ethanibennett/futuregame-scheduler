@@ -308,9 +308,9 @@ for (const c of CARD_CASES) {
     'scoreHalves', 'halvesWinnersAmong', 'oddChipToLo',
     slice('const potAwards = useMemo(() => {', '\n  }, [showResult, flaggedWinners'));
 
-  const run = (winners, layers, pot, oppCards = 'Ad2d3c7h') => {
+  const run = (winners, layers, pot, oppCards = 'Ad2d3c7h', gameMode) => {
     const hand = {
-      gameType: 'O8',
+      gameType: 'O8', gameMode,
       players: [{ position: 'BTN' }, { position: 'BB' }],
       result: { winners },
     };
@@ -353,6 +353,16 @@ for (const c of CARD_CASES) {
 
   check('replayer memo: freshly evaluated hi-lo hand is quartered',
     [{ amount: 400 }], run(evaluated, [{ amount: 400, players: [0, 1] }], 400), 0, { 0: 300, 1: 100 });
+
+  // A cash pot carrying cents is split in cents (2026-11-09: a $128.50 pot paid $129, rounded to whole units).
+  check('replayer memo: a $128.50 pot scooped pays $128.50, not $129',
+    [{ amount: 128.5 }], run([{ playerIdx: 0, label: 'Hero wins' }], [{ amount: 128.5, players: [0, 1] }], 128.5, 'MUCK'), 0, { 0: 128.5 });
+  check('replayer memo: a $400.50 pot quartered splits to the cent',
+    [{ amount: 400.5 }], run(evaluated, [{ amount: 400.5, players: [0, 1] }], 400.5), 0, { 0: 300.37, 1: 100.13 });
+  check('replayer memo: whole chips still split in whole chips (401 quartered)',
+    [{ amount: 401 }], run(evaluated, [{ amount: 401, players: [0, 1] }], 401), 0, { 0: 301, 1: 100 });
+  check('replayer memo: a whole-dollar cash pot still splits to the cent ($79 quartered: $59.25 / $19.75)',
+    [{ amount: 79 }], run(evaluated, [{ amount: 79, players: [0, 1] }], 79, undefined, 'cash'), 0, { 0: 59.25, 1: 19.75 });
 
   check('replayer memo: a hand saved with only Hi:/Lo: labels is quartered too',
     [{ amount: 400 }], run([

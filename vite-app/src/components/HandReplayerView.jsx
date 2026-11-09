@@ -6529,7 +6529,16 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
 
     const btnIdx = hand.players.findIndex(p => p.position === 'BTN' || p.position === 'BTN/SB');
     const oddChipped = shaped.map(s => ({ ...s, oddToLo: oddChipToLo(cfg, scores, s.hiWinners || [], s.loWinners || []) }));
-    const { awards } = computePotAwards(oddChipped, { order: seatOrderFromButton(hand.players.length, btnIdx) });
+    /* computePotAwards splits whole units, and a cash pot of $128.50 went in as dollars: it was rounded to
+       $129, and the winner was paid 50 cents nobody put in (2026-11-09). Settle in hundredths, as the export
+       does (hand-history/prepare.js unitCents): a cash pot splits to the cent, as a PokerStars history does,
+       and tournament chips stay whole whenever every layer is whole. */
+    const inCents = oddChipped.map(s => ({ ...s, amount: Math.round((s.amount || 0) * 100) }));
+    const chipUnit = hand.gameMode !== 'cash' && inCents.every(s => s.amount % 100 === 0) ? 100 : 1;
+    const { awards: units } = computePotAwards(inCents.map(s => ({ ...s, amount: s.amount / chipUnit })),
+      { order: seatOrderFromButton(hand.players.length, btnIdx) });
+    const awards = {};
+    Object.keys(units).forEach(k => { awards[k] = units[k] * chipUnit / 100; });
     return awards;
   }, [showResult, flaggedWinners, hand, allPotLayers, settled, folded, category, boardCards,
       heroCards, opponentCards, replayHeroIdx, gameCfg, streetIdx]);

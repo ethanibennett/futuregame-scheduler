@@ -19,6 +19,7 @@ globalThis.window = globalThis.window || globalThis;
 const src = (f) => pathToFileURL(path.join(import.meta.dirname, '..', 'vite-app', 'src', 'utils', f)).href;
 const { buildCatalog } = await import(src('variant-catalog.js'));
 const { HAND_CONFIG } = await import(src('utils.js'));
+const { goldenFinals } = await import(pathToFileURL(path.join(import.meta.dirname, '..', 'test', 'hh-io', 'golden-finals.mjs')).href);
 
 const args = process.argv.slice(2);
 const opt = (f, d) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : d; };
@@ -643,6 +644,14 @@ if (!only || /fixtures/i.test(only)) {
   const dir = path.join(import.meta.dirname, '..', 'test', 'hh-io', 'fixtures');
   const ctx = await browser.newContext({ viewport: { width: W, height: H } });
   await ctx.addInitScript((t) => { localStorage.setItem('token', t); localStorage.setItem('authToken', t); }, token);
+  // The felt prints whole chips and whole dollars, so a cash stack of $84.25 reads $84. For this pass only, any
+  // whole-number format shows two decimals, so each seat can be held to the cent.
+  await ctx.addInitScript(() => {
+    const NF = Intl.NumberFormat;
+    const Exact = function (loc, o) { return new NF(loc, o && o.maximumFractionDigits === 0 ? { ...o, maximumFractionDigits: 2 } : o); };
+    Exact.prototype = NF.prototype; Exact.supportedLocalesOf = NF.supportedLocalesOf;
+    Intl.NumberFormat = Exact;
+  });
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => { if (!/access control/.test(e.message)) errs.push(e.message.split('\n')[0]); });
@@ -673,12 +682,29 @@ if (!only || /fixtures/i.test(only)) {
       await p.waitForTimeout(600);
       const stacks = await p.evaluate(() => [...document.querySelectorAll('.replayer-seat')].map((s) => {
         const c = s.querySelector('.replayer-seat-stack');
-        return { text: c?.textContent.trim(), allIn: /all-?in/i.test(c?.textContent || '') };
-      }));
+        return { seat: Number(s.getAttribute('data-seat')), name: s.querySelector('.replayer-seat-name')?.getAttribute('title') || '', text: c?.textContent.trim(), allIn: /all-?in/i.test(c?.textContent || '') };
+      })).then((a) => a.sort((x, y) => x.seat - y.seat));
       const start = (m.hand.players || []).reduce((a, x) => a + (Number(x.startingStack) || 0), 0);
       const total = stacks.reduce((a, s) => a + (s.allIn ? 0 : num(s.text)), 0);
       // Stacks read to the cent on a cash table, and whole on the rest.
       if (start && Math.abs(total - start) > Math.max(2, start * 0.0005)) res.problems.push(`chips do not balance: ${start} at the start, ${total} at the end (${stacks.map((s) => s.text).join(' ')})`);
+      // Balancing is not enough: a side pot paid to the wrong seat still balances. Every seat's stack has to be
+      // what the hand history says it ends with (the writer's golden file, which PT4 has read).
+      const golden = path.join(dir, '..', 'golden', m.f.replace(/\.json$/, '.txt'));
+      if (fs.existsSync(golden)) {
+        const { finals } = goldenFinals(fs.readFileSync(golden, 'utf8'));
+        // The export cleans names for PokerStars ("Bob: The (Great)" -> "Bob The Great", a blank -> "Player3",
+        // duplicates numbered) and keeps the players' order, so where a name is not on the felt, go by seat order.
+        const byName = [...finals.keys()].every((n) => stacks.some((s) => s.name === n));
+        if (!byName && stacks.length !== finals.size) res.problems.push(`${stacks.length} seats on the felt, ${finals.size} in the hand history`);
+        const inOrder = [...finals];
+        stacks.forEach((s, i) => {
+          const [name, want] = byName ? [s.name, finals.get(s.name)] : (inOrder[i] || ['?', NaN]);
+          if (want === undefined) return; // a seat the hand history never dealt in
+          const have = s.allIn ? 0 : num(s.text);
+          if (!(Math.abs(have - want) <= 0.005)) res.problems.push(`${name}${byName ? '' : ` (seat ${i + 1}, "${s.name}")`} ends with ${s.text}, the hand history says ${want}`);
+        });
+      } else res.problems.push('no golden hand history to check the seats against');
       for (const t of await handNameTrouble(p)) res.problems.push('hand name ' + t);
       for (const t of await feltTrouble(p)) res.problems.push('felt: ' + t);
       await p.locator('button:has-text("Back")').first().click({ force: true });
