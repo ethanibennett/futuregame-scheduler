@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { portalTarget } from '../utils/grid-panel.js';
 import {
   DIMENSIONS, DATE_PRESETS, optionsFor, facetCounts, rangeCounts, yearOptions, toggle, setRange, activeCount, applyFilters, clearAll,
 } from '../utils/bankroll-filters.js';
@@ -17,11 +18,6 @@ import {
  * Done 8g on 28g, both 4r on 2r. Sections 2r apart: a 3r title, 1r, then chips 4r tall with 1r
  * between rows, in 4 x 8g, 3 x 11g or 2 x 17g columns (1g gaps, 35g).
  */
-
-function portalTarget() {
-  const shell = document.querySelector('.app-shell');
-  return (shell && shell.parentElement) || document.body;
-}
 
 // Columns per section: short labels four to a row, names two.
 const COLS = { types: 3, bankrolls: 4, games: 4, stakes: 2, rooms: 2, formats: 2, weekdays: 4, dayparts: 4 };

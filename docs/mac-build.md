@@ -97,11 +97,11 @@ Useful flags:
 | `--build N` | force a specific build number |
 
 **What it will not do:** touch Render, touch the database, or push to `master`.
-That is deliberate. `deploy.sh --ios` does all three, so it can no longer be used
-here — it exits without a `RENDER_API_KEY`, prompts for admin credentials, starts
-a local server to sync the production database, and runs `git push origin master`
-(which auto-deploys futurega.me). Shipping the app should not require deploying
-the web app, and the Mac is not supposed to touch the database at all.
+That is deliberate. The old `deploy.sh --ios` did all three (it started a local
+server to sync the production database and ran `git push origin master`, which
+auto-deploys futurega.me), and it has since been deleted. Shipping the app should
+not require deploying the web app, and the Mac is not supposed to touch the
+database at all.
 
 The only file the script changes is `project.pbxproj` (the build number). Commit
 it so the repo matches TestFlight.

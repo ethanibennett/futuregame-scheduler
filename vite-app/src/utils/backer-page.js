@@ -55,6 +55,9 @@ export function fmtHours(h) {
 }
 
 export const plural = (n, one, many = one + 's') => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
+/** A percentage as the stake is written: 20 -> "20%", 12.5 -> "12.5%", and no float noise. Shared by the
+ *  Notify block, the Standing view and the Backers cards. */
+export const fmtPct = (p) => `${Math.round((Number.isFinite(Number(p)) ? Number(p) : 0) * 100) / 100}%`;
 
 const parts = (iso) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));

@@ -387,8 +387,7 @@ const readScreen = (page) => page.evaluate(() => {
   else if (active && active.labels.length) phase = 'action';
   return { phase, titles, labels, prim, street: t(q('.gto-street-name')[0]), pot: t(q('.gto-pot-label')[0]), seats, active, deal, sd,
     winners: q('.gto-winner-btn').map(t), auto: t(q('.gto-result-win')[0]), autoSub: t(q('.gto-result-sub')[0]),
-    picked: q('.card-picker-btn.selected').length, used: q('.card-picker-btn.used').length,
-    err: t(q('.replayer-error, [data-replay-error]')[0]) };
+    picked: q('.card-picker-btn.selected').length, used: q('.card-picker-btn.used').length };
 });
 const readSeats = (page) => page.evaluate(() => [...document.querySelectorAll('.replayer-seat')].map((s) => {
   const c = s.querySelector('.replayer-seat-stack');
@@ -948,14 +947,14 @@ async function worker(w) {
           if (unpaid.length) await find('fail', 'the Result screen names a winner who is paid nothing', at, `the screen marks ${uiWin.join(', ')}; the corpus pays ${corpusWin.join(', ')}`);
           await shot('result');
           await tap(primary('Save & Replay'), 'Save & Replay');
-          await p.waitForSelector('button[title="End"], .replayer-error, [data-replay-error]', { timeout: 10000 });
+          await p.waitForSelector('button[title="End"], :text("Error loading replay")', { timeout: 10000 });
           res.reached = 'replay';
         }
       }
 
       // ── the replay, and the hand as saved ──
-      const bad = await p.locator('.replayer-error, [data-replay-error]').count();
-      if (bad) await stop('fail', 'the saved hand does not replay', 'replay', (await p.locator('.replayer-error, [data-replay-error]').first().innerText()).split('\n')[0]);
+      const bad = await p.locator(':text("Error loading replay")').count();
+      if (bad) await stop('fail', 'the saved hand does not replay', 'replay', (await p.locator(':text("Error loading replay")').first().locator('..').innerText()).split('\n').slice(0, 2).join(': '));
       // The replay opens on its deal, and a press made during it is lost: press End until the hand is over.
       for (let t = 0; t < 6; t++) {
         await p.waitForTimeout(t ? 800 : 400);

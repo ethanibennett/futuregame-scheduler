@@ -15,13 +15,13 @@ import './backer-notify.css';
  * form (TrackingView) and on a cash session's page and edit screen (CashSessions).
  *
  * Every backer staked in the SAVED result, with their pct, their share and whether it has been
- * sent; a Notify button that sends the shares not yet sent (a manual tap, owner Q1: nothing posts
- * on save). Two states: previewed ("Not sent") and sent ("Sent Oct 14", "· Updated" once a later
- * edit has moved the share, which tells the backer nothing, owner Q2). Where a new share may double
- * one the backer already has (the dashboard sent them a share on the same date, or a series
- * agreement covers the event, owner Q7), each such row says so and Notify opens a second confirm:
- * "Send anyway" (its own button) sends them all, "Send the others" sends only the backers not
- * flagged (Q7's "series wins": the flagged stay Not sent and are asked about again), Cancel sends
+ * sent; each unsent backer has its own Notify button, which sends that backer's share (a manual tap,
+ * owner Q1: nothing posts on save). Two states: previewed ("Not sent") and sent ("Sent Oct 14",
+ * "· Updated" once a later edit has moved the share, which tells the backer nothing, owner Q2). Where
+ * a new share may double one the backer already has (the dashboard sent them a share on the same
+ * date, or a series agreement covers the event, owner Q7), the row says so and its Notify asks
+ * first, with the choices in utils/standing-ui.js confirmActions: Both or Series only for a series
+ * agreement (the answer is stored), Send anyway for a night the dashboard sent; Cancel sends
  * nothing. No stake matched: "No backers staked in <game>".
  *
  * Data: POST /api/staking/standing/notify (lib/staking/notify.js). The server computes every figure
@@ -29,7 +29,7 @@ import './backer-notify.css';
  * gets 403, a live session 409) draws nothing at all, as does an account with no backers.
  *
  * Layout (backer-notify.css): a hairline, the title 5r, a row per backer of 8r (+3r a warning),
- * the confirm's sentence at 3r a line, the buttons 5r, the note at 3r a line. Every box whole g x whole r;
+ * the buttons 5r, the note at 3r a line. Every box whole g x whole r;
  * baselines on r lines; the buttons' labels centred.
  */
 export default function BackerNotify({ token, refTable, refId }) {

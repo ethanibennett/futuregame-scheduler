@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import Icon from './Icon.jsx';
-import { THEME_ORDER, THEME_LABEL, THEME_ICON } from '../utils/utils.js';
+import ThemeButton from './ThemeButton.jsx';
+import { THEME_ORDER, THEME_LABEL } from '../utils/utils.js';
 import { API_URL } from '../utils/api.js';
 
 export default function ResetPasswordForm({ resetToken, theme, toggleTheme }) {
@@ -45,9 +45,7 @@ export default function ResetPasswordForm({ resetToken, theme, toggleTheme }) {
     <div className="auth-wrap">
       <div className="auth-card snap-place">
         <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'var(--space-md)'}}>
-          <button className="btn btn-ghost btn-sm snap-g" onClick={toggleTheme} title={`Switch to ${nextThemeLabel} mode`}>
-            {React.createElement(Icon[THEME_ICON[theme]] || Icon.moon)}
-          </button>
+          <ThemeButton theme={theme} nextThemeLabel={nextThemeLabel} onToggle={toggleTheme} className="btn btn-ghost btn-sm snap-g" />
         </div>
         <div className="auth-logo">
           <h1>futurega.me</h1>

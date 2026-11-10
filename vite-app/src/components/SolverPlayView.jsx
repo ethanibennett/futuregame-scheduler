@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchApi } from '../utils/api.js';
-import { StudyHead, StudyPills, shortGameName, useSolverAvailability, offered } from './StudyHead.jsx';
+import { StudyHead, StudyPills, shortGameName, useSolverAvailability, offered, T, R } from './StudyHead.jsx';
 import Card from './SolverCard.jsx';
 import StrategyRibbon from './StrategyRibbon.jsx';
 
@@ -11,13 +11,11 @@ import StrategyRibbon from './StrategyRibbon.jsx';
 // the solver's mixed strategy is rendered as frequency bars with the
 // sampled action marked. Reuses the app's theme tokens + Univers font.
 
-// Grid (classes in styles.css, .hs-*): every piece is whole r — text is an
+// Grid (classes in styles.css, .hs-*; T and R from StudyHead.jsx): every piece is whole r — text is an
 // .hs-t block whose baseline is its bottom edge (b r tall, +lh r per extra
 // line), controls 4r, gaps 1/2r, the table 41r — so every block starts on an
 // r-line from the top bar. Panels pad 2g (content 3..34); control rows sit on
 // the 8g column rails.
-const T = (b, lh) => (lh ? { '--hs-b': b, '--hs-lh': lh } : { '--hs-b': b });
-const R = (n) => `calc(var(--subrow) * ${n})`;
 
 // Bare card image (no inline sizing) so the replayer's seat-card CSS
 // (.replayer-seat-cards .card-row img) sizes + fans them like the replayer.

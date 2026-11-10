@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { StudyHead, StudyPills, useSolverAvailability, offered } from './StudyHead.jsx';
+import { StudyHead, StudyPills, useSolverAvailability, offered, T, R } from './StudyHead.jsx';
 import { fetchApi } from '../utils/api.js';
+import { encodeDiscard } from '../utils/replayer-drill.js';
 import Card from './SolverCard.jsx';
 import GridBadge from './GridBadge.jsx';
 
@@ -21,36 +22,16 @@ import GridBadge from './GridBadge.jsx';
 // decision OR terminal. We keep the running heroActions list locally and POST
 // the full list each step (the server is the source of truth for state).
 
-// Grid (classes in styles.css, .hs-*): every piece is whole r — text is an
+// Grid (classes in styles.css, .hs-*; T and R from StudyHead.jsx): every piece is whole r — text is an
 // .hs-t block whose baseline is its bottom edge (b r tall, +lh r per extra
 // line), controls 3/4/5r, cards 2g × 4r, gaps 1/2r — so every block starts on
 // an r-line from the top bar. Panels pad 2r × 2g (content on 3..34); rows of
 // controls sit on the 8g column rails or on 15g / 9g panel columns whose edges
 // are subcolumn lines. Badges are whole-g wide (GridBadge measures them).
-const T = (b, lh) => (lh ? { '--hs-b': b, '--hs-lh': lh } : { '--hs-b': b });
-const R = (n) => `calc(var(--subrow) * ${n})`;
 
-// ── explicit-discard encoding (mirrors solver/draw-trainer/play.js) ────────
-// FULL DISCARD CONTROL: the hero's draw action is a STATELESS string
-//   'd:' + the THROWN cards' 2-char strings, sorted by card INTEGER.
-// The integer is the engine-native encoding: (rank-2)*4 + suit, ace HIGH (=14),
-// suit order c<d<h<s — identical to engine/cards.js so the action round-trips
-// byte-for-byte through play.parseDiscard. 'd:' (no cards) = stand pat.
-const SUIT_ORDER = { c: 0, d: 1, h: 2, s: 3 };
-const RANK_VAL = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, T: 10, J: 11, Q: 12, K: 13, A: 14 };
-// integer rank of a card string ('9s' -> 31) — matches cards.js cardFromStr.
-function cardInt(str) {
-  if (!str || str.length < 2) return 0;
-  const r = RANK_VAL[str[0].toUpperCase()];
-  const s = SUIT_ORDER[str[1].toLowerCase()];
-  return (((r || 2) - 2) * 4) + (s == null ? 0 : s);
-}
-// Encode an explicit discard from the THROWN card strings, sorted by int.
-//   encodeDiscard(['Kc','9s']) -> 'd:9sKc' ;  encodeDiscard([]) -> 'd:'
-function encodeDiscard(thrownStrs) {
-  const sorted = thrownStrs.slice().sort((a, b) => cardInt(a) - cardInt(b));
-  return 'd:' + sorted.join('');
-}
+// A draw is sent as an explicit discard (encodeDiscard, utils/replayer-drill.js, which mirrors
+// solver/draw-trainer/play.js): 'd:' + the THROWN cards sorted by the engine's card integer, so the
+// action round-trips byte for byte through play.parseDiscard. 'd:' (no cards) = stand pat.
 
 const STREET_NAMES = ['3rd', '4th', '5th', '6th', '7th'];
 
@@ -72,12 +53,7 @@ function streetName(game, street, phase) {
 // Selectable games. `id` is the backend path segment; the legacy razz path
 // (game=razz) keeps working exactly as before. Stud games render StudTable;
 // DRAW games (td27) render DrawTable.
-// stud8 retrained from 23.4 → ~1.9 chips/hand exploitable (on par with td27), so
-// it's re-enabled. (Was hidden from the selector while undertrained.)
-// See solver/strategies/BLUEPRINT_TRUST.md / CLAUDE.md.
-const STUD8_READY = true;
-const GAMES = [['razz', 'Razz'], ['stud8', 'Stud 8'], ['td27', '2-7 TD'], ['badugi', 'Badugi'], ['a5td', 'A-5 TD']]
-  .filter(([id]) => STUD8_READY || id !== 'stud8');
+const GAMES = [['razz', 'Razz'], ['stud8', 'Stud 8'], ['td27', '2-7 TD'], ['badugi', 'Badugi'], ['a5td', 'A-5 TD']];
 const GAME_LABEL = { razz: 'Razz', stud8: 'Stud 8', td27: '2-7 Triple Draw', badugi: 'Badugi', a5td: 'A-5 Triple Draw' };
 const DRAW_GAMES = new Set(['td27', 'badugi', 'a5td']);
 // Game category: 'stud' (razz, stud8 → StudTable, upcards) vs 'draw' (td27 →
@@ -103,7 +79,6 @@ function proModeAvailable(game) { return PRO_MODE_GAMES.has(game); }
 // blueprint grade, and to word the toggle copy.
 const SEVENTH_STREET = 4;              // stud: 3rd..7th → 7th = index 4
 const DRAW_FINAL_STREET = 3;           // draw: post-3rd-draw final betting round
-function oracleStreet(game) { return catOf(game) === 'draw' ? DRAW_FINAL_STREET : SEVENTH_STREET; }
 // The human name of the oracle-eligible street, for toggle/badge copy.
 function oracleStreetLabel(game) { return catOf(game) === 'draw' ? 'post-last-draw' : '7th-street'; }
 // A grade is on the oracle-eligible street for its game (draw: must also be a BET,

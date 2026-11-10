@@ -167,7 +167,7 @@ html[data-layout="desktop"] .vm-sheet {
 .vm-map-canvas {
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: var(--z-base);
 }
 /* A note in place of the map (loading, no coordinate, failed): a 3r line seated on the map's 15r. */
 .vm-map-note {

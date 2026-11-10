@@ -44,7 +44,7 @@ today. If a gate opens, revisit the rows marked **gated**.
 |---|---|---|---|
 | Live-update camera overlay, registration receipt + starting-stack flow | `getUserMedia` → drawn onto a canvas **on device** → user shares/saves via the share sheet. Never uploaded. | `vite-app/src/components/CameraOverlay.jsx:93`, `:275`, `:445-480`, `:566`; opened from `LiveUpdatePanel.jsx:400,784` | All users |
 | Table Scanner | User takes/picks a photo or screenshot of a tournament seating list → `POST /api/scan-table` → server sends the image to **Anthropic** (Claude Haiku) → names, chip counts, seats returned. The image is not stored by us; extracted player names are written to the server log and to client `localStorage.tableScanPlayers`. | client `vite-app/src/components/TableScanner.jsx:365,427,468`; server `server.js:12729-12882`, log line `server.js:12872` | **Any signed-in session, guests included** (`authenticateToken` only, no `requireRegistered`). Rendered on the dashboard for everyone (`DashboardView.jsx:1128`). |
-| Hendon Mob link from a scanned name | Tapping a scanned player opens `/api/hendon-redirect?name=…`; the server searches **DuckDuckGo** for the name and redirects the user's browser to **The Hendon Mob** (or DuckDuckGo). | `TableScanner.jsx:572`, `server.js:747-768`, `server.js:814-823` | All users. `POST /api/hendon-winnings` (`server.js:800`) has no caller in the app. |
+| Hendon Mob link from a scanned name | Tapping a scanned player opens a **DuckDuckGo** "!ducky" search for the name in the player's own browser, which goes straight to the first **The Hendon Mob** result. Our server is not involved (the old `/api/hendon-redirect` and `/api/hendon-winnings` routes are removed). | `TableScanner.jsx` (`hendonLink`) | All users. |
 | Avatar | Uploaded and stored (see §1). | | Registered |
 | Instagram Story background | User picks a photo; it is composited on device and handed to Instagram via the pasteboard. | `vite-app/src/components/HandReplayerView.jsx:6537-6550`, `ios/App/App/AppDelegate.swift:151-205` | Hands tab (gated) |
 | Staking "proof" image | Uploaded, stored as a data URI in `backer_event_status.proof_image`. | `server.js:5921-5928`, `server.js:6704-6751` | **Gated**: Staking tab is admin-only ("Coming Soon", `App.jsx:1756-1760`). |
@@ -131,8 +131,8 @@ cron `server.js:13028`). The backer page loads fonts from **Google Fonts**
 - `subscriptions` table (`server.js:3306-3322`): tier, status, source, dates. Rows today come
   only from the free 14-day trial (`server.js:12946-12972`) and manual admin grants
   (`server.js:12975-12998`).
-- Apple and Stripe webhooks are **stubs** that log and return OK (`server.js:13001-13016`); the
-  Apple stub logs the first 500 characters of the notification body (`server.js:13006`).
+- Apple's signed transactions and Server Notifications v2 are verified (`lib/billing/apple.js`); there
+  is no Stripe code. The App Store is the only way to buy.
 - No StoreKit or Stripe code in the client. **No payment data is collected.**
 
 ## 10b. First-party growth measurement (added 2026-10-15; `lib/growth.js`)

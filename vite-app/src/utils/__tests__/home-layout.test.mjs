@@ -3,8 +3,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  HOME_SECTIONS, available, normalise, fullOrder, resolve, move, moveTo, toggle, isDefault,
-  bankrollAbovePeriod, reconcile, cacheKey, sheetRows, defaultDoc, isSwitchedOn,
+  HOME_SECTIONS, LAYOUT_VERSION, available, normalise, fullOrder, resolve, move, moveTo, toggle, isDefault,
+  bankrollAbovePeriod, reconcile, cacheKey, sheetRows,
 } from '../home-layout.js';
 
 const ADMIN = { admin: true, registered: true };
@@ -17,6 +17,17 @@ const ids = (d) => d.sections.map((e) => e.id);
 const LATE = new Set(['friends', 'scanner']);
 const only = (a) => a.filter((id) => !LATE.has(id));
 const top = (d) => only(fullOrder(d));
+// The default document, written out: every section with its starting switch.
+const defaultDoc = () => ({ v: LAYOUT_VERSION, sections: HOME_SECTIONS.map((s) => ({ id: s.id, on: !s.defaultOff })) });
+// A section's own switch as the Edit home sheet shows it (a part under its parent row).
+const isSwitchedOn = (d, id) => {
+  for (const row of sheetRows(d, ADMIN).all) {
+    if (row.id === id) return row.on;
+    const part = row.parts.find((p) => p.id === id);
+    if (part) return part.on;
+  }
+  throw new Error('no such section: ' + id);
+};
 
 test('defaults per viewer: admin 7 entries, registered 4, a guest Up Next and the period block', () => {
   assert.deepEqual(only(available(ADMIN).map((s) => s.id)), ['upnext', 'tolog', 'last', 'bankroll', 'period', 'noise', 'goals']);

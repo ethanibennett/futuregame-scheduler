@@ -135,7 +135,6 @@
   --surface2: var(--sw-ground);
   --border: var(--sw-ink);
   --accent2: var(--sw-ink);
-  --accent-ring: var(--sw-red);
   --text: var(--sw-ink);
   --text-muted: var(--sw-ink);
   --bg-contrast: var(--sw-ground);
@@ -250,7 +249,6 @@
   color: var(--sw-ink);
 }
 :root[data-theme^="swiss"] .username-chip { color: var(--sw-ink); }
-:root[data-theme^="swiss"] .username-chip span { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
 /* The avatar's colour is per user, inline. Here it is ink. */
 :root[data-theme^="swiss"] .username-chip > :first-child:not(span) {
   background: var(--sw-ink) !important;
@@ -263,11 +261,7 @@
   border-top-color: var(--sw-ink);
 }
 :root[data-theme^="swiss"] .bottom-nav::after { background: var(--sw-ground); }
-:root[data-theme^="swiss"] .nav-tab { color: var(--sw-ink); }
 :root[data-theme^="swiss"] .nav-tab-label { font-weight: var(--sw-thin); }
-:root[data-theme^="swiss"] .nav-tab.active { color: var(--sw-red); }
-:root[data-theme^="swiss"] .nav-tab.active .nav-tab-label { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
-:root[data-theme^="swiss"] .nav-tab.active::before { background: var(--sw-red); }
 
 :root[data-theme^="swiss"] .dk-rail { background: var(--sw-ground); border-color: var(--sw-ink); }
 :root[data-theme^="swiss"] .dk-rail-item { color: var(--sw-ink); background: transparent; }
@@ -347,10 +341,6 @@
   background: var(--sw-ink);
   color: var(--sw-ground);
 }
-:root[data-theme^="swiss"] .schedule-date-break.is-today .date-break-pill {
-  background: var(--sw-red);
-  color: #ffffff;
-}
 :root[data-theme^="swiss"] .date-break-day {
   font-weight: var(--sw-bold);
   letter-spacing: var(--sw-track);
@@ -370,9 +360,6 @@
   box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-ink);
 }
 /* Saved to My Schedule: the rule is red and heavier. */
-:root[data-theme^="swiss"] .cal-event-row.saved .cal-event-row-content {
-  box-shadow: inset 0 var(--bw-2) 0 0 var(--sw-red);
-}
 :root[data-theme^="swiss"] .cal-event-row.anchor::after { border-color: var(--sw-red); }
 /* The app pads a saved strip's far side by the width of the venue-colour ring beside it, so the
    name centres in the band the eye sees. Here there is no ring (the red rule is on top), so the
@@ -406,22 +393,14 @@
   letter-spacing: var(--sw-track);
 }
 :root[data-theme^="swiss"] .cal-event-stage { color: var(--sw-ink); font-weight: var(--sw-thin); }
-:root[data-theme^="swiss"] .cal-live-row { color: var(--sw-ink); }
-:root[data-theme^="swiss"] .cal-clock-pt { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
 :root[data-theme^="swiss"] :is(.mini-late-reg-time, .late-reg-label, .late-reg-time) { color: var(--sw-ink); font-weight: var(--sw-thin); }
 :root[data-theme^="swiss"] :is(.late-reg-time.urgent, .late-reg-label.urgent) { color: var(--sw-red); }
 /* Late registration: the track is a hairline through the middle of its box,
    the time gone a solid bar over it, ink, or red when it is closing. */
-:root[data-theme^="swiss"] :is(.mini-late-reg-track, .late-reg-bar-bg) {
-  background: linear-gradient(var(--sw-ink), var(--sw-ink)) center / 100% var(--bw-fine) no-repeat;
-}
 :root[data-theme^="swiss"] :is(.mini-late-reg-fill, .late-reg-bar-fill) { background: var(--sw-ink) !important; }
 :root[data-theme^="swiss"] :is(.mini-late-reg-fill, .late-reg-bar-fill):is(.critical, .urgent) { background: var(--sw-red) !important; }
-:root[data-theme^="swiss"] .late-reg-sep { background: var(--sw-ink); }
 /* The open card's detail. */
 :root[data-theme^="swiss"] :is(.cal-event-detail, .late-reg-wrap, .cal-action-row) { background: transparent; box-shadow: none; }
-:root[data-theme^="swiss"] .cal-detail-label { color: var(--sw-ink); font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
-:root[data-theme^="swiss"] .cal-detail-value { color: var(--sw-ink); font-weight: var(--sw-thin); }
 :root[data-theme^="swiss"] .cal-detail-notes { color: var(--sw-ink); }
 :root[data-theme^="swiss"] .cal-meta-line { color: var(--sw-ink); }
 :root[data-theme^="swiss"] .cal-structure-link { color: var(--sw-red); }
@@ -434,12 +413,10 @@
   font-weight: var(--sw-bold);
   letter-spacing: var(--sw-track);
 }
-:root[data-theme^="swiss"] .badge.badge-event { background: var(--sw-ink) !important; color: var(--sw-ground) !important; }
 :root[data-theme^="swiss"] .badge-rake { color: var(--sw-red) !important; }
 
 /* My Schedule (the desktop's right pane, the phone's own view). */
-:root[data-theme^="swiss"] .dk-pane-title,
-:root[data-theme^="swiss"] .my-schedule-title { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); color: var(--sw-ink); }
+:root[data-theme^="swiss"] .dk-pane-title { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); color: var(--sw-ink); }
 
 /* ==========================================================================
    BANKROLL (TrackingView): the bar, the toggles, the summary, the graph,
@@ -453,19 +430,12 @@
 }
 :root[data-theme^="swiss"] .bk-bar.bk-bar--sched .bk-cell { background: transparent; box-shadow: inset 0 0 0 var(--bw-hair) var(--sw-ink); }
 :root[data-theme^="swiss"] .bk-bar.bk-bar--sched .bk-cell.is-on { box-shadow: inset 0 0 0 var(--bw-fine) var(--sw-red); background: transparent; }
-:root[data-theme^="swiss"] .bk-bar.bk-bar--sched .bk-pick:focus-within { box-shadow: inset 0 0 0 var(--bw-fine) var(--sw-red); }
 :root[data-theme^="swiss"] .bk-cell-name { color: var(--sw-ink); font-weight: var(--sw-thin); }
 :root[data-theme^="swiss"] .bk-cell-bal { color: var(--sw-ink); font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
 :root[data-theme^="swiss"] .bk-act-label { color: var(--sw-ink); font-weight: var(--sw-thin); }
 :root[data-theme^="swiss"] .bk-pick-select { background: transparent; }
 
 /* Log Result / Start session: the page's one filled control, red. */
-:root[data-theme^="swiss"] .filter-chip.tr-log-btn {
-  background: var(--sw-red);
-  border-color: var(--sw-red);
-  color: #ffffff;
-}
-:root[data-theme^="swiss"] .filter-chip.tr-log-btn svg { color: #ffffff; }
 :root[data-theme^="swiss"] .filter-chip.tr-log-btn .tr-log-label {
   font-weight: var(--sw-bold);
   letter-spacing: var(--sw-track);
@@ -479,15 +449,13 @@
   border-color: transparent;
   box-shadow: inset 0 var(--bw-2) 0 0 var(--sw-ink);
 }
-:root[data-theme^="swiss"] .tr-sum-net,
-:root[data-theme^="swiss"] .cs-sum-net {
+:root[data-theme^="swiss"] .tr-sum-net {
   color: var(--sw-ink);
   font-weight: var(--sw-bold);
   letter-spacing: var(--sw-track);
 }
-:root[data-theme^="swiss"] :is(.tr-sum-net, .cs-sum-net, .cs-sum-rate).is-neg { color: var(--sw-red); }
-:root[data-theme^="swiss"] .cs-sum-rate { color: var(--sw-ink); font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
-:root[data-theme^="swiss"] :is(.tr-seat, .tr-sum-sub, .cs-sum-label) { color: var(--sw-ink); }
+:root[data-theme^="swiss"] .tr-sum-net.is-neg { color: var(--sw-red); }
+:root[data-theme^="swiss"] :is(.tr-seat, .tr-sum-sub) { color: var(--sw-ink); }
 :root[data-theme^="swiss"] .tr-seat-3 { font-weight: var(--sw-thin); }
 
 /* Money anywhere on these pages: a gain is ink, a loss red. */
@@ -515,17 +483,12 @@
 :root[data-theme^="swiss"] .an-launch-name { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); color: var(--sw-ink); }
 :root[data-theme^="swiss"] .an-launch-go { color: var(--sw-ink); }
 
-/* Reports' chips. Known: in Arial (the guards' Windows WebKit) "Tue 1".."Sun 1" read ~1px left of
-   centre, from the tabular "1"'s wide right bearing; a smaller size made it worse. Not fixed. */
-:root[data-theme^="swiss"] .br-chip { color: var(--sw-ink); }
-
 /* Expenses & Income. */
 :root[data-theme^="swiss"] .tx-title { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); color: var(--sw-ink); }
 :root[data-theme^="swiss"] .tx-cell { background: transparent; box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-ink); }
 :root[data-theme^="swiss"] .tx-cell-label { color: var(--sw-ink); font-weight: var(--sw-thin); }
 :root[data-theme^="swiss"] .tx-cell-val { color: var(--sw-ink); font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
 :root[data-theme^="swiss"] .tx-line { color: var(--sw-ink); }
-:root[data-theme^="swiss"] .tx-chip.is-on { box-shadow: inset 0 0 0 var(--bw-fine) var(--sw-red); color: var(--sw-red); }
 
 /* The month blocks over the results: ink, like the Schedule's dates; the
    month bold, the year thin, the month's net bold (red when down). */
@@ -547,7 +510,7 @@
   font-weight: var(--sw-ultra);
   letter-spacing: 0;
 }
-:root[data-theme^="swiss"] :is(.bd-hero-val, .bd-hero-profit, .bd-profit-val) .is-pos { color: var(--sw-ink); }
+:root[data-theme^="swiss"] .bd-hero-val .is-pos { color: var(--sw-ink); }
 :root[data-theme^="swiss"] .bd-seg { background: transparent; box-shadow: inset 0 0 0 var(--bw-hair) var(--sw-ink); }
 :root[data-theme^="swiss"] .bd-seg > button { background: transparent; color: var(--sw-ink); box-shadow: none; }
 :root[data-theme^="swiss"] .bd-seg > button span { font-weight: var(--sw-thin); }
@@ -561,7 +524,6 @@
 :root[data-theme^="swiss"] .bd-sw { box-shadow: none; }
 :root[data-theme^="swiss"] .bd-sp-total .bd-sw { background: var(--series-total) !important; }
 :root[data-theme^="swiss"] .bd-sp-tourn .bd-sw { background: var(--series-tourn) !important; }
-:root[data-theme^="swiss"] .bd-sp-cash .bd-sw { background: var(--series-cash) !important; }
 :root[data-theme^="swiss"] :is(.bd-line, .bd-line.bd-under, .bd-grid, .bd-zero, .bd-peak) { stroke-width: var(--bw-fine); }
 :root[data-theme^="swiss"] :is(.bd-grid, .bd-zero, .bd-peak) { stroke: var(--sw-ink); }
 :root[data-theme^="swiss"] .bd-dd { fill: transparent; }
@@ -604,9 +566,6 @@
   padding-top: calc(var(--subrow) * 6 - 1cap);
   min-height: calc(var(--subrow) * 6);
 }
-:root[data-theme^="swiss"] .cs-sum-main { height: calc(var(--subrow) * 6); }
-:root[data-theme^="swiss"] .cs-sum-net { --h: 6; --b: 5; font-size: calc(var(--gu) * 4); }
-:root[data-theme^="swiss"] .cs-sum-rate { --h: 6; --b: 5; }
 /* Overview: the balance column grows by 2r for a 6r figure. p = 2(k - h/2 - c) with c, the
    baseline's offset below the line box's middle, 0.358em for Helvetica (the mean of Helvetica
    Neue's 0.3695 and Arial's 0.3465: (ascent - descent) / 2), in r: 0.358 x 4g / 0.71g = 2.017r.
@@ -659,7 +618,7 @@
 :root[data-theme^="swiss"] body svg * { stroke-linecap: square; stroke-linejoin: miter; }
 /* 18: tabular figures where money and times stack; proportional in the display figures. */
 :root[data-theme^="swiss"] :is(.cal-event-buyin, .cal-event-gtd, .cal-event-time, .tr-amt, .an-td, .bk-cell-bal, .tr-month-net, .bd-recent-amt, .cs-kv-value) { font-variant-numeric: tabular-nums; }
-:root[data-theme^="swiss"] :is(.tr-sum-net, .cs-sum-net, .bd-hero-val) { font-variant-numeric: proportional-nums; letter-spacing: var(--sw-track-display); }
+:root[data-theme^="swiss"] :is(.tr-sum-net, .bd-hero-val) { font-variant-numeric: proportional-nums; letter-spacing: var(--sw-track-display); }
 :root[data-theme^="swiss"] .top-bar-title h1 { letter-spacing: var(--sw-track-display); }
 
 /* 30: secondary text in the 60% grey. */
@@ -724,7 +683,6 @@
   justify-content: flex-start;
   text-align: left;
 }
-:root[data-theme^="swiss"] .filter-chip.tr-log-btn { padding-left: var(--gu); }
 :root[data-theme^="swiss"] .filter-chip.tr-log-btn .tr-log-label { text-indent: 0; }
 
 /* 4: rules instead of boxes. The square tools are glyphs on the ground; the bankroll picker and
@@ -895,8 +853,6 @@
 
 /* --- 25: tables with three rules ------------------------------------------- */
 :root[data-theme^="swiss"] .ovt-row { box-shadow: none; }
-:root[data-theme^="swiss"] .ovt-thead { box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--sw-ink); }
-:root[data-theme^="swiss"] .ovt-row.is-strong { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-ink); }
 :root[data-theme^="swiss"] .ovt-th { font-weight: var(--sw-thin) !important; letter-spacing: 0 !important; color: var(--sw-g60) !important; }
 
 /* --- 43: the station clock's second hand: the time gone in ink over a red track. --- */
@@ -951,7 +907,6 @@
    capitals do, when a card opens to the room's full name). */
 :root[data-theme^="swiss"] .venue-strip-abbr { display: none; }
 :root[data-theme^="swiss"] .venue-strip-sc { display: block; grid-area: 1 / 1; font-weight: var(--sw-bold); letter-spacing: var(--sw-track); color: inherit; }
-:root[data-theme^="swiss"] .cal-event-row.open .venue-strip-sc { display: none; }
 /* 16: the wordmark's full stop is the top bar's one red. */
 :root[data-theme^="swiss"] .top-bar-title h1 .wm-dot { color: var(--sw-red); }
 /* 7: the running head replaces the subtitle. */
@@ -976,7 +931,6 @@
 }
 /* 32: the event you are registered for today: its strip is the red one. */
 :root[data-theme^="swiss"] .cal-event-row.saved.is-today > .cal-venue-strip { background: var(--sw-red) !important; color: #ffffff !important; }
-:root[data-theme^="swiss"] .cal-event-row.saved.is-today > .cal-venue-strip :is(.venue-strip-sc, .venue-strip-abbr, .venue-strip-full) { color: #ffffff; }
 /* 44: the live beacon as a clock face: a red segment that fills once an hour from the start of
    the session (--sweep, BackerPage liveSweep), on a hairline ring. No pulse. */
 :root[data-theme^="swiss"] .bp-live { box-shadow: inset 0 var(--bw-2) 0 0 var(--sw-red); background: transparent; }
@@ -1201,12 +1155,10 @@
   box-shadow: inset 0 0 0 var(--bw-hair) var(--sw-ink) !important;
   border-color: var(--sw-ink) !important;
 }
-:root[data-theme^="swiss"] :is(.replayer-seat.is-hero, .replayer-seat.active-turn) .replayer-seat-info { box-shadow: inset 0 0 0 var(--bw-2) var(--sw-ink) !important; }
 :root[data-theme^="swiss"] .replayer-seat-name { color: var(--sw-g60) !important; font-weight: var(--sw-thin); }
 :root[data-theme^="swiss"] .replayer-seat-stack { color: var(--sw-ink) !important; font-weight: var(--sw-bold); letter-spacing: var(--sw-track); font-variant-numeric: tabular-nums; }
 :root[data-theme^="swiss"] .replayer-seat.folded .replayer-seat-info { box-shadow: inset 0 0 0 var(--bw-fine) var(--sw-g30) !important; }
 /* All-in: the one red on the table. */
-:root[data-theme^="swiss"] .replayer-seat.is-allin .replayer-seat-info { box-shadow: inset 0 0 0 var(--bw-2) var(--sw-red) !important; }
 :root[data-theme^="swiss"] .replayer-allin-mark { color: var(--sw-red) !important; font-weight: var(--sw-bold); }
 
 /* Actions and bets: light words, no badge; an all-in action is red. */
@@ -1337,7 +1289,6 @@
 
 /* Date breaks other than today: no block, the day and month as plain words. */
 :root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break):not(.bp-month-break) .date-break-pill { background: transparent; color: var(--sw-ink); justify-content: flex-start; width: auto; }
-:root[data-theme^="swiss"] .schedule-date-break:not(.is-today):not(.tr-month-break):not(.bp-month-break) .date-break-label { transform: none !important; }
 :root[data-theme^="swiss"] .schedule-date-break .date-break-dow { font-weight: var(--sw-thin); letter-spacing: 0; color: var(--sw-g60); }
 
 /* The top bar: no black avatar square; the icon glyphs grey. */
@@ -1370,7 +1321,6 @@
 :root[data-theme^="swiss"] .grid-dev-toggle.is-on { color: var(--sw-red) !important; }
 /* A closed card has no arrow row: the whole card opens it. */
 :root[data-theme^="swiss"] .cal-event-row:not(.open) .cal-event-chevron { display: none; }
-:root[data-theme^="swiss"] .cal-event-row:not(.open) .cal-event-row-content { padding-bottom: calc(var(--subrow) * 2); }
 :root[data-theme^="swiss"] :is(.bd-sp, .bd-fill-btn) { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30); }
 :root[data-theme^="swiss"] :is(.bd-sp, .bd-fill-btn).is-on { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-ink); }
 :root[data-theme^="swiss"] :is(.tx-cell, .an-launch) { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30); }
@@ -1393,7 +1343,7 @@
 :root[data-theme^="swiss"] :is(.bd-sp, .bd-fill-btn, .hm-fact) { justify-content: flex-start; align-items: flex-start; text-align: left; }
 :root[data-theme^="swiss"] :is(.bd-sp-name, .bd-sp-val) { justify-content: flex-start; text-align: left; padding-left: 0; }
 :root[data-theme^="swiss"] .dashboard-view.home :is(.dash-card-content, .hm-receipt, .hm-period-card, .hm-prow) > * { padding-left: 0 !important; padding-right: 0 !important; margin-left: 0 !important; }
-:root[data-theme^="swiss"] .dashboard-view.home :is(.dash-event-header, .dash-event-title, .dash-event-meta, .dash-collapsed-countdown) { padding-left: 0 !important; margin-left: 0 !important; }
+:root[data-theme^="swiss"] .dashboard-view.home :is(.dash-event-header, .dash-event-title, .dash-event-meta) { padding-left: 0 !important; margin-left: 0 !important; }
 
 /* The Up Next card holds its content 2g in; its rule and room start at 1g, so the content does too. The facts
    row loses its dividers (text flush against a rule reads as clipped). */
@@ -1757,7 +1707,8 @@
 :root[data-theme^="swiss"] .ovt-row.is-strong { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-ink); }
 
 /* Insights › Reports: the breakdown chips as a menu of words (catalogue 37), the chosen one bold
-   with the red rule. */
+   with the red rule. Known: in Arial (the guards' Windows WebKit) "Tue 1".."Sun 1" read ~1px left
+   of centre, from the tabular "1"'s wide right bearing; a smaller size made it worse. Not fixed. */
 :root[data-theme^="swiss"] .br-chip,
 :root[data-theme^="swiss"] .br-chip.is-on { box-shadow: none !important; background: transparent !important; justify-content: flex-start; text-align: left; padding-left: 0; }
 :root[data-theme^="swiss"] .br-chip { color: var(--sw-g60); }
@@ -1847,16 +1798,12 @@
 :root[data-theme^="swiss"] .qa-chip * { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
 :root[data-theme^="swiss"] .qa-chip svg { display: none; }
 /* The game picker: no frame, no grey fill; the chosen game and structure bold with a red rule at
-   the left, the tabs words with the red rule under the chosen. */
+   the left. */
 :root[data-theme^="swiss"] .game-picker { box-shadow: none !important; }
-:root[data-theme^="swiss"] .game-tab-bar { box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--sw-g30) !important; }
 :root[data-theme^="swiss"] .game-faves-row { box-shadow: none !important; }
-:root[data-theme^="swiss"] :is(.game-tab-btn, .game-fave-btn) { box-shadow: none !important; background: transparent !important; color: var(--sw-g60); }
-:root[data-theme^="swiss"] :is(.game-tab-btn, .game-fave-btn).active { color: var(--sw-ink); font-weight: var(--sw-bold); letter-spacing: var(--sw-track); box-shadow: inset 0 calc(var(--bw-2) * -1) 0 0 var(--sw-red) !important; }
 :root[data-theme^="swiss"] .game-check-row { background: transparent !important; border-left-color: transparent !important; }
 :root[data-theme^="swiss"] .game-check-row.selected { box-shadow: inset var(--bw-2) 0 0 0 var(--sw-red); }
 :root[data-theme^="swiss"] .game-check-row.selected * { font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }
-:root[data-theme^="swiss"] .game-check-section-label { box-shadow: inset 0 var(--bw-hair) 0 0 var(--sw-g30) !important; color: var(--sw-g60); }
 /* The one red block keeps white type. */
 :root[data-theme^="swiss"] .btn.btn-primary,
 :root[data-theme^="swiss"] .btn.btn-primary * { color: #ffffff; font-weight: var(--sw-bold); letter-spacing: var(--sw-track); }

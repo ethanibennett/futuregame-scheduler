@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchApi } from '../utils/api.js';
+import { portalTarget } from '../utils/grid-panel.js';
 import { formatCurrencyAmount, MINUS, ordinalSuffix } from '../utils/utils.js';
 import './analytics.css';
 
@@ -26,15 +27,6 @@ const MISSING_NOTE = {
   field: (n) => `${n} event${n === 1 ? ' has' : 's have'} no recorded field size.`,
   weekday: (n) => `${n} event${n === 1 ? ' has' : 's have'} no date.`,
 };
-
-// Portalled to the app's root container, not to <body>: that container is position:fixed, so it
-// is a stacking context, and the admin grid overlay (z 9997) lives inside it. A sheet on <body>
-// at any z-index would paint over the overlay and the layout could not be checked against it.
-// The root has no transform or overflow, so nothing clips a fixed sheet inside it.
-function portalTarget() {
-  const shell = document.querySelector('.app-shell');
-  return (shell && shell.parentElement) || document.body;
-}
 
 // The display currency the Results tab's summary uses ('NATIVE' shows as USD there too).
 function displayCurrency() {

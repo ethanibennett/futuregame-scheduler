@@ -6,15 +6,14 @@
  * agreements with the engine's own format keys; nothing here adds up a share. Figures are the
  * server's, worded with the backer page's formatters so they read the same everywhere.
  */
-import { fmtSignedCents, fmtShort, plural, tone } from './backer-page.js';
+import { fmtSignedCents, fmtShort, plural, tone, fmtPct } from './backer-page.js';
 
 export { fmtSignedCents, plural, tone };
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const text = (v) => (typeof v === 'string' ? v : v == null ? '' : String(v));
 export const CHANNEL_WORD = { any: 'live and online', live: 'live', online: 'online' };
 
-/** A percentage as the stake is written: 20 -> "20%", 12.5 -> "12.5%". */
-export const fmtPct = (p) => `${Math.round(num(p) * 100) / 100}%`;
+export { fmtPct };
 
 /** The list made safe to draw. */
 export function normaliseList(data) {
@@ -195,12 +194,10 @@ export const toQueryString = (q) => Object.entries(q || {}).filter(([, v]) => v 
  */
 export function confirmActions(b) {
   const series = b.warnings.some((w) => w.kind === 'series');
-  const dash = b.warnings.some((w) => w.kind === 'dashboard');
   if (series) {
     return [
       { label: 'Both', w: 7, body: { confirm: true, answers: { [b.key]: 'standing' } }, tone: 'warn', title: 'Send the standing share as well; the series agreement settles on its own' },
       { label: 'Series only', w: 10, body: { answers: { [b.key]: 'series' } }, tone: '', title: 'No standing share for this result, and no more asking' },
-      ...(dash ? [] : []),
     ];
   }
   return [{ label: 'Send anyway', w: 11, body: { confirm: true }, tone: 'warn', title: 'The dashboard app already sent this night; send this share too' }];

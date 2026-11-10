@@ -6,7 +6,10 @@ import { fetchApi } from '../utils/api.js';
  * header, the game pills, and which games this server can really deal.
  */
 
-const T = (b, lh) => (lh ? { '--hs-b': b, '--hs-lh': lh } : { '--hs-b': b });
+/** An .hs-t text block's style: b r tall to its baseline, lh r for each further line. */
+export const T = (b, lh) => (lh ? { '--hs-b': b, '--hs-lh': lh } : { '--hs-b': b });
+/** n subrows (r) as a CSS length. */
+export const R = (n) => `calc(var(--subrow) * ${n})`;
 
 /** Back to Study, the tool's name, and one sentence on what it does. */
 export function StudyHead({ title, note, onBack }) {

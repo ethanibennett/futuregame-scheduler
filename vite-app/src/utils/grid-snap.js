@@ -57,7 +57,8 @@ function alphaOf(c) {
   return m[1].endsWith('%') ? parseFloat(m[1]) / 100 : parseFloat(m[1]);
 }
 
-function unitR() {
+// One r in CSS px, measured (r is a calc of the viewport width, rounded to 1/64 px). App.jsx uses it too.
+export function unitR() {
   const probe = document.createElement('div');
   probe.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)';
   document.body.appendChild(probe);

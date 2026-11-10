@@ -221,7 +221,6 @@
   box-shadow: var(--elev-1);
   overflow: hidden;
 }
-.bp-card > .bp-strip.is-neutral { background: var(--border-strong); }
 /* A session card is the Schedule's own event card (owner, 2026-10-15: "as close to the schedule card
    as possible, just swapping out information"): CalendarEventRow's markup and classes, styled by
    styles.css, so its grid, type and opening are the Schedule's. Only what differs is here: the 2r gap
@@ -244,31 +243,6 @@
 /* The strip is the Schedule's own .cal-venue-strip (styles.css): the room's colour, its short code
    centred both ways, white. .bp-strip only marks it here; an unknown room gets the neutral colour. */
 .bp-card-body { grid-column: 2; min-width: 0; padding: 0 var(--gu); }
-/* 33g after the 2g strip, less 1g each side: 19g | 1g | 11g. */
-.bp-card-row {
-  display: grid;
-  grid-template-columns: calc(var(--gu) * 19) calc(var(--gu) * 11);
-  column-gap: var(--gu);
-}
-.bp-card-row--one { grid-template-columns: minmax(0, 1fr); }
-.bp-card-row > :last-child { text-align: right; }
-.bp-game {
-  /* Display face md, baseline on line 3 of 4 (an-val's c). */
-  --h: 4; --p: 0.568;
-  font-family: var(--font-display);
-  font-size: var(--fs-md);
-  color: var(--text);
-}
-.bp-share {
-  --h: 4; --p: 0.568;
-  font-family: var(--font-display);
-  font-size: var(--fs-md);
-  font-weight: var(--fw-bold);
-  color: var(--text);
-  font-variant-numeric: var(--num-tabular);
-}
-.bp-share.is-pos { color: var(--pos); }
-.bp-share.is-neg { color: var(--neg); }
 
 /* ── Messages: empty, error ── */
 .bp-message { margin-top: calc(var(--subrow) * 3); }

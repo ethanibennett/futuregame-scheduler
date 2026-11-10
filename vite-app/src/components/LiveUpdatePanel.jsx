@@ -1,13 +1,13 @@
 import { noteReviewMoment } from '../utils/review-prompt.js';
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import { CameraOverlay, RegistrationCameraFlow } from './CameraOverlay.jsx';
 import { API_URL } from '../utils/api.js';
 import {
-  getToday, getNow, normaliseDate, parseLateRegEnd, parseDateTime,
+  getToday, normaliseDate, parseLateRegEnd,
   getGamePills, haptic, HAND_CONFIG, HAND_CONFIG_DEFAULT,
-  formatLiveUpdate, ordinalSuffix, parseShorthand, formatBuyin,
+  formatLiveUpdate, ordinalSuffix, parseShorthand,
 } from '../utils/utils.js';
 import { parseCardNotation, dualPlaceholder, evaluateHand, assignNeutralSuits, GAME_EVAL } from '../utils/poker-engine.js';
 import { loadCardImages, drawHandImageOverlay } from '../utils/export.js';
@@ -401,7 +401,7 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
   const openCamera = async () => {
     if (!selectedTournamentId) return;
     try {
-      const tk = localStorage.getItem('token');
+      const tk = localStorage.getItem('token') || sessionStorage.getItem('token');
       const resp = await fetch(`${API_URL}/live-updates/history/${selectedTournamentId}`, {
         headers: { Authorization: 'Bearer ' + tk }
       });

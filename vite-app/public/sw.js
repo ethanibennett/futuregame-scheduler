@@ -1,7 +1,9 @@
-// Service Worker for WSOP Scheduler PWA
-// Handles offline caching + push notifications
+// Service worker for futurega.me (registered when an app admin turns on web push, App.jsx).
+// Handles offline caching + push notifications. The app's code and styles are Vite's hashed
+// /assets/* files, cached as they are first fetched (the fetch handler below).
 
-const CACHE_NAME = 'wsop-scheduler-v5';
+// v6 (2026-11-10): a new name, so activate drops v5's copies of the CDN scripts it no longer fetches.
+const CACHE_NAME = 'wsop-scheduler-v6';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -9,22 +11,6 @@ const APP_SHELL = [
   '/favicon.svg',
   '/icon-192.png',
   '/icon-512.png',
-  '/styles.css',
-  '/js/poker-engine.js',
-  '/js/utils.js',
-  '/dist/app.js',
-  '/dist/replayer.js',
-  '/dist/export.js',
-  '/dist/social.js',
-  '/dist/staking.js',
-];
-
-// External resources to cache
-const EXTERNAL_ASSETS = [
-  'https://unpkg.com/react@18/umd/react.production.min.js',
-  'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
-  'https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js',
-  'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js',
 ];
 
 // Install — cache app shell
@@ -32,14 +18,9 @@ self.addEventListener('install', function(event) {
   event.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
       // Cache local assets (fail silently for missing icons)
-      const localPromise = Promise.allSettled(
+      return Promise.allSettled(
         APP_SHELL.map(function(url) { return cache.add(url); })
       );
-      // Cache external assets (fail silently — they'll be cached on first use)
-      const externalPromise = Promise.allSettled(
-        EXTERNAL_ASSETS.map(function(url) { return cache.add(url); })
-      );
-      return Promise.all([localPromise, externalPromise]);
     }).then(function() {
       return self.skipWaiting();
     })
@@ -127,7 +108,7 @@ self.addEventListener('fetch', function(event) {
 
 // ── Push notifications ──
 self.addEventListener('push', function(event) {
-  var data = { title: 'WSOP Scheduler', body: 'New notification' };
+  var data = { title: 'futurega.me', body: 'New notification' };
   try {
     data = event.data.json();
   } catch (e) {
@@ -135,7 +116,7 @@ self.addEventListener('push', function(event) {
   }
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'WSOP Scheduler', {
+    self.registration.showNotification(data.title || 'futurega.me', {
       body: data.body || '',
       icon: data.icon || '/icon-192.png',
       badge: '/icon-192.png',

@@ -27,7 +27,7 @@ import { BANKROLL_MAIN, bankrollQuery, defaultBankrollFor } from '../utils/bankr
 import { shareOrDownloadBlob } from '../utils/export.js';
 import {
   CASH_GAMES, formatClock, formatHours, liveElapsed, localDay, localTime, sessionInstants, sessionGame,
-  parseTagInput, amountOrUndefined, roomSuggestions, slugForRoom, monthLabel, groupByMonth, monthTotals,
+  parseTagInput, amountOrUndefined, roomSuggestions, slugForRoom, groupByMonth, monthTotals,
   sessionHourly, sessionDefaults, hoursBetweenTimes, endTimeAfter, instantsFromHours, parseHours, hoursInput,
   swingSeries, swingSummary, chartPath,
 } from '../utils/cash-sessions.js';
@@ -37,7 +37,7 @@ import { MoneyParts, SwissLines } from './SwissParts.jsx';
 import { fmtDay } from '../utils/backer-page.js';
 import useLiveCashSession, { setLiveSession } from '../hooks/useLiveCashSession.js';
 import { useResultsFocus, clearResultsFocus, revealInScroller } from '../hooks/useResultsFocus.js';
-import { useTick } from './CashLive.jsx';
+import useTick from '../hooks/useTick.js';
 import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
 // The Backers block (the Notify tap), the owner's only: on a session's page and its edit screen.
 import BackerNotify from './BackerNotify.jsx';
@@ -50,10 +50,6 @@ const perHour = (v, cur) => (v == null ? '—' : `${signed(v, cur)}/h`);
 const tone = (v) => (v > 0 ? ' is-pos' : v < 0 ? ' is-neg' : '');
 const CURRENCIES = Object.keys(CURRENCY_CONFIG);
 const asDate = (day) => new Date(day + 'T12:00:00');
-const rowDay = (day) => {
-  const d = asDate(day);
-  return Number.isNaN(d.getTime()) ? day : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-};
 const longDay = (day) => {
   const d = asDate(day);
   return Number.isNaN(d.getTime()) ? day : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });

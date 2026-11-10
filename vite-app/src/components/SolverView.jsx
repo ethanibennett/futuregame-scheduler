@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { fetchApi } from '../utils/api.js';
 import Card from './SolverCard.jsx';
-import { StudyHead, studyPill } from './StudyHead.jsx';
+import { StudyHead, studyPill, T } from './StudyHead.jsx';
 import StrategyRibbon from './StrategyRibbon.jsx';
 
 // ── Live Solver tool ────────────────────────────────────────
@@ -27,10 +27,8 @@ import StrategyRibbon from './StrategyRibbon.jsx';
 //
 // Vertical grid: every piece is a whole number of r (text = .hs-t blocks whose
 // baseline is their bottom edge, controls 3/5/6r, gaps 1/2r), so every block
-// starts on an r-line from the top bar. Classes live in styles.css (.hs-*).
-
-// Text block helper: className + baseline offset b (r) [+ line pitch lh (r)].
-const T = (b, lh) => (lh ? { '--hs-b': b, '--hs-lh': lh } : { '--hs-b': b });
+// starts on an r-line from the top bar. Classes live in styles.css (.hs-*); T, the
+// text block's baseline offset b (r) [+ line pitch lh (r)], is StudyHead.jsx's.
 
 // Split a free-text holding/upcard string ("As4s3d2c" / "Kc Kd 2h")
 // into individual two-char card tokens for the SolverCard preview.

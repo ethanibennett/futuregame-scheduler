@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import { FirstRun } from './EmptyState.jsx';
@@ -746,8 +746,6 @@ function StakingSeriesDetail({ series, token, backers, tournaments, mySchedule, 
         <AgreementsList
           agreements={agreements}
           token={token}
-          seriesId={series.id}
-          backers={backers}
           fetchAgreements={fetchAgreements}
           onAdd={() => setShowAgreementForm(true)}
         />
@@ -755,7 +753,6 @@ function StakingSeriesDetail({ series, token, backers, tournaments, mySchedule, 
 
       {segment === 'events' && (
         <StakingEventTracking
-          seriesId={series.id}
           agreements={agreements}
           eventStatuses={eventStatuses}
           tournaments={tournaments}
@@ -793,7 +790,7 @@ function StakingSeriesDetail({ series, token, backers, tournaments, mySchedule, 
 
 // ── Agreements List ─────────────────────────────────────────
 
-function AgreementsList({ agreements, token, seriesId, backers, fetchAgreements, onAdd }) {
+function AgreementsList({ agreements, token, fetchAgreements, onAdd }) {
   const handleDelete = async (id) => {
     if (!confirm('Delete this agreement?')) return;
     try {
@@ -1036,7 +1033,7 @@ function AgreementForm({ token, seriesId, backers, onClose, onSaved, tournaments
 
 // ── Staking Event Tracking ──────────────────────────────────
 
-function StakingEventTracking({ seriesId, agreements, eventStatuses, tournaments, mySchedule, series, token, fetchEvents }) {
+function StakingEventTracking({ agreements, eventStatuses, tournaments, mySchedule, series, token, fetchEvents }) {
   const [logFor, setLogFor] = useState(null); // { agreementId, tournamentId }
   const [bullets, setBullets] = useState('1');
   const [buyinAmt, setBuyinAmt] = useState('');

@@ -7,15 +7,17 @@ import { createPortal } from 'react-dom';
 import { API_URL } from './utils/api.js';
 import { parseDeepLink } from './utils/deep-links.js';
 import { resetPath } from './utils/reset-results.js';
-import { haptic, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones, registerRowCurrencies, registerVenueCoords, getDebugNow, setDebugNow } from './utils/utils.js';
+import { haptic, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, formatSeasonLabel, registerRowTimezones, registerRowCurrencies, registerVenueCoords, getDebugNow, setDebugNow } from './utils/utils.js';
 import { DNP_TYPE, withoutDnpMarkers } from './utils/didnt-play.js';
 import { decodeHand } from './utils/hand-shorthand.js';
 import { detectMilestones } from './utils/milestones.js';
 import { moveDetailBlock, settleDetailBlock, detailBlockMoving, resizeDetailBlock } from './utils/detail-motion.js';
 import usePullToRefresh from './hooks/usePullToRefresh.js';
+import { APP_ADMIN_USERNAMES, tokenUsername, tokenUserId } from './utils/session-claims.js';
+import { unitR } from './utils/grid-snap.js';
 
 import { useToast } from './contexts/ToastContext.jsx';
-import { useDisplayName, DisplayNameProvider } from './contexts/DisplayNameContext.jsx';
+import { DisplayNameProvider } from './contexts/DisplayNameContext.jsx';
 
 import Icon from './components/Icon.jsx';
 import ThemeButton from './components/ThemeButton.jsx';
@@ -60,7 +62,7 @@ import NotificationsPanel from './components/NotificationsPanel.jsx';
 import SwapModal from './components/SwapModal.jsx';
 import MilestoneCelebration from './components/MilestoneCelebration.jsx';
 
-// Code-split the heaviest views (replayer alone is ~4.5k LOC) so the main
+// Code-split the heaviest views (the replayer alone is over 10k lines) so the main
 // bundle drops by several hundred KB. Each loads on first navigation to
 // its tab; subsequent visits are cached by the browser.
 const HandReplayerView = lazy(() => import('./components/HandReplayerView.jsx'));
@@ -110,22 +112,6 @@ const VIEW_PARAM = VIEW_MATCH ? VIEW_MATCH[1] : null;
 // for anyone else the param is dropped without effect (the API refuses them anyway).
 const batchIdFrom = (s) => { const m = String(s || '').match(/[?&]batch=(\d{1,9})(?:&|$)/); return m ? Number(m[1]) : null; };
 const BATCH_PARAM = batchIdFrom(window.location.search);
-
-// The admin gates below read the username claim INSIDE the signed session token, never the
-// 'username' storage key: that key is plain localStorage, and setting it to 'ham' by hand used to
-// unlock every admin surface (Hands/Solver, Staking, Admin, Cash, the grid and demo toggles) on a
-// session that kept working. A hand-made token can claim any name too, but the server refuses it
-// on the first authenticated call and guardedFetch signs the session out. Display still uses the
-// stored username; only authorisation-shaped decisions use this.
-// One r in CSS px, measured (r is a calc of the viewport width, rounded to 1/64 px).
-function subrowPx() {
-  const probe = document.createElement('div');
-  probe.style.cssText = 'position:absolute;visibility:hidden;height:calc(var(--subrow) * 100)';
-  document.body.appendChild(probe);
-  const r = probe.getBoundingClientRect().height / 100;
-  probe.remove();
-  return r || 1;
-}
 
 function prefersReducedMotion() {
   return typeof window !== 'undefined' && !!window.matchMedia
@@ -213,29 +199,7 @@ function signupSource(heard) {
   };
 }
 
-const APP_ADMIN_USERNAMES = ['ham', 'ham5', 'claude'];   // mirrors server.js APP_ADMIN_USERNAMES
 const EVENT_EDITOR_USERNAMES = ['ham', 'ham5'];          // mirrors the server's write allowlist
-function tokenUsername(tok) {
-  try {
-    const part = String(tok || '').split('.')[1];
-    if (!part) return '';
-    const claims = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/')));
-    if (!claims || claims.isGuest) return '';
-    return typeof claims.username === 'string' ? claims.username.toLowerCase() : '';
-  } catch { return ''; }
-}
-// The account id from the token's own claim (null for a guest or no session): the key of the
-// user's cached home layout (hooks/useHomeLayout.js), so one account never reads another's.
-function tokenUserId(tok) {
-  try {
-    const part = String(tok || '').split('.')[1];
-    if (!part) return null;
-    const claims = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/')));
-    if (!claims || claims.isGuest) return null;
-    const id = Number(claims.id);
-    return Number.isInteger(id) && id > 0 ? id : null;
-  } catch { return null; }
-}
 
 // debugNow (utils.js) is the admin-only simulated clock. It lives in localStorage and getNow()
 // honours it for whoever is signed in, so a value an admin left behind (or anyone typed in)
@@ -248,6 +212,8 @@ try {
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || sessionStorage.getItem('token'));
+  // The signed token's own username claim (utils/session-claims.js), read once per token.
+  const authUsername = useMemo(() => tokenUsername(token), [token]);
   const [username, setUsername] = useState(localStorage.getItem('username') || sessionStorage.getItem('username'));
   const [isGuest, setIsGuest] = useState(localStorage.getItem('isGuest') === 'true');
   const [authView, setAuthView] = useState('login');
@@ -316,13 +282,8 @@ function App() {
   const seasonLabel = useMemo(() => formatSeasonLabel(tournaments), [tournaments]);
   const [mySchedule, setMySchedule] = useState([]);
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [gameVariants, setGameVariants] = useState([]);
-  const [venues, setVenues] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [uploadError, setUploadError] = useState('');
-  const [uploadSuccess, setUploadSuccess] = useState('');
-  const [uploadVenue, setUploadVenue] = useState('');
   const [debugTimeKey, setDebugTimeKey] = useState(0);
 
   // Avatar
@@ -413,13 +374,9 @@ function App() {
   const [shareBuddies, setShareBuddies] = useState([]);
   const [pendingIncoming, setPendingIncoming] = useState([]);
   const [pendingOutgoing, setPendingOutgoing] = useState([]);
-  const [lastSeenShares, setLastSeenShares] = useState(null);
   const [buddyEvents, setBuddyEvents] = useState({});
   const [swapModalData, setSwapModalData] = useState(null);
   const onBuddySwap = useCallback((buddy, tournament) => setSwapModalData({ buddy, tournament }), []);
-  const [newShareCount, setNewShareCount] = useState(0);
-  const [shareError, setShareError] = useState('');
-  const [shareSuccess, setShareSuccess] = useState('');
 
   // Tracking
   const [trackingData, setTrackingData] = useState([]);
@@ -454,9 +411,9 @@ function App() {
 
   // Theme
   // The Swiss themes are admin-only (utils/theme.js); the signed token's name says who is one.
-  const { theme, toggleTheme, nextThemeLabel } = useThemeChoice({ admin: APP_ADMIN_USERNAMES.includes(tokenUsername(token)) });
+  const { theme, toggleTheme, nextThemeLabel } = useThemeChoice({ admin: APP_ADMIN_USERNAMES.includes(authUsername) });
   const [contrast, setContrast] = useState(localStorage.getItem('contrast') || 'normal');
-  const [cardSplay, setCardSplay] = useState(localStorage.getItem('cardSplay') !== 'off');
+  const [cardSplay] = useState(localStorage.getItem('cardSplay') !== 'off');
   // Admin-only layout-grid overlay for checking alignment (GridOverlay.jsx).
   const [gridOverlay, setGridOverlay] = useState(() => {
     // ?gridOverlay=1 forces it on so it can be activated in the native WKWebView
@@ -677,28 +634,6 @@ function App() {
     } catch (e) { console.error('Fetch schedule:', e); setMySchedule([]); }
   };
 
-  const fetchGameVariants = async () => {
-    try {
-      const res = await guardedFetch(`${API_URL}/game-variants`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res) return;
-      const data = await res.json();
-      setGameVariants(Array.isArray(data) ? data : []);
-    } catch (e) { console.error('Fetch game variants:', e); }
-  };
-
-  const fetchVenues = async () => {
-    try {
-      const res = await guardedFetch(`${API_URL}/venues`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res) return;
-      const data = await res.json();
-      setVenues(Array.isArray(data) ? data : []);
-    } catch (e) { console.error('Fetch venues:', e); }
-  };
-
   const fetchTracking = async () => {
     try {
       const res = await fetch(`${API_URL}/tracking`, {
@@ -894,10 +829,6 @@ function App() {
       }
       setBuddyEvents(events);
       setBuddyLiveUpdates(data.buddyLiveUpdates || {});
-      const lss = data.lastSeenShares || null;
-      setLastSeenShares(lss);
-      const newBuddies = (data.buddies || []).filter(b => !lss || b.since > lss).length;
-      setNewShareCount(newBuddies + (data.pendingIncoming || []).length);
     } catch {}
   };
 
@@ -971,24 +902,6 @@ function App() {
       await fetch(`${API_URL}/share-token`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
       setShareToken(null);
     } catch {}
-  };
-
-  const handleSendShareRequest = async (e) => {
-    e.preventDefault();
-    const uname = new FormData(e.target).get('shareUsername');
-    if (!uname) return;
-    try {
-      const res = await fetch(`${API_URL}/share-request`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: uname })
-      });
-      const data = await res.json();
-      if (!res.ok) { toast.error(data.error); return; }
-      toast.success(data.message);
-      e.target.reset();
-      fetchShareBuddies();
-    } catch { toast.error('Failed to send request'); }
   };
 
   const handleAcceptRequest = async (id) => {
@@ -1115,12 +1028,8 @@ function App() {
     setShareBuddies([]);
     setPendingIncoming([]);
     setPendingOutgoing([]);
-    setLastSeenShares(null);
-    setNewShareCount(0);
     setNotifications({ groupInvites: [], buddyRequests: [], acceptedBuddies: [] });
     setShowNotifications(false);
-    setShareError('');
-    setShareSuccess('');
     setTrackingData([]);
     setBuddyEvents({});
   };
@@ -1306,26 +1215,6 @@ function App() {
     } catch { setError('Failed to update planned entries'); }
   }, [token]);
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const fd = new FormData();
-    fd.append('pdf', file);
-    if (uploadVenue) fd.append('venue', uploadVenue);
-    try {
-      toast.info('Uploading and parsing PDF...');
-      const res = await fetch(`${API_URL}/upload-schedule`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd
-      });
-      const data = await res.json();
-      toast.success(`Imported ${data.tournamentsCount} tournaments from ${data.format === 'wsop' ? 'WSOP' : 'generic'} format!`);
-      setUploadVenue('');
-      fetchTournaments();
-    } catch { toast.error('Failed to upload schedule'); }
-  };
-
   // ── Pull-to-refresh ──
   const contentAreaRef = useRef(null);
   const refreshAll = useCallback(async () => {
@@ -1341,8 +1230,7 @@ function App() {
   useEffect(() => {
     if (token) {
       Promise.all([
-        fetchTournaments(), fetchMySchedule(), fetchGameVariants(),
-        fetchVenues(), fetchShareToken(), fetchShareBuddies(),
+        fetchTournaments(), fetchMySchedule(), fetchShareToken(), fetchShareBuddies(),
         fetchMyGroups(), fetchNotifications(), fetchTracking(), fetchMyLiveUpdate(),
         fetchVenueColors()
       ]).finally(() => setDataLoaded(true));
@@ -1559,7 +1447,6 @@ function App() {
   const nativePush = !!(window.Capacitor && window.Capacitor.isNativePlatform());
   const pushSupported = nativePush ||
     ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window);
-  const authUsername = useMemo(() => tokenUsername(token), [token]);
   const isPushAdmin = !!token && !isGuest && APP_ADMIN_USERNAMES.includes(authUsername);
   const [pushPerm, setPushPerm] = useState(() =>
     nativePush ? 'default' : (pushSupported ? Notification.permission : 'denied'));
@@ -1591,7 +1478,7 @@ function App() {
   useEffect(() => {
     if (!token || BATCH_PARAM == null || batchLinkHandled.current) return;
     batchLinkHandled.current = true;
-    if (!isGuest && APP_ADMIN_USERNAMES.includes(tokenUsername(token))) openBatch(BATCH_PARAM);
+    if (!isGuest && APP_ADMIN_USERNAMES.includes(authUsername)) openBatch(BATCH_PARAM);
     if (window.history.replaceState) window.history.replaceState(null, '', window.location.pathname);
   }, [token, isGuest, openBatch]);
 
@@ -1864,11 +1751,11 @@ function App() {
     }
     // Open to open: another event's details, of another height, glide from the old height to theirs.
     if (was === 'open' && dkPhase === 'open' && !detailBlockMoving(el) && dkLastH.current > 0) {
-      resizeDetailBlock(el, dkLastH.current, subrowPx());
+      resizeDetailBlock(el, dkLastH.current, unitR() || 1);
       return;
     }
     // was == null: the block mounted in this commit, so it opens from nothing.
-    const over = moveDetailBlock(el, dkPhase === 'open' ? 'open' : 'close', subrowPx(), was == null);
+    const over = moveDetailBlock(el, dkPhase === 'open' ? 'open' : 'close', unitR() || 1, was == null);
     if (over && dkPhase === 'closing') setDkClosing(null);
   }, [dkPhase, dkShownId]);
   // A move has arrived: an open settles to the stylesheet's height, a close unmounts the block.
@@ -2037,20 +1924,16 @@ function App() {
                 tournaments={tournaments}
                 mySchedule={scheduleShown}
                 onToggle={toggleTournament}
-                gameVariants={gameVariants}
-                venues={venues}
                 onSetCondition={setCondition}
                 onRemoveCondition={removeCondition}
                 onToggleAnchor={toggleAnchor}
                 onSetPlannedEntries={setPlannedEntries}
                 buddyEvents={buddyEvents}
-                buddyLiveUpdates={buddyLiveUpdates}
                 onBuddySwap={onBuddySwap}
                 isAdmin={isAdmin}
                 onAdminEdit={canEditEvents ? adminEditTournament : undefined}
                 onClearOverrides={canEditEvents ? clearTournamentOverrides : undefined}
                 token={token}
-                onRefreshTournaments={fetchTournaments}
                 onOpenCalendarView={() => setCurrentView('calendar')}
                 onSelectEvent={isDesktop ? selectEvent : undefined}
                 selectedEventId={isDesktop ? dkSelectedId : undefined}
@@ -2067,12 +1950,9 @@ function App() {
                 onFocusConsumed={clearScheduleFocus}
                 mySchedule={scheduleShown}
                 onToggle={toggleTournament}
-                shareBuddies={shareBuddies}
                 pendingIncoming={pendingIncoming}
-                lastSeenShares={lastSeenShares}
                 onAcceptRequest={handleAcceptRequest}
                 onRejectRequest={handleRejectRequest}
-                token={token}
                 onSetCondition={setCondition}
                 onRemoveCondition={removeCondition}
                 allTournaments={tournaments}
@@ -2081,7 +1961,6 @@ function App() {
                 onAddPersonalEvent={addPersonalEvent}
                 onUpdatePersonalEvent={updatePersonalEvent}
                 buddyEvents={buddyEvents}
-                buddyLiveUpdates={buddyLiveUpdates}
                 onBuddySwap={onBuddySwap}
                 isAdmin={isAdmin}
                 onAdminEdit={canEditEvents ? adminEditTournament : undefined}
@@ -2098,14 +1977,11 @@ function App() {
                 allTournaments={tournaments}
                 mySchedule={scheduleShown}
                 onToggle={toggleTournament}
-                gameVariants={gameVariants}
-                venues={venues}
                 onSetCondition={setCondition}
                 onRemoveCondition={removeCondition}
                 onToggleAnchor={toggleAnchor}
                 onSetPlannedEntries={setPlannedEntries}
                 buddyEvents={buddyEvents}
-                buddyLiveUpdates={buddyLiveUpdates}
                 onOpenScheduleView={() => setCurrentView('tournaments')}
                 deepLink={isAdmin ? deepLink : null}
                 initialSearch={calendarFind}
@@ -2172,29 +2048,18 @@ function App() {
                 toggleTheme={toggleTheme}
                 contrast={contrast}
                 toggleContrast={toggleContrast}
-                cardSplay={cardSplay}
-                toggleCardSplay={() => { setCardSplay(s => { const next = !s; localStorage.setItem('cardSplay', next ? 'on' : 'off'); return next; }); }}
                 serifFont={serifFont}
                 toggleSerifFont={() => setSerifFont(f => SERIF_ORDER[(SERIF_ORDER.indexOf(f) + 1) % SERIF_ORDER.length])}
                 onLogout={handleLogout}
                 onDebugTimeChange={() => setDebugTimeKey(k => k + 1)}
-                onUpload={handleFileUpload}
-                uploadError={uploadError}
-                uploadSuccess={uploadSuccess}
-                uploadVenue={uploadVenue}
-                onUploadVenueChange={setUploadVenue}
                 shareToken={shareToken}
                 onGenerateShareToken={handleGenerateShareToken}
                 onRevokeShareToken={handleRevokeShareToken}
-                onSendShareRequest={handleSendShareRequest}
                 pendingOutgoing={pendingOutgoing}
                 onCancelRequest={handleCancelRequest}
                 shareBuddies={shareBuddies}
                 onRemoveBuddy={handleRemoveBuddy}
-                shareError={shareError}
-                shareSuccess={shareSuccess}
                 token={token}
-                onRefreshTournaments={fetchTournaments}
                 isAdmin={isAdmin}
                 seasonLabel={seasonLabel}
                 isGuest={isGuest}
@@ -2263,7 +2128,6 @@ function App() {
                 token={token}
                 onRemoveBuddy={handleRemoveBuddy}
                 fetchShareBuddies={fetchShareBuddies}
-                onNavigate={(v) => setCurrentView(v)}
               />
             )}
             </div>
@@ -2357,7 +2221,6 @@ function App() {
       onSetPlannedEntries={setPlannedEntries}
       onUpdatePersonalEvent={updatePersonalEvent}
       buddyEvents={buddyEvents}
-      buddyLiveUpdates={buddyLiveUpdates}
       onBuddySwap={onBuddySwap}
       isAdmin={isAdmin}
       onAdminEdit={canEditEvents ? adminEditTournament : undefined}
@@ -2370,12 +2233,9 @@ function App() {
       onNavigate={(v) => setCurrentView(v)}
       mySchedule={scheduleShown}
       onToggle={toggleTournament}
-      shareBuddies={shareBuddies}
       pendingIncoming={pendingIncoming}
-      lastSeenShares={lastSeenShares}
       onAcceptRequest={handleAcceptRequest}
       onRejectRequest={handleRejectRequest}
-      token={token}
       onSetCondition={setCondition}
       onRemoveCondition={removeCondition}
       allTournaments={tournaments}
@@ -2384,7 +2244,6 @@ function App() {
       onAddPersonalEvent={addPersonalEvent}
       onUpdatePersonalEvent={updatePersonalEvent}
       buddyEvents={buddyEvents}
-      buddyLiveUpdates={buddyLiveUpdates}
       onBuddySwap={onBuddySwap}
       isAdmin={isAdmin}
       onAdminEdit={canEditEvents ? adminEditTournament : undefined}
@@ -2637,8 +2496,6 @@ function App() {
             return currentView;
           })()}
           onChange={onNavChange}
-          scheduleCount={mySchedule.filter(t => !t.is_restart).length}
-          newShareCount={newShareCount}
         />
       )}
 

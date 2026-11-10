@@ -87,7 +87,7 @@
 }
 .vp-guess-name > span {
   display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-  font-family: var(--serif); font-size: var(--fs-lg); color: var(--text);
+  font-family: var(--font-display); font-size: var(--fs-lg); color: var(--text);
   line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic;
   padding-bottom: 0.3em; margin-bottom: -0.3em;
 }

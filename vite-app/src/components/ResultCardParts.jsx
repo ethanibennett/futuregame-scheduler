@@ -6,8 +6,9 @@ import { StripLabel } from './SwissParts.jsx';
 import BackerChart, { RangeStrip } from './BackerChart.jsx';
 import { getToday } from '../utils/utils.js';
 
-const RANGE_KEY = 'bankrollGraphRange';
-const readRange = () => { try { const v = localStorage.getItem(RANGE_KEY); return BANKROLL_RANGES.some(([k]) => k === v) ? v : 'all'; } catch { return 'all'; } };
+// The graphs' range, one for every graph in Bankroll (ResultsAll.jsx reads and writes the same key).
+export const RANGE_KEY = 'bankrollGraphRange';
+export const readRange = () => { try { const v = localStorage.getItem(RANGE_KEY); return BANKROLL_RANGES.some(([k]) => k === v) ? v : 'all'; } catch { return 'all'; } };
 
 /**
  * The Bankroll tab's graph (Tournaments and Cash): the backer page's interactive graph over

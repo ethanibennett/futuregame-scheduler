@@ -4,7 +4,7 @@
 // is graded by both tools, each labelled: the drill grader, and the study tool over every discard.
 // The table is HandReplayerView's, handed in as `Replay` so the two files do not import each other.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSolverAvailability, offered } from './StudyHead.jsx';
+import { useSolverAvailability, offered, T } from './StudyHead.jsx';
 import { fetchApi } from '../utils/api.js';
 import { GradeCard, ResultBanner, applyHandToSession, loadSession, saveSession } from './RazzTrainerView.jsx';
 import {
@@ -13,7 +13,6 @@ import {
 } from '../utils/replayer-drill.js';
 import './replayer-drill.css';
 
-const T = (b, lh) => (lh ? { '--hs-b': b, '--hs-lh': lh } : { '--hs-b': b });
 const GAME_KEY = 'replayerDrillGame';
 
 function storedGame() {

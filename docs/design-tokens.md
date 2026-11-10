@@ -1,84 +1,93 @@
 # Design tokens
 
-The token layer lives at the top of `vite-app/src/styles.css`, immediately after
-the venue colour block. It exists so that the ~3,900 hardcoded literals in that
-file have somewhere to go; every value below was derived from what the
-stylesheet actually used, not from a generic scale.
+The token layer is the second `:root` block at the top of `vite-app/src/styles.css` (after the
+venue colours and the theme basics). This page describes that block as it stands; when the two
+disagree, the stylesheet is right and this page is stale.
 
-**Rule: never write a bare literal for anything covered here.** If a value
-doesn't fit a step, the step is wrong — widen the scale deliberately rather than
-adding a one-off.
+**Rule: never write a bare literal for anything covered here.** If a value doesn't fit a step, the
+step is wrong: widen the scale deliberately rather than adding a one-off.
+
+**Every length is g or r, never px.** `g` is the column unit and `r` the row unit (below); type,
+spacing, radius, stroke and icon sizes are all multiples of one or the other, so the whole app
+scales with the grid. The few px left in the stylesheet are the replayer's `clamp()` bounds, which
+cap felt text sized in container units.
+
+## The grid
+
+| Token | Value | What it is |
+|---|---|---|
+| `--gu` | `min(100vw, 430px) / 37` | g: the gutter, the outer margin, half a subcolumn. Frozen above 430px so desktop keeps phone proportions |
+| `--subcol` | 2g | one subcolumn |
+| `--col` | 8g | one column (four subcolumns) |
+| `--subrow` | 0.71g | r, the vertical unit, rounded to a whole 1/64 px where `round()` is supported (WebKit lays out in 1/64 px) |
+| `--nudge-1` | 0.125r | the one sub-r optical correction |
+
+The layout rules built on these are in `docs/desktop-layout.md` and the memory notes on the grid.
 
 ## Type
 
-Nine steps covering the 25 distinct sizes that were in use. This is a dense
-schedule UI whose type clusters between 10px and 14px; a stock 16px-base ramp
-would inflate every row in the calendar.
+Sizes are fractions of g, chosen so each equals its old px value at a 402pt-wide phone.
 
-| Token | Value | Replaces |
+| Token | Value | Use |
 |---|---|---|
-| `--fs-3xs` | 9px | `0.42` `0.48` `0.5` `0.55` `0.58` rem |
-| `--fs-2xs` | 10px | `0.6` `0.62` rem |
-| `--fs-xs` | 11px | `0.65` `0.68` `0.7` rem |
-| `--fs-sm` | 12px | `0.72` `0.75` `0.78` rem, `12px` |
-| `--fs-md` | 13px | `0.8` `0.82` `0.85` rem, `13px` |
-| `--fs-lg` | 15px | `0.88` `0.9` `0.95` rem |
-| `--fs-xl` | 17px | `1rem` `1.1rem`, `16px` |
-| `--fs-2xl` | 22px | display figures |
-| `--fs-3xl` | 28px | `1.7rem` date numerals |
+| `--fs-2xs` | 0.9204g | caps micro-labels only, never lowercase |
+| `--fs-xs` | 1.0585g | dense row secondary |
+| `--fs-sm` | 1.1965g | dense row primary, the app's real base |
+| `--fs-md` | 1.3806g | |
+| `--fs-lg` | 1.6107g | |
+| `--fs-xl` | 1.9328g | |
+| `--fs-2xl` | 2.3010g | display figures |
+| `--fs-3xl` | 2.7612g | date numerals |
+| `--fs-hero` | 4.4179g | the empty-state glyph only |
 
-`0.42rem` is 6.7px and `0.48rem` is 7.7px — both below legible at any viewing
-distance. They have no step and snap **up** to `--fs-3xs` on migration. That is
-a deliberate visual change, not a rounding error.
+`--fs-3xs` is retired: the sizes below 9px snapped up to `--fs-2xs`.
 
-Line height: `--lh-tight` 1.15 for display figures, `--lh-snug` 1.35 for UI
-rows, `--lh-base` 1.5 for prose.
+Line height: `--lh-tight` 1.15 (display figures), `--lh-snug` 1.35 (UI rows), `--lh-base` 1.5 (prose).
+
+Weight: `--fw-light` 300, `--fw-regular` 400, `--fw-bold` 700. Univers Condensed has only those
+three; Univers adds 800 and 900, and no width has a 500 or 600, so never write 500 or 600 (they
+render as 400 and 700). The missing middle tier is `--emph-track` (0.02em) plus full-strength colour.
+
+Tracking (em only): `--track-caps-lg` 0.14em, `--track-caps` 0.08em, `--track-tight` 0.01em,
+`--track-display` -0.02em, `--track-wordmark` -0.05em. Figures that change or stack take
+`--num-tabular` (`tabular-nums lining-nums`).
 
 ## Spacing
 
-2px base, not 4px. A 4px grid would round away the 6px gap, which appears 38
-times and is load-bearing in the dense rows.
+All multiples of r: `--space-2xs` 0.25r · `--space-xs` 0.5r · `--space-sm` 0.75r · `--space-md` 1r ·
+`--space-ml` 1.25r · `--space-lg` 1.5r · `--space-xl` 2r · `--space-2xl` 2.5r · `--space-3xl` 3r ·
+`--space-4xl` 4r · `--space-5xl` 6r. Most new layout is written straight in whole r and g
+(`calc(var(--subrow) * N)`), which is the same thing.
 
-`--space-2xs` 2 · `--space-xs` 4 · `--space-sm` 6 · `--space-md` 8 ·
-`--space-lg` 12 · `--space-xl` 16 · `--space-2xl` 24 · `--space-3xl` 32
+## Radius and strokes
 
-`--space-md` (8px) is the default gap — it was already the most common value in
-the file by a wide margin.
-
-## Radius
-
-`--radius-sm` (8px) and `--radius` (12px) keep their existing values so nothing
-shifts. The new steps absorb the loose literals.
-
-`--radius-xs` 4 · `--radius-sm` 8 · `--radius` 12 · `--radius-lg` 16 ·
-`--radius-pill` 999
-
-The stray `1.5px` `2px` `3px` values all snap to `--radius-xs`; `20px` snaps to
-`--radius-lg`. Two fallbacks in the old file disagreed with the token they fell
-back to (`var(--radius-sm, 6px)` and `var(--radius-sm, 8px)`) — write
+`--radius-xs` 0.5r · `--radius-sm` 1r · `--radius` 1.5r · `--radius-lg` 2r · `--radius-pill` 128r
+(a sentinel for a full capsule) · `--radius-circle` 50% · `--radius-nest` (`--radius` less
+`--space-xs`: an inner corner is the outer corner minus the padding between them). Write
 `var(--radius-sm)` with no fallback.
 
-## Elevation
+Stroke widths: `--bw-fine` 0.065r (half a hairline) · `--bw-hair` 0.13r · `--bw-1` 0.195r · `--bw-2` 0.39r.
 
-Three steps, two layers each: a tight contact shadow plus a soft cast. A single
-flat blur at one opacity is the thing that reads as unconsidered.
+## Overlays, elevation, state
 
-`--elev-1` resting cards · `--elev-2` dropdowns and panels · `--elev-3` modals
+Overlays: `--ov-black-1..6` (6, 12, 24, 40, 60, 80% black) and `--ov-white-1..6` (5, 10, 18, 32, 55,
+85% white). They are the same in every theme, so a literal of one of those values is always an
+exact swap. `--scrim` is the modal dimming (`--ov-black-4`; 28% black on light grounds).
 
-Light and cloudy themes override all three with shallower, lower-alpha values —
-a shadow tuned for `#111111` is a smear on `#f5f5f5`.
+Elevation, two layers each (a contact shadow plus a soft cast): `--elev-1` resting cards, `--elev-2`
+dropdowns and panels, `--elev-3` modals; `--elev-0` a hairline inset, `--elev-inset` a sunken well,
+`--edge-hi` / `--edge-lo` the light and contact edges. Light and cloudy override all of them with
+shallower values.
 
-## Brand
+State: `--state-hover`, `--state-press` (`scale(0.97)`), `--state-disabled` 0.38, `--state-past`
+0.45 (past content, never confused with disabled).
 
-The app had no focal colour: `--accent` and `--accent2` are `#a0a0a0` and
-`#888888`. Nothing claimed priority, while 30 saturated venue colours competed
-freely.
+## Colour
 
-`--brand` `--brand-hover` `--brand-quiet` `--brand-line` `--on-brand`
-`--brand-on-dark` `--on-brand-on-dark` `--brand-line-on-dark` `--brand-ink`
-
-The brand is a cool aqua. It was an orange-gold (`#f2a63b`) until 2026-10-11,
-when black + orange was pointed out to read as a certain adult site's palette.
+**Brand** (a cool aqua since 2026-10-11): `--brand`, `--brand-hover`, `--brand-quiet` (tint),
+`--brand-line` (hairline), `--on-brand` (ink on a brand fill), `--brand-ink` (brand as small text
+on its own tint; only light and high-contrast light/cloudy set it, so read it as
+`var(--brand-ink, var(--brand))`).
 
 | Theme | `--brand` | `--brand-hover` | `--on-brand` | Contrast |
 |---|---|---|---|---|
@@ -88,112 +97,78 @@ when black + orange was pointed out to read as a certain adult site's palette.
 | high contrast, dark | `#7ae6f5` | `#b0f1fa` | `#000000` | 13.0:1 on `#111111` |
 | high contrast, light/cloudy | `#0b4a5c` | `#08394a` | `#ffffff` | 9.78:1 on `#ffffff` |
 
-`--brand-quiet` and `--brand-line` are the brand at 14% / 45% (dark) and
-12% / 40% (light, cloudy); high contrast inherits them from its ground.
+On a surface that is dark in every theme (the replayer's plaques, transport and seat lines) use
+`--brand-on-dark`, `--on-brand-on-dark` and `--brand-line-on-dark`, which stay the dark aqua in light
+and cloudy. Keep brand-coloured small text off the light `--surface2` (4.49:1).
 
-Cloudy has its own deeper brand because its grounds are mid-grey (`#c8c8c8` to
-`#d6d6d6`, the nav and rail down to `#bfbfbf`), where the light theme's
-`#0e7490` is only 3.2 to 3.7:1. `#0a4f62` is 4.95:1 on `#bfbfbf` and 4.57:1 on
-its own 12% tint, and the calendar's `#c8c8c8` day-number knockout is 5.44:1 on
-it.
+`--action`, `--action-hover`, `--action-quiet`, `--on-action` alias the brand for primary
+affordances (at most one filled per screen region). `--accent` stays a grey; `--line-strong` is its
+honest name, the "engaged" hairline.
 
-`--brand-ink` is the brand as small text on its own `--brand-quiet` tint (the
-Beta pills, the active Reports chip's count, the bankroll dashboard's active
-tab). Only the light theme sets it (`#155e75`, 5.69:1 on the tint over
-`#f5f5f5`, where `#0e7490` is 4.20:1) and high contrast light/cloudy
-(`#0b4a5c`); consumers read `var(--brand-ink, var(--brand))`, so every other
-theme keeps the plain brand.
+**Status**, three stops each: `--ok`, `--warn`, `--danger`, `--info`, with `-bg` (the 12% tint),
+`-line` (the 25% border) and `--on-*` (ink on a fill). Light and cloudy carry their own darker ramp
+(`--ok` is `#22c55e` on dark, `#15803d` on light), and Swiss changes them again, so a status literal
+is never an exact swap for its token. `--accolade` is trophy gold, deliberately not the brand.
 
-`--brand-on-dark` is the brand on a surface that is dark in every theme: the
-replayer's seat plaques, commentary bar, capture bookends and seat lines. It is
-`#3cc8e0` in light and cloudy too (the deep light aqua is 3.63:1 on a `#0e0c13`
-plaque; this is 9.74:1), and `#7ae6f5` under high contrast.
-
-Two companions travel with it. `--on-brand-on-dark` is the ink on a
-`--brand-on-dark` fill (`#04191d`, 9.06:1; `#000000` under high contrast),
-because `--on-brand` is white in light and cloudy and white on `#3cc8e0` is
-1.99:1. `--brand-line-on-dark` is the hairline on a dark surface
-(`rgba(60,200,224,0.45)`), because the light and cloudy `--brand-line` is a deep
-teal that all but vanishes there. The replayer transport capsule (dark in every
-theme) uses all three: its play fill was 3.07:1 against the capsule in light and
-1.81:1 in cloudy, and is 8.25:1 now.
-
-On the dark grounds the aqua is safe against the venue palette because every
-venue teal and blue (Hard Rock `#178383`, WSOP Online `#186e86`, the `#2064b6`
-blues) is dark — lightness 42% at most against the brand's 56% — so a bright
-aqua can't be misread as a venue stripe. Light grounds get `#0e7490` instead,
-because `#3cc8e0` is 1.99:1 on white. That deeper aqua does sit close to the
-Hard Rock and WSOP Online teals (the old light gold `#a8700c` sat as close to
-the venue golds), so on light grounds the brand is set apart by where it is
-used, never by hue alone. On the light `--surface2` (`#ebebeb`) it is 4.49:1, a
-hair under 4.5:1, so keep brand-coloured small text off `--surface2`.
-
-The replayer's active-turn rings and hero hairline need an alpha, so they are
-`--brand-on-dark`'s aqua as rgba literals (no `color-mix()`, which html2canvas
-cannot parse); the active-turn border itself is `var(--brand-on-dark)`.
-
-`--accent` stays grey. Primary actions move to `--brand` deliberately, one
-surface at a time — not with a find-and-replace.
+**Neutrals and surfaces:** the ramp `--n-0..8` inverts as a set on light grounds.
+`--surface-sunken`, `--surface-raised`, `--surface-overlay`, `--border-quiet`, `--border-strong`,
+`--scrollbar-thumb`, `--scrollbar-track` alias onto it. A surface sits at most one step above its parent.
 
 ## Typography roles
 
-`--font-sans` Univers · `--font-condensed` Univers Condensed ·
-`--font-display` the display face
+`--font-sans` Univers · `--font-condensed` Univers Condensed · `--font-expanded` and `--font-narrow`
+(the extra widths, reserved: nothing uses them yet) · `--font-display` the display face ·
+`--font-title` screen titles, always Baskerville.
 
-`--font-display` resolves through `--serif`, so the `data-serif` theme switching
-keeps working while callers migrate off the old name. `--serif` is the
-deprecated spelling; don't add new uses.
-
-The family was written eight different ways across the file (varying comma
-spacing and fallback tails). Use the tokens.
+`--font-display` resolves through `--serif`, which the `data-serif` preference swaps to Univers;
+`--serif` is the deprecated spelling and no rule reads it directly any more. The two literal
+`'Libre Baskerville', Georgia, serif` sites (the Casino Royale seat name, `!important`, and one at
+`styles.css` ~12899) stay literal on purpose: moving them onto `--font-display` would make them
+follow the display-font picker.
 
 ## Motion
 
-`--dur-fast` 120ms · `--dur-snap` 200ms · `--dur-base` 320ms
-`--ease-out` for entrances and hovers · `--ease-standard` for everything else
+Durations: `--dur-instant` 60ms · `--dur-fast` 120ms · `--dur-snap` 200ms · `--dur-base` 320ms ·
+`--dur-slow` 480ms · `--dur-amble` 800ms. All collapse to 0ms under `prefers-reduced-motion`, so a
+transition written with them is automatically compliant.
 
-Always name the property being transitioned. `transition: all` animates
-properties you didn't intend and is the reason hover states feel loose. All
-three durations collapse to `0ms` under `prefers-reduced-motion`, so a
-transition written with these tokens is automatically compliant.
+Curves: `--ease-out` (entrances and hovers), `--ease-standard` (everything else), `--ease-emphatic`,
+`--ease-spring`, `--ease-linear`. The bezier tokens must hold literals: a sweep that matched the
+bezier strings once rewrote each definition to point at itself, which silently turned 24
+animations off. Always name the property being transitioned, never `transition: all`. The
+replayer's own motion is springs (`docs/replayer-springs.md`).
 
-## Focus
+## Layers, icons, focus
 
-`--focus-ring` and `--focus-offset`, applied via `:focus-visible`.
-`--focus-ring-on-dark` is the same ring in `--brand-on-dark`, for controls on a
-surface that is dark in every theme (the replayer transport and the tappable
-seat stack), where cloudy's `#0a4f62` ring is about 2.1:1.
+Layers: `--z-base` 0 · `--z-raised` 10 · `--z-sticky` 100 · `--z-fab` 200 · `--z-scrim` 300 ·
+`--z-panel` 400 · `--z-modal` 500 · `--z-toast` 600 (outranks a modal) · `--z-splash` 700. A scrim and
+its panel are always a pair. The replayer table keeps its own local stack (`--z-bet`, `--z-dealer`,
+`--z-flight` and so on, inside `.replayer-table`).
 
-Never `outline: none` without putting the ring in its place — keyboard
-operability is a legal requirement in most of the jurisdictions this app
-operates in.
+Icons: `--icon-xs` 1.5r · `--icon-sm` 1.75r · `--icon-md` 2r · `--icon-lg` 2.5r · `--icon-xl` 3r ·
+`--icon-2xl` 5r · `--icon-hero` 6r; `--icon-stroke` 1.75 (a unitless stroke-width).
+
+Focus: `--focus-ring`, `--focus-ring-inset` (inside an `overflow: hidden` ancestor),
+`--focus-offset`, and `--focus-ring-on-dark` for controls on an always-dark surface. Never
+`outline: none` without putting a ring in its place.
+
+## Themes that redefine tokens
+
+Light and cloudy (`[data-theme]`) override elevation, brand, status, the neutral ramp and the scrim;
+high contrast (`[data-contrast="high"]`) the brand. The Swiss themes (`theme-swiss.css`, admins only)
+redefine much more, including `--fw-light`/`--fw-bold`, every radius (`--radius-circle` is 0 there),
+the font roles and the brand. So a literal is an exact swap only for a token no theme redefines:
+check `theme-swiss.css` before calling a swap "no visual change".
 
 ## Migration status
 
-Two buckets. **Exact** means the literal equals the token's computed value, so
-the change cannot alter rendering and lands without review. **Reviewed** means
-the snap is a judgment call with a visible result, and wants eyes on it first.
-
-- [x] Tokens defined
-- [x] Radius, exact snaps — 43 sites (`4px` `8px` `12px` `999px`, plus two
-      contradictory fallbacks)
-- [x] Font stacks, exact snaps — 149 sites onto `--font-condensed`
-- [ ] **Reviewed:** radius judgment snaps — 61 sites (`3px` `6px` `2px` `10px`
-      `20px` `1.5px`), each a real 1–2px change
-- [ ] **Reviewed:** type scale — every size moves; `0.42rem`/`0.48rem` snap up
-- [ ] **Reviewed:** spacing — every gap and pad moves
-- [ ] **Reviewed:** shadows onto `--elev-*` — 59 sites, all inexact by nature
-- [ ] **Reviewed:** primary actions onto `--brand`
-- [ ] `!important` sweep — 55 sites, each its own specificity question
-- [ ] Stylesheet split into modules
-- [x] Motion: the five `transition: all` declarations are gone (checked 2026-10-15; only comments mention them)
-- [x] `:focus-visible` ring audit (2026-10-15): every stylesheet `outline: none` puts a ring back (inset, on a `::before`, or `:focus-within` on the bar) or sits on a programmatic, non-control focus target (tabindex -1). Six form controls had an INLINE `outline: none`, which beats every stylesheet rule, so no ring at all: the travel-day and edit-form inputs (CalendarEventRow), the location search and state select (LocationDropdown), and the travel-day date and time pickers (ScheduleView). They now take `.focus-inset`. Known and deliberate: a selected event row draws one ring, the selection, and its bar and strip draw none while selected.
-
-Three font spellings are deliberately still literal. `'Univers'` and
-`'Univers Condensed'` carry no fallback, and `'Univers', sans-serif` lacks the
-`--font-sans` fallback tail, so none is an exact swap. The three
-`'Libre Baskerville', Georgia, serif !important` sites are a bigger catch:
-`--font-display` resolves through `--serif`, which *varies by `data-serif`
-theme*. Moving them onto the token would make them start following the display
-font picker — arguably right, but a behaviour change, so it belongs with the
-`!important` sweep rather than a no-op pass.
+- [x] Tokens defined, and moved onto g and r (2026-09/10).
+- [x] Font stacks: no literal stack is left outside the token block.
+- [x] Durations and the named beziers: no literals left.
+- [x] Overlay literals (`rgba(0,0,0,a)` / `rgba(255,255,255,a)` at a token's alpha) moved onto `--ov-*` (2026-11-10).
+- [x] `var(--serif)` call sites moved onto `var(--font-display)` (2026-11-10).
+- [x] Motion: no `transition: all` (checked 2026-10-15).
+- [x] `:focus-visible` ring audit (2026-10-15).
+- [ ] Status literals (`#22c55e`, `#ef4444`, `#eab308`, `#3b82f6`; about 60 sites): each is a reviewed change, because the tokens differ by theme.
+- [ ] Off-scale z-indexes (`9997`, `9999`, `10000`).
+- [ ] `!important` sweep: 279 sites, each its own specificity question.

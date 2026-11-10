@@ -501,8 +501,8 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
 | online watcher | `D:\projects\online-poker-watcher` | not yet on GitHub (pm2: `online-poker-watcher`) |
 
 The Mac is the Xcode build node (iOS/Watch/screensaver) — see `docs/mac-build.md`.
-Ship the app with `./scripts/ios-testflight.sh` there (NOT `deploy.sh --ios`, which
-also pushes master, deploys Render and syncs the prod DB — none of it the Mac's job).
+Ship the app with `./scripts/ios-testflight.sh` there. (The old `deploy.sh`, which also pushed
+master and synced the prod DB, is deleted: a push to master deploys Render.)
 
 ### Working from the Mac without the Mac mattering
 The Mac SSHes into this box over Tailscale (`ethans-macbook-pro` 100.108.175.125
@@ -586,6 +586,9 @@ npm install
 cd vite-app && npm install && npm run build && cd ..
 JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
 ```
+`npm test` runs the server-free util tests (`test:utils`); `test:quick-add` the quick-add suites
+(not `gaps.test.mjs`, which waits on the `HAND_CONFIG` mirror); `npm run smoke [origin]` is a
+read-only check of a deploy (futurega.me by default). Each feature's own `test:*` is named beside it above.
 
 ## Conventions
 - Event naming: WSOP style — NLH/PLO/HORSE abbreviations, no acronym periods, title case,
@@ -638,9 +641,11 @@ JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
   so `check:controls` with `CHECK_THEME=swiss-light` reports their labels off centre; `check:clipping` must pass.
 - **Design tokens**: type, spacing, radius, elevation, brand, motion and focus
   tokens live at the top of `vite-app/src/styles.css` — see `docs/design-tokens.md`
-  for the steps and what each replaces. Never write a bare literal for anything a
-  token covers. Migration off the ~3,900 existing literals is in progress; the
-  checklist at the foot of that doc tracks it.
+  for the scales (all in g and r) and which themes redefine which tokens. Never write a
+  bare literal for anything a token covers. A literal is an exact swap only for a token
+  no theme redefines: Swiss redefines the weights, the radii (`--radius-circle` is 0)
+  and the font roles. The checklist at the doc's foot tracks what is left (status
+  colours, off-scale z-indexes, `!important`).
 - **What we tout at launch:** `docs/launch-features.md`, with the plan's guardrails and what is open to everyone today.
 - Update this file when architecture or suite topology changes — it is the handoff.
 - **Session state** lives in `docs/session-handoff.md` — what shipped recently,

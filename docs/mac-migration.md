@@ -13,7 +13,7 @@ that **aren't**, and the order to move them in.
 | # | Item | Path | Replaceable? |
 |---|---|---|---|
 | 1 | App Store Connect API key | `~/.appstoreconnect/private_keys/AuthKey_UCFMFW9636.p8` | **No** — Apple allows exactly one download |
-| 2 | Render + admin credentials | `~/.claude/projects/-Users-ethanibennett-WSOP-scheduler/render.env` | Yes, if you have the values elsewhere |
+| 2 | Render + admin credentials | `~/.claude/projects/-Users-ethanibennett-WSOP-scheduler/render.env` | Not needed: only `deploy.sh` read it, and that script is deleted (see below) |
 | 3 | Apple Distribution cert + private key | login keychain | Yes — reissue in the developer portal (see the WWDR note below) |
 | 4 | Auto-pull launchd agent | `~/bin/futuregame-autopull.sh`, `~/Library/LaunchAgents/me.futurega.autopull.plist` | Yes — both are in `docs/mac-build.md` |
 | 5 | GitHub Actions self-hosted runner | wherever `actions-runner/` was unpacked | Yes — registration is machine-bound and **must** be recreated |
@@ -106,11 +106,11 @@ and created on the new one — in that order, and not before step 3 succeeds.
 > quietly. The `iOS build number: N → M (past ASC latest …)` line is the proof
 > the key worked; `using local counter` means it did not.
 
-**`render.env` is not needed on a build node.** `deploy.sh` is retired there, and
-the file carries `RENDER_API_KEY` and `ADMIN_PASS`. A build node runs a
-self-hosted Actions runner that executes repo workflow code as your user, so
-every credential in that home directory widens the blast radius. Migrate it only
-to a machine that actually deploys.
+**`render.env` is not needed on a build node.** It was read only by `deploy.sh`,
+which has been deleted (futurega.me deploys on every push to `master`), and the
+file carries `RENDER_API_KEY` and `ADMIN_PASS`. A build node runs a self-hosted
+Actions runner that executes repo workflow code as your user, so every
+credential in that home directory widens the blast radius. Do not migrate it.
 
 ## On the old Mac
 
@@ -154,7 +154,7 @@ but note a green dry run does NOT prove signing works.
 PHASE 4 — BUNDLE THE THINGS THAT AREN'T IN GIT. Collect into ~/Desktop/mac-migration/:
   - the .p8 key (Apple allows exactly one download — if this is lost, the key is gone and
     a new one must be generated)
-  - render.env (skip it if the target is only a build node — see the note above)
+  - NOT render.env: nothing reads it since deploy.sh was deleted (see the note above)
   - the autopull script + plist
   - the Apple Distribution certificate AND its private key, exported as a .p12 with a
     password (Keychain Access → My Certificates → right-click → Export). Keychain Access
@@ -203,7 +203,6 @@ odd ways until that's done.
 | Item | Goes to |
 |---|---|
 | `AuthKey_*.p8` | `~/.appstoreconnect/private_keys/` (create the dir; `chmod 600` the key) |
-| `render.env` | the same `~/.claude/projects/...` path, only if you still use `deploy.sh` |
 | `.p12` cert | double-click to import into the login keychain |
 | autopull script + plist | `~/bin/` and `~/Library/LaunchAgents/`, then `launchctl load` the plist |
 

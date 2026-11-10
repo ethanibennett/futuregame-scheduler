@@ -1,20 +1,19 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { StripLabel, SwissLines } from './SwissParts.jsx';
-import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
+import LateRegBar from './LateRegBar.jsx';
+import useTick from '../hooks/useTick.js';
 import { wsopStructureUrlFor } from '../utils/wsop-structure-pages.js';
 import {
-  getVenueInfo, getVenueClass, getVenueBrandColor, getStripAbbr, formatGuarantee, shortEventNumber, getVariantColor, isBraceletEvent, isRingEvent,
+  getVenueInfo, getVenueClass, getVenueBrandColor, getStripAbbr, formatGuarantee, shortEventNumber, isBraceletEvent, isRingEvent,
   normaliseDate, parseDateTime, parseDateTimeInTz, parseLateRegEnd, parseTournamentTime,
-  getMaxEntries, getVenueTimezone, getVenueTzAbbr, getNow,
-  extractConditions, formatConditionLabel, formatConditionBadge,
-  getIfIBustEvents, getIfIBagEvents, describeGame, calculateCountdown, haptic,
-  currencySymbol, CURRENCY_CONFIG, formatCurrencyAmount,
-  VENUE_TO_SERIES, VENUE_BRAND_VAR, isPOYEligible, calculatePOYPoints, isSixMax,
-  HAND_CONFIG, HAND_CONFIG_DEFAULT, splitEventStage, formatChips, getVenueCoords, getToday,
+  getMaxEntries, getVenueTzAbbr, getNow,
+  formatConditionBadge,
+  getIfIBustEvents, getIfIBagEvents, describeGame,
+  currencySymbol, VENUE_BRAND_VAR, splitEventStage, formatChips, getVenueCoords, getToday,
 } from '../utils/utils.js';
-import { registerClock, useClockStore, useSecondTick, liveView, clockRegEnd, clockFieldLabel, lateRegOver, fmtClock, isCompleted, clockAskable } from '../utils/live-clocks.js';
+import { registerClock, useClockStore, liveView, clockRegEnd, clockFieldLabel, lateRegOver, fmtClock, isCompleted, clockAskable } from '../utils/live-clocks.js';
 import { API_URL } from '../utils/api.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -117,105 +116,6 @@ function landRow(el) {
     const row = el && el.closest('.cal-event-row');
     if (row && row.isConnected) scrollBelowSticky(row);
   });
-}
-
-// ── Late Reg Bar (expanded view) ──
-function LateRegBar({ lateRegEnd, date, time, venueAbbr, venue, completed }) {
-  const [now, setNow] = useState(getNow());
-  useEffect(() => {
-    const id = setInterval(() => setNow(getNow()), 30000);
-    return () => clearInterval(id);
-  }, []);
-
-  // The room's clock showed the tournament finished (server: clock_ended_at / state 'ended').
-  if (completed) {
-    return (
-      <div className="late-reg-wrap">
-        <div className="late-reg-label-row">
-          <span className="late-reg-label event-completed-label">Event Completed</span>
-        </div>
-        <div className="late-reg-bar-bg">
-          <div className="late-reg-bar-fill" style={{ width: '0%', background: 'var(--border)' }} />
-        </div>
-      </div>
-    );
-  }
-
-
-  // Pre-start countdown
-  if (date) {
-    const startMs = venue ? parseDateTimeInTz(date, time, venue) : parseDateTime(date, time || '12:00 AM');
-    if (now < startMs) {
-      const totalSec = Math.floor((startMs - now) / 1000);
-      const d = Math.floor(totalSec / 86400);
-      const h = Math.floor((totalSec % 86400) / 3600);
-      const m = Math.floor((totalSec % 3600) / 60);
-      const parts = [];
-      if (d > 0) parts.push(`${d} day${d !== 1 ? 's' : ''}`);
-      if (h > 0) parts.push(`${h} hour${h !== 1 ? 's' : ''}`);
-      parts.push(`${m} minute${m !== 1 ? 's' : ''}`);
-      return (
-        <div className="late-reg-wrap">
-          <div className="late-reg-label-row">
-            <span className="late-reg-label pending">Until Start</span>
-            <span className="late-reg-sep"></span>
-            <span className="late-reg-time pending">{parts.join(', ')}</span>
-          </div>
-        </div>
-      );
-    }
-  }
-
-  if (!lateRegEnd) return null;
-  const endMs = parseLateRegEnd(lateRegEnd, date);
-  if (isNaN(endMs)) return null;
-  const diffMs = endMs - now;
-  const diffMin = Math.floor(diffMs / 60000);
-  const endDate = new Date(endMs);
-  const endClock = endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  const brandColor = getVenueBrandColor(venueAbbr);
-
-  let status, label, timeStr;
-  if (diffMs <= 0) {
-    status = 'closed';
-    label = 'Late Reg Closed';
-    timeStr = null;
-  } else if (diffMin < 30) {
-    status = 'urgent';
-    label = 'Late Reg \u2014 Closing Soon';
-    timeStr = `${diffMin}m left | ${endClock}`;
-  } else if (diffMin < 120) {
-    const h = Math.floor(diffMin / 60);
-    const m = diffMin % 60;
-    status = 'soon';
-    label = 'Late Reg Open';
-    timeStr = (h > 0 ? `${h}h ${m}m left` : `${m}m left`) + ` | ${endClock}`;
-  } else {
-    const h = Math.floor(diffMin / 60);
-    const m = diffMin % 60;
-    status = 'open';
-    label = 'Late Reg Open';
-    timeStr = (h > 0 ? `${h}h ${m}m left` : `${m}m left`) + ` | ${endClock}`;
-  }
-
-  const windowMs = 12 * 60 * 60 * 1000;
-  const pct = status === 'closed' ? 0 : Math.min(100, Math.max(0, (diffMs / windowMs) * 100));
-  const critical = status !== 'closed' && pct <= 15;
-
-  return (
-    <div className="late-reg-wrap">
-      <div className="late-reg-label-row">
-        <span className={`late-reg-label ${status}`}>{label}</span>
-        {timeStr && <span className={`late-reg-time ${status}`}>{timeStr}</span>}
-      </div>
-      <div className="late-reg-bar-bg">
-        <div
-          className={`late-reg-bar-fill ${critical ? 'critical' : ''}`}
-          style={{ width: `${pct}%`, background: critical ? undefined : (status === 'closed' ? 'var(--border)' : brandColor) }}
-        />
-      </div>
-    </div>
-  );
 }
 
 // ── Mini Late Reg Bar (collapsed view) ──
@@ -328,7 +228,7 @@ function ClockRow({ live, tournament }) {
 // their display name. Previously rendered raw <span> elements with classes
 // like `.buddy-chip-avatar` that have no matching CSS, which made the chip
 // collapse to the bare username text in the flow.
-function BuddyAvatarRow({ buddies, liveUpdates, onBuddyClick }) {
+function BuddyAvatarRow({ buddies, onBuddyClick }) {
   if (!buddies || buddies.length === 0) return null;
   return (
     <div
@@ -375,7 +275,7 @@ function BuddyAvatarRow({ buddies, liveUpdates, onBuddyClick }) {
 }
 
 // ── ConditionPicker (full version matching original) ──
-function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemove, onClose, scheduleIds, onToggle }) {
+function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemove, onClose, scheduleIds }) {
   const existingSat = conditions.find(c => c.type === 'IF_WIN_SEAT' || c.type === 'IF_NO_SEAT');
   const existingProfit = conditions.find(c => c.type === 'PROFIT_THRESHOLD');
   const existingBust = conditions.find(c => c.type === 'IF_BUST');
@@ -548,7 +448,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
   );
 }
 
-function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMiniLateReg, focusEventId, readOnly, conditions: conditionsProp, conditionsJson, onSetCondition, onRemoveCondition, allTournaments, isAnchor, onToggleAnchor, plannedEntries, onSetPlannedEntries, onUpdatePersonalEvent, buddyEvents, buddyLiveUpdates, onBuddySwap, scheduleIds, isAdmin, onAdminEdit, onClearOverrides, onNavigateToEvent, initialOpen, onSelect, selected, detail }) {
+function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMiniLateReg, focusEventId, readOnly, conditions: conditionsProp, conditionsJson, onSetCondition, onRemoveCondition, allTournaments, isAnchor, onToggleAnchor, plannedEntries, onSetPlannedEntries, onUpdatePersonalEvent, buddyEvents, onBuddySwap, scheduleIds, isAdmin, onAdminEdit, onClearOverrides, initialOpen, onSelect, selected, detail }) {
   // Support both conditions array (legacy) and conditionsJson string (memo-friendly)
   const conditions = conditionsProp || React.useMemo(() => {
     if (!conditionsJson) return [];
@@ -636,7 +536,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   // Finished (the room's clock ended): dimmed like a previous day's event, and the late-reg line
   // reads "event completed".
   const completed = isCompleted(tournament, clockCandidate ? clockStore[tournament.id] : null);
-  useSecondTick(!!live && live.state === 'running');
+  useTick(!!live && live.state === 'running');
 
   // Auto-expand when programmatically focused (e.g. navigating to a
   // related satellite).
@@ -921,7 +821,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   {live && open && <ClockRow live={live} tournament={tournament} />}
 
                   {buddyEvents && buddyEvents[tournament.id] && buddyEvents[tournament.id].length > 0 && (
-                    <BuddyAvatarRow buddies={buddyEvents[tournament.id]} liveUpdates={buddyLiveUpdates}
+                    <BuddyAvatarRow buddies={buddyEvents[tournament.id]}
                       onBuddyClick={isInSchedule && onBuddySwap ? (buddy) => onBuddySwap(buddy, tournament) : undefined} />
                   )}
 
@@ -1111,7 +1011,7 @@ The feed's own values return at the next hourly sync — your edits stay visible
                                   try {
                                     await fetch(`${API_URL}/venue-colors/${encodeURIComponent(abbr)}`, {
                                       method: 'PUT',
-                                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+                                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}` },
                                       body: JSON.stringify({ color })
                                     });
                                   } catch (err) { console.error('Failed to save venue color', err); }
@@ -1230,7 +1130,6 @@ The feed's own values return at the next hourly sync — your edits stay visible
                       onRemove={() => { onRemoveCondition(tournament.id); setShowConditionUI(false); }}
                       onClose={() => setShowConditionUI(false)}
                       scheduleIds={scheduleIds}
-                      onToggle={onToggle}
                     />
                   )}
                 </>
@@ -1348,7 +1247,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
 
 const CalendarEventRow = React.memo(CalendarEventRow_, (prev, next) => {
   // Check props that actually affect the collapsed row render.
-  // Skip allTournaments/buddyLiveUpdates (large, only used when expanded).
+  // Skip allTournaments (large, only used when expanded).
   if (prev.tournament !== next.tournament) return false;
   if (prev.isInSchedule !== next.isInSchedule) return false;
   if (prev.isPast !== next.isPast) return false;
@@ -1367,7 +1266,7 @@ const CalendarEventRow = React.memo(CalendarEventRow_, (prev, next) => {
   // scheduleIds: used for condition picker, check reference
   if (prev.scheduleIds !== next.scheduleIds) return false;
   // Callbacks are all useCallback in App.jsx — stable references, skip check.
-  // allTournaments, buddyLiveUpdates: only used in expanded state, skip.
+  // allTournaments: only used in expanded state, skip.
   return true;
 });
 export { CalendarEventRowLite };

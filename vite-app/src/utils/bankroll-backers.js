@@ -15,7 +15,7 @@
  * `played` is for bb/hr alone (bbItems below): the player's blinds per hour over the same events
  * the backer's page works it out from, with the page's own function (backer-page.js bbStats).
  */
-import { fmtCents, fmtSignedCents, fmtHours, fmtShort, plural, tone, bbStats } from './backer-page.js';
+import { fmtCents, fmtSignedCents, fmtHours, fmtShort, plural, tone, bbStats, fmtPct } from './backer-page.js';
 
 export { fmtCents, fmtSignedCents, fmtHours, fmtShort, plural };
 
@@ -32,10 +32,7 @@ export function toneClass(cents) {
   return t === 'is-pos' ? ' an-pos' : t === 'is-neg' ? ' an-neg' : '';
 }
 
-/** A percentage as the stake is written: 20 -> "20%", 12.5 -> "12.5%", and no float noise. */
-export function fmtPct(p) {
-  return `${Math.round(num(p) * 100) / 100}%`;
-}
+export { fmtPct };
 
 /**
  * The response made safe to draw: an unexpected shape is an empty list, a missing field a quiet

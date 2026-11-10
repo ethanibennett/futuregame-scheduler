@@ -9,9 +9,9 @@ import LocationDropdown from './LocationDropdown.jsx';
 import { ONLINE_SITES, stateName } from '../utils/online-sites.js';
 import { Filtered } from './EmptyState.jsx';
 import {
-  getVenueInfo, normaliseDate, getToday, haptic, fmtShortDate, daysBetween, addDays,
-  parseTournamentTime, parseDateTimeInTz, parseDateTime, findClosestFlight,
-  extractConditions, getVenueCoords, haversineDistance, VENUE_TO_SERIES, LOCATION_REGIONS,
+  normaliseDate, getToday, fmtShortDate, daysBetween, addDays,
+  parseTournamentTime,
+  extractConditions, VENUE_TO_SERIES, LOCATION_REGIONS,
 
   isSideEvent,
   matchesLocation,
@@ -22,8 +22,7 @@ import {
 } from '../utils/utils.js';
 import { clockAskable } from '../utils/live-clocks.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
-  fetchServerLocation, sameLocation, readLocalFilters, writeLocalFilters } from '../utils/location-prefs.js';
-import { API_URL } from '../utils/api.js';
+  fetchServerLocation, sameLocation, writeLocalFilters } from '../utils/location-prefs.js';
 import { DEFAULT_FILTERS, useSharedFilters, clearedFilters } from '../utils/shared-filters.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 
@@ -87,7 +86,7 @@ function OnlineRoomRules({ sites, siteRules, setFilters, disabled }) {
 }
 
 // ── Inline Filters (portal-based, matching original) ──
-function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buyinOptions, tournaments, open, setOpen, toggleRef, search, setSearch }) {
+function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpen, toggleRef, search, setSearch }) {
   const panelRef = useRef(null);
   // The Swiss theme's index of filters shows each one's upcoming count as a superior figure
   // (catalogue item 27; .kt-count is hidden in every other theme).
@@ -703,426 +702,6 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
   );
 }
 
-// ── Import Schedule Panel (dropdown from upload button) ───
-function ImportSchedulePanel({ isOpen, onClose, token, onRefreshTournaments }) {
-  const toast = useToast();
-  const [visionFile, setVisionFile] = useState(null);
-  const [visionVenue, setVisionVenue] = useState('');
-  const [visionUrl, setVisionUrl] = useState('');
-  const [visionParsing, setVisionParsing] = useState(false);
-  const [visionResults, setVisionResults] = useState(null);
-  const [visionError, setVisionError] = useState('');
-  const [visionImporting, setVisionImporting] = useState(false);
-  const [visionEditIdx, setVisionEditIdx] = useState(-1);
-  const [visionProgress, setVisionProgress] = useState(0);
-  const [visionStage, setVisionStage] = useState('');
-  const visionProgressRef = useRef(null);
-
-  const handleVisionUpload = async (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-    setVisionFile(files.length === 1 ? files[0] : { name: `${files.length} files` });
-    setVisionError('');
-    setVisionResults(null);
-    setVisionParsing(true);
-    setVisionProgress(0);
-    setVisionStage('Uploading...');
-
-    const hasPdf = files.some(f => f.name.toLowerCase().endsWith('.pdf'));
-    const stages = [
-      { at: 5,  label: `Uploading ${files.length > 1 ? files.length + ' files' : 'file'}...` },
-      { at: 10, label: hasPdf ? 'Reading PDF pages...' : `Processing ${files.length > 1 ? files.length + ' images' : 'image'}...` },
-      { at: 20, label: 'Pass 1: Transcribing schedule...' },
-      { at: 40, label: 'Pass 1: Reading event details...' },
-      { at: 55, label: 'Pass 2: Structuring events...' },
-      { at: 70, label: 'Pass 2: Mapping variants...' },
-      { at: 82, label: 'Validating data...' },
-      { at: 92, label: 'Finalizing...' },
-    ];
-    let stageIdx = 0;
-    const startTime = Date.now();
-    const estDuration = hasPdf ? 60000 : Math.max(30000, files.length * 15000);
-
-    visionProgressRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const raw = 95 * (1 - Math.exp(-2.5 * elapsed / estDuration));
-      const pct = Math.min(95, Math.round(raw));
-      setVisionProgress(pct);
-      while (stageIdx < stages.length && pct >= stages[stageIdx].at) {
-        setVisionStage(stages[stageIdx].label);
-        stageIdx++;
-      }
-    }, 200);
-
-    const fd = new FormData();
-    for (const file of files) {
-      fd.append('file', file);
-    }
-    if (visionVenue) fd.append('venue', visionVenue);
-
-    try {
-      const res = await fetch(`${API_URL}/parse-schedule`, {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + token },
-        body: fd
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Parse failed');
-      clearInterval(visionProgressRef.current);
-      setVisionProgress(100);
-      setVisionStage(data.eventCount > 0 ? `Found ${data.eventCount} events` : 'No events found');
-      await new Promise(r => setTimeout(r, 400));
-      setVisionResults(data);
-      if (data.detectedVenue && !visionVenue) setVisionVenue(data.detectedVenue);
-    } catch (err) {
-      clearInterval(visionProgressRef.current);
-      setVisionProgress(0);
-      setVisionStage('');
-      setVisionError(err.message || 'Failed to parse schedule');
-    } finally {
-      clearInterval(visionProgressRef.current);
-      setVisionParsing(false);
-      e.target.value = '';
-    }
-  };
-
-  const handleVisionUrl = async () => {
-    if (!visionUrl.trim()) return;
-    setVisionError('');
-    setVisionResults(null);
-    setVisionParsing(true);
-    setVisionProgress(0);
-    setVisionStage('Fetching URL...');
-
-    const isUrlPdf = visionUrl.toLowerCase().endsWith('.pdf');
-    const stages = [
-      { at: 5,  label: 'Fetching URL...' },
-      { at: 12, label: isUrlPdf ? 'Reading PDF...' : 'Extracting page content...' },
-      { at: 20, label: 'Analyzing schedule...' },
-      { at: 35, label: 'Reading event details...' },
-      { at: 50, label: 'Structuring events...' },
-      { at: 65, label: 'Processing events...' },
-      { at: 78, label: 'Mapping variants...' },
-      { at: 88, label: 'Validating data...' },
-      { at: 94, label: 'Finalizing...' },
-    ];
-    let stageIdx = 0;
-    const startTime = Date.now();
-    const estDuration = isUrlPdf ? 90000 : 45000;
-
-    visionProgressRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const raw = 95 * (1 - Math.exp(-2.0 * elapsed / estDuration));
-      const pct = Math.min(95, Math.round(raw));
-      setVisionProgress(pct);
-      while (stageIdx < stages.length && pct >= stages[stageIdx].at) {
-        setVisionStage(stages[stageIdx].label);
-        stageIdx++;
-      }
-    }, 200);
-
-    try {
-      const res = await fetch(`${API_URL}/parse-schedule-url`, {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: visionUrl.trim(), venue: visionVenue })
-      });
-      const rawText = await res.text();
-      let data;
-      try { data = JSON.parse(rawText); } catch { throw new Error('Server error -- please try again'); }
-      if (!res.ok) throw new Error(data.error || 'Parse failed');
-      clearInterval(visionProgressRef.current);
-      setVisionProgress(100);
-      setVisionStage(data.eventCount > 0 ? `Found ${data.eventCount} events` : 'No events found');
-      await new Promise(r => setTimeout(r, 400));
-      setVisionResults(data);
-      if (data.detectedVenue && !visionVenue) setVisionVenue(data.detectedVenue);
-    } catch (err) {
-      clearInterval(visionProgressRef.current);
-      setVisionProgress(0);
-      setVisionStage('');
-      setVisionError(err.message || 'Failed to parse URL');
-    } finally {
-      clearInterval(visionProgressRef.current);
-      setVisionParsing(false);
-    }
-  };
-
-  const removeVisionEvent = (idx) => {
-    if (!visionResults) return;
-    const newEvents = visionResults.events.filter((_, i) => i !== idx);
-    setVisionResults({ ...visionResults, events: newEvents, eventCount: newEvents.length });
-  };
-
-  const updateVisionEvent = (idx, field, value) => {
-    if (!visionResults) return;
-    const newEvents = [...visionResults.events];
-    newEvents[idx] = { ...newEvents[idx], [field]: value };
-    setVisionResults({ ...visionResults, events: newEvents });
-  };
-
-  const handleVisionImport = async () => {
-    if (!visionResults || !visionResults.events.length) return;
-    setVisionImporting(true);
-    setVisionError('');
-
-    try {
-      const checkRes = await fetch(`${API_URL}/check-schedule-duplicates`, {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ events: visionResults.events })
-      });
-      const dupCheck = await checkRes.json();
-
-      if (dupCheck.existing > 0 && dupCheck.new === 0) {
-        const proceed = window.confirm(
-          `All ${dupCheck.existing} events already exist in the schedule (${dupCheck.existingVenues?.join(', ') || 'unknown venue'}). Importing will update them with the new data.\n\nContinue?`
-        );
-        if (!proceed) { setVisionImporting(false); return; }
-      } else if (dupCheck.existing > 0) {
-        const proceed = window.confirm(
-          `${dupCheck.existing} of ${dupCheck.total} events already exist in the schedule. ${dupCheck.new} are new.\n\nImporting will add new events and update existing ones. Continue?`
-        );
-        if (!proceed) { setVisionImporting(false); return; }
-      }
-
-      const res = await fetch(`${API_URL}/import-parsed-schedule`, {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          events: visionResults.events,
-          sourceFile: visionResults.sourceFile || 'Vision Upload'
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Import failed');
-      const parts = [];
-      if (data.inserted) parts.push(`${data.inserted} new`);
-      if (data.updated) parts.push(`${data.updated} updated`);
-      if (data.skipped) parts.push(`${data.skipped} skipped`);
-      toast.success(`Import complete: ${parts.join(', ')}`);
-      setVisionResults(null);
-      setVisionFile(null);
-      setVisionVenue('');
-      if (onRefreshTournaments) onRefreshTournaments();
-      onClose();
-    } catch (err) {
-      setVisionError(err.message || 'Failed to import events');
-    } finally {
-      setVisionImporting(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return createPortal(
-    <>
-      <div style={{position:'fixed',inset:0,zIndex:998}} onClick={() => { if (!visionParsing && !visionImporting) onClose(); }} />
-      <div style={{
-        position:'fixed',top:'calc(var(--subrow) * 8)',left:'50%',transform:'translateX(-50%)',
-        zIndex:999,background:'var(--surface)',border:'var(--bw-hair) solid var(--border)',
-        borderRadius:'var(--radius)',padding:'calc(var(--subrow) * 1.5)',width:'min(calc(var(--subrow) * 47.5), calc(100vw - calc(var(--subrow) * 3)))',
-        boxShadow:'0 calc(var(--subrow) * 1) calc(var(--subrow) * 3) rgba(0,0,0,0.3)',maxHeight:'calc(100vh - calc(var(--subrow) * 10))',overflowY:'auto',
-      }}>
-        <div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 1)'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <span style={{fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight:700,fontSize:'calc(var(--gu) * 1.325)',color:'var(--text)'}}>Import Schedule</span>
-            <button onClick={onClose} style={{background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.473)',padding:'0 calc(var(--subrow) * 0.25)'}}>&#10005;</button>
-          </div>
-          <p style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',lineHeight:1.4,margin:0}}>
-            Upload a PDF/image or paste a web link. AI extracts event data automatically.
-          </p>
-          <input type="text" placeholder="Venue (optional -- auto-detected from document)"
-            value={visionVenue} onChange={e => setVisionVenue(e.target.value)}
-            style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1.25)',borderRadius:'calc(var(--subrow) * 0.75)',border:'var(--bw-hair) solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.178)',width:'100%',boxSizing:'border-box'}} />
-          <input type="file" id="vision-schedule-upload-dropdown" className="file-input"
-            accept=".pdf,.png,.jpg,.jpeg,.webp" multiple onChange={handleVisionUpload} disabled={visionParsing} />
-          <label htmlFor="vision-schedule-upload-dropdown" className="btn btn-ghost btn-sm"
-            style={{alignSelf:'flex-start',display:'inline-flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',opacity:visionParsing?0.5:1,pointerEvents:visionParsing?'none':'auto'}}>
-            <Icon.upload /> {visionParsing ? 'Scanning...' : 'Upload File(s)'}
-          </label>
-          <div style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',width:'100%'}}>
-            <span style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>or</span>
-            <input type="text" placeholder="Paste schedule URL..." value={visionUrl}
-              onChange={e => setVisionUrl(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && visionUrl.trim()) handleVisionUrl(); }}
-              disabled={visionParsing}
-              style={{flex:1,padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1.25)',borderRadius:'calc(var(--subrow) * 0.75)',border:'var(--bw-hair) solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.178)',opacity:visionParsing?0.5:1}} />
-            <button className="btn btn-ghost btn-sm" onClick={handleVisionUrl}
-              disabled={visionParsing || !visionUrl.trim()}
-              style={{whiteSpace:'nowrap',opacity:(visionParsing||!visionUrl.trim())?0.5:1}}>
-              Fetch
-            </button>
-          </div>
-
-          {visionParsing && (
-            <div style={{padding:'calc(var(--subrow) * 1.5)',background:'var(--bg)',borderRadius:'calc(var(--subrow) * 1)',border:'var(--bw-hair) solid var(--border)'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'calc(var(--subrow) * 0.75)'}}>
-                <span style={{fontSize:'calc(var(--gu) * 1.178)',color:'var(--text-muted)'}}>{visionStage}</span>
-                <span style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',fontVariantNumeric:'tabular-nums'}}>{visionProgress}%</span>
-              </div>
-              <div style={{height:'calc(var(--subrow) * 0.75)',background:'var(--border)',borderRadius:'calc(var(--subrow) * 0.375)',overflow:'hidden'}}>
-                <div style={{
-                  height:'100%',width:visionProgress+'%',
-                  background:'linear-gradient(90deg, var(--accent), var(--accent-hover, var(--accent)))',
-                  borderRadius:'calc(var(--subrow) * 0.375)',transition:visionProgress===100?'width 0.3s ease':'width 0.4s ease-out',
-                }} />
-              </div>
-            </div>
-          )}
-
-          {visionError && (
-            <div style={{padding:'calc(var(--subrow) * 1) calc(var(--subrow) * 1.5)',background:'rgba(220,38,38,0.1)',border:'var(--bw-hair) solid rgba(220,38,38,0.3)',borderRadius:'calc(var(--subrow) * 0.75)',color:'#ef4444',fontSize:'calc(var(--gu) * 1.178)'}}>
-              {visionError}
-            </div>
-          )}
-
-          {visionResults && visionResults.events.length > 0 && (
-            <div style={{marginTop:'calc(var(--subrow) * 0.5)'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'calc(var(--subrow) * 1)'}}>
-                <div>
-                  <span style={{fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight:700,fontSize:'calc(var(--gu) * 1.325)',color:'var(--text)'}}>
-                    {visionResults.eventCount} Events Found
-                  </span>
-                  {visionResults.detectedVenue && (
-                    <span style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',marginLeft:'calc(var(--subrow) * 1)'}}>
-                      at {visionResults.detectedVenue}
-                    </span>
-                  )}
-                </div>
-                <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)'}}>
-                  {visionResults.pageCount} page{visionResults.pageCount !== 1 ? 's' : ''} scanned
-                </span>
-              </div>
-
-              {visionResults.warnings && visionResults.warnings.length > 0 && (
-                <div style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1.25)',background:'rgba(234,179,8,0.1)',border:'var(--bw-hair) solid rgba(234,179,8,0.3)',borderRadius:'calc(var(--subrow) * 0.75)',marginBottom:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.104)',color:'#eab308'}}>
-                  {visionResults.warnings.length} warning{visionResults.warnings.length !== 1 ? 's' : ''}: {visionResults.warnings.slice(0,3).map(w => w.warnings.join(', ')).join('; ')}{visionResults.warnings.length > 3 ? ` (+${visionResults.warnings.length - 3} more)` : ''}
-                </div>
-              )}
-
-              <div style={{maxHeight:'calc(var(--subrow) * 37.5)',overflowY:'auto',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 1)'}}>
-                <table style={{width:'100%',borderCollapse:'collapse',fontSize:'calc(var(--gu) * 1.104)'}}>
-                  <thead>
-                    <tr style={{borderBottom:'calc(var(--subrow) * 0.25) solid var(--border)',position:'sticky',top:0,background:'var(--bg)'}}>
-                      <th style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--gu) * 0.957)',textTransform:'uppercase'}}>Date</th>
-                      <th style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--gu) * 0.957)',textTransform:'uppercase'}}>Time</th>
-                      <th style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--gu) * 0.957)',textTransform:'uppercase'}}>Event</th>
-                      <th style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',textAlign:'right',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--gu) * 0.957)',textTransform:'uppercase'}}>Buy-in</th>
-                      <th style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 0.5)',textAlign:'center',width:'calc(var(--subrow) * 3.75)'}}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visionResults.events.map((ev, i) => (
-                      <React.Fragment key={i}>
-                        <tr
-                          style={{borderBottom:'var(--bw-hair) solid var(--border)',cursor:'pointer',background:visionEditIdx===i?'var(--surface)':'transparent'}}
-                          onClick={() => setVisionEditIdx(visionEditIdx === i ? -1 : i)}>
-                          <td style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',whiteSpace:'nowrap',color:'var(--text)',fontSize:'calc(var(--gu) * 1.075)'}}>{ev.date ? ev.date.replace(/, \d{4}$/, '') : '?'}</td>
-                          <td style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',whiteSpace:'nowrap',color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.075)'}}>{ev.time || '?'}</td>
-                          <td style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.075)',maxWidth:'calc(var(--subrow) * 20)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                            {ev.is_satellite && <span style={{fontSize:'calc(var(--gu) * 0.884)',padding:'calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.5)',borderRadius:'calc(var(--subrow) * 0.375)',background:'rgba(139,92,246,0.2)',color:'#a78bfa',marginRight:'calc(var(--subrow) * 0.5)',fontWeight: 'var(--fw-bold)'}}>SAT</span>}
-                            {ev.is_restart && <span style={{fontSize:'calc(var(--gu) * 0.884)',padding:'calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.5)',borderRadius:'calc(var(--subrow) * 0.375)',background:'rgba(234,179,8,0.2)',color:'#eab308',marginRight:'calc(var(--subrow) * 0.5)',fontWeight: 'var(--fw-bold)'}}>Restart</span>}
-                            {ev.event_name || '(unnamed)'}
-                            {ev._warnings && ev._warnings.length > 0 && <span style={{color:'#eab308',marginLeft:'calc(var(--subrow) * 0.5)'}} title={ev._warnings.join(', ')}>!</span>}
-                          </td>
-                          <td style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',textAlign:'right',color:'var(--text)',fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--gu) * 1.075)'}}>{ev.buyin != null ? `$${ev.buyin.toLocaleString()}` : '\u2014'}</td>
-                          <td style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 0.5)',textAlign:'center'}}>
-                            <button onClick={(e) => { e.stopPropagation(); removeVisionEvent(i); }}
-                              style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.031)',padding:'calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.5)',lineHeight:1}}
-                              title="Remove event">x</button>
-                          </td>
-                        </tr>
-                        {visionEditIdx === i && (
-                          <tr style={{borderBottom:'var(--bw-hair) solid var(--border)',background:'var(--surface)'}}>
-                            <td colSpan={5} style={{padding:'calc(var(--subrow) * 1)'}}>
-                              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.104)'}}>
-                                {[
-                                  ['Event Name', 'event_name', 'text'],
-                                  ['Variant', 'game_variant', 'text'],
-                                  ['Date', 'date', 'text'],
-                                  ['Time', 'time', 'text'],
-                                  ['Buy-in ($)', 'buyin', 'number'],
-                                  ['Venue', 'venue', 'text'],
-                                  ['Starting Chips', 'starting_chips', 'number'],
-                                  ['Guarantee ($)', 'guarantee', 'number'],
-                                  ['Level Duration', 'level_duration', 'text'],
-                                  ['Re-entry', 'reentry', 'text'],
-                                  ['Event #', 'event_number', 'text'],
-                                ].map(([label, field, type]) => (
-                                  <label key={field} style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.25)'}}>
-                                    <span style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 0.957)',textTransform:'uppercase'}}>{label}</span>
-                                    <input type={type} value={ev[field] || (type === 'number' ? 0 : '')}
-                                      onChange={e => updateVisionEvent(i, field, type === 'number' ? (parseInt(e.target.value) || (field === 'buyin' ? 0 : null)) : e.target.value)}
-                                      style={{padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 0.75)',borderRadius:'calc(var(--subrow) * 0.5)',border:'var(--bw-hair) solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.104)'}} />
-                                  </label>
-                                ))}
-                                <label key="category" style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.25)'}}>
-                                  <span style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 0.957)',textTransform:'uppercase'}}>Category</span>
-                                  <select value={ev.category || ''} onChange={e => updateVisionEvent(i, 'category', e.target.value || null)}
-                                    style={{padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 0.75)',borderRadius:'calc(var(--subrow) * 0.5)',border:'var(--bw-hair) solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.104)'}}>
-                                    <option value="">{'\u2014'}</option>
-                                    <option value="main">Main Event</option>
-                                    <option value="side">Side Event</option>
-                                  </select>
-                                </label>
-                              </div>
-                              <div style={{display:'flex',flexWrap:'wrap',gap:'calc(var(--subrow) * 1.5)',marginTop:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.104)'}}>
-                                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.5)',cursor:'pointer',color:'var(--text-muted)'}}>
-                                  <input type="checkbox" checked={!!ev.is_satellite} onChange={e => { updateVisionEvent(i, 'is_satellite', e.target.checked); if (e.target.checked) updateVisionEvent(i, 'is_restart', false); }} />
-                                  Satellite
-                                </label>
-                                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.5)',cursor:'pointer',color:'var(--text-muted)'}}>
-                                  <input type="checkbox" checked={!!ev.is_restart} onChange={e => { updateVisionEvent(i, 'is_restart', e.target.checked); if (e.target.checked) { updateVisionEvent(i, 'is_satellite', false); updateVisionEvent(i, 'buyin', 0); } }} />
-                                  Restart (Day 2+)
-                                </label>
-                                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.5)',cursor:'pointer',color:'var(--text-muted)'}}>
-                                  <input type="checkbox" checked={!!ev.is_multi_flight} onChange={e => updateVisionEvent(i, 'is_multi_flight', e.target.checked)} />
-                                  Multi-flight
-                                </label>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div style={{display:'flex',gap:'calc(var(--subrow) * 1)',marginTop:'calc(var(--subrow) * 1.5)',justifyContent:'flex-end'}}>
-                <button className="btn btn-ghost btn-sm" onClick={() => { setVisionResults(null); setVisionFile(null); }}>Cancel</button>
-                <button className="btn btn-primary btn-sm" onClick={handleVisionImport}
-                  disabled={visionImporting || !visionResults.events.length}
-                  style={{display:'inline-flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}}>
-                  {visionImporting ? 'Importing...' : `Add ${visionResults.events.length} Events`}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {visionResults && visionResults.events.length === 0 && (
-            <div style={{padding:'calc(var(--subrow) * 1.5)',background:'var(--bg)',borderRadius:'calc(var(--subrow) * 1)',border:'var(--bw-hair) solid var(--border)',color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.178)',textAlign:'center'}}>
-              No tournament events found. Try a different file or check that it contains a tournament schedule.
-              {visionResults.pageErrors && visionResults.pageErrors.length > 0 && (
-                <div style={{marginTop:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.104)',color:'var(--accent)',textAlign:'left'}}>
-                  {visionResults.pageErrors.map((pe, i) => <div key={i}>{'\u26A0'} {pe.error}</div>)}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </>,
-    document.body
-  );
-}
-
-// Baseline filter state. Shared by the initial useState and clearAllFilters so
-// the two cannot drift — hideSatellites/hideRestarts are on by default, and
-// "clear filters" means back to these, not maximally permissive.
-// LocationDropdown lives in its own file now (shared with CalendarView).
-
 /* Keep the list's top row where it is while a filter adds or removes rows ABOVE it (owner, 2026-10-10:
    turning Online on made the schedule jump; it should hold still and only grow downward). Browser
    scroll anchoring does not hold this list on the phone's WebKit, and the desktop pane is arranged
@@ -1155,10 +734,10 @@ function pinListTopAcross(apply) {
 }
 
 export default function TournamentsView({
-  tournaments, mySchedule, onToggle, gameVariants, venues,
+  tournaments, mySchedule, onToggle,
   onSetCondition, onRemoveCondition, onToggleAnchor, onSetPlannedEntries,
-  buddyEvents, buddyLiveUpdates, onBuddySwap, isAdmin, onAdminEdit, onClearOverrides,
-  token, onRefreshTournaments, onOpenCalendarView,
+  buddyEvents, onBuddySwap, isAdmin, onAdminEdit, onClearOverrides,
+  token, onOpenCalendarView,
   // Desktop only (docs/desktop-layout.md): a row click selects the event into
   // the detail pane instead of expanding inline. Absent on the phone.
   onSelectEvent, selectedEventId
@@ -1472,11 +1051,6 @@ export default function TournamentsView({
   });
   useEffect(() => () => { if (filtersObserved.current.ro) filtersObserved.current.ro.disconnect(); }, []);
 
-  const buyinOptions = useMemo(() =>
-    [...new Set(tournaments.map(t => parseInt(t.buyin, 10)).filter(n => n > 0 && !isNaN(n)))].sort((a, b) => a - b),
-    [tournaments]
-  );
-
   const scheduleIds = useMemo(() => new Set(mySchedule.map(t => t.id)), [mySchedule]);
   const anchorSet = useMemo(() => new Set(mySchedule.filter(t => t.is_anchor).map(t => t.id)), [mySchedule]);
   const plannedEntriesMap = useMemo(() => {
@@ -1589,6 +1163,31 @@ export default function TournamentsView({
     return decorated.map(x => x.t);
   }, [tournaments, deferredSearch, filters, endedVenues]);
 
+  // The list's day groups, built once per filtered list rather than on every render. Some
+  // tournament rows have legacy non-ISO date strings ("May 4, 2026"). Sort by the NORMALISED ISO
+  // form so date groups land in true chronological order — otherwise events past the last
+  // ISO-formatted date appear out of sequence and look like the schedule was cut off. The sort is
+  // stable, so each day keeps filtered's start-time order.
+  const dateGroups = useMemo(() => {
+    const sorted = [...filtered].sort((a, b) => {
+      const an = normaliseDate(a.date);
+      const bn = normaliseDate(b.date);
+      if (an !== bn) return an < bn ? -1 : 1;
+      return 0;
+    });
+    const groups = [];
+    let cur = null;
+    for (const t of sorted) {
+      const d = normaliseDate(t.date);
+      if (!cur || cur.date !== d) {
+        cur = { date: d, events: [] };
+        groups.push(cur);
+      }
+      cur.events.push(t);
+    }
+    return groups;
+  }, [filtered]);
+
   // Back-to-today FAB
   useEffect(() => {
     const container = document.querySelector('.content-area');
@@ -1645,12 +1244,6 @@ export default function TournamentsView({
       fab.remove();
     };
   }, [filtered]);
-
-  function findBestFlight(eventNum, satTournament) {
-    const flights = filtered.filter(t => t.event_number === eventNum);
-    const best = findClosestFlight(flights, parseTournamentTime(satTournament));
-    return best ? best.id : null;
-  }
 
   // Auto-scroll to today's date group on first mount. Repeat over a few
   // frames: when past dates backfill (and any contentVisibility:auto rows
@@ -1758,7 +1351,7 @@ export default function TournamentsView({
           </button>
         </div>
 
-        <Filters filters={filters} setFilters={setFiltersWithScroll} setFiltersRaw={setFilters} gameVariants={gameVariants} venues={venues} buyinOptions={buyinOptions} tournaments={tournaments} open={filterPanelOpen} setOpen={setFilterPanelOpen} toggleRef={filterToggleRef} search={search} setSearch={setSearch} />
+        <Filters filters={filters} setFilters={setFiltersWithScroll} setFiltersRaw={setFilters} tournaments={tournaments} open={filterPanelOpen} setOpen={setFilterPanelOpen} toggleRef={filterToggleRef} search={search} setSearch={setSearch} />
 
         {locationDropdownOpen && createPortal(
           /* var(--z-scrim), not 998. The PANEL was moved off a 999 literal onto
@@ -1802,27 +1395,7 @@ export default function TournamentsView({
         <div className="schedule-list-tail">
           {(() => {
             const todayISO = getToday();
-            // Some tournament rows have legacy non-ISO date strings
-            // ("May 4, 2026"). Sort by the NORMALISED ISO form so date
-            // groups land in true chronological order — otherwise events
-            // past the last ISO-formatted date appear out of sequence and
-            // look like the schedule was cut off.
-            const sorted = [...filtered].sort((a, b) => {
-              const an = normaliseDate(a.date);
-              const bn = normaliseDate(b.date);
-              if (an !== bn) return an < bn ? -1 : 1;
-              return 0;
-            });
-            const groups = [];
-            let cur = null;
-            for (const t of sorted) {
-              const d = normaliseDate(t.date);
-              if (!cur || cur.date !== d) {
-                cur = { date: d, events: [] };
-                groups.push(cur);
-              }
-              cur.events.push(t);
-            }
+            const groups = dateGroups;
             // Find today's group index so we render enough to include it
             const todayGroupIdx = groups.findIndex(g => g.date >= todayISO);
             const initialCount = Math.max(8, todayGroupIdx + 4);
@@ -1860,11 +1433,6 @@ export default function TournamentsView({
                           isPast={past}
                           showMiniLateReg={isToday}
                           focusEventId={focusEventId}
-                          onNavigateToEvent={(num, sat) => {
-                            const targetId = findBestFlight(num, sat);
-                            if (targetId && onSelectEvent) { onSelectEvent(targetId); return; }
-                            if (targetId) { setFocusEventId(null); setTimeout(() => setFocusEventId(targetId), 0); }
-                          }}
                           conditions={conditionMap[t.id] || []}
                           onSetCondition={onSetCondition}
                           onRemoveCondition={onRemoveCondition}
@@ -1874,7 +1442,6 @@ export default function TournamentsView({
                           plannedEntries={plannedEntriesMap[t.id] || 1}
                           onSetPlannedEntries={onSetPlannedEntries}
                           buddyEvents={buddyEvents}
-                          buddyLiveUpdates={buddyLiveUpdates}
                           onBuddySwap={onBuddySwap}
                           scheduleIds={scheduleIds}
                           isAdmin={isAdmin}

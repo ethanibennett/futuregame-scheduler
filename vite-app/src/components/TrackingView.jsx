@@ -6,16 +6,14 @@ import WrapUpViewer from './WrapUpViewer.jsx';
 import { API_URL } from '../utils/api.js';
 import { tournamentPreviewQuery } from '../utils/standing-ui.js';
 import {
-  getVenueInfo, normaliseDate, getToday, getNow, currencySymbol, nativeCurrency,
+  getToday, getNow, currencySymbol, nativeCurrency,
   CURRENCY_CONFIG, formatCurrencyAmount, convertAmount, isPOYEligible,
-  calculatePOYPoints, isSixMax, haptic, ordinalSuffix, parseTournamentTime,
-  getVenueBrandColor, getStripAbbr, splitEventStage,
+  calculatePOYPoints, ordinalSuffix, parseTournamentTime,
 } from '../utils/utils.js';
-import { fmtDay, monthLabel, shareSeries, rangeOptions } from '../utils/backer-page.js';
+import { fmtDay } from '../utils/backer-page.js';
 import './tracking-cards.css';
 import { MoneyParts, SwissLines } from './SwissParts.jsx';
 import { CardStrip, CardName, CardChevron, MonthBreak, barKeys, stop, BankrollGraph } from './ResultCardParts.jsx';
-import ResultsCurve from './ResultsCurve.jsx';
 const ResultsAll = React.lazy(() => import('./ResultsAll.jsx'));
 import { BankrollSwitcher, BankrollManager, BankrollPicker } from './Bankrolls.jsx';
 import { filterByBankroll, balancesFromSummary, defaultBankrollFor } from '../utils/bankrolls.js';
@@ -363,15 +361,13 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
 // details and Edit / Delete are behind the chevron. tracking-cards.css holds the little that differs.
 // The card parts (strip, name, chevron, month break) live in ResultCardParts.jsx, shared with Cash.
 
-import { DNP_TYPE, isDnpMarker } from '../utils/didnt-play.js';
+import { isDnpMarker } from '../utils/didnt-play.js';
 
 // ── Didn't play (owner, 2026-10-16) ──────────────────────────
 // Results' Didn't play: the event stays on the schedule, marked not played
 // (user_schedules.not_played, the home's To log action), with the note this card asks for. It is
 // not a result, so no buy-in, ROI, ledger or backer figure moves; the card sits in the list among
 // the results by its date, and Played it takes it back to awaiting a result.
-const DNP_LINE = { fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', fontFamily: "'Univers Condensed','Univers',sans-serif", letterSpacing: '0.03em' };
-const DNP_NAME = { fontSize: 'calc(var(--gu) * 1.296)', fontWeight: 'var(--fw-bold)', color: 'var(--text)', fontFamily: "'Univers Condensed','Univers',sans-serif" };
 const dnpLabel = (e) => [eventNo(e.event_number), e.event_name].filter(Boolean).join(' ');
 
 function DidNotPlayForm({ event, initialNote = '', onSave, onCancel }) {

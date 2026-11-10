@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * One frame, 55 glyphs (45 when the frame was introduced; the paragraph below is that count).
+ * One frame, 51 glyphs (45 when the frame was introduced; the paragraph below is that count).
  *
  * Every glyph used to carry its own <svg>, so there was nowhere to enforce a
  * size or a stroke weight from the design system: 37 of 45 are stroked and
@@ -34,7 +34,6 @@ const GLYPHS = {
   warn: { filled: false, path: (<><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/> <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>) },
   clock: { filled: false, path: (<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>) },
   empty: { filled: false, path: (<><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></>) },
-  logout: { filled: false, path: (<><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/> <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>) },
   sun: { filled: false, path: (<><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/> <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/> <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/> <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></>) },
   moon: { filled: false, path: (<><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></>) },
   sunset: { filled: false, path: (<><path d="M18 14a6 6 0 00-12 0"/> <line x1="12" y1="2" x2="12" y2="5"/> <line x1="4.93" y1="5.93" x2="6.34" y2="7.34"/> <line x1="19.07" y1="5.93" x2="17.66" y2="7.34"/> <line x1="1" y1="14" x2="4" y2="14"/> <line x1="20" y1="14" x2="23" y2="14"/> <line x1="2" y1="18" x2="22" y2="18"/> <line x1="4" y1="22" x2="20" y2="22"/></>) },
@@ -59,10 +58,8 @@ const GLYPHS = {
   home: { filled: false, path: (<><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/> <polyline points="9 22 9 12 15 12 15 22"/></>) },
   handshake: { filled: false, path: (<><path d="M11 17l-2 2-4-4 4.5-4.5"/> <path d="M13 7l2-2 4 4-4.5 4.5"/> <path d="M3 13l4 4"/> <path d="M17 7l4 4"/> <path d="M12 12l-2-2"/></>) },
   people: { filled: false, path: (<><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/> <circle cx="9" cy="7" r="4"/> <path d="M23 21v-2a4 4 0 00-3-3.87"/> <path d="M16 3.13a4 4 0 010 7.75"/></>) },
-  dots: { filled: false, path: (<><circle cx="12" cy="12" r="1.5" fill="currentColor"/> <circle cx="12" cy="5" r="1.5" fill="currentColor"/> <circle cx="12" cy="19" r="1.5" fill="currentColor"/></>) },
   play: { filled: false, path: (<><polygon points="5 3 19 12 5 21 5 3"/></>) },
   dollarSign: { filled: false, path: (<><line x1="12" y1="1" x2="12" y2="23"/> <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></>) },
-  zap: { filled: false, path: (<><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></>) },
   cards: { filled: false, path: (<><rect x="2" y="4" width="12" height="16" rx="1.5" transform="rotate(-8 8 12)"/> <rect x="10" y="4" width="12" height="16" rx="1.5" transform="rotate(8 16 12)"/></>) },
   bell: { filled: false, path: (<><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/> <path d="M13.73 21a2 2 0 01-3.46 0"/></>) },
   check: { filled: false, path: (<><polyline points="20 6 9 17 4 12"/></>) },
@@ -74,9 +71,6 @@ const GLYPHS = {
   mapPin: { filled: false, path: (<><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/> <circle cx="12" cy="10" r="3"/></>) },
   calendarCheck: { filled: false, path: (<><rect x="3" y="4" width="18" height="17" rx="2" ry="2"/> <line x1="16" y1="2" x2="16" y2="6"/> <line x1="8" y1="2" x2="8" y2="6"/> <line x1="3" y1="9" x2="21" y2="9"/> <polyline points="8.5 15 11 17.5 15.5 13"/></>) },
   pointer: { filled: true, path: (<><circle cx="5" cy="5" r="1.4"/> <circle cx="11" cy="5" r="1.4"/> <circle cx="17" cy="5" r="1.4"/> <circle cx="5" cy="11" r="1.4"/> <circle cx="11" cy="11" r="1.4"/> <circle cx="17" cy="11" r="1.4"/> <circle cx="5" cy="17" r="1.4"/> <circle cx="11" cy="17" r="1.4"/> <circle cx="17" cy="17" r="1.4"/></>) },
-  plane: { filled: false, path: (<><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></>) },
-  umbrella: { filled: false, path: (<><path d="M23 12a11 11 0 0 0-22 0"/> <path d="M12 12v6a2 2 0 0 0 4 0"/></>) },
-  palmTree: { filled: false, path: (<><path d="M13 8c0-2.76-2.46-5-5.5-5S2 5.24 2 8h2l1-1 1 1h4"/> <path d="M13 7.14A5.82 5.82 0 0 1 16.5 6c3.04 0 5.5 2.24 5.5 5h-3l-1-1-1 1h-3"/> <path d="M5.89 9.71c-2.15 2.15-2.3 5.47-.35 7.43l4.24-4.25.7-.7.71-.71 2.12-2.12c-1.95-1.96-5.27-1.8-7.42.35z"/> <path d="M11 15.5c.5 2.5-.17 4.5-1 6.5h4c2-5.5-.5-10-2-10z"/></>) },
 };
 
 export function Glyph({ name, size, title, filled, ...rest }) {

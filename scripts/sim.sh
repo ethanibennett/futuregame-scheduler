@@ -81,7 +81,7 @@ case "$cmd" in
     name="${1:-shot}"
     out="$SHOTS/$name.png"
     xcrun simctl io "$SIMID" screenshot "$out" >/dev/null 2>&1
-    # Downsize for Claude's image-read limit
+    # Downsize for the image reader's size limit
     sips -Z 1600 "$out" --out "$SHOTS/$name-small.png" >/dev/null 2>&1
     echo "$SHOTS/$name-small.png"
     ;;

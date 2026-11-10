@@ -22,10 +22,10 @@ sound: every exportable hand round-tripped. The entry form is not. Its worst def
 
 | Path | Code | Status | What was tested |
 |---|---|---|---|
-| **GTO entry form** (setup → hero cards / door cards → action → board, stud deal or draw → showdown → result) | `vite-app/src/components/HandReplayerView.jsx` `GTOEntryView` (2619-4472) with the module helpers `getActionOrder`, `calcPotsAndStacks`, `findStudBringIn`, `findStudBestBoard`, `scoreStudBoard`, `studHasOpenPairOn4th`, `getStraddles`, `createEmptyHand`, `computeDrawHand`, `drawDeadCards` | **The live path**: the Form/Text and GTO/Classic toggles are hidden (`SHOW_ENTRY_MODE_TOGGLES = false`, line 1734) | All 1,056 hands, driven through its own buttons in WebKit |
+| **GTO entry form** (setup → hero cards / door cards → action → board, stud deal or draw → showdown → result) | `vite-app/src/components/HandReplayerView.jsx` `GTOEntryView` (2619-4472) with the module helpers `getActionOrder`, `calcPotsAndStacks`, `findStudBringIn`, `findStudBestBoard`, `scoreStudBoard`, `studHasOpenPairOn4th`, `getStraddles`, `createEmptyHand`, `computeDrawHand`, `drawDeadCards` | **The live path**: the Form/Text and GTO/Classic toggles are hidden (`SHOW_ENTRY_MODE_TOGGLES = false`, line 1734). Since 2026-11-10 it is the only entry form: the toggles, the classic form and the Text tab were deleted | All 1,056 hands, driven through its own buttons in WebKit |
 | Game picker (New Hand) | same file, `structureGameMap` / `handleGameSelect` / `startNewHand` (4527-4612, 4659-4685, 4828-4871) | live | Every non-standard row, in the real app on a scratch server |
-| Classic form | `HandReplayerEntry` (2286-2615) | hidden | Code read only |
-| Text tab (shorthand parser) | `vite-app/src/utils/hand-text-parser.js` | hidden | Not tested |
+| Classic form | `HandReplayerEntry` (2286-2615) | hidden; deleted 2026-11-10 (code audit) | Code read only |
+| Text tab (shorthand parser) | `vite-app/src/utils/hand-text-parser.js` | hidden; deleted 2026-11-10 (code audit) | Not tested |
 | Quick add (admins): describe the hand → server parse (LLM, `lib/quick-add/normalize.js`) → gap questions → form | `QuickAddView.jsx`, `vite-app/src/utils/quick-add/*` (`gaps.js`, `actions.js`, `betting.js` = a port of the replayer's betting) | live | The deterministic half: `findGaps` on every hand; the fast path `lib/quick-add/hh.js` on the writer's text. The LLM parse was not called. |
 | Hand-history export / import (PokerStars format) | `vite-app/src/utils/hand-history/` (writer, uses `quick-add/betting.js` `Table`), `lib/hh-import/pokerstars.mjs` | live | Every hand: `checkExportable` → `writePokerStarsHand` → `parseHandHistory` → `canonicalHand` compared with the writer's own model |
 | Share link `#h/…` | `vite-app/src/utils/hand-shorthand.js` `encodeHand` / `decodeHand` | live | Every hand: encode → decode → compare |
@@ -445,6 +445,8 @@ Code: `structureGameMap` (4527-4559). The "dimmed" structures in the picker stil
   GTO form, the replay and the writer all record a draw on the betting round before it.
 - Its next player is `actions.length % activePlayers.length`, which is wrong as soon as anyone raises.
 - Harmless while `SHOW_ENTRY_MODE_TOGGLES` is false. It should not be switched back on as it is.
+- Closed 2026-11-10: the classic form, its toggle and the flag were deleted (code audit); the GTO
+  form is the only entry.
 
 ## 5. Needs the owner's clarification
 

@@ -36,8 +36,9 @@ voice, and let the app ask for whatever the description left out.
   schedule parsing (`/api/parse-schedule`). Use the current models — Claude Sonnet 5
   (`claude-sonnet-5`) for the parse; Haiku 4.5 is fine for phrasing questions.
 - `vite-app/src/utils/hand-text-parser.js` (`parseHandText`) — the deterministic shorthand
-  parser behind the (now hidden) Text tab; useful as a fast path for structured input and as a
-  source of the format's rules.
+  parser behind the hidden Text tab. Both were deleted on 2026-11-10 (code audit; never reachable),
+  so the parser's format rules are in git history only; quick add's fast path is
+  `lib/quick-add/hh.js`.
 - `vite-app/src/utils/hand-shorthand.js` — the canonical serialised hand format (links).
 - Draw conventions to respect (traps that already bit): a draw is recorded on the betting
   round BEFORE it (first draw on street 0); an opponent's stored cards are their showdown hand;

@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import ThemeButton from './ThemeButton.jsx';
-import GridOverlay from './GridOverlay.jsx';
+// Only with ?gridOverlay=1, so it loads only then, as in App.jsx.
+const GridOverlay = lazy(() => import('./GridOverlay.jsx'));
 import useThemeChoice from '../hooks/useThemeChoice.js';
 import { API_URL } from '../utils/api.js';
 import { campaignFrom, storeLink, webLink, liveFigures, captureLanding } from '../utils/live-page.js';
@@ -88,7 +89,7 @@ export default function LivePage() {
           or <span className="lp-nowrap">1-800-GAMBLER</span> (New Jersey).
         </footer>
       </main>
-      {grid && <GridOverlay showReadout={false} />}
+      {grid && <Suspense fallback={null}><GridOverlay showReadout={false} /></Suspense>}
     </div>
   );
 }

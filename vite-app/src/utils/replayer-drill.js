@@ -19,16 +19,20 @@ const DRAW_STREETS = ['Pre-Draw', 'First Draw', 'Second Draw', 'Third Draw'];
 const STUD_STREETS = ['3rd Street', '4th Street', '5th Street', '6th Street', '7th Street'];
 const STACK = 500; // the trainer plays without stacks; a figure the betting cannot reach
 
-// suit order c<d<h<s, identical to engine/cards.js, so an explicit discard round-trips through
-// the server's parser.
+// The engine's integer for a card, (rank-2)*4 + suit, ace high and suit order c<d<h<s, identical to
+// engine/cards.js, so an explicit discard round-trips through the server's parser ('9s' -> 31).
 const SUIT_ORDER = { c: 0, d: 1, h: 2, s: 3 };
 const RANK_VAL = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, T: 10, J: 11, Q: 12, K: 13, A: 14 };
 function cardInt(str) {
-  const r = RANK_VAL[String(str)[0].toUpperCase()] || 2;
-  const s = SUIT_ORDER[String(str)[1]];
+  const c = String(str || '');
+  if (c.length < 2) return 0;
+  const r = RANK_VAL[c[0].toUpperCase()] || 2;
+  const s = SUIT_ORDER[c[1].toLowerCase()];
   return ((r - 2) * 4) + (s == null ? 0 : s);
 }
 
+// The hero's draw as the trainer's step routes take it (the drill here, and the Study tools' Hand
+// trainer): 'd:' + the thrown cards sorted by that integer.
 // encodeDiscard(['Kc', '9s']) -> 'd:9sKc'; encodeDiscard([]) -> 'd:' (stand pat).
 export function encodeDiscard(thrown) {
   return 'd:' + thrown.slice().sort((a, b) => cardInt(a) - cardInt(b)).join('');

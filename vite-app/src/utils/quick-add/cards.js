@@ -45,8 +45,7 @@ export function backs(n) { return 'Ax'.repeat(Math.max(0, n)); }
 const RANKS = 'AKQJT98765432';
 const SUITS = 'hdcsx';
 
-/* What is wrong with a card string, in the terms checkCardText in the replayer
-   uses (characters the parser silently drops), plus one it does not: a rank
+/* What is wrong with a card string: characters the parser silently drops, and a rank
    with no suit. parseCardNotation pairs the i-th rank with the i-th suit and
    gives a rank without one suit 'x', so "AKh" quietly becomes Ah plus a
    face-down K — a different hand from the one typed.

@@ -4,17 +4,16 @@ import Icon from './Icon.jsx';
 import CalendarEventRow from './CalendarEventRow.jsx';
 import {
   getVenueInfo, normaliseDate, parseDateTime, parseTournamentTime, parseDateTimeInTz,
-  getToday, getNow, fmtShortDate, addDays, daysBetween,
-  isBraceletEvent, extractConditions, detectConflicts, findClosestFlight,
-  haptic, VENUE_MAP, getVenueBrandColor,
+  getToday, fmtShortDate, addDays, daysBetween,
+  extractConditions,
+  getVenueBrandColor,
   VENUE_TO_SERIES,
   isSideEvent, isOnline, passesSiteRule, matchesLocation, matchesGames,
 } from '../utils/utils.js';
 import { useSharedFilters, clearedFilters } from '../utils/shared-filters.js';
 import { isSiteAvailable } from '../utils/online-sites.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
-  fetchServerLocation, sameLocation, readLocalFilters } from '../utils/location-prefs.js';
-import { API_URL } from '../utils/api.js';
+  fetchServerLocation, sameLocation } from '../utils/location-prefs.js';
 
 const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -113,7 +112,7 @@ function calOpt(key, checked, onChange, text, cls = '', inputRef) {
 }
 
 // ── Inline Filters component (matches original exactly) ──
-function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tournaments, search, setSearch }) {
+function Filters({ filters, setFilters, tournaments, search, setSearch }) {
   const panelRef = useRef(null);
   const toggleRef = useRef(null);
   const [open, setOpen] = useState(false);
@@ -493,7 +492,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
   );
 }
 
-export default function CalendarView({ token, allTournaments, mySchedule, onToggle, gameVariants, venues, onSetCondition, onRemoveCondition, onToggleAnchor, onSetPlannedEntries, buddyEvents, buddyLiveUpdates, onOpenScheduleView, initialSearch, onSearchConsumed }) {
+export default function CalendarView({ token, allTournaments, mySchedule, onToggle, onSetCondition, onRemoveCondition, onToggleAnchor, onSetPlannedEntries, buddyEvents, onOpenScheduleView, initialSearch, onSearchConsumed }) {
   // Search: owned here (not in the Filters sheet) because it drives what the calendar SHOWS —
   // the per-day density counts and the day's event list — not just a sheet control. Matches the
   // event name, the venue strip, the series name (which rides in notes), and the game.
@@ -707,11 +706,6 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
   }, [token]);
 
 
-  const buyinOptions = useMemo(() =>
-    [...new Set(allTournaments.map(t => parseInt(t.buyin, 10)).filter(n => n > 0 && !isNaN(n)))].sort((a, b) => a - b),
-    [allTournaments]
-  );
-
   // Map normalised date -> all tournaments
   const byDate = useMemo(() => {
     const map = {};
@@ -887,15 +881,6 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
       showMiniLateReg={selectedDate === today}
       isPast={selectedDate < today}
       focusEventId={focusEventId}
-      onNavigateToEvent={(num, sat) => {
-        const flights = allTournaments.filter(f => f.event_number === num);
-        const best = findClosestFlight(flights, parseTournamentTime(sat));
-        if (best) {
-          if (best.date !== selectedDate) setSelectedDate(best.date);
-          setFocusEventId(null);
-          setTimeout(() => setFocusEventId(best.id), 50);
-        }
-      }}
       conditions={conditionMap[t.id] || []}
       onSetCondition={onSetCondition}
       onRemoveCondition={onRemoveCondition}
@@ -905,7 +890,6 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
       plannedEntries={plannedEntriesMap[t.id] || 1}
       onSetPlannedEntries={onSetPlannedEntries}
       buddyEvents={buddyEvents}
-      buddyLiveUpdates={buddyLiveUpdates}
       scheduleIds={scheduleIds}
     />
   );
@@ -1099,7 +1083,7 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
               {myTodayCount > 0 && ` · ${myTodayCount} in my schedule`}
             </span>
           </span>
-          <Filters filters={filters} setFilters={setFilters} gameVariants={gameVariants || []} venues={venues || []} buyinOptions={buyinOptions} tournaments={allTournaments} search={search} setSearch={setSearch} />
+          <Filters filters={filters} setFilters={setFilters} tournaments={allTournaments} search={search} setSearch={setSearch} />
         </div>
 
       </div>

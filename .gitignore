@@ -90,7 +90,6 @@ schedule-docs/
 
 # Build output
 public-vite/
-vite-app/public/version.txt
 build/
 
 # Scratch DB copies. Testing against a copy on a spare port is the documented way
@@ -109,29 +108,11 @@ generate-test-hands.js
 # macOS
 .DS_Store
 
-# CFR solver training checkpoints (full regret state, large)
-solver/strategies/*.ckpt.json
-solver/strategies/*.ckpt.json.tmp
-# training working artifacts — never ship (mid-train snapshots, backups, quarantined ckpts, parked runs)
-solver/strategies/*.retrain.json
-solver/strategies/*.retrain.meta.json
-solver/strategies/*.frozen-*.json
-solver/strategies/*.stale-*.json
-solver/strategies/*.best-*.json
-solver/strategies/_parked-midday-run/
-# Supervisor convergence log (local training artifact)
-solver/strategies/curve.csv
-# Neural-solver datagen shards, trained nets, runtime artifacts (large, local)
-solver/neural/data/
-solver/neural/nets/
-solver/neural/**/*.pt
-solver/neural/*.pid
-solver/neural/*.log
+# Crash dumps from MSYS2 / Git Bash (bash.exe.stackdump)
+*.stackdump
 
-# Python venv for the neural solver (PyTorch)
-solver/neural/.venv/
-
-# solver/ is fetched at build time from futuregame-solver (SOLVER_REPO_TOKEN) or cloned locally
+# solver/ is fetched at build time from futuregame-solver (SOLVER_REPO_TOKEN) or cloned locally;
+# here it is a junction into that repo, which keeps its own ignores for checkpoints and nets.
 solver/
 
 # local pm2 config (holds local JWT_SECRET)

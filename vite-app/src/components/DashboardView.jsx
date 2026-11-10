@@ -25,6 +25,7 @@ import HomeLastResult from './HomeLastResult.jsx';
 import useHomeNumbers from './HomeNumbers.jsx';
 import HomeBankrollLine from './HomeBankrollLine.jsx';
 import HomePeriod from './HomePeriod.jsx';
+import LateRegBar from './LateRegBar.jsx';
 import { resolve as resolveLayout, bankrollAbovePeriod } from '../utils/home-layout.js';
 import { useLiveClocks, liveView, clockStartMs as clockStartFrom, clockRegEnd, clockFieldLabel, lateRegOver, isCompleted } from '../utils/live-clocks.js';
 import { hasVenueMap, venueRoomName } from '../utils/venue-place.js';
@@ -47,131 +48,8 @@ function formatEventName(name) {
   );
 }
 
-
-// ── Countdown Clock (collapsed card) ──
-function CountdownClock({ startMs }) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const diff = startMs - Date.now();
-    const interval = diff < 3600000 ? 1000 : 30000;
-    const id = setInterval(() => setNow(Date.now()), interval);
-    return () => clearInterval(id);
-  }, [startMs]);
-
-  const diff = startMs - now;
-  if (diff <= 0) return <span className="dash-collapsed-countdown live">LIVE</span>;
-
-  const totalSec = Math.floor(diff / 1000);
-  const d = Math.floor(totalSec / 86400);
-  const h = Math.floor((totalSec % 86400) / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-
-  let label;
-  if (d > 0) label = `${d}d ${h}h`;
-  else if (h > 0) label = `${h}h ${m}m`;
-  else if (m > 0) label = `${m}m ${s}s`;
-  else label = `${s}s`;
-
-  const cls = 'dash-collapsed-countdown' + (h === 0 && d === 0 ? ' soon' : '');
-  return <span className={cls}>{label}</span>;
-}
-
-// ── Late Reg Bar ──
-function LateRegBar({ lateRegEnd, date, time, venueAbbr, venue, startAt, completed }) {
-  const [now, setNow] = useState(getNow());
-  useEffect(() => {
-    const id = setInterval(() => setNow(getNow()), 30000);
-    return () => clearInterval(id);
-  }, []);
-
-  // The room's clock showed the tournament finished (server: clock_ended_at / state 'ended').
-  if (completed) {
-    return (
-      <div className="late-reg-wrap">
-        <div className="late-reg-label-row">
-          <span className="late-reg-label event-completed-label">Event Completed</span>
-        </div>
-        <div className="late-reg-bar-bg">
-          <div className="late-reg-bar-fill" style={{ width: '0%', background: 'var(--border)' }} />
-        </div>
-      </div>
-    );
-  }
-
-
-  // Pre-start countdown
-  // startAt: the room's own clock start (PokerAtlas), when it has one, over the published time.
-  if (date || startAt) {
-    const startMs = startAt ?? (venue ? parseDateTimeInTz(date, time, venue) : parseDateTime(date, time || '12:00 AM'));
-    if (now < startMs) {
-      const totalSec = Math.floor((startMs - now) / 1000);
-      const d = Math.floor(totalSec / 86400);
-      const h = Math.floor((totalSec % 86400) / 3600);
-      const m = Math.floor((totalSec % 3600) / 60);
-      const parts = [];
-      if (d > 0) parts.push(`${d} day${d !== 1 ? 's' : ''}`);
-      if (h > 0) parts.push(`${h} hour${h !== 1 ? 's' : ''}`);
-      parts.push(`${m} minute${m !== 1 ? 's' : ''}`);
-      return (
-        <div className="late-reg-wrap">
-          <div className="late-reg-label-row">
-            <span className="late-reg-label pending">Until Start</span>
-            <span className="late-reg-sep"></span>
-            <span className="late-reg-time pending">{parts.join(', ')}</span>
-          </div>
-        </div>
-      );
-    }
-  }
-
-  if (!lateRegEnd) return null;
-  const endMs = parseLateRegEnd(lateRegEnd, date);
-  if (isNaN(endMs)) return null;
-  const diffMs = endMs - now;
-  const diffMin = Math.floor(diffMs / 60000);
-  const endDate = new Date(endMs);
-  const endClock = endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-
-  let status, label, timeStr;
-  if (diffMs <= 0) {
-    status = 'closed'; label = 'Late Reg Closed'; timeStr = null;
-  } else if (diffMin < 30) {
-    status = 'urgent'; label = 'Late Reg — Closing Soon';
-    timeStr = `${diffMin}m left | ${endClock}`;
-  } else if (diffMin < 120) {
-    const h = Math.floor(diffMin / 60); const m2 = diffMin % 60;
-    status = 'soon'; label = 'Late Reg Open';
-    timeStr = (h > 0 ? `${h}h ${m2}m left` : `${m2}m left`) + ` | ${endClock}`;
-  } else {
-    const h = Math.floor(diffMin / 60); const m2 = diffMin % 60;
-    status = 'open'; label = 'Late Reg Open';
-    timeStr = (h > 0 ? `${h}h ${m2}m left` : `${m2}m left`) + ` | ${endClock}`;
-  }
-
-  const windowMs = 12 * 60 * 60 * 1000;
-  const pct = status === 'closed' ? 0 : Math.min(100, Math.max(0, (diffMs / windowMs) * 100));
-  const brandColor = getVenueBrandColor(venueAbbr);
-  const critical = status !== 'closed' && pct <= 15;
-
-  return (
-    <div className="late-reg-wrap">
-      <div className="late-reg-label-row">
-        <span className={`late-reg-label ${status}`}>{label}</span>
-        {timeStr && <span className={`late-reg-time ${status}`}>{timeStr}</span>}
-      </div>
-      <div className="late-reg-bar-bg">
-        <div
-          className={`late-reg-bar-fill ${critical ? 'critical' : ''}`}
-          style={{ width: `${pct}%`, background: critical ? undefined : (status === 'closed' ? 'var(--border)' : brandColor) }}
-        />
-      </div>
-    </div>
-  );
-}
-
 // ── Mini Late Reg Bar ──
-function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, startAt, completed }) {
+function MiniLateRegBar({ lateRegEnd, date, time, openOnly, venue, startAt, completed }) {
   const [now, setNow] = useState(getNow());
   useEffect(() => {
     const id = setInterval(() => setNow(getNow()), 30000);
@@ -219,7 +97,7 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, st
 // and a tool in Hands.
 export default function DashboardView({
   mySchedule, myActiveUpdates, trackingData, onPost, onDeleteUpdate,
-  onAddTracking, onNavigate, tournaments, onToggle, onRefresh,
+  onAddTracking, onNavigate, tournaments, onToggle,
   onOpenInSchedule, demoStates = false, demoCard = false,
   homeRight = null, // desktop: the second pane's element, which the NUMBERS column portals into
   // The Friends section (an Edit home option): the people sharing with this account, their latest
@@ -1032,7 +910,6 @@ export default function DashboardView({
               lateRegEnd={effectiveLateRegEnd(event)}
               date={event.date}
               time={event.time}
-              venueAbbr={getVenueInfo(event.venue, event.property).abbr}
             />
           ) : (
             <LateRegBar
@@ -1217,7 +1094,8 @@ export default function DashboardView({
     // which another workflow is rebuilding, so it waits for that to land. Verdict "home" §7:
     // a 3r title ("Last 3 months · N entries · H h") over a 35g x 14r cumulative profit
     // chart, a 4r figures row, a 3r downswing line in buy-ins; taps open the Overview at 3M.
-    // Admins: ledger + rangeWindow('3m'); non-admins: a compact ResultsCurve.
+    // Admins: ledger + rangeWindow('3m'); non-admins: a compact BankrollGraph (ResultCardParts.jsx),
+    // the results graph that replaced the old ResultsCurve.
   };
   // Which of a column's sections take room: To log when something waits, Last result when there is a
   // way to log, the bankroll line when it has a line. (Up Next and the period block always do.)

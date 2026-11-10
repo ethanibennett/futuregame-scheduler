@@ -2,7 +2,7 @@ import { seasonLabelOf } from './season-label.js';
 // ── Utils ─────────────────────────────────────────────────
 // Converted from public/js/utils.js — window globals removed, ES module exports added
 
-import { SITE_VENUE_TIMEZONES, isSiteAvailable, siteAvailability } from './online-sites.js';
+import { SITE_VENUE_TIMEZONES, isSiteAvailable } from './online-sites.js';
 
 // ── Haptic feedback ──
 export function haptic(ms = 15) {
@@ -663,6 +663,10 @@ const PROPERTY_OVERRIDES = {
   'Parkwest Bicycle Casino': { abbr: 'THE BIKE' },
 };
 
+// Derived strips, kept once worked out: deriveVenueInfo is nine regex passes (about 4 µs a call,
+// against a map lookup for a curated venue), and rows ask for their strip on every render. Keyed by
+// the room when there is one, else by the venue string, since that is what the strip derives from.
+const DERIVED_BY_KEY = new Map();
 export function getVenueInfo(v, property) {
   const mapped = VENUE_MAP[v];
   if (mapped) return mapped;
@@ -670,9 +674,13 @@ export function getVenueInfo(v, property) {
   // string is the series title by contract, and abbreviating that shows tours and cities.
   if (property) PROPERTY_BY_VENUE.set(v, property);
   const room = PROPERTY_BY_VENUE.get(v);
+  const key = room ? `room|${room}` : `venue|${v}`;
+  const known = DERIVED_BY_KEY.get(key);
+  if (known) return known;
   let derived = deriveVenueInfo(room || v);
   if (room && PROPERTY_OVERRIDES[room]) derived = { ...derived, ...PROPERTY_OVERRIDES[room] };
   DERIVED_BY_ABBR.set(derived.abbr, derived);
+  DERIVED_BY_KEY.set(key, derived);
   return derived;
 }
 
@@ -878,15 +886,6 @@ export function shortEventNumber(v) {
      a comma-separated LIST of them: 333 live rows are combined-flight events
      numbered "2, 6, 8, 10", and the list is exactly what that row covers. */
   return /^\d{1,8}[A-Za-z]{0,2}(?:\s*,\s*\d{1,8}[A-Za-z]{0,2})*$/.test(base) ? base : null;
-}
-
-/* Width, in whole g, of the event-number pill for a label such as "#13". 4g holds "#" plus
-   four characters at --fs-xs bold condensed (at most 0.6g each: tabular figures 0.48g,
-   capitals to 0.66g) inside 0.5g of padding a side; longer labels — the comma-listed
-   combined flights — grow a whole g at a time, so both pill edges stay on g lines. */
-export function eventPillWidthG(label) {
-  // In tenths of a g, so 5 x 0.6 + 1 is exactly 4 rather than 4.0000000000000004 -> 5.
-  return Math.max(4, Math.ceil((String(label || '').length * 6 + 10) / 10));
 }
 
 
@@ -1619,14 +1618,6 @@ export function isSeriesEvent(t) {
   return !/\sSchedule$/.test(String(t.venue || '').trim());
 }
 
-/** The availability of the site an event is on, for the card's caveat line.
- *  Re-exported here so components ask utils for event facts and never have to
- *  know a site key is what online-sites.js is indexed by. */
-export function eventAvailability(t, jurisdiction) {
-  if (!isOnline(t)) return { status: 'yes', note: null };
-  return siteAvailability(t.site, jurisdiction);
-}
-
 export function normaliseDate(d) {
   if (!d) return '';
   if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10);
@@ -1813,12 +1804,6 @@ export function calculateCountdown(date, time, venue) {
   return `${mins}m`;
 }
 
-export function getOrdinal(n) {
-  const s = ['th','st','nd','rd'];
-  const v = n % 100;
-  return s[(v - 20) % 10] || s[v] || s[0];
-}
-
 // ── POY Points ────────────────────────────────────────────
 export const NON_POY_KEYWORDS = ['senior', 'super senior', 'ladies', 'tag team',
                             'industry', 'employees', 'online'];
@@ -1992,12 +1977,6 @@ export function formatCurrencyAmount(val, currCode) {
   return cfg.pos === 'suf' ? sign + num + ' ' + cfg.symbol : sign + cfg.symbol + num;
 }
 
-// One signed-money formatter, so a summary and the rows beneath it cannot
-// disagree about whether the sign has already been applied.
-export function formatSignedMoney(val, currCode) {
-  const n = Number(val) || 0;
-  return (n >= 0 ? '+' : '') + formatCurrencyAmount(n, currCode);
-}
 export function convertAmount(amount, fromCurr, toCurr, rates) {
   if (!amount || !rates || fromCurr === toCurr) return amount;
   const inUSD = fromCurr === 'USD' ? amount : amount / (rates[fromCurr] || 1);
@@ -2097,22 +2076,6 @@ export function estimateBlindLevel(startTime, levelDurationMins) {
     remainingMin: Math.floor(remainingInLevel / 60000),
     remainingSec: Math.floor((remainingInLevel % 60000) / 1000),
   };
-}
-
-// ── Measure combined height of sticky elements ──
-export function measureStickyStack(container) {
-  const caTop = container.getBoundingClientRect().top;
-  let bottom = 0;
-  const sticky = container.querySelector('.sticky-filters') || container.querySelector('.schedule-sticky-header') || container.querySelector('.gto-sticky-header');
-  if (sticky) bottom = sticky.getBoundingClientRect().bottom - caTop;
-  container.querySelectorAll('.schedule-date-break').forEach(db => {
-    const dbTop = db.getBoundingClientRect().top - caTop;
-    if (dbTop < bottom + 5) {
-      const dbBottom = db.getBoundingClientRect().bottom - caTop;
-      if (dbBottom > bottom) bottom = dbBottom;
-    }
-  });
-  return bottom;
 }
 
 // ── Parse shorthand like "275k" -> 275000, "1.2M" -> 1200000 ──

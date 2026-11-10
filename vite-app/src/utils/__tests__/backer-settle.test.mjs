@@ -22,10 +22,10 @@ test('one side pressed: that side can undo, the other confirms', () => {
   const settlement = { open: { amountCents: 25000, backerAt: '2026-10-19T15:00:00Z', ownerAt: null }, last: null };
   const b = settleView({ settlement, totalCents: 25000, side: 'backer' });
   assert.deepEqual(b.button, { label: 'Undo', action: 'undo', primary: false });
-  assert.equal(b.status, 'You marked $250 settled · waiting for Ethan');
+  assert.equal(b.status, 'You marked $250 · waiting for Ethan');
   const o = settleView({ settlement, totalCents: 25000, side: 'owner', backer: 'Alex' });
   assert.equal(o.button.label, 'Confirm');
-  assert.equal(o.status, 'Alex marked $250 settled');
+  assert.equal(o.status, 'Alex marked $250');
 });
 
 test('settled: the date, no button', () => {

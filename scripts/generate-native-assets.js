@@ -4,6 +4,10 @@
  * All three exist because the app shipped @capacitor/assets' defaults or
  * full-bleed art where a mask was expected. Everything here is derived from
  * vite-app/public/favicon.svg so there is one source for the mark.
+ *
+ * Run by hand when the mark changes (`node scripts/generate-native-assets.js`, on this PC: ROOT is
+ * the Windows checkout; needs the `canvas` dev dependency). The plain square icons are
+ * generate-icons.js at the repo root (Mac only).
  */
 const fs = require('fs');
 const path = require('path');

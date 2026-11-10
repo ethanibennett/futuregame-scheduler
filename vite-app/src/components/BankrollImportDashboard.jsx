@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { API_URL } from '../utils/api.js';
+import useJsonApi from '../hooks/useJsonApi.js';
 import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
 import { openInResults } from '../hooks/useResultsFocus.js';
 import { BANKROLL_ALL } from '../utils/bankrolls.js';
 import {
-  fmtMoney, fmtDay, fmtWhen, resultWords, toneOf, plural, currentRuns, runLine, mergePatch, isEmptyPatch, applyPatch, fillLikely,
+  fmtMoney, fmtDay, fmtWhen, toneOf, plural, currentRuns, runLine, mergePatch, isEmptyPatch, applyPatch, fillLikely,
   pairOptions, pairFields, groupPlan, backerOptions, slateOptions, sourceLabel, optionWord, itemLine, commitReadiness,
-  reconciliationBlocks, REC_LINES, REC_LISTS, writesList, editedRows, fetchError, commitError, undoError, diffPlans, pageOf, FIRST_ROWS,
+  reconciliationBlocks, REC_LINES, REC_LISTS, writesList, fetchError, commitError, undoError, diffPlans, pageOf, FIRST_ROWS,
 } from '../utils/bankroll-import-dashboard.js';
 import './analytics.css';
 import './bankroll-locations.css';
@@ -46,20 +46,6 @@ const resultsOnScreen = () => {
   return !!(el && el.getClientRects().length);
 };
 const tone = (v) => { const t = toneOf(v); return t ? ` an-${t}` : ''; };
-
-function useApi(token) {
-  return useCallback(async (method, path, body) => {
-    try {
-      const res = await fetch(`${API_URL}/bankrolls/import/dashboard${path}`, {
-        method,
-        headers: { Authorization: `Bearer ${token}`, ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
-      const data = await res.json().catch(() => ({}));
-      return { status: res.status, data };
-    } catch (_) { return { status: 0, data: {} }; }
-  }, [token]);
-}
 
 /** Ten rows, then fifty more a tap, then all; Show fewer goes back to ten (the Locations pager). */
 function usePager(total) {
@@ -587,7 +573,7 @@ function CommitBlock({ view, ready, pending, busy, confirm, setConfirm, onCommit
   );
 }
 
-function SummaryBlock({ run, summary, plan, busy, onUndo, undoErr, onOpen, canOpen }) {
+function SummaryBlock({ run, summary, busy, onUndo, undoErr, onOpen, canOpen }) {
   const id = useId();
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState('');
@@ -693,7 +679,7 @@ function RunsGroup({ runs }) {
 
 // ── the section ─────────────────────────────────────────────────────────────────────────────
 export default function BankrollImportDashboard({ bk, onClose, onChanged }) {
-  const api = useApi(bk.token);
+  const api = useJsonApi(bk.token, '/bankrolls/import/dashboard');
   const [list, setList] = useState({ status: 'loading', pull: null, runs: [] });
   const [cur, setCur] = useState(null);           // { run, plan, decisions, summary } of the run on screen
   const [overlay, setOverlay] = useState(null);   // answers given, not yet saved (or on their way)
@@ -953,7 +939,7 @@ export default function BankrollImportDashboard({ bk, onClose, onChanged }) {
       )}
 
       {!staged && committed && committed.summary && (
-        <SummaryBlock run={committed.run} summary={committed.summary} plan={committed.plan} busy={busy} onUndo={doUndo} undoErr={undoErr}
+        <SummaryBlock run={committed.run} summary={committed.summary} busy={busy} onUndo={doUndo} undoErr={undoErr}
           onOpen={openRow} canOpen={resultsOnScreen()} />
       )}
       {list.status === 'ready' && <RunsGroup runs={past} />}

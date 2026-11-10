@@ -190,12 +190,6 @@ export function seatOrder(n, isPreflop, straddleSeat) {
   return indices.filter(i => i < n);
 }
 
-function rotateFrom(n, start) {
-  const out = [];
-  for (let i = 0; i < n; i++) out.push(((start % n) + n + i) % n);
-  return out;
-}
-
 // ── The table ────────────────────────────────────────────────────────────
 
 export function validStack(v) {

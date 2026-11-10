@@ -3,7 +3,7 @@
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 
 // Dynamic, because a static import is hoisted above the stub above it.
-const { isOnline, isWsopOnline, matchesLocation, matchesOnline, getVenueTimezone, eventAvailability, isSeriesEvent, isBraceletEvent, isRingEvent, isWsopOnlineCircuit, shortEventNumber, eventPillWidthG, describeGame, getGamePills, registerRowCurrencies, nativeCurrency, currencySymbol } =
+const { isOnline, isWsopOnline, matchesLocation, matchesOnline, getVenueTimezone, isSeriesEvent, isBraceletEvent, isRingEvent, isWsopOnlineCircuit, shortEventNumber, describeGame, getGamePills, registerRowCurrencies, nativeCurrency, currencySymbol } =
   await import('../utils.js');
 
 let pass = 0, fail = 0;
@@ -137,8 +137,6 @@ eq('offshore survives the toggle', matchesOnline(acrEv, { onlyAvailableOnline: t
 eq('on but no jurisdiction abstains', matchesOnline(wsopEv, { onlyAvailableOnline: true }), true);
 eq('a live event is never touched', matchesOnline(live, { onlyAvailableOnline: true, jurisdiction: 'TX' }), true);
 eq('showOnline still wins', matchesOnline(acrEv, { showOnline: false, onlyAvailableOnline: true, jurisdiction: 'NV' }), false);
-eq('eventAvailability on a live event', eventAvailability(live, 'TX').status, 'yes');
-eq('eventAvailability on an online one', eventAvailability(wsopEv, 'NV').status, 'yes');
 
 console.log('stateCodeFrom — Nominatim says "Nevada", the lists say "NV"');
 eq('full name', stateCodeFrom('Nevada'), 'NV');
@@ -304,12 +302,6 @@ eq('a flight suffix survives', shortEventNumber('12H'), '12H');
 eq('empty', shortEventNumber(''), null);
 eq('null', shortEventNumber(null), null);
 eq('undefined', shortEventNumber(undefined), null);
-
-console.log('eventPillWidthG');
-eq('a one-digit number is a 4g pill', eventPillWidthG('#1'), 4);
-eq('"#" and four characters still fit 4g', eventPillWidthG('#500C'), 4);
-eq('five characters take 5g', eventPillWidthG('#1234A'), 5);
-eq('a combined-flight list grows in whole g', eventPillWidthG('#2, 6, 8, 10'), 9);
 
 /* Every title below is a real row (scratch copy of the live DB, 2026-10-08). */
 console.log('describeGame');

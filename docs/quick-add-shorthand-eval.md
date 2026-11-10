@@ -424,7 +424,7 @@ Layers A and B together; every non-right fact is in one of these.
   then hits `callTool(undefined, …)` (`lib/quick-add.js:222`), and `mapApiError` turns that into a 504
   "Could not reach the parser". The fix belongs in `eval.js`: build an Anthropic client from
   `ANTHROPIC_API_KEY` and pass it. I left it alone, because the brief said not to change code.
-- **This box's C: drive is full** (0.00 GB free at 04:00). One old Claude session's temp folder
+- **This box's C: drive is full** (0.00 GB free at 04:00). One old session's temp folder
   (`%LOCALAPPDATA%\Temp\claude\D--projects-scheduler\8201d6d6-…`, from 2026-09-27) holds 8.7 GB. Tool
   output and pm2 logs live on C:, and one of my file writes was truncated to 0 bytes by it. I deleted
   nothing. The scratch work was moved to `D:\scratch\qa-shorthand`.

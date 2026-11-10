@@ -23,10 +23,8 @@ export default defineConfig({
       'react-dom/client',
       'react/jsx-dev-runtime',
       'react/jsx-runtime',
-      'html2canvas',   // dynamic import in replay-video-export.js
-      'gifenc',        // dynamic import (kept for potential future use)
-      'modern-screenshot', // dynamic import in replay-gif-export.js
-      'upng-js',       // dynamic import in replay-gif-export.js
+      'gifenc',        // dynamic import in replay-gif-export.js
+      'modern-screenshot', // dynamic import in the replay exports
       'jspdf',         // dynamic import in export.js
       'jspdf-autotable', // dynamic import in export.js
       'leaflet',       // the venue map's OpenStreetMap provider (utils/venue-map/provider-osm.js)
@@ -40,7 +38,6 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': 'http://localhost:3001',
-      '/version.txt': 'http://localhost:3001',
     },
   },
   build: {

@@ -26,9 +26,7 @@
 //     infer it here from a street number.
 import { useEffect, useState } from 'react';
 import { fetchApi } from '../utils/api';
-import { StudyHead, StudyPills, shortGameName, useSolverAvailability, offered } from './StudyHead.jsx';
-
-const T = (b, lh) => (lh ? { '--hs-b': b, '--hs-lh': lh } : { '--hs-b': b });
+import { StudyHead, StudyPills, shortGameName, useSolverAvailability, offered, T } from './StudyHead.jsx';
 
 const GAMES = [
   { id: 'td27', label: '2-7 Triple Draw', cards: 5 },

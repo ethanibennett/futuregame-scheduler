@@ -277,15 +277,6 @@
       --border:    #333333;
       --accent:    #a0a0a0;
       --accent2:   #888888;
-      /* Translucent ring for the active-turn plaque. A token rather than color-mix(): that
-         function appears once in this whole file, and the replayer ships inside a WKWebView.
-         Light in EVERY theme, unlike --accent, because this ring is drawn on the purple felt
-         around a plaque that is now dark in all themes — the light/cloudy accent is near-black
-         and would read as a drop shadow rather than as attention. */
-      --accent-ring: rgba(220,220,220,0.6);
-      /* Seat-plaque bevel. Shared so the winner/turn/loser rules can add a glow WITHOUT
-         dropping it — box-shadow replaces wholesale, and those rules used to flatten it. */
-      --plaque-bevel: 0 calc(var(--subrow) * 0.375) calc(var(--subrow) * 1) rgba(0,0,0,0.55), var(--edge-hi), var(--edge-lo);
       --text:      #e8e8e8;
       --text-muted:#808080;
       --bg-contrast: #111111;
@@ -396,11 +387,14 @@
       --lh-base:  1.5;
 
       /* --- Weight -------------------------------------------------------
-         Univers and Univers Condensed ship 300/400/700 and nothing else.
-         CSS font matching walks a requested 600 UP to 700 and a 500 DOWN
-         to 400, so the 91 "semibold" and 13 "medium" declarations here
-         rendered as bold and regular - a four-tier ramp that physically
-         had two. Never write 500, 600, 800 or 900.
+         Univers Condensed ships 300/400/700 and nothing else; Univers adds
+         800 (Black) and 900 (XBlack), and no width has a 500 or a 600 (the
+         @font-face list at the top of this file). CSS font matching walks a
+         requested 600 UP to 700 and a 500 DOWN to 400, so the 91 "semibold"
+         and 13 "medium" declarations here rendered as bold and regular - a
+         four-tier ramp that physically had two. Never write 500 or 600; 800
+         and 900 exist only in Univers and Univers Expanded, and no rule
+         uses them today.
 
          The missing middle tier is built from axes that DO exist: full
          strength colour plus a hair of tracking reads as lifted at
@@ -471,14 +465,8 @@
                                            (Was a fixed 8px, which is NOT the grid at
                                            any real width.) Rounded to 1/64 px below. */
 
-      /* Sub-subrow optical corrections (fractions of r, never px). */
-      --nudge-half: calc(var(--subrow) * 0.0625);
+      /* Sub-subrow optical correction (a fraction of r, never px). */
       --nudge-1:    calc(var(--subrow) * 0.125);
-
-      /* One multiplier, so the calendar and the dashboard share a scale
-         instead of each spawning its own literals. */
-      --density:   1;
-      --space-row: calc(var(--space-md) * var(--density));
 
       /* --- Radius -------------------------------------------------------
          --radius and --radius-sm keep their values so nothing shifts.
@@ -841,7 +829,6 @@
         --dur-base: 0ms;
         --dur-slow: 0ms;
         --dur-amble: 0ms;
-        --dur-beat: 0ms;
         --state-press: none;
       }
       *, *::before, *::after {
@@ -877,9 +864,6 @@
     }
 
 
-
-
-
     /* Referenced by SharedScheduleView and defined nowhere, so the count next
        to the heading inherited body type on the app's only public page. */
     .event-count-badge {
@@ -899,29 +883,6 @@
       text-indent: var(--track-caps);
       white-space: nowrap;
     }
-
-
-    /* The region rows implemented hover in JavaScript, writing to
-       style.background - which cannot answer :focus-visible and leaves the
-       style attribute dirty afterwards. */
-    .location-dropdown-row {
-      display: flex;
-      align-items: center;
-      gap: var(--space-md);
-      width: 100%;
-      padding: var(--space-lg) var(--space-xl);
-      font-size: var(--fs-sm);
-      background: none;
-      border: 0;
-      color: var(--text);
-      cursor: pointer;
-      text-align: left;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .location-dropdown-row:hover { background: var(--hover-overlay); }
-    }
-    .location-dropdown-row:active { background: var(--surface2); }
-    .location-dropdown-row .check { margin-left: auto; color: var(--brand); --icon-size: var(--icon-sm); display: inline-flex; }
 
 
     /* The money column. The guarantee sits under the buy-in rather than in a
@@ -1029,12 +990,10 @@
     .milestone-modal-backdrop { backdrop-filter: blur(calc(var(--subrow) * 0.75)); }
 
 
-    /* The carousel dot was a 6x6px target with a click handler, which is why
-       the carousel is swipe-only in practice. The visible size is unchanged -
-       the target grows behind it, so nothing in the design moves. */
+    /* The carousel dot is a button whose tap target (::after) is larger than
+       the dot it draws; both are sized with .dash-upnext-dots further down. */
     .dash-upnext-dot {
       position: relative;
-      background: var(--border);
       border: 0;
       padding: 0;
       cursor: pointer;
@@ -1042,12 +1001,8 @@
     .dash-upnext-dot::after {
       content: '';
       position: absolute;
-      inset: calc(var(--subrow) * -2.375);
       border-radius: var(--radius-circle);
     }
-    .dash-upnext-dot.active { background: var(--brand); }
-    /* ...so the expanded targets cannot overlap each other. */
-    .dash-upnext-dots { gap: var(--space-md); }
 
     .dash-undo-x::after,
     .dash-unbag-x::after,
@@ -1114,17 +1069,6 @@
     }
 
 
-    /* Portalled to document.body, so the anchor comes from the trigger's rect
-       and the absolute-positioning rules above must not fight it. */
-    .dash-pl-dropdown.portalled {
-      position: fixed;
-      left: auto;
-      right: auto;
-      transform: none;
-      z-index: var(--z-panel);
-    }
-
-
     /* --- Action scale -------------------------------------------------
        The same five actions were coloured differently in two widgets that
        sit ~200px apart on one screen. Only "call" agreed:
@@ -1185,12 +1129,8 @@
        What it lacks is VALUE separation: every suit is darker than the felt's
        dark stop, so a flop of Ks 9c 4d reads as three dark rectangles at replay
        speed. This is the control the deck actually needed. */
-    /* The filter targeted img only, so the classic theme — whose cards are
-       divs — was excluded from the one control that exists to lift the suits
-       off the felt. */
     .hc-deck .card-row img,
-    .hc-deck img.card-img,
-    .hc-deck .card-classic {
+    .hc-deck img.card-img {
       filter: saturate(1.35) brightness(1.25);
     }
 
@@ -1272,7 +1212,7 @@
       border-radius: 50%;
       background:
         radial-gradient(ellipse at 50% 35%,
-          rgba(255,255,255,0.30), rgba(255,255,255,0.06) 60%, rgba(0,0,0,0.12) 100%),
+          rgba(255,255,255,0.30), rgba(255,255,255,0.06) 60%, var(--ov-black-2) 100%),
         var(--chip);
       box-shadow: inset 0 0 0 max(calc(var(--subrow) * 0.125), calc(var(--disc-w) * 0.03)) rgba(255,255,255,0.22);
     }
@@ -1299,7 +1239,7 @@
       box-shadow:
         inset 0 calc(var(--subrow) * -0.25) calc(var(--subrow) * 0.375) rgba(0,0,0,0.45),
         inset 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.25) rgba(255,255,255,0.35),
-        0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) rgba(0,0,0,0.4);
+        0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) var(--ov-black-4);
     }
 
     /* The light strip finally reads the property it has always been handed. */
@@ -1466,70 +1406,6 @@
     [data-contrast="high"] { --series-cash: #a78bfa; }
     [data-theme="light"][data-contrast="high"]  { --series-cash: #6d28d9; }
     [data-theme="cloudy"][data-contrast="high"] { --series-cash: #5b16d6; }
-
-
-    /* ==================================================================
-       Results curve. No chart existed anywhere in the app; the tracking
-       screen computed totals and discarded the sequence. Cumulative P&L
-       over event index is the one view a tournament player holds in their
-       head, and the step form is load-bearing: results are discrete, so a
-       smooth curve would draw values that never existed.
-       ================================================================== */
-    /* Whole r throughout: 1r above, the 9r chart, a 3r foot (figures seated on its 2r line), the
-       2r strip 1r below it, 1r after. */
-    .results-curve { margin: var(--space-md) 0 var(--space-md); }
-    .results-curve-svg { width: 100%; height: calc(var(--subrow) * 9); display: block; overflow: visible; }
-    .rc-line  { fill: none; stroke: var(--text); stroke-width: 1.5; }
-    .rc-zero  { stroke: var(--border-strong); stroke-width: 1; }
-    .rc-fill-pos { fill: var(--pos-quiet); stroke: none; }
-    .rc-fill-neg { fill: var(--neg-quiet); stroke: none; }
-    .rc-dot-pos { fill: var(--pos); }
-    .rc-dot-neg { fill: var(--neg); }
-    .rc-dot-big { fill: var(--pos); }
-
-    .results-curve-foot {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      height: calc(var(--subrow) * 3);
-    }
-    .results-curve-foot > span {
-      display: block;
-      padding-top: calc(var(--subrow) * 2 - 1cap);
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
-    }
-    .rc-zero-label {
-      font-family: var(--font-condensed);
-      font-size: var(--fs-2xs);
-      color: var(--text-muted);
-    }
-    .rc-final {
-      font-family: var(--font-display);
-      font-size: var(--fs-md);
-      font-variant-numeric: var(--num-tabular);
-    }
-    .rc-final.pos { color: var(--pos); }
-    .rc-final.neg { color: var(--neg); }
-
-    /* One cell per event: in tournaments the mean is meaningless and the tail
-       is everything, so "24 events - 3 cashes" hides the only fact that
-       matters about the series. */
-    .results-dist {
-      display: flex;
-      align-items: flex-end;
-      gap: var(--space-2xs);
-      height: calc(var(--subrow) * 2);
-      margin-top: var(--space-md);
-    }
-    .results-dist i {
-      flex: 1;
-      min-width: calc(var(--subrow) * 0.25);
-      height: calc(var(--subrow) * 0.375);
-      background: var(--border-strong);
-      border-radius: var(--radius-xs);
-      display: block;
-    }
-    .results-dist i.is-cash { background: var(--pos); }
 
 
     /* The headline figure per member is NET, but the bar was scaled by GROSS
@@ -1722,19 +1598,6 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    /* The Replayer toggle is pulled out of flow (like the avatar) so it neither
-       stretches the row nor rides the text baseline: centred vertically in the
-       5-subrow row — (40-24)/2 = 8px = 1 subrow, box spanning lines 8 -> 32 — and
-       centred in its 5g column (left 2.5g minus its own 2g half-width). */
-    .admin-table td.admin-toggle-cell { position: relative; padding: 0; }
-    .admin-table td.admin-toggle-cell .admin-toggle {
-      position: absolute;
-      top: calc((var(--subrow) * 5 - var(--subrow) * 3) / 2);
-      /* The column is the toggle's own 4g (AdminView's colgroup), so it fills it from the
-         column's g line; centred in the old 5g column it sat half a g off. */
-      left: 0;
-      margin-left: 0;
-    }
     /* Username cell clears the avatar with a fixed indent (1g rail + 24px avatar
        + 1 subrow gap). */
     .admin-table td.admin-user-cell { position: relative; padding-left: calc(var(--gu) + calc(var(--subrow) * 3) + var(--space-md)); }
@@ -1757,10 +1620,6 @@
       font-weight: var(--fw-bold);
       color: var(--bg);
     }
-    /* Grid the toggle: height already 3 subrows via .settings-toggle; the double
-       class outweighs .settings-toggle (defined later in the file) so the width
-       snaps to a whole 4g. */
-    .settings-toggle.admin-toggle { width: calc(var(--gu) * 4); height: calc(var(--subrow) * 3); }
 
     /* ==================================================================
        Date break. The pinned header used to sit on a flat --bg with no
@@ -1793,8 +1652,6 @@
       background: var(--bg);
       user-select: none;
     }
-    .schedule-date-break[onclick],
-    .schedule-date-break.is-collapsible { cursor: pointer; }
 
     .date-break-pill-btn {
       background: none;
@@ -1946,44 +1803,21 @@
       flex-shrink: 0;
     }
 
-    /* ==================================================================
-       Utility roles.
-
-       .u-caps is the app's dominant label idiom - 76 uppercase runs that
-       were tuned 20 different ways, so section labels on adjacent panels
-       had visibly different rhythm. One class, one tracking.
-
-       .u-tnum is applied to anything whose text is a number that changes
-       or that stacks vertically with other numbers. Proportional figures
-       make a live countdown shudder every second and stop a column of
-       currency from aligning - and this is a schedule and a bankroll
-       tracker, so those columns are the main content.
-       ================================================================== */
-    .u-caps {
-      font-family: var(--font-condensed);
-      font-size: var(--fs-2xs);
-      font-weight: var(--fw-bold);
-      letter-spacing: var(--track-caps);
-      text-transform: uppercase;
-      color: var(--text-muted);
-    }
-    /* The emphasis tier the family cannot express as a weight: full-strength
-       colour plus a hair of tracking, which reads as lifted at 11-13px. */
-    .u-emph {
-      color: var(--text);
-      letter-spacing: var(--emph-track);
-    }
-    .u-tnum,
+    /* Tabular figures for anything whose text is a number that changes or that
+       stacks vertically with other numbers. Proportional figures make a live
+       countdown shudder every second and stop a column of currency from
+       aligning - and this is a schedule and a bankroll tracker, so those
+       columns are the main content. */
     .cal-event-buyin, .cal-event-time, .cal-event-gtd,
     .cal-date-btn .dom, .cal-detail-value,
-    .dash-event-buyin, .dash-stat-value, .dash-pl-value, .dash-pl-dropdown-amount,
+    .dash-event-buyin, .dash-stat-value,
     .tracking-profit-pos, .tracking-profit-neg,
     .leaderboard-net-pos, .leaderboard-net-neg,
-    .staking-pnl-pos, .staking-pnl-neg,
+    .staking-pnl-pos,
     .replayer-bet-chip, .replayer-equity-pct,
     .replayer-split-share,
     .replayer-seat-stack, .replayer-pot-display,
-    .late-reg-time, .mini-late-reg-time, .countdown-pill {
+    .late-reg-time, .mini-late-reg-time {
       font-variant-numeric: var(--num-tabular);
     }
 
@@ -2016,7 +1850,6 @@
       --border:    #d0d0d0;
       --accent:    #555555;
       --accent2:   #777777;
-      --accent-ring: rgba(255,255,255,0.8);
       --text:      #1a1a1a;
       --text-muted:#888888;
       --bg-contrast: #ffffff;
@@ -2080,7 +1913,6 @@
       --border:    #2a3a58;
       --accent:    #8898b8;
       --accent2:   #6878a0;
-      --accent-ring: rgba(170,190,230,0.7);
       --text:      #d8dce8;
       --text-muted:#6878a0;
       --bg-contrast: #0d1525;
@@ -2130,7 +1962,6 @@
       --border:    #a0a0a0;
       --accent:    #505050;
       --accent2:   #686868;
-      --accent-ring: rgba(255,255,255,0.8);
       --text:      #1a1a1a;
       --text-muted:#606060;
       --bg-contrast: #c8c8c8;
@@ -2431,10 +2262,6 @@
       from { opacity: 0; transform: translateY(calc(var(--subrow) * -1.5)); }
       to { opacity: 1; transform: translateY(0); }
     }
-    @keyframes luSlideIn {
-      from { opacity: 0; transform: translateX(calc(var(--subrow) * -1.5)); }
-      to { opacity: 1; transform: translateX(0); }
-    }
     .dropdown-backdrop {
       position: fixed; inset: 0; z-index: var(--z-scrim);
       background: rgba(0,0,0,0.45);
@@ -2445,7 +2272,7 @@
        unstyled in normal flow, behind the app. */
     .modal-backdrop {
       position: fixed; inset: 0; z-index: var(--z-modal);
-      background: rgba(0,0,0,0.6);
+      background: var(--ov-black-5);
       display: flex; align-items: center; justify-content: center;
       padding: var(--space-xl) var(--gu);
     }
@@ -2815,7 +2642,6 @@
     .live-update-panel .live-update-last { line-height: calc(var(--subrow) * 2); padding-block: calc(var(--subrow) * 0.5); }
     .live-update-panel .live-update-tournament-label { line-height: calc(var(--subrow) * 2); }
     .live-update-panel .hand-game-pills { gap: var(--subrow); }
-    .live-update-panel .hand-game-pill-row button { height: calc(var(--subrow) * 3); box-sizing: border-box; padding-block: 0; }
 
     .live-update-row {
       display: flex;
@@ -2890,14 +2716,14 @@
     .camera-overlay video { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; touch-action:none; }
     .camera-overlay .camera-stats-bar {
       position:absolute; bottom:calc(var(--subrow) * 7.5); left:0; right:0;
-      background:rgba(0,0,0,0.6); padding: var(--space-ml) var(--space-xl); backdrop-filter:blur(calc(var(--subrow) * 0.5));
+      background:var(--ov-black-5); padding: var(--space-ml) var(--space-xl); backdrop-filter:blur(calc(var(--subrow) * 0.5));
     }
     .camera-overlay .camera-stats-bar .tournament-name { font-size: var(--fs-xs); color:#fff; opacity:0.8; font-family: var(--font-condensed); }
     .camera-overlay .camera-stats-bar .stats-line { font-size: var(--fs-lg); color:#22c55e; font-weight: var(--fw-bold); font-family: var(--font-condensed); margin-top: var(--space-2xs); }
     .camera-overlay .camera-watermark { position:absolute; top:calc(var(--subrow) * 1.5); left:calc(var(--subrow) * 2); font-size: var(--fs-2xs); color:rgba(255,255,255,0.5); font-family: var(--font-condensed); letter-spacing: var(--track-caps); }
     .camera-overlay .camera-actions {
       position:absolute; bottom:0; left:0; right:0;
-      display:flex; justify-content:center; gap: var(--space-2xl); padding: var(--space-xl); background:rgba(0,0,0,0.8);
+      display:flex; justify-content:center; gap: var(--space-2xl); padding: var(--space-xl); background:var(--ov-black-6);
     }
     .camera-overlay .camera-actions button {
       padding: var(--space-ml) var(--space-3xl); border-radius:calc(var(--subrow) * 3); border:none;
@@ -2958,13 +2784,9 @@
 
     /* ── Registration section in live-update-panel ── */
     .live-update-registered-section { display:flex; flex-direction:column; gap: var(--space-sm); }
-    .live-update-divider { height:calc(var(--subrow) * 0.125); background:var(--border); margin:var(--space-xs) calc(var(--subrow) * -0.5); }
 
     /* ── Hand game pills (legacy — kept for hand editor) ── */
     .hand-game-pills { display:flex; flex-direction:column; gap: var(--space-xs); }
-    .hand-game-pill-row { display:flex; gap: var(--space-xs); }
-    .hand-game-pill-row button { flex:1; padding: var(--space-xs) var(--space-sm); border-radius:calc(var(--subrow) * 1.25); border:var(--bw-hair) solid var(--border); background:transparent; color:var(--text-muted); font-family: var(--font-condensed); font-size: var(--fs-2xs); line-height:1; cursor:pointer; white-space:nowrap; transition:background var(--dur-fast),color var(--dur-fast); text-align:center; display:inline-flex; align-items:center; justify-content:center; }
-    .hand-game-pill-row button.active { background:var(--accent); color:#fff; border-color:var(--accent); font-weight: var(--fw-bold); }
     .hand-game-label { font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); }
 
     /* ── Game picker: tabbed checklist ── (Hands tab, list screen only) */
@@ -2979,18 +2801,6 @@
     /* Four favourites = the four primary columns (1-9, 10-18, 19-27, 28-36g): 8g each,
        1g gutters, exactly like the Schedule tab's four toggles. */
     .game-faves-row { display:grid; grid-template-columns: repeat(3, round(down, (100% - var(--gu) * 3) / 4, var(--gu))) minmax(0, 1fr); column-gap: var(--gu); height: calc(var(--subrow) * 3); margin-bottom: calc(var(--subrow) * 2); box-shadow: inset 0 calc(var(--subrow) * -0.125) 0 var(--border); }
-    .game-fave-btn { display:grid; align-items:center; justify-items:center; min-width:0; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; border-radius:0; background:var(--surface2); color:var(--text-muted); cursor:pointer; box-shadow: inset 0 calc(var(--subrow) * -0.25) 0 transparent; transition:color var(--dur-fast),background var(--dur-fast),box-shadow var(--dur-fast); }
-    .game-fave-btn.active { background:transparent; color:var(--accent2); font-weight: var(--fw-bold); box-shadow: inset 0 calc(var(--subrow) * -0.25) 0 var(--accent2); }
-    /* Five tabs across 35g on valid x lines: 1|9|16|23|30|36 = 8+7+7+7+6g (HOLD'EM, the
-       longest label, gets the full primary column). Proportional on a wider bar, each rounded
-       to a whole g and the last taking the rest, so every edge stays on a g line. */
-    .game-tab-bar { display:grid; grid-template-columns: round(100% * 8 / 35, var(--gu)) repeat(3, round(100% * 7 / 35, var(--gu))) minmax(0, 1fr); height: calc(var(--subrow) * 3); background:var(--surface2); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border); }
-    .game-tab-btn { display:grid; align-items:center; justify-items:center; min-width:0; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; background:transparent; color:var(--text-muted); cursor:pointer; box-shadow: inset 0 calc(var(--subrow) * -0.25) 0 transparent; transition:color var(--dur-fast),box-shadow var(--dur-fast); }
-    .game-tab-btn.active { color:var(--accent2); font-weight: var(--fw-bold); box-shadow: inset 0 calc(var(--subrow) * -0.25) 0 var(--accent2); }
-    /* Caps tracking adds its space after the LAST letter too, so a centred label's ink sat half a
-       tracking left of the box's centre ("2-7 TD" measured -0.76px at 1280, the guard allows 0.75).
-       The same space before the first letter makes it symmetric (2026-10-15). */
-    .game-fave-btn, .game-tab-btn { text-indent: var(--track-caps); }
     /* 4r row, label baseline one r above the bottom (row top + 3r). Left padding = 2g
        minus the 2px indicator border, so the label starts on the 3g line; right padding
        2g ends it on 34g. */
@@ -2999,8 +2809,6 @@
       .game-check-row:hover { background:var(--surface2); }
     }
     .game-check-row.selected { background:rgba(136,136,136,0.08); border-left-color:var(--accent2); }
-    .game-check-radio { display:none; }
-    .game-check-radio-dot { display:none; }
     /* Stud's Super/Action checkboxes: a 2r square centred in the 1..3g gutter cell
        (top = row + 1r), so the label stays on 3g like every other row. */
     .game-check-box {
@@ -3011,28 +2819,13 @@
     }
     .game-check-box.checked { background: var(--accent2); box-shadow: inset 0 0 0 var(--bw-1) var(--accent2); }
     .game-check-group > .game-check-row:first-child { box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
-    .game-check-more-row { display:grid; align-items:center; justify-items:center; height: calc(var(--subrow) * 3); box-sizing:border-box; cursor:pointer; padding: 0 calc(var(--gu) * 2); background:transparent; box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
-    @media (hover: hover) and (pointer: fine) {
-      .game-check-more-row:hover { background:transparent; }
-    }
-    .game-check-more-btn { border:none; background:none; color:var(--text-muted); font-size: var(--fs-xs); padding:0; cursor:pointer; font-family:inherit; transition:color var(--dur-fast); }
-    @media (hover: hover) and (pointer: fine) {
-      .game-check-more-btn:hover { color:var(--text); }
-    }
     .game-check-row-label { font-size: var(--fs-sm); color:var(--text-muted); flex:1; transition:color var(--dur-fast); }
     .game-check-row-label.selected { color:var(--text); font-weight: var(--fw-regular); }
     /* Structure / Super / Action: caps in the condensed face at --fs-xs (the nearest
        token to the 1.031g / 1.001g literals they used to carry inline). */
     .game-check-row-label.is-caps { font-family: var(--font-condensed); text-transform:uppercase; font-size: var(--fs-xs); letter-spacing: var(--track-caps); }
-    .game-check-section-label { display:grid; align-items:end; font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); height: calc(var(--subrow) * 3); box-sizing:border-box; padding: 0 calc(var(--gu) * 2) var(--subrow); box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
-    /* The seat itself: a trimmed block inside each cell above. padding/margin-block
-       0.3em keeps descenders from being clipped by the ellipsis overflow. */
-    .game-fave-btn > span, .game-tab-btn > span {
-      display:block; min-width:0; max-width:100%;
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    }
     .game-subheading > span,
-    .game-check-row-label, .game-check-more-btn, .game-check-section-label > span {
+    .game-check-row-label {
       display:block; min-width:0; max-width:100%; line-height: calc(var(--subrow) * 2);
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
       padding-block: 0.3em; margin-block: -0.3em;
@@ -3057,14 +2850,10 @@
        A fixed 2px clipped a squarer corner than the card, and the rim light
        below then traced that wrong corner over the transparent pixels. */
     .card-row img { height:calc(var(--subrow) * 3.5); border-radius:7.1%; } /* no white outline (owner, 2026-10-11: "get rid of the white boxes around each card") */
-    /* One back, and it finally reads the setting.
-       REPLAYER_CARD_BACKS offered six options and consumed none of them: the
-       value round-tripped through state and never reached a class or a
-       variable, so every face-down card was this one hard-coded navy. The
-       stops are variables now, and .card-back (the shared class the solver and
-       trainers use) inherits the same ones — the two decks used to disagree
-       about what a face-down card looks like, and the trainers dealt silver
-       barber-pole cards next to the replayer's weave. */
+    /* One back. The stops are variables, and .card-back (the shared class the
+       solver and trainers use) inherits the same ones — the two decks used to
+       disagree about what a face-down card looks like, and the trainers dealt
+       silver barber-pole cards next to the replayer's weave. */
     .card-row .card-unknown,
     .card-row .card-placeholder,
     .card-back {
@@ -3082,8 +2871,7 @@
          appear that is a barcode, not a printed field. Halved and lightened
          so it reads as texture. */
       background:
-        var(--back-pattern,
-          repeating-linear-gradient(45deg, transparent, transparent 1.2px, rgba(255,255,255,0.045) 1.2px, rgba(255,255,255,0.045) 1.7px)),
+        repeating-linear-gradient(45deg, transparent, transparent 1.2px, rgba(255,255,255,0.045) 1.2px, rgba(255,255,255,0.045) 1.7px),
         repeating-linear-gradient(-45deg, transparent, transparent calc(var(--subrow) * 0.125), rgba(255,255,255,0.045) calc(var(--subrow) * 0.125), rgba(255,255,255,0.045) calc(var(--subrow) * 0.25)),
         linear-gradient(180deg, var(--back-1) 0%, var(--back-2) 40%, var(--back-3) 100%);
       border: var(--bw-1) solid var(--back-border);
@@ -3121,8 +2909,8 @@
     :is([data-theme="light"],[data-theme="cloudy"]) .card-row .card-unknown,
     :is([data-theme="light"],[data-theme="cloudy"]) .card-row .card-placeholder {
       background:
-        repeating-linear-gradient(45deg, transparent, transparent calc(var(--subrow) * 0.375), rgba(255,255,255,0.1) calc(var(--subrow) * 0.375), rgba(255,255,255,0.1) calc(var(--subrow) * 0.5)),
-        repeating-linear-gradient(-45deg, transparent, transparent calc(var(--subrow) * 0.375), rgba(255,255,255,0.1) calc(var(--subrow) * 0.375), rgba(255,255,255,0.1) calc(var(--subrow) * 0.5)),
+        repeating-linear-gradient(45deg, transparent, transparent calc(var(--subrow) * 0.375), var(--ov-white-2) calc(var(--subrow) * 0.375), var(--ov-white-2) calc(var(--subrow) * 0.5)),
+        repeating-linear-gradient(-45deg, transparent, transparent calc(var(--subrow) * 0.375), var(--ov-white-2) calc(var(--subrow) * 0.375), var(--ov-white-2) calc(var(--subrow) * 0.5)),
         linear-gradient(180deg, #2e4d70 0%, #1e3a58 40%, #1a2f48 100%);
       border-color: #4a6a9a;
     }
@@ -3144,12 +2932,6 @@
       line-height: 1.4;
     }
     .live-update-next-event strong { color: var(--text); }
-    .live-update-hand-placeholder {
-      font-size: var(--fs-xs); color: var(--text-muted);
-      text-align: center; padding: var(--space-lg) var(--space-md);
-      font-family: var(--font-condensed);
-      font-style: italic;
-    }
 
     /* ── Hand Replayer ── */
     .replayer-view { max-width: calc(var(--subrow) * 75); margin: 0 auto; }
@@ -3176,7 +2958,6 @@
     .replayer-header { display:flex; justify-content:space-between; align-items:baseline; margin-bottom: calc(var(--subrow) * 2); }
     /* Grid: title box exactly 4 subrows tall (border-box); baseline seated via padding-top. */
     .replayer-header h2 { font-family: var(--font-title); font-size: var(--fs-lg); font-weight: var(--fw-regular); height: calc(var(--subrow) * 4); box-sizing:border-box; line-height: calc(var(--subrow) * 4); padding-top: var(--space-2xs); }
-    .replayer-header-actions { display:flex; gap: var(--space-sm); }
 
     /* Hand list */
     .replayer-hand-list { display:flex; flex-direction:column; gap: var(--space-md); margin-bottom: var(--space-xl); }
@@ -3187,7 +2968,6 @@
     @media (hover: hover) and (pointer: fine) {
       .replayer-hand-card:hover { border-color: var(--accent); }
     }
-    .replayer-hand-card-top { display:flex; justify-content:space-between; align-items:center; }
     .replayer-hand-card-title { font-size: var(--fs-sm); font-weight: var(--fw-bold); color:var(--text); line-height: calc(var(--subrow) * 2); }
     .replayer-hand-card-game { font-size: var(--fs-2xs); color:var(--accent2); background:var(--surface2); padding: var(--space-2xs) var(--space-sm); border-radius:var(--radius-xs); }
     .replayer-hand-card-meta { font-size: var(--fs-2xs); color:var(--text-muted); line-height: calc(var(--subrow) * 2); margin-top: var(--space-xs); }
@@ -3196,7 +2976,7 @@
     .replayer-section .btn.btn-sm, .replayer-hand-card-actions .btn.btn-sm { height: calc(var(--subrow) * 4); box-sizing:border-box; }
     /* 59: the row layout the -meta and -actions classes were written for. */
     .replayer-hand-card.is-row {
-      display:flex; align-items:center; gap: var(--space-ml);
+      display:flex;
       /* NO padding on the row, which is the whole reason a venue strip runs
          edge to edge on the schedule and this one did not. padding-left was
          already zeroed below, so the strip was flush on its left and floating
@@ -3342,10 +3122,6 @@
     }
     .replayer-view.is-list .replayer-list-title,
     .replayer-view.is-list .replayer-list-heading { font-family: var(--font-sans); font-size: var(--fs-xs); font-weight: var(--fw-regular); color: var(--text); min-width:0; }
-    .replayer-view.is-list .replayer-list-variant {
-      min-width:0; text-align:right; font-family: var(--font-condensed); font-size: var(--fs-xs);
-      font-weight: var(--fw-bold); color: var(--accent2);
-    }
     .replayer-view.is-list .replayer-list-heading {
       display:grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--gu);
       align-items:end; height: calc(var(--subrow) * 4); margin-bottom: var(--subrow);
@@ -3376,7 +3152,6 @@
       .replayer-view.is-list .replayer-hand-card-actions .btn.btn-ghost:hover { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); }
     }
     .replayer-view.is-list .replayer-list-title > span,
-    .replayer-view.is-list .replayer-list-variant > span,
     .replayer-view.is-list .replayer-list-heading > span,
     .replayer-view.is-list .replayer-hand-card-title,
     .replayer-view.is-list .replayer-hand-card-meta {
@@ -3437,8 +3212,6 @@
     .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-cards .card-unknown { height: calc(var(--subrow) * 4); width: calc(var(--subrow) * 2.857); }
     /* Loading: the card slot is 4g (5..9g, both valid lines) instead of a centred 2g. */
     .replayer-view.is-list .replayer-hand-card-cards > .skeleton { margin-left: calc(var(--gu) * 2); margin-right: auto; }
-    .replayer-empty { text-align:center; color:var(--text-muted); font-size: var(--fs-sm); padding: var(--space-3xl) 0;
-      font-family: var(--font-sans); font-weight: 300; }
 
 
     /* 76: the read-only view uses the editor's own type, so notes look the
@@ -3447,19 +3220,6 @@
       font-size: var(--fs-2xs); font-family: var(--font-condensed);
       line-height: 1.4; color: var(--text); white-space: pre-wrap;
     }
-
-    /* 78 */
-    .replayer-empty-cards {
-      display: flex; justify-content: center; margin-bottom: var(--space-ml);
-    }
-    .replayer-empty-cards .card-unknown {
-      width: calc(var(--subrow) * 4.5); height: calc(var(--subrow) * 6.5); display: block;
-    }
-    .replayer-empty-cards .card-unknown:last-child {
-      margin-left: calc(var(--subrow) * -1.75); transform: rotate(8deg);
-    }
-    .replayer-empty-cards .card-unknown:first-child { transform: rotate(-8deg); }
-    .replayer-empty-line { margin-bottom: var(--space-ml); }
 
 
     /* 79: the row that wraps instead of crushing. */
@@ -3497,40 +3257,15 @@
       background: linear-gradient(180deg,#7a1030,#5c0018);
       box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.5); /* no lit-edge ring: the board cards lost theirs */
     }
-    .replayer-settings-thumb .thumb-back {
-      width: calc(var(--subrow) * 7.5); height: calc(var(--subrow) * 4.75); border-radius: var(--r-object, calc(var(--subrow) * 0.75));
-      display: flex; align-items: center; justify-content: center;
-      background: rgba(0,0,0,0.35);
-      box-shadow: inset 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) rgba(0,0,0,0.5);
-    }
-    /* The preview nests a real .replayer-table so the swatch picks up the deck's
-       own back styling — but that also inherits the table's SIZING, and cq
-       units inside a thumb have no ancestor container to resolve against, so
-       100cqh fell back to the viewport. Measured: 60x874 inside a 60x38 thumb,
-       six of them painting full-height bands down the settings sheet. The
-       preview is a swatch, not a table. */
-    .replayer-settings-thumb .thumb-back { overflow: hidden; }
-    .replayer-settings-thumb .thumb-back .replayer-table {
-      width: 100%; height: 100%;
-      min-width: 0; min-height: 0; max-width: none; max-height: none;
-      aspect-ratio: auto;
-      transform: none;
-      container-type: normal;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .replayer-settings-thumb .thumb-back .card-row { margin: 0; }
-    .replayer-settings-thumb .thumb-back .card-unknown { width: calc(var(--subrow) * 2.5); height: calc(var(--subrow) * 3.5); --back-mark: calc(var(--subrow) * 1.125); }
     .replayer-settings-thumb .thumb-label {
       font-family: var(--font-condensed); font-size: var(--fs-2xs);
       color: var(--text-muted); text-align: center; line-height: 1.2;
     }
-    .replayer-settings-thumb.active .thumb-felt,
-    .replayer-settings-thumb.active .thumb-back {
+    .replayer-settings-thumb.active .thumb-felt {
       box-shadow: 0 0 0 calc(var(--subrow) * 0.25) var(--surface), 0 0 0 calc(var(--subrow) * 0.5) var(--brand), inset 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.75) rgba(0,0,0,0.45);
     }
     .replayer-settings-thumb.active .thumb-label { color: var(--text); }
-    .replayer-settings-thumb:focus-visible .thumb-felt,
-    .replayer-settings-thumb:focus-visible .thumb-back {
+    .replayer-settings-thumb:focus-visible .thumb-felt {
       outline: calc(var(--subrow) * 0.25) solid var(--brand); outline-offset: calc(var(--subrow) * 0.375);
     }
 
@@ -3563,7 +3298,7 @@
     /* 84: what each export actually produces, at a glance. */
     .export-preview {
       width: calc(var(--subrow) * 5.25); height: calc(var(--subrow) * 3.5); display: block; margin: 0 auto var(--space-2xs);
-      border-radius: var(--radius-xs); box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) rgba(0,0,0,0.4);
+      border-radius: var(--radius-xs); box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) var(--ov-black-4);
     }
     .export-preview.is-link { background: var(--surface2); border: var(--bw-hair) solid var(--border); }
     .export-preview.is-image { background: radial-gradient(ellipse at 50% 40%, #9478b4, #2c2e50); }
@@ -3598,7 +3333,7 @@
       display: flex; align-items: center; justify-content: center;
       margin-bottom: var(--space-ml);
       border-radius: var(--r-object, calc(var(--subrow) * 0.75));
-      background: repeating-conic-gradient(rgba(255,255,255,0.05) 0 25%, transparent 0 50%) 0 0 / calc(var(--subrow) * 1.5) calc(var(--subrow) * 1.5);
+      background: repeating-conic-gradient(var(--ov-white-1) 0 25%, transparent 0 50%) 0 0 / calc(var(--subrow) * 1.5) calc(var(--subrow) * 1.5);
       overflow: hidden;
     }
     .replayer-export-frame img { width: 100%; height: 100%; object-fit: contain; display: block; }
@@ -3611,9 +3346,6 @@
       transition: width var(--dur-base) var(--ease-out);
     }
 
-    /* Entry mode */
-    .replayer-entry { display:flex; flex-direction:column; gap: var(--space-ml); }
-    .replayer-step-label { font-size: var(--fs-2xs); color:var(--accent2); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); margin-bottom: var(--space-2xs); }
     /* Grid: 1px border absorbed into padding so inner content lands on 2g..35g / subrow lines. */
     .replayer-section { background:var(--surface); border:var(--bw-hair) solid var(--border); border-radius:var(--radius-sm); padding: calc(var(--subrow) - calc(var(--subrow) * 0.125)) calc(var(--gu) - calc(var(--subrow) * 0.125)); }
     .replayer-section-title { font-size: var(--fs-xs); font-weight: var(--fw-regular); color:var(--text); line-height: calc(var(--subrow) * 2); margin-bottom: var(--subrow); font-family: var(--font-sans); }
@@ -3647,84 +3379,13 @@
       border-bottom:var(--bw-hair) solid var(--border);
     }
     .replayer-player-row:last-child { border-bottom:none; }
-    .replayer-player-name { font-size: var(--fs-xs); font-weight: var(--fw-bold); min-width:calc(var(--subrow) * 7.5); }
     .replayer-player-pos { display:inline-flex; align-items:center; justify-content:center; font-size: var(--fs-2xs); line-height:1; color:var(--accent2); background:var(--surface2); padding: var(--space-2xs) var(--space-sm); border-radius:var(--radius-xs); min-width:calc(var(--subrow) * 4); text-align:center; transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast); border: var(--bw-1) solid transparent; }
     .replayer-player-pos.hero { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: var(--fw-bold); }
     /* The badge is a <button> in the entry (entry audit 33): no browser button face. */
     button.replayer-player-pos { font-family: inherit; -webkit-appearance: none; appearance: none; margin: 0; }
     button.replayer-player-pos:disabled { cursor: default; opacity: var(--state-disabled); }
 
-    /* Street entry */
-    .replayer-street { background:var(--surface); border:var(--bw-hair) solid var(--border); border-radius:var(--radius-sm); padding: var(--space-ml) var(--space-lg); margin-bottom: var(--space-md); }
-    .replayer-street-header { display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-sm); }
-    .replayer-street-name { font-size: var(--fs-2xs); font-weight: var(--fw-bold); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; font-variant:small-caps; letter-spacing: var(--track-caps); }
-    .replayer-street-pot { font-size: var(--fs-xs); color:var(--accent2); font-family: var(--font-condensed); }
 
-    .replayer-action-list { display:flex; flex-direction:column; gap: var(--space-xs); margin-top: var(--space-sm); }
-    .replayer-action-item {
-      display:flex; align-items:center; gap: var(--space-sm); font-size: var(--fs-xs); font-family: var(--font-condensed);
-      padding: var(--space-xs) var(--space-sm); background:var(--surface2); border-radius:var(--radius-xs);
-    }
-    .replayer-action-player { font-weight: var(--fw-bold); color:var(--text); min-width:calc(var(--subrow) * 6.25); }
-    .replayer-action-type { color:var(--accent2); }
-    /* 71: the recorded-action list and the buttons below it were still on the
-       pre-token palette, and it disagreed with the felt in the worst possible
-       way: the button you press to record a RAISE was green while the badge
-       that replays it is red, and fold was red on entry and grey on the table.
-       The same word had two colours depending on which screen you were on.
-       The --act-* scale shipped for the table; it just never reached here. */
-    .replayer-action-type.fold  { color: var(--act-fold); }
-    .replayer-action-type.raise { color: var(--act-raise); }
-    .replayer-action-type.bet   { color: var(--act-bet); }
-    .replayer-action-type.call  { color: var(--act-call); }
-    .replayer-action-type.check { color: var(--act-check); }
-    /* the class is the raw action string, so all-in arrives hyphenated */
-    .replayer-action-type.allin, .replayer-action-type.all-in { color: var(--act-allin); }
-    .replayer-action-amount { color:var(--text); margin-left:auto; }
-    .replayer-action-remove { cursor:pointer; color:var(--text-muted); font-size: var(--fs-2xs); margin-left: var(--space-xs); }
-    @media (hover: hover) and (pointer: fine) {
-      .replayer-action-remove:hover { color:#f87171; }
-    }
-
-
-    /* 72: the winner picker, on the status ramps, with a transition that names
-       its three properties instead of animating everything the element has. */
-    .replayer-winner-btn {
-      padding: var(--space-xs) var(--space-ml);
-      border-radius: var(--radius-sm);
-      border: var(--bw-hair) solid var(--border);
-      background: transparent;
-      color: var(--text-muted);
-      font-family: var(--font-condensed);
-      font-size: var(--fs-xs);
-      cursor: pointer;
-      transition: background-color var(--dur-fast) var(--ease-out),
-                  border-color var(--dur-fast) var(--ease-out),
-                  color var(--dur-fast) var(--ease-out);
-    }
-    .replayer-winner-btn.is-win {
-      background: var(--ok-bg); border-color: var(--ok-line); color: var(--ok);
-    }
-    .replayer-winner-btn.is-split {
-      background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn);
-    }
-
-    /* 74 */
-    .replayer-pot-helper {
-      padding: var(--space-2xs) var(--space-sm);
-      border-radius: var(--radius-xs);
-      border: var(--bw-hair) solid var(--border);
-      background: transparent;
-      color: var(--text-muted);
-      font-family: var(--font-condensed);
-      font-size: var(--fs-2xs);
-      cursor: pointer;
-      white-space: nowrap;
-      transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .replayer-pot-helper:hover { border-color: var(--brand-line); color: var(--text); }
-    }
     .replayer-field-hint {
       font-size: var(--fs-2xs); color: var(--text-muted);
       font-family: var(--font-condensed); margin-top: var(--space-xs);
@@ -3740,33 +3401,6 @@
       font-family: var(--font-condensed); margin-top: var(--nudge-1);
     }
 
-    /* Action buttons row */
-    .replayer-action-btns { display:flex; gap: var(--space-xs); flex-wrap:wrap; margin-top: var(--space-xs); }
-    .replayer-action-btns button {
-      padding: var(--space-xs) var(--space-ml); border-radius:calc(var(--subrow) * 0.75); border:var(--bw-hair) solid var(--border);
-      background:transparent; color:var(--text-muted); font-family: var(--font-condensed);
-      font-size: var(--fs-xs); cursor:pointer; transition:background var(--dur-fast),color var(--dur-fast);
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .replayer-action-btns button:hover { border-color:var(--accent); color:var(--accent); }
-    }
-    /* 71: one hue per action, one alpha for every border, shared with the
-       badges on the felt — so the button that records a bet is the colour the
-       bet will be when you replay it. */
-    .replayer-action-btns button.action-fold  { border-color: color-mix(in srgb, var(--act-fold) 40%, transparent);  color: var(--act-fold); }
-    .replayer-action-btns button.action-check { border-color: color-mix(in srgb, var(--act-check) 40%, transparent); color: var(--act-check); }
-    .replayer-action-btns button.action-call  { border-color: color-mix(in srgb, var(--act-call) 40%, transparent);  color: var(--act-call); }
-    .replayer-action-btns button.action-bet   { border-color: color-mix(in srgb, var(--act-bet) 40%, transparent);   color: var(--act-bet); }
-    .replayer-action-btns button.action-raise { border-color: color-mix(in srgb, var(--act-raise) 40%, transparent); color: var(--act-raise); }
-    .replayer-action-btns button.action-allin { border-color: color-mix(in srgb, var(--act-allin) 40%, transparent); color: var(--act-allin); }
-    @media (hover: hover) and (pointer: fine) {
-      .replayer-action-btns button.action-fold:hover  { background: color-mix(in srgb, var(--act-fold) 12%, transparent); }
-      .replayer-action-btns button.action-check:hover { background: color-mix(in srgb, var(--act-check) 12%, transparent); }
-      .replayer-action-btns button.action-call:hover  { background: color-mix(in srgb, var(--act-call) 12%, transparent); }
-      .replayer-action-btns button.action-bet:hover   { background: color-mix(in srgb, var(--act-bet) 12%, transparent); }
-      .replayer-action-btns button.action-raise:hover { background: color-mix(in srgb, var(--act-raise) 12%, transparent); }
-      .replayer-action-btns button.action-allin:hover { background: color-mix(in srgb, var(--act-allin) 12%, transparent); }
-    }
 
     /* ── GTO Entry View ── */
     .gto-entry {
@@ -3841,16 +3475,10 @@
       letter-spacing: var(--track-caps);
     }
     .gto-pot-label {
-      font-family: var(--serif);
+      font-family: var(--font-display);
       font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
       color: var(--accent);
-    }
-    .gto-board-row {
-      display: flex;
-      justify-content: center;
-      gap: var(--space-xs);
-      padding: var(--space-xs) var(--space-lg) var(--space-ml);
     }
     .gto-board-inline { display: inline-flex; flex: 1; justify-content: center; }
     .gto-board-inline .card-row { gap: var(--space-xs); }
@@ -3933,7 +3561,7 @@
     }
     .gto-seat.active .gto-seat-pos { color: var(--text); }
     .gto-seat-stack {
-      font-family: var(--serif);
+      font-family: var(--font-display);
       font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
       color: var(--accent);
@@ -3946,7 +3574,7 @@
       gap: var(--space-md);
     }
     .gto-seat-name {
-      font-family: var(--serif);
+      font-family: var(--font-display);
       font-size: var(--fs-sm);
       font-weight: var(--fw-regular);
       color: var(--text);
@@ -4172,15 +3800,6 @@
     }
     .gto-raise-input-row input:focus { border-color: var(--brand-line); }
 
-    /* Footer & setup/phase cards */
-    .gto-footer {
-      display: flex;
-      gap: var(--space-sm);
-      justify-content: space-between;
-      align-items: center;
-      padding: var(--space-ml) var(--space-lg);
-      border-top: var(--bw-hair) solid var(--border);
-    }
     .gto-phase-card {
       background: var(--surface);
       border: var(--bw-1) solid var(--border);
@@ -4766,75 +4385,7 @@
     .replayer-entry-view .gto-dce-fields {
       display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 13)); column-gap: var(--gu);
     }
-    /* Classic entry: sections 1–36 with the 2g inset (3..34), 1r apart. */
-    .replayer-entry-view .replayer-entry { gap: var(--subrow); }
-    .replayer-entry-view .replayer-entry > .replayer-section,
-    .replayer-entry-view .replayer-street {
-      border: 0; box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
-      padding: var(--subrow) calc(var(--gu) * 2); margin: 0;
-    }
-    .replayer-entry-view .replayer-entry > .replayer-section > .replayer-player-row:last-child { margin-bottom: 0; }
-    /* Street tabs, 1..36: 2 → 17|18 · 3 → 11|13|11 (1–12–25–36) · 4 → 9|9|9|8 (1–10–19–28–36)
-       · 5 → 6|7|7|7|8 (1–7–14–21–28–36). */
-    .replayer-entry-view .replayer-entry > .live-update-tabs:has(> :nth-child(3)) { grid-template-columns: calc(var(--gu) * 11) calc(var(--gu) * 13) minmax(0, 1fr); }
-    .replayer-entry-view .replayer-entry > .live-update-tabs:has(> :nth-child(4)) { grid-template-columns: repeat(3, calc(var(--gu) * 9)) minmax(0, 1fr); }
-    .replayer-entry-view .replayer-entry > .live-update-tabs:has(> :nth-child(5)) { grid-template-columns: calc(var(--gu) * 6) repeat(3, calc(var(--gu) * 7)) minmax(0, 1fr); }
-    .replayer-entry-view .replayer-entry > .live-update-tabs { margin: 0; }
-    .replayer-entry-view .replayer-entry > .live-update-tabs > button + button { box-shadow: inset var(--bw-hair) 0 0 var(--border); }
-    .replayer-entry-view .replayer-entry > .live-update-tabs > button.active { box-shadow: none; }
-    .replayer-entry-view .replayer-street-header { height: calc(var(--subrow) * 2); margin-bottom: var(--subrow); align-items: flex-start; }
-    .replayer-entry-view .replayer-street-name,
-    .replayer-entry-view .replayer-street-pot {
-      line-height: 1; padding-top: calc(var(--subrow) * 2 - 1cap);
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
-    }
-    .replayer-entry-view .replayer-street > .replayer-field { margin-bottom: var(--subrow); }
-    /* Recorded actions: 3r rows, text baseline 2r, 1r apart. */
-    .replayer-entry-view .replayer-action-list { gap: var(--subrow); margin-top: 0; }
-    .replayer-entry-view .replayer-action-list:not(:empty) { margin-bottom: var(--subrow); }
-    .replayer-entry-view .replayer-action-item {
-      box-sizing: border-box; height: calc(var(--subrow) * 3); padding: 0 var(--gu); align-items: flex-start; column-gap: var(--gu);
-    }
-    .replayer-entry-view .replayer-action-item > span {
-      line-height: 1; padding-top: calc(var(--subrow) * 2 - 1cap);
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
-    }
-    /* Amount row: input 3–18 (15g), pot helper 19–27 (8g), 5r. */
-    .replayer-entry-view .gto-amount-row {
-      display: grid; grid-template-columns: calc(var(--gu) * 15) calc(var(--gu) * 8); column-gap: var(--gu);
-      margin-bottom: var(--subrow);
-    }
-    .replayer-entry-view .replayer-pot-helper {
-      box-sizing: border-box; height: calc(var(--subrow) * 5); border: 0;
-      box-shadow: inset 0 0 0 var(--bw-hair) var(--border); padding: calc(var(--subrow) - 0.7em) 0 0;
-    }
-    /* Action buttons across 3..34: 2 → 15|15 (3–18, 19–34) · 3 → 9|9|9 with 2g gaps (3–12, 14–23, 25–34). */
-    .replayer-entry-view .replayer-action-btns {
-      display: grid; grid-auto-flow: column; grid-template-columns: repeat(2, calc(var(--gu) * 15)); column-gap: var(--gu); margin-top: 0;
-    }
-    .replayer-entry-view .replayer-action-btns:has(> :nth-child(3)) { grid-template-columns: repeat(3, calc(var(--gu) * 9)); column-gap: calc(var(--gu) * 2); }
-    .replayer-entry-view .replayer-action-btns button,
-    .replayer-entry-view .replayer-winner-btn {
-      box-sizing: border-box; height: calc(var(--subrow) * 5); min-width: 0; white-space: nowrap;
-      padding: 0 var(--gu) calc(0.6956em - var(--subrow)); overflow: hidden; text-overflow: ellipsis;
-    }
 
-    /* Text tab: textarea 1–36, 18r, 2r lines; Parse 5r, label baseline 3r
-       (cond md bold: pb = 0.7333em − r). */
-    .replayer-entry-view .gto-text-entry { padding: var(--subrow) 0; }
-    .replayer-entry-view .gto-text-entry textarea {
-      display: block; box-sizing: border-box; width: 100%; height: calc(var(--subrow) * 18); min-height: calc(var(--subrow) * 18);
-      font-family: monospace; font-size: var(--fs-sm); line-height: calc(var(--subrow) * 2);
-      /* first baseline = pt + 1r + (a − d)/2; measured (a − d)/2 = 0.273em for the
-         harness's monospace → pt = r − 0.273em puts it on 2r (platform mono varies). */
-      padding: calc(var(--subrow) - 0.273em) var(--gu) 0; resize: none;
-      background: var(--surface); color: var(--text); border: 0; border-radius: var(--radius-sm);
-      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
-    }
-    .replayer-entry-view .gto-text-entry .create-group-submit {
-      box-sizing: border-box; width: 100%; height: calc(var(--subrow) * 5); margin-top: var(--subrow);
-      line-height: normal; padding: 0 var(--gu) calc(0.7333em - var(--subrow));
-    }
     .replayer-entry-view .gto-result-sub {
       font-size: var(--fs-xs); color: var(--text-muted);
       line-height: 1; padding-top: calc(var(--subrow) * 2 - 1cap);
@@ -4876,21 +4427,7 @@
       height: 100%;
       object-fit: contain;
     }
-    .card-picker-suit-label {
-      grid-column: 1 / -1;
-      font-family: var(--font-condensed);
-      font-size: var(--fs-2xs);
-      font-weight: var(--fw-bold);
-      text-transform: uppercase;
-      letter-spacing: var(--track-caps);
-      color: var(--text-muted);
-      padding: var(--space-xs) 0 var(--nudge-1);
-    }
-    .card-picker-suit-label:first-child { padding-top: 0; }
 
-    /* Draw discard section */
-    .replayer-draw-section { margin-top: var(--space-sm); padding: var(--space-sm) var(--space-md); background:var(--surface2); border-radius:var(--radius-xs); }
-    .replayer-draw-label { font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; margin-bottom: var(--space-sm); letter-spacing: var(--track-tight); }
 
     .replayer-draw-pat-badge {
       display: inline-block; padding: var(--nudge-1) var(--space-sm); border-radius: var(--radius-xs); font-size: var(--fs-2xs);
@@ -4911,21 +4448,6 @@
       transform: translateY(calc(var(--subrow) * 0.5));
     }
 
-    .replayer-draw-discarded-cards { opacity: 0.5; }
-    .replayer-draw-discarded-cards .card-img,
-    .replayer-draw-discarded-cards .card-classic {
-      filter: grayscale(0.7) brightness(0.6); position: relative;
-    }
-    .replayer-draw-new-cards .card-img,
-    .replayer-draw-new-cards .card-classic {
-      /* Cards taken in a draw appear rather than arriving, for the same reason
-         the deal does not animate. draw-card-arrive stays defined but unused. */
-      animation: none;
-    }
-    @keyframes draw-card-arrive {
-      from { opacity: 0; transform: translateY(calc(var(--subrow) * -0.75)) scale(0.85); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
 
     /* Replay mode — felt sits high in the content-area so any leftover
        slack lives BELOW the table. That keeps the hero seat (bottom of
@@ -4974,16 +4496,9 @@
     body:has(.tab-panel.tab-active .replayer-fullbleed) .top-bar,
     body:has(.tab-panel.tab-active .replayer-fullbleed) .bottom-nav,
     body:has(.tab-panel.tab-active .replayer-fullbleed) .replayer-header,
-    body:has(.tab-panel.tab-active .replayer-fullbleed) .guest-banner,
-    body:has(.tab-panel.tab-active .replayer-fullbleed) .hands-tool-rail {
+    body:has(.tab-panel.tab-active .replayer-fullbleed) .guest-banner {
       display: none !important;
     }
-    /* In flow at the bottom, not pinned above a tab bar that is not there. */
-    /* The table is exactly as wide as the screen, so the side seats' card
-       fans sit flush against the glass and read as cut off. A margin, taken
-       off the container so the table's own cqmin units shrink with it. */
-    .replayer-fullbleed .replayer-table-slot { padding: var(--space-2xs) var(--space-ml) 0; }
-
     /* In flow at the bottom, not pinned above a tab bar that is not there.
        Its height is declared once and read by the strip overlay below, so the
        two cannot drift apart. */
@@ -5308,7 +4823,7 @@
       left: 0; right: 0; bottom: var(--transport-h);
       height: min(calc(var(--subrow) * 7.625), 9vh);
       padding: var(--space-lg) var(--space-md) var(--space-xs);
-      background: linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0));
+      background: linear-gradient(to top, var(--ov-black-5), rgba(0,0,0,0));
       z-index: var(--z-flight, 60);
     }
 
@@ -5416,8 +4931,8 @@
       --cast-y: calc(var(--subrow) * 0.25);
       --cast-blur: calc(var(--subrow) * 0.5);
 
-      /* 52: --plaque-bevel is the app's shared PANEL shadow, so on the felt
-         the seat plaques floated at the height of a modal — which is most of
+      /* 52: the plaques used --plaque-bevel, the app's PANEL shadow (since
+         removed), so on the felt the seat plaques floated at the height of a modal — which is most of
          why they read as interface over a picture rather than as objects on a
          table. A nameplate is a thin machined plate lying nearly flat on
          cloth: almost no drop, a bright top edge, a dark bottom one. */
@@ -5457,7 +4972,6 @@
       --ease-object: cubic-bezier(0.16, 1.36, 0.36, 1);
       --ease-label:  cubic-bezier(0.22, 1, 0.36, 1);
       --ease-leave:  cubic-bezier(0.55, 0, 0.85, 0.35);
-      --dur-beat:    1200ms;   /* a held moment: the celebration, the result */
 
       /* The felt's inset, named once and read by the rail, the light strip,
          the felt and the outer shadow — they used to hold four copies of the
@@ -5527,11 +5041,11 @@
          falls away between them, which is where the roundness comes from. */
       background:
         linear-gradient(155deg,
-          rgba(255,255,255,0.32) 0%,
+          var(--ov-white-4) 0%,
           rgba(255,255,255,0.13) 15%,
           rgba(0,0,0,0.10) 38%,
           rgba(0,0,0,0.16) 55%,
-          rgba(0,0,0,0.06) 74%,
+          var(--ov-black-1) 74%,
           rgba(255,255,255,0.12) 90%,
           rgba(255,255,255,0.26) 100%
         );
@@ -5560,7 +5074,7 @@
       /* Non-inset box-shadow paints entirely outside the border box, so
          this needs no negative layer to stay behind the rail — and a negative
          one would fall behind any ancestor that paints a background. */
-      z-index: 0;
+      z-index: var(--z-base);
       box-shadow:
         0 calc(var(--subrow) * 1.25) calc(var(--subrow) * 2.75) rgba(0,0,0,0.42),
         0 calc(var(--subrow) * 3.25) calc(var(--subrow) * 7.5) rgba(0,0,0,0.34);
@@ -5803,7 +5317,7 @@
       padding: 0.28em 0.9em;
       border-radius: var(--radius-pill);
       background: linear-gradient(180deg, rgba(150,110,200,0.94), rgba(108,76,153,0.94));
-      border: var(--bw-hair) solid rgba(255,255,255,0.18);
+      border: var(--bw-hair) solid var(--ov-white-3);
       box-shadow: var(--plate-bevel);
     }
     /* Inline, ahead of the figure. A label floating above the plaque works for
@@ -5974,7 +5488,7 @@
          exactly how a third weight gets onto a two-weight felt without anyone
          deciding to put it there. */
       font-weight: var(--fw-light);
-      text-transform:uppercase; letter-spacing: var(--track-caps); text-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.4);
+      text-transform:uppercase; letter-spacing: var(--track-caps); text-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) var(--ov-black-4);
     }
 
     /* Player seats around the oval */
@@ -6069,7 +5583,7 @@
       /* Shrink away from the table's centre (set per seat: foldOrigin). */
       transform-origin: var(--fold-ox, 50%) var(--fold-oy, 50%);
       box-shadow:
-        0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.4),
+        0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) var(--ov-black-4),
         inset 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.06);
       /* Idea 27: the plaque settles at the pace and on the curve its cards leave on (.replayer-seat-
          cards: --dur-slow, --ease-out), one event at one speed; it was --dur-snap on the default curve. */
@@ -6083,7 +5597,7 @@
       right: 0;
       display: flex;
       justify-content: center;
-      z-index: 0;
+      z-index: var(--z-base);
       overflow: visible;
       /* The folded/mucked state changes opacity AND transform, but only
          opacity was whitelisted — so the scale-to-0.8 and 20px drop snapped,
@@ -6185,7 +5699,6 @@
 
     .replayer-dealer-btn {
       position: absolute;
-      z-index: 3;
       /* The disc is sized off the PLAQUE, which the table sizes, and the D off
          the disc — the same chain the cards hang from. It was
          clamp(16px, 4.6cqmin, 56px), a table-relative size with pixel floors,
@@ -6217,7 +5730,7 @@
         0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.5),
         var(--cast-x) var(--cast-y) var(--cast-blur) rgba(var(--shadow-rgb, 0, 0, 0), 0.4),
         inset 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(255,255,255,0.6),
-        inset 0 calc(var(--subrow) * -0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.12);
+        inset 0 calc(var(--subrow) * -0.125) calc(var(--subrow) * 0.125) var(--ov-black-2);
       pointer-events: none;
     }
     /* The engraved D, rather than a letter printed on a disc. The glyph is
@@ -6284,8 +5797,8 @@
        as alpha literals, in every app theme: they glow on the felt round a
        plaque that is dark in all of them, where the light theme's deep #0e7490
        would read as a shadow. Literals for the rings because they need an
-       alpha and there is no color-mix() here, which html2canvas (the video
-       exporter) cannot parse. */
+       alpha and there is no color-mix() here: Safari before 16.2 (iOS 15)
+       cannot parse it. */
     .replayer-seat.active-turn .replayer-seat-info {
       border-color: var(--brand-on-dark);
       box-shadow: var(--plate-bevel),
@@ -6445,15 +5958,9 @@
     .replayer-range-label, .replayer-bet-sizing {
       font-weight: var(--fw-regular);
     }
-    .replayer-seat-action {
-      font-size: var(--fs-2xs); color:var(--accent2); font-family: var(--font-condensed);
-      min-height:calc(var(--subrow) * 1.5);
-      transition: opacity var(--dur-snap);
-    }
     .replayer-bet-chip {
       position: absolute;
       transform: translate(-50%, -50%);
-      font-size: var(--fs-2xs);
       font-family: var(--font-condensed);
       font-weight: var(--fw-bold);
       color: #fff;
@@ -6470,7 +5977,7 @@
          typographically identical. */
       padding: var(--space-2xs) var(--space-ml);
       border-radius: var(--radius-pill);
-      border: var(--bw-hair) solid rgba(255,255,255,0.10);
+      border: var(--bw-hair) solid var(--ov-white-2);
       font-size: var(--fs-xs);
       font-variant-numeric: var(--num-tabular);
       white-space: nowrap;
@@ -6643,11 +6150,6 @@
     }
 
     /* Action badges */
-    .replayer-action-badge {
-      display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-2xs); font-family: var(--font-condensed);
-      padding: var(--nudge-1) var(--space-sm); border-radius: var(--r-object); text-transform: uppercase; letter-spacing: var(--track-tight);
-      font-weight: var(--fw-bold); line-height: 1; margin-top: var(--nudge-1);
-    }
     .replayer-action-badge-outer {
       position: absolute;
       /* Above the plaque rather than below it, which puts it over the fan —
@@ -6684,10 +6186,6 @@
       border: var(--bw-hair) solid currentColor;
       letter-spacing: var(--track-caps);
     }
-    /* 36: these are 10px uppercase and were tracked at --track-tight (0.01em),
-       while the app's caps grammar — used correctly by the pot eyebrow and the
-       street label — is --track-caps. */
-    .replayer-action-badge { letter-spacing: var(--track-caps); }
     /* 47: 'ALL-IN' — the stakes-defining action a hand can contain — was set
        at --fs-2xs, the same size as a range chip reading 'Medium'. A flat
        scale makes every action equally important, which is the opposite of
@@ -6716,10 +6214,8 @@
       background: var(--act-allin) !important;
       color: #fff;
       border-color: var(--act-allin);
-      /* 85 Extra Black, and the roman width so it is not just a bigger version
-         of the others. The one action that should stop you. */
+      /* The roman width, so it is not just a bigger version of the others. */
       font-family: var(--font-sans);
-      font-weight: 900;
       font-size: clamp(7px, 2.2cqmin, 27px);
       font-weight: var(--fw-bold);
       padding: var(--nudge-1) var(--space-ml);
@@ -6733,8 +6229,8 @@
       letter-spacing: var(--track-tight);
       font-variant-numeric: var(--num-tabular);
     }
-    .replayer-action-badge.action-fold, .replayer-action-badge-outer.action-fold { background: rgba(107,114,128,0.22); color: var(--act-fold); }
-    .replayer-action-badge.action-check, .replayer-action-badge-outer.action-check { background: rgba(156,163,175,0.2); color: var(--act-check); }
+    .replayer-action-badge-outer.action-fold { background: rgba(107,114,128,0.22); color: var(--act-fold); }
+    .replayer-action-badge-outer.action-check { background: rgba(156,163,175,0.2); color: var(--act-check); }
     /* The felt pills — the action bubble over the fan ("raise 3,330") and the
        draw run on the plaque corner ("D1/PAT/PAT") — are exactly 2r tall. The
        cqmin clamps above put a bet at ~6.7px on a phone-portrait table, too
@@ -6772,16 +6268,11 @@
       font-size: var(--fs-xs);
       line-height: 1;
     }
-    .replayer-action-badge.action-call, .replayer-action-badge-outer.action-call { background: rgba(59,130,246,0.2); color: var(--act-call); }
-    .replayer-action-badge.action-bet, .replayer-action-badge-outer.action-bet { background: rgba(245,158,11,0.2); color: var(--act-bet); }
-    .replayer-action-badge.action-raise, .replayer-action-badge-outer.action-raise { background: rgba(239,68,68,0.2); color: var(--act-raise); }
-    .replayer-action-badge.action-allin { background: rgba(168,85,247,0.22); color: var(--act-allin); }
+    .replayer-action-badge-outer.action-call { background: rgba(59,130,246,0.2); color: var(--act-call); }
+    .replayer-action-badge-outer.action-bet { background: rgba(245,158,11,0.2); color: var(--act-bet); }
+    .replayer-action-badge-outer.action-raise { background: rgba(239,68,68,0.2); color: var(--act-raise); }
     .replayer-action-badge-outer.action-allin { color: #fff; }
 
-    /* Winner trophy star */
-    .replayer-winner-star {
-      display: inline-block; margin-right: var(--space-2xs); font-size: var(--fs-2xs); line-height: 1;
-    }
 
     /* Board card street spacing */
     .replayer-board-spaced { display:flex; align-items:center; gap: var(--space-2xs); justify-content:center; flex-wrap:nowrap; }
@@ -6790,43 +6281,27 @@
     .replayer-board-spaced img { height: var(--card-h); width: var(--card-w); }
     .replayer-board-spaced .card-unknown { width: var(--card-w); height: var(--card-h); }
     /* The board is one uniform row of five again: the flop/turn/river gaps and
-       their labels are reverted. The street is still stated twice — in the
-       commentary's lower third and in the timeline's street groups. */
+       their labels are reverted. The street is stated in the timeline's street
+       groups. */
 
-    /* Classic card theme */
-    /* 30: the two decks shared no proportions, no corner radius, no shadow
-       treatment and no colour language, and the settings panel offered them as
-       two styles of one thing. A theme switch that also changes the physics of
-       the object is not a theme switch. Same aspect (180:252), same 7.1%
-       radius the artwork's own corner has, same rim and shadow. */
+    /* Classic cards: a text face (rank over suit), drawn by LiveUpdatePanel, in the
+       SVG deck's proportions: same aspect (180:252), same 7.1% radius, same shadow. */
     .card-classic {
       width: var(--card-w, 31.4px); height: var(--card-h, 44px);
       border-radius: 7.1%;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 0;
-      font-family: var(--serif); font-weight: var(--fw-bold);
+      font-family: var(--font-display); font-weight: var(--fw-bold);
       /* no white outline around the card (owner, 2026-10-11) */
-      filter: drop-shadow(0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.6)) drop-shadow(0 calc(var(--subrow) * 0.5) calc(var(--subrow) * 0.75) rgba(0,0,0,0.32));
+      filter: drop-shadow(0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) var(--ov-black-5)) drop-shadow(0 calc(var(--subrow) * 0.5) calc(var(--subrow) * 0.75) rgba(0,0,0,0.32));
       border: none;
       line-height: 1;
     }
-    /* Four suits, four fills, matching the SVG deck's own hue language
-       (hearts crimson, diamonds blue, clubs green, spades slate). The binary
-       red/dark split made Ah and Ad pixel-identical apart from a 9px glyph —
-       and .card-classic-red / -dark are kept as aliases so any caller that
-       still emits them keeps working. */
-    .card-classic-red,
-    .card-classic-h { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: #fff; }
-    .card-classic-d { background: linear-gradient(135deg, #0369a1 0%, #075985 100%); color: #fff; }
-    .card-classic-c { background: linear-gradient(135deg, #15803d 0%, #166534 100%); color: #fff; }
-    .card-classic-dark,
-    .card-classic-s { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #e2e8f0; }
+    /* Red for hearts and diamonds, dark for clubs and spades. */
+    .card-classic-red { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: #fff; }
+    .card-classic-dark { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #e2e8f0; }
     .card-classic-rank { font-size: var(--fs-xs); line-height: 1; }
     .card-classic-suit { font-size: var(--fs-2xs); line-height: 1; margin-top: calc(var(--subrow) * -0.125); }
-    /* The classic deck was a flat 30x44 — the one deck that ignored the
-       table's scale entirely, so it stayed phone-sized on a desktop. */
-    .replayer-seat-cards .card-classic { width: var(--card-w); height: var(--card-h); }
-    .replayer-board-spaced .card-classic { width: var(--card-w); height: var(--card-h); }
 
     /* Replay controls — portaled into #above-nav-slot in App.jsx so the
        bar is a real sibling of <BottomNav> in the app-shell flex column.
@@ -6887,7 +6362,7 @@
       transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
       display:flex; align-items:center; justify-content:center; gap:0;
       line-height:1; flex-shrink:0; padding:0;
-      box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.45), inset 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.10);
+      box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.45), inset 0 calc(var(--subrow) * 0.125) 0 var(--ov-white-2);
     }
     /* 52: these were 32px circles (play 38px) with 14px glyphs, packed
        directly above the bottom nav, on the platform whose own guidance sets
@@ -6918,13 +6393,13 @@
        hairline, so the brand fill means one thing at the table, whose turn it is. */
     .replayer-controls .replayer-play-btn {
       width:calc(var(--subrow) * 4.75); height:calc(var(--subrow) * 4.75);
-      background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+      background: linear-gradient(180deg, rgba(255,255,255,0.14), var(--ov-white-1));
       border-color: var(--brand-line-on-dark);
       color: var(--brand-on-dark);
       box-shadow: 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.75) rgba(0,0,0,0.5);
     }
     .replayer-controls .replayer-play-btn.is-playing {
-      background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+      background: linear-gradient(180deg, rgba(255,255,255,0.14), var(--ov-white-1));
       color: var(--brand-on-dark);
       border-color: var(--brand-line-on-dark);
     }
@@ -6948,7 +6423,7 @@
       background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
       cursor:pointer; display:flex; align-items:center;
       justify-content:center; padding:0; flex-shrink:0; position:relative;
-      box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.45), inset 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.10);
+      box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.45), inset 0 calc(var(--subrow) * 0.125) 0 var(--ov-white-2);
     }
     .replayer-speed-btn .replayer-speed-label { color: #ece7f5; }
     .replayer-speed-btn::after {
@@ -6960,7 +6435,7 @@
     }
     @media (hover: hover) and (pointer: fine) {
       .replayer-controls button:hover {
-        background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+        background: linear-gradient(180deg, rgba(255,255,255,0.14), var(--ov-white-1));
         border-color: var(--brand-line-on-dark);
       }
     }
@@ -6981,35 +6456,9 @@
        hand is long enough to overflow. */
 
 
-    /* 40 */
-    .replayer-result-banner {
-      /* A row, not a column: a two-way split has to occupy exactly the height
-         a single winner does, or the table above changes size at showdown. */
-      display:flex; flex-direction:row; gap: var(--space-2xs); justify-content: center;
-      margin: var(--space-sm) auto 0; max-width: calc(var(--subrow) * 52.5);
-      /* Wrap, do not scroll. Centred content that overflows a scroll container
-         is clipped on BOTH sides and the left half cannot be scrolled back to,
-         which is what a hi/lo showdown looked like: two banners, each cut off
-         at a screen edge. Wrapping puts the second winner on its own line —
-         one line for a hand, two for a split, which is the rule. */
-      flex-wrap: wrap;
-    }
-    .replayer-result-banner::-webkit-scrollbar { display: none; }
-    .replayer-result-banner > .replayer-result { flex: none; white-space: nowrap; }
     /* Holding a place, with nothing to say yet. */
     .is-reserved { visibility: hidden; }
 
-    /* Result display */
-    .replayer-result {
-      text-align:center; padding: var(--space-sm) var(--space-ml); border-radius:var(--radius-sm);
-      font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
-    }
-    .replayer-result-hero { background:rgba(74,222,128,0.12); color:#4ade80; border:var(--bw-hair) solid rgba(74,222,128,0.25); }
-    .replayer-result-opponent { background:rgba(248,113,113,0.12); color:#f87171; border:var(--bw-hair) solid rgba(248,113,113,0.25); }
-    .replayer-result-split { background:rgba(250,204,21,0.12); color:#facc15; border:var(--bw-hair) solid rgba(250,204,21,0.25); }
-    :is([data-theme="light"],[data-theme="cloudy"]) .replayer-result-hero { background:rgba(22,163,74,0.08); color:#16a34a; border-color:rgba(22,163,74,0.2); }
-    :is([data-theme="light"],[data-theme="cloudy"]) .replayer-result-opponent { background:rgba(220,38,38,0.08); color:#dc2626; border-color:rgba(220,38,38,0.2); }
-    :is([data-theme="light"],[data-theme="cloudy"]) .replayer-result-split { background:rgba(202,138,4,0.08); color:#ca8a04; border-color:rgba(202,138,4,0.2); }
 
     /* Hi-lo split animation */
     .replayer-hilo-high {
@@ -7021,12 +6470,6 @@
     }
     .replayer-hilo-low.animate { transform: translateY(calc(var(--subrow) * 1)); }
 
-    /* Stud card reorder animation */
-    .replayer-stud-reorder .card-img {
-      transition: transform var(--dur-slow) ease-out, opacity var(--dur-base);
-    }
-    .replayer-stud-reorder .card-img.grouped { transform: scale(1.05); }
-    .replayer-stud-reorder .card-img.ungrouped { opacity: 0.4; transform: scale(0.9); }
 
     /* ── Replayer Settings Panel ── */
     /* 64: --z-sticky is 100, which ties with the bottom nav — the scrim only
@@ -7070,9 +6513,6 @@
     .replayer-settings-close {
       background:none; border:none; color:var(--text-muted); cursor:pointer; font-size: var(--fs-xl); padding: var(--space-xs);
     }
-    .replayer-settings-group {
-      margin-bottom: var(--space-xl); padding-bottom: var(--space-ml); border-bottom:var(--bw-hair) solid var(--border);
-    }
     .replayer-settings-group:last-child { border-bottom:none; }
     .replayer-settings-group-title {
       /* 55 Roman. A section eyebrow names the section; bold condensed capitals
@@ -7108,32 +6548,6 @@
     }
     .replayer-settings-pills {
       display:flex; gap: var(--space-xs); flex-wrap:wrap;
-    }
-    .replayer-settings-pill {
-      padding: var(--space-xs) var(--space-ml); border-radius:var(--radius); border:var(--bw-hair) solid var(--border);
-      background:transparent; color:var(--text-muted); font-size: var(--fs-2xs);
-      font-family: var(--font-condensed); cursor:pointer; transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .replayer-settings-pill:hover { border-color:var(--accent); color:var(--text); }
-    }
-    /* 62: --accent is the neutral hairline grey the app uses for DISABLED,
-       so the chosen Theme, Shape and Card Back read as the switched-off one.
-       Brand tint with a brand hairline rather than a solid fill, because up to
-       six of these sit in a row and six solid brand blocks is a lot of aqua. */
-    .replayer-settings-pill.active {
-      background: var(--brand-quiet);
-      color: var(--text);
-      border-color: var(--brand-line);
-    }
-    /* 69: themes rendered as six identical text pills, so the only way to
-       learn what High Stakes looks like was to apply it and close the panel
-       over the table. --pill-swatch is the theme's own felt, set per pill. */
-    .replayer-settings-pill .pill-swatch {
-      display:inline-block; width:calc(var(--subrow) * 1.5); height:calc(var(--subrow) * 1.5); border-radius: var(--radius-circle);
-      margin-right: var(--space-xs); vertical-align:calc(var(--subrow) * -0.25);
-      background: var(--pill-swatch, var(--surface2));
-      box-shadow: inset 0 0 0 calc(var(--subrow) * 0.125) rgba(255,255,255,0.18);
     }
     /* 61: this was a 36x20 second implementation of .settings-toggle whose ON
        state was --accent — the grey the app uses for disabled — with a
@@ -7381,21 +6795,21 @@
       width: calc(var(--subrow) * 4); height: calc(var(--subrow) * 4);
       box-sizing: border-box; border-radius: 50%;
       background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
-      box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.45), inset 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.10), inset 0 0 0 var(--bw-hair) rgba(255,255,255,0.14);
+      box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.45), inset 0 calc(var(--subrow) * 0.125) 0 var(--ov-white-2), inset 0 0 0 var(--bw-hair) rgba(255,255,255,0.14);
       transition: background var(--dur-fast), box-shadow var(--dur-fast);
     }
     :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >.replayer-play-btn::before {
       width: calc(var(--subrow) * 6); height: calc(var(--subrow) * 6);
-      background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+      background: linear-gradient(180deg, rgba(255,255,255,0.14), var(--ov-white-1));
       box-shadow: 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.75) rgba(0,0,0,0.5), inset 0 0 0 var(--bw-hair) var(--brand-line-on-dark);
     }
     :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >.replayer-play-btn.is-playing::before {
-      background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+      background: linear-gradient(180deg, rgba(255,255,255,0.14), var(--ov-white-1));
       box-shadow: 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.75) rgba(0,0,0,0.5), inset 0 0 0 var(--bw-hair) var(--brand-line-on-dark);
     }
     @media (hover: hover) and (pointer: fine) {
       :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >button:not(:disabled):not(.replayer-play-btn):hover::before {
-        background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+        background: linear-gradient(180deg, rgba(255,255,255,0.14), var(--ov-white-1));
         box-shadow: inset 0 0 0 var(--bw-hair) var(--brand-line-on-dark);
       }
     }
@@ -7525,27 +6939,6 @@
       margin: 0;
     }
     .replayer-fullbleed .replayer-under > *:first-child { margin-top: auto; }
-    /* Commentary lower third, 5r: street on the 2r line, the call on the 4r
-       line, 1r under. Full width, 1..36g; the accent is an inset shadow so
-       the text column starts on x = 3g. */
-    .replayer-fullbleed .replayer-commentary {
-      height: calc(var(--subrow) * 5);
-      box-shadow: inset calc(var(--subrow) * 0.5) 0 0 var(--brand-on-dark), var(--plate-bevel, 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.55));
-    }
-    .replayer-fullbleed .replayer-commentary::before { display: none; }
-    .replayer-fullbleed .replayer-commentary > .replayer-commentary-body {
-      flex: 1 1 auto; padding: 0 calc(var(--gu) * 2); min-height: 0;
-      line-height: calc(var(--subrow) * 2);
-    }
-    .replayer-fullbleed .replayer-commentary-street,
-    .replayer-fullbleed .replayer-commentary-line {
-      margin: 0; line-height: calc(var(--subrow) * 2);
-      padding-top: calc(var(--subrow) * 2 - 1cap);
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
-    }
-    /* The line clips (ellipsis), and a trimmed box that clips cuts its
-       descenders: give them the room back outside the box. */
-    .replayer-fullbleed .replayer-commentary-line { padding-bottom: 0.3em; margin-bottom: -0.3em; }
     /* Pot odds, 3r, full width; icon on the text line (0..2r). */
     .replayer-fullbleed .replayer-pot-odds {
       display: flex; justify-content: center; align-items: flex-start;
@@ -7742,8 +7135,7 @@
       column-gap: var(--gu); row-gap: var(--subrow); width: 100%; margin-top: var(--subrow);
     }
     .replayer-settings-thumb { width: calc(var(--gu) * 8); gap: 0; }
-    .replayer-settings-thumb .thumb-felt,
-    .replayer-settings-thumb .thumb-back { width: calc(var(--gu) * 8); height: calc(var(--subrow) * 5); }
+    .replayer-settings-thumb .thumb-felt { width: calc(var(--gu) * 8); height: calc(var(--subrow) * 5); }
     .replayer-settings-thumb .thumb-label { line-height: normal; font-size: var(--fs-xs); white-space: nowrap; }
     /* Text pills: 8g x 3r in the first two primary columns (1..9, 10..18);
        caps 0.95..2r of 3r. */
@@ -7751,13 +7143,6 @@
       display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 8));
       column-gap: var(--gu); margin-top: var(--subrow);
     }
-    .replayer-settings-pill {
-      height: calc(var(--subrow) * 3); box-sizing: border-box;
-      display: flex; align-items: flex-end; justify-content: center;
-      padding: 0 0 var(--subrow); border: 0; box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
-      font-size: var(--fs-xs); text-align: center;
-    }
-    .replayer-settings-pill.active { box-shadow: inset 0 0 0 var(--bw-hair) var(--brand-line); }
 
     /* Share sheet (the replay's own, .replayer-share-sheet): same edge rules
        as the settings sheet; two 17g tiles with a 1g gutter (1..18, 19..36). */
@@ -7810,107 +7195,22 @@
     .replayer-table.theme-casino-royale .replayer-table-felt {
       background:radial-gradient(ellipse at 50% 50%, #1a2744 0%, #152036 60%, #0f1829 100%) !important;
       border-color:#c9a84c !important; border-width:var(--bw-2) !important;
-      box-shadow:0 0 0 calc(var(--subrow) * 0.5) rgba(0,0,0,0.3), inset 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 1.5) rgba(0,0,0,0.4), 0 0 calc(var(--subrow) * 2.5) rgba(201,168,76,0.15) !important;
+      box-shadow:0 0 0 calc(var(--subrow) * 0.5) rgba(0,0,0,0.3), inset 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 1.5) var(--ov-black-4), 0 0 calc(var(--subrow) * 2.5) rgba(201,168,76,0.15) !important;
     }
     .replayer-table.theme-casino-royale .replayer-seat-info {
-      border-color:#c9a84c44; box-shadow:0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.75) rgba(0,0,0,0.4);
+      border-color:#c9a84c44; box-shadow:0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.75) var(--ov-black-4);
     }
     .replayer-table.theme-casino-royale .replayer-seat-name {
       font-family:'Libre Baskerville',Georgia,serif !important; font-size: var(--fs-2xs);
     }
     .replayer-table.theme-casino-royale .replayer-pot-display { color:#ffd700; }
 
-    /* ── Theme: Neon Vegas ── */
-    .replayer-table.theme-neon-vegas .replayer-table-felt {
-      background:radial-gradient(ellipse at 50% 50%, #0a0a0a 0%, #111 60%, #080808 100%) !important;
-      border-color:#00e5ff !important; border-width:calc(var(--subrow) * 0.25) !important;
-      box-shadow:0 0 0 calc(var(--subrow) * 0.25) rgba(0,229,255,0.3), inset 0 0 calc(var(--subrow) * 2.5) rgba(0,229,255,0.05), 0 0 calc(var(--subrow) * 3.75) rgba(255,0,128,0.1) !important;
-    }
-    .replayer-table.theme-neon-vegas .replayer-seat-info {
-      border-color:rgba(0,229,255,0.3); box-shadow:0 0 calc(var(--subrow) * 1) rgba(0,229,255,0.15), 0 0 calc(var(--subrow) * 0.5) rgba(255,0,128,0.1);
-    }
-    .replayer-table.theme-neon-vegas .replayer-pot-display {
-      color:#00e5ff; text-shadow:0 0 calc(var(--subrow) * 1.25) rgba(0,229,255,0.6);
-    }
-    .replayer-table.theme-neon-vegas .replayer-street-label {
-      color:rgba(0,229,255,0.7); text-shadow:0 0 calc(var(--subrow) * 0.75) rgba(0,229,255,0.4);
-    }
-    .replayer-table.theme-neon-vegas .replayer-bet-chip {
-      background:rgba(255,0,128,0.5); box-shadow:0 0 calc(var(--subrow) * 0.75) rgba(255,0,128,0.3);
-    }
-    /* 18: the static shadow is three layers — a cyan ring, an inset cyan wash
-       and a magenta outer glow — and neonPulse animated box-shadow between
-       stacks containing only the first, so starting the animation DELETED the
-       other two. It also repainted box-shadow forever on a mobile WKWebView.
-       The glow moves to a pseudo-element whose opacity pulses instead, which
-       is compositor-only and leaves the static stack intact. */
-    .replayer-table.theme-neon-vegas .replayer-table-felt::before {
-      content: '';
-      position: absolute;
-      inset: calc(var(--subrow) * -0.5);
-      border-radius: inherit;
-      pointer-events: none;
-      box-shadow: 0 0 calc(var(--subrow) * 3.75) rgba(0,229,255,0.25), 0 0 calc(var(--subrow) * 5) rgba(255,0,128,0.18);
-    }
-    /* 72 argued for ambient motion — a slow drift on every table so the frame
-       had an idle state rather than only "dead" and "never settles". In use it
-       is the opposite: a replay is read a step at a time, and a felt that never
-       holds still competes with the thing being read. Both idle pulses are
-       gone; the table is still between steps and moves only when something
-       happens. The keyframes stay defined but unused, so restoring either is a
-       one-line change. */
-    @keyframes neonGlowPulse {
-      0%, 100% { opacity: 0.62; }
-      50%      { opacity: 1; }
-    }
-    @keyframes feltBreathe {
-      0%, 100% { opacity: 1; }
-      50%      { opacity: 0.93; }
-    }
-
-
-
-    /* ── Theme: Vintage ── */
-    .replayer-table.theme-vintage .replayer-table-felt {
-      background:radial-gradient(ellipse at 50% 50%, #8B7355 0%, #7A6548 60%, #6B573D 100%) !important;
-      border-color:#5C4A32 !important; border-width:calc(var(--subrow) * 0.5) !important;
-      box-shadow:0 0 0 calc(var(--subrow) * 0.5) rgba(0,0,0,0.2), inset 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 1.5) rgba(0,0,0,0.3) !important;
-    }
-    .replayer-table.theme-vintage .replayer-seat-info {
-      background:linear-gradient(135deg, #f5e6c8, #e8d5b0); border-color:#c4a878; color:#3a2a14;
-    }
-    .replayer-table.theme-vintage .replayer-seat-name {
-      font-family:'Libre Baskerville',Georgia,serif !important; color:#3a2a14 !important; font-size: var(--fs-2xs);
-    }
-    .replayer-table.theme-vintage .replayer-seat-stack { color:#5a4a2e !important; }
-    .replayer-table.theme-vintage .replayer-seat-action { color:#8a7a5e !important; }
-    .replayer-table.theme-vintage .replayer-pot-display { color:#f5e6c8; text-shadow:0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) rgba(0,0,0,0.6); }
-    .replayer-table.theme-vintage .replayer-street-label {
-      color:rgba(245,230,200,0.7); font-family:'Libre Baskerville',Georgia,serif !important;
-    }
-
-    /* ── Theme: Minimalist ── */
-    .replayer-table.theme-minimalist .replayer-table-felt {
-      background:#f0f0f0 !important; border-color:#ccc !important; border-width:var(--bw-hair) !important;
-      box-shadow:0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.5) rgba(0,0,0,0.08) !important; border-radius:50% !important;
-    }
-    .replayer-table.theme-minimalist .replayer-seat-info {
-      background:#fff; border:var(--bw-hair) solid #ddd; box-shadow:0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) rgba(0,0,0,0.06);
-    }
-    .replayer-table.theme-minimalist .replayer-seat-name {
-      font-family:-apple-system,system-ui,sans-serif !important; color:#222 !important;
-    }
-    .replayer-table.theme-minimalist .replayer-seat-stack { color:#666 !important; }
-    .replayer-table.theme-minimalist .replayer-pot-display { color:#222; text-shadow:none; }
-    .replayer-table.theme-minimalist .replayer-street-label { color:#999; text-shadow:none; }
-    .replayer-table.theme-minimalist .replayer-bet-chip { background:rgba(0,0,0,0.08); color:#222; }
-    .replayer-table.theme-minimalist .replayer-dealer-btn { background:#222; color:#fff; }
 
     /* ── Theme: High Stakes ── */
     .replayer-table.theme-high-stakes .replayer-table-felt {
       background:radial-gradient(ellipse at 50% 50%, #1a1a1a 0%, #111 60%, #0a0a0a 100%) !important;
       border-color:#b91c1c !important; border-width:var(--bw-2) !important;
-      box-shadow:0 0 0 calc(var(--subrow) * 0.5) rgba(0,0,0,0.4), inset 0 0 calc(var(--subrow) * 3.75) rgba(185,28,28,0.08) !important;
+      box-shadow:0 0 0 calc(var(--subrow) * 0.5) var(--ov-black-4), inset 0 0 calc(var(--subrow) * 3.75) rgba(185,28,28,0.08) !important;
     }
     .replayer-table.theme-high-stakes .replayer-seat-info { border-color:rgba(185,28,28,0.3); }
     .replayer-table.theme-high-stakes .replayer-pot-display {
@@ -7918,42 +7218,6 @@
     }
     .replayer-table.theme-high-stakes .replayer-dealer-btn { background:#b91c1c; color:#fff; }
 
-    /* ── Commentator Mode ── */
-    /* 86: generateCommentary emitted a sentence in the app's default prose
-       treatment, directly under a broadcast graphic — the one piece of prose
-       in the feature, looking like a caption somebody forgot to style. On a
-       broadcast this is a lower third: a shaped bar with a rule, an accent,
-       and a fixed place in the frame. */
-    .replayer-commentary {
-      display: flex; align-items: stretch; overflow: hidden;
-      max-width: calc(var(--subrow) * 52.5); margin-left: auto; margin-right: auto;
-      background: linear-gradient(180deg, rgba(24,21,32,0.96), rgba(12,10,17,0.96));
-      border: none;
-      border-radius: var(--r-object, calc(var(--subrow) * 0.75));
-      box-shadow: var(--plate-bevel, 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.55));
-    }
-    .replayer-commentary::before {
-      content: '';
-      width: calc(var(--subrow) * 0.5); flex: none;
-      background: var(--brand-on-dark);
-    }
-    .replayer-commentary > .replayer-commentary-body {
-      padding: var(--space-sm) var(--space-ml);
-      font-size: var(--fs-xs); color: #d8d2e4;
-      font-family: var(--font-condensed); font-style: normal;
-      line-height: 1.4; min-height: calc(var(--subrow) * 3.5);
-      min-width: 0;
-    }
-    .replayer-commentary-line {
-      display: block;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .replayer-commentary-street {
-      display: block;
-      font-size: var(--fs-2xs); font-weight: var(--fw-bold);
-      letter-spacing: var(--track-caps); text-transform: uppercase;
-      color: var(--brand-on-dark); margin-bottom: calc(var(--subrow) * 0.125);
-    }
 
     /* ── Pot Odds Display ── */
     .replayer-pot-odds {
@@ -7990,7 +7254,7 @@
       width:calc(var(--subrow) * 7.5); display:flex; flex-direction:column; align-items:center; gap: var(--nudge-1);
     }
     .replayer-equity-bar {
-      width:100%; height:calc(var(--subrow) * 0.5); background:rgba(255,255,255,0.1); border-radius:calc(var(--subrow) * 0.25); overflow:hidden;
+      width:100%; height:calc(var(--subrow) * 0.5); background:var(--ov-white-2); border-radius:calc(var(--subrow) * 0.25); overflow:hidden;
     }
     .replayer-equity-fill { height:100%; border-radius:calc(var(--subrow) * 0.25); transition:width var(--dur-slow) ease-out; }
     .replayer-equity-pct {
@@ -8082,48 +7346,14 @@
       opacity:0.5;
     }
 
-    /* ── Chip Bet Animation (slide from seat toward pot) ── */
-    @keyframes chipSlideToPot {
-      0% { opacity:0; transform:translate(calc(-50% + var(--chip-start-dx,0)),calc(-50% + var(--chip-start-dy,0))) scale(0.4); }
-      30% { opacity:1; }
-      100% { opacity:1; transform:translate(-50%,-50%) scale(1); }
-    }
     /* No animation on the bet. The chip flew in from the seat at scale 0.4 and
        grew into place, so every action on the felt arrived with a pop — and a
        wager is a fact, not an event: it is either in front of a player or it
-       is not. The keyframes stay for the POT-collection chips, which travel
-       for a reason. */
+       is not. */
     .replayer-bet-chip.animate-chips { animation: none; }
 
     /* ── Pot Collection Animation (chips slide to winner) ── */
 
-    /* ── The winner sequence ──
-       68: the whole celebration was one simultaneous effect — a border glow
-       that brightened and faded — so at the climax of a hand the table's
-       entire response was that a 72px nameplate got briefly brighter. A
-       single simultaneous effect has no shape; a sequence has a rhythm, and
-       rhythm is what makes a moment feel authored. Four beats, in order:
-
-         0.00s  the pot leaves the felt        (.replayer-pot-display.anim-collect)
-         0.30s  the winner's plaque takes it   (winnerArrive, below)
-         0.55s  the cards lift                 (winnerBounce)
-         0.80s  the hand name lands            (.replayer-seat-hand-name)
-
-       Each frame carries --plate-bevel because box-shadow replaces wholesale:
-       without it the plaque loses its bevel for the run and snaps back. */
-    @keyframes winnerArrive {
-      0%   { box-shadow: var(--plate-bevel); border-color: rgba(234,179,8,0.35); }
-      55%  { box-shadow: var(--plate-bevel), 0 0 0 calc(var(--subrow) * 0.375) rgba(255,215,0,0.75), 0 0 calc(var(--subrow) * 3.25) calc(var(--subrow) * 0.75) rgba(255,215,0,0.45); border-color:#ffd700; }
-      100% { box-shadow: var(--plate-bevel), var(--ring-1) rgba(234,179,8,0.55), var(--ring-2) rgba(234,179,8,0.40); border-color:#eab308; }
-    }
-    @keyframes winnerBounce {
-      0% { transform:scale(1); }
-      15% { transform:scale(1.12) translateY(calc(var(--subrow) * -0.5)); }
-      30% { transform:scale(0.98) translateY(calc(var(--subrow) * 0.125)); }
-      45% { transform:scale(1.06) translateY(calc(var(--subrow) * -0.25)); }
-      60% { transform:scale(0.99); }
-      100% { transform:scale(1); }
-    }
     /* No bounce and no swelling glow on the winner. winnerArrive ran a gold
        ring out to 26px at its midpoint and back, which is a pulse — and it was
        caught RESTARTING: six separate samples in the seven seconds after a
@@ -8152,14 +7382,12 @@
        nothing at all — the bounce, the shimmer and the star ran unconditionally.
        The steady gold border stays either way; it is result, not celebration. */
     .replayer-table[data-anim-winner="0"] .replayer-seat.winner .replayer-seat-cards,
-    .replayer-table[data-anim-winner="0"] .replayer-seat.winner .replayer-seat-info,
-    .replayer-table[data-anim-winner="0"] .replayer-seat.winner .replayer-winner-star { animation: none; }
+    .replayer-table[data-anim-winner="0"] .replayer-seat.winner .replayer-seat-info { animation: none; }
     @keyframes winnerStarSpin {
       0% { transform:scale(0) rotate(0deg); opacity:0; }
       50% { transform:scale(1.3) rotate(180deg); opacity:1; }
       100% { transform:scale(1) rotate(360deg); opacity:1; }
     }
-    .replayer-seat.winner .replayer-winner-star { animation:winnerStarSpin var(--dur-slow) var(--ease-label) 0.30s both; display:inline-block; }
 
     /* ── Showdown Card Flip (3D) ── */
     /* Showdown flip disabled — conflicts with card splay transforms */
@@ -8170,18 +7398,12 @@
       30% { opacity:0.5; }
       100% { opacity:1; }
     }
-    .replayer-table.anim-street-transition .replayer-table-felt {
-      animation:streetTransition var(--dur-slow) var(--ease-label);
-    }
     /* The keyframe carried the old absolute centring in its transform, so
        reusing it in flow would have thrown the label half its size up-left. */
     @keyframes streetLabelPop {
       0% { opacity:0; transform:scale(0.6); }
       60% { opacity:1; transform:scale(1.1); }
       100% { opacity:1; transform:scale(1); }
-    }
-    .replayer-street-label.anim-pop {
-      animation:streetLabelPop var(--dur-base) var(--ease-label);
     }
 
     /* 71: a rewind is one short cross-fade over the whole felt, and no
@@ -8203,7 +7425,7 @@
       width:calc(var(--subrow) * 1.75); height:calc(var(--subrow) * 1.75); border-radius:50%;
       background:radial-gradient(ellipse, #e8c840 0%, #d4a420 60%, #b8901a 100%);
       border: var(--bw-1) solid rgba(255,255,255,0.5);
-      box-shadow:0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) rgba(0,0,0,0.4);
+      box-shadow:0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) var(--ov-black-4);
       z-index: var(--z-flight); pointer-events:none;
       /* 56: both keyframes interpolated LEFT and TOP — layout-affecting
          properties, relayout and repaint every frame, on up to five elements
@@ -8272,7 +7494,7 @@
     .replayer-chip-ghost { position: absolute; pointer-events: none; }
     .replayer-chip-ghost > .replayer-chip-ghost-face {
       position: relative; left: auto; top: auto; transform: none;
-      animation: none; transition: none; z-index: 0;
+      animation: none; transition: none; z-index: var(--z-base);
     }
     .replayer-chip-ghost > .replayer-chip-ghost-chips { position: absolute; margin: 0; z-index: 1; }
     /* The face's own stack is a spacer (its chips fly in the copy over it): one unseen disc for the
@@ -8414,50 +7636,6 @@
     /* (drawn by the shared .chip-disc rule above) */
 
 
-    /* The six options the settings panel has always offered. Custom feeds
-       --back-custom from the colour input and derives its own stops, using the
-       same lighten/darken maths the felt gradient already does inline. */
-    .replayer-table[data-cardback="classic"] .card-row .card-unknown,
-    .replayer-table[data-cardback="classic"] .card-row .card-placeholder {
-      --back-1:#2f5aa8; --back-2:#22417a; --back-3:#182e57; --back-border:#4a78c8;
-    }
-    .replayer-table[data-cardback="casino-red"] .card-row .card-unknown,
-    .replayer-table[data-cardback="casino-red"] .card-row .card-placeholder {
-      --back-1:#5c2430; --back-2:#442028; --back-3:#361a20; --back-border:#8a3a4a;
-    }
-    .replayer-table[data-cardback="black-diamond"] .card-row .card-unknown,
-    .replayer-table[data-cardback="black-diamond"] .card-row .card-placeholder {
-      --back-1:#1c1c22; --back-2:#141418; --back-3:#0e0e12; --back-border:#3a3a44;
-    }
-    /* 33: six names drove one pattern through three colour stops — including
-       one named after a deck with a famously specific back. Bicycle takes a
-       dense rider-back-style field; Black Diamond takes the lattice its name
-       describes. The other four keep the house crosshatch. */
-    .replayer-table[data-cardback="bicycle"] .card-row .card-unknown,
-    .replayer-table[data-cardback="bicycle"] .card-row .card-placeholder {
-      --back-pattern:
-        repeating-linear-gradient(0deg, transparent, transparent calc(var(--subrow) * 0.25), rgba(255,255,255,0.07) calc(var(--subrow) * 0.25), rgba(255,255,255,0.07) calc(var(--subrow) * 0.25)),
-        repeating-linear-gradient(90deg, transparent, transparent calc(var(--subrow) * 0.25), rgba(255,255,255,0.07) calc(var(--subrow) * 0.25), rgba(255,255,255,0.07) calc(var(--subrow) * 0.25));
-    }
-    .replayer-table[data-cardback="black-diamond"] .card-row .card-unknown,
-    .replayer-table[data-cardback="black-diamond"] .card-row .card-placeholder {
-      --back-pattern:
-        repeating-conic-gradient(from 45deg, rgba(255,255,255,0.055) 0 25%, transparent 0 50%);
-      background-size: calc(var(--subrow) * 0.875) calc(var(--subrow) * 0.875), auto, auto;
-    }
-    /* All four stops are computed in JS and handed in, exactly as the felt
-       gradient does — html2canvas cannot parse color-mix(), and html2canvas is
-       what the video exporter captures with, so a color-mix back would render
-       as nothing in every exported clip. */
-    .replayer-table[data-cardback="custom"] .card-row .card-unknown,
-    .replayer-table[data-cardback="custom"] .card-row .card-placeholder {
-      --back-1: var(--back-custom-1, #1a3a6e);
-      --back-2: var(--back-custom-2, #142e58);
-      --back-3: var(--back-custom-3, #0f2242);
-      --back-border: var(--back-custom-border, #3a5a8a);
-    }
-
-
     /* Theme rails and light strips.
        --rail-color was fed the user's feltColor unconditionally and no theme
        overrode it, so picking Casino Royale while your felt was the default
@@ -8475,117 +7653,25 @@
       border-width: var(--bw-2);
       box-shadow:
         0 0 0 calc(var(--subrow) * 0.5) rgba(0,0,0,0.3),
-        inset 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 1.5) rgba(0,0,0,0.4),
+        inset 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 1.5) var(--ov-black-4),
         0 0 calc(var(--subrow) * 2.5) rgba(201,168,76,0.15);
     }
     .replayer-table.theme-casino-royale .replayer-table-rail { background-color: #0d1526; }
-    .replayer-table.theme-neon-vegas    .replayer-table-rail { background-color: #0a0a0a; }
-    .replayer-table.theme-vintage       .replayer-table-rail { background-color: #4a3a26; }
-    .replayer-table.theme-minimalist    .replayer-table-rail { background-color: #e0e0e0; }
     .replayer-table.theme-high-stakes   .replayer-table-rail { background-color: #151515; }
 
     .replayer-table.theme-casino-royale .replayer-light-strip { border-color: rgba(232,200,120,0.45); }
-    .replayer-table.theme-neon-vegas    .replayer-light-strip { border-color: rgba(0,229,255,0.50); }
-    .replayer-table.theme-vintage       .replayer-light-strip { border-color: rgba(230,210,170,0.40); }
-    .replayer-table.theme-minimalist    .replayer-light-strip { border-color: rgba(0,0,0,0.12); }
     .replayer-table.theme-high-stakes   .replayer-light-strip { border-color: rgba(200,170,90,0.35); }
 
 
-    /* ---- 16: shapes broke out of their own rail --------------------------
-       shape-round moves the felt to inset 12%/22% and shape-octagon to 8%/18%,
-       but the rail's inner edge stayed derived from the OVAL inset (16%/18%
-       minus 20px) and the light strip stayed a pill at 16%/18%. So the octagon
-       felt started well above the rail's inner edge — the felt escaped its
-       cushion — and the strip floated across the felt boundary instead of
-       tracing it. All three layers mirror the shape now. */
-    .replayer-table:has(.shape-round) .replayer-table-rail {
-      inset: calc(12% - calc(var(--subrow) * 2.5)) calc(22% - calc(var(--subrow) * 2.5));
-      border-radius: var(--radius-circle);
-    }
-    .replayer-table:has(.shape-round) .replayer-light-strip {
-      inset: 12% 22%;
-      border-radius: var(--radius-circle);
-    }
-    /* The shape presets reset the insets and, for the octagon, a clip-path —
-       and then inherited the oval's radial specular, so a faceted table was
-       lit as though it were round, which is to say it read as an oval with
-       its corners cut off. A conic gradient keyed to the eight faces gives
-       each face its own value, which is what makes a facet a facet. */
-    .replayer-table .shape-octagon {
-      background:
-        conic-gradient(from 202deg,
-          var(--felt-lit, #9478b4)   0deg  45deg,
-          var(--felt-shade, #2c2e50) 45deg 90deg,
-          var(--felt-lit, #9478b4)   90deg 135deg,
-          var(--felt-shade, #2c2e50) 135deg 180deg,
-          var(--felt-lit, #9478b4)   180deg 225deg,
-          var(--felt-shade, #2c2e50) 225deg 270deg,
-          var(--felt-lit, #9478b4)   270deg 315deg,
-          var(--felt-shade, #2c2e50) 315deg 360deg) !important;
-    }
-    /* The conic above is deliberately harsh; this softens each face into its
-       neighbours so the result is eight values, not eight wedges. */
-    .replayer-table .shape-octagon::before {
-      box-shadow: none;
-      background: radial-gradient(ellipse 78% 78% at 50% 44%,
-        var(--felt-lit, #9478b4), transparent 78%);
-      opacity: 0.82;
-    }
-    .replayer-table:has(.shape-octagon) .replayer-table-rail {
-      inset: calc(8% - calc(var(--subrow) * 2.5)) calc(18% - calc(var(--subrow) * 2.5));
-      border-radius: 0;
-      clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
-    }
-    /* A border cannot follow a clip-path, so the strip has nothing to trace. */
-    .replayer-table:has(.shape-octagon) .replayer-light-strip { display: none; }
-
-    /* ---- 17: minimalist converted the text and stopped -------------------
-       The theme paints a #f0f0f0 felt and white plaques, then leaves the pot
-       lozenge as smoked glass with a warm-gold border and its text overridden
-       to #222 — dark on dark, with a gold border that is off-language on a
-       monochrome theme. The stats chip and card backs stayed dark too. */
-    .replayer-table.theme-minimalist .replayer-pot-display {
-      background: #fff;
-      border-color: #ddd;
-      color: #222;
-      box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) rgba(0,0,0,0.08);
-      backdrop-filter: none;
-    }
-    .replayer-table.theme-minimalist .replayer-player-stats {
-      background: #f5f5f5;
-      color: #888;
-      border-color: #e0e0e0;
-    }
-    .replayer-table.theme-minimalist .card-row .card-unknown,
-    .replayer-table.theme-minimalist .card-row .card-placeholder {
-      --back-1: #e8e8e8; --back-2: #dedede; --back-3: #d4d4d4; --back-border: #c0c0c0;
-    }
-
-    /* ---- 21: the dealer button never joined three themes -----------------
+    /* ---- 21: the dealer button never joined the themes --------------------
        It is the one object a poker player's eye checks first, and Casino
-       Royale, Vintage and Neon Vegas all left it as stark white plastic. */
+       Royale left it as stark white plastic. */
     .replayer-table.theme-casino-royale .replayer-dealer-btn {
       background: linear-gradient(145deg, #f5e2a8, #d9b95c, #c9a84c);
       border-color: #a8863a;
       color: #3a2a10;
     }
-    .replayer-table.theme-vintage .replayer-dealer-btn {
-      background: linear-gradient(145deg, #f5e6c8, #e0cda2);
-      border-color: #c4a878;
-      color: #5c4a32;
-    }
-    .replayer-table.theme-neon-vegas .replayer-dealer-btn {
-      background: #111;
-      color: #00e5ff;
-      border-color: rgba(0,229,255,0.5);
-      box-shadow: 0 0 calc(var(--subrow) * 0.75) rgba(0,229,255,0.4);
-    }
 
-    /* ---- 27: the watermark vanished on two themes ------------------------
-       10% white is invisible on the minimalist #f0f0f0 felt and nearly so on
-       vintage's tan — and it sits inside tableRef, so it is on every GIF and
-       every video. Blend mode plus per-theme colour makes it present without
-       making it loud. */
     /* 58: the watermark was set to z-index 1 inline, which is the same layer
        .replayer-seat used — it only sat behind the seats because of where it
        happened to appear in the JSX, on the one element that is in every
@@ -8622,11 +7708,6 @@
       white-space: nowrap;
       pointer-events: none;
     }
-    .replayer-table.theme-minimalist .replayer-watermark,
-    .replayer-table.theme-vintage .replayer-watermark {
-      color: #3a3050;
-      opacity: 0.22;
-    }
 
 
     /* 59: .replayer-seat-name, -stack and -pos were each declared TWICE, a
@@ -8635,8 +7716,6 @@
        reading it, including a --accent2 grey for the position badge that had
        been dead since the day it was written. The three originals up at 3271
        now carry everything; only the states are left down here. */
-
-
 
 
     /* 22: the 10-max layout puts three seats on the top edge at 30/50/70%.
@@ -8685,13 +7764,6 @@
          answer the impact and landing bumps already got. */
       animation: none;
     }
-    /* 65: the impact. Three percent is enough to say the chips arrived HERE,
-       rather than at a coordinate that happens to be where the pot is. */
-    @keyframes potImpact {
-      0%   { transform: translate(-50%,-50%) scale(1); }
-      35%  { transform: translate(-50%,-50%) scale(1.035); }
-      100% { transform: translate(-50%,-50%) scale(1); }
-    }
     .replayer-pot-display.is-landing {
       /* No impact bump either. It scaled the pot to 1.035 and back on every bet,
          which is the same overshoot shape the action badge had — the pot is the
@@ -8700,21 +7772,6 @@
       animation: none;
     }
 
-    /* 58: the badge under each seat is the densest thing on the felt that
-       changes on every single step, and it had no animation or transition at
-       all — it blinked into existence, or its text swapped in place, which is
-       the difference between a replay and a slideshow. Keyed on street and
-       action so a re-raise by the same player re-pops. */
-    /* Every frame carries the centring translate. A keyframe's transform
-       REPLACES the rule's, and this animation fills `both`, so without it the
-       badge's translateX(-50%) was gone from the first frame and never came
-       back — it has been sitting half its own width right of the name it
-       belongs to for as long as the animation has existed. */
-    @keyframes actionBadgeIn {
-      0%   { opacity:0; transform:translateX(-50%) translateY(calc(var(--subrow) * -0.5)) scale(0.88); }
-      70%  { opacity:1; transform:translateX(-50%) translateY(0) scale(1.05); }
-      100% { opacity:1; transform:translateX(-50%) translateY(0) scale(1); }
-    }
     /* Nor on the action. actionBadgeIn ran 0.88 to 1.05 and back to 1 — an
        overshoot, which is exactly the shape the eye reads as a pulse, on the
        element that changes most often in a replay. */
@@ -8813,59 +7870,13 @@
         radial-gradient(ellipse 100% 100% at 50% 36%, transparent 48%, rgba(0,0,0,0.42) 100%),
         var(--felt-weave);
     }
-    /* Neon Vegas is lit by its own strip, from below and in front. */
-    .replayer-table.theme-neon-vegas .replayer-table-felt::after {
-      background-image:
-        radial-gradient(ellipse 66% 42% at 50% 78%, rgba(0,229,255,0.13), transparent 72%),
-        radial-gradient(ellipse 100% 100% at 50% 72%, transparent 46%, rgba(0,0,0,0.55) 100%),
-        var(--felt-weave);
-    }
-    .replayer-table.theme-neon-vegas .replayer-table-felt {
-      box-shadow:
-        inset 0 calc(var(--subrow) * -0.5) calc(var(--subrow) * 2.75) rgba(0,0,0,0.5),
-        inset 0 calc(var(--subrow) * 0.375) calc(var(--subrow) * 1.5) rgba(0,0,0,0.55),
-        inset 0 calc(var(--subrow) * 0.375) calc(var(--subrow) * 0.625) rgba(0,0,0,0.36);
-    }
-    /* Vintage: a wide, soft overhead with very little falloff. */
-    .replayer-table.theme-vintage .replayer-table-felt::after {
-      background-image:
-        radial-gradient(ellipse 88% 72% at 50% 40%, rgba(255,236,196,0.11), transparent 82%),
-        radial-gradient(ellipse 100% 100% at 50% 44%, transparent 66%, rgba(0,0,0,0.20) 100%),
-        var(--felt-weave);
-    }
-    .replayer-table.theme-vintage .replayer-table-felt {
-      box-shadow:
-        inset 0 calc(var(--subrow) * 0.375) calc(var(--subrow) * 1.75) rgba(60,40,16,0.34),
-        inset 0 calc(var(--subrow) * -0.25) calc(var(--subrow) * 1) rgba(60,40,16,0.22),
-        inset 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.5) rgba(60,40,16,0.26);
-    }
     /* High Stakes: a tight, low-key pool and a hard falloff. */
     .replayer-table.theme-high-stakes .replayer-table-felt::after {
       background-image:
         radial-gradient(ellipse 38% 26% at 50% 44%, rgba(255,244,220,0.15), transparent 66%),
-        radial-gradient(ellipse 100% 100% at 50% 42%, transparent 34%, rgba(0,0,0,0.60) 100%),
+        radial-gradient(ellipse 100% 100% at 50% 42%, transparent 34%, var(--ov-black-5) 100%),
         var(--felt-weave);
     }
-
-    /* 14: this theme paints a #f0f0f0 felt and then inherited the shared inset
-       stack — inset 0 4px 20px rgba(0,0,0,0.45) — so a near-white surface
-       carried a 45% BLACK bloom round its whole inner edge and read as grey.
-       Shadow density on a light surface is a different number, and its colour
-       is a cool grey, not black. */
-    .replayer-table.theme-minimalist .replayer-table-felt {
-      box-shadow:
-        inset 0 calc(var(--subrow) * 0.375) calc(var(--subrow) * 1.5) rgba(92,92,116,0.16),
-        inset 0 calc(var(--subrow) * -0.125) calc(var(--subrow) * 0.75) rgba(92,92,116,0.10),
-        inset 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(92,92,116,0.14);
-    }
-    .replayer-table.theme-minimalist .replayer-table-felt::before { box-shadow: none; }
-    .replayer-table.theme-minimalist .replayer-table-felt::after {
-      background-image:
-        radial-gradient(ellipse 76% 60% at 50% 42%, rgba(255,255,255,0.55), transparent 78%),
-        radial-gradient(ellipse 100% 100% at 50% 44%, transparent 70%, rgba(92,92,116,0.10) 100%);
-    }
-
-
 
 
     /* 87: the title and the level, inside the captured element. */
@@ -8926,8 +7937,8 @@
       padding: var(--nudge-1) min(var(--space-ml), 4cqmin);
       /* --brand-on-dark (#3cc8e0) at 50% as a literal, not --brand-line: the
          plaque is dark in every app theme, and the light theme's line is a
-         deep teal. A literal because it needs an alpha (no color-mix(), which
-         html2canvas cannot parse). */
+         deep teal. A literal because it needs an alpha (no color-mix(): Safari
+         before 16.2 cannot parse it). */
       border-color: rgba(60,200,224,0.5);
     }
     .replayer-seat.is-hero .replayer-seat-stack { font-size: clamp(10px, 4.3cqmin, 54px); }
@@ -8947,31 +7958,6 @@
     .replayer-allin-mark { font: inherit; letter-spacing: inherit; color: inherit; }
 
 
-
-    /* 92 */
-    .replayer-side-pots {
-      display: flex; flex-direction: column; gap: calc(var(--subrow) * 0.125);
-      margin-top: var(--space-2xs);
-      padding-top: var(--space-2xs);
-      border-top: var(--bw-hair) solid rgba(255,255,255,0.12);
-    }
-    /* Catalogue three, idea 17 (2026-10-15): one numeral face on the felt. The pot, the stacks, the
-       bets and the level line are condensed; the side pots were the last figures in the display face,
-       two numeral systems a few pixels apart. They take the pot's face. */
-    .replayer-side-pot {
-      font-family: var(--font-condensed);
-      font-size: var(--fs-2xs); font-weight: var(--fw-bold);
-      font-variant-numeric: var(--num-tabular);
-      color: rgba(255,255,255,0.82);
-      white-space: nowrap;
-    }
-    .replayer-side-pot-label {
-      font-family: var(--font-condensed);
-      font-weight: var(--fw-light);
-      letter-spacing: var(--track-caps); text-transform: uppercase;
-      color: rgba(255,255,255,0.5);
-      margin-right: var(--space-xs);
-    }
     .replayer-pot-display.has-sides { padding-bottom: var(--space-xs); }
     /* Side pots add a pills row ABOVE the total. The block is centred on its
        anchor, so that extra row pushed the TOTAL straight down onto the board —
@@ -9084,7 +8070,7 @@
          as part of the thing tapped rather than a tooltip from another app. */
       background: rgba(14,12,19,0.93);
       border: var(--bw-hair) solid rgba(255,255,255,0.22);
-      box-shadow: var(--plate-bevel), 0 calc(var(--subrow) * 0.75) calc(var(--subrow) * 2.25) rgba(0,0,0,0.6);
+      box-shadow: var(--plate-bevel), 0 calc(var(--subrow) * 0.75) calc(var(--subrow) * 2.25) var(--ov-black-5);
       text-align: left;
     }
     /* The seat whose line is open rises above its neighbours (every seat is on --z-seat, so a later seat
@@ -9115,12 +8101,6 @@
       color: rgba(242,239,230,0.55);
     }
 
-    /* ── Table shapes ── */
-    .replayer-table-felt.shape-round { border-radius:50% !important; inset:12% 22% !important; }
-    .replayer-table-felt.shape-octagon {
-      border-radius:0 !important; inset:8% 18% !important;
-      clip-path:polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
-    }
 
     /* ── Scrollable content area ── */
     .content-area {
@@ -9141,10 +8121,6 @@
     .content-area:has(.tab-panel.tab-active .replayer-replay) {
       overflow: hidden;
       padding-bottom: 0;
-    }
-    .view-fade {
-      animation: viewFadeIn 0.2s ease-out;
-      height: 100%;
     }
     .tab-panel.tab-active {
       animation: viewFadeIn 0.2s ease-out;
@@ -9169,7 +8145,7 @@
       justify-content: center;
       transition: transform var(--dur-fast) ease-out, opacity var(--dur-fast);
       opacity: 0;
-      z-index: 10;
+      z-index: var(--z-raised);
       pointer-events: none;
     }
     .ptr-indicator.visible {
@@ -9389,7 +8365,7 @@
       margin-bottom: var(--space-3xl);
     }
 
-    .auth-logo h1 { font-family: var(--serif); font-size: var(--fs-xl); font-weight: var(--fw-bold); color: var(--text); margin-bottom: var(--space-xs); letter-spacing: var(--track-wordmark); }
+    .auth-logo h1 { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: var(--fw-bold); color: var(--text); margin-bottom: var(--space-xs); letter-spacing: var(--track-wordmark); }
     .auth-logo p { font-size: var(--fs-sm); color: var(--text-muted); }
     /* Whole-r rows inside the card: the wordmark 4r, the season 2r; a field's label 2r over its
        6r input, 1r apart; the hints 2r lines. */
@@ -9456,10 +8432,6 @@
     }
     .btn-primary:disabled { opacity: var(--state-disabled); cursor: not-allowed; }
 
-    .btn-danger { background: var(--accent2); color: #fff; }
-    @media (hover: hover) and (pointer: fine) {
-      .btn-danger:hover { opacity: 0.88; }
-    }
 
     .btn-ghost {
       background: transparent;
@@ -9635,31 +8607,11 @@
     .skeleton-text.sm { width: 40%; }
     .skeleton-text.md { width: 65%; }
     .skeleton-text.lg { width: 90%; }
-    .skeleton-card {
-      border-radius: var(--radius);
-      padding: var(--space-xl) var(--space-xl);
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-ml);
-    }
-    .skeleton-strip {
-      height: calc(var(--subrow) * 0.75);
-      border-radius: var(--radius-xs);
-    }
-    .skeleton-row {
-      display: flex;
-      gap: var(--space-ml);
-      align-items: center;
-    }
     .skeleton-circle {
       width: calc(var(--subrow) * 3.5);
       height: calc(var(--subrow) * 3.5);
       border-radius: var(--radius-circle);
       flex-shrink: 0;
-    }
-    .skeleton-btn {
-      height: calc(var(--subrow) * 4.5);
-      border-radius: var(--radius-sm);
     }
 
     /* ── Settings ──
@@ -9748,12 +8700,6 @@
       margin: calc(var(--subrow) * -1) 0 0;
       padding: calc(var(--subrow) * 2 - 1cap) 0 var(--subrow);
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
-    }
-    .settings-row-value {
-      font-size: var(--fs-sm);
-      line-height: calc(var(--subrow) * 3);
-      color: var(--text-muted);
-      text-align: right;
     }
     /* Sign out: a 5r row, label baseline +3r, 2g.. like every row label. */
     .settings-row-btn {
@@ -10006,7 +8952,7 @@
       color: var(--text-muted);
     }
     .settings-about h3 {
-      font-family: var(--serif);
+      font-family: var(--font-display);
       font-size: var(--fs-lg);
       font-weight: var(--fw-regular);
       color: var(--text);
@@ -10068,7 +9014,6 @@
     .search-bar svg { color: var(--text-muted); flex-shrink: 0; width: calc(var(--subrow) * 2.25); height: calc(var(--subrow) * 2.25); }
 
     .search-bar input {
-      background: var(--surface-sunken);
       flex: 1;
       background: none;
       border: none;
@@ -10213,7 +9158,7 @@
       background: var(--surface);
       border: var(--bw-hair) solid var(--border);
       border-radius: var(--radius-sm);
-      box-shadow: 0 var(--subrow) calc(var(--subrow) * 3) rgba(0,0,0,0.4);
+      box-shadow: 0 var(--subrow) calc(var(--subrow) * 3) var(--ov-black-4);
     }
     .online-room-head {
       border-bottom: var(--bw-hair) solid var(--border);
@@ -10425,29 +9370,6 @@
       -webkit-appearance: none;
     }
 
-    .month-row {
-      transition: background-color var(--dur-snap) var(--ease-out), border-color var(--dur-snap) var(--ease-out), color var(--dur-snap) var(--ease-out), transform var(--dur-snap) var(--ease-out);
-    }
-    .month-series-wrap {
-      display: grid;
-      grid-template-rows: 0fr;
-      opacity: 0;
-      transition: grid-template-rows var(--dur-snap) ease, opacity var(--dur-snap) var(--ease-out);
-    }
-    .month-series-wrap.open {
-      grid-template-rows: 1fr;
-      opacity: 1;
-    }
-    .month-series-wrap > span {
-      overflow: hidden;
-    }
-
-    .results-count {
-      font-size: var(--fs-sm);
-      color: var(--text-muted);
-      margin-bottom: var(--space-md);
-      padding-left: var(--space-2xs);
-    }
 
     /* The Schedule list's wrapper (TournamentsView): room below the last day so any day can be
        scrolled up under the filters. Sized from the window. The desktop list pane keeps the
@@ -10455,48 +9377,6 @@
        list where the phone's stops and no desktop copy of this rule exists. */
     .schedule-list-tail { min-height: 100vh; padding-bottom: 60vh; }
 
-    /* ── Tournament cards ── */
-    .tournament-list { display: flex; flex-direction: column; gap: var(--space-ml); }
-
-    .t-card {
-      background: var(--surface);
-      border: var(--bw-1) solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      transition: border-color var(--dur-snap);
-    }
-
-    .t-card.saved { border-color: var(--accent); }
-
-    /* Venue backgrounds — tournament cards */
-    .t-card.venue-hs   { background: var(--venue-hs-bg); }
-    .t-card.venue-wynn { background: var(--venue-wynn-bg); }
-    .t-card.venue-aria { background: var(--venue-aria-bg); }
-    .t-card.venue-gn   { background: var(--venue-gn-bg); }
-
-    /* Bracelet events → gold border */
-    .t-card.bracelet { border-color: #c0c0c0; }
-
-    /* Bracelet + saved: gold wins */
-    .t-card.bracelet.saved { border-color: #c0c0c0; }
-
-    .t-card.past {
-      opacity: 0.4;
-    }
-
-    .t-card-main {
-      padding: var(--space-xl) var(--space-xl) var(--space-lg);
-    }
-
-    .t-card-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: var(--space-ml);
-      margin-bottom: var(--space-sm);
-    }
-
-    .t-card-badges { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; }
 
     .badge {
       display: inline-flex;
@@ -10513,100 +9393,9 @@
     }
 
     .badge-event { background: rgba(136,136,136,0.2); color: #999999; }
-    .badge-variant { background: rgba(160,160,160,0.12); color: var(--accent); }
     .badge-clickable { cursor: pointer; }
     .badge-clickable:active { opacity: 0.6; }
 
-    .t-buyin {
-      font-family: var(--serif);
-      font-size: var(--fs-xl);
-      font-weight: var(--fw-bold);
-      color: var(--accent);
-      flex-shrink: 0;
-    }
-
-    .t-name {
-      font-family: var(--serif);
-      font-size: var(--fs-md);
-      font-weight: var(--fw-regular);
-      color: var(--text);
-      line-height: 1.4;
-      margin-bottom: var(--space-ml);
-    }
-
-    .t-meta {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--space-sm) var(--space-lg);
-    }
-
-    .t-meta-item {
-      display: flex;
-      flex-direction: column;
-      gap: var(--nudge-1);
-    }
-
-    .t-meta-label {
-      font-size: var(--fs-xs);
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: var(--track-caps);
-      font-weight: var(--fw-bold);
-    }
-
-    .t-meta-value {
-      font-family: var(--serif);
-      font-size: var(--fs-sm);
-      color: var(--text);
-      font-weight: var(--fw-regular);
-    }
-
-    .t-notes {
-      margin-top: var(--space-md);
-      font-size: var(--fs-sm);
-      color: var(--text-muted);
-      font-style: italic;
-      grid-column: span 2;
-    }
-
-    .t-card-footer {
-      display: flex;
-      border-top: var(--bw-hair) solid var(--border);
-    }
-
-    .t-action-btn {
-      flex: 1;
-      padding: var(--space-lg);
-      background: none;
-      border: none;
-      font-size: var(--fs-sm);
-      font-weight: var(--fw-bold);
-      cursor: pointer;
-      color: var(--accent);
-      transition: background var(--dur-fast);
-      letter-spacing: var(--track-tight);
-    }
-
-    .t-action-btn:active { background: rgba(160,160,160,0.1); }
-
-    .t-action-btn.remove { color: var(--accent2); }
-    .t-action-btn.remove:active { background: rgba(136,136,136,0.1); }
-
-    .countdown-pill {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--space-xs);
-      background: rgba(160,160,160,0.1);
-      border: var(--bw-hair) solid rgba(160,160,160,0.25);
-      color: var(--accent);
-      font-size: var(--fs-sm);
-      font-weight: var(--fw-bold);
-      line-height: 1;
-      padding: var(--space-xs) var(--space-ml);
-      border-radius: var(--radius-lg);
-      margin-top: var(--space-md);
-    }
 
     /* ── Empty states ── */
     /* Every block a whole number of r (icon 6r + 2r, heading 3r + 1r, copy 2r a line, then the
@@ -10718,57 +9507,6 @@
       .empty-state-action-quiet:hover { background: var(--surface2); border-color: var(--border); color: var(--text); }
     }
 
-    /* ── Calendar ── */
-    .calendar-nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: var(--space-lg);
-      background: var(--surface);
-      border: var(--bw-hair) solid var(--border);
-      border-radius: var(--radius);
-      padding: var(--space-md) var(--space-xl);
-    }
-
-    .cal-nav-btn {
-      background: none;
-      border: none;
-      color: var(--accent);
-      cursor: pointer;
-      padding: var(--space-xs);
-      border-radius: var(--radius-sm);
-      display: flex;
-      align-items: center;
-    }
-
-    @media (hover: hover) and (pointer: fine) {
-      .cal-nav-btn:hover { background: rgba(160,160,160,0.1); }
-    }
-    .cal-nav-btn svg { width: calc(var(--subrow) * 2.5); height: calc(var(--subrow) * 2.5); }
-
-    .cal-date-label {
-      text-align: center;
-    }
-
-    .cal-date-label .day-name { font-size: var(--fs-sm); color: var(--text-muted); text-transform: uppercase; letter-spacing: var(--track-caps); }
-    .cal-date-label .day-full { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--text); }
-
-    /* Tappable date-label variant — used at the top of the Calendar
-       view to open a native date picker. Looks the same as the static
-       label but gives feedback on tap and shows a pointer cursor. */
-    .cal-date-label-button {
-      position: relative;
-      display: inline-block;
-      padding: var(--space-sm) var(--space-xl);
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      user-select: none;
-      transition: background var(--dur-fast);
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .cal-date-label-button:hover { background: var(--hover-overlay); }
-    }
-    .cal-date-label-button:active { background: rgba(160,160,160,0.15); }
 
     /* Calendar view bottom row (below the date carousel):
          [events count]  [ Today ]  [filter button]
@@ -10811,31 +9549,6 @@
       overflow-x: clip;
       text-overflow: ellipsis;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
-    }
-    .cal-bottom-row > .cal-today-btn { justify-self: center; }
-    .cal-today-btn {
-      background: var(--surface);
-      border: var(--bw-hair) solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: var(--space-sm) var(--space-xl);
-      font-family: var(--font-condensed);
-      font-size: var(--fs-sm);
-      font-weight: var(--fw-bold);
-      letter-spacing: var(--track-caps);
-      text-transform: uppercase;
-      color: var(--text);
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .cal-today-btn:not(:disabled):hover {
-        border-color: var(--accent);
-        color: var(--accent);
-      }
-    }
-    .cal-today-btn:disabled {
-      opacity: var(--state-disabled);
-      cursor: not-allowed;
     }
 
     /* Three-button month row in the calendar carousel:
@@ -11086,33 +9799,6 @@
       margin-bottom: var(--space-md);
     }
 
-    /* ── Upload ── */
-    .upload-card {
-      background: var(--surface);
-      border: var(--bw-hair) solid var(--border);
-      border-radius: var(--radius);
-      padding: var(--space-4xl) var(--space-2xl);
-      text-align: center;
-    }
-
-    .upload-card h2 { font-size: var(--fs-lg); color: var(--accent); margin-bottom: var(--space-md); }
-    .upload-card p { font-size: var(--fs-sm); color: var(--text-muted); margin-bottom: var(--space-3xl); }
-
-    .drop-zone {
-      border: calc(var(--subrow) * 0.25) dashed var(--border);
-      border-radius: var(--radius);
-      padding: var(--space-5xl) var(--space-2xl);
-      margin-bottom: var(--space-2xl);
-      transition: border-color var(--dur-snap);
-    }
-
-    @media (hover: hover) and (pointer: fine) {
-      .drop-zone:hover { border-color: var(--accent); }
-    }
-    .drop-zone svg { width: calc(var(--subrow) * 5); height: calc(var(--subrow) * 5); color: var(--text-muted); margin-bottom: var(--space-lg); }
-    .drop-zone p { font-size: var(--fs-sm); color: var(--text-muted); }
-
-    .file-input { display: none; }
 
     /* ── Section headers ── */
     .section-header {
@@ -11339,33 +10025,8 @@
     .cal-event-row.anchor {
       box-shadow: inset 0 0 0 calc(var(--subrow) * 0.25) var(--border);
     }
-    .badge-anchor {
-      background: rgba(59,130,246,0.15);
-      color: #60a5fa;
-      border: var(--bw-hair) solid rgba(59,130,246,0.3);
-    }
-    :is([data-theme="light"],[data-theme="cloudy"]) .badge-anchor {
-      color: #2563eb;
-    }
     /* anchor icon color handled via .cal-action-icon in new layout */
 
-    /* conditional saved border color applied inline via venue brand color */
-    .cal-condition-label {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-family: var(--font-condensed);
-      font-size: var(--fs-2xs);
-      font-weight: var(--fw-bold);
-      line-height: 1;
-      color: var(--text-muted);
-      background: rgba(136,136,136,0.12);
-      border: var(--bw-hair) solid rgba(136,136,136,0.25);
-      padding: var(--space-2xs) var(--space-sm);
-      border-radius: var(--radius-xs);
-      white-space: nowrap;
-      letter-spacing: var(--track-tight);
-    }
     .badge-condition {
       background: rgba(136,136,136,0.15);
       color: var(--text-muted);
@@ -11403,35 +10064,6 @@
       color: #dc2626;
       background: rgba(239,68,68,0.1);
       border-color: rgba(239,68,68,0.3);
-    }
-    /* ── If I Bust dropdown ── */
-    .bust-list { border-top: var(--bw-hair) solid var(--border); }
-    .bust-list-toggle {
-      display: flex; align-items: center; justify-content: space-between;
-      width: 100%; padding: var(--space-ml) var(--space-lg); border: none; background: none;
-      color: var(--text-muted); font-family: var(--font-condensed); font-size: var(--fs-sm);
-      font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: var(--track-caps); cursor: pointer;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .bust-list-toggle:hover { color: var(--text); }
-    }
-    .bust-list-items { padding: 0 var(--space-lg) var(--space-ml); display: flex; flex-direction: column; gap: var(--space-sm); }
-    .bust-list-item {
-      display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md);
-      background: var(--bg); border: var(--bw-hair) solid var(--border); border-radius: var(--radius-sm);
-      font-size: var(--fs-sm);
-    }
-    .bust-list-time { color: var(--text-muted); font-weight: var(--fw-bold); white-space: nowrap; min-width: calc(var(--subrow) * 7.5); }
-    .bust-list-name { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .bust-list-buyin { color: var(--text-muted); font-weight: var(--fw-bold); white-space: nowrap; }
-    .bust-list-add {
-      width: calc(var(--subrow) * 3.25); height: calc(var(--subrow) * 3.25); border-radius: var(--radius-circle); border: var(--bw-1) solid var(--accent);
-      background: none; color: var(--accent); font-size: var(--fs-lg); font-weight: var(--fw-bold);
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; padding: 0; line-height: 1;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .bust-list-add:hover { background: var(--accent); color: var(--bg); }
     }
 
     /* ── Condition picker + admin edit panel ──────────────────────────────────
@@ -11710,17 +10342,6 @@
 
     .cal-event-bar:active { background: var(--hover-overlay); }
 
-    .cal-sat-badge {
-      font-size: var(--fs-2xs);
-      font-weight: var(--fw-bold);
-      letter-spacing: var(--track-caps);
-      color: var(--text-muted);
-      background: var(--border);
-      border-radius: var(--radius-xs);
-      padding: var(--nudge-1) var(--space-xs);
-      line-height: 1;
-      flex-shrink: 0;
-    }
 
     /* One cluster, one gap. These three icons used to be aligned by four
        hand-tuned offsets (left: 1px / -3px / 3px / -5px, margin-right: -4.5px)
@@ -11922,7 +10543,7 @@
     }
 
     .cal-event-name {
-      font-family: var(--serif);
+      font-family: var(--font-display);
       flex: 1;
       font-size: var(--fs-sm);
       line-height: var(--cal-title-line);
@@ -12030,7 +10651,7 @@
     }
 
     .cal-event-buyin {
-      font-family: var(--serif);
+      font-family: var(--font-display);
       font-size: var(--fs-sm);
       line-height: calc(var(--subrow) * 2);
       font-weight: var(--fw-bold);
@@ -12039,55 +10660,6 @@
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
-    .cal-venue-chip {
-      font-family: var(--font-condensed);
-      font-size: var(--fs-2xs);
-      font-weight: var(--fw-bold);
-      letter-spacing: var(--track-caps);
-      text-transform: uppercase;
-      padding: var(--nudge-1) var(--space-sm);
-      border-radius: var(--radius-xs);
-      border: var(--bw-1) solid transparent;
-      flex-shrink: 0;
-      /* color and background set via inline style */
-    }
-    /* Venue-branded pills (chip) */
-    .venue-wsop.cal-venue-chip {
-      color: #111111 !important;
-      background: #e8e8e8 !important;
-    }
-    :is([data-theme="light"],[data-theme="cloudy"]) .venue-wsop.cal-venue-chip {
-      color: #ffffff !important;
-      background: #111111 !important;
-    }
-    .venue-wynn.cal-venue-chip {
-      color: #ffffff !important;
-      background: var(--venue-wynn) !important;
-    }
-    .venue-aria.cal-venue-chip {
-      color: #ffffff !important;
-      background: var(--venue-aria) !important;
-    }
-    .venue-golden-nugget.cal-venue-chip {
-      color: #ffffff !important;
-      background: var(--venue-golden-nugget) !important;
-    }
-    .venue-resorts-world.cal-venue-chip {
-      color: #ffffff !important;
-      background: var(--venue-resorts-world) !important;
-    }
-    .venue-south-point.cal-venue-chip {
-      color: #ffffff !important;
-      background: var(--venue-south-point) !important;
-    }
-    .venue-orleans.cal-venue-chip {
-      color: #ffffff !important;
-      background: var(--venue-orleans) !important;
-    }
-    .venue-mgm-grand.cal-venue-chip {
-      color: #ffffff !important;
-      background: var(--venue-mgm-grand) !important;
-    }
     /* Venue strip — WSOP light mode inversion */
     :is([data-theme="light"],[data-theme="cloudy"]) .venue-strip-wsop {
       background: #111111 !important;
@@ -12129,8 +10701,6 @@
        foot (~150 cards). A single line is now exactly N r; the baseline does not move. */
     .tr-seat-2 { padding-top: calc(var(--subrow) * 2 - 1cap); min-height: calc(var(--subrow) * 2); }
     .tr-seat-3 { padding-top: calc(var(--subrow) * 3 - 1cap); min-height: calc(var(--subrow) * 3); }
-    .tracking-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--gu); margin-bottom: var(--space-md); }
-    .tracking-head > :first-child { min-width: 0; }
     .tracking-summary-head { display: flex; justify-content: space-between; align-items: flex-start; height: calc(var(--subrow) * 4); margin-bottom: var(--space-md); }
     .tracking-summary-head select { height: calc(var(--subrow) * 4); width: var(--col); box-sizing: border-box; }
     .tracking-actions { display: flex; gap: var(--gu); }
@@ -12167,7 +10737,7 @@
       100% { opacity: 0; transform: scale(4.0) rotate(-30deg); }
     }
     .lfg-burst {
-      font-family: var(--serif);
+      font-family: var(--font-display);
       font-weight: var(--fw-bold);
       color: #4ade80;
       pointer-events: none;
@@ -12226,7 +10796,7 @@
       border: none;
       border-radius: var(--radius-pill);
       padding: 0;
-      font-family: var(--serif);
+      font-family: var(--font-display);
       font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
       cursor: pointer;
@@ -12359,7 +10929,7 @@
     }
     .admin-revert-btn:disabled { opacity: var(--state-disabled); cursor: default; }
 
-    .cal-detail-value { align-self: end; text-box-trim: trim-both; text-box-edge: cap alphabetic; font-family: var(--serif); font-size: var(--fs-sm); color: var(--text); font-weight: var(--fw-regular); }
+    .cal-detail-value { align-self: end; text-box-trim: trim-both; text-box-edge: cap alphabetic; font-family: var(--font-display); font-size: var(--fs-sm); color: var(--text); font-weight: var(--fw-regular); }
 
     .cal-detail-badges {
       display: grid;
@@ -12526,7 +11096,7 @@
       inset: 18% 10%;
       border-radius: var(--radius-pill);
       border: calc(var(--subrow) * 1.25) solid #1a5c2e;
-      box-shadow: var(--elev-3), inset 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 1.5) rgba(0,0,0,0.4);
+      box-shadow: var(--elev-3), inset 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 1.5) var(--ov-black-4);
       padding: 0;
       appearance: none;
       -webkit-appearance: none;
@@ -12883,20 +11453,6 @@
     }
     .mini-late-reg-fill.critical { background: #c0392b !important; animation: regPulse 1.2s ease-in-out infinite; }
 
-    /* ── Conflict warning ── */
-    .conflict-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-xs);
-      background: rgba(136,136,136,0.15);
-      border: var(--bw-hair) solid rgba(136,136,136,0.4);
-      color: #999999;
-      font-size: var(--fs-xs);
-      font-weight: var(--fw-bold);
-      padding: var(--space-xs) var(--space-ml);
-      border-radius: var(--radius-lg);
-      margin-top: var(--space-sm);
-    }
 
     /* ── Window-width rules ── */
     /* The phone layout's shell is 37g at every window width (.app-shell max-width), so the list,
@@ -13210,93 +11766,6 @@
       display: none;
     }
 
-    .dash-collapsed-row {
-      display: flex;
-      align-items: center;
-      gap: var(--space-md);
-      padding: var(--space-md) var(--space-lg);
-      min-height: calc(var(--subrow) * 4.5);
-    }
-    .dash-collapsed-strip {
-      width: calc(var(--subrow) * 0.375);
-      height: calc(var(--subrow) * 2.5);
-      border-radius: var(--radius-xs);
-      flex-shrink: 0;
-    }
-    .dash-collapsed-time {
-      font-family: var(--font-condensed);
-      font-size: var(--fs-xs);
-      font-weight: var(--fw-bold);
-      color: var(--text-muted);
-      min-width: calc(var(--subrow) * 6.5);
-      flex-shrink: 0;
-    }
-    .dash-collapsed-name {
-      font-family: var(--font-condensed);
-      font-size: var(--fs-sm);
-      font-weight: var(--fw-regular);
-      color: var(--text);
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .dash-collapsed-buyin {
-      font-family: var(--font-condensed);
-      font-size: var(--fs-xs);
-      font-weight: var(--fw-bold);
-      color: var(--text-muted);
-      flex-shrink: 0;
-    }
-    .dash-collapsed-tag {
-      font-size: var(--fs-2xs);
-      font-weight: var(--fw-bold);
-      text-transform: uppercase;
-      padding: var(--nudge-1) var(--space-sm);
-      border-radius: var(--radius-xs);
-      flex-shrink: 0;
-    }
-    .dash-collapsed-countdown {
-      font-family: var(--font-condensed);
-      font-size: var(--fs-xs);
-      font-weight: var(--fw-regular);
-      color: var(--text-muted);
-      flex-shrink: 0;
-      min-width: calc(var(--subrow) * 5.25);
-      text-align: right;
-    }
-    .dash-collapsed-countdown.soon {
-      color: var(--accent);
-    }
-    .dash-collapsed-countdown.live {
-      color: #22c55e;
-      font-weight: var(--fw-bold);
-    }
-
-    .dash-up-next-list {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-sm);
-    }
-
-    .dash-stack-display {
-      display: flex;
-      align-items: center;
-      gap: var(--space-md);
-      font-family: var(--font-condensed);
-      font-size: var(--fs-sm);
-      color: var(--text);
-      padding: var(--space-xs) 0;
-    }
-    .dash-stack-display .dash-stack-value {
-      font-weight: var(--fw-bold);
-      font-size: var(--fs-md);
-    }
-    .dash-stack-display .dash-stack-bb {
-      font-size: var(--fs-xs);
-      color: var(--text-muted);
-      font-weight: var(--fw-regular);
-    }
 
     .dash-event-card.bagged {
       /* venue-color outline + "Bagged" tag is sufficient — no green edge */
@@ -13583,7 +12052,6 @@
          starts on the next line (10→12, 12→14, 16→18). */
       height: calc(var(--subrow) * 3);
       box-sizing: border-box;
-      align-items: center;
       justify-content: center;
       padding: 0;
       border-radius: var(--radius-xs);
@@ -13615,7 +12083,7 @@
     }
 
     :is([data-theme="light"],[data-theme="cloudy"]) .dash-event-tag.anchor {
-      background: rgba(0, 0, 0, 0.06);
+      background: var(--ov-black-1);
     }
 
     .dash-event-tag.conditional {
@@ -13717,10 +12185,6 @@
       .dash-playing-dot { box-shadow: 0 0 0 calc(var(--subrow) * 0.375) var(--ok-bg); }
     }
 
-    @keyframes playingPulseLegacy {
-      0%, 100% { opacity: 1; }
-      50% { opacity: var(--state-disabled); }
-    }
 
     /* Status row on column lines. Two cells (Finished + Rebuys / All entries
        used; Cancel + Finish): 15g | 1g | 15g = 3g..18g, 19g..34g. Three (the bust
@@ -14012,248 +12476,7 @@
        ("$123,456 BUY-INS ▾" is ~10g); the segment edges are internal, on whole g. The header above
        shares the segments with no gap, so Reset still ends over the Cashes segment (23g). */
     :root { --pl-cols: calc(var(--gu) * 11) calc(var(--gu) * 11) calc(var(--gu) * 13); }
-    .dash-results-header {
-      display: grid;
-      grid-template-columns: var(--pl-cols);
-      grid-template-rows: calc(var(--subrow) * 3);
-      column-gap: 0; /* the bar's segments below touch; the header shares them */
-      /* end: the title is trimmed to cap..alphabetic, so its bottom (the
-         baseline) seats on the header's 3r line. The 3r controls fill the row. */
-      align-items: end;
-      /* start, not the section header's space-between: on a pane wider than the 35g of columns
-         (desktop) space-between spread the tracks and put Reset half a g off the grid, no longer
-         over the Cashes card it belongs to. */
-      justify-content: start;
-    }
-    .dash-results-header > * { grid-row: 1; min-width: 0; }
-    .dash-results-header > .dashboard-section-title { grid-column: 1; }
-    /* Reset right-aligned to the Cashes column (14-18g); in the confirm state
-       Confirm takes 12-18g and Cancel 19-25g; the currency sits 30-36g. */
-    .dash-results-header > .dash-results-reset { grid-column: 2; justify-self: end; }
-    .dash-results-header > .dash-results-cancel { grid-column: 3; justify-self: start; }
-    .dash-results-header > .dash-results-right { grid-column: 3; justify-self: end; }
-    /* Header controls: 3r (header-high) blocks, caps micro-label centred — the badge recipe.
-       The border is an inset shadow so it adds no size. */
-    .dash-results-btn {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      width: calc(var(--gu) * 4);
-      height: calc(var(--subrow) * 3);
-      min-height: 0;
-      box-sizing: border-box;
-      padding: 0;
-      border: 0;
-      border-radius: var(--radius-sm);
-      background: var(--surface);
-      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
-      color: var(--text-muted);
-      font-family: var(--font-condensed);
-      font-size: var(--fs-2xs);
-      font-weight: var(--fw-bold);
-      letter-spacing: var(--track-caps);
-      text-transform: uppercase;
-      cursor: pointer;
-    }
-    .dash-results-btn.dash-results-confirm,
-    .dash-results-btn.dash-results-cancel { width: calc(var(--gu) * 6); }
-    .dash-results-btn.dash-results-confirm {
-      background: #b91c1c; color: #fff; box-shadow: none;
-    }
-    .dash-results-btn > span,
-    .dash-results-currency > span {
-      display: block;
-      line-height: 1;
-      white-space: nowrap;
-    }
-    /* Currency: a 6g x 3r face showing the choice, the native <select> laid over
-       it transparent — a select's own text can't be trimmed or seated. */
-    .dash-results-currency {
-      /* The face centres its label both ways (owner, 2026-10-11: "$ USD ▾" sat at the top of
-         its box as a display:block line). The select is absolute, so it is no flex item. */
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      width: calc(var(--gu) * 6);
-      height: calc(var(--subrow) * 3);
-      box-sizing: border-box;
-      border-radius: var(--radius-sm);
-      background: var(--surface);
-      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
-      color: var(--text);
-      font-family: var(--font-condensed);
-      font-size: var(--fs-2xs);
-      font-weight: var(--fw-bold);
-      letter-spacing: var(--track-caps);
-      text-transform: uppercase;
-      text-align: center;
-    }
-    .dash-results-currency > select {
-      position: absolute; inset: 0; width: 100%; height: 100%;
-      opacity: 0; cursor: pointer; font-size: var(--fs-2xs);
-      -webkit-appearance: none; appearance: none; border: 0; margin: 0;
-    }
-    .dash-results-currency:focus-within { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
-    /* The ▾ on the currency face and the Buy-ins / Cashes segments: no Univers glyph, so a fallback
-       font draws it with ~0.2em of empty bearing each side, which pulled every label's ink a pixel
-       or more off centre. Its box is cut to its ink — 0.47em with the glyph centred in it
-       (flex centring overflows both sides equally, and the triangle is symmetric in its advance) —
-       and it carries no tracking, so the label ends where its ink ends. */
-    .dash-caret {
-      display: inline-flex;
-      justify-content: center;
-      width: 0.47em;
-      letter-spacing: 0;
-    }
 
-    /* One 4r bar, three segments (owner, 2026-10-11): figure and label on one line in each,
-       centred in its segment both ways (the pill rule: a control's label is centred, not seated).
-       The ring and radius are the bar's; segments split by a hairline; Net keeps its raised fill. */
-    .dash-pl-grid {
-      display: grid;
-      grid-template-columns: var(--pl-cols);
-      column-gap: 0;
-      height: calc(var(--subrow) * 4);
-      border-radius: var(--radius);
-      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
-      background: var(--surface);
-      overflow: hidden;
-    }
-
-    .dash-pl-card {
-      background: none;
-      border: 0;
-      border-radius: 0;
-      box-shadow: none;
-      height: calc(var(--subrow) * 4);
-      min-height: 0;
-      box-sizing: border-box;
-      padding: 0 calc(var(--gu) * 0.5);
-      /* these are <button> now, so undo the UA defaults */
-      font: inherit;
-      color: inherit;
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: center;
-      min-width: 0;
-    }
-    /* The hairline between segments, drawn inside the right-hand one (adds no width). */
-    .dash-pl-card + .dash-pl-card { box-shadow: inset var(--bw-hair) 0 0 var(--border); }
-    .dash-pl-btn { cursor: pointer; position: relative; }
-
-    .dash-pl-card--net { background: var(--surface-raised); }
-
-    /* The line: every part on one baseline. Line boxes are 1em so the figure's box is its cap
-       height centred (the fonts' metrics are the same on every platform — check:fonts). The
-       last part's trailing letter-space is cancelled so the line's ink, not its box, is centred. */
-    .dash-pl-line {
-      display: flex;
-      align-items: baseline;
-      gap: calc(var(--gu) * 0.5);
-      min-width: 0;
-      white-space: nowrap;
-    }
-    .dash-pl-line > :last-child { margin-right: calc(var(--track-caps) * -1); }
-    /* Buy-ins / Cashes end on the untracked .dash-caret: no trailing letter-space to cancel. */
-    .dash-pl-btn .dash-pl-line > :last-child { margin-right: 0; }
-    .dash-pl-value {
-      display: block;
-      flex: 0 0 auto;
-      font-family: var(--font-condensed);
-      font-size: var(--fs-md);
-      font-weight: var(--fw-bold);
-      line-height: 1;
-      color: var(--text);
-      white-space: nowrap;
-    }
-    .dash-pl-value.positive { color: #22c55e; }
-    .dash-pl-value.negative { color: #ef4444; }
-    .dash-pl-roi {
-      display: block;
-      flex: 0 0 auto;
-      font-family: var(--font-condensed);
-      font-size: var(--fs-2xs);
-      letter-spacing: var(--track-caps);
-      text-transform: uppercase;
-      line-height: 1;
-      white-space: nowrap;
-    }
-    .dash-pl-roi.pos { color: var(--ok); }
-    .dash-pl-roi.neg { color: var(--danger); }
-    /* The label gives way first if a figure is ever too long for its segment. */
-    .dash-pl-label {
-      display: block;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-size: var(--fs-2xs);
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: var(--track-caps);
-      line-height: 1;
-      white-space: nowrap;
-    }
-
-    .dash-pl-btn {
-      cursor: pointer;
-      transition: background var(--dur-fast);
-      position: relative;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .dash-pl-btn:hover {
-        background: var(--hover-overlay);
-      }
-    }
-
-    /* 17g (two columns + gutter) so, left-aligned to its card, it spans 1-18g or
-       10-27g. Rows are 3r with the baseline on +2r (cap ~1r: 1r above, 1r below),
-       so the panel is n x 3r with no padding and the JS places its top on a whole
-       r from the bar. Border as inset shadow (adds no size). */
-    .dash-pl-dropdown {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      width: calc(var(--col) * 2 + var(--gu));
-      box-sizing: border-box;
-      background: var(--surface);
-      border: 0;
-      border-radius: var(--radius-sm);
-      padding: 0;
-      z-index: var(--z-panel);
-      box-shadow: inset 0 0 0 var(--bw-1) var(--border), var(--elev-2);
-      animation: luSlideDown 0.15s ease-out;
-    }
-    .dash-pl-dropdown-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: var(--gu);
-      height: calc(var(--subrow) * 3);
-      box-sizing: border-box;
-      padding: 0 var(--gu);
-      font-family: var(--font-condensed);
-      font-size: var(--fs-xs);
-    }
-    .dash-pl-dropdown-venue,
-    .dash-pl-dropdown-amount {
-      display: block;
-      padding-top: calc(var(--subrow) * 2 - 1cap);
-      white-space: nowrap;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
-    }
-    .dash-pl-dropdown-venue {
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: var(--track-tight);
-      min-width: 0;
-      overflow-x: clip; overflow-y: visible; /* ellipsis without clipping descenders */
-      text-overflow: ellipsis;
-    }
-    .dash-pl-dropdown-amount {
-      color: var(--text);
-      font-weight: var(--fw-bold);
-      flex-shrink: 0;
-    }
 
     /* Connections toggle */
     /* Up Next carousel selector */
@@ -14392,7 +12615,6 @@
     .social-search-msg,
     .social-search-note,
     .social-confirm-text,
-    .social-cell,
     .social-new-btn > span,
     .social-connect-btn > span,
     .social-action-btn > span,
@@ -14763,20 +12985,6 @@
       color: var(--text-muted);
     }
 
-    /* Share placeholder: 7r box, the line on +4r. */
-    .social-share-box {
-      background: var(--surface);
-      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
-      border-radius: var(--radius-sm);
-      padding: calc(var(--subrow) * 2) var(--gu);
-      text-align: center;
-      color: var(--text-muted);
-    }
-    .social-cell {
-      height: calc(var(--subrow) * 3);
-      padding-top: calc(var(--subrow) * 2 - 1cap);
-      font-size: var(--fs-sm);
-    }
 
     /* Empty-state prose: 2r lines, first baseline +2r, 2r clear below. */
     .social-empty {
@@ -15225,7 +13433,7 @@
     .create-group-modal {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.6);
+      background: var(--ov-black-5);
       z-index: var(--z-modal);
       display: flex;
       align-items: flex-start;
@@ -15429,20 +13637,6 @@
     }
     .leaderboard-net-pos { color: #22c55e; font-weight: var(--fw-bold); }
     .leaderboard-net-neg { color: #ef4444; font-weight: var(--fw-bold); }
-    .leaderboard-bar-wrap {
-      width: 100%;
-      height: calc(var(--subrow) * 0.5);
-      background: var(--border);
-      border-radius: var(--radius-xs);
-      overflow: hidden;
-      margin-top: var(--space-xs);
-    }
-    .leaderboard-bar {
-      height: 100%;
-      border-radius: var(--radius-xs);
-      background: var(--accent);
-      transition: width var(--dur-base) var(--ease-out);
-    }
     /* Owner settings: divider, 2r, a 3r header, a 5r row with the label on +3r
        and the 4g x 3r switch at +1r (32..36g: this list has no card). */
     .leaderboard-toggle-section {
@@ -15568,7 +13762,6 @@
     .staking-backer-card { display: flex; align-items: flex-start; gap: var(--gu); }
     .staking-agreement-card.inactive { opacity: 0.5; }
     .staking-pnl-pos { color: #22c55e; }
-    .staking-pnl-neg { color: #ef4444; }
 
     /* ── Schedule Export ── */
     .export-options {
@@ -15786,44 +13979,6 @@
       font-size: var(--fs-sm);
     }
 
-    /* Quick Actions pill bar */
-    .dash-actions-bar {
-      display: flex;
-      border: var(--bw-hair) solid var(--border);
-      border-radius: var(--radius-sm);
-      overflow: hidden;
-    }
-    .dash-actions-bar button {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--space-xs);
-      padding: var(--space-sm) 0;
-      border: none;
-      border-right: var(--bw-hair) solid var(--border);
-      background: transparent;
-      color: var(--text-muted);
-      font-family: var(--font-condensed);
-      font-size: var(--fs-2xs);
-      font-weight: var(--fw-regular);
-      cursor: pointer;
-      transition: background var(--dur-fast), color var(--dur-fast);
-      text-transform: uppercase;
-      letter-spacing: var(--track-tight);
-    }
-
-    .dash-actions-bar button:last-child { border-right: none; }
-    @media (hover: hover) and (pointer: fine) {
-      .dash-actions-bar button:hover {
-        background: var(--surface2, var(--border));
-        color: var(--text);
-      }
-    }
-    .dash-actions-bar button svg {
-      width: calc(var(--subrow) * 1.75);
-      height: calc(var(--subrow) * 1.75);
-    }
 
     /* Placeholder views */
     .placeholder-view {
@@ -15857,69 +14012,6 @@
       line-height: 1.5;
     }
 
-    /* More menu */
-    .more-menu {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-xs);
-      padding: var(--space-md) 0;
-    }
-
-    .more-menu-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      gap: var(--space-xs);
-      padding: var(--space-xl) var(--space-xl);
-      background: var(--surface);
-      border: var(--bw-hair) solid var(--border);
-      border-radius: var(--radius);
-      color: var(--text);
-      font-family: var(--font-condensed);
-      font-size: var(--fs-sm);
-      font-weight: var(--fw-bold);
-      cursor: pointer;
-      transition: background var(--dur-fast);
-      text-decoration: none;
-    }
-
-    @media (hover: hover) and (pointer: fine) {
-      .more-menu-item:hover {
-        background: var(--hover-overlay);
-      }
-    }
-
-    .more-menu-item svg {
-      width: calc(var(--subrow) * 2.5);
-      height: calc(var(--subrow) * 2.5);
-      color: var(--text-muted);
-      flex-shrink: 0;
-    }
-
-    .more-menu-item .menu-item-desc {
-      font-size: var(--fs-xs);
-      font-weight: var(--fw-regular);
-      color: var(--text-muted);
-      margin-top: var(--space-2xs);
-    }
-
-    .dash-empty {
-      text-align: center;
-      padding: var(--space-lg) var(--space-xl);
-      color: var(--text-muted);
-      font-size: var(--fs-xs);
-      background: var(--surface);
-      border: var(--bw-hair) solid var(--border);
-      border-radius: var(--radius);
-    }
-
-    .dash-empty svg {
-      width: calc(var(--subrow) * 3);
-      height: calc(var(--subrow) * 3);
-      margin-bottom: var(--space-xs);
-      opacity: 0.4;
-    }
 
     /* ── Social Overlays ─────────────────────────────────────── */
     .share-menu-backdrop {
@@ -16084,21 +14176,6 @@
     }
     .wrapup-slide-picker button.active { box-shadow: inset 0 0 0 var(--bw-1) #22c55e; }
 
-    /* Share button style */
-    .btn-share-overlay {
-      display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm);
-      padding: var(--space-md) var(--space-xl);
-      font-family: var(--font-condensed);
-      font-size: var(--fs-sm); font-weight: var(--fw-regular);
-      line-height: 1;
-      background: var(--surface2);
-      border: var(--bw-1) solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text); cursor: pointer;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .btn-share-overlay:hover { border-color: var(--accent); }
-    }
 
     /* ── OFC (Open Face Chinese) Styles ── */
     .ofc-player-section {
@@ -16181,7 +14258,7 @@
       height: calc(var(--subrow) * 3.5);
       border: var(--bw-hair) solid var(--border);
       border-radius: var(--radius-xs);
-      background: var(--surface, rgba(255,255,255,0.05));
+      background: var(--surface, var(--ov-white-1));
       cursor: pointer;
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
@@ -16351,15 +14428,10 @@
        specificity over .replayer-seat.active-turn, so the one plaque in the
        app that flickered its bevel was the one on the screen whose whole job
        is showing a seat acting. The shared rule already does this correctly;
-       if self-play ever needs to differ, LAYER it:
-         box-shadow: var(--plaque-bevel), 0 0 0 2px var(--accent-ring), ...  */
+       if self-play ever needs to differ, LAYER it on the plaque's own
+       shadow (var(--plate-bevel), ...) rather than replacing it. */
     .solver-toact { color: var(--accent); }
     .solver-contrib { color: var(--accent2, #eab308); font-weight: var(--fw-bold); }
-    /* Grid: dead-card strip on subrow rhythm — rows 3 subrows tall, 2-subrow bottom margin. */
-    .solver-deadstrip { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--gu); margin: 0 0 calc(var(--subrow) * 2); }
-    .solver-dead-row { display: flex; align-items: center; height: calc(var(--subrow) * 3); gap: var(--space-xs); }
-    .solver-dead-label { font-family: var(--font-condensed); font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-muted); margin-right: var(--space-2xs); }
-    .solver-deadstrip img { height: calc(var(--subrow) * 3); width: auto; border-radius: var(--radius-xs); }
 
     /* ── Hands › Solver / Solver Trainer / Watch Solver / Trainer / 3-Way on the grid ──
        Everything below is scoped to .hs-view, the root of the five non-replayer
@@ -17526,32 +15598,6 @@
     }
     .app-shell.is-desktop .gto-sticky-footer > * { max-width: calc(var(--gu) * 53); margin: 0; }
 
-    /* ── Two-pane tier: Event / My schedule switch, 6r: 2r, 3r keys, 1r ── */
-    .dk-seg {
-      flex: 0 0 auto;
-      display: flex; gap: var(--gu);
-      height: calc(var(--subrow) * 6);
-      box-sizing: border-box;
-      padding: calc(var(--subrow) * 2) var(--gu) var(--subrow);
-      box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
-    }
-    /* One column (8g) per key, 3r tall, the label centred in it. */
-    .dk-seg-btn {
-      display: grid; align-items: center; justify-items: center;
-      width: var(--col); height: calc(var(--subrow) * 3);
-      box-sizing: border-box;
-      padding: 0;
-      border: var(--bw-hair) solid var(--border);
-      border-radius: var(--radius-pill);
-      background: none; color: var(--text-muted);
-      font-family: var(--font-condensed); font-size: var(--fs-sm);
-      cursor: pointer;
-      transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
-    }
-    .dk-seg-btn > span { display: block; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; }
-    .dk-seg-btn.is-on { color: var(--text); border-color: var(--text-muted); background: var(--surface); font-weight: var(--fw-bold); }
-    @media (hover: hover) and (pointer: fine) { .dk-seg-btn:hover { color: var(--text); } }
-    .dk-seg-btn:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 
     /* ── Event detail pane: a 6r head (title baseline on 4r), then the card ── */
     .dk-pane-head {
@@ -17875,9 +15921,7 @@
                    fields: label 3r (+2r) over a 4r input, two 17g columns,
                    buttons 5r (+3r), ledger rows 4r (+3r)                    */
     .bk-bar { display: flex; flex-direction: column; margin-bottom: calc(var(--subrow) * 2); }
-    .bk-head { display: flex; align-items: flex-start; gap: var(--gu); height: calc(var(--subrow) * 3); }
 
-    .bk-head-title,
     .bk-cell-name, .bk-cell-bal,
     .bk-sheet-title, .bk-section-title, .bk-line,
     .bk-row > span, .bk-field-label,
@@ -17892,39 +15936,15 @@
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
-    .bk-head-title {
-      flex: 1 1 auto;
-      height: calc(var(--subrow) * 3);
-      padding-top: calc(var(--subrow) * 2 - 1cap);
-      font-family: var(--font-condensed);
-      font-weight: var(--fw-bold);
-      font-size: var(--fs-md);
-      color: var(--text);
-    }
     /* The BETA pill and the head/sheet/ledger buttons centre their label in a whole-g by whole-r
        box (owner rule, 2026-10-10): no trim, no cap-height padding. */
-    .bk-beta, .bk-head-btn > span, .bk-btn > span, .bk-seg-btn > span, .bk-ledger-x > span {
+    .bk-head-btn > span, .bk-btn > span, .bk-seg-btn > span, .bk-ledger-x > span {
       display: block;
       min-width: 0;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       text-align: center;
-    }
-    .bk-beta {
-      flex: 0 0 calc(var(--gu) * 4);
-      height: calc(var(--subrow) * 3);
-      display: flex; align-items: center; justify-content: center;
-      box-sizing: border-box;
-      font-family: var(--font-condensed);
-      font-size: var(--fs-2xs);
-      font-weight: var(--fw-bold);
-      letter-spacing: var(--track-caps);
-      text-transform: uppercase;
-      text-align: center;
-      color: var(--brand-ink, var(--brand));
-      background: var(--brand-quiet);
-      border-radius: var(--radius);
     }
     .bk-head-btn {
       flex: 0 0 var(--col);
@@ -18419,9 +16439,7 @@
     .create-group-close > span,
     .create-group-submit > span,
     .batch-show-btn > span,
-    .dk-seg-btn > span,
-    .cp-btn > span,
-    .game-check-more-btn {
+    .cp-btn > span {
       text-box-trim: none;
       padding-block: 0;
       margin-block: 0;

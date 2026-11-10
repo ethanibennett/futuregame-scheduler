@@ -11,7 +11,8 @@ export const SITE_URL = (window.Capacitor && window.Capacitor.isNativePlatform()
   : window.location.origin;
 
 export async function fetchApi(path, options = {}) {
-  const token = localStorage.getItem('token');
+  // A sign-in without "keep me signed in" keeps its session in sessionStorage (App.jsx completeSignIn).
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
   const headers = { ...options.headers };
   if (token) headers.Authorization = `Bearer ${token}`;
   if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {

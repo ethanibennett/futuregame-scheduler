@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import Avatar from './Avatar.jsx';
 import Icon from './Icon.jsx';
 import { API_URL } from '../utils/api.js';
+import { tokenClaims } from '../utils/session-claims.js';
 import { getVenueInfo, getVenueBrandColor, normaliseDate, getToday, formatBuyin, formatLiveUpdate, parseTournamentTime } from '../utils/utils.js';
 
 // Avatars on the r grid (a px size floored each card to 7.18r): 5r, centred in
@@ -241,7 +242,7 @@ function GroupDetailView({
   const handleLeaveGroup = async () => {
     if (!confirm('Leave this group?')) return;
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const payload = tokenClaims(token);
       await fetch(`${API_URL}/groups/${groupId}/members/${payload.id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
@@ -560,7 +561,7 @@ function GroupDetailView({
 export default function SocialView({
   shareBuddies, buddyLiveUpdates, displayName, myGroups, activeGroupId, setActiveGroupId,
   groupFeed, groupSchedule, fetchGroupFeed, fetchGroupSchedule, fetchMyGroups,
-  token, onRemoveBuddy, fetchShareBuddies, onNavigate
+  token, onRemoveBuddy, fetchShareBuddies
 }) {
   const [expandedId, setExpandedId] = useState(null);
   const [showCreateGroup, setShowCreateGroup] = useState(false);

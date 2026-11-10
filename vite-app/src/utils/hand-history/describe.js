@@ -8,8 +8,6 @@
 // kicker suffixes ("- Ace kicker"), which Stars adds only to break a tie, are not
 // written.
 
-import { evaluate } from './settle.js';
-
 const P = 15;
 const WORD = { 14: 'Ace', 13: 'King', 12: 'Queen', 11: 'Jack', 10: 'Ten', 9: 'Nine', 8: 'Eight', 7: 'Seven', 6: 'Six', 5: 'Five', 4: 'Four', 3: 'Three', 2: 'Deuce', 1: 'Ace' };
 const PLURAL = { 14: 'Aces', 13: 'Kings', 12: 'Queens', 11: 'Jacks', 10: 'Tens', 9: 'Nines', 8: 'Eights', 7: 'Sevens', 6: 'Sixes', 5: 'Fives', 4: 'Fours', 3: 'Threes', 2: 'Deuces' };
@@ -79,8 +77,4 @@ export function describeEvals(evalCfg, evs) {
     return { shows: d, summary: 'a ' + d };
   }
   return null;
-}
-
-export function describeHand(evalCfg, cards, board) {
-  return describeEvals(evalCfg, evaluate(evalCfg, cards, board));
 }

@@ -32,7 +32,7 @@ export function RangeStrip({ options, value, onChange, label = 'Range' }) {
 
 /**
  * A backer's share over time (BackerPage.jsx): their running total from the window's start, one
- * step per session in date order. Drawn in ResultsCurve's language, sized as BankrollChart is:
+ * step per session in date order. Drawn as a step line, sized as BankrollChart is:
  *
  *   - A STEP line, never a diagonal: results are discrete, so the total holds until a session
  *     moves it. Each session's step sits in the middle of its slice of the width, which reads the

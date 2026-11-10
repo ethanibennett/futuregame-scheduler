@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchApi } from '../utils/api.js';
-import { StudyHead } from './StudyHead.jsx';
+import { StudyHead, T, R } from './StudyHead.jsx';
 import Card from './SolverCard.jsx';
 import StrategyRibbon from './StrategyRibbon.jsx';
 import GridBadge from './GridBadge.jsx';
@@ -25,12 +25,10 @@ import GridBadge from './GridBadge.jsx';
 //   POST /api/solver/trainer3/razz3/deal  {}                       -> { seed, heroSeat, game, state }
 //   POST /api/solver/trainer3/razz3/step  { seed, heroActions:[id] } -> { state, legalActions|null, handOver, result?, grades?, profile? }
 
-// Grid (classes in styles.css, .hs-*): every piece is whole r — text is an
+// Grid (classes in styles.css, .hs-*; T and R from StudyHead.jsx): every piece is whole r — text is an
 // .hs-t block whose baseline is its bottom edge (b r tall, +lh r per extra
 // line), controls 3/5r, cards 2g × 4r, gaps 1/2r — so every block starts on an
 // r-line from the top bar. Panels pad 2r × 2g (content on 3..34).
-const T = (b, lh) => (lh ? { '--hs-b': b, '--hs-lh': lh } : { '--hs-b': b });
-const R = (n) => `calc(var(--subrow) * ${n})`;
 const STREET_NAMES = ['3rd', '4th', '5th', '6th', '7th'];
 const POS = 'var(--pos, #22c55e)';
 

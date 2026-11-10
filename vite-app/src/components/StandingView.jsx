@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { API_URL } from '../utils/api.js';
+import useJsonApi from '../hooks/useJsonApi.js';
 import { getToday } from '../utils/utils.js';
 import Icon from './Icon.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
 import {
-  normaliseList, stakeWords, agreementView, toCreateBody, toStakesBody, correctionText, eventView, driftView, stateLine, fmtPct,
+  normaliseList, agreementView, toCreateBody, toStakesBody, correctionText, eventView, driftView, stateLine, fmtPct,
   toPaymentBody, paymentView,
 } from '../utils/standing-ui.js';
 import './standing.css';
@@ -27,19 +27,6 @@ import './standing.css';
  * whole g by whole r, the buttons' labels centred.
  */
 const thisYear = () => Number(getToday().slice(0, 4));
-
-function useApi(token) {
-  return useCallback(async (method, path, body) => {
-    try {
-      const res = await fetch(`${API_URL}${path}`, {
-        method, headers: { Authorization: `Bearer ${token}`, ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
-      const data = await res.json().catch(() => ({}));
-      return { status: res.status, data };
-    } catch (_) { return { status: 0, data: {} }; }
-  }, [token]);
-}
 
 function Btn({ w = 8, tone = '', disabled, onClick, children, title, type = 'button' }) {
   return (
@@ -372,7 +359,7 @@ function Card({ api, a, formats, channels, owner, reload }) {
 }
 
 export default function StandingView({ token, backers, onBack }) {
-  const api = useApi(token);
+  const api = useJsonApi(token);
   const toast = useToast();
   const [list, setList] = useState(null);
   const [state, setState] = useState(null);

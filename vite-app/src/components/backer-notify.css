@@ -113,17 +113,8 @@
   overflow-wrap: anywhere;
   text-box-trim: trim-both; text-box-edge: cap alphabetic;
 }
-.bn-text--warn { color: var(--warn); }
-.bn-confirm { display: flex; flex-direction: column; margin-top: calc(var(--subrow) * 2); }
-.bn-confirm .bn-actions { margin-top: var(--subrow); }
 
 /* ── Buttons ── (the cash sessions' .cs-btn: box on the grid, the label centred in it) */
-.bn-actions {
-  display: flex;
-  gap: var(--gu);
-  height: calc(var(--subrow) * 5);
-  margin-top: calc(var(--subrow) * 2);
-}
 .bn-btn {
   display: grid;
   align-items: center;

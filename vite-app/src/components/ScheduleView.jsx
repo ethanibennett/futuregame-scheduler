@@ -7,11 +7,7 @@ import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
 // The export sheet loads when it is opened (2026-10-15), not with the Schedule.
 const ScheduleExportModal = lazy(() => import('./ScheduleExportModal.jsx'));
 import { FirstRun } from './EmptyState.jsx';
-import {
-  getVenueInfo, normaliseDate, getToday, fmtShortDate, formatBuyin, currencySymbol,
-  parseTournamentTime, findClosestFlight, extractConditions, detectConflicts,
-  measureStickyStack,
-} from '../utils/utils.js';
+import { normaliseDate, getToday, parseTournamentTime, detectConflicts } from '../utils/utils.js';
 import { clockAskable } from '../utils/live-clocks.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 
@@ -124,11 +120,11 @@ function TravelDayPicker({ onSave, onCancel }) {
 
 
 export default function ScheduleView({
-  mySchedule, onToggle, shareBuddies, pendingIncoming, lastSeenShares,
-  onAcceptRequest, onRejectRequest, token, onSetCondition, onRemoveCondition,
+  mySchedule, onToggle, pendingIncoming,
+  onAcceptRequest, onRejectRequest, onSetCondition, onRemoveCondition,
   allTournaments, onToggleAnchor, onSetPlannedEntries,
   onAddPersonalEvent, onUpdatePersonalEvent,
-  buddyEvents, buddyLiveUpdates, onBuddySwap, isAdmin, onAdminEdit, onClearOverrides,
+  buddyEvents, onBuddySwap, isAdmin, onAdminEdit, onClearOverrides,
   onNavigate, focusTournamentId, onFocusConsumed,
   // Desktop only (docs/desktop-layout.md): rows select into the detail pane.
   onSelectEvent, selectedEventId
@@ -315,19 +311,7 @@ export default function ScheduleView({
     settle(4);
   }, [sorted, visibleCount, onSelectEvent]);
 
-  const findBestFlightSchedule = useCallback((eventNum, sat) => {
-    const flights = sorted.filter(t => t.event_number === eventNum);
-    const best = findClosestFlight(flights, parseTournamentTime(sat));
-    return best ? best.id : null;
-  }, [sorted]);
-
-  const handleNavigateToEvent = useCallback((num, sat) => {
-    const targetId = findBestFlightSchedule(num, sat);
-    if (targetId && onSelectEvent) { onSelectEvent(targetId); return; }
-    if (targetId) { setFocusEventId(null); setTimeout(() => setFocusEventId(targetId), 0); }
-  }, [findBestFlightSchedule, onSelectEvent]);
-
-  // Arriving from the dashboard's Up Next card. Same null-then-set as above so
+  // Arriving from the dashboard's Up Next card. Null first, then the id, so
   // the row's focus effect re-fires when the same event is opened twice in a
   // row; the row handles expanding and scrolling itself.
   useEffect(() => {
@@ -484,7 +468,6 @@ export default function ScheduleView({
                         isPast={past}
                         showMiniLateReg={isGroupToday}
                         focusEventId={focusEventId}
-                        onNavigateToEvent={handleNavigateToEvent}
                         conditionsJson={t.conditions_json}
                         onSetCondition={onSetCondition}
                         onRemoveCondition={onRemoveCondition}
@@ -495,7 +478,6 @@ export default function ScheduleView({
                         onSetPlannedEntries={onSetPlannedEntries}
                         onUpdatePersonalEvent={onUpdatePersonalEvent}
                         buddyEvents={buddyEvents}
-                        buddyLiveUpdates={buddyLiveUpdates}
                         onBuddySwap={onBuddySwap}
                         scheduleIds={scheduleIds}
                         isAdmin={isAdmin}

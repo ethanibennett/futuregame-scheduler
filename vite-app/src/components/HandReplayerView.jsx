@@ -3,18 +3,17 @@ import { createPortal, flushSync } from 'react-dom';
 import ShortDeckRuleDialog from './ShortDeckRuleDialog.jsx';
 import Icon from './Icon.jsx';
 import { API_URL, SITE_URL } from '../utils/api.js';
-import { HAND_CONFIG, HAND_CONFIG_DEFAULT, getGamePills, haptic, getVariantStrip, canonicalGameType, canonicalHand, getToday } from '../utils/utils.js';
-import { STRUCTURE_GAME_MAP, DEFAULT_STRUCTURE, FIXED_STRUCTURE as FIXED_STRUCTURE_MAP, RAZZ_VARIANTS as RAZZ_LIST, buildCatalog, buildMixes, bestGuess } from '../utils/variant-catalog.js';
+import { HAND_CONFIG, HAND_CONFIG_DEFAULT, haptic, getVariantStrip, canonicalGameType, canonicalHand, getToday } from '../utils/utils.js';
+import { STRUCTURE_GAME_MAP, DEFAULT_STRUCTURE, RAZZ_VARIANTS as RAZZ_LIST, variantName, buildCatalog, buildMixes, bestGuess } from '../utils/variant-catalog.js';
 import { Palette, GuessCard, Launcher } from './VariantPicker.jsx';
 import { buildDrawStudySpot } from '../utils/draw-study-spot';
-import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL, gameEvalFor,
+import { parseCardNotation, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL, gameEvalFor,
          bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestBadugiHand, scoreHalves, halvesWinnersAmong, halvesHandName, oddChipToLo,
          computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot, studOddChipKey, studOddChipOrder,
          boardKey, handBoards, boardCount, multiBoardWinners, multiBoardEvals, multiBoardShaped, combinesHiLo,
          seatOrderFromButton } from '../utils/poker-engine.js';
-import { encodeHand, decodeHand, GAME_CODES, VISUAL_SWITCHES } from '../utils/hand-shorthand.js';
+import { encodeHand, VISUAL_SWITCHES } from '../utils/hand-shorthand.js';
 import { loadCardImages, ensureExportFonts } from '../utils/export.js';
-import { playTableSound } from '../utils/replay-sound.js';
 import {
   MotionRegistry, SPRINGS_FLAG_KEY, readSpringsFlag, springSetFor, rateFor,
   prefersReducedMotion as springsReducedMotion,
@@ -26,7 +25,6 @@ import { SPRING_SETS } from '../utils/spring.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
 import { exportReplayGif } from '../utils/replay-gif-export.js';
 import { useToast } from '../contexts/ToastContext.jsx';
-import { parseHandText } from '../utils/hand-text-parser.js';
 import QuickAddView from './QuickAddView.jsx';
 import { checkExportable } from '../utils/hand-history/index.js';
 import { exportHandHistory, playedAtOf, handOfRow, handsFileName } from '../utils/hand-history/save.js';
@@ -592,34 +590,6 @@ function buildSolverSpot({ hand, game, streetIdx, heroCards, opponentCards, repl
     notes,
     source: `${hand.gameType} hand, ${STREET_DEFS.stud.streets[streetIdx] || (street + 'th street')}`,
   };
-}
-
-/* 73: parseCardNotation silently DROPS any character it does not recognise
-   and pairs whatever ranks and suits survive, so "Ahh" parses as one card,
-   "AhAh" as two identical ones, and a bare "A" as an unknown-suit card - all
-   of which render as a shorter card row than the player typed, with nothing
-   anywhere saying why. This reports what the parser threw away. */
-function checkCardText(text, shortDeck) {
-  if (!text) return null;
-  const stripped = String(text).replace(/\s/g, '');
-  if (!stripped) return null;
-  const bad = [...new Set(stripped.split('').filter(ch =>
-    !'AKQJT98765432'.includes(ch.toUpperCase()) && !'hdcsx'.includes(ch.toLowerCase())))];
-  if (bad.length) return 'Not card notation: ' + bad.join(' ');
-  // Short Deck plays 36 cards: the twos to fives are not in the deck.
-  if (shortDeck) {
-    const out = [...new Set(stripped.split('').filter(ch => '2345'.includes(ch)))];
-    if (out.length) return 'Not in a Short Deck: ' + out.join(' ');
-  }
-  const cards = parseCardNotation(stripped);
-  const seen = new Set();
-  for (const c of cards) {
-    if (c.suit === 'x') continue;
-    const key = c.rank + c.suit;
-    if (seen.has(key)) return 'Duplicate card: ' + key;
-    seen.add(key);
-  }
-  return null;
 }
 
 /* 59: /api/replayer/hands spreads the entire hand_data into each list row, so
@@ -1216,99 +1186,6 @@ function computePlayerContrib(hand, streetIdx, actions, upToIdx, playerIdx) {
   return total;
 }
 
-// ── Commentary generation ──
-function generateCommentary(hand, streetIdx, actionIdx, pot, stacks) {
-  const street = hand.streets[streetIdx];
-  if (!street) return 'The hand begins...';
-  const streetName = street.name || 'Preflop';
-  const category = getGameCategory(hand.gameType);
-  const isDrawStreet = (category === 'draw_triple' || category === 'draw_single') && streetIdx > 0;
-  if (actionIdx < 0) {
-    if (category === 'stud') {
-      const _ante = (hand.blinds || {}).ante || 0;
-      if (streetIdx === 0) {
-        const _isRazz = LOW_STUD.test(hand.gameType || '');
-        const _biIdx = findStudBringIn(hand, _isRazz);
-        let doorInfo = '';
-        if (_biIdx >= 0 && hand.players[_biIdx]) {
-          const biPlayer = hand.players[_biIdx];
-          const _hi = hand.heroIdx != null ? hand.heroIdx : 0;
-          let _dc = '';
-          if (_biIdx === _hi) {
-            const _hc = parseCardNotation((hand.streets[0] && hand.streets[0].cards.hero) || '');
-            if (_hc.length >= 3) _dc = _hc[2].rank + _hc[2].suit;
-          } else {
-            const _os = _biIdx < _hi ? _biIdx : _biIdx - 1;
-            const _oc = parseCardNotation(((hand.streets[0] && hand.streets[0].cards.opponents) || [])[_os] || '');
-            if (_oc.length >= 1) _dc = _oc[0].rank + _oc[0].suit;
-          }
-          const _SW = {h:'hearts',d:'diamonds',c:'clubs',s:'spades'};
-          const _RW = {'A':'Ace','K':'King','Q':'Queen','J':'Jack','T':'Ten','9':'Nine','8':'Eight','7':'Seven','6':'Six','5':'Five','4':'Four','3':'Three','2':'Two'};
-          if (_dc && _dc.length >= 2) doorInfo = ' ' + biPlayer.name + ' shows the ' + (_RW[_dc[0]]||_dc[0]) + ' of ' + (_SW[_dc[1]]||_dc[1]) + ' as the door card and has the bring-in.';
-          else doorInfo = ' ' + biPlayer.name + ' has the bring-in.';
-        }
-        return hand.players.length + ' players ante ' + formatChipAmount(_ante) + '. Cards are dealt \u2014 two down, one up.' + doorInfo;
-      }
-      if (streetIdx === 4) return '7th Street: a final card is dealt face down to each remaining player. The pot stands at ' + formatChipAmount(pot) + '.';
-      return streetName + ': a card is dealt face up to each remaining player. The pot stands at ' + formatChipAmount(pot) + '.';
-    }
-    if (streetIdx === 0) {
-      /* The straddle belongs in the opening line: it changes what it costs to
-         play and who acts first, so a commentary that named only the blinds
-         would be describing a different hand. */
-      const stl = getStraddles(hand.players, hand.blinds);
-      const straddleStr = stl.length
-        ? ' ' + stl.map(st => (hand.players[st.seat]?.position || 'Seat ' + (st.seat + 1))
-            + ' straddles ' + formatChipAmount(st.amount)).join(', ') + '.'
-          + ' Action starts on ' + (hand.players[(lastStraddleSeat(stl) + 1) % hand.players.length]?.position
-            || 'the next seat') + '.'
-        : '';
-      return 'Cards are dealt. ' + hand.players.length + ' players at the table. Blinds are ' + formatChipAmount((hand.blinds||{}).sb||0) + '/' + formatChipAmount((hand.blinds||{}).bb||0) + '.' + straddleStr;
-    }
-    if (isDrawStreet && street.draws && street.draws.length > 0) {
-      const drawParts = street.draws.map(d => {
-        const pName = hand.players[d.player] ? hand.players[d.player].name : '?';
-        return d.discarded === 0 ? pName + ' stands pat' : pName + ' discards ' + d.discarded;
-      });
-      return streetName + '. ' + drawParts.join('. ') + '. The pot is ' + formatChipAmount(pot) + '.';
-    }
-    return streetName + ' is dealt. The pot stands at ' + formatChipAmount(pot) + '.';
-  }
-  const actions = street.actions || [];
-  if (actionIdx >= actions.length) return '';
-  const act = actions[actionIdx];
-  const player = hand.players[act.player];
-  const name = player ? player.name : 'Unknown';
-  const pos = player ? player.position : '';
-  const posStr = pos ? ' from the ' + pos : '';
-  switch (act.action) {
-    case 'fold': return name + posStr + ' releases their hand into the muck.';
-    case 'check': return name + posStr + ' taps the table. Check.';
-    case 'call': return name + posStr + ' makes the call for ' + formatChipAmount(act.amount) + '.';
-    case 'bet': {
-      if (category === 'stud' && streetIdx === 0) {
-        const _hasBringIn = actions.slice(0, actionIdx).some(a => a.action === 'bring-in');
-        const _priorBets = actions.slice(0, actionIdx).filter(a => a.action === 'bet' || a.action === 'raise').length;
-        if (_hasBringIn && _priorBets === 0) return name + posStr + ' completes to ' + formatChipAmount(act.amount) + '.';
-      }
-      return name + posStr + ' leads out with a bet of ' + formatChipAmount(act.amount) + ' into a ' + formatChipAmount(pot - act.amount) + ' pot.';
-    }
-    case 'raise': return name + posStr + ' fires a raise to ' + formatChipAmount(computePlayerContrib(hand, streetIdx, actions, actionIdx, act.player)) + '! The pot swells to ' + formatChipAmount(pot) + '.';
-    case 'all-in': return name + posStr + ' moves ALL IN for ' + formatChipAmount(act.amount) + '! A pivotal moment at the table.';
-    case 'bring-in': return name + posStr + ' posts the bring-in of ' + formatChipAmount(act.amount) + '.';
-    default: return name + ' acts (' + act.action + ').';
-  }
-}
-
-function getStreetColorClass(streetName) {
-  if (!streetName) return 'street-preflop';
-  const lower = streetName.toLowerCase();
-  if (lower === 'flop' || lower === '3rd street') return 'street-flop';
-  if (lower === 'turn' || lower === '4th street') return 'street-turn';
-  if (lower === 'river' || lower.includes('5th') || lower.includes('6th') || lower.includes('7th')) return 'street-river';
-  return 'street-preflop';
-}
-
 // ── Additional analysis helpers ──
 /* Stack-to-pot at the current step — the hero's stack over the pot as it
    stands after the action on screen, so it moves with every bet and call
@@ -1837,9 +1714,7 @@ function DrawBadge({ history }) {
   );
 }
 
-// Hand entry controls hidden for now (2026-10-01): the Form/Text and GTO Style/Classic
-// switches, and the notes box. Flip back to true to restore them.
-const SHOW_ENTRY_MODE_TOGGLES = false;
+// The entry's notes box, hidden for now (2026-10-01). Flip back to true to restore it.
 const SHOW_ENTRY_NOTES = false;
 
 /* The D on the dealer button, centred on its INK - as an outline, not as text.
@@ -1876,7 +1751,7 @@ function DealerGlyph() {
 const FAN_SLIDE_MS = 460;
 const FAN_SLIDE_SAMPLES = 16;
 
-function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, cardTheme, reverseZ, discardIdx, onCardTap }) {
+function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, reverseZ, discardIdx, onCardTap }) {
   /* Draw-game re-sort. A card keeps its DOM element for as long as it stays in
      the hand (keyed by identity, below), so when a draw puts a new card among
      them this can see where each surviving card was and where it is now, and
@@ -1951,7 +1826,6 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, car
         { duration: FAN_SLIDE_MS, easing: 'ease-out' });
     }
   });
-  const SUIT_SYMBOLS = {h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'};
   let cards = parseCardNotation(text);
   if (!cards.length && placeholderCount > 0) {
     return (
@@ -2021,18 +1895,6 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, car
         if (c.suit === 'x' || (isDown && c.suit === 'x')) {
           return <div key={k} data-ck={k} className="card-unknown" style={splayStyle} />;
         }
-        if (cardTheme === 'classic') {
-          // One class per suit. The old red/dark binary made Ah and Ad — and
-          // As and Ac — pixel-identical apart from a ~9px glyph, which is not
-          // a suit signal at the speed a replay runs.
-          return (
-            <div key={k} data-ck={k} className={'card-classic card-classic-' + c.suit + tapClass}
-              style={splayStyle} {...tap}>
-              <span className="card-classic-rank">{c.rank.toUpperCase()}</span>
-              <span className="card-classic-suit">{SUIT_SYMBOLS[c.suit] || ''}</span>
-            </div>
-          );
-        }
         return <img key={k} data-ck={k} className={'card-img' + tapClass}
           src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'}
           alt={c.rank+c.suit} loading="eager"
@@ -2056,11 +1918,6 @@ const REPLAYER_THEMES = [
    one saved — or a shared hand seeded with one — falls back to Default rather
    than rendering a theme the picker can no longer select. */
 const REPLAYER_THEME_IDS = new Set(REPLAYER_THEMES.map(t => t.id));
-const REPLAYER_CARD_BACKS = [
-  { id: 'default', label: 'Default' }, { id: 'classic', label: 'Classic Blue' },
-  { id: 'casino-red', label: 'Casino Red' }, { id: 'black-diamond', label: 'Black Diamond' },
-  { id: 'bicycle', label: 'Bicycle' }, { id: 'custom', label: 'Custom Color' },
-];
 
 function useReplayerSetting(key, defaultVal, seed) {
   const fullKey = 'replayer' + key;
@@ -2399,337 +2256,6 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
       </div>
     </>,
     document.body
-  );
-}
-
-// ── Hand Replayer Entry (Classic mode) ──
-function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
-  const [currentStreetIdx, setCurrentStreetIdx] = useState(0);
-  const [actionAmount, setActionAmount] = useState('');
-  const gameCfg = HAND_CONFIG[hand.gameType] || HAND_CONFIG_DEFAULT;
-  const streetDef = getStreetDef(hand.gameType);
-  const category = getGameCategory(hand.gameType);
-  const currentStreet = hand.streets[currentStreetIdx] || hand.streets[0];
-
-  const updateStreet = (streetIdx, updater) => {
-    setHand(prev => ({
-      ...prev,
-      streets: prev.streets.map((s, i) => i === streetIdx ? updater({ ...s }) : s)
-    }));
-  };
-
-  const bettingContext = useMemo(() => {
-    const street = hand.streets[currentStreetIdx];
-    const actions = street ? (street.actions || []) : [];
-    const betting = gameCfg.betting || 'nl';
-    const blinds = hand.blinds || {};
-    const sb = blinds.sb || 0;
-    const bb = blinds.bb || 0;
-    const ante = blinds.ante || 0;
-    const isSmallBetStreet = (gameCfg.flSmallStreets || []).includes(currentStreetIdx);
-    const stud4thOpenPair = gameCfg.isStud && currentStreetIdx === 1 && studHasOpenPairOn4th(hand);
-    const bigBet = (hand.blinds || {}).bigBet || (bb || 100) * 2;
-    const fixedBet = betting === 'fl' ? ((isSmallBetStreet && !stud4thOpenPair) ? (bb || 100) : bigBet) : 0;
-    const raiseCap = (hand.blinds || {}).betCap || gameCfg.raiseCap || 4;
-    let maxBet = 0, raiseCount = 0;
-    const isBBanteCtx = category !== 'stud' && ante > 0;
-    let totalPot = isBBanteCtx ? 0 : ante * hand.players.length;
-    const playerContrib = {};
-    if (currentStreetIdx === 0 && (gameCfg.hasBoard || !gameCfg.isStud)) {
-      const sbIdx = hand.players.findIndex(p => p.position === 'SB' || p.position === 'BTN/SB');
-      const bbIdx = hand.players.findIndex(p => p.position === 'BB');
-      if (sbIdx >= 0) playerContrib[sbIdx] = sb;
-      if (bbIdx >= 0) playerContrib[bbIdx] = bb;
-      maxBet = bb;
-      totalPot += sb + bb;
-      if (isBBanteCtx) totalPot += ante;
-      /* The straddle is the live bet preflop, not the big blind — without
-         this the app offers a call of one big blind into a pot that is
-         already two or four. */
-      getStraddles(hand.players, blinds).forEach(st => {
-        playerContrib[st.seat] = st.amount;
-        totalPot += st.amount;
-        if (st.amount > maxBet) maxBet = st.amount;
-      });
-    }
-    for (let i = 0; i < actions.length; i++) {
-      const act = actions[i];
-      const prevContrib = playerContrib[act.player] || 0;
-      if (act.action === 'fold') continue;
-      if (['bet','raise','call','all-in'].includes(act.action)) {
-        playerContrib[act.player] = prevContrib + (act.amount || 0);
-        totalPot += (act.amount || 0);
-        if (playerContrib[act.player] > maxBet) maxBet = playerContrib[act.player];
-        if (act.action === 'bet') raiseCount = 1;
-        else if (act.action === 'raise') raiseCount++;
-      } else if (act.action === 'bring-in') {
-        playerContrib[act.player] = act.amount || 0;
-        totalPot += (act.amount || 0);
-        if (playerContrib[act.player] > maxBet) maxBet = playerContrib[act.player];
-      }
-    }
-    const foldedPlayers = new Set(actions.filter(a => a.action === 'fold').map(a => a.player));
-    /* Seat order IS the preflop order until someone straddles, and then it is
-       not: the round starts on the last straddler's left. Same rotation
-       getActionOrder applies, so the two cannot disagree about who is up. */
-    const ctxStraddleSeat = currentStreetIdx === 0
-      ? lastStraddleSeat(getStraddles(hand.players, blinds)) : -1;
-    const ctxOrder = ctxStraddleSeat >= 0
-      ? Array.from({ length: hand.players.length }, (_, i) => (ctxStraddleSeat + 1 + i) % hand.players.length)
-      : hand.players.map((_, i) => i);
-    const activePlayers = ctxOrder.filter(i => !foldedPlayers.has(i));
-    const nextPlayer = activePlayers[actions.length % activePlayers.length] || 0;
-    const nextPlayerInvested = playerContrib[nextPlayer] || 0;
-    const facingBet = maxBet > nextPlayerInvested;
-    const callAmount = Math.max(maxBet - nextPlayerInvested, 0);
-    let raiseToAmount = 0, betAmount = 0, potRaiseAmount = 0, potRaiseIncrement = 0, canRaise = true;
-    if (betting === 'fl') {
-      betAmount = fixedBet; raiseToAmount = maxBet + fixedBet; canRaise = raiseCount < raiseCap;
-    } else if (betting === 'pl') {
-      const potAfterCall = totalPot + callAmount;
-      potRaiseAmount = maxBet + potAfterCall;
-      potRaiseIncrement = potRaiseAmount - nextPlayerInvested;
-      betAmount = totalPot; raiseToAmount = potRaiseAmount;
-    }
-    return { betting, facingBet, currentBet:maxBet, callAmount, raiseCount, raiseCap, fixedBet, betAmount, raiseToAmount, potRaiseAmount, potRaiseIncrement, canRaise, nextPlayer, totalPot, nextPlayerInvested };
-  }, [hand, currentStreetIdx, gameCfg]);
-
-  const addAction = (action) => {
-    const ctx = bettingContext;
-    let amount = 0;
-    if (action === 'bet') {
-      let rawBet = ctx.betting === 'fl' ? ctx.fixedBet : (Number(actionAmount) || 0);
-      if (ctx.betting === 'pl') rawBet = Math.min(rawBet, ctx.betAmount);
-      amount = rawBet;
-    } else if (action === 'raise') {
-      if (ctx.betting === 'fl') { amount = ctx.raiseToAmount - ctx.nextPlayerInvested; }
-      else { let typedTotal = Number(actionAmount) || 0; if (ctx.betting === 'pl') typedTotal = Math.min(typedTotal, ctx.potRaiseAmount); amount = typedTotal - ctx.nextPlayerInvested; }
-    } else if (action === 'call') { amount = ctx.callAmount; }
-    if (amount < 0) amount = 0;
-    updateStreet(currentStreetIdx, s => ({ ...s, actions: [...(s.actions || []), { player: ctx.nextPlayer, action, amount }] }));
-    setActionAmount('');
-  };
-
-  const removeLastAction = () => { updateStreet(currentStreetIdx, s => ({ ...s, actions: (s.actions || []).slice(0, -1) })); };
-
-  const updatePlayerField = (idx, field, value) => {
-    setHand(prev => ({ ...prev, players: prev.players.map((p, i) => i === idx ? { ...p, [field]: field === 'startingStack' ? (Number(value) || 0) : value } : p) }));
-  };
-
-  const setNumPlayers = (n) => {
-    setHand(prev => {
-      const positions = getPositionLabels(n);
-      const players = Array.from({ length: n }, (_, i) => {
-        if (prev.players[i]) return { ...prev.players[i], position: positions[i] || '' };
-        return { name: i === 0 ? 'Hero' : 'Opp ' + i, position: positions[i] || '', startingStack: prev.players[0]?.startingStack || 50000 };
-      });
-      const streets = prev.streets.map(s => ({ ...s, cards: { ...s.cards, opponents: Array.from({ length: n - 1 }, (_, j) => s.cards.opponents[j] || '') } }));
-      return { ...prev, players, streets };
-    });
-  };
-
-  const updateHeroCards = (si, val) => updateStreet(si, s => ({ ...s, cards: { ...s.cards, hero: val } }));
-  const updateBoardCards = (si, val) => updateStreet(si, s => ({ ...s, cards: { ...s.cards, board: val } }));
-  const updateOpponentCards = (si, oi, val) => updateStreet(si, s => {
-    const opponents = [...s.cards.opponents]; opponents[oi] = val;
-    return { ...s, cards: { ...s.cards, opponents } };
-  });
-  const updateDrawDiscard = (si, pi, val) => updateStreet(si, s => {
-    const draws = [...(s.draws || [])];
-    const existing = draws.findIndex(d => d.player === pi);
-    if (existing >= 0) draws[existing] = { ...draws[existing], discarded: Number(val) || 0 };
-    else draws.push({ player: pi, discarded: Number(val) || 0, discardedCards: '', newCards: '' });
-    return { ...s, draws };
-  });
-  const updateDrawField = (si, pi, field, val) => updateStreet(si, s => {
-    const draws = [...(s.draws || [])];
-    const existing = draws.findIndex(d => d.player === pi);
-    if (existing >= 0) draws[existing] = { ...draws[existing], [field]: val };
-    else { const entry = { player: pi, discarded: 0, discardedCards: '', newCards: '' }; entry[field] = val; draws.push(entry); }
-    return { ...s, draws };
-  });
-
-  const { pot: currentPot } = calcPotsAndStacks(hand, currentStreetIdx, (currentStreet.actions || []).length - 1);
-
-  return (
-    <div className="replayer-entry">
-      <div className="replayer-section">
-        <div className="replayer-section-title">Players & Blinds</div>
-        <div className="replayer-row gto-blinds-grid">
-          <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 8.75)'}}>
-            <label>Players</label>
-            <select value={hand.players.length} onChange={e => setNumPlayers(Number(e.target.value))}>
-              {[2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
-          <div className="replayer-field"><label>SB</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).sb || ''} onChange={e => setHand(prev => ({ ...prev, blinds: { ...(prev.blinds||{}), sb: Number(e.target.value)||0 } }))} /></div>
-          <div className="replayer-field"><label>BB</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).bb || ''} onChange={e => setHand(prev => ({ ...prev, blinds: { ...(prev.blinds||{}), bb: Number(e.target.value)||0 } }))} /></div>
-          <div className="replayer-field"><label>{category === 'stud' ? 'Ante' : 'BB Ante'}</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).ante || ''} onChange={e => setHand(prev => ({ ...prev, blinds: { ...(prev.blinds||{}), ante: Number(e.target.value)||0 } }))} /></div>
-        </div>
-        {hand.players.map((p, i) => (
-          <div key={i} className="replayer-player-row">
-            <span className="replayer-player-pos">{p.position}</span>
-            <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 10)'}}><input type="text" value={p.name} onChange={e => updatePlayerField(i, 'name', e.target.value)} placeholder="Name" /></div>
-            <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 10)'}}><input type="text" inputMode="decimal" value={p.startingStack} onFocus={e => e.target.select()} onChange={e => updatePlayerField(i, 'startingStack', e.target.value)} placeholder="Stack" /></div>
-          </div>
-        ))}
-      </div>
-      <div className="live-update-tabs">
-        {hand.streets.map((s, i) => (<button key={i} className={currentStreetIdx === i ? 'active' : ''} onClick={() => setCurrentStreetIdx(i)}>{s.name}</button>))}
-      </div>
-      <div className="replayer-street">
-        <div className="replayer-street-header">
-          <span className="replayer-street-name">{currentStreet.name}</span>
-          <span className="replayer-street-pot">Pot: {formatChipAmount(currentPot)}</span>
-        </div>
-        {/* 73: a focused border was the ONLY state these fields had, so
-            "Ahh", a repeated card or a bare "A" simply produced no card row
-            and no message — the input looked accepted and the saved hand was
-            quietly wrong. checkCardText reports what the parser could not
-            use, which is information the parser already has. */}
-        <div className="replayer-field">
-          <label>Hero Cards</label>
-          <input type="text" className={checkCardText(currentStreet.cards.hero, gameCfg.shortDeck) ? 'is-invalid' : undefined}
-            placeholder={gameCfg.heroPlaceholder ? dualPlaceholder(gameCfg.heroPlaceholder) : 'AhKd'} value={currentStreet.cards.hero} onChange={e => updateHeroCards(currentStreetIdx, e.target.value)} />
-          {checkCardText(currentStreet.cards.hero, gameCfg.shortDeck) && <div className="replayer-field-error">{checkCardText(currentStreet.cards.hero, gameCfg.shortDeck)}</div>}
-          <CardRow text={currentStreet.cards.hero} stud={gameCfg.isStud} max={gameCfg.heroCards} />
-        </div>
-        {category === 'community' && currentStreetIdx > 0 && (
-          <div className="replayer-field">
-            <label>Board ({currentStreet.name})</label>
-            <input type="text" className={checkCardText(currentStreet.cards.board, gameCfg.shortDeck) ? 'is-invalid' : undefined}
-              placeholder={gameCfg.boardPlaceholder || 'Qh7d2c'} value={currentStreet.cards.board} onChange={e => updateBoardCards(currentStreetIdx, e.target.value)} />
-            {checkCardText(currentStreet.cards.board, gameCfg.shortDeck) && <div className="replayer-field-error">{checkCardText(currentStreet.cards.board, gameCfg.shortDeck)}</div>}
-            <CardRow text={currentStreet.cards.board} max={streetDef.boardCards[currentStreetIdx]} />
-          </div>
-        )}
-        {hand.players.slice(1).map((p, oi) => (
-          <div key={oi} className="replayer-field">
-            <label>{p.name} Cards</label>
-            <input type="text" className={checkCardText((currentStreet.cards.opponents || [])[oi] || '', gameCfg.shortDeck) ? 'is-invalid' : undefined}
-              placeholder={gameCfg.heroPlaceholder ? dualPlaceholder(gameCfg.heroPlaceholder) : 'XxXx'} value={(currentStreet.cards.opponents || [])[oi] || ''} onChange={e => updateOpponentCards(currentStreetIdx, oi, e.target.value)} />
-            {checkCardText((currentStreet.cards.opponents || [])[oi] || '', gameCfg.shortDeck) && <div className="replayer-field-error">{checkCardText((currentStreet.cards.opponents || [])[oi] || '', gameCfg.shortDeck)}</div>}
-            <CardRow text={(currentStreet.cards.opponents || [])[oi] || ''} stud={gameCfg.isStud} max={gameCfg.heroCards} placeholderCount={!(currentStreet.cards.opponents || [])[oi] ? gameCfg.heroCards : 0} />
-          </div>
-        ))}
-        {(category === 'draw_triple' || category === 'draw_single') && currentStreetIdx > 0 && (
-          <div className="replayer-draw-section">
-            <div className="replayer-draw-label">{currentStreet.name || 'Draw'} -- Discards & Draws</div>
-            {hand.players.map((p, pi) => {
-              const draw = (currentStreet.draws || []).find(d => d.player === pi);
-              const discardCount = draw ? draw.discarded : 0;
-              const isPatText = discardCount === 0 && draw ? ' (Stand Pat)' : '';
-              return (
-                <div key={pi} className="replayer-draw-player-block" style={{marginBottom:'var(--space-sm)',padding:'var(--space-xs) 0',borderBottom:'var(--bw-hair) solid var(--border)'}}>
-                  <div className="replayer-row" style={{marginBottom:'var(--space-2xs)',alignItems:'center'}}>
-                    <span style={{fontSize:'calc(var(--gu) * 0.957)',color:'var(--text-muted)',minWidth:'calc(var(--subrow) * 6.875)',fontWeight: 'var(--fw-bold)'}}>{p.name}{isPatText}</span>
-                    <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 5.625)'}}>
-                      <label style={{fontSize:'calc(var(--gu) * 0.810)'}}>Discard</label>
-                      <input type="number" min="0" max={gameCfg.heroCards || 5} value={draw ? draw.discarded : ''} onChange={e => updateDrawDiscard(currentStreetIdx, pi, e.target.value)} placeholder="0" />
-                    </div>
-                  </div>
-                  {discardCount > 0 && (
-                    <div className="replayer-row" style={{marginTop:'var(--space-2xs)',gap:'var(--space-xs)'}}>
-                      <div className="replayer-field" style={{flex:1}}>
-                        {/* 74: an 8.8px label overriding a field-label rule that
-                            is already tokenised at a readable size. */}
-                        <label>Discarded Cards</label>
-                        <input type="text" placeholder={'e.g. 7h3c'} value={(draw && draw.discardedCards) || ''} onChange={e => updateDrawField(currentStreetIdx, pi, 'discardedCards', e.target.value)} />
-                        {draw?.discardedCards && <CardRow text={draw.discardedCards} max={discardCount} />}
-                      </div>
-                      <div className="replayer-field" style={{flex:1}}>
-                        <label>New Cards</label>
-                        <DrawNewCardsInput placeholder={'e.g. Ah5s'} value={(draw && draw.newCards) || ''}
-                          dead={drawDeadCards(hand, currentStreetIdx, pi)}
-                          onChange={v => updateDrawField(currentStreetIdx, pi, 'newCards', v)} />
-                        {draw?.newCards && <CardRow text={draw.newCards} max={discardCount} />}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-        <div className="replayer-action-list">
-          {(currentStreet.actions || []).map((act, ai) => (
-            <div key={ai} className="replayer-action-item">
-              <span className="replayer-action-player">{hand.players[act.player]?.name || '?'}</span>
-              <span className={`replayer-action-type ${act.action}`}>{act.action}</span>
-              {act.amount > 0 && <span className="replayer-action-amount">{formatChipAmount(act.amount)}</span>}
-              <span className="replayer-action-remove" onClick={() => { if (ai === (currentStreet.actions || []).length - 1) removeLastAction(); }}>&times;</span>
-            </div>
-          ))}
-        </div>
-        {bettingContext.betting !== 'fl' && (
-          <div className="replayer-row gto-amount-row">
-            <div className="replayer-field">
-              <input type="text" inputMode="decimal" placeholder={bettingContext.betting === 'pl' ? (bettingContext.facingBet ? 'Raise to (max ' + formatChipAmount(bettingContext.potRaiseAmount) + ')' : 'Bet (max ' + formatChipAmount(bettingContext.betAmount) + ')') : 'Amount'} value={actionAmount} onChange={e => setActionAmount(e.target.value)} />
-            </div>
-            {bettingContext.betting === 'pl' && (
-              /* 74: a 0.6rem button with five inline literals sitting beside
-                 the amount field. It is an action helper; it looks like one. */
-              <button className="replayer-pot-helper"
-                onClick={() => setActionAmount(String(bettingContext.facingBet ? bettingContext.potRaiseAmount : bettingContext.betAmount))}>
-                {bettingContext.facingBet ? 'Pot Raise' : 'Pot Bet'}
-              </button>
-            )}
-          </div>
-        )}
-        <div className="replayer-action-btns">
-          {bettingContext.facingBet ? (
-            <>
-              <button className="action-fold" onClick={() => addAction('fold')}>Fold</button>
-              <button className="action-call" onClick={() => addAction('call')}>Call {formatChipAmount(bettingContext.callAmount)}</button>
-              {bettingContext.canRaise && (<button className="action-raise" onClick={() => addAction('raise')}>{bettingContext.betting === 'fl' ? 'Raise to ' + formatChipAmount(bettingContext.raiseToAmount) : 'Raise'}</button>)}
-            </>
-          ) : (
-            <>
-              <button onClick={() => addAction('check')}>Check</button>
-              <button className="action-bet" onClick={() => addAction('bet')}>{bettingContext.betting === 'fl' ? 'Bet ' + formatChipAmount(bettingContext.fixedBet) : 'Bet'}</button>
-            </>
-          )}
-        </div>
-      </div>
-      <div className="replayer-section">
-        <div className="replayer-section-title">Result (optional)</div>
-        <div className="gto-winner-grid">
-          {hand.players.map((p, pi) => {
-            const winners = hand.result?.winners || [];
-            const isWinner = winners.some(w => w.playerIdx === pi && !w.split);
-            const isSplit = winners.some(w => w.playerIdx === pi && w.split);
-            return (
-              /* 72: this was padding, a font-family STRING, a size, a
-                 transition:all and a hardcoded green/amber pair inline —
-                 exactly the literals the status ramps were declared to
-                 retire — and transition:all meant hovering also animated
-                 border-radius, for free, forever. */
-              <button key={pi}
-                className={'replayer-winner-btn' + (isWinner ? ' is-win' : isSplit ? ' is-split' : '')}
-                aria-pressed={isWinner || isSplit}
-                onClick={() => {
-                setHand(prev => {
-                  const prevWinners = prev.result?.winners || [];
-                  const existing = prevWinners.find(w => w.playerIdx === pi);
-                  let newWinners;
-                  if (!existing) newWinners = [...prevWinners, { playerIdx: pi, split: false, label: '' }];
-                  else if (!existing.split) newWinners = prevWinners.map(w => w.playerIdx === pi ? { ...w, split: true } : w);
-                  else newWinners = prevWinners.filter(w => w.playerIdx !== pi);
-                  return { ...prev, result: { ...prev.result, winners: newWinners } };
-                });
-              }}>
-                {p.name} {isWinner ? '(Win)' : isSplit ? '(Split)' : ''}
-              </button>
-            );
-          })}
-        </div>
-        <div className="replayer-field-hint">{'Tap to cycle: none \u2192 win \u2192 split \u2192 none'}</div>
-      </div>
-      <div className="gto-btn-row">
-        <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
-        <button className="btn btn-primary btn-sm" onClick={() => onDone(hand)}>Save & Replay</button>
-      </div>
-    </div>
   );
 }
 
@@ -4314,7 +3840,6 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
               if (_ec && _ec.type === 'hilo' && winners.some(w => w.split)) {
                 const _hs = {}; const _ls = {};
                 playerHands.forEach(ph => {
-                  const al = boardParsed.length ? ph.cards.concat(boardParsed) : ph.cards;
                   _hs[ph.idx] = bestHighFor(_ec, ph.cards, boardParsed);
                   const lo = bestLow8For(_ec, ph.cards, boardParsed);
                   _ls[ph.idx] = lo && lo.qualified ? lo : null;
@@ -5274,10 +4799,6 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   // Hands > Study > Play a hand.
   useEffect(() => { if (drillAsk) { setMode('drill'); if (onDrillAsked) onDrillAsked(); } }, [drillAsk, onDrillAsked]);
   const [quickVoice, setQuickVoice] = useState(false);   // quick add opened by Say (listening at once)
-  const [entryMode, setEntryMode] = useState('gto');
-  const [entryTab, setEntryTab] = useState('form');
-  const [shorthandText, setShorthandText] = useState('');
-  const [shorthandErrors, setShorthandErrors] = useState([]);
   const [hands, setHands] = useState([]);
   const [games, setGames] = useState([]);
   const [currentHand, setCurrentHand] = useState(initialHand ? canonicalHand(initialHand) : null);
@@ -5357,7 +4878,6 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   const [selectedCategory, setSelectedCategory] = useState("Hold'em");
   const [studSuper, setStudSuper] = useState(false);
   const [studAction, setStudAction] = useState(false);
-  const [showMoreFor, setShowMoreFor] = useState(null); // 'Omaha' | 'Draw' | null
   const [gameHistory, setGameHistory] = useState(() => {
     /* A favourite chosen before the rename says "Big Easy"; the picker's row is now PLO6 8/b. */
     try {
@@ -5366,88 +4886,20 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     }
     catch { return []; }
   });
-  // Custom game config
-  const [customGameName, setCustomGameName] = useState('');
-  const [customHeroCards, setCustomHeroCards] = useState(2);
-  const [customCategory, setCustomCategory] = useState('community');
-  const [customStreetNames, setCustomStreetNames] = useState('');
 
   // Game selection config: the shared maps (utils/variant-catalog.js), so the picker's rows and
   // the entry's game types are one table.
   const structureGameMap = STRUCTURE_GAME_MAP;
   const defaultStructure = DEFAULT_STRUCTURE;
 
-  /* Games that are played one way only, with that structure. Their rows offer no other, and the
-     label is the game's own name: "PLO6 8/b", not "Limit PLO6 8/b". (Short Deck is a no-limit game,
-     with a button blind and an ante; PLO5, PLO6 and PLO6 8/b are pot-limit.) */
-  const FIXED_STRUCTURE = FIXED_STRUCTURE_MAP;
-
   const RAZZ_VARIANTS = RAZZ_LIST;
 
-  const variantDisplayName = useMemo(() => {
-    const isRazz = RAZZ_VARIANTS.includes(selectedGame);
-    const superPrefix = studSuper && selectedCategory === 'Stud' ? 'Super ' : '';
-    const actionPrefix = studAction && isRazz ? 'Action ' : '';
-    const overrides = {
-      "Pot Limit|Omaha": 'Pot Limit Omaha', "Pot Limit|Omaha 8/b": 'PLO8', "Pot Limit|Big O": 'Big O',
-      "No Limit|Omaha": 'No Limit Omaha', "No Limit|Omaha 8/b": 'NLO8', "No Limit|Big O": 'No Limit Big O',
-      "Limit|Omaha": 'Limit Omaha Hi', "Limit|Omaha 8/b": 'O8', "Limit|Big O": 'Limit Big O',
-      "No Limit|Double Board Bomb Pot": 'Bomb Pot',
-      "Pot Limit|Courchevel": 'Courchevel',
-    };
-    // Points-based games — no structure prefix
-    if (selectedGame === 'OFC') return 'OFC';
-    // Games played one way only are known by their own name.
-    if (FIXED_STRUCTURE[selectedGame]) return selectedGame;
-    const key = bettingStructure + '|' + selectedGame;
-    const base = overrides[key] || (
-      ['Stud Hi','Stud 8/b','Razz','Stud Hi/Lo Regular','2-7 Razz','Razzdugi','Razzdeucy',
-       '2-7 Triple Draw','A-5 Triple Draw','Badugi','Badeucy','Badacey','Archie 66','Archie 99','Ari'].includes(selectedGame) && bettingStructure === 'Limit'
-        ? selectedGame
-        : bettingStructure + ' ' + selectedGame
-    );
-    return superPrefix + actionPrefix + base;
-  }, [bettingStructure, selectedGame, studSuper, studAction, selectedCategory]);
-
-  const categoryGroups = useMemo(() => [
-    { label: "Hold'em", games: ["Hold'em", 'Pineapple', 'Short Deck'] },
-    { label: 'Omaha',   games: ['Omaha', 'Omaha 8/b', 'Big O', 'PLO6 8/b', 'PLO5', 'PLO6'],
-                        more:  ['Double Board Bomb Pot', 'Courchevel'] },
-    { label: 'Stud',    games: ['Stud Hi', 'Stud 8/b', 'Razz'],
-                        more:  ['Stud Hi/Lo Regular', '2-7 Razz', 'Razzdugi', 'Razzdeucy'] },
-    { label: 'Draw',    games: ['2-7 Triple Draw', '2-7 Single Draw', 'A-5 Triple Draw', 'Badugi', '5-Card Draw'],
-                        more:  ['A-5 Single Draw', 'Badeucy', 'Badacey', 'Archie 66', 'Archie 99', 'Ari'] },
-    { label: 'Other',   games: ['OFC', 'Dramaha Hi', 'Dramaha 2-7', 'Dramaha 49', 'Dramaha 0', 'Dramadugi', 'Omajack', ...games.map(g => g.name || g.game_name).filter(Boolean)] },
-  ], [games]);
-
-  const FAVE_DEFAULTS = useMemo(() => [
-    { game: "Hold'em", structure: 'No Limit' },
-    { game: 'Omaha',   structure: 'Pot Limit' },
-    { game: 'Stud Hi', structure: 'Limit' },
-    { game: '2-7 Triple Draw', structure: 'Limit' },
-  ], []);
-
-  const favorites = useMemo(() => {
-    if (!gameHistory.length) return FAVE_DEFAULTS;
-    const counts = {}, lastSeen = {};
-    gameHistory.forEach(({ game, structure }, i) => {
-      const k = game + '|' + structure;
-      counts[k] = (counts[k] || 0) + 1;
-      lastSeen[k] = i;
-    });
-    const sorted = Object.keys(counts).sort((a, b) =>
-      counts[b] !== counts[a] ? counts[b] - counts[a] : lastSeen[b] - lastSeen[a]
-    );
-    const result = sorted.slice(0, 4).map(k => {
-      const idx = k.lastIndexOf('|');
-      return { game: k.slice(0, idx), structure: k.slice(idx + 1) };
-    });
-    for (const def of FAVE_DEFAULTS) {
-      if (result.length >= 4) break;
-      if (!result.some(f => f.game === def.game && f.structure === def.structure)) result.push(def);
-    }
-    return result;
-  }, [gameHistory, FAVE_DEFAULTS]);
+  /* The game's name on the launcher and the Create button: the catalog's own (variantName: "O8",
+     "Razz", "PLO6 8/b"), with the stud modifiers in front while one is on (both are off for now: see
+     the Stud block under the launcher). */
+  const variantDisplayName = (studSuper && selectedCategory === 'Stud' ? 'Super ' : '')
+    + (studAction && RAZZ_VARIANTS.includes(selectedGame) ? 'Action ' : '')
+    + variantName(selectedGame, bettingStructure);
 
   const recordGameUse = (game, structure, mix = null) => {
     setGameHistory(prev => {
@@ -5473,13 +4925,6 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     setSelectedCategory(cat);
     if (cat !== 'Stud') { setStudSuper(false); setStudAction(false); }
     else if (!RAZZ_VARIANTS.includes(game)) setStudAction(false);
-  };
-
-  const handleStructureChange = (s) => {
-    if (FIXED_STRUCTURE[selectedGame] && FIXED_STRUCTURE[selectedGame] !== s) return;
-    setBettingStructure(s);
-    const map = structureGameMap[s];
-    if (map && map[selectedGame]) setSelectedGameType(map[selectedGame]);
   };
 
   // ── The variant picker (VariantPicker.jsx, utils/variant-catalog.js) ──
@@ -5688,70 +5133,29 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     if (window.confirm('Discard the unfinished hand? This cannot be undone.')) clearDraft();
   };
 
-  const handleParseShorthand = () => {
-    const { hand, errors } = parseHandText(shorthandText, selectedGame || 'NLH');
-    setShorthandErrors(errors || []);
-    if (hand) {
-      setCurrentHand(hand);
-      setEntryTab('form'); // switch back to form view to review/edit
-    }
-  };
-
   const startNewHand = () => {
     // Short Deck asks which rule the game plays before the hand exists; its answer comes back here.
     if (selectedGame === 'Short Deck' && !sdAnswered.current) { setSdAsk(true); return; }
     sdAnswered.current = false;
     if (draftInTheWay()) return;
-    let made;
-    if (selectedGameType === 'Custom') {
-      const gameName = customGameName.trim() || 'Custom';
-      const heroCards = Math.max(1, Math.min(13, customHeroCards));
-      const cat = customCategory;
-      const hasBoard = cat === 'community';
-      const isStud = cat === 'stud';
-      HAND_CONFIG[gameName] = { heroCards, hasBoard, boardMax: hasBoard ? 5 : 0, isStud, heroPlaceholder: '' };
-      let streetNames;
-      if (customStreetNames.trim()) streetNames = customStreetNames.split(',').map(s => s.trim()).filter(Boolean);
-      else streetNames = (STREET_DEFS[cat] || STREET_DEFS.community).streets;
-      if (!STREET_DEFS['custom_' + gameName]) {
-        const boardCards = streetNames.map((_, i) => { if (!hasBoard) return 0; if (i === 0) return 0; if (i === 1) return 3; return 1; });
-        STREET_DEFS['custom_' + gameName] = { streets: streetNames, boardCards };
-      }
-      const customDef = STREET_DEFS['custom_' + gameName];
-      const hand = {
-        gameType: gameName,
-        gameMode: 'mtt', currency: 'USD',
-        customConfig: { heroCards, category: cat, streetNames: customDef.streets, hasBoard, isStud },
-        players: [
-          { name: heroName || 'Hero', position: 'BTN', startingStack: 50000 },
-          { name: 'Opp 1', position: 'BB', startingStack: 50000 },
-        ],
-        blinds: { sb: 100, bb: 200, ante: (hasBoard && !isStud) ? 200 : 0 },
-        streets: customDef.streets.map(name => ({ name, cards: { hero: '', opponents: [''], board: '' }, actions: [], draws: [] })),
-        result: null,
-      };
-      made = hand;
-    } else {
-      const hand = createEmptyHand(selectedGameType, heroName);
-      if (hand.gameType === 'Short Deck') hand.tripsBeatStraight = sdTrips === true;
-      const isRazzGame = RAZZ_VARIANTS.includes(selectedGame);
-      if (studAction && isRazzGame) hand.gameType = 'Action ' + hand.gameType;
-      if (studSuper && selectedCategory === 'Stud') hand.gameType = 'Super ' + hand.gameType;
-      if (selectedMix) hand.mix = selectedMix;
-      // Double board: a second board on every street (utils/poker-engine.js handBoards).
-      if (doubleBoard && currentRow && ['holdem', 'omaha'].includes(currentRow.family) && !(HAND_CONFIG[selectedGameType] || {}).doorBoard) {
-        hand.doubleBoard = true;
-        hand.streets = hand.streets.map(s => ({ ...s, cards: { ...s.cards, board2: '' } }));
-      }
-      made = hand;
-      recordGameUse(selectedGame, bettingStructure, selectedMix);
+    const hand = createEmptyHand(selectedGameType, heroName);
+    if (hand.gameType === 'Short Deck') hand.tripsBeatStraight = sdTrips === true;
+    const isRazzGame = RAZZ_VARIANTS.includes(selectedGame);
+    if (studAction && isRazzGame) hand.gameType = 'Action ' + hand.gameType;
+    if (studSuper && selectedCategory === 'Stud') hand.gameType = 'Super ' + hand.gameType;
+    if (selectedMix) hand.mix = selectedMix;
+    // Double board: a second board on every street (utils/poker-engine.js handBoards).
+    if (doubleBoard && currentRow && ['holdem', 'omaha'].includes(currentRow.family) && !(HAND_CONFIG[selectedGameType] || {}).doorBoard) {
+      hand.doubleBoard = true;
+      hand.streets = hand.streets.map(s => ({ ...s, cards: { ...s.cards, board2: '' } }));
     }
+    recordGameUse(selectedGame, bettingStructure, selectedMix);
     setCurrentHandId(null);
     setHandIsShared(false);
     setTitle('');
     setNotes('');
     setIsPublic(false);
-    openEntry(made);
+    openEntry(hand);
   };
   // A palette pick makes the hand once its game, structure and mix are in state (pickVariant).
   useEffect(() => {
@@ -5803,10 +5207,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     /* What the header carries depends on the screen: the game's name on every one (a hand could be
        typed in start to finish without the screen saying what game it was), Format on Setup alone,
        and Title and Share on Setup and on Result, where a hand gets named. On the screens between,
-       those three rows held more than a quarter of a phone. The classic form is one long screen and
-       keeps them all. */
-    const classicEntry = entryTab !== 'form' || !(entryMode === 'gto' || currentHand.gameType === 'OFC');
-    const entryPhase = classicEntry ? 'setup' : ((entryAt && entryAt.phase) || 'setup');
+       those three rows held more than a quarter of a phone. */
+    const entryPhase = (entryAt && entryAt.phase) || 'setup';
     const onSetup = entryPhase === 'setup';
     const onEnds = onSetup || entryPhase === 'result';
     const gameLine = [currentHand.gameType, currentHand.doubleBoard ? 'Double board' : '', currentHand.mix || '']
@@ -5816,107 +5218,65 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       <div className="replayer-view replayer-entry-view">
         <div className="gto-sticky-header">
           <div className="entry-game-name">{gameLine}</div>
-          {/* Form / Text toggle — hidden for now (2026-10-01); entry opens on Form and
-              GTO Style every time, so hiding the switches pins exactly that. */}
-          {SHOW_ENTRY_MODE_TOGGLES && <div className="live-update-tabs" style={{marginBottom:'var(--space-md)'}}>
-            <button className={entryTab === 'form' ? 'active' : ''} onClick={() => setEntryTab('form')}>Form</button>
-            <button className={entryTab === 'text' ? 'active' : ''} onClick={() => setEntryTab('text')}>Text</button>
-          </div>}
-          {SHOW_ENTRY_MODE_TOGGLES && entryTab === 'form' && currentHand.gameType !== 'OFC' && <div className="live-update-tabs" style={{marginBottom:'var(--space-md)'}}>
-            <button className={entryMode === 'gto' ? 'active' : ''} onClick={() => setEntryMode('gto')}>GTO Style</button>
-            <button className={entryMode === 'classic' ? 'active' : ''} onClick={() => setEntryMode('classic')}>Classic</button>
-          </div>}
-          {entryTab === 'form' && <>
-            {/* Tournament or cash. A cash game is money, so its stacks and pots
-                carry a currency symbol; a straddle is a cash-game wager, so
-                switching it on down in the blinds flips this to Cash for you. */}
-            {onSetup && <div className="replayer-row entry-game-row" style={{marginBottom:'var(--space-md)', alignItems:'flex-end'}}>
-              <div className="replayer-field" style={{flex:'1 1 auto'}}>
-                {/* "Format", not "Game": the two buttons are tournament or cash, and the game is the line above. */}
-                <label id="entry-format-label">Format</label>
-                <div className="live-update-tabs" style={{margin:0}} role="group" aria-labelledby="entry-format-label">
-                  <button type="button" className={isCash ? '' : 'active'} aria-pressed={!isCash}
-                    onClick={() => setCurrentHand(h => withGameMode(h, 'mtt'))}>MTT</button>
-                  <button type="button" className={isCash ? 'active' : ''} aria-pressed={isCash}
-                    onClick={() => setCurrentHand(h => withGameMode(h, 'cash'))}>Cash</button>
-                </div>
+          {/* Tournament or cash. A cash game is money, so its stacks and pots
+              carry a currency symbol; a straddle is a cash-game wager, so
+              switching it on down in the blinds flips this to Cash for you. */}
+          {onSetup && <div className="replayer-row entry-game-row" style={{marginBottom:'var(--space-md)', alignItems:'flex-end'}}>
+            <div className="replayer-field" style={{flex:'1 1 auto'}}>
+              {/* "Format", not "Game": the two buttons are tournament or cash, and the game is the line above. */}
+              <label id="entry-format-label">Format</label>
+              <div className="live-update-tabs" style={{margin:0}} role="group" aria-labelledby="entry-format-label">
+                <button type="button" className={isCash ? '' : 'active'} aria-pressed={!isCash}
+                  onClick={() => setCurrentHand(h => withGameMode(h, 'mtt'))}>MTT</button>
+                <button type="button" className={isCash ? 'active' : ''} aria-pressed={isCash}
+                  onClick={() => setCurrentHand(h => withGameMode(h, 'cash'))}>Cash</button>
               </div>
-              {isCash && (
-                <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 12)'}}>
-                  <label htmlFor="entry-currency">Currency</label>
-                  <select id="entry-currency" value={currentHand.currency || 'USD'}
-                    onChange={e => setCurrentHand(h => ({ ...h, currency: e.target.value }))}>
-                    {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>)}
-                  </select>
-                </div>
-              )}
-            </div>}
-            {onEnds && <div className="replayer-row" style={{marginBottom:'var(--space-md)'}}>
-              <div className="replayer-field">
-                <label htmlFor="entry-title">Title</label>
-                <input id="entry-title" type="text" placeholder="e.g. Huge pot with AA" value={title} onChange={e => setTitle(e.target.value)} />
-              </div>
-            </div>}
-            {/* 76: .replayer-notes-area was fully styled — label, textarea,
-                focus ring, all tokenised — with no JSX consumer anywhere, and
-                isPublic went into the save payload with no control that could
-                ever set it. Both were saved and neither was editable. */}
-            {onEnds && <div className="replayer-notes-area">
-              {/* The notes box is hidden for now (2026-10-01); saved notes still show in replay. */}
-              {SHOW_ENTRY_NOTES && <>
-                <label htmlFor="replayer-notes">Notes</label>
-                <textarea id="replayer-notes" value={notes} placeholder="What were you thinking here?"
-                  onChange={e => setNotes(e.target.value)} />
-              </>}
-              <div className="replayer-settings-row" style={{marginBottom:0}}>
-                <div className="replayer-settings-label">Share publicly</div>
-                <button className={'replayer-settings-toggle' + (isPublic ? ' on' : '')}
-                  aria-pressed={isPublic} aria-label="Share this hand publicly"
-                  onClick={() => setIsPublic(v => !v)} />
-              </div>
-            </div>}
-          </>}
-          <div id="gto-sticky-slot"></div>
-        </div>
-        {entryTab === 'text' ? (
-          <div className="gto-text-entry">
-            <textarea
-              placeholder={'25/50\nUTG: AhKd  HJ: 9c8c  BTN: raise 3x  SB: fold  BB: call\n/ Qh Jc 2d  check  bet 50  fold\n/ 7s  bet 200  fold'}
-              value={shorthandText}
-              onChange={e => setShorthandText(e.target.value)}
-            />
-            {/* 73: --text-warning is defined nowhere in the stylesheet, so this
-                always fell through to the literal after the comma — a
-                token-shaped string that was never a token. --warn is the one
-                the ramp actually declares. */}
-            {shorthandErrors.length > 0 && (
-              <div className="replayer-field-error" style={{color:'var(--warn)'}}>
-                {shorthandErrors.map((e,i) => <div key={i}>&#9888; {e}</div>)}
+            </div>
+            {isCash && (
+              <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 12)'}}>
+                <label htmlFor="entry-currency">Currency</label>
+                <select id="entry-currency" value={currentHand.currency || 'USD'}
+                  onChange={e => setCurrentHand(h => ({ ...h, currency: e.target.value }))}>
+                  {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>)}
+                </select>
               </div>
             )}
-            <button className="create-group-submit"
-              onClick={handleParseShorthand}>
-              Parse Hand
-            </button>
-          </div>
-        ) : (entryMode === 'gto' || currentHand.gameType === 'OFC') ? (
-          <GTOEntryView
-            hand={currentHand}
-            setHand={setCurrentHand}
-            onDone={handleEntryDone}
-            onCancel={cancelEntry}
-            heroName={heroName}
-            resume={entryResume}
-            onProgress={setEntryAt}
-          />
-        ) : (
-          <HandReplayerEntry
-            hand={currentHand}
-            setHand={setCurrentHand}
-            onDone={handleEntryDone}
-            onCancel={cancelEntry}
-          />
-        )}
+          </div>}
+          {onEnds && <div className="replayer-row" style={{marginBottom:'var(--space-md)'}}>
+            <div className="replayer-field">
+              <label htmlFor="entry-title">Title</label>
+              <input id="entry-title" type="text" placeholder="e.g. Huge pot with AA" value={title} onChange={e => setTitle(e.target.value)} />
+            </div>
+          </div>}
+          {/* 76: .replayer-notes-area was fully styled — label, textarea,
+              focus ring, all tokenised — with no JSX consumer anywhere, and
+              isPublic went into the save payload with no control that could
+              ever set it. Both were saved and neither was editable. */}
+          {onEnds && <div className="replayer-notes-area">
+            {/* The notes box is hidden for now (2026-10-01); saved notes still show in replay. */}
+            {SHOW_ENTRY_NOTES && <>
+              <label htmlFor="replayer-notes">Notes</label>
+              <textarea id="replayer-notes" value={notes} placeholder="What were you thinking here?"
+                onChange={e => setNotes(e.target.value)} />
+            </>}
+            <div className="replayer-settings-row" style={{marginBottom:0}}>
+              <div className="replayer-settings-label">Share publicly</div>
+              <button className={'replayer-settings-toggle' + (isPublic ? ' on' : '')}
+                aria-pressed={isPublic} aria-label="Share this hand publicly"
+                onClick={() => setIsPublic(v => !v)} />
+            </div>
+          </div>}
+          <div id="gto-sticky-slot"></div>
+        </div>
+        <GTOEntryView
+          hand={currentHand}
+          setHand={setCurrentHand}
+          onDone={handleEntryDone}
+          onCancel={cancelEntry}
+          heroName={heroName}
+          resume={entryResume}
+          onProgress={setEntryAt}
+        />
       </div>
     );
   }
@@ -6353,8 +5713,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   // felt, so they fall back to the viewer's stored preference. Not persisted —
   // viewing someone's link must not overwrite your own felt.
   const [feltColor, setFeltColor] = useState(() => (hand && hand.feltColor) || localStorage.getItem('replayerFeltColor') || '#6b5b8a');
-  // The classic card style was removed (2026-09-30); every card uses the standard faces.
-  const [cardTheme, setCardTheme] = useState('default');
   const prevStreetRef = useRef(0);
   const tableRef = useRef(null);
   /* The one thing on the table that cannot be sized in cqw is the text, so
@@ -6462,8 +5820,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const _vis = (hand && hand.visuals) || null;
   const vs = k => (_vis && _vis[k] !== undefined ? _vis[k] : undefined);
   const _theme = useReplayerSetting('Theme', 'default', vs('theme'));
-  const _cardBack = useReplayerSetting('CardBack', 'default');
-  const _cardBackColor = useReplayerSetting('CardBackColor', '#1a3a6e');
   /* 99: the control reads "High-Contrast Deck" and applies .hc-deck, while
      the state key, the persisted preference and every update call still said
      fourColorDeck — a leftover from repurposing the dead four-colour toggle.
@@ -6480,7 +5836,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const _showChipStacks = useReplayerSetting('ShowChipStacks', true, vs('showChipStacks'));
   const _showHandStrength = useReplayerSetting('ShowHandStrength', false);
   const _showPotOdds = useReplayerSetting('ShowPotOdds', false, vs('showPotOdds'));
-  const _showCommentary = useReplayerSetting('ShowCommentary', false);
   const _showPlayerStats = useReplayerSetting('ShowPlayerStats', false, vs('showPlayerStats'));
   const _showNuts = useReplayerSetting('ShowNutsHighlight', false, vs('showNutsHighlight'));
   const _showSPR = useReplayerSetting('ShowSPR', false, vs('showSPR'));
@@ -6492,12 +5847,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   // Anonymise every non-hero seat as "Opponent 1", "Opponent 2", … — the hero
   // (the logged-in user) keeps their name. For clean, private sharing.
   const _hideOppNames = useReplayerSetting('HideOppNames', false, vs('hideOppNames'));
-  // 99: off by default. Sound that starts without being asked for is worse
-  // than no sound, and this is a screen people open in card rooms.
-  const _soundDeal = useReplayerSetting('SoundDeal', false);
-  const _soundChips = useReplayerSetting('SoundChips', false);
-  const _soundFold = useReplayerSetting('SoundFold', false);
-  const _soundAllIn = useReplayerSetting('SoundAllIn', false);
   const _cardSplay = useReplayerSetting('CardSplay', true, vs('cardSplay'));
   /* How wide the hole-card fan opens, as a percent of what the table can hold.
      100 is the default fan; the slider tightens it toward a squared stack. */
@@ -6517,44 +5866,35 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const _animFold = useReplayerSetting('AnimateFold', true, vs('animateFold'));
 
   const rSettings = {
-    theme: REPLAYER_THEME_IDS.has(_theme[0]) ? _theme[0] : 'default', feltColor, cardBack: 'default', cardBackColor: _cardBackColor[0],
+    theme: REPLAYER_THEME_IDS.has(_theme[0]) ? _theme[0] : 'default', feltColor,
+    /* Pinned off, so a value saved before they left the UI cannot keep a hidden
+       feature running: hand strength, and winner effects (removed 2026-09-30 with
+       commentator mode, sounds, card-back designs and the classic card style,
+       which have since been deleted). */
     highContrastDeck: _hcDeck[0], showChipStacks: _showChipStacks[0], showHandStrength: false,
-    /* Removed from the UI 2026-09-30 and pinned off, so a value saved before then
-       cannot keep a hidden feature running: commentator mode, sounds, winner
-       effects, card-back designs, the classic card style. */
-    showPotOdds: _showPotOdds[0], showCommentary: false,
+    showPotOdds: _showPotOdds[0],
     showPlayerStats: _showPlayerStats[0], showNutsHighlight: _showNuts[0],
     showSPR: _showSPR[0], showBetSizing: _showBetSizing[0],
     showRanges: _showRanges[0], showChipDelta: _showChipDelta[0],
     showEquity: _showEquity[0], stacksInBB: _stacksInBB[0], hideOppNames: _hideOppNames[0],
-    soundDeal: false, soundChips: false,
-    soundFold: false, soundAllIn: false,
     animateDeal: _animDeal[0], animateChips: _animChips[0], animateBoard: _animBoard[0], animateWinner: false,
     animateFold: _animFold[0],
-    cardTheme, cardSplay: _cardSplay[0], splayAmount: _splayAmount[0], cardOverlap: _cardOverlap[0], lightStrip: _lightStrip[0], feltBright: _feltBright[0],
+    cardSplay: _cardSplay[0], splayAmount: _splayAmount[0], cardOverlap: _cardOverlap[0], lightStrip: _lightStrip[0], feltBright: _feltBright[0],
   };
   const rSetters = {
     theme: _theme[1], feltColor: v => { setFeltColor(v); localStorage.setItem('replayerFeltColor', v); },
-    cardBack: _cardBack[1], cardBackColor: _cardBackColor[1], highContrastDeck: _hcDeck[1],
+    highContrastDeck: _hcDeck[1],
     showChipStacks: _showChipStacks[1], showHandStrength: _showHandStrength[1], showPotOdds: _showPotOdds[1],
-    showCommentary: _showCommentary[1], showPlayerStats: _showPlayerStats[1],
+    showPlayerStats: _showPlayerStats[1],
     showNutsHighlight: _showNuts[1],
     showSPR: _showSPR[1], showBetSizing: _showBetSizing[1],
     showRanges: _showRanges[1], showChipDelta: _showChipDelta[1],
     showEquity: _showEquity[1], stacksInBB: _stacksInBB[1], hideOppNames: _hideOppNames[1],
-    soundDeal: _soundDeal[1], soundChips: _soundChips[1],
-    soundFold: _soundFold[1], soundAllIn: _soundAllIn[1],
     animateDeal: _animDeal[1], animateChips: _animChips[1], animateBoard: _animBoard[1], animateWinner: _animWinner[1],
     animateFold: _animFold[1],
-    cardTheme: v => { setCardTheme(v); localStorage.setItem('replayerCardTheme', v); },
     cardSplay: _cardSplay[1], splayAmount: _splayAmount[1], cardOverlap: _cardOverlap[1], lightStrip: _lightStrip[1], feltBright: _feltBright[1],
   };
   const handleSettingsUpdate = (key, val) => { if (rSetters[key]) rSetters[key](val); };
-  /* The sound calls live inside effects whose dependency arrays deliberately
-     do not name the settings object — re-running a deal because a toggle moved
-     would re-deal the hand. A ref keeps them reading the current settings. */
-  const rSettingsRef = useRef(rSettings);
-  rSettingsRef.current = rSettings;
 
   /* Spring moments (utils/replayer-motion.js, utils/spring.js): the flop deal and spread, the
      turn and river landing, wagers pushed out and swept in, the pot shipped to the winner — one
@@ -6674,8 +6014,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const movedForward = actionIdx > prevActionIdxRef.current;
     if (movedForward && actionIdx >= 0 && actionIdx < currentActions.length) {
       const act = currentActions[actionIdx];
-      if (act && act.action === 'fold') playTableSound('fold', rSettingsRef.current);
-      if (act && act.action === 'all-in') playTableSound('allIn', rSettingsRef.current);
       if (act && act.action === 'fold' && rSettings.animateFold) {
         setAnimFolded(prev => { const n = new Set(prev); n.add(act.player); return n; });
         setTimeout(() => { setAnimFolded(prev => { const n = new Set(prev); n.delete(act.player); return n; }); }, 450);
@@ -6704,18 +6042,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
        for the rest of the hand. */
     if (streetIdx !== 0 || actionIdx >= 0 || showResult) { setAnimDealing(false); return; }
     setAnimDealing(true);
-    // 99: one hiss per card, on the same stagger the animation uses.
-    const cards = gameCfg.heroCards || 2;
-    const shots = [];
-    for (let c = 0; c < cards; c++) {
-      for (let i = 0; i < hand.players.length; i++) {
-        shots.push(setTimeout(() => playTableSound('deal', rSettingsRef.current),
-          c * hand.players.length * 70 + i * 70));
-      }
-    }
     // 400ms animation + the longest per-seat delay.
     const t = setTimeout(() => setAnimDealing(false), 400 + hand.players.length * 80);
-    return () => { clearTimeout(t); shots.forEach(clearTimeout); };
+    return () => clearTimeout(t);
     // Deliberately keyed on the hand and the return-to-start, not on every render.
   }, [hand, streetIdx, actionIdx, showResult, rSettings.animateDeal]);
 
@@ -8457,9 +7786,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               <div key={pi} className={'ofc-replay-player' + (isHero ? ' ofc-hero' : '')}>
                 <div className="ofc-replay-player-name">{p.name}</div>
                 <div className="ofc-replay-rows">
-                  <div className="ofc-replay-row ofc-replay-row-top"><div className="ofc-replay-row-label">Top</div><CardRow text={showResult ? pr.top : shownCards.top} max={3} placeholderCount={3} cardTheme={rSettings.cardTheme} /></div>
-                  <div className="ofc-replay-row ofc-replay-row-middle"><div className="ofc-replay-row-label">Middle</div><CardRow text={showResult ? pr.middle : shownCards.middle} max={5} placeholderCount={5} cardTheme={rSettings.cardTheme} /></div>
-                  <div className="ofc-replay-row ofc-replay-row-bottom"><div className="ofc-replay-row-label">Bottom</div><CardRow text={showResult ? pr.bottom : shownCards.bottom} max={5} placeholderCount={5} cardTheme={rSettings.cardTheme} /></div>
+                  <div className="ofc-replay-row ofc-replay-row-top"><div className="ofc-replay-row-label">Top</div><CardRow text={showResult ? pr.top : shownCards.top} max={3} placeholderCount={3} /></div>
+                  <div className="ofc-replay-row ofc-replay-row-middle"><div className="ofc-replay-row-label">Middle</div><CardRow text={showResult ? pr.middle : shownCards.middle} max={5} placeholderCount={5} /></div>
+                  <div className="ofc-replay-row ofc-replay-row-bottom"><div className="ofc-replay-row-label">Bottom</div><CardRow text={showResult ? pr.bottom : shownCards.bottom} max={5} placeholderCount={5} /></div>
                 </div>
               </div>
             );
@@ -8515,9 +7844,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const gx = (col) => +(col * 100 / GX).toFixed(3);   // column -> % of width
   const gy = (row) => +(row * 100 / GY).toFixed(3);   // row    -> % of height
 
-  /* The felt is a grid rectangle: in to column 2 and row 3. FY/FX still have
-     to match --felt-y / --felt-x in styles.css. */
-  const FX = gx(2), FY = gy(3);
+  /* The felt is a grid rectangle: in to column 2 and row 3 (--felt-x / --felt-y
+     in styles.css). */
   /* The seat ring runs half a cell inside the felt's edge at the top, row 5.
      The bottom row is 28 rather than 27, so the ring is NOT symmetric about
      row 16 any more — deliberately, because the seat on it is not a seat like
@@ -8787,8 +8115,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     Math.round(dealerSpot[0] + (50 - dealerSpot[0]) * 0.26),
     Math.round(dealerSpot[1] + (54 - dealerSpot[1]) * 0.26),
   ];
-  const muckCount = folded.size;
-
 
   /* This effect has to live BELOW seats, folded and markPotLanding: a
      dependency array is evaluated on every render, not when the effect
@@ -8818,17 +8144,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     if (streetIdx < pS || (streetIdx === pS && actionIdx < pA)) return;
 
     /* The spring path moves the chips itself (the moments layout effect below): the push-out, the
-       sweep and the ship. It keeps only the sound, still at t = 0 — and drops markPotLanding, whose
-       two re-renders served a rule that is animation: none. */
-    if (springOn) {
-      if (showResult || actionIdx < 0) return;
-      const act = currentActions[actionIdx];
-      if (act && act.amount && seats[act.player]
-        && (act.action === 'bet' || act.action === 'raise' || act.action === 'call' || act.action === 'all-in')) {
-        playTableSound('chips', rSettingsRef.current);
-      }
-      return;
-    }
+       sweep and the ship. It drops markPotLanding, whose two re-renders served a rule that is
+       animation: none. */
+    if (springOn) return;
 
     if (showResult) {
       /* 48: the pot travelling to the winner is the payoff shot of a poker
@@ -8866,10 +8184,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const act = currentActions[actionIdx];
     if (!act || !act.amount) return;
     if (act.action !== 'bet' && act.action !== 'raise' && act.action !== 'call' && act.action !== 'all-in') return;
-    if (seats[act.player]) {
-      markPotLanding();
-      playTableSound('chips', rSettingsRef.current);
-    }
+    if (seats[act.player]) markPotLanding();
   }, [streetIdx, actionIdx, showResult, rSettings.animateChips, currentActions, seats, hand, pot, potAwards, spawnFlyingChips, folded, markPotLanding, springOn]);
 
   /* ── The spring moments ──
@@ -9332,8 +8647,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       {showQuick && <TableQuickSettings anchorRef={quickBtnRef} onClose={closeQuick} settings={rSettings} onUpdate={handleSettingsUpdate} />}
 
       {/* Table */}
-      {/* data-cardback is what makes the six-option Card Back setting real;
-          --back-custom feeds the custom colour through to the gradient stops. */}
       {/* Polish 97 pushed the table toward the acting seat on every step. In a
           still frame that reads as a camera move; in use it is the table
           sliding under you while you are trying to read it, and a transformed
@@ -9350,7 +8663,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         /* Community games have the central board that sits over the wordmark;
            the export moves the wordmark clear of it only when this is set. */
         data-community={gameCfg.hasBoard && !gameCfg.isStud ? '1' : '0'}
-        data-cardback={rSettings.cardBack || 'default'}
       data-anim-winner={rSettings.animateWinner ? '1' : '0'}
       data-felt={rSettings.feltBright ? 'bright' : 'dark'}
       data-springs={springOn ? springSet : undefined}
@@ -9364,18 +8676,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             const st = feltStops(feltColor, rSettings.feltBright);
             const m = st && /rgb\((\d+),(\d+),(\d+)\)/.exec(st.shade);
             if (m) s['--shadow-rgb'] = [m[1], m[2], m[3]].map((v) => Math.round(Number(v) * 0.45)).join(', ');
-          }
-          if (rSettings.cardBack === 'custom') {
-            // Same derivation as the felt below, and for the same reason.
-            const m = String(rSettings.cardBackColor || '').match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
-            if (m) {
-              const [r, g, b] = [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
-              const mix = (f, w) => `rgb(${Math.round(r * f + 255 * w)},${Math.round(g * f + 255 * w)},${Math.round(b * f + 255 * w)})`;
-              s['--back-custom-1'] = mix(1, 0);
-              s['--back-custom-2'] = mix(0.8, 0);
-              s['--back-custom-3'] = mix(0.6, 0);
-              s['--back-custom-border'] = mix(0.7, 0.3);
-            }
           }
           return Object.keys(s).length ? s : undefined;
         })()}>
@@ -9594,14 +8894,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           const renderCard = (c, i, key, withSlot) => {
             const slot = withSlot ? { 'data-slot': i, 'data-ck': key } : {};
             if (c.suit === 'x') return <div key={key} {...slot} className="card-unknown" />;
-            if (cardTheme === 'classic') {
-              return (
-                <div key={key} {...slot} className={'card-classic card-classic-' + c.suit}>
-                  <span className="card-classic-rank">{c.rank.toUpperCase()}</span>
-                  <span className="card-classic-suit">{{h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'}[c.suit] || ''}</span>
-                </div>
-              );
-            }
             return <img key={key} {...slot} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank + c.suit} loading="eager" />;
           };
           const unit = hand.doubleBoard ? 'Board' : 'Run';
@@ -9637,17 +8929,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           <div className="replayer-board-area replayer-dead-area" aria-label={'Dead cards: ' + deadCards.join(' ')}>
             <div className="replayer-dead-label">Dead cards</div>
             <div className="card-row replayer-dead-row">
-              {deadCards.map(k => {
-                const rank = k[0], suit = k[1];
-                return cardTheme === 'classic' ? (
-                  <div key={k} className={'card-classic card-classic-' + suit}>
-                    <span className="card-classic-rank">{rank.toUpperCase()}</span>
-                    <span className="card-classic-suit">{{h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'}[suit] || ''}</span>
-                  </div>
-                ) : (
-                  <img key={k} className="card-img" src={'/cards/cards_gui_' + k + '.svg'} alt={k} loading="eager" />
-                );
-              })}
+              {deadCards.map(k => (
+                <img key={k} className="card-img" src={'/cards/cards_gui_' + k + '.svg'} alt={k} loading="eager" />
+              ))}
             </div>
           </div>
         )}
@@ -9734,7 +9018,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         <div className={'replayer-bookend is-open' + (streetIdx === 0 && actionIdx < 0 && !showResult ? ' is-live' : '')}>
           <span className="replayer-bookend-eyebrow">{hand.gameType}{(hand.blinds || {}).bb ? ' \u00b7 ' + formatChipAmount(hand.blinds.sb) + '/' + formatChipAmount(hand.blinds.bb) : ''}</span>
           <span className="replayer-bookend-title">{hand.title || 'Hand replay'}</span>
-          {heroCards && <span className="replayer-bookend-cards"><CardRow text={heroCards} max={gameCfg.heroCards} cardTheme={cardTheme} /></span>}
+          {heroCards && <span className="replayer-bookend-cards"><CardRow text={heroCards} max={gameCfg.heroCards} /></span>}
           <span className="replayer-bookend-sub">{hand.players.length}-handed</span>
         </div>
         <div className={'replayer-bookend is-close' + (showResult ? ' is-live' : '')}>
@@ -9932,7 +9216,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                     : 0}
                   splay={rSettings.cardSplay ? (gameCfg.heroCards <= 2 ? 12.5 : gameCfg.heroCards <= 4 ? 15 : gameCfg.heroCards <= 5 ? 18 : 22) : 0}
                   splayScale={(Number(rSettings.splayAmount) || 0) / 100}
-                  cardTheme={cardTheme}
                   reverseZ={pi !== replayHeroIdx}
                   discardIdx={discardIdx}
                   onCardTap={drillThrow && !drillThrow.disabled ? (id) => { haptic(); drillThrow.toggle(id); } : undefined}
@@ -10245,12 +9528,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           <div className="replayer-dead-strip" aria-label={'Dead cards: ' + deadCards.join(' ')}>
             <span className="replayer-dead-strip-label"><span>Dead cards</span></span>
             <div className="replayer-dead-strip-cards" style={{ '--dead-ml': (pitch - CARD_G).toFixed(4) }}>
-              {deadCards.map(k => cardTheme === 'classic' ? (
-                <div key={k} className={'card-classic card-classic-' + k[1]}>
-                  <span className="card-classic-rank">{k[0].toUpperCase()}</span>
-                  <span className="card-classic-suit">{{h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'}[k[1]] || ''}</span>
-                </div>
-              ) : (
+              {deadCards.map(k => (
                 <img key={k} src={'/cards/cards_gui_' + k + '.svg'} alt={k} loading="eager" />
               ))}
             </div>
@@ -10275,26 +9553,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           resize when the banner appeared at showdown; with nothing to reserve,
           the height it was holding goes back to the table. evalResult itself
           stays - the bookend, the export image and the seat labels read it. */}
-
-      {/* 46: the dot strip, its hover and current states, six action classes,
-          the street markers and the street label are all finished CSS, the
-          setting DEFAULTS TO TRUE, and the settings panel advertises
-          "clickable dots showing all actions" — for markup no component ever
-          emitted. The toggle toggled nothing. */}
-      {/* Commentary */}
-      {rSettings.showCommentary && (
-        <div className="replayer-commentary">
-          <div className="replayer-commentary-body">
-            <span className="replayer-commentary-street">{currentStreet.name || 'Preflop'}</span>
-            {/* One line, ellipsised. A lower third on a broadcast is one line;
-                a wrapping one would also change the table's size whenever a
-                call ran long. */}
-            <span className="replayer-commentary-line">
-              {generateCommentary(hand, streetIdx, actionIdx, pot, stacks)}
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Pot odds */}
       {rSettings.showPotOdds && (() => {

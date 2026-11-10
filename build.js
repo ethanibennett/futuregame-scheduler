@@ -1,10 +1,9 @@
 // Root build script — now drives the Vite-based frontend in vite-app/.
-// On Render this runs as part of `npm run build`; locally it's invoked by
-// `node build.js` (directly or through deploy.sh).
+// On Render this runs as part of `npm run build`; locally it's invoked as
+// `node build.js`.
 //
-// It installs vite-app dependencies if missing, writes a fresh version.txt
-// into vite-app/public/ (copied verbatim into the build output by Vite), and
-// then runs `npm run build` inside vite-app/ to emit ../public-vite/.
+// It installs vite-app dependencies if missing, runs `npm run build` inside
+// vite-app/ to emit ../public-vite/, and puts the solver in place.
 
 const { spawnSync } = require('child_process');
 
@@ -47,24 +46,16 @@ const stampStale = !!process.env.RENDER && !!lockHash
 if (!fs.existsSync(nodeModules) || stampStale) {
   console.log(`[build] Installing vite-app dependencies${stampStale ? ' (the lockfile changed)' : ''}...`);
   // Prefer `npm ci` when a lockfile is present for reproducibility; otherwise fall back to `npm install`.
-  const hasLock = fs.existsSync(path.join(viteAppDir, 'package-lock.json'));
-  const installCmd = hasLock ? 'ci' : 'install';
+  const installCmd = lockHash ? 'ci' : 'install';
   runOrDie([installCmd], viteAppDir, `vite-app npm ${installCmd}`);
   if (process.env.RENDER && lockHash) fs.writeFileSync(stampPath, lockHash);
 }
 
-// 2. Stamp a version.txt so the legacy auto-reload shim (if any lingers) keeps working.
-const buildVersion = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
-const vitePublicDir = path.join(viteAppDir, 'public');
-if (!fs.existsSync(vitePublicDir)) fs.mkdirSync(vitePublicDir, { recursive: true });
-fs.writeFileSync(path.join(vitePublicDir, 'version.txt'), buildVersion);
-console.log(`[build] Wrote version.txt = ${buildVersion}`);
-
-// 3. Run vite build.
+// 2. Run vite build.
 console.log('[build] Running vite build...');
 runOrDie(['run', 'build'], viteAppDir, 'vite build');
 
-// 3b. Solver — now lives in its OWN repo (github.com/ethanibennett/
+// 3. Solver — now lives in its OWN repo (github.com/ethanibennett/
 // futuregame-solver, private; carved out 2026-08-09 with history). server.js
 // hard-requires ./solver/* at boot (trainer features), so a deploy without it
 // crashes. Fetch order:
@@ -105,9 +96,7 @@ if (SOLVER_TOKEN) {
   console.warn('[build] No solver token and no ./solver — skipping (fine for frontend-only builds; server.js will not boot).');
 }
 
-// 4. WSOP Console/dashboard: no longer built here. The dashboard is a standalone
-// full-stack service in the wsop-console repo, live at dashboard.futurega.me
-// (cutover 2026-08-09). This build produces only the scheduler. Console routes
-// in server.js degrade gracefully when ./wsop-console is absent ("/console will
-// 404 until built") until they're removed in the follow-up cleanup.
+// The WSOP Console/dashboard is not built here: it is a standalone full-stack
+// service in the wsop-console repo, live at dashboard.futurega.me (cutover
+// 2026-08-09). This build produces only the scheduler.
 process.exit(0);

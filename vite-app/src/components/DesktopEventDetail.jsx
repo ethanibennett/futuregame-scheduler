@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import CalendarEventRow from './CalendarEventRow.jsx';
 import { FirstRun } from './EmptyState.jsx';
-import { findClosestFlight, parseTournamentTime, normaliseDate, getToday, extractConditions } from '../utils/utils.js';
+import { normaliseDate, getToday, extractConditions } from '../utils/utils.js';
 
 /*
  * The desktop Schedule tab's middle pane (docs/desktop-layout.md): the selected
@@ -36,14 +36,6 @@ export default function DesktopEventDetail({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [t, onSelect]);
-
-  // A related-event badge (satellite -> target flight) selects that flight here,
-  // the same closest-flight rule the list uses.
-  const onNavigateToEvent = useCallback((num, sat) => {
-    const flights = (tournaments || []).filter(x => x.event_number === num);
-    const best = findClosestFlight(flights, parseTournamentTime(sat));
-    if (best) onSelect(best.id);
-  }, [tournaments, onSelect]);
 
   if (!t) {
     return (
@@ -80,7 +72,6 @@ export default function DesktopEventDetail({
         plannedEntries={(saved && saved.planned_entries) || 1}
         allTournaments={tournaments}
         scheduleIds={scheduleIds}
-        onNavigateToEvent={onNavigateToEvent}
         {...rowProps}
       />
     </div>

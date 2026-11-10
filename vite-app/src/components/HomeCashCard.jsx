@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Icon from './Icon.jsx';
-import { useTick } from './CashLive.jsx';
+import useTick from '../hooks/useTick.js';
 import { setLiveSession } from '../hooks/useLiveCashSession.js';
 import { formatClock, liveElapsed } from '../utils/cash-sessions.js';
 import { cashCard } from '../utils/home-upnext.js';

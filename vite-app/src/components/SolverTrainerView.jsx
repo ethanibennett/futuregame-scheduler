@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fetchApi } from '../utils/api.js';
 import Card from './SolverCard.jsx';
-import { StudyHead, StudyPills, shortGameName, useSolverAvailability, offered } from './StudyHead.jsx';
+import { StudyHead, StudyPills, shortGameName, useSolverAvailability, offered, T, R } from './StudyHead.jsx';
 
 // ── CFR Solver Trainer ──────────────────────────────────────
 // Quiz mode against pre-trained MCCFR strategies (2-7 Triple Draw,
@@ -10,14 +10,11 @@ import { StudyHead, StudyPills, shortGameName, useSolverAvailability, offered } 
 // ask the user what they'd do; then reveal the solver's mixed
 // strategy and keep a running score.
 //
-// Grid (classes in styles.css, .hs-*): every piece is whole r — text is an
+// Grid (classes in styles.css, .hs-*; T and R from StudyHead.jsx): every piece is whole r — text is an
 // .hs-t block whose baseline is its bottom edge (b r tall, +lh r per extra
 // line), controls 4/5r, gaps 1/2r — so every block starts on an r-line from
 // the top bar. Horizontally: full width 1..36, panels pad 2g (content 3..34),
 // rows of controls are 8g/17g grid columns on the page rails.
-
-const T = (b, lh) => (lh ? { '--hs-b': b, '--hs-lh': lh } : { '--hs-b': b });
-const R = (n) => `calc(var(--subrow) * ${n})`;
 
 export default function SolverTrainerView({ onBack }) {
   const avail = useSolverAvailability();

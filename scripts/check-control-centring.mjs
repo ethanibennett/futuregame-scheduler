@@ -209,9 +209,9 @@ function token() {
 // holds two or more of these.
 const CONTROLS = [
   'button', '[role="button"]', '[role="tab"]', 'a.btn', 'input[type="button"]', 'input[type="submit"]',
-  '.btn', '.chip', '.filter-chip', '.kind-toggle', '.dk-seg-btn', '.live-update-tab',
+  '.btn', '.chip', '.filter-chip', '.kind-toggle',
   '.badge', '[class*="badge"]', '[class*="-pill"]', '[class*="-chip"]', '.pill', '.tag',
-  '.beta-tag', '[class*="beta"]',
+  '[class*="beta"]',
   // Up Next's plan tags (step 5 of the home: 'If bust #12', 'On: busted #12'), content-sized pills.
   '.dash-event-tag.plan',
 ];
@@ -229,7 +229,7 @@ const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot', '.vm-map-canvas'];
 // clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
 const NOT_CONTROLS = [
   '.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.dash-event-card', '.settings-row-btn',
-  '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row', '.bs-row',
+  '.bk-row', '.tx-row', '.tx-trip-row', '.bs-row',
   // Pick-list rows that seat their label on an r line by design: the Hands game picker's radio
   // rows ("4r row, label baseline one r above the bottom") and New Group's buddy rows ("the
   // name on +3r").
@@ -263,9 +263,8 @@ const SWITCHES = ['[role="switch"]', '.settings-toggle', '[class*="toggle-switch
 // ways — along the band and across it. .cal-venue-strip is the Schedule / My Schedule row's
 // vertical strip (writing-mode vertical-rl, rotate(180deg)); .dash-venue-strip the Up Next card's
 // banner. .replayer-hand-strip (a saved hand's game strip) and .gto-seat-strip (the hand-entry
-// seat strip) are drawn "property for property" from the venue strip and held to it too, and
-// .bp-strip is the backer page's session card banner (the Up Next banner's form).
-const STRIPS = ['.cal-venue-strip', '.dash-venue-strip', '.replayer-hand-strip', '.gto-seat-strip', '.bp-strip'];
+// seat strip) are drawn "property for property" from the venue strip and held to it too.
+const STRIPS = ['.cal-venue-strip', '.dash-venue-strip', '.replayer-hand-strip', '.gto-seat-strip'];
 // Not a control even though the class matches: wrappers, rows, lists.
 const GROUP_CLASS = /(^|[-_])(row|rows|list|group|wrap|wrapper|strip|bar|container|tabs|area|grid|stack|line|section|panel|menu|header|body|col|cell)$/;
 
@@ -2170,9 +2169,9 @@ function finalize(c) {
   step('notifications', () => click('.notif-btn', 900), 1);
   step('live-update', async () => {
     await click('.live-update-btn', 900);
-    const tabs = await p.locator('.live-update-tab').count();
+    const tabs = await p.locator('.live-update-tabs > button').count();
     for (let i = 1; i < tabs; i++) {
-      await p.locator('.live-update-tab').nth(i).click({ timeout: 3000 }).catch(() => {});
+      await p.locator('.live-update-tabs > button').nth(i).click({ timeout: 3000 }).catch(() => {});
       await p.waitForTimeout(500);
       await also('tab ' + (i + 1));
     }
@@ -2327,9 +2326,6 @@ function finalize(c) {
   // (transport, settings, share).
   step('hands-games', async () => {
     await nav('Hands');
-    const tabs = vis('.game-tab-btn');
-    const n = await tabs.count();
-    for (let i = 1; i < n; i++) { await tabs.nth(i).click({ timeout: 3000 }); await p.waitForTimeout(600); await also('family ' + (i + 1)); }
   });
   step('hands-entry', async () => {
     await nav('Hands');
@@ -2437,7 +2433,7 @@ function finalize(c) {
     await reveal('.an-launch', 200);
     await tap('.an-launch', 1500);
     await also('open');
-    const tabs = vis('.an-sheet [role="tab"], .an-sheet .bk-seg-btn, .an-sheet .an-tab');
+    const tabs = vis('.an-sheet [role="tab"], .an-sheet .bk-seg-btn');
     const n = await tabs.count();
     for (let i = 1; i < Math.min(n, 8); i++) { await tabs.nth(i).click({ timeout: 3000 }).catch(() => {}); await p.waitForTimeout(700); await also('tab ' + (i + 1)); }
   }, 2);

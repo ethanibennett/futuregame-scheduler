@@ -21,14 +21,14 @@ const reg = await fetch(base + '/api/register', {
   body: JSON.stringify({ username: name, email: `${name}@example.test`, password: randomBytes(16).toString('hex'), realName: 'Drill Check' }),
 }).then((r) => r.json());
 const { iat, exp, ...claims } = jwt.decode(reg.token);
-const token = jwt.sign({ ...claims, username: 'claude' }, secret, { expiresIn: '1h' });
+const token = jwt.sign({ ...claims, username: 'ham5' }, secret, { expiresIn: '1h' });
 
 const browser = await webkit.launch();
 const ctx = await browser.newContext(desktop
   ? { viewport: { width: 1440, height: 900 } }
   : { viewport: { width: 430, height: 932 }, deviceScaleFactor: 2, hasTouch: true });
 await ctx.addInitScript(({ t }) => {
-  localStorage.setItem('token', t); localStorage.setItem('username', 'claude');
+  localStorage.setItem('token', t); localStorage.setItem('username', 'ham5');
   localStorage.setItem('onboardComplete', '1'); localStorage.setItem('hasOnboarded', 'true');
   localStorage.setItem('onboarded', '1'); localStorage.setItem('gridReadout', 'off');
 }, { t: token });

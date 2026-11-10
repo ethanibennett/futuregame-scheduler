@@ -9,6 +9,7 @@ import useInkBalance from '../hooks/useInkBalance.js';
 import useThemeChoice from '../hooks/useThemeChoice.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { API_URL } from '../utils/api.js';
+import { isAppAdminToken } from '../utils/session-claims.js';
 import { settleView, partCents, paymentView, usd } from '../utils/backer-settle.js';
 import { VENUE_MAP, getVenueBrandColor, getVenueInfo, getStripAbbr } from '../utils/utils.js';
 import {
@@ -47,16 +48,11 @@ import { SwissLines } from './SwissParts.jsx';
 
 /* The admin-only layout grid (owner, 2026-10-15), as the app has it: shown to a device signed in to
    the app as an admin (the app's own token, read here only to decide whether to offer the overlay;
-   mirrors App.jsx tokenUsername and APP_ADMIN_USERNAMES), on and off with the app's own setting
+   utils/session-claims.js, as App.jsx reads it), on and off with the app's own setting
    (localStorage gridOverlay), and ?gridOverlay=1 still forces it for anyone (the guards). */
-const APP_ADMIN_USERNAMES = ['ham', 'ham5', 'claude'];
 function deviceIsAppAdmin() {
   try {
-    const tok = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
-    const part = tok.split('.')[1];
-    if (!part) return false;
-    const claims = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/')));
-    return !!claims && !claims.isGuest && typeof claims.username === 'string' && APP_ADMIN_USERNAMES.includes(claims.username.toLowerCase());
+    return isAppAdminToken(localStorage.getItem('token') || sessionStorage.getItem('token') || '');
   } catch { return false; }
 }
 

@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  normalise, rowView, blockTitle, emptyText, notifyLabel, confirmText, footNote, sentToast, warningText, fmtPct, dayOfMs, flaggedKeys,
+  normalise, rowView, blockTitle, emptyText, footNote, sentToast, warningText, fmtPct, dayOfMs,
 } from '../backer-notify.js';
 
 const answer = (over = {}) => ({
@@ -51,26 +51,10 @@ test('rowView: sent reads "Sent Oct 14", and "· Updated" once an edit moved the
   assert.equal(rowView({ ...sent.backers[0], name: null }, { thisYear: 2026, dayOf }).name, 'Unnamed backer');
 });
 
-test('title, empty text, the Notify label', () => {
+test('title and empty text', () => {
   const b = normalise(answer());
   assert.equal(blockTitle(b), 'Backers · PLO MTT');
   assert.equal(emptyText(normalise(answer({ backers: [], result: { ...answer().result, game: 'Razz MTT' } }))), 'No backers staked in Razz MTT.');
-  assert.equal(notifyLabel(1), 'Notify 1 backer');
-  assert.equal(notifyLabel(2), 'Notify 2 backers');
-});
-
-test('confirmText names who may be doubled and why, and how many shares go', () => {
-  const b = normalise(answer());
-  assert.equal(confirmText(b, { thisYear: 2026 }),
-    "Dan Whitcombe may already have this night: the dashboard app sent a share on Oct 11, and a series agreement covers this event. Send all 2 shares anyway, or only Sam Okafor's?");
-  const one = normalise(answer({ backers: [answer().backers[0]], pending: 1 }));
-  one.backers[0].warnings = one.backers[0].warnings.filter((w) => w.kind === 'series');
-  assert.equal(confirmText(one), 'Dan Whitcombe may already have this night: a series agreement covers this event. Send the share anyway?');
-  const two = normalise(answer());
-  two.backers[1].warnings = [{ kind: 'dashboard', date: '2026-10-11', game: '', shareCents: 1 }];
-  assert.equal(confirmText(two), 'Dan Whitcombe and Sam Okafor may already have this night: the lines under each name say why. Send all 2 shares anyway?');
-  assert.deepEqual(flaggedKeys(b), ['r-dan']);
-  assert.deepEqual(flaggedKeys(two), ['r-dan', 'r-sam']);
 });
 
 test('footNote: what a tap does where delivery is off or on, and what an edit does once sent', () => {

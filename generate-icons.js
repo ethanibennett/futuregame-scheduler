@@ -1,11 +1,14 @@
 #!/usr/bin/env node
+// The square PNG icons (web 192/512, the iOS 1024, Android's launcher mipmaps), rendered from the app's
+// mark, vite-app/public/favicon.svg (the one source; there is no second copy). Mac only (rsvg-convert, or
+// qlmanage + sips). The maskable, adaptive, dark/tinted and splash assets are
+// scripts/generate-native-assets.js, which owns Android's ic_launcher_foreground.png.
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-// Use the designer's SVG as the source icon
-const SVG_PATH = path.join(__dirname, 'futuregameIcon.svg');
 const publicDir = path.join(__dirname, 'vite-app', 'public');
+const SVG_PATH = path.join(publicDir, 'favicon.svg');
 const iosDir = path.join(__dirname, 'ios/App/App/Assets.xcassets/AppIcon.appiconset');
 const androidBase = path.join(__dirname, 'android/app/src/main/res');
 
@@ -59,7 +62,6 @@ for (const [density, size] of Object.entries(androidSizes)) {
   if (fs.existsSync(dir)) {
     targets.push({ path: path.join(dir, 'ic_launcher.png'), size });
     targets.push({ path: path.join(dir, 'ic_launcher_round.png'), size });
-    targets.push({ path: path.join(dir, 'ic_launcher_foreground.png'), size });
   }
 }
 
@@ -72,9 +74,4 @@ for (const t of targets) {
   }
 }
 
-// Also copy SVG as favicon and icon.svg
-fs.copyFileSync(SVG_PATH, path.join(publicDir, 'favicon.svg'));
-fs.copyFileSync(SVG_PATH, path.join(publicDir, 'icon.svg'));
-
-console.log(`Generated ${success}/${targets.length} PNG icons from futuregameIcon.svg`);
-console.log('Updated favicon.svg and icon.svg');
+console.log(`Generated ${success}/${targets.length} PNG icons from vite-app/public/favicon.svg`);

@@ -38,5 +38,3 @@ export class HandExportError extends Error {
     this.vars = vars;
   }
 }
-
-export const ERROR_CODES = Object.keys(COPY);

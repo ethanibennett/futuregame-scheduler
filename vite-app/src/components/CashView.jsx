@@ -5,7 +5,6 @@ import { deriveVenueInfo } from '../utils/utils.js';
 import { readLocalLocation } from '../utils/location-prefs.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 import LocationDropdown from './LocationDropdown.jsx';
-import Icon from './Icon.jsx';
 import CashHeatmap from './CashHeatmap.jsx';
 import './cash-board.css';
 
@@ -15,13 +14,10 @@ import './cash-board.css';
 // "what's running right now" per venue, with each game's open duration derived
 // from the watcher's history, and a persistent variant filter.
 
-const BASKERVILLE = "'Baskerville', 'Baskerville Old Face', 'Libre Baskerville', 'Hoefler Text', Garamond, serif";
-const UNIVERS = "var(--font-condensed, 'Univers Condensed', 'Univers', sans-serif)";
-// Grid constants: control height 32 (4 baseline rows), chip 24 (3 rows), gaps
-// on the 8px baseline. Every interactive box is sized to a whole number of rows
-// rather than to font + literal padding, so heights land on the grid.
+// Grid constant: a control is 4 baseline rows tall. Every interactive box is
+// sized to a whole number of rows rather than to font + literal padding, so
+// heights land on the grid.
 const CTRL_H = 'calc(var(--subrow) * 4)';
-const CHIP_H = 'calc(var(--subrow) * 3)';
 const HIDDEN_KEY = 'cashHiddenVariants'; // persisted set of variant labels to hide
 
 // How long a game has been open = the length of its current unbroken run. The

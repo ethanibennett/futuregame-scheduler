@@ -24,7 +24,7 @@ import { niceTicks, drawdownBand } from '../utils/bankroll-ledger.js';
  *     barely moved can ask for a long one (MX$999,985); a label that would come within 0.5g of the
  *     lines coarsens the scale a power of ten at a time until every label fits (measured after
  *     layout, before paint).
- *   - STEP lines, as ResultsCurve: a total holds until money moves; a diagonal would draw totals
+ *   - STEP lines: a total holds until money moves; a diagonal would draw totals
  *     that never existed.
  *   - Drawdown from the peak (the band between the running peak, dashed, and the line) only when
  *     ONE line is drawn, from that line's own points; with several it is clutter. The band is

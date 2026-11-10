@@ -14,7 +14,7 @@
  *                                     { kind: 'series', series: [name] }] }],
  *     pending, sent, needsConfirm, state: 'none'|'preview'|'partial'|'sent', rosterSize, delivery: 'on'|'off' }
  */
-import { fmtSignedCents, fmtShort, plural, tone } from './backer-page.js';
+import { fmtSignedCents, fmtShort, plural, tone, fmtPct } from './backer-page.js';
 
 export { fmtSignedCents };
 
@@ -57,10 +57,7 @@ export function normalise(data) {
   };
 }
 
-/** A percentage as the stake is written: 20 -> "20%", 12.5 -> "12.5%", and no float noise. */
-export function fmtPct(p) {
-  return `${Math.round(num(p) * 100) / 100}%`;
-}
+export { fmtPct };
 
 /** The local calendar day of a moment (ms), YYYY-MM-DD. */
 export function dayOfMs(ms) {
@@ -105,40 +102,6 @@ export function rowView(b, { thisYear, dayOf = dayOfMs } = {}) {
     warnings: b.warnings.map((w) => warningText(w, thisYear)),
   };
 }
-
-/** The Notify button: "Notify 2 backers". */
-export const notifyLabel = (n) => `Notify ${plural(Math.max(0, n), 'backer')}`;
-
-const listOf = (names) => {
-  const a = names.filter(Boolean);
-  if (a.length <= 1) return a[0] || 'A backer';
-  return `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`;
-};
-
-/**
- * The second confirm, when a new share may double one the backer already has: the dashboard app
- * sent them a share on the same date, or a series agreement covers this event (owner Q7).
- */
-export function confirmText(block, { thisYear } = {}) {
-  const pending = block.backers.filter((b) => b.status === 'new');
-  const warned = pending.filter((b) => b.warnings.length);
-  const rest = pending.filter((b) => !b.warnings.length);
-  const what = (pending.length === 1 ? 'the share' : `all ${pending.length} shares`) + ' anyway'
-    + (rest.length === 1 ? `, or only ${rest[0].name || NO_NAME}'s` : rest.length > 1 ? `, or only the ${rest.length} not flagged` : '');
-  if (warned.length !== 1) {
-    return `${listOf(warned.map((b) => b.name || NO_NAME))} may already have this night: the lines under each name say why. Send ${what}?`;
-  }
-  const w = warned[0].warnings;
-  const dates = [...new Set(w.filter((x) => x.kind === 'dashboard').map((x) => fmtShort(x.date, thisYear)))];
-  const why = [
-    dates.length ? `the dashboard app sent a share on ${dates.join(', ')}` : null,
-    w.some((x) => x.kind === 'series') ? 'a series agreement covers this event' : null,
-  ].filter(Boolean).join(', and ');
-  return `${warned[0].name || NO_NAME} may already have this night: ${why}. Send ${what}?`;
-}
-
-/** The keys of the new shares the confirm is about (the confirm's "Send the others" skips them). */
-export const flaggedKeys = (block) => block.backers.filter((b) => b.status === 'new' && b.warnings.length).map((b) => b.key);
 
 /** The line under the block: what a tap does here, or what an edit does once it is sent. */
 export function footNote(block) {

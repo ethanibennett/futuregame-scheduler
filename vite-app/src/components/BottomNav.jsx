@@ -2,7 +2,7 @@ import React from 'react';
 import Icon from './Icon.jsx';
 import { haptic } from '../utils/utils.js';
 
-export default function BottomNav({ current, onChange, scheduleCount, newShareCount, isAdmin }) {
+export default function BottomNav({ current, onChange, isAdmin }) {
   const tabs = [
     { id: 'tournaments', label: 'Schedule', icon: Icon.calendar },
     // Bankroll took Social's slot (owner, 2026-10-14): it opens Results & Tracking, the bankroll

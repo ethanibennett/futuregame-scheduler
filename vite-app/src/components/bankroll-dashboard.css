@@ -97,9 +97,6 @@
 .bd-kv dt, .bd-kv dd { margin-left: 0; }
 .bd-cols-kv { grid-template-columns: calc(var(--gu) * 21) calc(var(--gu) * 14); }
 .bd-kv dd { font-weight: var(--fw-bold); }
-.bd-qual { font-size: var(--fs-xs); color: var(--text-muted); }
-.bd-kv .is-sub dt { padding-left: calc(var(--gu) * 2); color: var(--text-muted); }
-.bd-kv .is-sub dd { font-weight: var(--fw-regular); }
 .bd-after { margin-top: var(--subrow); }
 
 /* Latest sessions: 6r rows, profit (display face xl) over the date on the left 14g, the event or
@@ -240,12 +237,8 @@
   .bd-hero, .bd-chart, .bd-axis, .bd-chart-head > .an-note, .bd-sp-val, .bd-recent { transition: none; }
 }
 
-/* Tables: 11 + 8 + 8 + 8 = 35g. */
-.bd-cols-4 { grid-template-columns: calc(var(--gu) * 11) var(--col) var(--col) var(--col); }
 /* Preview: line 3g, date 8g, what 13g, amount 6g, status 5g = 35g. */
 .bd-cols-preview { grid-template-columns: calc(var(--gu) * 3) var(--col) calc(var(--gu) * 13) calc(var(--gu) * 6) calc(var(--gu) * 5); }
-/* Mapping: field 17g, column 18g. */
-.bd-row-2 { display: grid; grid-template-columns: calc(var(--gu) * 17) calc(var(--gu) * 18); align-items: start; }
 
 /* Goals: a 4r head row (what | progress | ×), a 1r bar, a 2r note. */
 .bd-goal + .bd-goal { margin-top: calc(var(--subrow) * 2); }

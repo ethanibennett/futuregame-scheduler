@@ -373,7 +373,7 @@ b, strong, .b { font-weight: 700; letter-spacing: -0.02em; }
   const KEY = 'swissPicks';
   let picks = new Set();
   try { picks = new Set(JSON.parse(localStorage.getItem(KEY) || '[]')); } catch { /* storage unavailable */ }
-  // Picks are kept in the artifact's database (one shared document) so Claude can read them, and on
+  // Picks are kept in the artifact's database (one shared document) so they can be read back, and on
   // this device as a fallback. Ticks made before the database existed are carried over once.
   let pickDoc = null, lastSaved = '';
   const status = () => document.getElementById('copied');
@@ -384,7 +384,7 @@ b, strong, .b { font-weight: 700; letter-spacing: -0.02em; }
     const key = list.join(',');
     if (key === lastSaved) return;
     pickDoc.set({ picks: list, updatedAt: new Date().toISOString() })
-      .then(() => { lastSaved = key; status().textContent = 'Saved for Claude.'; })
+      .then(() => { lastSaved = key; status().textContent = 'Saved.'; })
       .catch(() => { status().textContent = 'Saved on this device only.'; });
   };
   const sync = (list) => {

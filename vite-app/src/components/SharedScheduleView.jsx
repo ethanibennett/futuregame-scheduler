@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from './Icon.jsx';
 import { FirstRun } from './EmptyState.jsx';
 import Avatar from './Avatar.jsx';
@@ -6,7 +6,7 @@ import CalendarEventRow from './CalendarEventRow.jsx';
 import DateBreak from './DateBreak.jsx';
 import { API_URL } from '../utils/api.js';
 import {
-  getVenueInfo, normaliseDate, getToday, parseTournamentTime, extractConditions,
+  normaliseDate, getToday, parseTournamentTime, extractConditions,
   THEME_ORDER, THEME_LABEL, THEME_ICON, getStoredSeasonLabel,
   registerRowTimezones, registerRowCurrencies,
 } from '../utils/utils.js';

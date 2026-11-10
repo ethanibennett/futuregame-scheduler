@@ -90,8 +90,7 @@ export default function GridOverlay({ showReadout = true }) {
           '.dash-start-btn', '.dash-update-btn', '.dash-bag-btn', '.dash-bust-btn',
           '.dash-rebuy-btn', '.dash-no-rebuy', '.dash-playing-badge', '.dash-finished-badge',
           '.dash-restart-badge', '.dash-status-row', '.dash-scan-btn',
-          '.dash-pl-value', '.dash-pl-label', '.dash-pl-roi',
-          '.dash-collapsed-countdown', '.mini-late-reg-label', '.mini-late-reg-time',
+          '.mini-late-reg-label', '.mini-late-reg-time',
         ];
         // Only scan when the Dashboard tab is active. Several of these selectors
         // (late-reg-label/time, mini-late-reg-time) also exist on the Schedule,

@@ -23,9 +23,9 @@ import { prepareHand, normalizeInput, seatPlayers, layOut } from './prepare.js';
 import { renderPokerStars } from './pokerstars-writer.js';
 import { HandExportError } from './errors.js';
 import {
-  CURRENCIES, SITE_RE, sortedJSON, fnv1a64, etDay, toCents, money, GAME_TABLE, canonicalGameName,
+  CURRENCIES, SITE_RE, sortedJSON, fnv1a64, etDay, toCents, money,
 } from './ps-format.js';
-import { gameConfig, gameCategory } from '../quick-add/game.js';
+import { gameConfig } from '../quick-add/game.js';
 
 export { prepareHand, HandExportError };
 export { canonicalHand } from './canonical.js';
@@ -175,10 +175,4 @@ export function checkExportable(hand, opts = {}) {
     if (err instanceof HandExportError) return { ok: false, code: err.code, message: err.message, short: err.short };
     return { ok: false, code: 'internal', message: "This hand can't be exported", short: "This hand can't be exported" };
   }
-}
-
-/* Is the game one this format has at all (for a quick filter before checking). */
-export function hasPokerStarsGame(gameType) {
-  const g = canonicalGameName(gameType);
-  return !!GAME_TABLE[g] && !!gameCategory(g);
 }

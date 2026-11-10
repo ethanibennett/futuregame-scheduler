@@ -102,5 +102,3 @@ export function useSharedFilters(init = initialFilters) {
   return [value, set];
 }
 
-/** Tests only: forget the shared value. */
-export function resetSharedFilters() { current = null; }

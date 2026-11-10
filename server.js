@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const fs = require('fs').promises;
+const fsSync = require('fs'); // the synchronous API, for boot-time and small reads
 const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -109,28 +110,14 @@ if (!JWT_SECRET) {
 
 // ── Security middleware ──────────────────────────────────────
 
-// Helmet — security headers (CSP disabled: single-file React app with Babel standalone
-// requires unsafe-inline + unsafe-eval + script-src-attr which defeats CSP purpose)
+// Helmet — security headers, with Content-Security-Policy off (the app does not define one).
 app.use(helmet({
   contentSecurityPolicy: false,
 }));
 
-// CORS — restrict to known origins
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:3001', 'http://localhost:3000', 'http://localhost:5173', 'capacitor://localhost', 'http://localhost', 'https://futurega.me', 'http://futurega.me', 'https://www.futurega.me', 'http://www.futurega.me'];
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, same-origin)
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.log(`CORS: unlisted origin ${origin}`);
-      callback(null, true); // Allow all origins — app is public
-    }
-  },
-  credentials: true,
-}));
+// CORS — every origin is allowed (the app is public; the native app, curl and same-origin requests
+// send none). The request's origin is reflected, with credentials.
+app.use(cors({ origin: true, credentials: true }));
 
 // Response compression. Server-Sent Events are excluded: compression buffers
 // its output until a chunk fills, so a gzipped event stream would deliver
@@ -239,22 +226,14 @@ app.use(express.static(path.join(__dirname, 'public-vite'), {
   }
 }));
 
-// WSOP 2027 Console — a self-contained, offline-first PWA (its own Vite build
-// in wsop-console/app/, base '/console/'). No shared API/auth: all its data is
-// local to the browser (IndexedDB), so we just serve its static build under
-// /console. Registered before the route handlers so it wins those paths.
-//
-// Access is restricted to the "ham" account via HTTP Basic Auth: the console is
-// loaded by document navigation, which never carries the app's bearer token, so
-// we can't reuse authenticateToken. Basic creds are verified (bcrypt) against
-// the users table; only username "ham" passes. Enter "ham" (or ham's email) as
-// the username and the account password.
-// ── Shared session cookie ──
-// The main app authenticates via a Bearer JWT in localStorage (header-only, so
-// it never rides a plain navigation to /console). To make "logged into
-// futurega.me ⇒ logged into the console" work, we ALSO issue that same JWT as an
-// httpOnly cookie at login; /console then accepts a valid cookie for the owner
-// (username 'ham'). Basic Auth stays as a fallback (native app + first-time seed).
+// ── The owner's gate (requireHamBasic) and the shared session cookie ──
+// requireHamBasic guards what a browser reaches by navigation or the dashboard calls server to server,
+// neither of which carries the app's bearer token: the /cash watcher proxy and the backer routes kept
+// at /console/api/backers/* (seam #1). Only the owner passes. The main app authenticates via a Bearer
+// JWT in localStorage (header-only, so it never rides a plain navigation), so we ALSO issue that same
+// JWT as an httpOnly cookie at login, and the gate accepts a valid cookie for the owner. HTTP Basic
+// Auth (verified with bcrypt against the owner's row; "ham" or ham's email as the username) stays as
+// a fallback (native app + first-time seed).
 const SESSION_COOKIE = 'fg_session';
 const SESSION_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000; // match the JWT's 90d expiry
 function setSessionCookie(res, token) {
@@ -450,9 +429,9 @@ const APP_ADMIN_USERNAMES = new Set(['ham', 'ham5', 'claude']);
 // The same list as a SQL IN-list, for the admin-alert recipient queries. Constants, never input.
 const ADMIN_USERNAMES_SQL = [...APP_ADMIN_USERNAMES].map((u) => `'${u.replace(/'/g, "''")}'`).join(', ');
 
-// The write allowlist for SHARED tournament data — the same ['ham','ham5'] every admin write route
-// (event edit, overrides, venue colours, sync, subscription grant) checks inline. As middleware for
-// the schedule-import routes, which had only requireRegistered: any signed-up user could upsert
+// The write allowlist for SHARED tournament data, mounted on every admin write route (event edit,
+// overrides, venue colours, export and sync, the users list, subscription grant) and on the
+// schedule-import routes, which once had only requireRegistered: any signed-up user could upsert
 // over the shared schedule and spend the server's Anthropic key. Mount it BEFORE multer so a
 // refused request never writes its upload to disk.
 const EVENT_EDITOR_USERNAMES = new Set(['ham', 'ham5']);
@@ -478,8 +457,8 @@ function requireAppAdmin(req, res, next) {
 app.use('/api/solver', authenticateToken, requireAppAdmin);
 app.use('/api/staking', authenticateToken, requireAppAdmin);
 
-// Every admin check in this file (the two sets above, the inline ['ham','ham5'] checks, the
-// quick-add gate) trusts the USERNAME in the JWT. Registration already refuses case-insensitive
+// Every admin check in this file (the two sets above and the quick-add gate) trusts the USERNAME
+// in the JWT. Registration already refuses case-insensitive
 // duplicates, so an admin name is safe once its account exists — but a name in the list with no
 // account behind it is free for anyone to sign up as. Reserve them all outright.
 const RESERVED_USERNAMES = new Set([...APP_ADMIN_USERNAMES, ...EVENT_EDITOR_USERNAMES]);
@@ -569,8 +548,7 @@ app.use('/api/cash', authenticateToken, (req, res) => {
 
 // ── Backer-facing public surface (NOT under /console — backers have no creds) ──
 // Access is gated purely by the unguessable token in the URL; each token sees
-// only its own feed. Registered before the console gate + the SPA catch-all so
-// these win.
+// only its own feed.
 const { checkDashboardToken, makePreviousTokenWarner } = require('./lib/dashboard-token');
 const { clockForEvent, probeProviders } = require('./lib/live-clocks');
 const { retainsPastFeedRow, RETAIN_DAYS } = require('./lib/feed-prune');
@@ -579,10 +557,10 @@ const bankrollLedger = require('./lib/bankroll-ledger');
 const bankrollManagement = require('./lib/bankroll-management');
 const bankrollImport = require('./lib/bankroll-import');
 const cashSessions = require('./lib/cash-sessions');
-const growth = require('./lib/growth');
-const appleBilling = require('./lib/billing/apple');
+const growth = require('./lib/growth');   // first-party growth measurement (launch plan, action 5)
+const appleBilling = require('./lib/billing/apple');   // App Store purchases on the account (launch plan, action 10)
 const attribution = require('./lib/attribution');   // SKAdNetwork / AdAttributionKit postback copies, Apple Ads (launch plan §13)
-const billingFeatures = require('./lib/billing/features');   // what each plan unlocks; PAYWALL_LIVE off = all open   // App Store purchases on the account (launch plan, action 10)   // first-party growth measurement (launch plan, action 5)
+const billingFeatures = require('./lib/billing/features');   // what each plan unlocks; PAYWALL_LIVE off = all open
 const bankrollTransactions = require('./lib/bankroll-transactions');
 const { validateHomeLayout, parseStoredHomeLayout } = require('./lib/home-layout');
 const moneyMerge = require('./lib/money-merge');
@@ -809,7 +787,7 @@ app.get('/b/:token', (req, res) => {
   }
   let html;
   try {
-    html = require('fs').readFileSync(path.join(__dirname, 'public-vite', 'index.html'), 'utf8');
+    html = fsSync.readFileSync(path.join(__dirname, 'public-vite', 'index.html'), 'utf8');
   } catch (err) {
     console.error('Backer page: no app shell to serve (public-vite/index.html):', err.message);
     return res.status(503).send('Unavailable');
@@ -820,16 +798,13 @@ app.get('/b/:token', (req, res) => {
   res.type('html').send(backerShell(html));
 });
 
-// ── Dashboard seam #2 (the ONLY dashboard surface left on the scheduler) ──
+// ── Dashboard seam #2 (departures board) ──
 // The dashboard itself (summary/series/screensaver page) moved to the standalone
-// service at dashboard.futurega.me (cutover 2026-08-09). What remains here is
-// the cross-domain seam: the dashboard has no user_schedules/tournaments tables,
-// so it fetches the upcoming schedule from us, gated by the shared
-// DASHBOARD_TOKEN (404 on mismatch, matching the backer routes' posture).
-// Seam #2 (departures board): the standalone console fetches the dashboard user's
-// upcoming schedule here (it has no user_schedules/tournaments tables of its own).
-// Same DASHBOARD_TOKEN gate + posture as the other dashboard routes; the response
-// is the already-mapped events array from computeDashboardEvents.
+// service at dashboard.futurega.me (cutover 2026-08-09). It has no
+// user_schedules/tournaments tables, so it fetches the dashboard user's upcoming
+// schedule here, gated by the shared DASHBOARD_TOKEN (404 on mismatch, matching
+// the backer routes' posture). The response is the already-mapped events array
+// from computeDashboardEvents.
 app.get('/api/schedule/:token/upcoming', (req, res) => {
   const token = String(req.params.token || '');
   if (!dashboardTokenOk(token)) return res.status(404).json({ error: 'Not found' });
@@ -845,136 +820,133 @@ app.get('/api/schedule/:token/upcoming', (req, res) => {
 // Backer routes kept under their historical /console/api/backers/* paths (the
 // standalone dashboard POSTs here over HTTP — seam #1) — each ham-gated
 // directly now that the blanket /console gate is gone.
-{
 
-  // Backer notifications (gated — only ham can send). The client sends a
-  // session summary + the computed per-backer cuts; we append each backer's
-  // event (dedup on token+session), recompute their running share, and fire
-  // their web-push. Returns per-recipient delivery + running total.
-  app.post('/console/api/backers/notify', requireHamBasic, async (req, res) => {
-    try {
-      const { session, recipients } = req.body || {};
-      if (!session || typeof session.id !== 'string' || !Array.isArray(recipients)) {
-        return res.status(400).json({ error: 'Bad payload' });
-      }
-      const ts = Date.now();
-      const results = [];
-      let changed = false;
-      for (const r of recipients) {
-        if (!r || typeof r.token !== 'string' || !/^[A-Za-z0-9]{6,64}$/.test(r.token)) continue;
-        const pct = Number(r.pct) || 0;
-        const shareCents = Math.round(Number(r.shareCents) || 0);
-        db.run(
-          `INSERT INTO backer_public (token, name, updated_at) VALUES (?, ?, ?)
-           ON CONFLICT(token) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at`,
-          [r.token, String(r.name || '').slice(0, 80), ts]
-        );
-        // A relayed share is delivered INLINE by this request (the push and text below), so it is
-        // born delivered: source 'dashboard' and notified_* = its own share. The delivery sweep
-        // (lib/backer-surface.js) only ever takes source 'ledger' rows, and these columns say the
-        // same thing a second way, so a relayed share can never be delivered twice. Without the
-        // columns (a database whose money-merge migration failed) the insert is the old one.
-        const born = backerEventsHaveDeliveryColumns();
-        db.run(
-          `INSERT OR IGNORE INTO backer_events
-             (id, token, session_id, ts, date, game, venue, hours, session_result_cents, pct, share_cents${born ? ', source, notified_share_cents, notified_at' : ''})
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${born ? ", 'dashboard', ?, ?" : ''})`,
-          [
-            `${r.token}:${session.id}`, r.token, session.id, ts,
-            String(session.date || ''), String(session.game || '').slice(0, 120),
-            String(session.venue || '').slice(0, 80), Number(session.hours) || 0,
-            Math.round(Number(session.resultCents) || 0), pct, shareCents,
-            ...(born ? [shareCents, ts] : []),
-          ]
-        );
-        const inserted = db.getRowsModified() > 0;
-        if (inserted) changed = true;
-        // Cumulative is computed AFTER the insert-or-ignore, so it reflects this
-        // session once (a re-send finds the row already there and the sum is
-        // unchanged — never double-counted). Add the backer's carry-in so the
-        // "Running" figure matches their page.
-        const cum = backerCumulativeCents(r.token) + Math.round(Number(r.openingCents) || 0);
-        // Always attempt the push (not only on first record): a backer who
-        // enabled notifications AFTER the first send still gets reached on a
-        // re-send, while the dedup above keeps their running total correct.
-        const title = `${session.game} — ${fmtSignedCents(shareCents)}`;
-        const body =
-          `${session.venue} · ${fmtHours(session.hours)} · session ${fmtSignedCents(session.resultCents)}. ` +
-          `Your ${pct}% = ${fmtSignedCents(shareCents)}. Running: ${fmtSignedCents(cum)}.`;
-        const out = await sendBackerPush(r.token, title, body, `/b/${r.token}`);
-        if (out.changed) changed = true;
-        // Per-session text (Twilio), if this backer has a phone on file.
-        let smsStatus = 'none';
-        if (r.sms && typeof r.sms === 'string') {
-          smsStatus = await sendBackerSms(
-            r.sms,
-            `${session.game} at ${session.venue}: session ${fmtSignedCents(session.resultCents)} over ${fmtHours(session.hours)}. ` +
-            `Your ${pct}% = ${fmtSignedCents(shareCents)}. Running ${fmtSignedCents(cum)}. futurega.me/b/${r.token}`
-          );
-        }
-        results.push({
-          token: r.token, name: r.name, sent: out.sent, subs: out.subs, cumulativeCents: cum, duplicate: !inserted, sms: smsStatus,
-          // Only where delivery is off (not Render, BACKER_DELIVERY unset): nothing was sent, and the answer says so.
-          ...(out.off ? { delivery: 'off' } : {}),
-        });
-      }
-      if (changed) await saveDatabase();
-      res.json({ results });
-    } catch (err) {
-      console.error('Backer notify error:', err);
-      res.status(500).json({ error: 'notify failed' });
+// Backer notifications (gated — only ham can send). The client sends a
+// session summary + the computed per-backer cuts; we append each backer's
+// event (dedup on token+session), recompute their running share, and fire
+// their web-push. Returns per-recipient delivery + running total.
+app.post('/console/api/backers/notify', requireHamBasic, async (req, res) => {
+  try {
+    const { session, recipients } = req.body || {};
+    if (!session || typeof session.id !== 'string' || !Array.isArray(recipients)) {
+      return res.status(400).json({ error: 'Bad payload' });
     }
-  });
-
-  // A backer's recorded shares (gated) — so the console can review + remove
-  // events (e.g. a test/miscategorised session). Includes session_id (the delete
-  // key) that the public feed omits.
-  app.get('/console/api/backers/:token/events', requireHamBasic, (req, res) => {
-    try {
-      const token = String(req.params.token || '');
-      if (!/^[A-Za-z0-9]{6,64}$/.test(token)) return res.status(400).json({ error: 'bad token' });
-      // Same order as the backer's own page (see the feed route) so the review
-      // list here matches what they see.
-      const s = db.prepare(
-        'SELECT session_id, date, game, venue, hours, session_result_cents, pct, share_cents, ts FROM backer_events WHERE token = ? ORDER BY date DESC, ts DESC LIMIT 500'
+    const ts = Date.now();
+    const results = [];
+    let changed = false;
+    for (const r of recipients) {
+      if (!r || typeof r.token !== 'string' || !/^[A-Za-z0-9]{6,64}$/.test(r.token)) continue;
+      const pct = Number(r.pct) || 0;
+      const shareCents = Math.round(Number(r.shareCents) || 0);
+      db.run(
+        `INSERT INTO backer_public (token, name, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT(token) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at`,
+        [r.token, String(r.name || '').slice(0, 80), ts]
       );
-      s.bind([token]);
-      const events = [];
-      while (s.step()) {
-        const r = s.getAsObject();
-        events.push({
-          sessionId: r.session_id, date: r.date, game: r.game, venue: r.venue,
-          hours: r.hours, resultCents: r.session_result_cents, pct: r.pct,
-          shareCents: r.share_cents, ts: r.ts,
-        });
+      // A relayed share is delivered INLINE by this request (the push and text below), so it is
+      // born delivered: source 'dashboard' and notified_* = its own share. The delivery sweep
+      // (lib/backer-surface.js) only ever takes source 'ledger' rows, and these columns say the
+      // same thing a second way, so a relayed share can never be delivered twice. Without the
+      // columns (a database whose money-merge migration failed) the insert is the old one.
+      const born = backerEventsHaveDeliveryColumns();
+      db.run(
+        `INSERT OR IGNORE INTO backer_events
+           (id, token, session_id, ts, date, game, venue, hours, session_result_cents, pct, share_cents${born ? ', source, notified_share_cents, notified_at' : ''})
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${born ? ", 'dashboard', ?, ?" : ''})`,
+        [
+          `${r.token}:${session.id}`, r.token, session.id, ts,
+          String(session.date || ''), String(session.game || '').slice(0, 120),
+          String(session.venue || '').slice(0, 80), Number(session.hours) || 0,
+          Math.round(Number(session.resultCents) || 0), pct, shareCents,
+          ...(born ? [shareCents, ts] : []),
+        ]
+      );
+      const inserted = db.getRowsModified() > 0;
+      if (inserted) changed = true;
+      // Cumulative is computed AFTER the insert-or-ignore, so it reflects this
+      // session once (a re-send finds the row already there and the sum is
+      // unchanged — never double-counted). Add the backer's carry-in so the
+      // "Running" figure matches their page.
+      const cum = backerCumulativeCents(r.token) + Math.round(Number(r.openingCents) || 0);
+      // Always attempt the push (not only on first record): a backer who
+      // enabled notifications AFTER the first send still gets reached on a
+      // re-send, while the dedup above keeps their running total correct.
+      const title = `${session.game} — ${fmtSignedCents(shareCents)}`;
+      const body =
+        `${session.venue} · ${fmtHours(session.hours)} · session ${fmtSignedCents(session.resultCents)}. ` +
+        `Your ${pct}% = ${fmtSignedCents(shareCents)}. Running: ${fmtSignedCents(cum)}.`;
+      const out = await sendBackerPush(r.token, title, body, `/b/${r.token}`);
+      if (out.changed) changed = true;
+      // Per-session text (Twilio), if this backer has a phone on file.
+      let smsStatus = 'none';
+      if (r.sms && typeof r.sms === 'string') {
+        smsStatus = await sendBackerSms(
+          r.sms,
+          `${session.game} at ${session.venue}: session ${fmtSignedCents(session.resultCents)} over ${fmtHours(session.hours)}. ` +
+          `Your ${pct}% = ${fmtSignedCents(shareCents)}. Running ${fmtSignedCents(cum)}. futurega.me/b/${r.token}`
+        );
       }
-      s.free();
-      res.json({ events });
-    } catch (err) {
-      console.error('Backer events error:', err);
-      res.status(500).json({ error: 'events failed' });
+      results.push({
+        token: r.token, name: r.name, sent: out.sent, subs: out.subs, cumulativeCents: cum, duplicate: !inserted, sms: smsStatus,
+        // Only where delivery is off (not Render, BACKER_DELIVERY unset): nothing was sent, and the answer says so.
+        ...(out.off ? { delivery: 'off' } : {}),
+      });
     }
-  });
+    if (changed) await saveDatabase();
+    res.json({ results });
+  } catch (err) {
+    console.error('Backer notify error:', err);
+    res.status(500).json({ error: 'notify failed' });
+  }
+});
 
-  // Un-notify (gated): remove a backer's recorded share for a session — the
-  // reverse of notify. Deletes the (token, session_id) event so the backer's
-  // page + running total (SUM(share_cents)) self-correct. No push is sent.
-  app.post('/console/api/backers/unnotify', requireHamBasic, async (req, res) => {
-    try {
-      const { token, sessionId } = req.body || {};
-      if (!token || !/^[A-Za-z0-9]{6,64}$/.test(String(token))) return res.status(400).json({ error: 'bad token' });
-      if (!sessionId || typeof sessionId !== 'string') return res.status(400).json({ error: 'sessionId required' });
-      db.run('DELETE FROM backer_events WHERE token = ? AND session_id = ?', [String(token), sessionId]);
-      const removed = db.getRowsModified();
-      if (removed) await saveDatabase();
-      res.json({ ok: true, removed, cumulativeCents: backerCumulativeCents(String(token)) });
-    } catch (err) {
-      console.error('Backer unnotify error:', err);
-      res.status(500).json({ error: 'unnotify failed' });
+// A backer's recorded shares (gated) — so the console can review + remove
+// events (e.g. a test/miscategorised session). Includes session_id (the delete
+// key) that the public feed omits.
+app.get('/console/api/backers/:token/events', requireHamBasic, (req, res) => {
+  try {
+    const token = String(req.params.token || '');
+    if (!/^[A-Za-z0-9]{6,64}$/.test(token)) return res.status(400).json({ error: 'bad token' });
+    // Same order as the backer's own page (see the feed route) so the review
+    // list here matches what they see.
+    const s = db.prepare(
+      'SELECT session_id, date, game, venue, hours, session_result_cents, pct, share_cents, ts FROM backer_events WHERE token = ? ORDER BY date DESC, ts DESC LIMIT 500'
+    );
+    s.bind([token]);
+    const events = [];
+    while (s.step()) {
+      const r = s.getAsObject();
+      events.push({
+        sessionId: r.session_id, date: r.date, game: r.game, venue: r.venue,
+        hours: r.hours, resultCents: r.session_result_cents, pct: r.pct,
+        shareCents: r.share_cents, ts: r.ts,
+      });
     }
-  });
+    s.free();
+    res.json({ events });
+  } catch (err) {
+    console.error('Backer events error:', err);
+    res.status(500).json({ error: 'events failed' });
+  }
+});
 
-}
+// Un-notify (gated): remove a backer's recorded share for a session — the
+// reverse of notify. Deletes the (token, session_id) event so the backer's
+// page + running total (SUM(share_cents)) self-correct. No push is sent.
+app.post('/console/api/backers/unnotify', requireHamBasic, async (req, res) => {
+  try {
+    const { token, sessionId } = req.body || {};
+    if (!token || !/^[A-Za-z0-9]{6,64}$/.test(String(token))) return res.status(400).json({ error: 'bad token' });
+    if (!sessionId || typeof sessionId !== 'string') return res.status(400).json({ error: 'sessionId required' });
+    db.run('DELETE FROM backer_events WHERE token = ? AND session_id = ?', [String(token), sessionId]);
+    const removed = db.getRowsModified();
+    if (removed) await saveDatabase();
+    res.json({ ok: true, removed, cumulativeCents: backerCumulativeCents(String(token)) });
+  } catch (err) {
+    console.error('Backer unnotify error:', err);
+    res.status(500).json({ error: 'unnotify failed' });
+  }
+});
 
 // Serve index.html with injected build version to bust any cache
 const BUILD_VERSION = Date.now().toString();
@@ -990,8 +962,7 @@ function currentSeasonLabel() {
   return label;
 }
 function serveIndex(req, res) {
-  const fs = require('fs');
-  let html = fs.readFileSync(path.join(__dirname, 'public-vite', 'index.html'), 'utf8');
+  let html = fsSync.readFileSync(path.join(__dirname, 'public-vite', 'index.html'), 'utf8');
   html = html.replace('</head>', `<meta name="build-version" content="${BUILD_VERSION}">\n</head>`);
   // In the page itself, so a first-time visitor's tab, splash and sign-in are right from the first paint.
   const season = currentSeasonLabel();
@@ -1018,8 +989,8 @@ function serveLive(req, res) {
   let html;
   // The landing page's own small build (vite-app/src/live-main.jsx -> public-vite/live.html), about a
   // fifth of the app's JavaScript; the app shell (which also renders /live) if a build lacks it.
-  const shell = require('fs').existsSync(path.join(__dirname, 'public-vite', 'live.html')) ? 'live.html' : 'index.html';
-  try { html = require('fs').readFileSync(path.join(__dirname, 'public-vite', shell), 'utf8'); }
+  const shell = fsSync.existsSync(path.join(__dirname, 'public-vite', 'live.html')) ? 'live.html' : 'index.html';
+  try { html = fsSync.readFileSync(path.join(__dirname, 'public-vite', shell), 'utf8'); }
   catch (err) { console.error('Live page: no app shell (public-vite/index.html):', err.message); return res.status(503).send('Unavailable'); }
   html = html.replace(/<title>[^<]*<\/title>/, `<title>${LIVE_TITLE}</title>`)
     .replace('</head>', `<meta name="description" content="${LIVE_DESC}">
@@ -1037,10 +1008,6 @@ function serveLive(req, res) {
 }
 app.get('/live', serveLive);
 
-// The landing page's figures: live events in the next 30 days (not online, not a Day 2 restart, not
-// a player's Personal day), the series they belong to and the rooms. Public and cached ten minutes.
-// appStore is the store link's parts once the app is listed (APP_STORE_ID and the campaign provider
-// token APP_STORE_PT, both unset until launch); the page adds the ad's campaign (?ct=) to it.
 // Install postback copies (lib/attribution.js): Apple posts them here when Info.plist names this domain
 // (NSAdvertisingAttributionReportEndpoint; AttributionCopyEndpoint for AdAttributionKit). Anonymous by
 // design. Public, so capped at 60 a minute per address; anything that is not a postback is a 400.
@@ -1102,6 +1069,10 @@ app.get('/api/admin/growth', authenticateToken, requireAppAdmin, (req, res) => {
   }
 });
 
+// The landing page's figures: live events in the next 30 days (not online, not a Day 2 restart, not
+// a player's Personal day), the series they belong to and the rooms. Public and cached ten minutes.
+// appStore is the store link's parts once the app is listed (APP_STORE_ID and the campaign provider
+// token APP_STORE_PT, both unset until launch); the page adds the ad's campaign (?ct=) to it.
 let liveSummaryCache = null;
 app.get('/api/public/live-summary', (req, res) => {
   try {
@@ -1135,91 +1106,6 @@ app.get('/api/public/live-summary', (req, res) => {
     console.error('[live-summary]', e.message);
     res.status(500).json({ error: 'Something went wrong' });
   }
-});
-
-// Hendon Mob lookup — resolve via DuckDuckGo, redirect user straight to Hendon Mob
-const hendonCache = new Map();
-const hendonWinningsCache = new Map();
-
-// Find Hendon Mob profile URL for a player name
-async function findHendonUrl(name) {
-  const key = name.toLowerCase().trim();
-  if (hendonCache.has(key)) return hendonCache.get(key);
-
-  const ddgUrl = `https://duckduckgo.com/?q=${encodeURIComponent('\\ site:thehendonmob.com ' + name)}`;
-  try {
-    // 3 s at most: from Render DuckDuckGo stalls ~11 s and then answers without a result.
-    const resp = await fetch(ddgUrl, { redirect: 'manual', signal: AbortSignal.timeout(3000), headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    }});
-    const html = await resp.text();
-    const match = html.match(/uddg=(https?[^&"]+)/);
-    if (match) {
-      const finalUrl = decodeURIComponent(match[1]);
-      if (finalUrl.includes('thehendonmob.com') && finalUrl.includes('/player.php')) {
-        hendonCache.set(key, finalUrl);
-        return finalUrl;
-      }
-    }
-  } catch {}
-  return null;
-}
-
-// Scrape lifetime winnings from a Hendon Mob profile page
-async function scrapeHendonWinnings(profileUrl) {
-  if (hendonWinningsCache.has(profileUrl)) return hendonWinningsCache.get(profileUrl);
-  try {
-    const resp = await fetch(profileUrl, { headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    }});
-    const html = await resp.text();
-    // Look for "All Time Money List" or total winnings — typically in a format like "$1,234,567"
-    // Hendon Mob shows "Total Live Earnings" with the dollar amount
-    const earningsMatch = html.match(/Total\s+Live\s+Earnings[^$]*\$([\d,]+)/i)
-      || html.match(/All\s+Time\s+Money[^$]*\$([\d,]+)/i)
-      || html.match(/<div[^>]*class="[^"]*earnings[^"]*"[^>]*>[^$]*\$([\d,]+)/i);
-    if (earningsMatch) {
-      const amount = '$' + earningsMatch[1];
-      hendonWinningsCache.set(profileUrl, amount);
-      return amount;
-    }
-    // Try broader pattern — find the largest dollar amount on the page (likely total earnings)
-    const allAmounts = [...html.matchAll(/\$([\d,]{4,})/g)].map(m => parseInt(m[1].replace(/,/g, '')));
-    if (allAmounts.length) {
-      const max = Math.max(...allAmounts);
-      const amount = '$' + max.toLocaleString();
-      hendonWinningsCache.set(profileUrl, amount);
-      return amount;
-    }
-  } catch {}
-  return null;
-}
-
-// Batch lookup: resolve Hendon Mob winnings for multiple players
-app.post('/api/hendon-winnings', authenticateToken, async (req, res) => {
-  const { names } = req.body;
-  if (!names || !Array.isArray(names)) return res.status(400).json({ error: 'names array required' });
-
-  const results = {};
-  await Promise.all(names.slice(0, 10).map(async (name) => {
-    const url = await findHendonUrl(name);
-    if (!url) return;
-    const winnings = await scrapeHendonWinnings(url);
-    if (winnings) results[name] = { url, winnings };
-  }));
-
-  res.json(results);
-});
-app.get('/api/hendon-redirect', async (req, res) => {
-  const name = req.query.name;
-  if (!name) return res.status(400).send('name required');
-
-  // At once: a profile already found, else DuckDuckGo's !ducky ("I'm feeling lucky"), which the player's own
-  // browser follows straight to the first Hendon Mob result. The server-side lookup took ~11 s from Render
-  // and then fell back to a plain search page (owner, 2026-10-21). The scanner now builds this link itself.
-  const key = String(name).toLowerCase().trim();
-  if (hendonCache.has(key)) return res.redirect(hendonCache.get(key));
-  res.redirect(`https://duckduckgo.com/?q=${encodeURIComponent('!ducky site:thehendonmob.com ' + name)}`);
 });
 
 // File upload configuration
@@ -1387,7 +1273,7 @@ function normalizeEventName(name, gameVariant) {
   n = n.replace(/(\bHigh Roller)\s+(?:PLO|NLH|NL)\/(?:PLO|NLH|NL)\s+/g, '$1 ');
 
   // Final cleanup. The trailing-separator strip has to run HERE, after the variant prepend and
-  // dedup, not just at line ~793: those rules can empty the tail of a name and strand the
+  // dedup, not just in the "Clean trailing/leading dashes" step above: those rules can empty the tail of a name and strand the
   // separator that preceded it. "Satellite to NLH" becomes "Satellite - NLH", then the prepend
   // strips the now-redundant NLH from the middle and leaves "NLH Satellite -". Looped because one
   // pass only removes the outermost.
@@ -1803,8 +1689,8 @@ async function initDatabase() {
       chk.free();
       if (cnt === 0) {
         const seedPath = path.join(__dirname, seed.file);
-        if (require('fs').existsSync(seedPath)) {
-          const rows = JSON.parse(require('fs').readFileSync(seedPath, 'utf8'));
+        if (fsSync.existsSync(seedPath)) {
+          const rows = JSON.parse(fsSync.readFileSync(seedPath, 'utf8'));
           for (const t of rows) {
             db.run(
               `INSERT INTO tournaments (event_number, event_name, date, time, buyin,
@@ -1865,8 +1751,8 @@ async function initDatabase() {
       fn: () => {
         // Update IPO events with rake data from the updated seed file
         const seedPath = path.join(__dirname, 'ipo-events.json');
-        if (!require('fs').existsSync(seedPath)) return;
-        const rows = JSON.parse(require('fs').readFileSync(seedPath, 'utf8'));
+        if (!fsSync.existsSync(seedPath)) return;
+        const rows = JSON.parse(fsSync.readFileSync(seedPath, 'utf8'));
         for (const t of rows) {
           // Update rake + fixes by event_number
           db.run(
@@ -1940,8 +1826,8 @@ async function initDatabase() {
       fn: () => {
         // Full reconciliation from IPO API data — inserts missing events, updates existing
         const seedPath = path.join(__dirname, 'ipo-events.json');
-        if (!require('fs').existsSync(seedPath)) return;
-        const rows = JSON.parse(require('fs').readFileSync(seedPath, 'utf8'));
+        if (!fsSync.existsSync(seedPath)) return;
+        const rows = JSON.parse(fsSync.readFileSync(seedPath, 'utf8'));
 
         // Build lookup of existing IPO events keyed by event_number + date
         const existingStmt = db.prepare(
@@ -2608,8 +2494,8 @@ async function initDatabase() {
       fn: () => {
         // Re-read seed file and update event names to match WSOP naming format
         const seedPath = path.join(__dirname, 'wsope-events.json');
-        if (!require('fs').existsSync(seedPath)) return;
-        const rows = JSON.parse(require('fs').readFileSync(seedPath, 'utf8'));
+        if (!fsSync.existsSync(seedPath)) return;
+        const rows = JSON.parse(fsSync.readFileSync(seedPath, 'utf8'));
         let updated = 0;
         for (const t of rows) {
           db.run(
@@ -3232,8 +3118,8 @@ async function initDatabase() {
         if (d > 0) console.log(`Cleared ${d} old Wynn events`);
         // Re-seed from wynn-events.json
         const seedPath = path.join(__dirname, 'wynn-events.json');
-        if (require('fs').existsSync(seedPath)) {
-          const rows = JSON.parse(require('fs').readFileSync(seedPath, 'utf8'));
+        if (fsSync.existsSync(seedPath)) {
+          const rows = JSON.parse(fsSync.readFileSync(seedPath, 'utf8'));
           for (const t of rows) {
             db.run(
               `INSERT INTO tournaments (event_number, event_name, date, time, buyin,
@@ -3975,27 +3861,6 @@ function generateStableId(venue, eventNumber, eventName, date, time, buyin) {
   return `${abbr}-${date}-${timeKey}-${buyinKey}${flight}${day}`;
 }
 
-// ── Upsert tournament (safe update — never deletes, preserves id) ──
-function upsertTournament(data) {
-  const sid = data.stable_id || generateStableId(data.venue, data.event_number, data.event_name, data.date, data.time, data.buyin);
-  db.run(`INSERT INTO tournaments (stable_id, event_number, event_name, date, time, buyin, starting_chips, level_duration, reentry, late_reg, late_reg_end, game_variant, venue, notes, category, is_satellite, target_event, is_restart, parent_event, day_length)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(stable_id) DO UPDATE SET
-      event_number=excluded.event_number, event_name=excluded.event_name,
-      date=excluded.date, time=excluded.time, buyin=excluded.buyin,
-      starting_chips=excluded.starting_chips, level_duration=excluded.level_duration,
-      reentry=excluded.reentry, late_reg=excluded.late_reg, late_reg_end=excluded.late_reg_end,
-      game_variant=excluded.game_variant, venue=excluded.venue, notes=excluded.notes,
-      category=excluded.category, is_satellite=excluded.is_satellite, target_event=excluded.target_event,
-      is_restart=excluded.is_restart, parent_event=excluded.parent_event, day_length=excluded.day_length`,
-    [sid, data.event_number || null, data.event_name, data.date, data.time || '', data.buyin || 0,
-     data.starting_chips || null, data.level_duration || null, data.reentry || null,
-     data.late_reg || null, data.late_reg_end || null, data.game_variant, data.venue,
-     data.notes || null, data.category || null, data.is_satellite || 0, data.target_event || null,
-     data.is_restart || 0, data.parent_event || null, data.day_length || null]);
-  return sid;
-}
-
 // Authentication middleware
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -4251,7 +4116,7 @@ app.post('/api/register', registerLimit, async (req, res) => {
     if (!/^[a-zA-Z0-9_.-]+$/.test(username)) {
       return res.status(400).json({ error: 'Username can only contain letters, numbers, underscores, hyphens, and dots' });
     }
-    // Admin names are authorisation, not just names (APP_ADMIN_USERNAMES and the ham/ham5 checks;
+    // Admin names are authorisation, not just names (APP_ADMIN_USERNAMES and EVENT_EDITOR_USERNAMES;
     // see RESERVED_USERNAMES), so they must never be claimable by sign-up, not even after the
     // account deletes itself through DELETE /api/account. Same answer as a taken name.
     const lowerName = String(username).toLowerCase();
@@ -4855,18 +4720,6 @@ app.get('/api/tournaments', authenticateToken, (req, res) => {
     
     query += ' ORDER BY date, time';
     
-    const stmt = db.prepare(query);
-    stmt.bind(params);
-    
-    const tournaments = [];
-    while (stmt.step()) {
-      const row = stmt.getAsObject();
-      // A feed row that duplicates a hand-imported event (refreshHandImportTwins) is not listed.
-      if (hiddenFeedIds.has(row.id)) continue;
-      tournaments.push(row);
-    }
-    stmt.free();
-    
     // Default to UPCOMING events when the caller gives no explicit window.
     // This endpoint had been returning the whole table — 6,530 rows, more than
     // HALF of them already in the past — ~5.6MB shipped to every client at boot,
@@ -4876,14 +4729,32 @@ app.get('/api/tournaments', authenticateToken, (req, res) => {
     // user's scheduled or tracked past events carry their own full tournament
     // rows from /my-schedule and /tracking. Unparseable dates are kept rather
     // than dropped; a 3-day grace keeps just-finished events for late results.
-    let out = tournaments;
-    if (!startDate && !endDate) {
-      const cutoff = Date.now() - 3 * 86400000;
-      out = tournaments.filter(t => {
-        const ms = Date.parse(t.date);
-        return Number.isNaN(ms) ? true : ms >= cutoff;
-      });
+    // A startDate or endDate turns the window off; neither is applied as a filter.
+    const windowed = !startDate && !endDate;
+    const cutoff = Date.now() - 3 * 86400000;
+
+    // Every client asks for this list at once after each hourly feed sync, so the loop is kept cheap:
+    // the column names are read once (getAsObject() re-reads all of them for every row), and a row
+    // is skipped before its object is built (more than half the table is past events).
+    const stmt = db.prepare(query);
+    stmt.bind(params);
+    const names = stmt.getColumnNames();
+    const idCol = names.indexOf('id');
+    const dateCol = names.indexOf('date');
+    const out = [];
+    while (stmt.step()) {
+      const v = stmt.get();
+      // A feed row that duplicates a hand-imported event (refreshHandImportTwins) is not listed.
+      if (hiddenFeedIds.has(v[idCol])) continue;
+      if (windowed) {
+        const ms = Date.parse(v[dateCol]);
+        if (!Number.isNaN(ms) && ms < cutoff) continue;
+      }
+      const row = {};
+      for (let i = 0; i < names.length; i++) row[names[i]] = v[i];
+      out.push(row);
     }
+    stmt.free();
     attachOverrideFields(out);
     res.json(out);
   } catch (error) {
@@ -5262,23 +5133,8 @@ app.delete('/api/avatar', authenticateToken, requireRegistered, async (req, res)
   }
 });
 
-app.get('/api/avatar/:userId', (req, res) => {
-  try {
-    const stmt = db.prepare('SELECT avatar FROM users WHERE id = ?');
-    stmt.bind([req.params.userId]);
-    let avatar = null;
-    if (stmt.step()) avatar = stmt.getAsObject().avatar;
-    stmt.free();
-    res.json({ avatar });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
 // ── Share Request Endpoints ───────────────────────────────────
 
-// Search users by username or real_name (prefix match)
 /* The user's chosen location, so it follows them between devices. localStorage
    remains the immediate source on load — it paints without a round trip and is
    the only store a guest has — and this is the copy that survives a new
@@ -5385,6 +5241,7 @@ app.put('/api/user/onboarding', authenticateToken, requireRegistered, async (req
   }
 });
 
+// Search users by username or real_name (prefix match)
 app.get('/api/users/search', authenticateToken, requireRegistered, (req, res) => {
   try {
     const q = (req.query.q || '').trim();
@@ -6345,18 +6202,6 @@ app.put('/api/seen-notifications', authenticateToken, requireRegistered, async (
   }
 });
 
-// Mark all shared schedules as seen
-app.put('/api/seen-shares', authenticateToken, requireRegistered, async (req, res) => {
-  try {
-    db.run('UPDATE users SET last_seen_shares = CURRENT_TIMESTAMP WHERE id = ?', [req.user.id]);
-    await saveDatabase();
-    res.json({ message: 'ok' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
 // Get specific user's schedule (if share buddy or own)
 app.get('/api/schedule/:userId', authenticateToken, (req, res) => {
   try {
@@ -6975,32 +6820,6 @@ app.post('/api/live-update', authenticateToken, requireRegistered, async (req, r
   }
 });
 
-app.get('/api/live-update/mine', authenticateToken, (req, res) => {
-  try {
-    const stmt = db.prepare(`
-      SELECT lu.id, lu.tournament_id, lu.stack, lu.sb, lu.bb, lu.bb_ante,
-             lu.is_reg_closed, lu.bubble, lu.is_itm, lu.locked_amount,
-             lu.is_final_table, lu.places_left, lu.first_place_prize,
-             lu.is_deal, lu.deal_place, lu.deal_payout, lu.is_busted,
-             lu.total_entries, lu.is_bagged, lu.bag_day, lu.play_started_at,
-             lu.update_text, lu.created_at,
-             t.event_name, t.venue
-      FROM live_updates lu
-      JOIN tournaments t ON lu.tournament_id = t.id
-      WHERE lu.user_id = ?
-      ORDER BY lu.created_at DESC LIMIT 1
-    `);
-    stmt.bind([req.user.id]);
-    let result = null;
-    if (stmt.step()) result = stmt.getAsObject();
-    stmt.free();
-    res.json(result);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Something went wrong' });
-  }
-});
-
 app.get('/api/live-updates/active', authenticateToken, (req, res) => {
   try {
     const stmt = db.prepare(`
@@ -7081,70 +6900,7 @@ app.get('/api/live-updates/history/:tournamentId', authenticateToken, (req, res)
   }
 });
 
-// ── Play Time Tracking ───────────────────────────────────────
-
-app.get('/api/playtime/:tournamentId', authenticateToken, (req, res) => {
-  try {
-    const tournamentId = Number(req.params.tournamentId);
-    if (!tournamentId) return res.status(400).json({ error: 'Invalid tournament ID' });
-
-    // Get all updates for this user+tournament ordered by time
-    const stmt = db.prepare(`
-      SELECT play_started_at, is_bagged, is_busted, created_at
-      FROM live_updates
-      WHERE user_id = ? AND tournament_id = ?
-      ORDER BY created_at ASC
-    `);
-    stmt.bind([req.user.id, tournamentId]);
-    const updates = [];
-    while (stmt.step()) updates.push(stmt.getAsObject());
-    stmt.free();
-
-    // Build sessions: a session starts when play_started_at is set,
-    // ends when a bagged or busted update follows
-    const sessions = [];
-    let activeStart = null;
-
-    for (const u of updates) {
-      if (u.play_started_at && !activeStart) {
-        activeStart = u.play_started_at;
-      }
-      if (activeStart && (u.is_bagged || u.is_busted)) {
-        const startMs = new Date(activeStart).getTime();
-        const endMs = new Date(u.created_at).getTime();
-        const minutes = Math.round((endMs - startMs) / 60000);
-        sessions.push({ start: activeStart, end: u.created_at, minutes });
-        activeStart = null;
-      }
-    }
-
-    // If there's an active session (started but not bagged/busted yet)
-    if (activeStart) {
-      const startMs = new Date(activeStart).getTime();
-      const nowMs = Date.now();
-      const minutes = Math.round((nowMs - startMs) / 60000);
-      sessions.push({ start: activeStart, end: null, minutes, active: true });
-    }
-
-    const totalMinutes = sessions.reduce((sum, s) => sum + s.minutes, 0);
-    res.json({ totalMinutes, sessions });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Something went wrong' });
-  }
-});
-
 // ── Staking System ────────────────────────────────────────────
-
-// GUESS: Proof images stored as base64 data URIs (same pattern as avatars), limited to 2MB
-const proofUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 2 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (/^image\/(jpeg|png|webp)$/.test(file.mimetype)) cb(null, true);
-    else cb(new Error('Only JPEG, PNG, and WebP images are allowed'));
-  }
-});
 
 // Rate limiter for staking (slightly more generous than auth)
 const stakingLimiter = rateLimit({
@@ -7191,71 +6947,6 @@ moneyHomes.mountRoutes(app, {
 console.log(ownerApi.checkLedgerToken('x').why === 'unset'
   ? '[owner-api] /api/owner/* is OFF: LEDGER_TOKEN is not set (the dashboard app cannot read the money or log a session here)'
   : '[owner-api] /api/owner/* is open to LEDGER_TOKEN holders');
-
-// ── Validation: check total action sold for a tournament doesn't exceed 100% ──
-// Returns { totalPct, agreements[] } for a given series + tournament buyin
-// GUESS: "profit_share_only" type doesn't count toward the 100% action cap since no buy-in money is exchanged
-// GUESS: "swap" and "crossbook" types count swap_my_pct / crossbook_my_pct toward action sold (player is giving away action)
-function getActionSoldForTournament(seriesId, tournamentId, excludeAgreementId) {
-  // Get tournament buyin to check buyin_range filters
-  const tStmt = db.prepare('SELECT buyin FROM tournaments WHERE id = ?');
-  tStmt.bind([tournamentId]);
-  let buyin = 0;
-  if (tStmt.step()) buyin = tStmt.getAsObject().buyin;
-  tStmt.free();
-
-  // Get all active agreements for this series
-  const aStmt = db.prepare(
-    'SELECT * FROM backer_agreements WHERE series_id = ? AND is_active = 1'
-  );
-  aStmt.bind([seriesId]);
-  const agreements = [];
-  while (aStmt.step()) agreements.push(aStmt.getAsObject());
-  aStmt.free();
-
-  let totalPct = 0;
-  const applicable = [];
-
-  for (const ag of agreements) {
-    // Skip the agreement we're excluding (for update validation)
-    if (excludeAgreementId && ag.id === excludeAgreementId) continue;
-
-    // Check buyin range filter
-    if (ag.buyin_range_min && buyin < ag.buyin_range_min) continue;
-    if (ag.buyin_range_max && buyin > ag.buyin_range_max) continue;
-
-    // Check event-level override (might be opted out)
-    const ovStmt = db.prepare(
-      'SELECT opt_out, override_percentage FROM backer_event_overrides WHERE agreement_id = ? AND tournament_id = ?'
-    );
-    ovStmt.bind([ag.id, tournamentId]);
-    let override = null;
-    if (ovStmt.step()) override = ovStmt.getAsObject();
-    ovStmt.free();
-
-    if (override && override.opt_out) continue; // Backer opted out of this event
-
-    // Determine effective percentage
-    let effectivePct = 0;
-    if (ag.backer_type === 'profit_share_only') {
-      // Profit share doesn't consume buy-in action
-      continue;
-    } else if (ag.backer_type === 'swap') {
-      effectivePct = ag.swap_my_pct || 0;
-    } else if (ag.backer_type === 'crossbook') {
-      effectivePct = ag.crossbook_my_pct || 0;
-    } else {
-      effectivePct = override && override.override_percentage != null
-        ? override.override_percentage
-        : ag.percentage;
-    }
-
-    totalPct += effectivePct;
-    applicable.push({ agreementId: ag.id, backerId: ag.backer_id, type: ag.backer_type, pct: effectivePct });
-  }
-
-  return { totalPct, agreements: applicable, buyin };
-}
 
 // ── Staking Series CRUD ──────────────────────────────────────
 
@@ -7393,8 +7084,7 @@ app.delete('/api/staking/series/:id', authenticateToken, requireRegistered, asyn
     chk.free();
     if (!owns) return res.status(404).json({ error: 'Series not found' });
 
-    // GUESS: Cascade delete all related data when a series is deleted
-    // Get all agreement IDs for this series
+    // Deleting a series deletes everything under it. Get all agreement IDs for this series
     const agStmt = db.prepare('SELECT id FROM backer_agreements WHERE series_id = ?');
     agStmt.bind([id]);
     const agIds = [];
@@ -7449,7 +7139,7 @@ app.post('/api/staking/backers', authenticateToken, requireRegistered, stakingLi
       return res.status(400).json({ error: 'Backer name is required' });
     }
 
-    // GUESS: If appUsername is provided, look up the user to link them
+    // An appUsername links the backer to that app account
     let appUserId = null;
     if (appUsername) {
       const uStmt = db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)');
@@ -7523,7 +7213,7 @@ app.put('/api/staking/backers/:id', authenticateToken, requireRegistered, async 
 });
 
 // Delete backer profile
-// GUESS: Prevent deletion if backer has active agreements (require user to remove agreements first)
+// Refused while the backer has active agreements (deactivate them first)
 app.delete('/api/staking/backers/:id', authenticateToken, requireRegistered, async (req, res) => {
   try {
     const { id } = req.params;
@@ -7852,60 +7542,6 @@ app.delete('/api/staking/agreements/:id', authenticateToken, requireRegistered, 
   }
 });
 
-// Validate agreement — check if it would conflict with existing action
-app.get('/api/staking/agreements/:id/validate', authenticateToken, (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Get the agreement
-    const agStmt = db.prepare(
-      `SELECT ba.*, ss.user_id FROM backer_agreements ba
-       JOIN staking_series ss ON ba.series_id = ss.id
-       WHERE ba.id = ? AND ss.user_id = ?`
-    );
-    agStmt.bind([id, req.user.id]);
-    let agreement = null;
-    if (agStmt.step()) agreement = agStmt.getAsObject();
-    agStmt.free();
-    if (!agreement) return res.status(404).json({ error: 'Agreement not found' });
-
-    // Get all tournaments on the user's schedule within buyin range
-    let tQuery = `SELECT t.id, t.event_name, t.buyin FROM tournaments t
-                  JOIN user_schedules us ON t.id = us.tournament_id
-                  WHERE us.user_id = ? AND t.venue != 'Personal'`;
-    const tParams = [req.user.id];
-
-    if (agreement.buyin_range_min) { tQuery += ' AND t.buyin >= ?'; tParams.push(agreement.buyin_range_min); }
-    if (agreement.buyin_range_max) { tQuery += ' AND t.buyin <= ?'; tParams.push(agreement.buyin_range_max); }
-
-    const tStmt = db.prepare(tQuery);
-    tStmt.bind(tParams);
-    const conflicts = [];
-    while (tStmt.step()) {
-      const t = tStmt.getAsObject();
-      const action = getActionSoldForTournament(agreement.series_id, t.id, null);
-      if (action.totalPct > 100) {
-        conflicts.push({
-          tournamentId: t.id,
-          eventName: t.event_name,
-          buyin: t.buyin,
-          totalPct: action.totalPct,
-          agreements: action.agreements
-        });
-      }
-    }
-    tStmt.free();
-
-    res.json({
-      valid: conflicts.length === 0,
-      conflicts
-    });
-  } catch (error) {
-    console.error('Validate agreement error:', error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
 // ── Event Status ─────────────────────────────────────────────
 
 // Get event status across all backers for a series
@@ -8015,55 +7651,6 @@ app.post('/api/staking/events/:agreementId/:tournamentId/status', authenticateTo
   }
 });
 
-// Upload proof image for event status
-app.post('/api/staking/events/:agreementId/:tournamentId/proof', authenticateToken, requireRegistered, proofUpload.single('proof'), async (req, res) => {
-  try {
-    const { agreementId, tournamentId } = req.params;
-
-    // Verify ownership
-    const chk = db.prepare(
-      `SELECT ba.id FROM backer_agreements ba
-       JOIN staking_series ss ON ba.series_id = ss.id
-       WHERE ba.id = ? AND ss.user_id = ?`
-    );
-    chk.bind([agreementId, req.user.id]);
-    const owns = chk.step();
-    chk.free();
-    if (!owns) return res.status(404).json({ error: 'Agreement not found' });
-
-    if (!req.file) return res.status(400).json({ error: 'No image provided' });
-
-    const dataUri = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-
-    // Check if status record exists — if not, create one
-    const existing = db.prepare(
-      'SELECT id FROM backer_event_status WHERE agreement_id = ? AND tournament_id = ?'
-    );
-    existing.bind([agreementId, tournamentId]);
-    const hasExisting = existing.step();
-    existing.free();
-
-    if (hasExisting) {
-      db.run(
-        'UPDATE backer_event_status SET proof_image = ? WHERE agreement_id = ? AND tournament_id = ?',
-        [dataUri, agreementId, tournamentId]
-      );
-    } else {
-      db.run(
-        `INSERT INTO backer_event_status (agreement_id, tournament_id, proof_image, status)
-         VALUES (?, ?, ?, 'pending')`,
-        [agreementId, tournamentId, dataUri]
-      );
-    }
-
-    await saveDatabase();
-    res.json({ message: 'Proof uploaded' });
-  } catch (error) {
-    console.error('Upload proof error:', error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
 // ── Settlement ───────────────────────────────────────────────
 // The sheet, preview, settle and paid -> ledger (docs/bankroll-merge.md §10): routes in
 // lib/staking/settlement-routes.js, the arithmetic and the writes in lib/staking/settlement.js.
@@ -8168,7 +7755,7 @@ app.get('/api/backer/:token', (req, res) => {
         bulletsUsed: ev.bullets_used,
         buyinAmount: ev.buyin_amount,
         cashAmount: ev.cash_amount,
-        // GUESS: Show proof images on the backer's view so they can verify receipts
+        // The receipt image, so the backer can check it
         proofImage: ev.proof_image,
         status: ev.status,
         tipAmount: ev.tip_amount,
@@ -8228,123 +7815,6 @@ app.get('/api/backer/:token', (req, res) => {
     });
   } catch (error) {
     console.error('Public backer view error:', error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
-// ── Action Validation Endpoint ───────────────────────────────
-
-// Check total action sold for a specific tournament within a series
-app.get('/api/staking/series/:seriesId/action-check/:tournamentId', authenticateToken, (req, res) => {
-  try {
-    const { seriesId, tournamentId } = req.params;
-
-    // Verify series ownership
-    const sChk = db.prepare('SELECT id FROM staking_series WHERE id = ? AND user_id = ?');
-    sChk.bind([seriesId, req.user.id]);
-    const ownsSeries = sChk.step();
-    sChk.free();
-    if (!ownsSeries) return res.status(404).json({ error: 'Series not found' });
-
-    const result = getActionSoldForTournament(parseInt(seriesId), parseInt(tournamentId), null);
-
-    res.json({
-      tournamentId: parseInt(tournamentId),
-      seriesId: parseInt(seriesId),
-      totalActionSoldPct: result.totalPct,
-      playerRetainedPct: 100 - result.totalPct,
-      isValid: result.totalPct <= 100,
-      buyin: result.buyin,
-      agreements: result.agreements
-    });
-  } catch (error) {
-    console.error('Action check error:', error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
-// ── Backer Event Overrides ───────────────────────────────────
-
-// GUESS: Expose CRUD for event overrides so players can adjust or opt-out backers from specific events
-
-// Set/update event override
-app.post('/api/staking/agreements/:agreementId/overrides/:tournamentId', authenticateToken, requireRegistered, async (req, res) => {
-  try {
-    const { agreementId, tournamentId } = req.params;
-    const { overridePercentage, overrideMarkup, optOut, notes } = req.body;
-
-    // Verify ownership
-    const chk = db.prepare(
-      `SELECT ba.id FROM backer_agreements ba
-       JOIN staking_series ss ON ba.series_id = ss.id
-       WHERE ba.id = ? AND ss.user_id = ?`
-    );
-    chk.bind([agreementId, req.user.id]);
-    const owns = chk.step();
-    chk.free();
-    if (!owns) return res.status(404).json({ error: 'Agreement not found' });
-
-    // Upsert
-    const existing = db.prepare(
-      'SELECT id FROM backer_event_overrides WHERE agreement_id = ? AND tournament_id = ?'
-    );
-    existing.bind([agreementId, tournamentId]);
-    const hasExisting = existing.step();
-    existing.free();
-
-    if (hasExisting) {
-      db.run(
-        `UPDATE backer_event_overrides SET
-         override_percentage = ?, override_markup = ?, opt_out = ?, notes = ?
-         WHERE agreement_id = ? AND tournament_id = ?`,
-        [overridePercentage != null ? overridePercentage : null,
-         overrideMarkup != null ? overrideMarkup : null,
-         optOut ? 1 : 0, notes || null,
-         agreementId, tournamentId]
-      );
-    } else {
-      db.run(
-        `INSERT INTO backer_event_overrides (agreement_id, tournament_id, override_percentage, override_markup, opt_out, notes)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [agreementId, tournamentId,
-         overridePercentage != null ? overridePercentage : null,
-         overrideMarkup != null ? overrideMarkup : null,
-         optOut ? 1 : 0, notes || null]
-      );
-    }
-
-    await saveDatabase();
-    res.json({ message: 'Override saved' });
-  } catch (error) {
-    console.error('Set override error:', error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
-// Delete event override
-app.delete('/api/staking/agreements/:agreementId/overrides/:tournamentId', authenticateToken, requireRegistered, async (req, res) => {
-  try {
-    const { agreementId, tournamentId } = req.params;
-
-    const chk = db.prepare(
-      `SELECT ba.id FROM backer_agreements ba
-       JOIN staking_series ss ON ba.series_id = ss.id
-       WHERE ba.id = ? AND ss.user_id = ?`
-    );
-    chk.bind([agreementId, req.user.id]);
-    const owns = chk.step();
-    chk.free();
-    if (!owns) return res.status(404).json({ error: 'Agreement not found' });
-
-    db.run(
-      'DELETE FROM backer_event_overrides WHERE agreement_id = ? AND tournament_id = ?',
-      [agreementId, tournamentId]
-    );
-
-    await saveDatabase();
-    res.json({ message: 'Override removed' });
-  } catch (error) {
-    console.error('Delete override error:', error);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 });
@@ -8695,7 +8165,7 @@ app.delete('/api/hands/:id', authenticateToken, requireRegistered, async (req, r
 // SPA catch-all for backer view
 app.get('/backer/:token', serveIndex);
 
-/// ── Hand Replayer API ──────────────────────────────────
+// ── Hand Replayer API ──────────────────────────────────
 
 // /replayer used to serve a standalone replayer.html; the Vite SPA now owns that
 // view, so we just serve the SPA shell and let the client route to it.
@@ -8715,7 +8185,7 @@ function handLinkId(shorthand) {
 }
 
 // Mint (or return the existing id for) a short link. Same auth as creating hands.
-app.post('/api/hand-links', authenticateToken, requireRegistered, express.json({ limit: '64kb' }), async (req, res) => {
+app.post('/api/hand-links', authenticateToken, requireRegistered, async (req, res) => {
   const { shorthand, title } = req.body || {};
   if (!shorthand || typeof shorthand !== 'string' || shorthand.length > 4000) {
     return res.status(400).json({ error: 'shorthand required' });
@@ -8751,9 +8221,8 @@ app.get('/api/hand-links/:id', (req, res) => {
 // Serve the SPA for a short link WITH a per-hand preview title, so a pasted link
 // shows the hand ("NLH 300/500/500") instead of the site's generic season title.
 app.get('/h/:id', (req, res) => {
-  const fs = require('fs');
   let html;
-  try { html = fs.readFileSync(path.join(__dirname, 'public-vite', 'index.html'), 'utf8'); }
+  try { html = fsSync.readFileSync(path.join(__dirname, 'public-vite', 'index.html'), 'utf8'); }
   catch (e) { return res.status(500).send('unavailable'); }
   let title = 'Poker hand';
   try {
@@ -8911,19 +8380,7 @@ app.post('/api/replayer/games', authenticateToken, requireRegistered, async (req
   }
 });
 
-app.delete('/api/replayer/games/:id', authenticateToken, requireRegistered, async (req, res) => {
-  try {
-    const { id } = req.params;
-    db.run('DELETE FROM replayer_games WHERE id = ? AND user_id = ?', [id, req.user.id]);
-    await saveDatabase();
-    res.json({ message: 'Deleted' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to delete game' });
-  }
-});
-
-/// ── CFR Solver Trainer API ─────────────────────────────
+// ── CFR Solver Trainer API ─────────────────────────────
 // Games + strategies live in solver/. Strategies are trained offline
 // with `node solver/train.js --game <id> --iters N` and saved to
 // solver/strategies/<id>.json; they're lazily loaded and cached here.
@@ -8984,8 +8441,6 @@ function getTrainerBp(gameId) {
   }
   return _trainerBp[gameId] || {};
 }
-// Back-compat alias used by the legacy razz step route below.
-function getRazzBp() { return getTrainerBp('razz'); }
 // heroSeat is a deterministic function of the seed so /step can recompute it
 // from {seed} alone (the contract's /step body has no heroSeat). /deal returns
 // it for the client to display.
@@ -9409,7 +8864,6 @@ function loadSolverMeta(gameId) {
   if (gameId in solverMeta) return solverMeta[gameId];
   let m = null;
   try {
-    const fsSync = require('fs');
     const metaFile = path.join(__dirname, 'solver', 'strategies', `${gameId}.meta.json`);
     const fullFile = path.join(__dirname, 'solver', 'strategies', `${gameId}.json`);
     if (fsSync.existsSync(metaFile)) {
@@ -9431,7 +8885,6 @@ function loadSolverStrategy(gameId) {
   if (gameId in solverStrategies) return solverStrategies[gameId];
   let loaded = null;
   try {
-    const fsSync = require('fs'); // top-level fs is the promises API
     const file = path.join(__dirname, 'solver', 'strategies', `${gameId}.json`);
     if (fsSync.existsSync(file)) {
       // Memory guard: JSON.parse of a big blueprint inflates ~10x in V8 and
@@ -9819,7 +9272,6 @@ function requireTrainerBp(game, res) {
 // Which games this server can deal, from the files alone: loading a blueprint to find out would cost the
 // memory BP_MAX_BYTES is there to protect. Study hides the rest instead of answering 503 when one is tapped.
 app.get('/api/solver/availability', (req, res) => {
-  const fsSync = require('fs'); // top-level fs is the promises API
   const cap = Number(process.env.BP_MAX_BYTES || 0);
   const onDisk = (file) => {
     try { const sz = fsSync.statSync(file).size; return !(cap > 0 && sz > cap); } catch { return false; }
@@ -9843,18 +9295,6 @@ app.post('/api/solver/trainer/:game/step', authenticateToken, (req, res) => {
   Promise.resolve(trainerStep(game, req, res)).catch(err => {
     console.error(`${game.id} trainer step (async) error:`, err);
     if (!res.headersSent) res.status(500).json({ error: `Failed to step ${game.id} hand` });
-  });
-});
-
-// Legacy razz-only routes — kept working as aliases (game=razz) so existing
-// clients don't break.
-app.post('/api/solver/razz-trainer/deal', authenticateToken, (req, res) => {
-  trainerDeal(razzGame, req, res);
-});
-app.post('/api/solver/razz-trainer/step', authenticateToken, (req, res) => {
-  Promise.resolve(trainerStep(razzGame, req, res)).catch(err => {
-    console.error('razz trainer step (async) error:', err);
-    if (!res.headersSent) res.status(500).json({ error: 'Failed to step razz hand' });
   });
 });
 
@@ -10798,7 +10238,6 @@ let _razz3Bp; // razz3 blueprint (whole file {meta,strategy}) | null
 function getRazz3Bp() {
   if (_razz3Bp === undefined) {
     try {
-      const fsSync = require('fs');
       const file = RAZZ3_BP_FILE;
       const cap = Number(process.env.BP_MAX_BYTES || 0);
       const sz = fsSync.existsSync(file) ? fsSync.statSync(file).size : 0;
@@ -11277,10 +10716,7 @@ app.get('/api/admin/users', adminLimiter, (req, res) => {
 });
 
 // Admin: list users (JWT auth, hardcoded admin username)
-app.get('/api/admin/users-list', authenticateToken, requireRegistered, (req, res) => {
-  if (!['ham', 'ham5'].includes((req.user.username || '').toLowerCase())) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+app.get('/api/admin/users-list', authenticateToken, requireRegistered, requireEventEditor, (req, res) => {
   try {
     const stmt = db.prepare('SELECT id, username, email, real_name, avatar, created_at, hand_replayer_access FROM users ORDER BY created_at DESC');
     const users = [];
@@ -11289,22 +10725,6 @@ app.get('/api/admin/users-list', authenticateToken, requireRegistered, (req, res
     res.json(users);
   } catch (error) {
     console.error('Admin users-list error:', error);
-    res.status(500).json({ error: 'Internal error' });
-  }
-});
-
-// Admin: toggle hand replayer access
-app.put('/api/admin/users/:id/replayer-access', authenticateToken, requireRegistered, async (req, res) => {
-  if (!['ham', 'ham5'].includes((req.user.username || '').toLowerCase())) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-  try {
-    const { enabled } = req.body;
-    db.run('UPDATE users SET hand_replayer_access = ? WHERE id = ?', [enabled ? 1 : 0, req.params.id]);
-    await saveDatabase();
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Admin replayer-access error:', error);
     res.status(500).json({ error: 'Internal error' });
   }
 });
@@ -11355,10 +10775,7 @@ function validateAdminEdit(key, value) {
   return fn ? fn(value, key) : null;
 }
 
-app.put('/api/tournaments/:id', authenticateToken, requireRegistered, async (req, res) => {
-  if (!['ham', 'ham5'].includes((req.user.username || '').toLowerCase())) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+app.put('/api/tournaments/:id', authenticateToken, requireRegistered, requireEventEditor, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const allowedFields = [
@@ -11473,10 +10890,7 @@ app.put('/api/tournaments/:id', authenticateToken, requireRegistered, async (req
 
 // Drop every override on an event, letting the feed's own values take over again at the next
 // ingest. Without this an admin correction is permanent and there is no way back to source.
-app.delete('/api/tournaments/:id/overrides', authenticateToken, requireRegistered, async (req, res) => {
-  if (!['ham', 'ham5'].includes((req.user.username || '').toLowerCase())) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+app.delete('/api/tournaments/:id/overrides', authenticateToken, requireRegistered, requireEventEditor, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const stmt = db.prepare('SELECT id, stable_id FROM tournaments WHERE id = ?');
@@ -11511,10 +10925,7 @@ app.get('/api/venue-colors', (req, res) => {
 });
 
 // Set a venue color (admin only)
-app.put('/api/venue-colors/:abbr', authenticateToken, requireRegistered, async (req, res) => {
-  if (!['ham', 'ham5'].includes((req.user.username || '').toLowerCase())) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+app.put('/api/venue-colors/:abbr', authenticateToken, requireRegistered, requireEventEditor, async (req, res) => {
   const { color } = req.body;
   const abbr = req.params.abbr;
   if (!color || !abbr) return res.status(400).json({ error: 'Missing color or abbr' });
@@ -11560,48 +10971,8 @@ app.post('/api/swap-suggest', authenticateToken, requireRegistered, (req, res) =
   }
 });
 
-// Get your swap suggestions (incoming + outgoing)
-app.get('/api/swap-suggestions', authenticateToken, requireRegistered, (req, res) => {
-  try {
-    // Incoming
-    const inStmt = db.prepare(`
-      SELECT ss.*, u.username AS from_username, u.avatar AS from_avatar, u.real_name AS from_real_name,
-             t.event_name, t.date, t.time, t.buyin, t.venue
-      FROM swap_suggestions ss
-      JOIN users u ON ss.from_user_id = u.id
-      JOIN tournaments t ON ss.tournament_id = t.id
-      WHERE ss.to_user_id = ? AND ss.status = 'pending'
-      ORDER BY ss.created_at DESC
-    `);
-    inStmt.bind([req.user.id]);
-    const incoming = [];
-    while (inStmt.step()) incoming.push(inStmt.getAsObject());
-    inStmt.free();
-
-    // Outgoing
-    const outStmt = db.prepare(`
-      SELECT ss.*, u.username AS to_username, u.avatar AS to_avatar, u.real_name AS to_real_name,
-             t.event_name, t.date, t.time, t.buyin, t.venue
-      FROM swap_suggestions ss
-      JOIN users u ON ss.to_user_id = u.id
-      JOIN tournaments t ON ss.tournament_id = t.id
-      WHERE ss.from_user_id = ? AND ss.status = 'pending'
-      ORDER BY ss.created_at DESC
-    `);
-    outStmt.bind([req.user.id]);
-    const outgoing = [];
-    while (outStmt.step()) outgoing.push(outStmt.getAsObject());
-    outStmt.free();
-
-    res.json({ incoming, outgoing });
-  } catch (err) {
-    console.error('Swap suggestions error:', err);
-    res.status(500).json({ error: 'Failed to load suggestions' });
-  }
-});
-
 // Respond to a swap suggestion
-app.put('/api/swap-suggest/:id/respond', authenticateToken, requireRegistered, (req, res) => {
+app.put('/api/swap-suggest/:id/respond', authenticateToken, requireRegistered, async (req, res) => {
   try {
     const { response } = req.body;
     if (!['accepted', 'declined'].includes(response)) return res.status(400).json({ error: 'Response must be accepted or declined' });
@@ -11618,6 +10989,7 @@ app.put('/api/swap-suggest/:id/respond', authenticateToken, requireRegistered, (
       `UPDATE swap_suggestions SET status = ?, responded_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [response, req.params.id]
     );
+    await saveDatabase();
     res.json({ message: `Suggestion ${response}` });
   } catch (err) {
     console.error('Swap respond error:', err);
@@ -11737,23 +11109,6 @@ app.post('/api/apns-subscribe', authenticateToken, requireRegistered, async (req
   } catch (err) {
     console.error('APNs subscribe error:', err);
     res.status(500).json({ error: 'Failed to subscribe' });
-  }
-});
-
-// Remove push subscription
-app.post('/api/push-unsubscribe', authenticateToken, requireRegistered, async (req, res) => {
-  try {
-    const { endpoint } = req.body;
-    if (endpoint) {
-      db.run('DELETE FROM push_subscriptions WHERE endpoint = ? AND user_id = ?', [endpoint, req.user.id]);
-    } else {
-      db.run('DELETE FROM push_subscriptions WHERE user_id = ?', [req.user.id]);
-    }
-    await saveDatabase();
-    res.json({ message: 'Unsubscribed' });
-  } catch (err) {
-    console.error('Push unsubscribe error:', err);
-    res.status(500).json({ error: 'Failed to unsubscribe' });
   }
 });
 
@@ -11922,7 +11277,6 @@ async function sendPushToAdmin(title, body, url) {
 const cron = require('node-cron');
 const CONSOLE_TZ = 'America/New_York';
 
-
 // ── Backer notification helpers ──
 function backerCumulativeCents(token) {
   return backerSurface.backerCumulativeCents(db, token);
@@ -11937,12 +11291,6 @@ function backerEventsHaveDeliveryColumns() {
       && moneyMerge.hasColumn(db, 'backer_events', 'source');
   }
   return backerEventsDeliveryColumns;
-}
-function backerSubCount(token) {
-  let n = 0;
-  const s = db.prepare('SELECT COUNT(*) AS n FROM backer_push_subs WHERE token = ?');
-  s.bind([token]); if (s.step()) n = s.getAsObject().n; s.free();
-  return n || 0;
 }
 
 // ── MTT feed ingest (mtt-series-watcher → scheduler) ──
@@ -12066,17 +11414,32 @@ const FEED_REF_TABLES = [
   'backer_event_overrides', 'backer_event_status', 'swap_suggestions',
   'bankroll_transactions', // an expense or income tagged to the event (lib/bankroll-transactions.js)
 ];
+// The FEED_REF_TABLES this database has (an older one may lack a newer table).
+function presentRefTables() {
+  return FEED_REF_TABLES.filter(name => db.exec(
+    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", [name]).length);
+}
 function feedRefGuardSql() {
-  const present = FEED_REF_TABLES.filter(name => {
-    const s = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?");
-    s.bind([name]);
-    const found = s.step();
-    s.free();
-    return found;
-  });
-  return present
+  return presentRefTables()
     .map(t => ` AND NOT EXISTS (SELECT 1 FROM ${t} r WHERE r.tournament_id = tournaments.id)`)
     .join('');
+}
+// Move everything that references tournament `from` to tournament `to`. UPDATE OR IGNORE: where the
+// person already has `to` (UNIQUE(user_id, tournament_id) and the like), their row for `from` stays
+// behind. A saved-schedule row left behind is a duplicate save of an event already saved, so it is
+// dropped; anything else left behind (a result, an override) stays, and the prune guard keeps `from`
+// for it. Returns the number of references moved.
+function repointRefs(from, to, present) {
+  let moved = 0;
+  for (const t of present) {
+    db.run(`UPDATE OR IGNORE ${t} SET tournament_id = ? WHERE tournament_id = ?`, [to, from]);
+    moved += db.getRowsModified();
+  }
+  if (present.includes('schedule_conditions')) {
+    db.run('UPDATE schedule_conditions SET depends_on_tournament_id = ? WHERE depends_on_tournament_id = ?', [to, from]);
+  }
+  if (present.includes('user_schedules')) db.run('DELETE FROM user_schedules WHERE tournament_id = ?', [from]);
+  return moved;
 }
 
 // A stale feed row someone saved used to be kept forever beside the event that replaced it — the
@@ -12096,8 +11459,7 @@ function roomTokens(row) {
     .split(/[^a-z0-9]+/).filter(w => w.length >= 3 && !/^\d+$/.test(w) && !ROOM_STOPWORDS.has(w)));
 }
 function remapStaleReferences(staleWhereSql, staleParams, tag, isLive, label) {
-  const present = FEED_REF_TABLES.filter(name => db.exec(
-    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", [name]).length);
+  const present = presentRefTables();
   if (!present.length) return 0;
   const referenced = present.map(t => `EXISTS (SELECT 1 FROM ${t} r WHERE r.tournament_id = tournaments.id)`).join(' OR ');
   const staleRes = db.exec(
@@ -12116,17 +11478,7 @@ function remapStaleReferences(staleWhereSql, staleParams, tag, isLive, label) {
       .filter(t => isLive(t) && [...roomTokens(t)].some(w => mine.has(w)));
     if (twins.length !== 1) continue;
     const twin = twins[0].id;
-    for (const t of present) {
-      // OR IGNORE: where the person already has the twin (UNIQUE(user_id, tournament_id) and the
-      // like), their row for the stale copy stays behind and is dealt with below.
-      db.run(`UPDATE OR IGNORE ${t} SET tournament_id = ? WHERE tournament_id = ?`, [twin, id]);
-    }
-    if (present.includes('schedule_conditions')) {
-      db.run('UPDATE schedule_conditions SET depends_on_tournament_id = ? WHERE depends_on_tournament_id = ?', [twin, id]);
-    }
-    // A saved-schedule row left behind is a duplicate save of an event already saved: drop it.
-    // Anything else left behind (a result, an override) stays, and the guard keeps the row for it.
-    if (present.includes('user_schedules')) db.run('DELETE FROM user_schedules WHERE tournament_id = ?', [id]);
+    repointRefs(id, twin, present);
     moved++;
     console.log(`[${label}] moved saved references from stale #${id} (${venue}) to #${twin} (${twins[0].venue})`);
   }
@@ -12240,13 +11592,10 @@ const BRIDGE_SUPERSEDE = [
   { bridgeTag: 'WPT World Championship 2026', feedVenue: '2026 WPT World Championship' },
 ];
 
-// Given the set of venue strings a feed currently carries, drop any bridge series the feed has now
-// taken over. Returns the number of rows removed. Safe to call from either database's ingest path:
-// where no bridge rows exist (the local box), it is a no-op.
 // ── Hand imports vs the feed, event by event (lib/feed-dedupe.js) ──
 // A feed row that duplicates a hand-imported event is hidden from the schedule list, and anything
-// someone saved or logged against it moves to the hand-imported copy first (the same
-// UPDATE OR IGNORE re-pointing remapStaleReferences uses), so hiding it loses nothing. Recomputed
+// someone saved or logged against it moves to the hand-imported copy first (repointRefs, the same
+// re-pointing remapStaleReferences uses), so hiding it loses nothing. Recomputed
 // at boot and after every ingest, feed sync and import; the set lives in memory because the feed
 // re-upserts its rows hourly and a stored flag would have to survive that.
 const feedDedupe = require('./lib/feed-dedupe');
@@ -12259,20 +11608,9 @@ function refreshHandImportTwins(label = 'Dedupe') {
     while (stmt.step()) rows.push(stmt.getAsObject());
     stmt.free();
     const pairs = feedDedupe.findHandImportTwins(rows, { feedTags: FEED_TAGS });
-    const present = FEED_REF_TABLES.filter(name => db.exec(
-      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", [name]).length);
+    const present = presentRefTables();
     let moved = 0;
-    for (const { hand, feed } of pairs) {
-      for (const t of present) {
-        db.run(`UPDATE OR IGNORE ${t} SET tournament_id = ? WHERE tournament_id = ?`, [hand, feed]);
-        moved += db.getRowsModified();
-      }
-      if (present.includes('schedule_conditions')) {
-        db.run('UPDATE schedule_conditions SET depends_on_tournament_id = ? WHERE depends_on_tournament_id = ?', [hand, feed]);
-      }
-      // A save left behind means the person already had the hand-imported copy saved: drop the extra.
-      if (present.includes('user_schedules')) db.run('DELETE FROM user_schedules WHERE tournament_id = ?', [feed]);
-    }
+    for (const { hand, feed } of pairs) moved += repointRefs(feed, hand, present);
     const next = new Set(pairs.map(p => p.feed));
     const changed = next.size !== hiddenFeedIds.size || [...next].some(id => !hiddenFeedIds.has(id));
     hiddenFeedIds = next;
@@ -12285,6 +11623,9 @@ function refreshHandImportTwins(label = 'Dedupe') {
   }
 }
 
+// Given the set of venue strings a feed currently carries, drop any bridge series the feed has now
+// taken over. Returns the number of rows removed. Safe to call from either database's ingest path:
+// where no bridge rows exist (the local box), it is a no-op.
 function supersedeBridges(feedVenueSet, label) {
   const guard = feedRefGuardSql();
   let removed = 0;
@@ -12314,7 +11655,7 @@ let venueDirectory = null;
 function getVenueDirectory() {
   if (venueDirectory) return venueDirectory;
   try {
-    const json = JSON.parse(require('fs').readFileSync(path.join(__dirname, 'data', 'venue-directory.json'), 'utf8'));
+    const json = JSON.parse(fsSync.readFileSync(path.join(__dirname, 'data', 'venue-directory.json'), 'utf8'));
     venueDirectory = venueCoordsLib.loadVenueDirectory(json);
   } catch (e) {
     console.error('[VenueCoords] venue directory unavailable:', e.message);
@@ -12549,14 +11890,13 @@ async function ingestMttFeed() { return ingestFeed('mtt-feed', 'mtt-feed', 'MTT 
 async function ingestOnlineFeed() { return ingestFeed('online-feed', 'online-feed', 'Online feed', 'ONL'); }
 
 async function ingestFeed(feedDir, tag, label, idPrefix) {
-  const fs = require('fs');
   // Tests boot server.js from the repo, whose mtt-feed/ and online-feed/ hold real feed files on
   // the live box; DISABLE_FEED_INGEST=1 keeps a scratch DB free of them.
   if (process.env.DISABLE_FEED_INGEST === '1') return;
   try {
     const manifestPath = path.join(__dirname, feedDir, 'manifest.json');
-    if (!fs.existsSync(manifestPath)) return;
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    if (!fsSync.existsSync(manifestPath)) return;
+    const manifest = JSON.parse(fsSync.readFileSync(manifestPath, 'utf8'));
     let upserts = 0, inserts = 0, pruned = 0, rowFailures = 0;
     // Prune feed-managed rows (source_pdf='mtt-feed') for series no longer in the manifest — i.e.
     // series that ended or dropped out of the watcher's forward window. Keeps the schedule in sync
@@ -12582,8 +11922,8 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
     const seenByVenue = new Map();
     for (const entry of manifest) {
       const filePath = path.join(__dirname, feedDir, entry.file);
-      if (!fs.existsSync(filePath)) continue;
-      const rows = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (!fsSync.existsSync(filePath)) continue;
+      const rows = JSON.parse(fsSync.readFileSync(filePath, 'utf8'));
       // Location fields the row may carry (venue_lat/venue_lng/venue_location/venue_country) feed
       // the venue-coordinate resolver, not a tournaments column — the receiver does the same.
       noteVenueHints(rows);
@@ -12835,11 +12175,9 @@ async function syncBackerRoster() {
 // The dashboard itself lives at dashboard.futurega.me; the only surface left
 // here is the token-gated upcoming-schedule feed (seam #2).
 
-// Constant-time token check against process.env.DASHBOARD_TOKEN. Shape-gate
-// first (so a malformed token can't reach the compare), then length-guard
-// timingSafeEqual (it throws on unequal-length buffers). Returns false — the
-// caller 404s — on any mismatch, matching the backer routes' unguessable posture.
-
+// The DASHBOARD_TOKEN check (lib/dashboard-token.js: shape gate, constant-time compare, and
+// DASHBOARD_TOKEN_PREVIOUS during a rotation). Returns false — the caller 404s — on any mismatch,
+// matching the backer routes' unguessable posture.
 function dashboardTokenOk(token) {
   const res = checkDashboardToken(token);
   // Still accepted, but say so: the rotation is not finished while this fires.
@@ -13037,6 +12375,9 @@ async function sendBackerWeeklyDigests() {
 
 // ── Schedule Parser: extract tournament data from PDF/image via Claude Vision ──
 const scheduleUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+// The models the schedule parser and the Table Scanner call (the quick add sets its own, lib/quick-add.js).
+const VISION_MODEL_ACCURATE = 'claude-sonnet-4-20250514'; // a schedule's verbatim transcription (pass 1)
+const VISION_MODEL_FAST = 'claude-haiku-4-5-20251001';    // structuring into JSON (pass 2, page text), the Table Scanner
 
 // ── Shared schedule parsing helpers ──
 function getSchedulePrompts() {
@@ -13196,7 +12537,7 @@ async function runTwoPassExtraction(client, visionContent, pageErrors) {
   while (pass1Attempts < MAX_CONTINUATIONS) {
     pass1Attempts++;
     const pass1 = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: VISION_MODEL_ACCURATE,
       max_tokens: 32768,
       messages: pass1Messages,
     });
@@ -13238,7 +12579,7 @@ async function runTwoPassExtraction(client, visionContent, pageErrors) {
   while (pass2Attempts < MAX_CONTINUATIONS) {
     pass2Attempts++;
     const pass2 = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: VISION_MODEL_FAST,
       max_tokens: 32768,
       messages: pass2Messages,
     });
@@ -13488,7 +12829,7 @@ app.post('/api/parse-schedule', authenticateToken, requireRegistered, requireEve
 });
 
 // ── Parse schedule from URL ──
-app.post('/api/parse-schedule-url', authenticateToken, requireRegistered, requireEventEditor, express.json(), async (req, res) => {
+app.post('/api/parse-schedule-url', authenticateToken, requireRegistered, requireEventEditor, async (req, res) => {
   const { url, venue } = req.body || {};
   if (!url) return res.status(400).json({ error: 'No URL provided' });
 
@@ -13770,7 +13111,7 @@ app.post('/api/parse-schedule-url', authenticateToken, requireRegistered, requir
           return (async () => {
             const prompt = `Here is a section of a poker tournament schedule from a web page${chunkLabel} (${url}):\n${venueHint}\nThis section contains approximately ${chunkEventEst} events. Extract ALL of them.\n\n${chunkText}\n\n${STRUCTURE_PROMPT}`;
             const pass = await client.messages.create({
-              model: 'claude-haiku-4-5-20251001',
+              model: VISION_MODEL_FAST,
               max_tokens: 32768,
               messages: [
                 { role: 'user', content: prompt },
@@ -13836,52 +13177,6 @@ app.post('/api/parse-schedule-url', authenticateToken, requireRegistered, requir
   }
 });
 
-// ── Schedule documents listing ──
-app.get('/api/schedule-docs', authenticateToken, async (req, res) => {
-  try {
-    const venues = [];
-    try {
-      const entries = await fs.readdir(SCHEDULE_DOCS_DIR, { withFileTypes: true });
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
-        const venuePath = path.join(SCHEDULE_DOCS_DIR, entry.name);
-        const schedules = [];
-        const structures = [];
-        for (const subDir of ['schedules', 'structures']) {
-          const subPath = path.join(venuePath, subDir);
-          try {
-            const files = await fs.readdir(subPath);
-            for (const f of files) {
-              const stat = await fs.stat(path.join(subPath, f));
-              const item = { name: f, size: stat.size, modified: stat.mtime };
-              if (subDir === 'structures') structures.push(item);
-              else schedules.push(item);
-            }
-          } catch (e) { if (e.code !== 'ENOENT') throw e; }
-        }
-        // Also list any files directly in the venue folder (legacy)
-        try {
-          const topFiles = await fs.readdir(venuePath, { withFileTypes: true });
-          for (const f of topFiles) {
-            if (f.isFile()) {
-              const stat = await fs.stat(path.join(venuePath, f.name));
-              schedules.push({ name: f.name, size: stat.size, modified: stat.mtime });
-            }
-          }
-        } catch (_) {}
-        if (schedules.length > 0 || structures.length > 0) {
-          venues.push({ venue: entry.name, schedules, structures });
-        }
-      }
-    } catch (err) {
-      if (err.code !== 'ENOENT') throw err;
-    }
-    res.json({ docs: venues });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Public — structure sheets and event-listing PDFs are non-sensitive
 // reference docs that need to be reachable from a plain <a target="_blank">
 // (no auth header), so we don't require a JWT here. Path traversal is still
@@ -13899,326 +13194,8 @@ app.get('/api/schedule-docs/:venue/:type/:filename', async (req, res) => {
   }
 });
 
-// ── Parse structure sheet and update tournament records ──
-app.post('/api/parse-structure', authenticateToken, requireRegistered, requireEventEditor, scheduleUpload.array('file', 20), async (req, res) => {
-  const files = req.files || [];
-  if (files.length === 0) return res.status(400).json({ error: 'No files provided' });
-
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(503).json({ error: 'ANTHROPIC_API_KEY not configured on server' });
-
-  const userVenue = req.body?.venue || '';
-
-  try {
-    const client = new Anthropic({ apiKey, timeout: 180000 });
-
-    const visionContent = [];
-    const sourceNames = [];
-    for (const file of files) {
-      const mime = file.mimetype || '';
-      const isImage = mime.startsWith('image/');
-      const isPdf = mime === 'application/pdf' || file.originalname.toLowerCase().endsWith('.pdf');
-      if (!isImage && !isPdf) continue;
-      sourceNames.push(file.originalname);
-      const base64 = file.buffer.toString('base64');
-      if (isPdf) {
-        visionContent.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } });
-      } else {
-        visionContent.push({ type: 'image', source: { type: 'base64', media_type: mime, data: base64 } });
-      }
-    }
-
-    if (visionContent.length === 0) return res.status(400).json({ error: 'No valid files' });
-
-    const structurePrompt = `Extract tournament structure data from this structure sheet. Return a JSON array where each object represents one event/structure with these fields:
-- event_name: string (event title as shown)
-- event_number: string or null (e.g. "Event #5" → "5")
-- buyin: number (total buy-in in dollars)
-- starting_chips: number
-- level_duration: string (e.g. "30", "40", "60" in minutes)
-- levels: array of {level: number, small_blind: number, big_blind: number, ante: number} (as many as shown)
-- reentry: string ("Unlimited", "1", "2", or null)
-- late_reg: string (e.g. "end of level 12" or "4 hours")
-- late_reg_end: string (specific time if shown, e.g. "Level 12")
-- day_length: string (e.g. "10 levels", "end of level 15")
-- game_variant: string (NLH, PLO, Mixed, etc.)
-- venue: string (if identifiable from the document)
-- notes: string (any additional info: add-ons, bounty amounts, flight info, etc.)
-
-Return ONLY the JSON array, no markdown or explanation.`;
-
-    const result = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 8192,
-      messages: [{
-        role: 'user',
-        content: [...visionContent, { type: 'text', text: structurePrompt }],
-      }],
-    });
-
-    let text = result.content.map(c => c.type === 'text' ? c.text : '').join('');
-    // Strip code fences if present
-    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-
-    let structures;
-    try { structures = JSON.parse(text); } catch {
-      // Try to repair
-      const match = text.match(/\[[\s\S]*\]/);
-      if (match) structures = JSON.parse(match[0]);
-      else return res.status(422).json({ error: 'Could not parse structure data from AI response' });
-    }
-    if (!Array.isArray(structures)) structures = [structures];
-
-    // Archive source files
-    const detectedVenue = structures[0]?.venue || userVenue || 'unknown';
-    for (const file of files) {
-      archiveScheduleDoc(detectedVenue, file.originalname, file.buffer, 'structure');
-    }
-
-    // Match structures to existing tournament records and update
-    let matched = 0;
-    let unmatched = 0;
-    const updates = [];
-
-    for (const s of structures) {
-      const venue = s.venue || userVenue;
-      if (!venue) { unmatched++; continue; }
-
-      // Try to match by event number + venue first, then by name + buyin
-      let row = null;
-      if (s.event_number) {
-        row = db.prepare('SELECT id, event_name, stable_id FROM tournaments WHERE venue = ? AND event_number = ? LIMIT 1').get(venue, s.event_number);
-      }
-      if (!row && s.event_name && s.buyin) {
-        row = db.prepare('SELECT id, event_name, stable_id FROM tournaments WHERE venue = ? AND event_name LIKE ? AND buyin = ? LIMIT 1').get(venue, `%${s.event_name.slice(0, 30)}%`, s.buyin);
-      }
-
-      if (row) {
-        const setClauses = [];
-        const params = [];
-        if (s.starting_chips) { setClauses.push('starting_chips = ?'); params.push(s.starting_chips); }
-        if (s.level_duration) { setClauses.push('level_duration = ?'); params.push(String(s.level_duration)); }
-        if (s.reentry) { setClauses.push('reentry = ?'); params.push(s.reentry); }
-        if (s.late_reg) { setClauses.push('late_reg = ?'); params.push(s.late_reg); }
-        if (s.late_reg_end) { setClauses.push('late_reg_end = ?'); params.push(s.late_reg_end); }
-        if (s.day_length) { setClauses.push('day_length = ?'); params.push(s.day_length); }
-        if (sourceNames.length > 0) {
-          setClauses.push('structure_sheet_path = ?');
-          params.push(sourceNames.join(', '));
-        }
-
-        if (setClauses.length > 0) {
-          params.push(row.id);
-          db.run(`UPDATE tournaments SET ${setClauses.join(', ')} WHERE id = ?`, params);
-          updates.push({ id: row.id, event: row.event_name, fields: setClauses.length });
-          matched++;
-        }
-      } else {
-        unmatched++;
-      }
-    }
-
-    if (matched > 0) {
-      await saveDatabase();
-      broadcastToAll('schedule-refetch', { source: 'parse-structure', matched });
-    }
-
-    console.log(`[ParseStructure] Extracted ${structures.length} structures, matched ${matched}, unmatched ${unmatched}`);
-
-    res.json({
-      structures,
-      matched,
-      unmatched,
-      updates,
-      sourceFile: sourceNames.join(', '),
-    });
-  } catch (err) {
-    console.error('[ParseStructure] Error:', err.message);
-    res.status(err.status || 500).json({ error: `Structure parsing failed: ${err.message}` });
-  }
-});
-
-// ── Batch import schedules from multiple URLs ──
-app.post('/api/batch-import-urls', authenticateToken, requireRegistered, requireEventEditor, express.json(), async (req, res) => {
-  const { urls } = req.body || {};
-  if (!urls || !Array.isArray(urls) || urls.length === 0) {
-    return res.status(400).json({ error: 'No URLs provided. Expected { urls: [{ url, venue }, ...] }' });
-  }
-
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(503).json({ error: 'ANTHROPIC_API_KEY not configured on server' });
-
-  console.log(`[BatchImport] Starting batch import of ${urls.length} URLs`);
-  const results = [];
-
-  for (let i = 0; i < urls.length; i++) {
-    const { url, venue } = urls[i];
-    if (!url) {
-      results.push({ url: url || '(empty)', venue, success: false, error: 'No URL provided', eventCount: 0 });
-      continue;
-    }
-
-    console.log(`[BatchImport] Processing ${i + 1}/${urls.length}: ${url} (venue: ${venue || 'auto-detect'})`);
-
-    try {
-      // Build an internal request to the parse-schedule-url handler
-      const innerReqBody = JSON.stringify({ url, venue: venue || '' });
-      const internalResp = await new Promise((resolve, reject) => {
-        const mockRes = {
-          statusCode: 200,
-          _body: null,
-          status(code) { this.statusCode = code; return this; },
-          json(body) { this._body = body; resolve(this); },
-        };
-        const mockReq = {
-          body: { url, venue: venue || '' },
-          user: req.user,
-        };
-
-        // Re-use the same logic: detect venue from URL, fetch, parse
-        (async () => {
-          let userVenue = venue || '';
-          if (!userVenue) {
-            const urlLower = url.toLowerCase();
-            const URL_VENUE_MAP = {
-              'venetian': 'Venetian', 'palazzo': 'Venetian',
-              'borgata': 'Borgata',
-              'wynn': 'Wynn Las Vegas', 'encore': 'Wynn Las Vegas',
-              'aria': 'Aria', 'bellagio': 'Bellagio',
-              'resortsworld': 'Resorts World', 'resorts-world': 'Resorts World', 'rwlasvegas': 'Resorts World',
-              'goldennugget': 'Golden Nugget', 'golden-nugget': 'Golden Nugget',
-              'southpoint': 'South Point', 'south-point': 'South Point',
-              'orleans': 'Orleans',
-              'horseshoe': 'Horseshoe / Paris Las Vegas',
-              'mgmnationalharbor': 'MGM National Harbor', 'mgm-national-harbor': 'MGM National Harbor',
-              'mgmgrand': 'MGM Grand',
-              'seminole': 'Seminole Hard Rock', 'hardrock': 'Seminole Hard Rock',
-              'foxwoods': 'Foxwoods',
-              'thundervalley': 'Thunder Valley', 'thunder-valley': 'Thunder Valley',
-              'caesars': 'Caesars Palace',
-              'turningstone': 'Turning Stone Casino', 'turning-stone': 'Turning Stone Casino',
-              'texascardhouse': 'Texas Card House',
-              'wsop': 'Horseshoe / Paris Las Vegas',
-              'lodgepoker': 'Lodge Poker Club', 'thelodge': 'Lodge Poker Club',
-              'bestbet': 'bestbet Jacksonville', 'ballys': "Bally's Lake Tahoe",
-              'harrahs': "Harrah's Cherokee", 'cherokee': "Harrah's Cherokee",
-              'choctaw': 'Choctaw Casino', 'tunica': 'Horseshoe Tunica',
-            };
-            for (const [key, val] of Object.entries(URL_VENUE_MAP)) {
-              if (urlLower.includes(key)) { userVenue = val; break; }
-            }
-            if (userVenue) console.log(`[BatchImport] Detected venue from URL: ${userVenue}`);
-          }
-
-          const client = new Anthropic({ apiKey, timeout: 180000 });
-          const fetchResp = await fetch(url, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FutureGame/1.0)' },
-            redirect: 'follow',
-            signal: AbortSignal.timeout(30000),
-          });
-          if (!fetchResp.ok) throw new Error(`HTTP ${fetchResp.status}`);
-
-          const contentType = (fetchResp.headers.get('content-type') || '').toLowerCase();
-          const pageErrors = [];
-          let allEvents = [];
-
-          if (contentType.includes('application/pdf') || url.toLowerCase().endsWith('.pdf')) {
-            const buffer = Buffer.from(await fetchResp.arrayBuffer());
-            const visionContent = [
-              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: buffer.toString('base64') } },
-            ];
-            allEvents = await runTwoPassExtraction(client, visionContent, pageErrors);
-          } else if (contentType.includes('image/')) {
-            const imgType = contentType.includes('png') ? 'image/png' : contentType.includes('webp') ? 'image/webp' : 'image/jpeg';
-            const buffer = Buffer.from(await fetchResp.arrayBuffer());
-            const visionContent = [
-              { type: 'image', source: { type: 'base64', media_type: imgType, data: buffer.toString('base64') } },
-            ];
-            allEvents = await runTwoPassExtraction(client, visionContent, pageErrors);
-          } else {
-            const html = await fetchResp.text();
-            const tables = html.match(/<table[^>]*>[\s\S]*?<\/table>/gi) || [];
-            let relevantHtml = '';
-            for (const table of tables) {
-              const rows = (table.match(/<tr/gi) || []).length;
-              const hasDollarAmounts = (table.match(/\$\d/g) || []).length;
-              if (rows > 10 && hasDollarAmounts > 5) relevantHtml += table + '\n';
-            }
-            const sourceHtml = relevantHtml || html;
-            const textContent = sourceHtml
-              .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-              .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-              .replace(/<[^>]+>/g, ' ')
-              .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#?\w+;/g, '')
-              .replace(/[ \t]+/g, ' ').replace(/\n\s*\n/g, '\n').trim();
-
-            if (textContent.length >= 50) {
-              const { STRUCTURE_PROMPT } = getSchedulePrompts();
-              const venueHint = userVenue ? `\nIMPORTANT: The venue for ALL events is "${userVenue}". Set venue to "${userVenue}" for every event.\n` : '';
-              const prompt = `Here is a poker tournament schedule from a web page (${url}):\n${venueHint}\n${textContent}\n\n${STRUCTURE_PROMPT}`;
-              const pass = await client.messages.create({
-                model: 'claude-haiku-4-5-20251001',
-                max_tokens: 32768,
-                messages: [
-                  { role: 'user', content: prompt },
-                  { role: 'assistant', content: '[' },
-                ],
-              });
-              const raw = '[' + (pass.content[0]?.text?.trim() || '');
-              const events = extractJsonArray(raw);
-              if (events && Array.isArray(events)) {
-                for (const ev of events) allEvents.push(ev);
-              }
-            }
-          }
-
-          const { deduplicated, warnings } = postProcessEvents(allEvents, userVenue);
-          resolve({
-            statusCode: 200,
-            _body: {
-              events: deduplicated,
-              rawCount: allEvents.length,
-              eventCount: deduplicated.length,
-              warnings,
-              pageErrors,
-              sourceFile: url,
-              detectedVenue: deduplicated.length > 0 ? deduplicated[0].venue : null,
-            },
-          });
-        })().catch(reject);
-      });
-
-      results.push({
-        url,
-        venue: internalResp._body.detectedVenue || venue || 'Unknown',
-        success: internalResp.statusCode === 200,
-        eventCount: internalResp._body.eventCount || 0,
-        events: internalResp._body.events || [],
-        warnings: internalResp._body.warnings || [],
-        pageErrors: internalResp._body.pageErrors || [],
-      });
-      console.log(`[BatchImport] ${i + 1}/${urls.length} done: ${internalResp._body.eventCount || 0} events from ${url}`);
-    } catch (err) {
-      console.error(`[BatchImport] ${i + 1}/${urls.length} failed: ${err.message}`);
-      results.push({ url, venue: venue || 'Unknown', success: false, error: err.message, eventCount: 0 });
-    }
-  }
-
-  const totalEvents = results.reduce((sum, r) => sum + (r.eventCount || 0), 0);
-  const successCount = results.filter(r => r.success).length;
-  console.log(`[BatchImport] Complete: ${successCount}/${urls.length} URLs succeeded, ${totalEvents} total events`);
-
-  res.json({
-    totalUrls: urls.length,
-    successCount,
-    failCount: urls.length - successCount,
-    totalEvents,
-    results,
-  });
-});
-
 // ── Check for duplicate events before import ──
-app.post('/api/check-schedule-duplicates', authenticateToken, requireEventEditor, express.json({ limit: '5mb' }), async (req, res) => {
+app.post('/api/check-schedule-duplicates', authenticateToken, requireEventEditor, async (req, res) => {
   const { events } = req.body;
   if (!events || !Array.isArray(events)) return res.json({ existing: 0, new: 0 });
 
@@ -14240,8 +13217,13 @@ app.post('/api/check-schedule-duplicates', authenticateToken, requireEventEditor
       }
 
       const sid = generateStableId(ev.venue, ev.event_number || '', ev.event_name || '', date, ev.time, ev.buyin);
-      const row = db.prepare('SELECT stable_id, uploaded_by FROM tournaments WHERE stable_id = ?').get(sid);
-      if (row) {
+      // Not Statement.get(sid): sql.js binds nothing from a bare string and returns a truthy empty
+      // array, which counted every event as existing (and never freed the statement).
+      const sel = db.prepare('SELECT 1 FROM tournaments WHERE stable_id = ?');
+      sel.bind([sid]);
+      const exists = sel.step();
+      sel.free();
+      if (exists) {
         existing++;
         existingVenues.add(ev.venue);
       } else {
@@ -14257,7 +13239,7 @@ app.post('/api/check-schedule-duplicates', authenticateToken, requireEventEditor
 });
 
 // ── Import parsed schedule events into database ──
-app.post('/api/import-parsed-schedule', authenticateToken, requireRegistered, requireEventEditor, express.json({ limit: '5mb' }), async (req, res) => {
+app.post('/api/import-parsed-schedule', authenticateToken, requireRegistered, requireEventEditor, async (req, res) => {
   const { events, sourceFile } = req.body;
   if (!events || !Array.isArray(events) || events.length === 0) {
     return res.status(400).json({ error: 'No events provided' });
@@ -14411,6 +13393,10 @@ async function syncToRemote(localToken) {
   const LOCAL_URL = `http://localhost:${PORT}`;
   const isProduction = process.env.RENDER || process.env.IS_PRODUCTION;
   if (isProduction) return; // Production doesn't need to sync to itself
+  // Checked before the export: without production credentials the whole-table export is wasted.
+  const adminUser = process.env.ADMIN_USER || 'ham';
+  const adminPass = process.env.ADMIN_PASS || '';
+  if (!adminPass) { console.log('[AutoSync] No ADMIN_PASS set, skipping remote sync'); return; }
 
   try {
     // Export from local
@@ -14421,10 +13407,6 @@ async function syncToRemote(localToken) {
     const exportData = await exportRes.json();
 
     // Log in to production
-    const adminUser = process.env.ADMIN_USER || 'ham';
-    const adminPass = process.env.ADMIN_PASS || '';
-    if (!adminPass) { console.log('[AutoSync] No ADMIN_PASS set, skipping remote sync'); return; }
-
     const loginRes = await fetch(`${PROD_URL}/api/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -14449,10 +13431,7 @@ async function syncToRemote(localToken) {
 
 // ── Tournament Data Sync ──
 // Export all tournaments as JSON (for syncing between environments)
-app.get('/api/tournaments/export', authenticateToken, (req, res) => {
-  if (!['ham', 'ham5'].includes((req.user.username || '').toLowerCase())) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+app.get('/api/tournaments/export', authenticateToken, requireEventEditor, (req, res) => {
   try {
     const stmt = db.prepare("SELECT * FROM tournaments WHERE venue != 'Personal' ORDER BY date, time");
     const rows = [];
@@ -14531,10 +13510,7 @@ async function upsertTournamentsByStableId(tournaments, source) {
 }
 
 // Import/sync tournaments from another environment (upserts by stable_id)
-app.post('/api/tournaments/sync', authenticateToken, express.json({ limit: '50mb' }), async (req, res) => {
-  if (!['ham', 'ham5'].includes((req.user.username || '').toLowerCase())) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+app.post('/api/tournaments/sync', authenticateToken, requireEventEditor, async (req, res) => {
   const { tournaments } = req.body;
   if (!tournaments || !Array.isArray(tournaments)) {
     return res.status(400).json({ error: 'Expected { tournaments: [...] }' });
@@ -14552,7 +13528,7 @@ app.post('/api/tournaments/sync', authenticateToken, express.json({ limit: '50mb
 // MTT-feed seam: the Windows box's pm2 instance ingests ./mtt-feed/ hourly and mirrors the
 // rows here (see pushMttFeedToProd). Token-gated like the dashboard seams — no JWT login,
 // just a shared SYNC_TOKEN in both environments. 403s when SYNC_TOKEN is unset (opt-in).
-app.post('/api/tournaments/feed-sync/:token', express.json({ limit: '50mb' }), async (req, res) => {
+app.post('/api/tournaments/feed-sync/:token', async (req, res) => {
   const expected = process.env.SYNC_TOKEN;
   if (!expected || req.params.token !== expected) {
     return res.status(403).json({ error: 'Forbidden' });
@@ -14623,7 +13599,7 @@ app.post('/api/tournaments/feed-sync/:token', express.json({ limit: '50mb' }), a
 // like the feed seam above, but the token rides in a header instead of the path — URLs land in proxy
 // and access logs, headers don't. This only does anything in PRODUCTION: sendPushToAdmin needs VAPID
 // keys and a 'ham' push subscription, and the local box has neither.
-app.post('/api/admin/notify/new-series', express.json({ limit: '256kb' }), async (req, res) => {
+app.post('/api/admin/notify/new-series', async (req, res) => {
   const expected = process.env.SYNC_TOKEN;
   if (!expected || req.get('x-sync-token') !== expected) {
     return res.status(403).json({ error: 'Forbidden' });
@@ -14770,6 +13746,21 @@ function resolveNewEventsBatch(entries) {
   return series.sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)) || a.name.localeCompare(b.name));
 }
 
+// The same batch as the list shows it: how many series and events it resolves to, counted in SQL rather
+// than loading every row (a feed sync's batch can name thousands).
+function countNewEventsBatch(entries) {
+  const ids = entries.map((e) => e && e.stableId).filter(Boolean);
+  const byVenue = new Map();
+  for (let i = 0; i < ids.length; i += 500) {
+    const chunk = ids.slice(i, i + 500);
+    const r = db.exec(`SELECT venue, COUNT(*) FROM tournaments WHERE stable_id IN (${chunk.map(() => '?').join(',')}) GROUP BY venue`, chunk);
+    for (const [venue, n] of (r[0] ? r[0].values : [])) byVenue.set(venue, (byVenue.get(venue) || 0) + n);
+  }
+  let events = 0;
+  for (const n of byVenue.values()) events += n;
+  return { series: byVenue.size, events };
+}
+
 function recordAdminBatch(kind, title, body, entries) {
   db.run('INSERT INTO admin_batches (created_at, kind, title, body, payload) VALUES (?, ?, ?, ?, ?)',
     [new Date().toISOString(), kind, title, body, JSON.stringify(entries)]);
@@ -14791,23 +13782,9 @@ function normSeriesName(s) {
 
 // tournaments.date is ISO for imports but 'October 11, 2026' from the feed. Date.parse reads the
 // latter as LOCAL midnight, so the day comes from local components — toISOString would move it a
-// day back anywhere east of UTC.
-function isoDay(v) {
-  const s = String(v || '');
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-  const ms = Date.parse(s);
-  if (Number.isNaN(ms)) return null;
-  const d = new Date(ms);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-function clockMinutes(t) {
-  const m = /^(\d{1,2}):(\d{2})\s*([AP]M)?/i.exec(String(t || '').trim());
-  if (!m) return 24 * 60;
-  let h = Number(m[1]) % 12;
-  if (!m[3]) h = Number(m[1]);
-  else if (/p/i.test(m[3])) h += 12;
-  return h * 60 + Number(m[2]);
-}
+// day back anywhere east of UTC. Both helpers are lib/feed-dedupe.js's; an unreadable time sorts last.
+const isoDay = feedDedupe.isoDay;
+const clockMinutes = (t) => feedDedupe.clockMinutes(t) ?? 24 * 60;
 function shiftDay(day, n) {
   const d = new Date(day + 'T12:00:00Z');
   d.setUTCDate(d.getUTCDate() + n);
@@ -14927,11 +13904,10 @@ app.get('/api/admin/batches', authenticateToken, requireAppAdmin, (req, res) => 
     const batches = ids.map((id) => {
       const b = readAdminBatch(id);
       if (b.kind === 'new-events') {
-        const series = resolveNewEventsBatch(b.entries);
+        const counts = countNewEventsBatch(b.entries);
         return {
           id: b.id, created_at: b.created_at, kind: b.kind, title: b.title, body: b.body,
-          seriesCount: series.length, scheduledSeries: series.length,
-          eventCount: series.reduce((n, s) => n + s.eventCount, 0),
+          seriesCount: counts.series, scheduledSeries: counts.series, eventCount: counts.events,
         };
       }
       const matches = b.entries.map((e) => matchSeriesEntry(e, index));
@@ -15105,7 +14081,7 @@ No markdown, no explanation. Example for an 8-max PLO table:
     const prompt = promptByFormat[format] || promptByFormat.pokerstars;
 
     const message = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: VISION_MODEL_FAST,
       max_tokens: 1024,
       messages: [{
         role: 'user',
@@ -15163,7 +14139,6 @@ const TIER_RANK = {
   free: 99,
 };
 const TRIAL_DAYS = 14;
-const SUBSCRIPTION_GRACE_DAYS = 7;
 
 function getActiveSubscriptionRow(userId) {
   const now = Date.now();
@@ -15246,10 +14221,7 @@ app.post('/api/subscription/trial/start', authenticateToken, requireRegistered, 
 // Admin-only: grant a subscription manually. Used for promo codes, support,
 // and giving comp accounts. Same shape as the payment-provider webhook will
 // eventually populate.
-app.post('/api/subscription/grant', authenticateToken, requireRegistered, async (req, res) => {
-  if (!['ham', 'ham5'].includes((req.user.username || '').toLowerCase())) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+app.post('/api/subscription/grant', authenticateToken, requireRegistered, requireEventEditor, async (req, res) => {
   try {
     const { userId, tier, days, source = 'manual', sourceId = null } = req.body || {};
     if (!userId || !tier || !Number.isFinite(days)) return res.status(400).json({ error: 'userId, tier, days required' });
@@ -15269,9 +14241,6 @@ app.post('/api/subscription/grant', authenticateToken, requireRegistered, async 
   }
 });
 
-// Provider webhooks (skeletons — verification + signature checks come
-// during the Apple/Stripe integration phase). They live here so the route
-// surface exists from day one and the frontend can wire to stable URLs.
 // App Store purchases (lib/billing/apple.js; 2026-10-15). The app asks for the account's token before a
 // purchase and passes it to StoreKit (Product.purchase(options: [.appAccountToken(uuid)])), then reports
 // the signed transaction; Apple's own notifications keep the row current after that. Every payload is
@@ -15301,7 +14270,7 @@ app.post('/api/subscription/apple/verify', authenticateToken, requireRegistered,
 });
 // App Store Server Notifications v2: a bad signature gets 400 (Apple retries); anything verified gets
 // 200, a repeat included, so Apple stops sending it.
-app.post('/api/subscription/apple/webhook', express.json({ limit: '256kb' }), async (req, res) => {
+app.post('/api/subscription/apple/webhook', async (req, res) => {
   const signed = req.body && req.body.signedPayload;
   if (typeof signed !== 'string') return res.status(400).json({ error: 'signedPayload required' });
   try {
@@ -15314,14 +14283,6 @@ app.post('/api/subscription/apple/webhook', express.json({ limit: '256kb' }), as
     console.error('[apple] notification:', e.message);
     res.status(500).json({ error: 'Something went wrong' });
   }
-});
-
-app.post('/api/subscription/stripe/webhook', express.raw({ type: 'application/json', limit: '256kb' }), async (req, res) => {
-  // TODO: verify signature with STRIPE_WEBHOOK_SECRET (constructEvent), then
-  // upsert subscriptions row using the customer/subscription IDs. For now,
-  // accept-and-log so Stripe webhook config has a target.
-  console.log('[stripe webhook] received', req.headers['stripe-signature'] ? 'signed' : 'unsigned');
-  res.json({ ok: true });
 });
 
 // The settling-day Discord DM (lib/discord-settle.js). Its backers are the owner's Backers view, the

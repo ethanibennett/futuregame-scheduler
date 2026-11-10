@@ -255,7 +255,6 @@ export function toggle(filters, dimKey, key) {
   return { ...filters, [dimKey]: cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key] };
 }
 export function setRange(filters, range) { return { ...filters, range }; }
-export function clearDim(filters, dimKey) { return dimKey === 'range' ? { ...filters, range: 'all' } : { ...filters, [dimKey]: [] }; }
 export function clearAll() { return emptyFilters(); }
 /** How many filters are on: one per dimension with a selection, plus a range other than all. */
 export function activeCount(filters) {

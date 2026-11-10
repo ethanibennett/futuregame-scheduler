@@ -31,3 +31,12 @@ export function gridPanelStyle(anchorRect, heightR, leftG) {
     transform: 'none',
   };
 }
+
+// Where the Results and Bankroll sheets portal: the app's root container, not <body>. That container
+// is position:fixed, so it is a stacking context, and the admin grid overlay (z 9997) lives inside
+// it. A sheet on <body> at any z-index would paint over the overlay and the layout could not be
+// checked against it. The root has no transform or overflow, so nothing clips a fixed sheet inside it.
+export function portalTarget() {
+  const shell = document.querySelector('.app-shell');
+  return (shell && shell.parentElement) || document.body;
+}

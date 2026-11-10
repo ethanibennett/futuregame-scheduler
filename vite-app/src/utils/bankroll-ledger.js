@@ -158,25 +158,6 @@ export function rangeWindow(range, today) {
   return { from: null, to: null };
 }
 
-/**
- * Cumulative RESULTS (won or lost; money moved left out) for the chart's profit mode: starts at 0
- * on the window's first day, one point per day that had a result, value = the running sum at that
- * day's close. Same shape as balanceSeries.
- */
-export function profitSeries(entries, { from = null } = {}) {
-  const res = entries.filter((e) => !isMove(e));
-  const pts = [{ date: from || (res[0] ? res[0].date : null), value: 0, start: true }];
-  let run = 0;
-  for (const e of res) {
-    run += Number(e.amount_display) || 0;
-    const last = pts[pts.length - 1];
-    if (last.date === e.date && !last.start) last.value = run;
-    else pts.push({ date: e.date, value: run });
-  }
-  for (const p of pts) p.value = Math.round(p.value * 100) / 100;
-  return pts;
-}
-
 // ── The trend graph's lines (Overview, Profit mode) ───────────────────────────────────────
 // Three lines over one date axis, as a poker tracker's trend chart draws them: Total (every
 // result: the hero's profit), Tournaments and Cash. Whatever is neither (expenses & income, any

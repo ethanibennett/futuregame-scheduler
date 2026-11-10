@@ -57,7 +57,6 @@ export default function TableScanner({ initialFile = null } = {}) {
   const [portrait, setPortrait] = useState(false);
   const ovalRef = useRef(null);
   const fileRef = useRef(null);
-  const colorRef = useRef(null);
 
   // Persist scan results so the hand replayer can use them
   useEffect(() => {
@@ -377,7 +376,7 @@ export default function TableScanner({ initialFile = null } = {}) {
         setProgress(30);
         const formData = new FormData();
         formData.append('image', file);
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         const resp = await fetch(API_URL + '/scan-table', {
           method: 'POST',
           headers: token ? { Authorization: 'Bearer ' + token } : {},
@@ -439,7 +438,7 @@ export default function TableScanner({ initialFile = null } = {}) {
         const formData = new FormData();
         formData.append('image', file);
         formData.append('format', 'wsop');
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         const resp = await fetch(API_URL + '/scan-table', {
           method: 'POST',
           headers: token ? { Authorization: 'Bearer ' + token } : {},

@@ -40,8 +40,6 @@ const BY_ID = new Map(HOME_SECTIONS.map((s) => [s.id, s]));
 const TOP = HOME_SECTIONS.filter((s) => !s.parent);
 const isPart = (id) => !!(BY_ID.get(id) && BY_ID.get(id).parent);
 
-export const sectionOf = (id) => BY_ID.get(id) || null;
-
 /** Whether a viewer of this kind can see a section at all (ctx = { admin, registered }). */
 export function canSee(sec, ctx = {}) {
   if (!sec) return false;
@@ -79,11 +77,6 @@ export function normalise(raw) {
   const out = { v: LAYOUT_VERSION, sections };
   if (typeof raw.updatedAt === 'string') out.updatedAt = raw.updatedAt;
   return out;
-}
-
-/** The default document (what null stands for). */
-export function defaultDoc() {
-  return { v: LAYOUT_VERSION, sections: HOME_SECTIONS.map((s) => ({ id: s.id, on: !s.defaultOff })) };
 }
 
 // id -> on, from a (normalised) document; an id it does not mention is on.
@@ -139,11 +132,6 @@ export function resolve(doc, ctx) {
     numbers: phone.filter((id) => BY_ID.get(id).pane === 'numbers'),
     on,
   };
-}
-
-/** Whether an id is switched on in the document (locked ids always are; parts by their own flag). */
-export function isSwitchedOn(doc, id) {
-  return isOn(onMap(doc ? normalise(doc) : null), id);
 }
 
 // A document with this top-level order and these flags. Parts follow their parent; unknown ids and

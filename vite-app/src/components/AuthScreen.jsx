@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import Icon from './Icon.jsx';
-import { THEME_ORDER, THEME_LABEL, THEME_ICON, getStoredSeasonLabel } from '../utils/utils.js';
+import ThemeButton from './ThemeButton.jsx';
+import { THEME_LABEL, getStoredSeasonLabel } from '../utils/utils.js';
 import { nextTheme } from '../utils/theme.js';
 import { API_URL } from '../utils/api.js';
 
@@ -34,9 +34,7 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
     <div className="auth-wrap">
       <div className="auth-card snap-place">
         <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'var(--space-md)'}}>
-          <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title={`Switch to ${nextThemeLabel} mode`}>
-            {React.createElement(Icon[THEME_ICON[theme]] || Icon.moon)}
-          </button>
+          <ThemeButton theme={theme} nextThemeLabel={nextThemeLabel} onToggle={toggleTheme} />
         </div>
         <div className="auth-logo">
           <h1>futurega.me</h1>

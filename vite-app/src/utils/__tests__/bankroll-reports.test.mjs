@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   prepareFacts, emptyFilters, normaliseFilters, applyFilters, facetCounts, rangeCounts, optionsFor, toggle, setRange,
-  clearDim, clearAll, activeCount, summaryParts, fixedLabel, rangeWindow, rangeLabel, yearOptions, weekdayOf, daypartOf,
+  clearAll, activeCount, summaryParts, fixedLabel, rangeWindow, rangeLabel, yearOptions, weekdayOf, daypartOf,
   hourLabel, buyinBand, kindOf,
 } from '../bankroll-filters.js';
 import { buildReport, summaryStats, barLayout, rateKindFor, reportAvailability, REPORTS } from '../bankroll-reports.js';
@@ -131,8 +131,7 @@ test('active count, summary parts, clearing', () => {
   assert.equal(activeCount(f), 4);
   const labelOf = (dim, key) => fixedLabel(dim, key) || ({ parx: 'Parx', borgata: 'Borgata' })[key] || key;
   assert.deepEqual(summaryParts(f, labelOf).map((p) => p.text), ['90 days', 'Cash', 'Parx, Borgata', '3 days']);
-  assert.equal(activeCount(clearDim(f, 'rooms')), 3);
-  assert.equal(clearDim(f, 'range').range, 'all');
+  assert.equal(activeCount({ ...f, rooms: [] }), 3);
   assert.deepEqual(clearAll(), emptyFilters());
   assert.equal(activeCount(emptyFilters()), 0);
 });

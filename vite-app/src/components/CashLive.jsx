@@ -14,16 +14,7 @@ import './CashSessions.css';
 import useLiveCashSession, { RESULTS_SECTIONS, useResultsKind, setResultsKind } from '../hooks/useLiveCashSession.js';
 import { formatClock, liveElapsed, sessionGame } from '../utils/cash-sessions.js';
 import { formatCurrencyAmount } from '../utils/utils.js';
-
-/** Re-render every `ms` while `active`. */
-export function useTick(active, ms = 1000) {
-  const [, set] = useState(0);
-  useEffect(() => {
-    if (!active) return undefined;
-    const id = setInterval(() => set((n) => n + 1), ms);
-    return () => clearInterval(id);
-  }, [active, ms]);
-}
+import useTick from '../hooks/useTick.js';
 
 // The sections grouped (owner, 2026-10-20: nine chips over three rows were too many): four 8g chips in
 // one row (35g with the gaps): MTT/Cash ⌄, Overview, Insights ⌄ and Manage ⌄. A group's chip shows the section last used in it (remembered on the

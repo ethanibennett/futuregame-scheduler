@@ -77,18 +77,3 @@ export function detectMilestones(trackingData, newEntry) {
 
   return milestones;
 }
-
-export function measureStickyStack(container) {
-  const caTop = container.getBoundingClientRect().top;
-  let bottom = 0;
-  const sticky = container.querySelector('.sticky-filters') || container.querySelector('.schedule-sticky-header') || container.querySelector('.gto-sticky-header');
-  if (sticky) bottom = sticky.getBoundingClientRect().bottom - caTop;
-  container.querySelectorAll('.schedule-date-break').forEach(db => {
-    const dbTop = db.getBoundingClientRect().top - caTop;
-    if (dbTop < bottom + 5) {
-      const dbBottom = db.getBoundingClientRect().bottom - caTop;
-      if (dbBottom > bottom) bottom = dbBottom;
-    }
-  });
-  return bottom;
-}

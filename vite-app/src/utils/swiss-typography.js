@@ -13,7 +13,7 @@ const RANGE = new RegExp(`\\b(${MONTHS})-(${MONTHS})\\b`, 'gi');
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 const SKIP = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'CODE', 'PRE', 'SVG']);
 
-/** The corrected form of one string (pure: test/swiss-typography.test.mjs). */
+/** The corrected form of one string (pure: no DOM). */
 export function swissText(s) {
   if (!s || s.length < 2) return s;
   return s

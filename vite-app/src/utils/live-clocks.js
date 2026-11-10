@@ -10,7 +10,7 @@
 // remainingSecs, fetchedAt, nextBlinds, minsToBreak, entries, playersLeft, avgStack, prizePool,
 // regEndsAt, startsAt } plus receivedAt (client ms) added here.
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { fetchApi } from './api.js';
 import { parseLateRegEnd, parseTournamentTime } from './utils.js';
 
@@ -118,16 +118,6 @@ export function useLiveClocks(targets, key) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
   return useClockStore();
-}
-
-/** Re-render every second while `active` — for a countdown that is actually ticking. */
-export function useSecondTick(active) {
-  const [, set] = useState(0);
-  useEffect(() => {
-    if (!active) return undefined;
-    const id = setInterval(() => set((n) => n + 1), 1000);
-    return () => clearInterval(id);
-  }, [active]);
 }
 
 /** The clock while it is actually running (or paused) and can be timed, with `remaining` aged

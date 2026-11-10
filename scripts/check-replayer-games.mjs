@@ -258,7 +258,7 @@ async function runRow(browser, row) {
 
     for (let guard = 0; guard < 400; guard++) {
       if (await p.locator('button[title="End"]').count()) break;
-      if (await p.locator('.replayer-error, [data-replay-error]').count()) throw new Error('the error screen showed');
+      if (await p.locator(':text("Error loading replay")').count()) throw new Error('the error screen showed');
       const screen = await p.evaluate(() => {
         const vis = (sel) => [...document.querySelectorAll(sel)].find((e) => e.getBoundingClientRect().height > 0);
         return { section: vis('.replayer-section-title')?.textContent.trim() || '', label: vis('.gto-street-label')?.textContent.trim() || '',

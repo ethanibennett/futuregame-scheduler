@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { formatCurrencyAmount, MINUS, getToday } from '../utils/utils.js';
 import { BANKROLL_ALL } from '../utils/bankrolls.js';
+import { portalTarget } from '../utils/grid-panel.js';
 import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
 import { goalProgress, ledgerToCsv, fmtRule } from '../utils/bankroll-ledger.js';
 import BankrollFab from './BankrollFab.jsx';
@@ -30,12 +31,6 @@ import './bankroll-dashboard.css';
  * Wording is descriptive: what the player's own numbers and own rule say.
  */
 
-// Portalled where AnalyticsView portals (see its portalTarget): inside the app root, under the
-// admin grid overlay.
-function portalTarget() {
-  const shell = document.querySelector('.app-shell');
-  return (shell && shell.parentElement) || document.body;
-}
 function fmtDate(iso) {
   if (!iso) return '';
   const [y, m, d] = iso.split('-').map(Number);

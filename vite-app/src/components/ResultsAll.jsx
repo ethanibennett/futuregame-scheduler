@@ -4,7 +4,7 @@ import { bankrollQuery } from '../utils/bankrolls.js';
 import { convertAmount, formatCurrencyAmount, getToday } from '../utils/utils.js';
 import { BANKROLL_RANGES, chronological, rangeFrom, stepGeometry, fmtSignedCents, fmtShort } from '../utils/backer-page.js';
 import { shapePath, useLineStyle } from '../utils/line-style.js';
-import { BankrollGraph, MonthBreak } from './ResultCardParts.jsx';
+import { BankrollGraph, MonthBreak, RANGE_KEY, readRange } from './ResultCardParts.jsx';
 import { RangeStrip } from './BackerChart.jsx';
 import { SessionRow } from './CashSessions.jsx';
 import { MoneyParts } from './SwissParts.jsx';
@@ -28,8 +28,6 @@ import { useToast } from '../contexts/ToastContext.jsx';
 const MODE_KEY = 'resultsAllGraph';
 const MODES = [['overlay', 'Overlaid'], ['combined', 'Combined']];
 const readMode = () => { try { return localStorage.getItem(MODE_KEY) === 'combined' ? 'combined' : 'overlay'; } catch { return 'overlay'; } };
-const RANGE_KEY = 'bankrollGraphRange';   // shared with BankrollGraph: one range for every graph here
-const readRange = () => { try { const v = localStorage.getItem(RANGE_KEY); return BANKROLL_RANGES.some(([k]) => k === v) ? v : 'all'; } catch { return 'all'; } };
 
 const W = 35;
 const H = 16;

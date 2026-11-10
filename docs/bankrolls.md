@@ -330,7 +330,7 @@ draws, so −0.38 is a plain "$0", never a red one.
 The arithmetic is pure and tested in `utils/bankroll-ledger.js`: `overviewStats(entries)` (ROI =
 profit / cost with each tournament's cost × `fx_display`, so mixed currencies add up; ITM = rows that
 cashed / rows; hourly = the profit of sessions with both ends / their hours; every ratio null, not 0,
-when it has nothing under it), `profitSeries`, `peakOf`, `rangeWindow`, `recentResults`, and the
+when it has nothing under it), `peakOf`, `rangeWindow`, `recentResults`, and the
 graph's: `gameSeries` (Total / Tournaments / Cash / other on one date axis, summed in integer cents so
 tourn + cash + other == total exactly on every row), `seriesLine`, `parseSeriesPref`, `niceTicks`,
 `compactMoney`, `chartSpan` (the date axis) and `drawdownBand` (the band at full depth, and the
