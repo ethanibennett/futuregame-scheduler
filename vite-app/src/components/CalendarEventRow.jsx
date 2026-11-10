@@ -609,7 +609,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
               </span>
               {tournament.notes && (
                 <span style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', fontStyle:'italic', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
-                  \u2014 {tournament.notes}
+                  {'\u2014'} {tournament.notes}
                 </span>
               )}
             </div>

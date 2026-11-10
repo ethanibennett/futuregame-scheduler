@@ -210,6 +210,18 @@ try {
   if (getDebugNow() && !APP_ADMIN_USERNAMES.includes(tokenUsername(bootToken))) setDebugNow('');
 } catch { /* storage unavailable — nothing persisted to clear */ }
 
+const GUEST_PICKS_KEY = 'guestPicks';
+const GUEST_PLAN_NOTE = 'Create an account to keep plans like this. Your saved events stay on this device.';
+function readGuestPicks() {
+  try {
+    const v = JSON.parse(localStorage.getItem(GUEST_PICKS_KEY) || '[]');
+    return Array.isArray(v) ? v.filter(Number.isFinite) : [];
+  } catch { return []; }
+}
+function writeGuestPicks(ids) {
+  try { localStorage.setItem(GUEST_PICKS_KEY, JSON.stringify(ids)); } catch { /* storage off: this visit only */ }
+}
+
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || sessionStorage.getItem('token'));
   // The signed token's own username claim (utils/session-claims.js), read once per token.
@@ -281,6 +293,10 @@ function App() {
   // the window instead of naming a season that goes stale.
   const seasonLabel = useMemo(() => formatSeasonLabel(tournaments), [tournaments]);
   const [mySchedule, setMySchedule] = useState([]);
+  // A guest's saved events stay on this device (owner, 2026-11-10): every guest token is the same
+  // id 0, so a list on the server would be every guest's at once. Ids only; the rows come from the
+  // schedule itself.
+  const [guestPicks, setGuestPicks] = useState(readGuestPicks);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -624,6 +640,7 @@ function App() {
   // Schedule, the Calendar, the home, staking and the exports (utils/didnt-play.js).
   const scheduleShown = useMemo(() => withoutDnpMarkers(mySchedule), [mySchedule]);
   const fetchMySchedule = async () => {
+    if (isGuest) return;
     try {
       const res = await guardedFetch(`${API_URL}/my-schedule`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -633,6 +650,12 @@ function App() {
       setMySchedule(Array.isArray(data) ? data : []);
     } catch (e) { console.error('Fetch schedule:', e); setMySchedule([]); }
   };
+
+  useEffect(() => {
+    if (!isGuest) return;
+    const ids = new Set(guestPicks);
+    setMySchedule(tournaments.filter(t => ids.has(t.id)));
+  }, [isGuest, guestPicks, tournaments]);
 
   const fetchTracking = async () => {
     try {
@@ -858,7 +881,7 @@ function App() {
       const res = await fetch(`${API_URL}/groups/${groupId}/schedule`, { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) {
         const data = await res.json();
-        setGroupSchedule(Array.isArray(data) ? data : []);
+        setGroupSchedule(Array.isArray(data) ? withoutDnpMarkers(data) : []);
       }
     } catch {}
   };
@@ -1009,6 +1032,7 @@ function App() {
   };
 
   const handleLogout = () => {
+    fetch(`${API_URL}/logout`, { method: 'POST' }).catch(() => {});
     ['token','username','avatar','isGuest','realName','sessionOnly'].forEach(k => {
       localStorage.removeItem(k);
       sessionStorage.removeItem(k);
@@ -1116,6 +1140,14 @@ function App() {
 
   const toggleTournament = useCallback(async (tournamentId) => {
     haptic();
+    if (isGuest) {
+      setGuestPicks(prev => {
+        const next = prev.includes(tournamentId) ? prev.filter(id => id !== tournamentId) : [...prev, tournamentId];
+        writeGuestPicks(next);
+        return next;
+      });
+      return;
+    }
     const existing = mySchedule.find(t => t.id === tournamentId);
     const isIn = !!existing;
     try {
@@ -1142,7 +1174,7 @@ function App() {
       }
       fetchMySchedule();
     } catch { setError('Failed to update schedule'); }
-  }, [token, mySchedule]);
+  }, [token, mySchedule, isGuest]);
 
   const addPersonalEvent = useCallback(async (date, type, notes) => {
     try {
@@ -1173,6 +1205,7 @@ function App() {
   }, [token]);
 
   const setCondition = useCallback(async (tournamentId, conditions, isPublic) => {
+    if (isGuest) { toast.info(GUEST_PLAN_NOTE); return; }
     try {
       await fetch(`${API_URL}/schedule/${tournamentId}/condition`, {
         method: 'PUT',
@@ -1181,9 +1214,10 @@ function App() {
       });
       fetchMySchedule();
     } catch { setError('Failed to set condition'); }
-  }, [token]);
+  }, [token, isGuest, toast]);
 
   const removeCondition = useCallback(async (tournamentId) => {
+    if (isGuest) { toast.info(GUEST_PLAN_NOTE); return; }
     try {
       await fetch(`${API_URL}/schedule/${tournamentId}/condition`, {
         method: 'DELETE',
@@ -1191,9 +1225,10 @@ function App() {
       });
       fetchMySchedule();
     } catch { setError('Failed to remove condition'); }
-  }, [token]);
+  }, [token, isGuest, toast]);
 
   const toggleAnchor = useCallback(async (tournamentId, isAnchor) => {
+    if (isGuest) { toast.info(GUEST_PLAN_NOTE); return; }
     try {
       await fetch(`${API_URL}/schedule/${tournamentId}/anchor`, {
         method: 'PUT',
@@ -1202,9 +1237,10 @@ function App() {
       });
       fetchMySchedule();
     } catch { setError('Failed to update anchor status'); }
-  }, [token]);
+  }, [token, isGuest, toast]);
 
   const setPlannedEntries = useCallback(async (tournamentId, plannedEntries) => {
+    if (isGuest) { toast.info(GUEST_PLAN_NOTE); return; }
     try {
       await fetch(`${API_URL}/schedule/${tournamentId}/entries`, {
         method: 'PUT',
@@ -1213,7 +1249,7 @@ function App() {
       });
       fetchMySchedule();
     } catch { setError('Failed to update planned entries'); }
-  }, [token]);
+  }, [token, isGuest, toast]);
 
   // ── Pull-to-refresh ──
   const contentAreaRef = useRef(null);

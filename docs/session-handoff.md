@@ -14,6 +14,28 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-11-10 — Code cleanup; privacy fixes; the Sunday-noon Discord run; quick add re-synced
+
+- **Cleanup** (owner: "a full audit of all code to make sure it's as clean and efficient as possible"): about
+  12,800 lines gone (dead routes, components, CSS, stale scripts and reports), the tests no script ran wired into
+  their features' scripts, `npm test` = `test:utils`. **Trap:** `npm install` in `vite-app` prunes `playwright`,
+  which no package.json declares (it would ride along on every Render `npm ci`); every guard needs it, so after
+  any install there run `npm install playwright@1.63.0 --no-save` in `vite-app`.
+- **Privacy** (owner: "1 yes"; `npm run test:privacy`): share link, friends' and group views go through
+  `scheduleForOthers` (no private plan, no Didn't play marker, no Personal day's note); guests keep their picks on
+  the device and the server refuses their schedule writes; a password reset ends every older session
+  (`users.token_version`, `tv` in the JWT); Sign out drops the `fg_session` cookie. Not built: a "Sign out of
+  other devices" button (proposal 424) and a per-Travel-Day "show this note" switch. The rows older builds saved
+  under the guest id 0 are left in place, never served.
+- **Discord, Sunday noon:** the 2026-10-25 entry below said it shipped, but its schedule was never committed, so it
+  never ran. Now scheduled at 12:00 ET; `test:discord-settle` boots the server and checks the noon test reaches a
+  backer through their link's token (the Backers view carries the link, not the token).
+- **Quick add** (owner: "5 yes"): its copies of `HAND_CONFIG`, the game categories, the low studs, the 2-7 razz ace,
+  the high draws and Pineapple's discard-only draw match the replayer again; `gaps.test.mjs` runs in
+  `test:quick-add`.
+- Pre-existing failures, not from this work: `test:standing-live` "the preview for an unsaved result" and the PBT
+  preset case in `bankroll-ledger.test.mjs`.
+
 ## 2026-11-10 — Hand entry held to PokerKit, and the entry audit fixed
 
 Owner: "a full audit of the replayer hand entry process from the user's perspective. This should also be perfect."
@@ -29,7 +51,7 @@ whole r tall moves every seat below it off the grid by a layout unit, and `check
 Also this day, proposals only and not built, each a private gallery with a shared Pick list: the Laws of UX audit
 (111), Bankroll design (100), Replayer animations (100, https://claude.ai/artifact/HkxW651qbqkvsTF74zFX9G) and App
 improvements (408, 99 bugs, https://claude.ai/artifact/TAPjgLdyahG33nB8cSKBZW); the source folders are `docs/catalogues/`
-and `docs/ux-audit/` (untracked). **Privacy bugs found there, not yet fixed:** private plans in the public share link's
+and `docs/ux-audit/` (untracked). **Privacy bugs found there, fixed the same day (above):** private plans in the public share link's
 data and in friends' views (improvements 355), a Travel Day's note on the public page (357), all guests sharing user 0's
 schedule (8), and sessions surviving a password reset (403).
 
@@ -200,7 +222,7 @@ the junction hides anything missing from git.
 
 ## 2026-10-25 — Sunday noon Discord reminder to both parties; "Sent" on the backer page
 
-- **Shipped:** `runNoonReminder` in `lib/discord-settle.js`, scheduled Sunday 12:00 ET beside the 09:00
+- **Shipped:** `runNoonReminder` in `lib/discord-settle.js` (its Sunday 12:00 ET schedule was not committed until 2026-11-10), beside the 09:00
   player DM: a gentle DM to each backer with a balance and a Discord id on file, then the player's list
   with who was reached. Ids live in `backer_discord`, set from the Backers card (Discord button). The
   backer page's payment card reads SENT / "You sent Ethan" (owner); the owner's card keeps "Paid".

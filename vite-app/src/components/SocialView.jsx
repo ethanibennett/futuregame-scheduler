@@ -4,6 +4,7 @@ import Avatar from './Avatar.jsx';
 import Icon from './Icon.jsx';
 import { API_URL } from '../utils/api.js';
 import { tokenClaims } from '../utils/session-claims.js';
+import { withoutDnpMarkers } from '../utils/didnt-play.js';
 import { getVenueInfo, getVenueBrandColor, normaliseDate, getToday, formatBuyin, formatLiveUpdate, parseTournamentTime } from '../utils/utils.js';
 
 // Avatars on the r grid (a px size floored each card to 7.18r): 5r, centred in
@@ -641,7 +642,7 @@ export default function SocialView({
       })
         .then(r => r.json())
         .then(data => {
-          setBuddySchedules(prev => ({ ...prev, [buddyId]: Array.isArray(data) ? data : [] }));
+          setBuddySchedules(prev => ({ ...prev, [buddyId]: Array.isArray(data) ? withoutDnpMarkers(data) : [] }));
           setLoadingSchedule(null);
         })
         .catch(() => {

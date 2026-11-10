@@ -283,7 +283,7 @@ function consoleSessionOk(req) {
     // Pin HS256 so a forged alg:none / algorithm-confusion token can't verify.
     const decoded = jwt.verify(tok, JWT_SECRET, { algorithms: ['HS256'] });
     // Authorize on the STABLE id, never the username string. Exclude guests.
-    return !!decoded && !decoded.isGuest && Number(decoded.id) === HAM_OWNER_ID;
+    return !!decoded && !decoded.isGuest && Number(decoded.id) === HAM_OWNER_ID && !sessionRefusal(decoded);
   } catch (_) {
     return false;
   }
@@ -344,8 +344,7 @@ async function requireHamBasic(req, res, next) {
     // recognise the session without re-prompting — this is what stops the popup
     // recurring, and unifies with the futurega.me login.
     try {
-      const tok = jwt.sign({ id: owner.id, username: owner.username }, JWT_SECRET, { expiresIn: '90d' });
-      setSessionCookie(res, tok);
+      setSessionCookie(res, signSession(owner));
     } catch (_) { /* non-fatal: auth still succeeds without the cookie */ }
     next();
   } catch (err) {
@@ -1608,6 +1607,14 @@ async function initDatabase() {
   // Migrate: add hand_replayer_access to users
   try {
     db.run('ALTER TABLE users ADD COLUMN hand_replayer_access INTEGER DEFAULT 0');
+  } catch (e) {
+    // Column already exists — ignore
+  }
+
+  // Migrate: the session version (sessionRefusal below). A password reset bumps it, which ends
+  // every session signed before; 0 is what a token minted before the column existed reads as.
+  try {
+    db.run('ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0');
   } catch (e) {
     // Column already exists — ignore
   }
@@ -3874,24 +3881,39 @@ function authenticateToken(req, res, next) {
     if (err) {
       return res.status(401).json({ error: 'Invalid token' });
     }
-    // A token outlives its account (90-day expiry), so a deleted account's token
-    // must stop working here — otherwise it keeps any username-based rights.
-    if (user && !user.isGuest && !userIdExists(user.id)) {
-      return res.status(401).json({ error: 'Account no longer exists' });
-    }
+    const refused = sessionRefusal(user);
+    if (refused) return res.status(401).json({ error: refused });
     req.user = user;
     // An active day for the cohort report (lib/growth.js): one write per account per day.
     if (user && !user.isGuest) growth.touchDay(db, user.id);
     next();
   });
 }
-function userIdExists(id) {
+// Sessions end when the password changes (owner, 2026-11-10). Every account JWT carries `tv`, the
+// account's users.token_version when it was signed; a password reset bumps the column, so every
+// token signed before it is refused. A token with no `tv` (signed before this, or by a test) reads
+// as 0, the column's default. The account's row is read once per request either way: a token
+// outlives a deleted account (90-day expiry), and must not keep its username-based rights.
+function tokenVersionOf(id) {
   try {
-    const r = db.exec('SELECT 1 FROM users WHERE id = ?', [Number(id)]);
-    return !!(r.length && r[0].values.length);
+    const r = db.exec('SELECT token_version FROM users WHERE id = ?', [Number(id)]);
+    return r.length && r[0].values.length ? (Number(r[0].values[0][0]) || 0) : null;
   } catch (_) {
-    return true; // DB not ready: fall back to the signature check alone
+    return undefined; // DB not ready: fall back to the signature check alone
   }
+}
+/** A 90-day account session for { id, username }, stamped with the account's session version. */
+function signSession(user, expiresIn = '90d') {
+  return jwt.sign({ id: user.id, username: user.username, tv: tokenVersionOf(user.id) || 0 }, JWT_SECRET, { expiresIn });
+}
+/** A verified token's payload -> null when its session stands, else why it does not. */
+function sessionRefusal(user) {
+  if (!user || user.isGuest) return null;
+  const v = tokenVersionOf(user.id);
+  if (v === undefined) return null;
+  if (v === null) return 'Account no longer exists';
+  if ((Number(user.tv) || 0) !== v) return 'Signed out: the password was changed. Please sign in again.';
+  return null;
 }
 
 function requireRegistered(req, res, next) {
@@ -4038,9 +4060,8 @@ app.get('/api/events', (req, res) => {
   } else {
     return res.status(401).json({ error: 'Ticket required' });
   }
-  if (user && !user.isGuest && !userIdExists(user.id)) {
-    return res.status(401).json({ error: 'Account no longer exists' });
-  }
+  const refused = sessionRefusal(user);
+  if (refused) return res.status(401).json({ error: refused });
 
   res.set({
     'Content-Type': 'text/event-stream',
@@ -4167,7 +4188,7 @@ app.post('/api/register', registerLimit, async (req, res) => {
     // the 201 and its message, and asks the user to sign in as before). onboarding is null: a new
     // account has not been through first-run setup.
     if (userId == null) return res.status(201).json({ message: 'User created successfully' });
-    const token = jwt.sign({ id: userId, username }, JWT_SECRET, { expiresIn: '90d' });
+    const token = signSession({ id: userId, username });
     setSessionCookie(res, token);
     res.status(201).json({
       message: 'User created successfully',
@@ -4212,9 +4233,7 @@ app.post('/api/login', loginLimit, async (req, res) => {
       req.authLimit.clear(`login:${accountKey(email)}`);
     }
 
-    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, {
-      expiresIn: '90d'
-    });
+    const token = signSession(user);
 
     // Also drop the JWT as an httpOnly session cookie so a same-origin navigation
     // to /console carries it (shared login with the console). Header-based
@@ -4234,6 +4253,13 @@ app.post('/api/guest-login', (req, res) => {
     expiresIn: '4h'
   });
   res.json({ token, username: 'Guest', userId: 0, avatar: null, isGuest: true });
+});
+
+// Sign out: the device forgets its token, and this drops the httpOnly session cookie that /console
+// trusts, which the app cannot reach from JavaScript.
+app.post('/api/logout', (req, res) => {
+  res.clearCookie(SESSION_COOKIE, { path: '/' });
+  res.json({ ok: true });
 });
 
 // Update user profile (real name)
@@ -4503,7 +4529,8 @@ app.post('/api/reset-password', resetLimit, async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    db.run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, resetRecord.user_id]);
+    // A new password ends every session signed with the old one (sessionRefusal).
+    db.run('UPDATE users SET password = ?, token_version = COALESCE(token_version, 0) + 1 WHERE id = ?', [hashedPassword, resetRecord.user_id]);
     db.run('UPDATE password_resets SET used = 1 WHERE id = ?', [resetRecord.id]);
     await saveDatabase();
 
@@ -4764,7 +4791,7 @@ app.get('/api/tournaments', authenticateToken, (req, res) => {
 });
 
 // Add tournament to user's schedule
-app.post('/api/schedule', authenticateToken, async (req, res) => {
+app.post('/api/schedule', authenticateToken, requireRegistered, async (req, res) => {
   try {
     const { tournamentId } = req.body;
     
@@ -4788,7 +4815,7 @@ app.post('/api/schedule', authenticateToken, async (req, res) => {
 });
 
 // Remove tournament from user's schedule
-app.delete('/api/schedule/:tournamentId', authenticateToken, async (req, res) => {
+app.delete('/api/schedule/:tournamentId', authenticateToken, requireRegistered, async (req, res) => {
   try {
     const { tournamentId } = req.params;
 
@@ -4814,7 +4841,7 @@ app.delete('/api/schedule/:tournamentId', authenticateToken, async (req, res) =>
 });
 
 // Set or update a condition on a scheduled event
-app.put('/api/schedule/:tournamentId/condition', authenticateToken, async (req, res) => {
+app.put('/api/schedule/:tournamentId/condition', authenticateToken, requireRegistered, async (req, res) => {
   try {
     const { tournamentId } = req.params;
     const { conditions, isPublic, dependsOnTournamentId, conditionType, profitThreshold } = req.body;
@@ -4859,7 +4886,7 @@ app.put('/api/schedule/:tournamentId/condition', authenticateToken, async (req, 
 });
 
 // Toggle anchor/must-play status on a scheduled event
-app.put('/api/schedule/:tournamentId/anchor', authenticateToken, async (req, res) => {
+app.put('/api/schedule/:tournamentId/anchor', authenticateToken, requireRegistered, async (req, res) => {
   try {
     const { tournamentId } = req.params;
     const { isAnchor } = req.body;
@@ -4876,7 +4903,7 @@ app.put('/api/schedule/:tournamentId/anchor', authenticateToken, async (req, res
 });
 
 // Update planned entries for a scheduled event
-app.put('/api/schedule/:tournamentId/entries', authenticateToken, async (req, res) => {
+app.put('/api/schedule/:tournamentId/entries', authenticateToken, requireRegistered, async (req, res) => {
   try {
     const { tournamentId } = req.params;
     const { plannedEntries } = req.body;
@@ -4922,7 +4949,7 @@ app.put('/api/schedule/:tournamentId/played', authenticateToken, requireRegister
 });
 
 // Remove condition from a scheduled event (make it firm)
-app.delete('/api/schedule/:tournamentId/condition', authenticateToken, async (req, res) => {
+app.delete('/api/schedule/:tournamentId/condition', authenticateToken, requireRegistered, async (req, res) => {
   try {
     const { tournamentId } = req.params;
     db.run('DELETE FROM schedule_conditions WHERE user_id = ? AND tournament_id = ?', [req.user.id, tournamentId]);
@@ -5069,6 +5096,10 @@ app.delete('/api/personal-event/:id', authenticateToken, requireRegistered, asyn
 
 // Get user's schedule
 app.get('/api/my-schedule', authenticateToken, (req, res) => {
+  // Every guest token is id 0, so the server holds no schedule of a guest's own: a guest's picks
+  // stay on their device (App.jsx guestPicks), and the rows older builds wrote under id 0, one
+  // list for every guest, are never served.
+  if (req.user.isGuest) return res.json([]);
   try {
     const query = `
       SELECT t.*, us.added_at, us.is_anchor, us.planned_entries, us.not_played, us.not_played_note,
@@ -5862,7 +5893,7 @@ app.get('/api/groups/:id/schedule', authenticateToken, (req, res) => {
 
     // Group by tournament — { tournamentId -> { ...tournament, members: [{id, username, avatar}] } }
     const byTournament = {};
-    for (const row of rows) {
+    for (const row of scheduleForOthers(rows)) {
       if (!byTournament[row.tournament_id]) {
         byTournament[row.tournament_id] = {
           id: row.tournament_id,
@@ -6203,12 +6234,30 @@ app.put('/api/seen-notifications', authenticateToken, requireRegistered, async (
 });
 
 // Get specific user's schedule (if share buddy or own)
+// What anyone but the player sees of their schedule (owner, 2026-11-10): a plan marked private is
+// private in the data, not only on screen; a Didn't play marker (a note to self that only Results
+// shows, vite-app/src/utils/didnt-play.js) is left out; and a Personal day's note, which can hold a
+// flight and a booking code, stays the player's. Used by the share link, a friend's view and a
+// group's schedule.
+function scheduleForOthers(rows) {
+  const out = [];
+  for (const t of rows) {
+    if (t.venue === 'Personal' && t.event_name === "Didn't play") continue;
+    const row = { ...t };
+    if (row.venue === 'Personal') row.notes = null;
+    if ('conditions_json' in row && !row.condition_is_public) { row.conditions_json = null; row.condition_is_public = null; }
+    out.push(row);
+  }
+  return out;
+}
+
 app.get('/api/schedule/:userId', authenticateToken, (req, res) => {
   try {
     const { userId } = req.params;
+    const isOwn = parseInt(userId) === req.user.id;
 
     // Check permission via share_requests
-    if (parseInt(userId) !== req.user.id) {
+    if (!isOwn) {
       const permStmt = db.prepare(
         `SELECT id FROM share_requests
          WHERE status = 'accepted'
@@ -6242,7 +6291,7 @@ app.get('/api/schedule/:userId', authenticateToken, (req, res) => {
     while (stmt.step()) tournaments.push(stmt.getAsObject());
     stmt.free();
 
-    res.json(tournaments);
+    res.json(isOwn ? tournaments : scheduleForOthers(tournaments));
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
@@ -6282,7 +6331,7 @@ app.get('/api/shared/:token', (req, res) => {
     while (schedStmt.step()) { tournaments.push(schedStmt.getAsObject()); }
     schedStmt.free();
 
-    res.json({ username: tokenRow.username, avatar: tokenRow.avatar || null, tournaments });
+    res.json({ username: tokenRow.username, avatar: tokenRow.avatar || null, tournaments: scheduleForOthers(tournaments) });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
@@ -14289,11 +14338,23 @@ app.post('/api/subscription/apple/webhook', async (req, res) => {
 // figures each backer's page shows.
 const discordSettle = require('./lib/discord-settle');
 function settleReminderBackers() { return backerSurface.backersView(db, { source: backerSurface.pageSource() }); }
+// The noon run finds each backer's Discord id by their link's token, which the view carries only
+// inside the link.
+function settleNoonBackers() {
+  const base = backerSurface.PAGE_LINK_BASE;
+  return settleReminderBackers().map((b) => ({
+    ...b, token: typeof b.link === 'string' && b.link.startsWith(base) ? b.link.slice(base.length) : null,
+  }));
+}
 // The owner's test: sends the reminder as it would read now, marked as a test, without marking the day.
+// ?noon=1 sends the Sunday-noon round instead: what the player and each backer would get, to the
+// player only.
 app.post('/api/admin/discord-settle/test', authenticateToken, async (req, res) => {
   if (HAM_OWNER_ID == null || Number(req.user.id) !== Number(HAM_OWNER_ID)) return res.status(403).json({ error: 'Forbidden' });
   try {
-    const r = await discordSettle.runReminder(db, { backers: settleReminderBackers, force: true });
+    const r = req.query.noon
+      ? await discordSettle.runNoonReminder(db, { backers: settleNoonBackers, force: true })
+      : await discordSettle.runReminder(db, { backers: settleReminderBackers, force: true });
     res.status(r.sent ? 200 : 503).json(r);
   } catch (err) {
     console.error('[discord] test failed:', err && err.message);
@@ -14311,7 +14372,7 @@ initDatabase().then(() => {
   // as the owner through the app's own API. OFF without the token.
   require('./lib/mcp').mountMcp(app, {
     getDb: () => db, getOwnerId: () => HAM_OWNER_ID, port: PORT, saveDatabase,
-    signToken: (payload, opts) => jwt.sign(payload, JWT_SECRET, opts),
+    signToken: (payload, opts) => jwt.sign({ ...payload, tv: tokenVersionOf(payload.id) || 0 }, JWT_SECRET, opts),
   });
   // The session bridge's PC side (lib/session-bridge.js; docs/session-bridge.md): OFF without BRIDGE_TOKEN.
   try { require('./lib/session-bridge').migrate(db); } catch (e) { console.error('[session-bridge] table:', e.message); }
@@ -14335,6 +14396,15 @@ initDatabase().then(() => {
           discordSettle.runReminder(db, { backers: settleReminderBackers, save: saveDatabase })
             .then((r) => console.log(`[discord] settling-day DM: ${r.sent ? 'sent' : 'not sent'} (${r.why})`))
             .catch((err) => console.error('[discord] settling-day DM failed:', err && err.message));
+        }, { timezone: CONSOLE_TZ });
+        // Sunday noon, settlement time (owner, 2026-10-25): a gentle DM to each backer not at $0 whose
+        // Discord id is on file, then the player's list of who pays whom and who was reached. Once per
+        // recipient per Sunday.
+        cron.schedule('0 12 * * 0', () => {
+          discordSettle.runNoonReminder(db, { backers: settleNoonBackers, save: saveDatabase })
+            .then((r) => console.log(`[discord] Sunday noon: ${r.sent ? 'sent' : 'not sent'} (${r.why}); ` +
+              `reached ${r.reached.length}, no Discord id ${r.missing.length}, failed ${r.failed.length}`))
+            .catch((err) => console.error('[discord] Sunday noon failed:', err && err.message));
         }, { timezone: CONSOLE_TZ });
       }
     } catch (err) {

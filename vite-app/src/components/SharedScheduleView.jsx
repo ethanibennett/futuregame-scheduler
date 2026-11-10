@@ -5,6 +5,7 @@ import Avatar from './Avatar.jsx';
 import CalendarEventRow from './CalendarEventRow.jsx';
 import DateBreak from './DateBreak.jsx';
 import { API_URL } from '../utils/api.js';
+import { withoutDnpMarkers } from '../utils/didnt-play.js';
 import {
   normaliseDate, getToday, parseTournamentTime, extractConditions,
   THEME_ORDER, THEME_LABEL, THEME_ICON, getStoredSeasonLabel,
@@ -28,7 +29,8 @@ export default function SharedScheduleView({ shareToken }) {
         const rows = Object.values(d || {}).filter(Array.isArray).flat();
         registerRowTimezones(rows);
         registerRowCurrencies(rows);
-        setData(d);
+        // The server leaves the Didn't play markers out; this is the backstop.
+        setData(d && Array.isArray(d.tournaments) ? { ...d, tournaments: withoutDnpMarkers(d.tournaments) } : d);
         setLoading(false);
       })
       .catch(e => { setError(e.message); setLoading(false); });

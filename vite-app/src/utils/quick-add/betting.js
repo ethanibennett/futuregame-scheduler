@@ -83,10 +83,16 @@ export function doorCard(hand, pi) {
   return cards[cards.length - 1];
 }
 
+/* Mirrors ACE_HIGH_LOW_STUD in HandReplayerView.jsx: in the 2-7 razz games the ace is the worst
+   card, so it brings it in and counts high on a board. */
+const ACE_HIGH_LOW_STUD = /2-7 Razz$|^Razzdeucy$/;
+
 // Mirrors findStudBringIn (lowest door brings in; highest in razz).
 export function findStudBringIn(hand, isRazz) {
   const rankBadness = isRazz
-    ? { 'A':0,'2':1,'3':2,'4':3,'5':4,'6':5,'7':6,'8':7,'9':8,'T':9,'J':10,'Q':11,'K':12 }
+    ? (ACE_HIGH_LOW_STUD.test(hand.gameType || '')
+      ? { '2':0,'3':1,'4':2,'5':3,'6':4,'7':5,'8':6,'9':7,'T':8,'J':9,'Q':10,'K':11,'A':12 }
+      : { 'A':0,'2':1,'3':2,'4':3,'5':4,'6':5,'7':6,'8':7,'9':8,'T':9,'J':10,'Q':11,'K':12 })
     : { 'A':0,'K':1,'Q':2,'J':3,'T':4,'9':5,'8':6,'7':7,'6':8,'5':9,'4':10,'3':11,'2':12 };
   const suitBadness = isRazz ? { 'c':0,'d':1,'h':2,'s':3 } : { 's':0,'h':1,'d':2,'c':3 };
   let worstIdx = -1, worstRank = -1, worstSuit = -1;
@@ -102,29 +108,18 @@ export function findStudBringIn(hand, isRazz) {
   return worstIdx;
 }
 
-// Mirrors scoreStudBoard.
-function scoreStudBoard(cards) {
-  const rankValues = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':14 };
+// Mirrors scoreStudBoard (the ace low in the A-5 razz games).
+function scoreStudBoard(cards, aceLow = false) {
+  const rankValues = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':aceLow ? 1 : 14 };
   if (!cards.length) return 0;
   const counts = {};
   cards.forEach(c => { const r = rankValues[c.rank] || 0; counts[r] = (counts[r] || 0) + 1; });
-  const pairs = [], trips = [], quads = [], kickers = [];
-  Object.keys(counts).forEach(r => {
-    const rv = parseInt(r, 10);
-    if (counts[r] === 4) quads.push(rv);
-    else if (counts[r] === 3) trips.push(rv);
-    else if (counts[r] === 2) pairs.push(rv);
-    else kickers.push(rv);
-  });
-  pairs.sort((a, b) => b - a); trips.sort((a, b) => b - a); kickers.sort((a, b) => b - a);
-  if (quads.length) return 7000000 + quads[0] * 100;
-  if (trips.length && pairs.length) return 6000000 + trips[0] * 100 + pairs[0];
-  if (trips.length) return 5000000 + trips[0] * 100;
-  if (pairs.length >= 2) return 4000000 + pairs[0] * 100 + pairs[1];
-  if (pairs.length === 1) return 3000000 + pairs[0] * 100 + (kickers[0] || 0);
-  const allRanks = Object.keys(counts).map(Number).sort((a, b) => b - a);
-  let score = 1000000;
-  for (let i = 0; i < allRanks.length; i++) score += allRanks[i] * Math.pow(100, 4 - i);
+  const groups = Object.keys(counts).map(Number).map(r => [r, counts[r]]).sort((a, b) => b[1] - a[1] || b[0] - a[0]);
+  const shape = groups.map(g => g[1]);
+  const cat = shape[0] === 4 ? 6 : shape[0] === 3 ? (shape[1] === 2 ? 5 : 4) : shape[0] === 2 ? (shape[1] === 2 ? 3 : 2) : 1;
+  const P = 15;
+  let score = cat * Math.pow(P, 5);
+  groups.forEach((g, i) => { score += g[0] * Math.pow(P, 4 - i); });
   return score;
 }
 
@@ -152,7 +147,7 @@ export function findStudBestBoard(hand, si, foldedSet, isLowGame) {
   let bestIdx = -1, bestScore = isLowGame ? Infinity : -Infinity;
   for (let pi = 0; pi < hand.players.length; pi++) {
     if (foldedSet.has(pi)) continue;
-    const score = scoreStudBoard(studUpCards(hand, pi, si));
+    const score = scoreStudBoard(studUpCards(hand, pi, si), isLowGame && !ACE_HIGH_LOW_STUD.test(hand.gameType || ''));
     if (isLowGame ? score < bestScore : score > bestScore) { bestIdx = pi; bestScore = score; }
   }
   return bestIdx;

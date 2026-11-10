@@ -1433,6 +1433,31 @@ test('the quick-add HAND_CONFIG copy matches utils.js', () => {
   eq(QA_DEFAULT, utils.HAND_CONFIG_DEFAULT);
 });
 
+// The other mirrors, re-synced with HandReplayerView.jsx 2026-11-10 (the games built 2026-11-05).
+const qaGame = await import('../../vite-app/src/utils/quick-add/game.js');
+const qaBetting = await import('../../vite-app/src/utils/quick-add/betting.js');
+const qaCards = await import('../../vite-app/src/utils/quick-add/cards.js');
+test('the re-synced mirrors: categories, the low studs, the 2-7 razz ace, a discard-only draw', () => {
+  eq(qaGame.gameCategory('Archie 66'), 'draw_triple');
+  eq(qaGame.gameCategory('Ari'), 'draw_triple');
+  eq(qaGame.gameCategory('NL A-5 SD'), 'draw_single');
+  eq(qaGame.gameCategory('NL 5CD Hi'), 'draw_single');
+  for (const g of ['Razz', '2-7 Razz', 'NL Razz', 'PL Razz', 'Razzdugi', 'Razzdeucy']) ok(qaGame.isLowStud(g), g + ' is a low stud');
+  for (const g of ['Stud Hi', 'Stud 8', 'Stud Hi-Lo']) ok(!qaGame.isLowStud(g), g + ' is not');
+  // Door cards: seat 0 (hero) the 9s, seat 1 the As, seat 2 the Kd. In Razz the king brings it in;
+  // in 2-7 Razz the ace is the worst card and brings it in.
+  const doors = (gameType) => ({
+    gameType, heroIdx: 0, players: [{}, {}, {}],
+    streets: [{ cards: { hero: '2c3c9s', opponents: ['As', 'Kd'] }, actions: [] }],
+  });
+  eq(qaBetting.findStudBringIn(doors('Razz'), true), 2);
+  eq(qaBetting.findStudBringIn(doors('2-7 Razz'), true), 1);
+  eq(qaBetting.findStudBringIn(doors('Razzdeucy'), true), 1);
+  // Pineapple's draw only throws a card away: nothing face down comes back.
+  eq(qaCards.computeDrawHand('AhKdQc', { 0: { discarded: 1, discardedCards: 'Qc' } }, 0, 'NL Pineapple'), 'AhKd');
+  eq(qaCards.computeDrawHand('AhKdQcJs9h', { 0: { discarded: 1 } }, 0, '2-7 TD'), 'KdQcJs9hAx');
+});
+
 // ── report ──
 if (failures.length) console.error('FAILED:\n  ' + failures.join('\n  '));
 console.log(`${passed} tests passed, ${failed} failed; ${assertions} assertions`);

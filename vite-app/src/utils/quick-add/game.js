@@ -3,7 +3,7 @@
 // well as Vite.
 //
 // HAND_CONFIG and HAND_CONFIG_DEFAULT are COPIED from vite-app/src/utils/utils.js
-// (2026-10-01). utils.js reads localStorage at import time, so importing it would
+// (last re-synced 2026-11-10). utils.js reads localStorage at import time, so importing it would
 // break every Node consumer of the gap rules (the tests, the corpus eval). The
 // copy is held to the original by test/quick-add/gaps.test.mjs, which imports
 // both and fails on any difference — change utils.js, then this, together.
@@ -48,6 +48,11 @@ export const HAND_CONFIG = {
   'Badeucy':  { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: '23457hdcss' },
   'Badacy':   { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'A2345hdcss' },
   'PL 5CD Hi':{ heroCards: 5, hasBoard: false, boardMax: 0, betting: 'pl', heroPlaceholder: 'AKQJT hdcss' },
+  'NL 5CD Hi':{ heroCards: 5, hasBoard: false, boardMax: 0, betting: 'nl', heroPlaceholder: 'AKQJT hdcss' },
+  'NL A-5 SD':{ heroCards: 5, hasBoard: false, boardMax: 0, betting: 'nl', heroPlaceholder: 'A2345hdcss' },
+  'NLO':      { heroCards: 4, hasBoard: true, boardMax: 5, betting: 'nl', heroPlaceholder: 'AKQ9hdcs', boardPlaceholder: 'J72hds' },
+  'NL Big O': { heroCards: 5, hasBoard: true, boardMax: 5, betting: 'nl', heroPlaceholder: 'AK2Q9hdcsd', boardPlaceholder: 'J72hds' },
+  'L Big O':  { heroCards: 5, hasBoard: true, boardMax: 5, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'AK2Q9hdcsd', boardPlaceholder: 'J72hds' },
   '2-7 Razz': { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: '23x45x7TKhdscx' },
   'NL Stud Hi':  { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'nl', isStud: true, heroPlaceholder: 'A9xxAKQJThdcsx' },
   'NL Stud 8':   { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'nl', isStud: true, heroPlaceholder: 'A234567hdcshds' },
@@ -55,6 +60,32 @@ export const HAND_CONFIG = {
   'PL Stud Hi':  { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'pl', isStud: true, heroPlaceholder: 'A9xxAKQJThdcsx' },
   'PL Stud 8':   { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'pl', isStud: true, heroPlaceholder: 'A234567hdcshds' },
   'PL Razz':     { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'pl', isStud: true, heroPlaceholder: 'A23x4567xhdscx' },
+  /* The games of 2026-11-05 (docs/replayer-hidden-games.md). Beyond the usual fields:
+     drawAfter: the street whose betting a draw follows, in a game with a board too (Dramaha after the flop).
+     discardOnly: that draw only throws cards away, nothing comes back (Pineapple); showCards is what is left to show.
+     doorBoard: community cards dealt before the first bet (Courchevel's first flop card, Ari's one card). */
+  'NL Pineapple': { heroCards: 3, showCards: 2, drawAfter: 0, discardOnly: true, hasBoard: true, boardMax: 5, betting: 'nl', heroPlaceholder: 'AKQhdc', boardPlaceholder: 'QJ6hch' },
+  'PL Pineapple': { heroCards: 3, showCards: 2, drawAfter: 0, discardOnly: true, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AKQhdc', boardPlaceholder: 'QJ6hch' },
+  'L Pineapple':  { heroCards: 3, showCards: 2, drawAfter: 0, discardOnly: true, hasBoard: true, boardMax: 5, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'AKQhdc', boardPlaceholder: 'QJ6hch' },
+  'Courchevel':   { heroCards: 5, doorBoard: 1, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AKQ98hdcsd', boardPlaceholder: 'J7hd' },
+  'Stud Regular': { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A234567hdcshds' },
+  'Razzdugi':     { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A23x4567xhdscx' },
+  'Razzdeucy':    { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: '23x45x7TKhdscx' },
+  'Archie 99':    { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'A2345hdcss' },
+  'Archie 66':    { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'A2345hdcss' },
+  'Ari':          { heroCards: 5, doorBoard: 1, hasBoard: false, boardMax: 1, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'A2345hdcss' },
+  'Dramaha Hi':   { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AKQ98hdcsd', boardPlaceholder: 'J72hds' },
+  'Dramaha 2-7':  { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: '23457hdcsd', boardPlaceholder: 'J72hds' },
+  'Dramaha 49':   { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'TT998hdcsd', boardPlaceholder: 'J72hds' },
+  'Dramaha 0':    { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'KQJA2hdcsd', boardPlaceholder: 'J72hds' },
+  'Dramadugi':    { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'A234Khdcss', boardPlaceholder: 'J72hds' },
+  // Limit Dramaha: the small bet before the flop and on it, the draw, the big bet on the turn and river.
+  'L Dramaha Hi':  { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'AKQ98hdcsd', boardPlaceholder: 'J72hds' },
+  'L Dramaha 2-7': { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: '23457hdcsd', boardPlaceholder: 'J72hds' },
+  'L Dramaha 49':  { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'TT998hdcsd', boardPlaceholder: 'J72hds' },
+  'L Dramaha 0':   { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'KQJA2hdcsd', boardPlaceholder: 'J72hds' },
+  'L Dramadugi':   { heroCards: 5, drawAfter: 1, hasBoard: true, boardMax: 5, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'A234Khdcss', boardPlaceholder: 'J72hds' },
+  'Omajack':      { heroCards: 5, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AKQ98hdcsd', boardPlaceholder: 'J72hds' },
 };
 
 // Mirrors STREET_DEFS in HandReplayerView.jsx.
@@ -80,8 +111,8 @@ export function gameCategory(gameType) {
   if (gameType === 'OFC') return 'ofc';
   if (cfg.isStud) return 'stud';
   if (cfg.hasBoard) return 'community';
-  if (['2-7 TD', 'PL 2-7 TD', 'L 2-7 TD', 'A-5 TD', 'Badeucy', 'Badacy'].includes(gameType)) return 'draw_triple';
-  if (['NL 2-7 SD', 'PL 5CD Hi'].includes(gameType)) return 'draw_single';
+  if (['2-7 TD', 'PL 2-7 TD', 'L 2-7 TD', 'A-5 TD', 'Badeucy', 'Badacy', 'Archie 99', 'Archie 66', 'Ari'].includes(gameType)) return 'draw_triple';
+  if (['NL 2-7 SD', 'PL 5CD Hi', 'NL 5CD Hi', 'NL A-5 SD'].includes(gameType)) return 'draw_single';
   if (gameType === 'Badugi') return 'draw_triple';
   return 'community';
 }
@@ -112,10 +143,11 @@ export function studPositionLabels(numPlayers) {
 }
 
 /* Razz-family stud games play for low, which flips who brings it in and who
-   opens later streets. The replayer tests only 'Razz' and '2-7 Razz' (see
-   isRazz in GTOEntryView); the NL/PL razz variants are low games too. */
+   opens later streets. Mirrors LOW_STUD in HandReplayerView.jsx: Razz and 2-7
+   Razz in any betting, Razzdugi and Razzdeucy. */
+const LOW_STUD = /(^|\s)(2-7 )?Razz$|^Razzdugi$|^Razzdeucy$/;
 export function isLowStud(gameType) {
-  return ['Razz', '2-7 Razz', 'NL Razz', 'PL Razz'].includes(gameType);
+  return LOW_STUD.test(gameType || '');
 }
 
 /* The games offered when the game is missing, most common first. */

@@ -131,6 +131,44 @@ async function test(name, fn) {
     assert.deepStrictEqual([r.sent, r.why, calls.length], [false, 'every backer is at $0', 0]);
   });
 
+  // The server's wiring (owner, 2026-11-10: it had never been scheduled): the noon round reads the
+  // owner's Backers view, whose rows carry each backer's link, not the token their Discord id is
+  // kept under. Booted on a scratch port (4750-4759) and DB, Discord still the stand-in.
+  await test('server: the owner\'s noon test (?noon=1) finds a backer\'s Discord id through their link', async () => {
+    const { boot, createScratch, waitLog } = require('./helpers/scratch-server');
+    const fx = require('./helpers/backer-fixtures');
+    const PORTS = [4750, 4759];
+    const sc = await createScratch({ prefix: 'fg-discord-noon-', ports: PORTS });
+    let srv = null;
+    try {
+      srv = await boot(sc.dbPath, {}, { ports: PORTS });
+      const at = (p) => `http://127.0.0.1:${srv.port}${p}`;
+      const json = { 'Content-Type': 'application/json' };
+      const reg = await fetch(at('/api/register'), { method: 'POST', headers: json, body: JSON.stringify({ username: 'adminx', email: 'adminx@x.test', password: 'noon-pass-1', realName: 'Owner' }) });
+      assert.strictEqual(reg.status, 201);
+      await srv.stop();
+      const d = sc.open();
+      d.run("UPDATE users SET username = 'ham' WHERE username = 'adminx'"); // sign-up reserves the owner's name
+      const tk = fx.seedDashboardEra(d);
+      assert.strictEqual(ds.setBackerDiscord(d, tk.full, '333333333333333333').ok, true);
+      sc.save(d);
+      srv = await boot(sc.dbPath, { DISCORD_BOT_TOKEN: 'made-up-bot-token', DISCORD_USER_ID: ENV.DISCORD_USER_ID, DISCORD_DM: '1', DISCORD_API_BASE: process.env.DISCORD_API_BASE }, { ports: PORTS });
+      await waitLog(srv, /\[discord\] settling-day DM is ON/);
+      const { token } = await (await fetch(at('/api/login'), { method: 'POST', headers: json, body: JSON.stringify({ email: 'adminx@x.test', password: 'noon-pass-1' }) })).json();
+      calls.length = 0;
+      const r = await fetch(at('/api/admin/discord-settle/test?noon=1'), { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      assert.strictEqual(r.status, 200, await r.text());
+      assert.deepStrictEqual(calls.filter((c) => c.url === '/users/@me/channels').map((c) => c.body.recipient_id), [ENV.DISCORD_USER_ID], 'the test goes to the player only');
+      const text = calls.find((c) => c.url === '/channels/777/messages').body.content;
+      assert.match(text, /Reminded on Discord: Sam Okafor\./);
+      assert.doesNotMatch(text, /Sam Okafor \(no Discord id on file/);
+      assert.match(text, /\(no Discord id on file, would not be sent\)/, 'the others are listed as not reachable');
+    } finally {
+      if (srv) await srv.stop();
+      sc.cleanup();
+    }
+  });
+
   stub.close();
   console.log(`\ndiscord-settle.test.js - ${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

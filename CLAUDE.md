@@ -28,6 +28,13 @@ sessions opened here own scheduler work.
   15 min, sliding, per IP and per account). `npm run test:auth-limit` boots
   `server.js` on a scratch port with a stubbed `./solver` — the pattern for any
   server test in a worktree.
+  **Sessions and privacy** (owner, 2026-11-10; `npm run test:privacy`): every account JWT carries `tv`,
+  the account's `users.token_version`; a password reset bumps it, so every session signed before is
+  refused (`signSession`/`sessionRefusal`; a token with no `tv` reads as 0). `POST /api/logout` drops the
+  `fg_session` cookie. A guest is always id 0, so the server keeps no guest schedule: writes are refused
+  and `GET /api/my-schedule` is empty; a guest's picks stay on the device (`App.jsx` `guestPicks`). What
+  anyone but the player sees of a schedule (share link, a friend, a group) goes through
+  `scheduleForOthers`: no private plan, no Didn't play marker, no Personal day's note.
 - **Solver**: NOT in this repo (carved out 2026-08-09). `./solver` here is a **gitignored
   junction** → `D:\projects\futuregame-solver\solver` (server.js requires into it at
   boot for the trainer features). On Render, `build.js` clones the private
@@ -319,7 +326,8 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   rotation; set from their Backers card's Discord button, `PUT /api/staking/standing/backers/:id/discord`,
   shown as its last four digits), in their own terms, then one to the player listing who pays whom and who
   was reached. Same bot and gate; the bot must share a server with each backer. Once per recipient per
-  Sunday. `…/discord-settle/test?noon=1` sends what everyone would get to the player only.
+  Sunday, scheduled at 12:00 ET beside the 09:00 DM (wired 2026-11-10: until then it never ran).
+  `…/discord-settle/test?noon=1` sends what everyone would get to the player only.
   Test: `npm run test:discord-settle`.
   **Bankroll merge, Phase 2** (`docs/bankroll-merge.md`; code in `lib/backer-surface.js`):
   - **Delivery is gated.** Push, SMS and the Sunday email go out only where `BACKER_DELIVERY` is on
@@ -586,8 +594,8 @@ npm install
 cd vite-app && npm install && npm run build && cd ..
 JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
 ```
-`npm test` runs the server-free util tests (`test:utils`); `test:quick-add` the quick-add suites
-(not `gaps.test.mjs`, which waits on the `HAND_CONFIG` mirror); `npm run smoke [origin]` is a
+`npm test` runs the server-free util tests (`test:utils`); `test:quick-add` the quick-add suites,
+`gaps.test.mjs` among them (it holds quick add's copies of the replayer's game rules); `npm run smoke [origin]` is a
 read-only check of a deploy (futurega.me by default). Each feature's own `test:*` is named beside it above.
 
 ## Conventions
