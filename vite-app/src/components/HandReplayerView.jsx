@@ -9,7 +9,7 @@ import { Palette, GuessCard, Launcher } from './VariantPicker.jsx';
 import { buildDrawStudySpot } from '../utils/draw-study-spot';
 import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL, gameEvalFor,
          bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestBadugiHand, scoreHalves, halvesWinnersAmong, halvesHandName, oddChipToLo,
-         computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot,
+         computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot, studOddChipKey, studOddChipOrder,
          boardKey, handBoards, boardCount, multiBoardWinners, multiBoardEvals, multiBoardShaped, combinesHiLo,
          seatOrderFromButton } from '../utils/poker-engine.js';
 import { encodeHand, decodeHand, GAME_CODES, VISUAL_SWITCHES } from '../utils/hand-shorthand.js';
@@ -1106,13 +1106,19 @@ function antesPosted(hand) {
   const stack = Number(bb.startingStack);
   return stack > 0 ? Math.min(ante, Math.max(0, stack - capPost(hand.blinds.bb, stack))) : ante;
 }
+/* Running chip totals, rounded to a millionth. A cash hand's amounts are dollars and cents, and binary
+   floating point leaves residue when they are summed: $5.36 less $1.97 less $3.39 is 1.8e-15, not 0. A
+   stack left at 1.8e-15 read as chips behind, so a player all in on a call was not all in, the side pots
+   were cut at the wrong places and paid the wrong seats (2026-11-10: 41 of 100 cash hands with side pots,
+   found by scripts/check-replayer-oracle.mjs). A millionth is far below a cent and far above the residue. */
+const chipRound = (v) => Math.round(v * 1e6) / 1e6;
 function calcPotsAndStacks(hand, upToStreet, upToAction) {
   const blinds = hand.blinds || { sb: 0, bb: 0, ante: 0 };
   const stacks = hand.players.map(p => p.startingStack);
   const category = getGameCategory(hand.gameType);
   const isBBante = category !== 'stud' && (blinds.ante || 0) > 0;
   let pot = 0;
-  const post = (i, amount) => { const paid = capPost(amount, stacks[i]); stacks[i] -= paid; pot += paid; };
+  const post = (i, amount) => { const paid = capPost(amount, stacks[i]); stacks[i] = chipRound(stacks[i] - paid); pot = chipRound(pot + paid); };
   if (!isBBante) stacks.forEach((_, i) => post(i, blinds.ante));
   if (hand.streets.length > 0 && hand.streets[0].actions) {
     if (category !== 'stud') {
@@ -1136,7 +1142,7 @@ function calcPotsAndStacks(hand, upToStreet, upToAction) {
     for (let ai = 0; ai <= maxAction && street.actions && ai < street.actions.length; ai++) {
       const act = street.actions[ai];
       if (act.action === 'fold') { folded.add(act.player); continue; }
-      if (act.amount && act.amount > 0) { stacks[act.player] -= act.amount; pot += act.amount; }
+      if (act.amount && act.amount > 0) { stacks[act.player] = chipRound(stacks[act.player] - act.amount); pot = chipRound(pot + act.amount); }
     }
   }
   return { stacks, pot, folded };
@@ -1176,7 +1182,7 @@ function computePlayerContrib(hand, streetIdx, actions, upToIdx, playerIdx) {
   for (let i = 0; i <= upToIdx && i < actions.length; i++) {
     if (actions[i].player === playerIdx) {
       if (actions[i].action === 'bring-in') total = actions[i].amount || 0;
-      else if (actions[i].action !== 'fold') total += actions[i].amount || 0;
+      else if (actions[i].action !== 'fold') total = chipRound(total + (actions[i].amount || 0));
     }
   }
   return total;
@@ -2822,7 +2828,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     (currentStreet.actions || []).forEach(act => {
       if (act.action === 'fold') return;
       if (act.action === 'bring-in') { contrib[act.player] = act.amount || bringInAmount; if (contrib[act.player] > maxBet) maxBet = contrib[act.player]; return; }
-      if (act.amount > 0) { contrib[act.player] += act.amount; if (contrib[act.player] > maxBet) maxBet = contrib[act.player]; }
+      if (act.amount > 0) { contrib[act.player] = chipRound(contrib[act.player] + act.amount); if (contrib[act.player] > maxBet) maxBet = contrib[act.player]; }
     });
     return { contrib, maxBet };
   }, [currentStreet.actions, isPreflop, hand.players, hand.blinds, category, bringInAmount]);
@@ -3153,7 +3159,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   (currentStreet.actions || []).forEach(a => {
     if (a.action === 'fold') return;
     if (a.action === 'bring-in') { _runContrib[a.player] = a.amount || bringInAmount; _prevMax = Math.max(_prevMax, _runContrib[a.player]); return; }
-    if (a.amount > 0) _runContrib[a.player] += a.amount;
+    if (a.amount > 0) _runContrib[a.player] = chipRound(_runContrib[a.player] + a.amount);
     if (a.action === 'raise' || a.action === 'bet') { const newMax = _runContrib[a.player]; _lastRaiseSize = Math.max(newMax - _prevMax, (hand.blinds || {}).bb || 0); _prevMax = newMax; }
   });
   const minRaiseToTotal = streetBets.maxBet + _lastRaiseSize;
@@ -6144,7 +6150,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       for (let si = 0; si <= last && si < hand.streets.length; si++) {
         const acts = hand.streets[si].actions || [];
         const upTo = (!showResult && si === streetIdx) ? actionIdx : acts.length - 1;
-        total += computePlayerContrib(hand, si, acts, upTo, pi);
+        total = chipRound(total + computePlayerContrib(hand, si, acts, upTo, pi));
       }
       return total;
     });
@@ -6157,7 +6163,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
        ride in the main pot (reconcileLayersToPot below). Without them the winner was paid short and
        the chips left the table, on every hand with antes. Stud antes per seat, a big-blind ante once,
        as calcPotsAndStacks takes them. */
-    return { contrib, uncalled, contested: contrib.reduce((a, b) => a + b, 0) + antesPosted(hand) };
+    return { contrib, uncalled, contested: chipRound(contrib.reduce((a, b) => a + b, 0) + antesPosted(hand)) };
   }, [hand, streetIdx, actionIdx, showResult]);
 
   const displayPot = useMemo(() => {
@@ -6240,7 +6246,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     let floor = 0;
     [...caps, Infinity].forEach(cap => {
       const eligible = live.filter(pi => contrib[pi] > floor && !folded.has(pi));
-      const amount = live.reduce((sum, pi) => sum + Math.max(0, Math.min(contrib[pi], cap) - floor), 0);
+      const amount = chipRound(live.reduce((sum, pi) => sum + Math.max(0, Math.min(contrib[pi], cap) - floor), 0));
       if (amount > 0 && eligible.length) layers.push({ amount, eligible: eligible.length, players: eligible });
       if (cap === Infinity) return;
       floor = cap;
@@ -6480,6 +6486,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     };
 
     const scores = {};
+    const parsedBy = {};
     let readable = !!cfg && cfg.type !== 'split-badugi';
     if (readable) {
       contesting.forEach(pi => {
@@ -6491,6 +6498,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         // A hand of two halves can qualify for neither (Archie) and still be read.
         if (!s || (s.hi == null && s.lo == null && cfg.type !== 'halves')) { readable = false; return; }
         scores[pi] = s;
+        parsedBy[pi] = parsed;
       });
     }
 
@@ -6528,7 +6536,21 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     }
 
     const btnIdx = hand.players.findIndex(p => p.position === 'BTN' || p.position === 'BTN/SB');
-    const oddChipped = shaped.map(s => ({ ...s, oddToLo: oddChipToLo(cfg, scores, s.hiWinners || [], s.loWinners || []) }));
+    let oddChipped = shaped.map(s => ({ ...s, oddToLo: oddChipToLo(cfg, scores, s.hiWinners || [], s.loWinners || []) }));
+    /* Stud has no button: a tie's odd chip goes to the high card by suit in the best five-card hand for
+       that half (TDA; studOddChipKey), from the cards when everyone still in shows them. */
+    const studKinds = gameCfg.isStud && cfg && readable && Object.keys(parsedBy).length === contesting.length
+      ? (cfg.type === 'high' ? ['high', null] : cfg.type === 'hilo' ? ['high', cfg.anyLow ? 'a5' : 'a5-8']
+        : cfg.type === 'low' ? [null, cfg.lowType === '27' ? '27' : 'a5'] : null)
+      : null;
+    if (studKinds) {
+      const keys = studKinds.map(kind => (kind ? Object.fromEntries(contesting.map(pi => [pi, studOddChipKey(parsedBy[pi], kind)])) : null));
+      oddChipped = oddChipped.map(s => ({
+        ...s,
+        ...(keys[0] ? { hiOrder: studOddChipOrder(s.hiWinners || [], keys[0]) } : {}),
+        ...(keys[1] ? { loOrder: studOddChipOrder(s.loWinners || [], keys[1]) } : {}),
+      }));
+    }
     /* computePotAwards splits whole units, and a cash pot of $128.50 went in as dollars: it was rounded to
        $129, and the winner was paid 50 cents nobody put in (2026-11-09). Settle in hundredths, as the export
        does (hand-history/prepare.js unitCents): a cash pot splits to the cent, as a PokerStars history does,

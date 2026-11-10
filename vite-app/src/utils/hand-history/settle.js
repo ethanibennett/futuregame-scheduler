@@ -16,7 +16,7 @@
 // All amounts are integer hundredths.
 
 import {
-  computePotAwards, hiLoWinnersAmong, potLayerWinners,
+  computePotAwards, hiLoWinnersAmong, potLayerWinners, studOddChipOrder,
   bestHighHand, bestOmahaLow, bestLowA5Hand, bestLow27Hand, bestBadugiHand,
 } from '../poker-engine.js';
 import { HandExportError } from './errors.js';
@@ -142,20 +142,23 @@ export function settlePot(inp) {
   const byOrder = (arr) => arr.slice().sort((a, b) => rank(a) - rank(b));
   const lines = [];
   const won = {};
+  // Stud: a tie's odd chip by the high card by suit of each half's best five (inp.oddKeys, the replayer's
+  // studOddChipKey), not by seat.
+  const keysHi = inp.oddKeys ? inp.oddKeys.hi : null, keysLo = inp.oddKeys ? inp.oddKeys.lo : null;
   for (let k = layers.length - 1; k >= 0; k--) {
     const units = Math.round(layers[k].amount / unit);
     const hi = shaped[k].hiWinners || [], lo = shaped[k].loWinners || [];
     let parts;
-    if (!hi.length && !lo.length) parts = [['all', units, layers[k].players]];
-    else if (!lo.length) parts = [['all', units, hi]];
-    else if (!hi.length) parts = [['all', units, lo]];
+    if (!hi.length && !lo.length) parts = [['all', units, layers[k].players, null]];
+    else if (!lo.length) parts = [['all', units, hi, keysHi]];
+    else if (!hi.length) parts = [['all', units, lo, keysLo]];
     else {
       const hiHalf = units - Math.floor(units / 2); // the odd chip to the high half
-      parts = [['hi', hiHalf, hi], ['lo', units - hiHalf, lo]];
+      parts = [['hi', hiHalf, hi, keysHi], ['lo', units - hiHalf, lo, keysLo]];
     }
-    for (const [half, amt, players] of parts) {
+    for (const [half, amt, players, keys] of parts) {
       if (amt <= 0) continue;
-      const { awards } = computePotAwards([{ amount: amt, hiWinners: players, loWinners: [] }], { order });
+      const { awards } = computePotAwards([{ amount: amt, hiWinners: players, loWinners: [] }], { order: keys ? studOddChipOrder(players, keys) : order });
       for (const p of byOrder(players)) {
         const a = (awards[p] || 0) * unit;
         if (a <= 0) continue;

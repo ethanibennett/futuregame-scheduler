@@ -189,3 +189,24 @@ test('Short Deck: the best five of seven, with the ace playing low', () => {
   const w2 = evaluateShowdown('Short Deck', players('As9d', 'Td9c'), P('6c7h8sKdQc'));
   assert.deepEqual(w2, [{ playerIdx: 1, split: false }]);
 });
+
+test('the stud odd chip goes to the high card by suit in the best five, not to a seat', async () => {
+  const { studOddChipKey, studOddChipOrder, computePotAwards } = await import('../poker-engine.js');
+  // Razz, the same 7-5-4-3-A twice. Seat 0's kings are not in its best five, so its king of spades says
+  // nothing: the sevens decide, and spades outrank clubs.
+  const a = studOddChipKey(P('7c5d4h3cAdKsKh'), 'a5'), b = studOddChipKey(P('7s5c4d3hAcQdQc'), 'a5');
+  assert.ok(b > a, 'the seven of spades outranks the seven of clubs');
+  assert.deepEqual(studOddChipOrder([0, 1], { 0: a, 1: b }), [1, 0]);
+  const paid = computePotAwards([{ amount: 101, hiWinners: [0, 1], loWinners: [], hiOrder: studOddChipOrder([0, 1], { 0: a, 1: b }) }], { order: [0, 1] });
+  assert.deepEqual(paid.awards, { 0: 50, 1: 51 }, 'the odd chip follows the card, though seat 0 is first by seat');
+  // An ace is the LOW card of an ace-to-five low and of a wheel played high; it is the high card otherwise.
+  assert.equal(studOddChipKey(P('As2c3d4h6cKdQd'), 'a5'), 6 * 5 + 1, 'a 6-4 low: the six is its high card');
+  assert.equal(studOddChipKey(P('As2c3d4h5cKdQd'), 'high'), 5 * 5 + 1, 'a wheel is five-high');
+  assert.equal(studOddChipKey(P('AsKcQdJhTc2d3d'), 'high'), 14 * 5 + 4, 'Broadway: the ace of spades');
+  // The 8-or-better low: no key without a qualifying low, and the rank outranks the suit.
+  assert.equal(studOddChipKey(P('9sTcJdQhKc2d3d'), 'a5-8'), 0);
+  assert.ok(studOddChipKey(P('8c6d4h3c2dKsKh'), 'a5-8') > studOddChipKey(P('7s6c4d3h2cKdKc'), 'a5-8'), 'an eight of clubs outranks a seven of spades');
+  // Two fives of the same value (either six completes the same two pair): the higher card is the player's.
+  assert.equal(studOddChipKey(P('KsKh9d9c6s6h2c'), 'high'), 13 * 5 + 4);
+  assert.equal(studOddChipKey(P('Ks9d'), 'high'), 0, 'fewer than five cards: no key');
+});

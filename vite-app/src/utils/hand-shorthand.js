@@ -72,6 +72,14 @@ function _shGetPositionLabels(numPlayers) {
   return picked.concat(['BTN', 'SB', 'BB']);
 }
 
+/* Amounts. '.' separates the link's parts, so a cash amount's decimal point travels as '_' ($0.04 is
+   0_04, $43.75 is 43_75): written plainly, it cut a cash link into the wrong parts, and the hand opened
+   at the 50,000 default with no blinds and its cards and bets in the wrong places; and amounts were read
+   back with parseInt, which dropped every cent (2026-11-10: 871 of 871 cash hands with cents in the
+   oracle corpus). A link never had a '_' before, so every older link reads as it always did. */
+function amountOut(v) { return String(Number(v) || 0).replace('.', '_'); }
+function amountIn(s) { var v = Number(String(s == null ? '' : s).replace('_', '.')); return Number.isFinite(v) ? v : 0; }
+
 // ── Encode ──────────────────────────────────────────────────
 
 export function encodeHand(hand) {
@@ -86,8 +94,13 @@ export function encodeHand(hand) {
   parts.push(gameCode + numChar + heroChar);
 
   var blinds = hand.blinds || { sb: 0, bb: 0, ante: 0 };
-  var blindStr = blinds.sb + '-' + blinds.bb;
-  if (blinds.ante) blindStr += '-' + blinds.ante;
+  var blindStr = amountOut(blinds.sb) + '-' + amountOut(blinds.bb);
+  /* A limit game's big bet and a stud game's bring-in follow the ante (0 when there is none), so a
+     link replays the stakes it was played at rather than the defaults (twice the small bet, a quarter
+     of it). An older decoder reads the first three numbers and ignores the rest. */
+  var bigBet = Number(blinds.bigBet) || 0, bringIn = Number(blinds.bringIn) || 0;
+  if (blinds.ante || bigBet || bringIn) blindStr += '-' + amountOut(blinds.ante);
+  if (bigBet || bringIn) blindStr += '-' + amountOut(bigBet) + (bringIn ? '-' + amountOut(bringIn) : '');
   /* Straddles ride in the blind field after a '!'. They belong in the link
      rather than only in the saved hand, because a straddle changes the pot
      and the preflop order — a shared hand without them replays as a
@@ -113,9 +126,9 @@ export function encodeHand(hand) {
   var stacks = hand.players.map(function(p) { return p.startingStack || 50000; });
   var allSame = stacks.every(function(s) { return s === stacks[0]; });
   if (allSame && stacks[0] !== 50000) {
-    blindStr += '~' + stacks[0];
+    blindStr += '~' + amountOut(stacks[0]);
   } else if (!allSame) {
-    blindStr += '~' + stacks.join(',');
+    blindStr += '~' + stacks.map(amountOut).join(',');
   }
   /* Several boards (owner, 2026-10-20) ride at the end of the blind field after a '*': D for a double
      board, R2 or R3 for a hand run twice or three times. Each street's extra boards are its 'y' (board
@@ -158,7 +171,7 @@ export function encodeHand(hand) {
       var actionChar = ACTION_CHARS[act.action] || act.action;
       var actionStr = act.player + actionChar;
       if (act.action !== 'fold' && act.action !== 'check' && act.amount) {
-        actionStr += act.amount;
+        actionStr += amountOut(act.amount);
       }
       streetActions.push(actionStr);
     }
@@ -319,18 +332,20 @@ export function decodeHand(str) {
   }
 
   var blindsParts = blindsStr.split('~');
-  var blindNums = blindsParts[0].split('-').map(Number);
+  var blindNums = blindsParts[0].split('-').map(amountIn);
   var sb = blindNums[0] || 0;
   var bb = blindNums[1] || 0;
   var ante = blindNums[2] || 0;
+  var bigBet = blindNums[3] || 0;
+  var bringIn = blindNums[4] || 0;
 
   var playerStacks = [];
   if (blindsParts.length > 1) {
     var stackStr = blindsParts[1];
     if (stackStr.indexOf(',') >= 0) {
-      playerStacks = stackStr.split(',').map(Number);
+      playerStacks = stackStr.split(',').map(amountIn);
     } else {
-      var uniformStack = Number(stackStr);
+      var uniformStack = amountIn(stackStr);
       for (var si = 0; si < numPlayers; si++) playerStacks.push(uniformStack);
     }
   }
@@ -428,7 +443,7 @@ export function decodeHand(str) {
       if (!tok) continue;
       var playerIdx2 = parseInt(tok.charAt(0), 10);
       var actionChar = tok.charAt(1);
-      var amount = tok.length > 2 ? parseInt(tok.substring(2), 10) : 0;
+      var amount = tok.length > 2 ? amountIn(tok.substring(2)) : 0;
       var actionName = ACTION_CHARS_REV[actionChar] || actionChar;
       streets[sti].actions.push({
         player: playerIdx2,
@@ -515,6 +530,8 @@ export function decodeHand(str) {
     currency: currency,
     blinds: (function() {
       var b = { sb: sb, bb: bb, ante: ante };
+      if (bigBet) b.bigBet = bigBet;
+      if (bringIn) b.bringIn = bringIn;
       if (!straddleCode) return b;
       var byLetter = { u: 'utg', b: 'button', r: 'rock', m: 'mississippi' };
       var m, re = /([ubrm])(\d*)/g;

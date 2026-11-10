@@ -663,6 +663,42 @@ export function evaluateShowdown(gameType, playerHands, boardCards, hand) {
    layer no winner is eligible for is reported as `unassigned` rather than
    silently vanishing. */
 
+/* The stud odd chip (TDA rules, 2015 v1.0: "Stud, razz, and if 2 or more high or low hands in stud/8: the
+   odd chip goes to the high card by suit in the best 5-card hand"; suits rank spades, hearts, diamonds,
+   clubs). A stud table has no button, so the seat order a flop game uses says nothing; until 2026-11-10 the
+   chip went to the lowest seat number. This is a player's key for one half: the highest card of their best
+   five for it (an ace counts low in an ace-to-five low), rank first and suit second; higher gets the chip
+   first. Where two different fives score the same, the one with the higher top card is theirs.
+   kind: 'high' | 'a5' (razz) | 'a5-8' (the 8-or-better low) | '27'. 0 when it cannot be read. */
+const SUIT_ORDER = { c: 1, d: 2, h: 3, s: 4 };
+const WHEEL = ['A', '2', '3', '4', '5'];
+export function studOddChipKey(cards, kind) {
+  const known = (cards || []).filter(c => c && SUIT_ORDER[c.suit] && RANK_VAL[c.rank]);
+  if (known.length < 5) return 0;
+  const aceLow = kind === 'a5' || kind === 'a5-8';
+  let best = null, key = 0;
+  for (const five of combinations(known, 5)) {
+    let s;
+    if (kind === 'high') s = evalHigh5(five).score;
+    else if (kind === '27') s = -evalLow27(five).score;
+    else {
+      const ev = evalLowA5(five, kind === 'a5-8');
+      if (!ev.qualified) continue;
+      s = -ev.score;
+    }
+    // A wheel played high is a five-high straight: its ace is the low card there too.
+    const low = aceLow || (kind === 'high' && WHEEL.every(r => five.some(c => c.rank === r)));
+    let top = 0;
+    for (const c of five) top = Math.max(top, (low && c.rank === 'A' ? 1 : RANK_VAL[c.rank]) * 5 + SUIT_ORDER[c.suit]);
+    if (best === null || s > best) { best = s; key = top; } else if (s === best && top > key) key = top;
+  }
+  return key;
+}
+/* Seats in odd-chip order for a stud half: the key above, highest first; seats with no key after, by seat. */
+export function studOddChipOrder(players, keys) {
+  return players.slice().sort((a, b) => ((keys && keys[b]) || 0) - ((keys && keys[a]) || 0) || a - b);
+}
+
 /* Seats clockwise from the button — the odd-chip payment order. */
 export function seatOrderFromButton(numPlayers, buttonIdx) {
   var order = [];
@@ -743,11 +779,14 @@ export function potLayerWinners(layers, winners) {
    less informative, but the only division that provably conserves chips. */
 export function reconcileLayersToPot(layers, pot, players) {
   var total = (layers || []).reduce(function(s, l) { return s + (l.amount || 0); }, 0);
-  if (!layers || layers.length < 2 || total <= 0 || total > pot) {
+  // Rounded to a millionth: dollars and cents summed in floating point can over-count the pot by 1e-15,
+  // which collapsed every side pot of a cash hand into one (2026-11-10).
+  var spare = Math.round((pot - total) * 1e6) / 1e6;
+  if (!layers || layers.length < 2 || total <= 0 || spare < 0) {
     return [{ amount: pot, players: players }];
   }
   return layers.map(function(l, i) {
-    return i === 0 ? Object.assign({}, l, { amount: l.amount + (pot - total) }) : Object.assign({}, l);
+    return i === 0 ? Object.assign({}, l, { amount: Math.round((l.amount + spare) * 1e6) / 1e6 }) : Object.assign({}, l);
   });
 }
 
@@ -766,11 +805,13 @@ export function computePotAwards(layers, options) {
     if (!hi.length && !lo.length) { unassigned += amount; return; }
     // No qualifying low (or nobody eligible for that half in this layer):
     // the other half's winners scoop the layer.
-    if (!lo.length) { shareHalf(amount, hi, order, awards); return; }
-    if (!hi.length) { shareHalf(amount, lo, order, awards); return; }
+    // A layer may carry its own odd-chip order per half (stud: studOddChipOrder); else the table's.
+    var hiOrder = layer.hiOrder || order, loOrder = layer.loOrder || order;
+    if (!lo.length) { shareHalf(amount, hi, hiOrder, awards); return; }
+    if (!hi.length) { shareHalf(amount, lo, loOrder, awards); return; }
     var hiHalf = layer.oddToLo ? Math.floor(amount / 2) : amount - Math.floor(amount / 2);
-    shareHalf(hiHalf, hi, order, awards);
-    shareHalf(amount - hiHalf, lo, order, awards);
+    shareHalf(hiHalf, hi, hiOrder, awards);
+    shareHalf(amount - hiHalf, lo, loOrder, awards);
   });
   return { awards: awards, unassigned: unassigned };
 }

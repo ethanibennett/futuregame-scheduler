@@ -25,7 +25,7 @@ import { Table, seatOrder, straddles, lastStraddleSeat, findStudBringIn, findStu
 import { cardsOf, oppSlot, isMuck, computeDrawHand } from '../quick-add/cards.js';
 import { seatIndexFor } from '../quick-add/seats.js';
 import { remapSeats } from '../quick-add/edit.js';
-import { GAME_EVAL, gameEvalFor, seatOrderFromButton, parseCardNotation } from '../poker-engine.js';
+import { GAME_EVAL, gameEvalFor, seatOrderFromButton, parseCardNotation, studOddChipKey } from '../poker-engine.js';
 import {
   GAME_TABLE, CURRENCIES, NOT_WRITTEN, canonicalGameName, toCents, starsGameType, isPt4Game, sanitizeName,
   truncateChars, cardText,
@@ -409,6 +409,10 @@ export function prepareHand(input, opts = {}) {
         continue;
       }
       let nx = t.nextToAct();
+      // A check nobody needed: the big blind's option when the only other player in has called all in for
+      // exactly the blind (PokerKit asks for it; nobody is left to bet against). It moves nothing, and
+      // PokerStars writes no line for it, so neither does the text.
+      if (!nx && a.action === 'check' && !t.folded.has(p) && t.callAmount(p) === 0) continue;
       if (!nx) throw new HandExportError('out-of-turn', { name: who, street: stLabel(si) });
       if (nx.p !== p) {
         // The first betting round: seats a description skipped fold (facing a
@@ -538,9 +542,19 @@ export function prepareHand(input, opts = {}) {
   }
   if (showdown && !scores && legacySplit) throw new HandExportError('no-winner');
   const order = seatOrderFromButton(n, btnIdx);
+  // Stud ties: the odd chip by the high card by suit in each half's best five (poker-engine studOddChipKey).
+  let oddKeys = null;
+  if (isStud && scores && evalCfg) {
+    const kinds = evalCfg.type === 'high' ? ['high', null] : evalCfg.type === 'hilo' ? ['high', evalCfg.anyLow ? 'a5' : 'a5-8']
+      : evalCfg.type === 'low' ? [null, evalCfg.lowType === '27' ? '27' : 'a5'] : null;
+    if (kinds) {
+      const keyed = (kind) => (kind ? Object.fromEntries(live.map(p => [p, studOddChipKey(holeOf(p), kind)])) : null);
+      oddKeys = { hi: keyed(kinds[0]), lo: keyed(kinds[1]) };
+    }
+  }
   const settled = settlePot({
     n, live, contrib: total, dead, allInEnd, scores,
-    winners: (h.result && h.result.winners) || [], order, unit: unitCents,
+    winners: (h.result && h.result.winners) || [], order, unit: unitCents, oddKeys,
   });
   if (settled.winnersDiffer) warnings.add('winners-from-cards');
   // Chips in = chips out.

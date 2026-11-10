@@ -77,6 +77,16 @@ sessions opened here own scheduler work.
   rules, sources and the owner's open defaults in `docs/replayer-hidden-games.md`; every Dramaha row has a Limit row beside it, and in a game of two different hands the odd chip goes to the half using the most of the player's own cards (owner, `oddChipToLo`). A new game type goes in `HAND_CONFIG`, `GAME_EVAL`, the
   variant strips, `GAME_CODES` and, for a draw game, the category lists. Hands is one tab for every account; Study, the Scanner and
   typing or saying a hand stay with admins.
+- **The replayer is held to an outside engine** (owner, 2026-11-10: "This is something we can get perfect";
+  `test/replayer-oracle/`, its README): PokerKit plays random hands of twenty games (heads-up to ten-handed, cash to the
+  cent and tournament, straddles, short stacks), `generate.py` settles each to the TDA rules the app follows, and every
+  reader of a saved hand must leave every seat on that stack: the export (`check-export.mjs`) and a share link
+  (`check-shorthand.mjs`), both in `npm run test:replayer-oracle` on the committed 1,200-hand `corpus.jsonl`, and the
+  felt in WebKit (`npm run check:replayer-oracle`, ports 4840-4849; `--build <folder>` serves another build folder
+  through `test/helpers/public-dir-preload.js`, for a check while something else reads `public-vite`). PokerKit is not a
+  dependency: it lives in a throwaway venv, only to make more hands. What it pinned down: cash pots settle in exact cents
+  (`chipRound`; the felt still shows whole dollars, owner: "No cents"), and a stud tie's odd chip goes to the high card by
+  suit (`studOddChipKey`, TDA 2015). Each place PokerKit itself settles differently is a `pk-` tag, explained in the README.
 - **Hands > Study** (owner, 2026-11-04: one training experience; `components/StudyHub.jsx`, `StudyHead.jsx`, `study-hub.css`):
   the Hands row is Replayer, Study, Scanner, and Study is one list of the solver tools: Practice (Play a hand, Hand trainer,
   Quick spots, Three-way Razz), Look up (Watch the solver, Solve a spot, Price a draw). Each opens under the same header and
