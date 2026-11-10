@@ -10,7 +10,7 @@
 //
 // What it checks, and why each one:
 //   spa        `/` serves the SPA shell (200, HTML, a #root mount point) and names
-//              a hashed `/assets/index-<hash>.js` bundle.
+//              a hashed `/assets/<name>-<hash>.js` bundle (the app's entry is main-<hash>.js).
 //   bundle     that bundle actually loads — 200 with a JavaScript content type.
 //              The server falls back to index.html for unknown paths, so a
 //              deploy whose HTML names a bundle that is not there answers 200
@@ -88,8 +88,8 @@ await check('spa', async () => {
   if (r.res.status !== 200) fail(`/ returned ${r.res.status}, expected 200`);
   if (!/text\/html/i.test(r.type)) fail(`/ content-type is ${r.type}, expected text/html`);
   if (!/id=["']root["']/.test(r.body)) fail('/ has no #root mount point — not the SPA shell');
-  const m = r.body.match(/<script[^>]*\bsrc=["']([^"']*\/assets\/index-[A-Za-z0-9_-]+\.js)["']/);
-  if (!m) fail('/ names no hashed /assets/index-<hash>.js bundle');
+  const m = r.body.match(/<script[^>]*\bsrc=["']([^"']*\/assets\/[A-Za-z0-9_.]+-[A-Za-z0-9_-]+\.js)["']/);
+  if (!m) fail('/ names no hashed /assets/<name>-<hash>.js bundle (the entry is main-<hash>.js)');
   bundlePath = m[1];
   return { ms: r.ms, detail: `SPA shell, bundle ${bundlePath}` };
 });
