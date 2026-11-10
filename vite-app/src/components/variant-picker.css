@@ -151,7 +151,17 @@
   background: var(--surface);
   box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
 }
+/* The field had no focus ring (outline 0 on the input): the box shows it instead (entry audit 39). */
+.vp-search:focus-within { box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); }
 .vp-search svg { flex: none; width: calc(var(--gu) * 2); height: calc(var(--subrow) * 2); color: var(--text-muted); }
+/* The phone sheet's way out besides a swipe or the scrim (entry audit 34): 6g x 3r, its label centred. */
+.vp-close {
+  flex: none; display: flex; align-items: center; justify-content: center;
+  width: calc(var(--gu) * 6); height: calc(var(--subrow) * 3); padding: 0;
+  border: 0; border-radius: var(--radius-sm); background: var(--surface2); color: var(--text);
+  font-family: var(--font-condensed); font-size: var(--fs-sm); cursor: pointer;
+}
+.vp-close:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 .vp-search input {
   flex: 1 1 auto; min-width: 0; height: 100%;
   border: 0; outline: 0; background: transparent; color: var(--text);

@@ -143,10 +143,10 @@ function drawDeadCards(hand, streetIdx, playerIdx) {
 /* The New Cards field for a draw: a dead card typed into it does not take. Each complete
    two-character card is checked as it is typed; a dead one (or a repeat) is dropped and the
    reason shows under the field until the next edit. A half-typed card passes through. */
-function DrawNewCardsInput({ value, onChange, dead, placeholder }) {
+function DrawNewCardsInput({ value, onChange, dead, placeholder, ariaLabel = 'New cards' }) {
   const [msg, setMsg] = useState('');
   const handle = (raw) => {
-    const chars = String(raw || '').replace(/\s+/g, '');
+    const chars = String(raw || '').replace(/10/g, 'T').replace(/\s+/g, '');
     const kept = []; const seen = new Set(); let note = '';
     let i = 0;
     for (; i + 1 < chars.length; i += 2) {
@@ -162,8 +162,9 @@ function DrawNewCardsInput({ value, onChange, dead, placeholder }) {
   };
   return (
     <>
-      <input type="text" placeholder={placeholder} value={value || ''} onChange={e => handle(e.target.value)} />
-      {msg && <div className="replayer-field-error">{msg}</div>}
+      <input type="text" placeholder={placeholder} value={value || ''} aria-label={ariaLabel}
+        autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={e => handle(e.target.value)} />
+      {msg && <div className="replayer-field-error" role="alert">{msg}</div>}
     </>
   );
 }
@@ -1026,6 +1027,47 @@ function entryHeroIdx(hand, heroName) {
   return byName < 0 ? 0 : byName;
 }
 
+/* The blinds and the stack a new hand starts with, by game and by format.
+   Tournament: 100/200, 50,000 behind, and a big-blind ante in the big-bet board games only (a limit
+   game has none; a tournament's limit levels play without one). Stud is a small-bet / big-bet / ante
+   game and says so: 200/400 with a 25 ante and a 50 bring-in, stacks at 30 big bets. The ante was 0
+   once, which is not a stud game at all.
+   Cash: 1/2 with 100 big blinds and no ante; stud is 20/40 with a 3 ante and a 5 bring-in.
+   A limit street runs a bet and four raises (betCap 5). gameCfg.raiseCap said four, which is the
+   other common house rule; hands saved without a cap keep it. */
+function entryDefaults(gameType, gameMode) {
+  const gameCfg = HAND_CONFIG[gameType] || HAND_CONFIG[String(gameType || '').replace(/^Super /, '')] || HAND_CONFIG_DEFAULT;
+  const cash = gameMode === 'cash';
+  if (gameCfg.isStud) {
+    const blinds = cash
+      ? { sb: 10, bb: 20, ante: 3, bigBet: 40, bringIn: 5, betCap: 5, uncapHeadsUp: true }
+      : { sb: 100, bb: 200, ante: 25, bigBet: 400, bringIn: 50, betCap: 5, uncapHeadsUp: true };
+    return { blinds, stack: blinds.bigBet * STUD_STACK_BB };
+  }
+  const isLimit = gameCfg.betting === 'fl';
+  const blinds = cash
+    ? { sb: 1, bb: 2, ante: 0 }
+    : { sb: 100, bb: 200, ante: (gameCfg.hasBoard && !isLimit) ? 200 : 0 };
+  if (isLimit) { blinds.betCap = 5; blinds.uncapHeadsUp = true; }
+  return { blinds, stack: cash ? 200 : 50000 };
+}
+
+/* MTT or Cash. Blinds and stacks still on the other format's defaults follow the switch; anything
+   the player typed stays, and so does a hand that already has betting in it. */
+function withGameMode(h, gameMode) {
+  if ((h.gameMode || 'mtt') === gameMode) return h;
+  const next = { ...h, gameMode };
+  if (h.gameType === 'OFC' || h.customConfig || (h.streets || []).some(s => (s.actions || []).length)) return next;
+  const was = entryDefaults(h.gameType, h.gameMode || 'mtt');
+  const now = entryDefaults(h.gameType, gameMode);
+  const b = h.blinds || {};
+  if (Object.keys(was.blinds).every(k => b[k] === was.blinds[k])) next.blinds = { ...b, ...now.blinds };
+  if ((h.players || []).every(p => Number(p.startingStack) === was.stack)) {
+    next.players = h.players.map(p => ({ ...p, startingStack: now.stack }));
+  }
+  return next;
+}
+
 function createEmptyHand(gameType, heroName) {
   const streetDef = getStreetDef(gameType);
   const gameCfg = HAND_CONFIG[gameType] || HAND_CONFIG[gameType.replace(/^Super /, '')] || HAND_CONFIG_DEFAULT;
@@ -1049,27 +1091,13 @@ function createEmptyHand(gameType, heroName) {
   const defaultNum = gameCfg.isStud ? 8 : 6;
   const numPlayers = scan ? Math.max(2, Math.min(10, scan.length)) : defaultNum;
   const positions = gameCfg.isStud ? getStudPositionLabels(numPlayers) : getPositionLabels(numPlayers);
-  /* Stud is a small-bet / big-bet / ante game and now says so: a 200/400
-     structure with a 25 ante, and stacks at 30 big bets. The ante was 0, which
-     is not a stud game at all — every player antes, and the pot maths already
-     counted an ante from everyone the moment there was one to count. */
-  const defaultAnte = gameCfg.isStud ? 25 : ((gameCfg.hasBoard && !gameCfg.isStud) ? 200 : 0);
-  const defaultBigBet = gameCfg.isStud ? 400 : 0;
-  const defaultBringIn = gameCfg.isStud ? 50 : 0;
-  /* A limit street runs a bet and four raises. gameCfg.raiseCap said four,
-     which is the other common house rule; hands saved without a cap keep it. */
-  const isLimit = gameCfg.betting === 'fl';
-  const defaultStack = gameCfg.isStud ? defaultBigBet * STUD_STACK_BB : 50000;
+  const start = entryDefaults(gameType, 'mtt');
   return {
     gameType,
     players: Array.from({ length: numPlayers }, (_, i) => ({
-      name: getSeatName(i, 0, heroName), position: positions[i] || '', startingStack: defaultStack
+      name: getSeatName(i, 0, heroName), position: positions[i] || '', startingStack: start.stack
     })),
-    blinds: gameCfg.isStud
-      ? { sb: 100, bb: 200, ante: defaultAnte, bigBet: defaultBigBet, bringIn: defaultBringIn, betCap: 5, uncapHeadsUp: true }
-      : (isLimit
-        ? { sb: 100, bb: 200, ante: defaultAnte, betCap: 5, uncapHeadsUp: true }
-        : { sb: 100, bb: 200, ante: defaultAnte }),
+    blinds: start.blinds,
     streets: streetDef.streets.map(name => ({
       name, cards: { hero: '', opponents: Array.from({ length: numPlayers - 1 }, () => ''), board: '' }, actions: [], draws: [],
     })),
@@ -2705,16 +2733,108 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
   );
 }
 
+/* A figure typed into the entry: "2.5", "1,500", "$200", "25k", "1.5m". Spaces and currency signs
+   are ignored, a comma only where it groups thousands, and k and m are thousands and millions. A
+   cash hand keeps cents; a tournament's chips are whole. Anything else is refused with a reason
+   rather than half read: the fields used to keep the digits of whatever was typed, so "2.5" became
+   25, "1,500" became 500 and "-40" became 40 (entry audit 20). Empty is 0. */
+function parseAmount(text, { cents = false } = {}) {
+  let s = String(text == null ? '' : text).trim().toLowerCase().replace(/[\s\p{Sc}]/gu, '');
+  if (s === '') return { value: 0 };
+  if (s.includes(',')) {
+    if (!/^\d{1,3}(,\d{3})+(\.\d*)?[km]?$/.test(s)) return { error: 'Not a number' };
+    s = s.replace(/,/g, '');
+  }
+  const m = s.match(/^(\d+(?:\.\d*)?|\.\d+)([km])?$/);
+  if (!m) return { error: 'Not a number' };
+  const raw = parseFloat(m[1]);
+  const v = m[2] === 'k' ? raw * 1e3 : m[2] === 'm' ? raw * 1e6 : raw;
+  if (!Number.isFinite(v) || v > 1e12) return { error: 'Too large' };
+  const r2 = Math.round(v * 100) / 100;
+  if (!cents && Math.abs(v - Math.round(v)) > 1e-9) return { error: 'Whole chips only' };
+  if (cents && Math.abs(v - r2) > 1e-9) return { error: 'Cents at most' };
+  return { value: cents ? r2 : Math.round(v) };
+}
+
+/* An amount input. While it has the focus it shows what was typed, so "2." stays "2." until the 5
+   arrives; every keystroke that reads as a number goes to the hand at once. Text that does not read
+   is marked and said under the field, and leaving the field puts the last good figure back and says
+   so. The field's clear-on-focus is utils/numeric-focus-clear.js: nothing here pushes '' on focus. */
+function AmountField({ value, onCommit, cents = false, blankZero = false, disabled = false, placeholder, ariaLabel, style, prefix = null, wrap = false }) {
+  const [text, setText] = useState(null);
+  const [note, setNote] = useState(null);
+  const errId = useRef('amt-' + Math.random().toString(36).slice(2, 9)).current;
+  const shown = text != null ? text : (value === '' || value == null || (blankZero && !Number(value)) ? '' : String(value));
+  const parsed = text != null ? parseAmount(text, { cents }) : null;
+  const error = parsed && parsed.error ? parsed.error : note;
+  const input = (
+      <input type="text" inputMode="decimal" value={shown} disabled={disabled}
+        className={parsed && parsed.error ? 'is-invalid' : undefined}
+        aria-invalid={parsed && parsed.error ? true : undefined}
+        aria-label={ariaLabel} aria-describedby={error ? errId : undefined}
+        placeholder={placeholder} style={style}
+        onChange={e => {
+          const t = e.target.value;
+          setText(t); setNote(null);
+          const r = parseAmount(t, { cents });
+          if (r.error == null && Number(r.value) !== Number(value)) onCommit(r.value);
+        }}
+        onBlur={() => {
+          if (text == null) return;
+          const r = parseAmount(text, { cents });
+          setText(null);
+          setNote(r.error ? r.error + ': kept ' + (blankZero && !Number(value) ? 'blank' : String(value === '' || value == null ? 0 : value)) : null);
+        }} />
+  );
+  return (
+    <>
+      {prefix || wrap ? <div className="gto-stack-wrap">{prefix}{input}</div> : input}
+      {error && <div className="replayer-field-error" id={errId} role="alert">{error}</div>}
+    </>
+  );
+}
+
+/* Cards typed into a field: "Ah 7d 2c", "ah7d2c", "10h" (read as T). Returns the cards, whether the
+   last one is still being typed, and, when the text cannot be right, why: something that is not a
+   card, a card twice, a card already dealt, or more cards than the place holds. "10h 7d 2c" was read
+   as a different hand and "zz" was taken without a word (entry audit 9, 29). */
+function readTypedCards(text, { max = 99, used = null, ranks = '23456789TJQKA' } = {}) {
+  const s = String(text || '').replace(/10/g, 'T').replace(/[\s,]+/g, '');
+  const cards = [];
+  for (let i = 0; i < s.length; i += 2) {
+    const r = s[i].toUpperCase();
+    const su = (s[i + 1] || '').toLowerCase();
+    if (!su && ranks.includes(r)) return { cards, pending: true, error: null };
+    if (!ranks.includes(r) || !'hdcs'.includes(su)) return { cards, pending: false, error: '"' + s.slice(i, i + 2) + '" is not a card' };
+    cards.push(r + su);
+  }
+  const seen = new Set();
+  for (const c of cards) {
+    if (seen.has(c)) return { cards, pending: false, error: c + ' is in twice' };
+    seen.add(c);
+    if (used && used.has(c)) return { cards, pending: false, error: c + ' is already dealt' };
+  }
+  if (cards.length > max) return { cards, pending: false, error: 'At most ' + max + ' cards here' };
+  return { cards, pending: false, error: null };
+}
+
 // ══════════════════════════════════════════════════════════
 // ── GTOEntryView (GTO-style phased hand entry) ──────────
 // ══════════════════════════════════════════════════════════
-function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
-  const [phase, setPhase] = useState('setup');
+function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null, onProgress = null }) {
+  /* Every screen here is drawn from the hand plus (phase, street), so an unfinished hand reopens
+     where it was left and Edit opens a finished one on its result: `resume` is that place, read
+     once, and `onProgress` reports each move so the draft can remember it. */
+  const [phase, setPhase] = useState(() => entryPlace(resume, hand).phase);
   // Which seat is under the finger, so the row it belongs to can show it.
   const [dragSeat, setDragSeat] = useState(null);
-  const [currentStreetIdx, setCurrentStreetIdx] = useState(0);
+  const [currentStreetIdx, setCurrentStreetIdx] = useState(() => entryPlace(resume, hand).streetIdx);
+  useEffect(() => { if (onProgress) onProgress({ phase, streetIdx: currentStreetIdx }); }, [phase, currentStreetIdx]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showRaiseInput, setShowRaiseInput] = useState(false);
   const [betAmount, setBetAmount] = useState('');
+  // Why Confirm refused the typed bet or raise; typing again clears it.
+  const [betError, setBetError] = useState(null);
+  useEffect(() => { setBetError(null); }, [betAmount, showRaiseInput]);
   const [showHeroCardPicker, setShowHeroCardPicker] = useState(false);
   const [studDealTarget, setStudDealTarget] = useState(0);
   // The OFC entry phase's card picker. Declared with the other hooks: inside the phase's branch it
@@ -2729,8 +2849,13 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     try { const s = localStorage.getItem('replayerBuyinCap'); if (s) return s; } catch { /* ignore */ }
     return String((hand.players && hand.players[0] && hand.players[0].startingStack) ?? '');
   });
+  const toast = useToast();
+  // Why Setup's Next or the Result's Save stayed put, named over the buttons; any edit clears it.
+  const [phaseError, setPhaseError] = useState(null);
+  useEffect(() => { setPhaseError(null); }, [hand, phase]);
   const resetStacks = () => {
     const cap = Number(buyinCap) || 0;
+    if (!(cap > 0)) { toast.error('Type a buy-in cap first: Reset stacks puts every seat on it.'); return; }
     try { localStorage.setItem('replayerBuyinCap', String(cap)); } catch { /* ignore */ }
     setHand(prev => ({ ...prev, players: prev.players.map(p => ({ ...p, startingStack: cap })) }));
   };
@@ -2905,8 +3030,57 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       draws: hand.players.map((_, pi) => pi).filter(pi => !foldedSet.has(pi)).map(pi =>
         (s.draws || []).find(d => d.player === pi) || { player: pi, discarded: 1, discardedCards: '', newCards: '' }),
     }) }));
+    /* The only thing asked is which card the hero threw: with the hero's cards unknown, or the hero
+       out of the hand, there is nothing to ask, so on to the flop (entry audit 38). */
+    const hiP = entryHeroIdx(hand, heroName);
+    if (!(hand.streets[0] && hand.streets[0].cards.hero) || foldedSet.has(hiP)) {
+      if (category === 'community') setPhase('board_entry');
+      else { setCurrentStreetIdx(currentStreetIdx + 1); setPhase('action'); }
+      return;
+    }
     setPhase('draw_cards_entry');
   }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* The keyboard (entry audit 39). Each screen, and each new player to act, takes the focus when the
+     last one dropped it to the page, so Tab starts on the screen and not at the top bar 46 stops away;
+     on the action screen f, c, k and r fold, call, check and bet or raise. */
+  useEffect(() => {
+    const ae = document.activeElement;
+    if (ae && ae !== document.body && document.contains(ae)) return;
+    const el = document.querySelector('.gto-seat.active .gto-action-btn, .gto-seat.active .gto-draw-btn, .gto-entry .replayer-section-title, .gto-entry .gto-street-label');
+    if (!el) return;
+    if (!el.matches('button')) el.setAttribute('tabindex', '-1');
+    try { el.focus({ preventScroll: true }); } catch { /* ignore */ }
+  }, [phase, currentStreetIdx, currentActor]);
+  useEffect(() => {
+    if (phase !== 'action') return undefined;
+    const onKey = (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      const want = { f: /^Fold$/, c: /^Call\b/, k: /^Check$/, r: /^(Raise|Bet)\b/ }[String(e.key || '').toLowerCase()];
+      if (!want) return;
+      const btn = [...document.querySelectorAll('.gto-seat.active .gto-action-btn')].find(b => want.test(((b.querySelector('.gto-action-label') || b).textContent || '').trim()));
+      if (btn) { e.preventDefault(); btn.click(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [phase]);
+
+  /* Each stud deal, and the door cards, start on the first seat still without a card (the hero first
+     on face-down 7th): the target stayed wherever the last street left it (entry audit 37). */
+  useEffect(() => {
+    if (phase !== 'stud_deal' && phase !== 'door_cards') return;
+    const hi = entryHeroIdx(hand, heroName);
+    const si = phase === 'door_cards' ? 0 : currentStreetIdx + 1;
+    const st = hand.streets[si];
+    if (!st) return;
+    const has = (pi) => (pi === hi ? !!(st.cards || {}).hero : !!((st.cards || {}).opponents || [])[pi < hi ? pi : pi - 1]);
+    const live = hand.players.map((_, pi) => pi).filter(pi => !foldedSet.has(pi) && !(phase === 'door_cards' && pi === hi));
+    const faceDown = phase === 'stud_deal' && si === hand.streets.length - 1;
+    const first = (faceDown && live.includes(hi) && !has(hi)) ? hi : live.find(pi => !has(pi));
+    setStudDealTarget(first !== undefined ? first : (live[0] ?? -1));
+  }, [phase, currentStreetIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (['board_door','board_entry','stud_deal','draw_discard','draw_cards_entry','showdown','result'].includes(phase)) {
@@ -2953,6 +3127,20 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     setBetAmount('');
   };
 
+  /* A tap on a seat that has acted goes back to that player's turn. More than one step back asks
+     first: a tap made to look at a seat, or while scrolling, threw a run of actions away (entry audit 14). */
+  const rewindToPlayer = (playerIdx) => {
+    for (let si = currentStreetIdx; si >= 0; si--) {
+      const acts = (hand.streets[si] || {}).actions || [];
+      const at = acts.findIndex(a => a.player === playerIdx);
+      if (at < 0) continue;
+      let lose = acts.length - at;
+      for (let sj = si + 1; sj < hand.streets.length; sj++) lose += ((hand.streets[sj] || {}).actions || []).length;
+      if (lose > 1 && !window.confirm('Go back to ' + (hand.players[playerIdx].name || 'that player') + "'s turn? The last " + lose + ' actions come off.')) return;
+      undoToPlayer(playerIdx);
+      return;
+    }
+  };
   const undoToPlayer = (playerIdx) => {
     setHand(prev => {
       for (let si = currentStreetIdx; si >= 0; si--) {
@@ -2993,14 +3181,16 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     });
   };
 
+  // A stack arrives already read by AmountField; a name is kept as typed.
   const updatePlayerField = (idx, field, value) => {
-    setHand(prev => ({ ...prev, players: prev.players.map((p, i) => i !== idx ? p : { ...p, [field]: field === 'startingStack' ? (Number(value) || 0) : value }) }));
+    setHand(prev => ({ ...prev, players: prev.players.map((p, i) => i !== idx ? p : { ...p, [field]: value }) }));
   };
 
   const setNumPlayers = (n) => {
     setHand(prev => {
       const heroI = entryHeroIdx(prev, heroName);
-      const positions = getPositionLabels(n);
+      // Stud seats are numbered, not named for blinds it does not have (entry audit 15).
+      const positions = gameCfg.isStud ? getStudPositionLabels(n) : getPositionLabels(n);
       const players = Array.from({ length: n }, (_, i) => {
         if (prev.players[i]) return { ...prev.players[i], position: positions[i] || '' };
         return { name: getSeatName(i, heroI, heroName), position: positions[i] || '', startingStack: prev.players[0] ? prev.players[0].startingStack : 50000 };
@@ -3012,17 +3202,28 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
 
   const heroIdx = entryHeroIdx(hand, heroName);
 
+  /* The table turns so the hero sits at newIdx: every player moves by the same number of seats and
+     the seat labels stay put. The opponents' cards are stored relative to the hero, so they are
+     carried across by absolute seat, or a turn handed one player's cards to the next. Read from
+     `prev`, not the render's heroIdx, so two calls in one event cannot turn the table twice. */
   const setHeroSeat = (newIdx) => {
-    if (newIdx === heroIdx) return;
     setHand(prev => {
       const n = prev.players.length;
-      const shift = newIdx - heroIdx;
-      const players = prev.players.map((p, i) => {
-        const srcIdx = ((i - shift) % n + n) % n;
-        const src = prev.players[srcIdx];
-        return { ...p, name: src.name, startingStack: src.startingStack };
+      const oldHero = entryHeroIdx(prev, heroName);
+      if (newIdx === oldHero || newIdx < 0 || newIdx >= n) return prev;
+      const shift = newIdx - oldHero;
+      const from = (i) => ((i - shift) % n + n) % n;
+      const players = prev.players.map((p, i) => ({ ...prev.players[from(i)], position: p.position }));
+      const streets = (prev.streets || []).map(st => {
+        const cards = st.cards || {};
+        if (!Array.isArray(cards.opponents)) return st;
+        const byPlayer = {};
+        cards.opponents.forEach((c, slot) => { byPlayer[slot < oldHero ? slot : slot + 1] = c; });
+        const opponents = [];
+        for (let i = 0; i < n; i++) if (i !== newIdx) opponents.push(byPlayer[from(i)] || '');
+        return { ...st, cards: { ...cards, opponents } };
       });
-      return { ...prev, players, heroIdx: newIdx };
+      return { ...prev, players, streets, heroIdx: newIdx };
     });
   };
 
@@ -3108,10 +3309,16 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     if (d && !d.moved) setHeroSeat(d.idx);
   };
 
-  const playerContrib = currentActor >= 0 ? streetBets.contrib[currentActor] : 0;
-  const callAmount = currentActor >= 0 ? Math.min(streetBets.maxBet - playerContrib, currentStacks[currentActor]) : 0;
-  const canCheck = callAmount === 0;
-  const playerStack = currentActor >= 0 ? currentStacks[currentActor] : 0;
+  /* Sums of cents carry float tails (2.69 owed against 2.6900000000000004 behind compared as more, and
+     the raise box opened on 299.41999999999996), so every figure the buttons test or show is rounded
+     to the cent first (entry vs oracle, 4b and 6). */
+  const playerContrib = currentActor >= 0 ? chipRound(streetBets.contrib[currentActor] || 0) : 0;
+  const playerStack = currentActor >= 0 ? chipRound(currentStacks[currentActor] || 0) : 0;
+  const callAmount = currentActor >= 0 ? chipRound(Math.max(0, Math.min(streetBets.maxBet - playerContrib, playerStack))) : 0;
+  const canCheck = callAmount <= 0;
+  const amt$ = (v) => currencySymbol(hand) + Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  // Undo is off with nothing to undo; it was always on (entry audit 47).
+  const canUndo = (hand.streets || []).some(s => (s.actions || []).length > 0);
 
   const bettingType = gameCfg.betting || 'nl';
   const isLimitGame = bettingType === 'fl';
@@ -3123,12 +3330,20 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   const activePlayerCount = hand.players.filter((_, i) => !foldedSet.has(i) && !allInSet.has(i)).length;
   const isHeadsUp = activePlayerCount <= 2;
   const flIsSmall = flSmallStreets.includes(currentStreetIdx);
-  const stud4thOpenPair = gameCfg.isStud && currentStreetIdx === 1 && studHasOpenPairOn4th(hand);
-  const flBetSize = (flIsSmall && !stud4thOpenPair)
-    ? ((hand.blinds || {}).bb || 100)
-    : ((hand.blinds || {}).bigBet || ((hand.blinds || {}).bb || 100) * 2);
-  const flRaiseToTotal = streetBets.maxBet + flBetSize;
-  const flRaiseIncrement = flRaiseToTotal - playerContrib;
+  /* An open pair on 4th street: in stud high the first bet may be the small bet or the big one, and
+     the street goes on at the size it opened with. Hi-lo and the low games keep the small bet; this
+     made the big bet a must in every stud game (entry audit 18; entry vs oracle, cannot enter 3). */
+  const stud4thOpenPair = gameCfg.isStud && currentStreetIdx === 1
+    && (GAME_EVAL[hand.gameType] || {}).type === 'high' && studHasOpenPairOn4th(hand);
+  const flSmallBet = (hand.blinds || {}).bb || 100;
+  const flBigBet = (hand.blinds || {}).bigBet || flSmallBet * 2;
+  const flOpeningBet = (currentStreet.actions || []).find(a => a.action === 'bet');
+  const flBetSize = stud4thOpenPair
+    ? (flOpeningBet && chipRound(flOpeningBet.amount) >= flBigBet ? flBigBet : flSmallBet)
+    : (flIsSmall ? flSmallBet : flBigBet);
+  const flOpenPairChoice = stud4thOpenPair && !flOpeningBet;
+  const flRaiseToTotal = chipRound(streetBets.maxBet + flBetSize);
+  const flRaiseIncrement = chipRound(flRaiseToTotal - playerContrib);
   /* Heads-up used to lift the cap on every street, which is one house rule but
      not the one being asked for: uncapped heads up on the LAST street only,
      and only when the hand says so. Off, the cap holds everywhere. */
@@ -3136,34 +3351,110 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   const uncapHeadsUp = (hand.blinds || {}).uncapHeadsUp !== false;
   const flCanRaise = (uncapHeadsUp && isHeadsUp && isLastStreet) || streetBetRaiseCount < flRaiseCap;
 
-  // Pot-limit: ante does NOT count as part of the pot preflop, but DOES postflop
+  /* Pot-limit: the pot is everything in the middle, a big-blind ante included. Before the flop the
+     ante was left out, so a legal pot raise was cut down to a smaller one without a word (entry vs
+     oracle, 1). PokerKit counts it, and so does the text quick add (utils/quick-add/betting.js). */
   const blinds = hand.blinds || { sb: 0, bb: 0, ante: 0 };
-  const isBBante = getGameCategory(hand.gameType) !== 'stud' && (blinds.ante || 0) > 0;
-  const plAnteAdjust = (isPotLimit && isPreflop && isBBante) ? (blinds.ante || 0) : 0;
-  const plEffectivePot = currentPot - plAnteAdjust;
-  const plPotAfterCall = plEffectivePot + callAmount;
-  const plRaiseToTotal = streetBets.maxBet + plPotAfterCall;
-  const plMaxRaiseIncrement = plRaiseToTotal - playerContrib;
+  const plEffectivePot = chipRound(currentPot);
+  const plPotAfterCall = chipRound(plEffectivePot + callAmount);
+  const plRaiseToTotal = chipRound(streetBets.maxBet + plPotAfterCall);
+  const plMaxRaiseIncrement = chipRound(plRaiseToTotal - playerContrib);
   const plMaxBet = plEffectivePot;
 
-  // Min raise tracking
-  let _prevMax = 0, _lastRaiseSize = (hand.blinds || {}).bb || 0;
+  /* One walk over the street (entry vs oracle, 4c and 5): the price; the size of the last FULL raise,
+     which is the smallest raise allowed (a short all-in raises the price, not that size); and whether
+     the betting is open again to the player to act. A player who has acted may raise again only after
+     a full raise, or short ones adding up to one (TDA 2019 rule 43; in limit, half a bet). A straddle
+     is the new big blind: the smallest raise is its size. */
+  const _bbAmt = blinds.bb || 0;
+  let _prevMax = 0, _lastRaiseSize = _bbAmt;
   const _runContrib = new Array(hand.players.length).fill(0);
   if (isPreflop && category !== 'stud') {
     const _sbIdx = hand.players.findIndex(p => p.position === 'SB' || p.position === 'BTN/SB');
     const _bbIdx = hand.players.findIndex(p => p.position === 'BB');
-    if (_sbIdx >= 0) _runContrib[_sbIdx] = (hand.blinds || {}).sb || 0;
-    if (_bbIdx >= 0) _runContrib[_bbIdx] = (hand.blinds || {}).bb || 0;
-    _prevMax = (hand.blinds || {}).bb || 0;
+    if (_sbIdx >= 0) _runContrib[_sbIdx] = blinds.sb || 0;
+    if (_bbIdx >= 0) _runContrib[_bbIdx] = _bbAmt;
+    _prevMax = _bbAmt;
+    getStraddles(hand.players, hand.blinds).forEach(st => {
+      _runContrib[st.seat] = st.amount;
+      _prevMax = Math.max(_prevMax, st.amount);
+      _lastRaiseSize = Math.max(_lastRaiseSize, st.amount);
+    });
   }
-  (currentStreet.actions || []).forEach(a => {
+  let _myLastIdx = -1, _priceAtMine = 0, _fullSinceMine = false;
+  (currentStreet.actions || []).forEach((a, i) => {
     if (a.action === 'fold') return;
-    if (a.action === 'bring-in') { _runContrib[a.player] = a.amount || bringInAmount; _prevMax = Math.max(_prevMax, _runContrib[a.player]); return; }
-    if (a.amount > 0) _runContrib[a.player] = chipRound(_runContrib[a.player] + a.amount);
-    if (a.action === 'raise' || a.action === 'bet') { const newMax = _runContrib[a.player]; _lastRaiseSize = Math.max(newMax - _prevMax, (hand.blinds || {}).bb || 0); _prevMax = newMax; }
+    if (a.action === 'bring-in') {
+      _runContrib[a.player] = a.amount || bringInAmount;
+      _prevMax = Math.max(_prevMax, _runContrib[a.player]);
+    } else {
+      if (a.amount > 0) _runContrib[a.player] = chipRound(_runContrib[a.player] + a.amount);
+      const to = _runContrib[a.player];
+      if (to > _prevMax) {
+        const size = chipRound(to - _prevMax);
+        const full = isLimitGame ? size * 2 >= flBetSize : size >= _lastRaiseSize;
+        if (full && !isLimitGame) _lastRaiseSize = Math.max(size, _bbAmt);
+        if (full) _fullSinceMine = true;
+        _prevMax = to;
+      }
+    }
+    if (a.player === currentActor) { _myLastIdx = i; _priceAtMine = _prevMax; _fullSinceMine = false; }
   });
-  const minRaiseToTotal = streetBets.maxBet + _lastRaiseSize;
-  const minRaiseIncrement = minRaiseToTotal - playerContrib;
+  const minRaiseToTotal = chipRound(streetBets.maxBet + _lastRaiseSize);
+  const minRaiseIncrement = chipRound(minRaiseToTotal - playerContrib);
+  // A player who only checked faced no bet, so any bet opens it to them, short or not.
+  const reopened = _myLastIdx < 0 || _priceAtMine <= 0 || _fullSinceMine
+    || chipRound(_prevMax - _priceAtMine) >= (isLimitGame ? flBetSize / 2 : _lastRaiseSize);
+  /* A raise needs someone left who could call it, a stack that covers more than the call, and the
+     betting open to this player (entry vs oracle, 4a-c). A stack that covers no more than the call
+     has Call, which puts it all in; "All-in" saved that as a raise, and the round never closed (3). */
+  // Someone who could put in more than the bet now faced: a stack short of it can only call, all in.
+  const othersWithChips = hand.players.some((_, i) => i !== currentActor && !foldedSet.has(i) && !allInSet.has(i)
+    && chipRound((currentStacks[i] || 0) + (streetBets.contrib[i] || 0)) > chipRound(streetBets.maxBet));
+  const canRaiseHere = currentActor >= 0 && othersWithChips && reopened && chipRound(playerStack - callAmount) > 0;
+  // The legal range for the Bet / Raise box, as amounts put in.
+  const betMin = canCheck ? Math.min(_bbAmt || flSmallBet, playerStack) : Math.min(minRaiseIncrement, playerStack);
+  const betMax = isPotLimit ? (canCheck ? Math.min(plMaxBet, playerStack) : Math.min(plMaxRaiseIncrement, playerStack)) : playerStack;
+  const cashHand = hand.gameMode === 'cash';
+  const roundAmt = (v) => (cashHand ? Math.round(v * 100) / 100 : Math.round(v));
+  /* Confirm: a figure the field cannot read, one under the smallest raise or over the limit is
+     refused with the range, and an amount is never changed after Confirm (entry audit 23; entry vs
+     oracle, 1: "Pot 4500" typed was saved as 3,500 without a word). */
+  const confirmBet = () => {
+    const r = parseAmount(betAmount, { cents: cashHand });
+    if (r.error) { setBetError(r.error + '.'); return; }
+    const amt = r.value;
+    if (!(amt > 0)) { setBetError('Type an amount.'); return; }
+    if (amt > betMax) { setBetError(betMax < playerStack ? 'The pot limit puts in ' + amt$(betMax) + ' at most.' : 'Only ' + amt$(playerStack) + ' behind.'); return; }
+    if (amt < betMin) { setBetError('The smallest ' + (canCheck ? 'bet' : 'raise') + ' puts in ' + amt$(betMin) + '.'); return; }
+    addAction(canCheck ? 'bet' : 'raise', amt);
+  };
+  const raiseBox = (
+    <>
+      <div className="gto-raise-slider-row">
+        <input type="range" className="gto-raise-slider" aria-label="Amount to put in"
+          min={betMin} max={betMax} step={cashHand ? 0.01 : 1}
+          value={Number(betAmount) || 0} onChange={e => setBetAmount(String(roundAmt(Number(e.target.value))))} />
+      </div>
+      <div className="gto-raise-input-row">
+        <input type="text" inputMode="decimal" aria-label="Amount to put in" value={betAmount}
+          className={betError ? 'is-invalid' : undefined} aria-invalid={betError ? true : undefined}
+          onChange={e => setBetAmount(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { e.preventDefault(); confirmBet(); }
+            else if (e.key === 'Escape') { e.preventDefault(); setShowRaiseInput(false); }
+          }} autoFocus />
+        <button className="btn btn-primary btn-sm" onClick={confirmBet}>Confirm</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => setShowRaiseInput(false)}>Cancel</button>
+      </div>
+      {betError
+        ? <div className="replayer-field-error" role="alert">{betError}</div>
+        : <div className="replayer-field-hint">
+            {canCheck ? 'Bet' : 'Raise'}: puts in {amt$(betMin)}{betMax > betMin ? ' to ' + amt$(betMax) : ''}
+            {playerContrib > 0 ? ' (' + amt$(playerContrib) + ' in already)' : ''}
+          </div>}
+    </>
+  );
 
   const cumulativeBoard = useMemo(() => {
     let b = '';
@@ -3224,10 +3515,63 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
         return { ...prev, players, ofcRows: newOfcRows };
       });
     };
+    const cents = hand.gameMode === 'cash';
+    const money = (v) => currencySymbol(hand) + Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    /* With betting recorded, the seats and the money are fixed. Actions are stored as amounts by
+       seat, so a new blind, stack, player count or seat order quietly changed what every one of
+       them meant (entry audit 10). Names stay editable; one button clears the action. */
+    const locked = (hand.streets || []).some(s => (s.actions || []).length || (s.draws || []).length);
+    const clearAction = () => {
+      if (!window.confirm('Clear every bet, draw and the result in this hand? The cards dealt stay; cards drawn go with their draws.')) return;
+      setHand(prev => ({ ...prev, result: null, streets: prev.streets.map(s => ({ ...s, actions: [], draws: [] })) }));
+    };
+    /* A straddler's badge reads STR (the button keeps BTN), and the hint under the straddles names
+       seats by the same badges: it said "LJ closes" beside a row labelled STR (entry audit 47). */
+    const straddlers = (isOfc || gameCfg.isStud) ? [] : getStraddles(hand.players, hand.blinds);
+    const seatBadge = (i) => (straddlers.some(s => s.seat === i) && i !== hand.players.length - 3)
+      ? 'STR' : ((hand.players[i] || {}).position || 'Seat ' + (i + 1));
+    /* Next names the first thing that cannot be right and stays here (entry audit 22): it went on
+       with a small blind above the big blind, a seat with no chips, or no name at all. */
+    const setupProblem = () => {
+      const b = hand.blinds || {};
+      if (!isOfc && category === 'stud') {
+        const small = Number(b.bb) || 0;
+        if (!(small > 0)) return 'The small bet is 0.';
+        if (studBigBet < small) return 'The big bet is smaller than the small bet.';
+        if (studBringIn > small) return 'The bring-in is more than the small bet.';
+      } else if (!isOfc) {
+        const bb = Number(b.bb) || 0;
+        if (!(bb > 0)) return 'The big blind is 0.';
+        if ((Number(b.sb) || 0) > bb) return 'The small blind is bigger than the big blind.';
+      }
+      const seen = new Set();
+      for (let i = 0; i < hand.players.length; i++) {
+        const p = hand.players[i];
+        const name = String(p.name || '').trim();
+        const who = isOfc ? 'Seat ' + (i + 1) : seatBadge(i);
+        if (!name) return who + ' has no name.';
+        if (!isOfc && !(Number(p.startingStack) > 0)) return name + ' (' + who + ') has no chips.';
+        if (seen.has(name.toLowerCase())) return 'Two players are named ' + name + '.';
+        seen.add(name.toLowerCase());
+      }
+      return null;
+    };
+    const goNext = () => {
+      const why = setupProblem();
+      if (why) { setPhaseError(why); return; }
+      setPhase(category === 'ofc' ? 'ofc_entry' : gameCfg.isStud ? 'hero_cards' : gameCfg.doorBoard ? 'board_door' : 'action');
+    };
+    const capNum = Number(buyinCap);
     return (
       <div className="gto-entry">
         <div className="gto-phase-card"><div className="replayer-section">
-          <div className="replayer-section-title">{isOfc ? 'Players' : 'Players & Blinds'}</div>
+          <div className="replayer-section-title">{isOfc ? 'Players' : category === 'stud' ? 'Players & Stakes' : 'Players & Blinds'}</div>
+          {locked && (
+            <div className="gto-lock-row">
+              <div className="replayer-field-hint">This hand has betting in it, so the seats, stakes and stacks are fixed. Names can still change.</div>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={clearAction}>Clear the action</button>
+            </div>
+          )}
           <div className="replayer-row gto-blinds-grid">
             <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 8.75)'}}>
               <label>Players</label>
@@ -3236,7 +3580,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                   {[2,3].map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
               ) : (
-                <select value={hand.players.length} onChange={e => setNumPlayers(Number(e.target.value))}>
+                <select value={hand.players.length} disabled={locked} onChange={e => setNumPlayers(Number(e.target.value))}>
                   {[2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
               )}
@@ -3249,13 +3593,20 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                 (flSmallStreets take bb, later streets take bb*2), so for stud
                 that is the field's real name; SB does nothing there but set the
                 bring-in at half itself, which is the default anyway. */}
-            {!isOfc && category !== 'stud' && <div className="replayer-field"><label>SB</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).sb||''} onChange={e => setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), sb:Number(e.target.value)||0}}))} /></div>}
-            {!isOfc && <div className="replayer-field"><label>{category === 'stud' ? 'Small Bet' : 'BB'}</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).bb||''} onChange={e => (category === 'stud' ? setStudSized('bb', Number(e.target.value)||0) : setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), bb:Number(e.target.value)||0}})))} /></div>}
-            {!isOfc && category === 'stud' && <div className="replayer-field"><label>Big Bet</label><input type="text" inputMode="decimal" value={studBigBet||''} onChange={e => setStudSized('bigBet', Number(e.target.value)||0)} /></div>}
-            {!isOfc && category === 'stud' && <div className="replayer-field"><label>Bring-in</label><input type="text" inputMode="decimal" value={studBringIn||''} onChange={e => setStudSized('bringIn', Number(e.target.value)||0)} /></div>}
-            {!isOfc && <div className="replayer-field"><label>{category === 'stud' ? 'Ante (each)' : 'BB Ante'}</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).ante||''} onChange={e => setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), ante:Number(e.target.value)||0}}))} /></div>}
-            {!isOfc && isLimitGame && <div className="replayer-field"><label>Cap</label><input type="text" inputMode="decimal" value={betCap||''} onChange={e => setBlind('betCap', Number(e.target.value)||0)} /></div>}
+            {!isOfc && category !== 'stud' && <div className="replayer-field"><label>SB</label><AmountField value={(hand.blinds||{}).sb} blankZero cents={cents} disabled={locked} ariaLabel="Small blind" onCommit={v => setBlind('sb', v)} /></div>}
+            {!isOfc && <div className="replayer-field"><label>{category === 'stud' ? 'Small Bet' : 'BB'}</label><AmountField value={(hand.blinds||{}).bb} blankZero cents={cents} disabled={locked} ariaLabel={category === 'stud' ? 'Small bet' : 'Big blind'} onCommit={v => (category === 'stud' ? setStudSized('bb', v) : setBlind('bb', v))} /></div>}
+            {!isOfc && category === 'stud' && <div className="replayer-field"><label>Big Bet</label><AmountField value={studBigBet} blankZero cents={cents} disabled={locked} ariaLabel="Big bet" onCommit={v => setStudSized('bigBet', v)} /></div>}
+            {!isOfc && category === 'stud' && <div className="replayer-field"><label>Bring-in</label><AmountField value={studBringIn} blankZero cents={cents} disabled={locked} ariaLabel="Bring-in" onCommit={v => setStudSized('bringIn', v)} /></div>}
+            {!isOfc && <div className="replayer-field"><label>{category === 'stud' ? 'Ante (each)' : 'BB Ante'}</label><AmountField value={(hand.blinds||{}).ante} blankZero cents={cents} disabled={locked} ariaLabel={category === 'stud' ? 'Ante, each player' : 'Big blind ante'} onCommit={v => setBlind('ante', v)} /></div>}
+            {!isOfc && isLimitGame && <div className="replayer-field"><label>Cap</label><AmountField value={betCap} blankZero disabled={locked} ariaLabel="Bets allowed on a street" onCommit={v => setBlind('betCap', v)} /></div>}
           </div>
+          {/* A limit game is named by its bets, not its blinds: the headers say 200/400 where these
+              fields say 100 and 200 (entry audit 47). */}
+          {!isOfc && isLimitGame && category !== 'stud' && (
+            <div className="replayer-field-hint">
+              Limit stakes are written small bet / big bet: this hand plays {money((hand.blinds||{}).bb)}/{money((hand.blinds||{}).bigBet || ((hand.blinds||{}).bb || 0) * 2)}.
+            </div>
+          )}
           {!isOfc && isLimitGame && (
             <div className="replayer-settings-row">
               <div>
@@ -3263,7 +3614,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                 <div className="replayer-settings-sublabel">Two players left on the last street keep raising past the cap</div>
               </div>
               <button type="button" className={'replayer-settings-toggle' + (uncapHU ? ' on' : '')}
-                aria-pressed={uncapHU} aria-label="Uncapped heads-up on the last street"
+                aria-pressed={uncapHU} aria-label="Uncapped heads-up on the last street" disabled={locked}
                 onClick={() => setBlind('uncapHeadsUp', !uncapHU)} />
             </div>
           )}
@@ -3290,15 +3641,17 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                     </div>
                   </div>
                   <button type="button" className={'replayer-settings-toggle' + (on ? ' on' : '')}
-                    aria-pressed={on} aria-label="Straddle"
+                    aria-pressed={on} aria-label="Straddle" disabled={locked}
                     onClick={() => {
                       const next = !on;
                       setBlind('straddle', next);
                       /* A straddle is a cash-game wager. Turning it on says this
                          is a cash hand, so flip the mode with it — the money
-                         symbol follows. Turning it off leaves the mode alone;
-                         someone may have set Cash deliberately. */
-                      if (next) setHand(prev => ({ ...prev, gameMode: 'cash' }));
+                         symbol follows, and so do blinds and stacks still on the
+                         tournament's defaults (a cash game has no big-blind ante).
+                         Turning it off leaves the mode alone; someone may have set
+                         Cash deliberately. */
+                      if (next) setHand(prev => withGameMode(prev, 'cash'));
                     }} />
                 </div>
                 {on && nSeats < 4 && (
@@ -3315,14 +3668,14 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                       const posted = live.find(x => x.type === type);
                       return (
                         <div key={type} className={'replayer-straddle-row' + (checked ? ' is-on' : '')}>
-                          <button type="button" role="checkbox" aria-checked={checked}
+                          <button type="button" role="checkbox" aria-checked={checked} disabled={locked}
                             className={'replayer-straddle-check' + (checked ? ' is-checked' : '')}
                             onClick={() => setBlind('straddle_' + type, !checked)}>
                             <span className="replayer-straddle-box" aria-hidden="true" />
                             <span className="replayer-straddle-name">{STRADDLE_LABELS[type]}</span>
                           </button>
                           {checked && needsSeat && (
-                            <select className="replayer-straddle-seat" value={seat}
+                            <select className="replayer-straddle-seat" value={seat} disabled={locked}
                               aria-label={STRADDLE_LABELS[type] + ' seat'}
                               onChange={e => setSeat(type, Number(e.target.value))}>
                               {eligible.map(i => (
@@ -3343,8 +3696,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                 {on && live.length > 0 && (
                   <div className="replayer-field-hint" style={{marginBottom:'var(--space-sm)'}}>
                     {live.length > 1 ? 'Each straddle doubles the one before it. ' : ''}
-                    Preflop action starts on {hand.players[(closer + 1) % nSeats]?.position || 'the next seat'} and
-                    {' '}{hand.players[closer]?.position || 'the straddler'} closes.
+                    Preflop action starts on {seatBadge((closer + 1) % nSeats)} and {seatBadge(closer)} closes.
                   </div>
                 )}
               </>
@@ -3352,35 +3704,37 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
           })()}
           {category === 'stud' && (
             <div className="gto-entry-note">
-              Every player antes, the low door card brings it in, and the big bet is bet from 5th street on. Stacks default to {STUD_STACK_BB} big bets; a street allows {betCap} bets.
+              Every player antes, the {LOW_STUD.test(hand.gameType) ? 'high' : 'low'} door card brings it in, and the big bet is bet from 5th street on. Stacks default to {STUD_STACK_BB} big bets; a street allows {betCap} bets.
             </div>
           )}
-          {!isOfc && <div className="gto-hero-head"><span>Hero</span></div>}
+          {/* The hero was chosen by tapping a seat badge, and nothing said so but a column head
+              reading "Hero" (entry audit 33). The badge is a real button now, so a keyboard
+              reaches it, and it says it is pressed for the hero. */}
+          {!isOfc && !locked && <div className="replayer-field-hint">Tap a seat to make it the hero; drag it to move that player.</div>}
           {hand.players.map((p, i) => {
             const isHero = i === heroIdx;
-            // With a straddle on, the seat next to act after the BB (the frontmost
-            // position) posts it — label that badge STR. Display only; p.position
-            // is untouched so the action-order logic keeps working.
-            const straddleOn = !gameCfg.isStud && !!(hand.blinds && hand.blinds.straddle) && hand.players.length >= 4;
-            const posLabel = (straddleOn && p.position === getPositionLabels(hand.players.length)[0]) ? 'STR' : p.position;
+            const badge = seatBadge(i);
             return (
               <div key={i} className={'replayer-player-row' + (dragSeat === i ? ' is-dragging' : '')}>
-                {!isOfc && <span
+                {!isOfc && <button type="button"
                   className={'replayer-player-pos' + (isHero ? ' hero' : '') + (dragSeat === i ? ' is-grabbed' : '')}
-                  title="Tap to make hero, drag to reorder"
-                  onPointerDown={e => beginSeatDrag(e, i)}
-                  onPointerMove={moveSeatDrag}
-                  onPointerUp={endSeatDrag}
-                  onPointerCancel={endSeatDrag}
-                >{posLabel}</span>}
-                <div className="replayer-field" style={{flex:'1 1 calc(var(--subrow) * 10)'}}><input type="text" style={{textAlign:'left'}} value={p.name} onChange={e => updatePlayerField(i, 'name', e.target.value)} placeholder="Name" /></div>
+                  aria-pressed={isHero} aria-label={(String(p.name || '').trim() || badge) + ' is the hero'}
+                  title={locked ? 'Seats are fixed while the hand has betting in it' : 'Tap to make hero, drag to reorder'}
+                  disabled={locked}
+                  onPointerDown={locked ? undefined : e => beginSeatDrag(e, i)}
+                  onPointerMove={locked ? undefined : moveSeatDrag}
+                  onPointerUp={locked ? undefined : endSeatDrag}
+                  onPointerCancel={locked ? undefined : endSeatDrag}
+                  /* A pointer's tap is handled on pointerup; this is Enter or Space (detail 0). */
+                  onClick={e => { if (!locked && e.detail === 0) setHeroSeat(i); }}
+                >{badge}</button>}
+                <div className="replayer-field" style={{flex:'1 1 calc(var(--subrow) * 10)'}}><input type="text" style={{textAlign:'left'}} value={p.name} maxLength={20} aria-label={badge + ' name'} onChange={e => updatePlayerField(i, 'name', e.target.value)} placeholder="Name" /></div>
                 {!isOfc && <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 11)'}}>
-                  <div className="gto-stack-wrap">
-                    {hand.gameMode === 'cash' && <span className="gto-stack-sym">{currencySymbol(hand)}</span>}
-                    {/* Clicking a stack selects it, so the first digit typed
-                        replaces the default depth instead of appending to it. */}
-                    <input type="text" inputMode="decimal" style={{textAlign:'right', flex:'1 1 auto', minWidth:0}} value={p.startingStack} onFocus={e => e.target.select()} onChange={e => updatePlayerField(i, 'startingStack', e.target.value)} placeholder="Stack" />
-                  </div>
+                  <AmountField value={p.startingStack} cents={cents} disabled={locked} placeholder="Stack"
+                    ariaLabel={(String(p.name || '').trim() || badge) + ' stack'}
+                    prefix={cents ? <span className="gto-stack-sym">{currencySymbol(hand)}</span> : null} wrap
+                    style={{textAlign:'right', flex:'1 1 auto', minWidth:0}}
+                    onCommit={v => updatePlayerField(i, 'startingStack', v)} />
                 </div>}
               </div>
             );
@@ -3390,14 +3744,15 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
           <div className="gto-cap-row">
             <span className="gto-cap-label">Buy-in cap</span>
             <div className="replayer-field">
-              <input type="text" inputMode="decimal" value={buyinCap}
-                onChange={e => { setBuyinCap(e.target.value); try { localStorage.setItem('replayerBuyinCap', e.target.value); } catch { /* ignore */ } }}
-                placeholder="Cap" style={{textAlign:'right'}} />
+              <AmountField value={buyinCap !== '' && Number.isFinite(capNum) ? capNum : ''} blankZero cents={cents}
+                placeholder="Cap" ariaLabel="Buy-in cap" style={{textAlign:'right'}}
+                onCommit={v => { setBuyinCap(String(v)); try { localStorage.setItem('replayerBuyinCap', String(v)); } catch { /* ignore */ } }} />
             </div>
-            <button className="btn btn-ghost btn-sm" onClick={resetStacks} title="Set every seat's stack to the cap">Reset stacks</button>
+            <button className="btn btn-ghost btn-sm" onClick={resetStacks} disabled={locked} title="Set every seat's stack to the cap">Reset stacks</button>
             <button className="btn btn-ghost btn-sm" onClick={resetNames} title="Hero keeps your name; everyone else becomes Opp 1, 2, …">Reset names</button>
           </div>
         )}
+        {phaseError && <div className="replayer-field-error gto-setup-error" role="alert">{phaseError}</div>}
         <div className="gto-btn-row">
           <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
           {/* Stud went straight to the door cards from here, which meant
@@ -3407,7 +3762,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
               — the phase existed and was unreachable. Its own Next button
               already reads "Enter Door Cards" for stud, so this is the order
               it was built for. */}
-          <button className="btn btn-primary btn-sm" onClick={() => setPhase(category === 'ofc' ? 'ofc_entry' : gameCfg.isStud ? 'hero_cards' : gameCfg.doorBoard ? 'board_door' : 'action')}>Next</button>
+          <button className="btn btn-primary btn-sm" onClick={goNext}>Next</button>
         </div>
       </div>
     );
@@ -3572,17 +3927,27 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
         return { ...prev, streets: prev.streets.map((s, i) => i === 0 ? { ...s, cards: { ...s.cards, hero: next } } : s) };
       });
     };
+    // Three different cards, or none (the hand can be entered without them); anything else is said.
+    const heroTyped = readTypedCards(heroCardsVal, { max: heroMaxCards, ranks: heroAllRanks.join('') });
+    const heroCount = heroTyped.cards.length;
+    const heroProblem = heroTyped.error
+      || (heroTyped.pending ? 'Finish the last card' : null)
+      || (heroCount > 0 && heroCount < heroMaxCards ? heroMaxCards + ' cards, or none' : null);
     return (
       <div className="gto-entry">
         <div className="gto-phase-card">
           <div className="replayer-section">
             <div className="replayer-section-title">{heroCardsLabel}</div>
             <div className="replayer-field">
-              <label>{gameCfg.isStud ? 'Two down, one up' : 'Your Cards'}</label>
-              <input type="text" placeholder={gameCfg.isStud ? 'Ah7d2c' : (gameCfg.heroPlaceholder || 'AhKd')}
+              <label htmlFor="gto-hero-cards-typed">{gameCfg.isStud ? 'Two down, one up' : 'Your Cards'}</label>
+              <input id="gto-hero-cards-typed" type="text" placeholder={gameCfg.isStud ? 'Ah7d2c' : (gameCfg.heroPlaceholder || 'AhKd')}
+                autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                className={heroTyped.error ? 'is-invalid' : undefined} aria-invalid={heroTyped.error ? true : undefined}
+                aria-describedby={heroProblem ? 'gto-hero-cards-why' : undefined}
                 value={heroCardsVal}
-                onChange={e => setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === 0 ? { ...s, cards: { ...s.cards, hero: e.target.value } } : s) }))} />
-              <CardRow text={heroCardsVal} stud={gameCfg.isStud} max={heroMaxCards} />
+                onChange={e => { const v = e.target.value.replace(/10/g, 'T'); setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === 0 ? { ...s, cards: { ...s.cards, hero: v } } : s) })); }} />
+              <CardRow text={heroTyped.cards.join('')} stud={gameCfg.isStud} max={heroMaxCards} />
+              {heroProblem && <div className="replayer-field-error" id="gto-hero-cards-why">{heroProblem}</div>}
             </div>
             <div className={pickerGridClass(heroAllRanks)}>
               {heroAllSuits.map(suit => (
@@ -3602,7 +3967,11 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
         <div className="gto-street-card">
           <div className="gto-btn-row">
             <button className="btn btn-ghost btn-sm" onClick={() => setPhase('setup')}>Back</button>
-            <button className="btn btn-primary btn-sm" onClick={() => setPhase(gameCfg.isStud ? 'door_cards' : 'action')}>
+            <button className="btn btn-primary btn-sm" disabled={!!heroProblem} onClick={() => {
+              // What goes on as the hand is the cards read, not the text: "10h" is stored as Th.
+              if (heroTyped.cards.join('') !== heroCardsVal) setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === 0 ? { ...s, cards: { ...s.cards, hero: heroTyped.cards.join('') } } : s) }));
+              setPhase(gameCfg.isStud ? 'door_cards' : 'action');
+            }}>
               {gameCfg.isStud ? 'Enter Door Cards' : 'Start Action'}
             </button>
           </div>
@@ -3623,7 +3992,8 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     const nonFolded = hand.players.map((_, i) => i).filter(i => !foldedSet.has(i));
     // Not with a card before the first bet, or two kinds of hand: a second run has no rules there.
     const twoHands = (gameEvalFor(hand.gameType, hand) || {}).type === 'halves';
-    const runItOffered = !isDoor && !gameCfg.doorBoard && !twoHands && !hand.doubleBoard && allInSet.size >= 1 && nonFolded.filter(i => !allInSet.has(i)).length <= 1;
+    // A cash game's deal: a tournament hand is run once (entry audit 24).
+    const runItOffered = hand.gameMode === 'cash' && !isDoor && !gameCfg.doorBoard && !twoHands && !hand.doubleBoard && allInSet.size >= 1 && nonFolded.filter(i => !allInSet.has(i)).length <= 1;
     const runsFrom = hand.runs > 1 ? (hand.runsFrom ?? nextStreet) : null;
     const slots = hand.doubleBoard ? 2 : (hand.runs > 1 && nextStreet >= runsFrom ? hand.runs : 1);
     const slot = Math.min(boardSlot, slots - 1);
@@ -3666,7 +4036,12 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     const shownSoFar = isDoor ? '' : (shownBoards[Math.min(slot, shownBoards.length - 1)] || '');
     const slotLabel = (k) => (hand.doubleBoard ? 'Board ' : 'Run ') + (k + 1);
     const slotFull = (k) => parseCardNotation((hand.streets[nextStreet] && hand.streets[nextStreet].cards[boardKey(k)]) || '').filter(c => c.suit !== 'x').length >= maxCards;
-    const allDealt = Array.from({ length: slots }, (_, k) => slotFull(k)).every(Boolean);
+    /* The typed field is held to the same deck as the picker: a card already out, the same card twice
+       or something that is not a card is named and stops Continue. They went straight onto the board
+       (entry audit 5). */
+    const boardTyped = readTypedCards(boardVal, { max: maxCards, used: usedCards, ranks: allRanks.join('') });
+    const boardProblem = boardTyped.error || (boardTyped.pending ? 'Finish the last card' : null);
+    const allDealt = !boardProblem && Array.from({ length: slots }, (_, k) => slotFull(k)).every(Boolean);
 
     return (
       <div className="gto-entry">
@@ -3694,8 +4069,13 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
               {boardVal && <CardRow text={boardVal} max={maxCards} />}
             </div>
             <div className="replayer-field">
-              <label>{streetName} Cards{slots > 1 ? ' · ' + slotLabel(slot) : ''}</label>
-              <input type="text" placeholder={nextStreet === 1 ? 'Qh7d2c' : 'Ts'} value={boardVal} onChange={e => setBoard(e.target.value)} />
+              <label htmlFor="gto-board-typed">{streetName} Cards{slots > 1 ? ' · ' + slotLabel(slot) : ''}</label>
+              <input id="gto-board-typed" type="text" placeholder={nextStreet === 1 ? 'Qh7d2c' : 'Ts'} value={boardVal}
+                autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                className={boardTyped.error ? 'is-invalid' : undefined} aria-invalid={boardTyped.error ? true : undefined}
+                aria-describedby={boardProblem ? 'gto-board-typed-why' : undefined}
+                onChange={e => setBoard(e.target.value.replace(/10/g, 'T'))} />
+              {boardProblem && <div className="replayer-field-error" id="gto-board-typed-why">{boardProblem}</div>}
             </div>
             <div className={pickerGridClass(allRanks)}>
               {allSuits.map(suit => (
@@ -3704,7 +4084,8 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                     const card = rank + suit.key;
                     const isUsed = usedCards.has(card);
                     const isSelected = currentBoardSet.has(card);
-                    return <button key={card} className={'card-picker-btn' + (isSelected ? ' selected' : '') + (isUsed ? ' used' : '')} onClick={() => toggleCard(card)}>
+                    // Disabled, not only greyed: a keyboard or an assistive tap reached a used card (entry audit 6).
+                    return <button key={card} className={'card-picker-btn' + (isSelected ? ' selected' : '') + (isUsed ? ' used' : '')} disabled={isUsed && !isSelected} onClick={() => toggleCard(card)}>
                       <img src={'/cards/cards_gui_' + rank + suit.key + '.svg'} alt={card} loading="eager" />
                     </button>;
                   })}
@@ -3714,7 +4095,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
           </div>
         </div>
         <div className="gto-btn-row">
-          {isDoor ? <button className="btn btn-ghost btn-sm" onClick={() => setPhase('setup')}>Back</button> : <button className="gto-undo-btn" onClick={undoLastAction}>Undo</button>}
+          {isDoor ? <button className="btn btn-ghost btn-sm" onClick={() => setPhase('setup')}>Back</button> : <button className="gto-undo-btn" disabled={!canUndo} onClick={undoLastAction}>Undo</button>}
           {slots > 1 && slot < slots - 1 && slotFull(slot) ? (
             <button className="btn btn-primary btn-sm" onClick={() => setBoardSlot(slot + 1)}>Next: {slotLabel(slot + 1)}</button>
           ) : (
@@ -3733,7 +4114,8 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     const sdUsedCards = new Set();
     hand.streets.forEach(s => {
       parseCardNotation(s.cards.hero || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); });
-      parseCardNotation(s.cards.board || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); });
+      // Every board: a double board's second and a run's were left out, so their cards could be shown in a hand.
+      ['board', 'board2', 'board3'].forEach(k => parseCardNotation(s.cards[k] || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); }));
       (s.cards.opponents || []).forEach(opp => { parseCardNotation(opp || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); }); });
       (s.draws || []).forEach(d => { parseCardNotation((d.discardedCards || '') + (d.newCards || '')).forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); }); });
     });
@@ -3829,7 +4211,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                 });
               }
             } else {
-              if (oppParsed.length >= sdMaxCards) return;
+              if (oppParsed.length >= sdMaxCards || thisUsed.has(card)) return;
               if (isStudShowdown) {
                 // Prepend hidden cards to street 0
                 setHand(prev => {
@@ -3868,7 +4250,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                               const card = rank + suit.key;
                               const isUsedByOther = thisUsed.has(card);
                               const isSelected = oppCardSet.has(card);
-                              return <button key={card} className={'card-picker-btn' + (isSelected ? ' selected' : '') + (isUsedByOther ? ' used' : '')} onClick={() => toggleSdCard(card)}>
+                              return <button key={card} className={'card-picker-btn' + (isSelected ? ' selected' : '') + (isUsedByOther ? ' used' : '')} disabled={isUsedByOther && !isSelected} onClick={() => toggleSdCard(card)}>
                                 <img src={'/cards/cards_gui_' + rank + suit.key + '.svg'} alt={card} loading="eager" />
                               </button>;
                             })}
@@ -3883,7 +4265,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
           );
         })}
         <div className="gto-btn-row">
-          <button className="gto-undo-btn" onClick={undoLastAction}>Undo</button>
+          <button className="gto-undo-btn" disabled={!canUndo} onClick={undoLastAction}>Undo</button>
           <button className="btn btn-primary btn-sm" onClick={() => {
             // Auto-evaluate showdown winners
             const playerHands = [];
@@ -3892,14 +4274,25 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             else if (isDrawShowdown) { const heroBase = hand.streets[0].cards.hero || ''; heroCardStr = computeDrawHand(heroBase, getPlayerDrawsByStreet(hand, heroIdx), hand.streets.length - 1, hand.gameType); }
             else heroCardStr = hand.streets[0].cards.hero || '';
             const heroParsed = parseCardNotation(heroCardStr).filter(c => c.suit !== 'x');
-            if (heroParsed.length > 0) playerHands.push({ idx: heroIdx, cards: heroParsed });
+            /* A folded hero is not in the showdown: their cards were scored, and the hero saved as a
+               winner, or a sole winner shown as a split (entry vs oracle, 2). */
+            const heroLive = !foldedSet.has(heroIdx);
+            if (heroLive && heroParsed.length > 0) playerHands.push({ idx: heroIdx, cards: heroParsed });
+            // A live hand nobody entered: the winner cannot be worked out, so it is asked for (entry audit 11).
+            let unknownHands = heroLive && heroParsed.length === 0 ? 1 : 0;
             showdownPlayers.forEach(o => {
               const oppSlot = o.idx > heroIdx ? o.idx - 1 : o.idx;
               const oppStr = getOppCardStr(oppSlot);
-              if (oppStr === 'MUCK' || !oppStr) return;
-              const oppParsed = parseCardNotation(oppStr).filter(c => c.suit !== 'x');
+              if (oppStr === 'MUCK') return;
+              const oppParsed = parseCardNotation(oppStr || '').filter(c => c.suit !== 'x');
               if (oppParsed.length > 0) playerHands.push({ idx: o.idx, cards: oppParsed });
+              else unknownHands++;
             });
+            if (unknownHands > 0) {
+              setHand(prev => ({ ...prev, result: { ...prev.result, winners: ((prev.result || {}).winners || []).filter(w => !foldedSet.has(w.playerIdx)) } }));
+              setPhase('result');
+              return;
+            }
             let fullBoardStr = '';
             hand.streets.forEach(s => { if (s.cards.board) fullBoardStr += s.cards.board; });
             const boardParsed = parseCardNotation(fullBoardStr).filter(c => c.suit !== 'x');
@@ -3947,7 +4340,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
               if (winners.length > 0) setHand(prev => ({ ...prev, result: { ...prev.result, winners } }));
             }
             setPhase('result');
-          }}>Continue to Result</button>
+          }}>Continue</button>
         </div>
       </div>
     );
@@ -3956,11 +4349,44 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   // ── RESULT PHASE ──
   if (phase === 'result') {
     const autoWinner = handOver && activePlayers.length === 1 ? hand.players.indexOf(activePlayers[0]) : -1;
+    /* What the result is confirmed from (entry audit 36): the pot, each live player's cards and made
+       hand, and in a split game which half each takes. It read "Hero (Split) / Opp 1 (Split)" alone. */
+    const rhi = heroIdx;
+    const rCfg = gameEvalFor(hand.gameType, hand);
+    let rBoard = '';
+    hand.streets.forEach(s => { if (s.cards && s.cards.board) rBoard += s.cards.board; });
+    const rBoardCards = parseCardNotation(rBoard).filter(c => c.suit !== 'x');
+    const rCardsOf = (pi) => {
+      const slot = pi < rhi ? pi : pi - 1;
+      if (category === 'stud') {
+        let acc = '';
+        hand.streets.forEach(s => { const c = pi === rhi ? s.cards.hero : (s.cards.opponents || [])[slot]; if (c && c !== 'MUCK') acc += c; });
+        return acc;
+      }
+      const base = pi === rhi ? (hand.streets[0].cards.hero || '') : ((hand.streets[0].cards.opponents || [])[slot] || '');
+      if (base === 'MUCK') return '';
+      return (pi === rhi && hasDraws(category, gameCfg))
+        ? computeDrawHand(base, getPlayerDrawsByStreet(hand, pi), hand.streets.length - 1, hand.gameType) : base;
+    };
+    const rDescribe = (cardsStr) => {
+      const cs = parseCardNotation(cardsStr).filter(c => c.suit !== 'x');
+      if (!rCfg || !cs.length || (rCfg.type !== 'high' && rCfg.type !== 'hilo')) return '';
+      try {
+        const hi = bestHighFor(rCfg, cs, rBoardCards);
+        const hiName = hi ? (hi.shortName || hi.name || '') : '';
+        if (rCfg.type !== 'hilo') return hiName;
+        const lo = bestLow8For(rCfg, cs, rBoardCards);
+        return hiName + (lo && lo.qualified ? ' · low ' + lo.name : ' · no low');
+      } catch { return ''; }
+    };
+    const rLive = hand.players.map((_, i) => i).filter(i => !foldedSet.has(i));
+    const rLabels = ((hand.result || {}).winners || []).map(w => w.label).filter(Boolean);
     return (
       <div className="gto-entry">
         <div className="gto-phase-card">
           <div className="replayer-section">
             <div className="replayer-section-title">Result</div>
+            <div className="gto-entry-note">Pot {amt$(currentPot)}</div>
             {autoWinner >= 0 ? (
               <div className="gto-result-auto">
                 <div className="gto-result-win">{hand.players[autoWinner].name} wins</div>
@@ -3974,20 +4400,22 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                     const winners = (hand.result && hand.result.winners) || [];
                     const isWinner = winners.some(w => w.playerIdx === pi && !w.split);
                     const isSplit = winners.some(w => w.playerIdx === pi && w.split);
+                    /* A tap marks this player the winner; a second player marked makes it a split; a tap on
+                       a marked player takes them off. Cycling none, win, split let two "Win"s or one lone
+                       "Split" be saved (entry audit 12). */
                     return (
-                      <button key={pi} className="gto-winner-btn" style={{
+                      <button key={pi} type="button" className="gto-winner-btn" aria-pressed={isWinner || isSplit} style={{
                         background: isWinner ? 'rgba(74,222,128,0.15)' : isSplit ? 'rgba(250,204,21,0.15)' : 'transparent',
                         borderColor: isWinner ? '#4ade80' : isSplit ? '#facc15' : 'var(--border)',
                         color: isWinner ? '#4ade80' : isSplit ? '#facc15' : 'var(--text-muted)',
                       }} onClick={() => {
                         setHand(prev => {
-                          const prevWinners = (prev.result && prev.result.winners) || [];
-                          const existing = prevWinners.find(w => w.playerIdx === pi);
-                          let newWinners;
-                          if (!existing) newWinners = [...prevWinners, { playerIdx: pi, split: false, label: '' }];
-                          else if (!existing.split) newWinners = prevWinners.map(w => w.playerIdx === pi ? { ...w, split: true } : w);
-                          else newWinners = prevWinners.filter(w => w.playerIdx !== pi);
-                          return { ...prev, result: { ...prev.result, winners: newWinners } };
+                          const prevWinners = ((prev.result && prev.result.winners) || []).filter(w => !foldedSet.has(w.playerIdx));
+                          const marked = prevWinners.some(w => w.playerIdx === pi);
+                          let next = marked ? prevWinners.filter(w => w.playerIdx !== pi) : [...prevWinners, { playerIdx: pi, split: false, label: '' }];
+                          const split = next.length > 1;
+                          next = next.map(w => ({ ...w, split }));
+                          return { ...prev, result: { ...prev.result, winners: next } };
                         });
                       }}>
                         {p.name} {isWinner ? '(Win)' : isSplit ? '(Split)' : ''}
@@ -3996,19 +4424,46 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                   })}
                 </div>
                 <div className="gto-entry-note">
-                  {(hand.result?.winners?.length) ? 'Auto-evaluated. ' : ''}{'Tap to cycle: none \u2192 win \u2192 split \u2192 none'}
+                  {(hand.result?.winners?.length) ? 'Worked out from the cards; change it if it is wrong. '
+                    : rLive.some(pi => !rCardsOf(pi)) ? 'Not every hand still in was entered, so the winner is yours to mark (or go Back and mark a hand mucked). ' : ''}
+                  Tap the winner. Tap a second player if they split the pot.
                 </div>
+                {rLabels.map((l, k) => <div key={k} className="gto-entry-note">{l}</div>)}
+                {autoWinner < 0 && rLive.map(pi => {
+                  const cs = rCardsOf(pi);
+                  const desc = cs ? rDescribe(cs) : '';
+                  return (
+                    <div key={pi} className="gto-result-hand">
+                      <div className="gto-deal-row">
+                        <span className="gto-deal-name">{hand.players[pi].name}</span>
+                        <span className={'gto-deal-meta' + (cs ? '' : ' is-unknown')}>{cs ? desc : 'not shown'}</span>
+                      </div>
+                      {cs && <CardRow text={cs} stud={category === 'stud'} max={parseCardNotation(cs).length} />}
+                    </div>
+                  );
+                })}
               </>
             )}
           </div>
         </div>
+        {phaseError && <div className="replayer-field-error gto-setup-error" role="alert">{phaseError}</div>}
         <div className="gto-street-card">
           <div className="gto-btn-row">
-            <button className="gto-undo-btn" onClick={undoLastAction}>Undo</button>
+            {/* After a showdown, Back returns to it; Undo took off the river's last bet and skipped the
+                showdown (entry audit 12). A hand won by folds has no showdown: Undo takes the last fold back. */}
+            {autoWinner >= 0
+              ? <button className="gto-undo-btn" disabled={!canUndo} onClick={undoLastAction}>Undo</button>
+              : <button className="btn btn-ghost btn-sm" onClick={() => setPhase('showdown')}>Back</button>}
+            <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
             <button className="btn btn-primary btn-sm" onClick={() => {
-              const savedHand = { ...hand, heroIdx };
-              if (autoWinner >= 0 && !(hand.result?.winners?.length)) {
+              // A winner who has since folded (the action was changed after the result) is dropped.
+              const kept = ((hand.result || {}).winners || []).filter(w => !foldedSet.has(w.playerIdx));
+              const savedHand = { ...hand, heroIdx, result: { ...(hand.result || {}), winners: kept } };
+              if (autoWinner >= 0 && !kept.length) {
                 onDone({ ...savedHand, result: { winners: [{ playerIdx: autoWinner, split: false, label: '' }] } });
+              } else if (!kept.length) {
+                // A hand saved with no winner replayed with the pot going nowhere (entry audit 7).
+                setPhaseError('Tap the player who won, then save.');
               } else onDone(savedHand);
             }}>Save & Replay</button>
           </div>
@@ -4040,23 +4495,31 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       });
     };
 
+    /* The door cards decide who brings it in, so every one is needed before the action; and a card
+       goes to the row tapped, as on the later streets. It went to the first empty row only, and Start
+       Action went ahead with none (entry audit 16). */
+    const dcSlotOf = (pi) => (pi < heroIdxDC ? pi : pi - 1);
+    const dcTargetSlot = studDealTarget !== heroIdxDC && studDealTarget >= 0 && studDealTarget < hand.players.length ? dcSlotOf(studDealTarget) : -1;
+    const dcMissing = hand.players.map((_, pi) => pi).filter(pi => pi !== heroIdxDC && !oppCards0[dcSlotOf(pi)]);
     return (
       <div className="gto-entry">
         <div className="gto-phase-card"><div className="replayer-section">
           <div className="replayer-section-title">Opponent Door Cards</div>
-          <p className="gto-entry-note">Enter each opponent's face-up 3rd street card.</p>
+          <p className="gto-entry-note">Tap an opponent, then their face-up 3rd street card.{dcMissing.length ? ' Every one is needed: the door cards decide who brings it in.' : ''}</p>
           {hand.players.map((p, pi) => {
             if (pi === heroIdxDC) return null;
-            const oppSlot = pi < heroIdxDC ? pi : pi - 1;
+            const oppSlot = dcSlotOf(pi);
             const currentCard = oppCards0[oppSlot] || '';
             const parsedCurrent = parseCardNotation(currentCard).filter(c => c.suit !== 'x');
             const selectedCard = parsedCurrent.length ? parsedCurrent[0].rank + parsedCurrent[0].suit : '';
+            const isTarget = studDealTarget === pi;
             return (
-              <div key={pi} className="gto-deal-row">
+              <button type="button" key={pi} className={'gto-deal-row is-pickable' + (isTarget ? ' is-target' : '')}
+                aria-pressed={isTarget} onClick={() => setStudDealTarget(pi)}>
                 <span className="gto-deal-name">{p.name}</span>
                 <span className="gto-deal-meta">{p.position}</span>
                 {selectedCard ? <CardRow text={selectedCard} max={1} /> : <span className="gto-deal-meta is-unknown">? unknown</span>}
-              </div>
+              </button>
             );
           })}
           <div className="card-picker-grid">
@@ -4068,8 +4531,14 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                   let selectedForOpp = -1;
                   oppCards0.forEach((opp, oi) => { if (opp === card) selectedForOpp = oi; });
                   return <button key={card} className={'card-picker-btn' + (selectedForOpp >= 0 ? ' selected' : '') + (isUsed && selectedForOpp < 0 ? ' used' : '')} disabled={isUsed && selectedForOpp < 0} onClick={() => {
-                    if (selectedForOpp >= 0) setOppDoorCard(selectedForOpp, '');
-                    else { for (let oi = 0; oi < numOpps; oi++) { if (!oppCards0[oi]) { setOppDoorCard(oi, card); return; } } }
+                    if (selectedForOpp >= 0) { setOppDoorCard(selectedForOpp, ''); return; }
+                    const slot = dcTargetSlot >= 0 ? dcTargetSlot : (dcMissing.length ? dcSlotOf(dcMissing[0]) : -1);
+                    if (slot < 0 || slot >= numOpps) return;
+                    setOppDoorCard(slot, card);
+                    // On to the next opponent still without a card, after this one.
+                    const at = slot >= heroIdxDC ? slot + 1 : slot;
+                    const next = dcMissing.find(pi => pi !== at && pi > at) ?? dcMissing.find(pi => pi !== at);
+                    if (next !== undefined) setStudDealTarget(next);
                   }}>
                     <img src={'/cards/cards_gui_' + rank + suit.key + '.svg'} alt={card} loading="eager" />
                   </button>;
@@ -4083,7 +4552,9 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             {/* Back goes to the step before this one, which is now hero's own
                 3rd street. Only stud reaches the door cards at all. */}
             <button className="btn btn-ghost btn-sm" onClick={() => setPhase('hero_cards')}>Back</button>
-            <button className="btn btn-primary btn-sm" onClick={() => setPhase('action')}>Start Action</button>
+            <button className="btn btn-primary btn-sm" disabled={dcMissing.length > 0}
+              title={dcMissing.length ? 'Every door card decides who brings it in' : undefined}
+              onClick={() => setPhase('action')}>Start Action</button>
           </div>
         </div>
       </div>
@@ -4126,11 +4597,34 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     const maxDiscard = isBadugi ? 4 : 5;
 
     if (phase === 'draw_cards_entry') {
+      /* The title names the draw, not the betting round before it ("Pre-Draw" for the first draw), and
+         the hero's cards are held to the hand: the discards must be cards held, the new ones cards not
+         yet seen, each as many as the draw, and new cards need their discards named, or they replaced
+         the first cards of the hand (entry audit 26). */
+      const drawTitle = gameCfg.discardOnly ? 'the throw'
+        : (category === 'draw_triple' || category === 'draw_single') ? ((hand.streets[nextDrawStreet] || {}).name || 'the draw') : 'the draw';
+      const hiDC = hand.heroIdx != null ? hand.heroIdx : 0;
+      const heroDE = (currentStreet.draws || []).find(d => d.player === hiDC);
+      let drawProblem = null;
+      if (heroDE && heroDE.discarded > 0 && !gameCfg.discardOnly) {
+        const held = new Set(parseCardNotation(getDrawPlayerHand(hiDC) || '').filter(c => c.suit !== 'x').map(c => c.rank + c.suit));
+        const out = readTypedCards(heroDE.discardedCards || '', { max: heroDE.discarded, ranks: ranksFor(hand.gameType).join('') });
+        const inn = readTypedCards(heroDE.newCards || '', { max: heroDE.discarded, ranks: ranksFor(hand.gameType).join('') });
+        const notHeld = out.cards.find(c => held.size && !held.has(c));
+        drawProblem = out.error ? 'Discarded: ' + out.error
+          : notHeld ? 'Discarded: ' + notHeld + ' is not in your hand'
+          : inn.error ? 'New cards: ' + inn.error
+          : (out.pending || inn.pending) ? 'Finish the last card'
+          : (out.cards.length && out.cards.length !== heroDE.discarded) ? 'Name all ' + heroDE.discarded + ' discarded, or none'
+          : (inn.cards.length && inn.cards.length !== heroDE.discarded) ? 'Name all ' + heroDE.discarded + ' new cards, or none'
+          : (inn.cards.length && !out.cards.length) ? 'Name the discards first: the new cards take their places'
+          : null;
+      }
       return (
         <div className="gto-entry">
           <div className="gto-phase-card"><div className="replayer-section">
-            <div className="replayer-section-title">{'Card Details \u2014 ' + (currentStreet.name || 'Draw')}</div>
-            <p className="gto-entry-note">{gameCfg.discardOnly ? 'Everyone throws one card before the flop. Tap the one you threw.' : 'Optionally specify which cards were discarded and drawn. Skip to continue.'}</p>
+            <div className="replayer-section-title">{'Card details: ' + drawTitle}</div>
+            <p className="gto-entry-note">{gameCfg.discardOnly ? 'Everyone throws one card before the flop. Tap the one you threw.' : 'Name the cards thrown and drawn if you know them, or press Continue.'}</p>
             {drawActivePlayers.map(pi => {
               const p = hand.players[pi];
               const de = (currentStreet.draws || []).find(d => d.player === pi);
@@ -4144,7 +4638,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                     <span className="gto-deal-name">{p.name}</span>
                     <span className="gto-deal-meta">{p.position}</span>
                     {isPat && <span className="replayer-draw-pat-badge">Stand Pat</span>}
-                    {!isPat && <span className="replayer-draw-count-badge">Discards {de.discarded}</span>}
+                    {!isPat && <span className="replayer-draw-count-badge">Draws {de.discarded}</span>}
                   </div>
                   {isHeroDraw && curHand && (() => {
                     const handCards = parseCardNotation(curHand);
@@ -4171,9 +4665,13 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                         <div className="card-row gto-card-run">
                           {handCards.map((c, ci) => {
                             const isDiscarded = discardedSet.has(c.rank + c.suit);
-                            return <img key={ci} className={'card-img draw-selectable' + (isDiscarded ? ' draw-discarded' : '')}
-                              src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank + c.suit} loading="eager"
-                              onClick={() => toggleDiscard(c)} style={{ cursor: isPat ? 'default' : 'pointer' }} />;
+                            const img = <img className={'card-img draw-selectable' + (isDiscarded ? ' draw-discarded' : '')}
+                              src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank + c.suit} loading="eager" />;
+                            // A button, so a keyboard and a screen reader reach it; a pat hand is only shown.
+                            return isPat ? <React.Fragment key={ci}>{img}</React.Fragment> : (
+                              <button key={ci} type="button" className="gto-discard-card" aria-pressed={isDiscarded}
+                                aria-label={(isDiscarded ? 'Keep ' : 'Throw ') + c.rank + c.suit} onClick={() => toggleDiscard(c)}>{img}</button>
+                            );
                           })}
                         </div>
                       </div>
@@ -4182,8 +4680,10 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                   {isHeroDraw && !isPat && !gameCfg.discardOnly && (
                     <div className="gto-dce-fields">
                       <div className="replayer-field">
-                        <label>Discarded</label>
-                        <input type="text" placeholder="e.g. 7h3c" value={de.discardedCards || ''} onChange={e => updateDrawCardsFn(pi, 'discardedCards', e.target.value)} />
+                        <label htmlFor={'gto-thrown-' + pi}>Discarded</label>
+                        <input id={'gto-thrown-' + pi} type="text" placeholder="e.g. 7h3c" value={de.discardedCards || ''}
+                          autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                          onChange={e => updateDrawCardsFn(pi, 'discardedCards', e.target.value.replace(/10/g, 'T'))} />
                       </div>
                       <div className="replayer-field">
                         <label>New Cards</label>
@@ -4198,10 +4698,11 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
               );
             })}
           </div></div>
+          {drawProblem && <div className="replayer-field-error gto-setup-error" role="alert">{drawProblem}</div>}
           <div className="gto-street-card">
             <div className="gto-btn-row">
               <button className="btn btn-ghost btn-sm" onClick={() => (gameCfg.discardOnly ? undoLastAction() : setPhase('draw_discard'))}>Back</button>
-              <button className="btn btn-primary btn-sm" disabled={throwMissing} onClick={afterDraw}>Continue</button>
+              <button className="btn btn-primary btn-sm" disabled={throwMissing || !!drawProblem} onClick={afterDraw}>Continue</button>
             </div>
           </div>
         </div>
@@ -4235,7 +4736,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                     <div className="gto-seat-row1"><span className="gto-seat-pos">{p.position}</span><span className="gto-seat-stack">{formatChipAmount(currentStacks[pi])}</span></div>
                     <div className="gto-seat-row2">
                       <span className="gto-seat-name">{p.name}</span>
-                      {isDeclared && <span className="gto-seat-result-badge check" style={{marginLeft:'auto'}}>{existingDraw.discarded === 0 ? 'Stand Pat' : 'Drew ' + existingDraw.discarded}</span>}
+                      {isDeclared && <span className="gto-seat-result-badge check" style={{marginLeft:'auto'}}>{existingDraw.discarded === 0 ? 'Stand Pat' : 'Draws ' + existingDraw.discarded}</span>}
                     </div>
                     {drawHistory.length > 0 && <div className="gto-seat-draw-history">{drawHistory.join(' / ')}</div>}
                   </div>
@@ -4255,8 +4756,10 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
         </div></div>
         <div className="gto-street-card">
           <div className="gto-btn-row">
-            {(currentStreet.draws || []).length > 0 && <button className="gto-undo-btn" onClick={undoLastDraw}>Undo</button>}
-            <button className="btn btn-ghost btn-sm" onClick={() => {
+            {/* One Undo: it takes back the last declaration, and with none, the bet that closed the
+                round. "Back" did the second while looking like the first (entry audit 27). */}
+            <button className="gto-undo-btn" onClick={() => {
+              if ((currentStreet.draws || []).length > 0) { undoLastDraw(); return; }
               // Clear draws on this street and undo the last betting action to return to action phase
               setHand(prev => {
                 for (let si = currentStreetIdx; si >= 0; si--) {
@@ -4274,7 +4777,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                 return prev;
               });
               setPhase('action');
-            }}>Back</button>
+            }}>Undo</button>
             <button className="btn btn-primary btn-sm" disabled={!allDrawsDeclared} onClick={() => {
               const hi = hand.heroIdx != null ? hand.heroIdx : 0;
               const heroDraw = (currentStreet.draws || []).find(d => d.player === hi);
@@ -4334,7 +4837,12 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       (cs.opponents || []).forEach(eat);
     });
 
-    const enteredCount = sdActivePlayers.filter(pi => getStudCardForPlayer(pi)).length;
+    /* 7th street is dealt face down: an opponent's card is entered only if it was shown, so only the
+       hero's is needed. Continue stayed off until every live seat had one, and a card nobody saw had
+       to be made up (entry audit 8; entry vs oracle, cannot enter 2). */
+    const sdFaceDown = nextStudStreet === hand.streets.length - 1;
+    const sdNeeded = sdFaceDown ? sdActivePlayers.filter(pi => pi === heroIdxSD) : sdActivePlayers;
+    const sdReady = sdNeeded.every(pi => getStudCardForPlayer(pi));
     const sdRanks = 'AKQJT98765432'.split('');
     const sdSuits = [{key:'h'},{key:'d'},{key:'c'},{key:'s'}];
 
@@ -4342,16 +4850,18 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       <div className="gto-entry">
         <div className="gto-phase-card"><div className="replayer-section">
           <div className="replayer-section-title">Deal {studStreetName}</div>
-          <p className="gto-entry-note">Tap a player, then tap a card.</p>
+          <p className="gto-entry-note">Tap a player, then tap a card.{sdFaceDown ? ' This card is dealt face down: give an opponent one only if it was shown.' : ''}</p>
           {sdActivePlayers.map(pi => {
             const p = hand.players[pi];
             const cardStr = getStudCardForPlayer(pi);
             const isTarget = studDealTarget === pi;
             return (
-              <div key={pi} className={'gto-deal-row is-pickable' + (isTarget ? ' is-target' : '')} onClick={() => setStudDealTarget(pi)}>
+              <button type="button" key={pi} className={'gto-deal-row is-pickable' + (isTarget ? ' is-target' : '')}
+                aria-pressed={isTarget} onClick={() => setStudDealTarget(pi)}>
                 <span className="gto-deal-name">{p.name}</span>
-                {cardStr ? <CardRow text={cardStr} max={1} /> : <span className="gto-deal-meta is-unknown">--</span>}
-              </div>
+                {cardStr ? <CardRow text={cardStr} max={1} />
+                  : <span className="gto-deal-meta is-unknown">{sdFaceDown && pi !== heroIdxSD ? 'face down' : '--'}</span>}
+              </button>
             );
           })}
           <div className="card-picker-grid">
@@ -4382,7 +4892,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
         <div className="gto-street-card">
           <div className="gto-btn-row">
             <button className="btn btn-ghost btn-sm" onClick={() => setPhase('action')}>Back</button>
-            <button className="btn btn-primary btn-sm" disabled={enteredCount < sdActivePlayers.length} onClick={() => { setCurrentStreetIdx(nextStudStreet); setPhase('action'); }}>Continue</button>
+            <button className="btn btn-primary btn-sm" disabled={!sdReady} onClick={() => { setCurrentStreetIdx(nextStudStreet); setPhase('action'); }}>Continue</button>
           </div>
         </div>
       </div>
@@ -4413,9 +4923,70 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
         if (foldedOnPriorStreet && !isPreflop && category !== 'stud') return null;
         const seatClass = 'gto-seat' + (isActive ? ' active' : '') + (isFolded ? ' folded' : (act && !isActive) ? ' acted-' + act.action : '');
         const actionLabel = act ? (act.action.charAt(0).toUpperCase() + act.action.slice(1) + (act.amount > 0 ? ' ' + formatChipAmount(act.amount) : '')) : '';
+        /* The hero's cards. A mis-tapped card could not be put right: the picker closed on the last
+           card and its "Edit Cards" branch was never reached (entry audit 4). Tapping the cards on the
+           seat reopens it, at any point in the hand, and Done closes it. Every card already out is off
+           the picker: the board so far and the opponents' shown cards. */
+        const heroPicker = () => {
+          const hcBase = (hand.streets[0] && hand.streets[0].cards.hero) || '';
+          const isDrawGameLocal = hasDraws(category, gameCfg);
+          const hcDisplay = isDrawGameLocal ? computeDrawHand(hcBase, getPlayerDrawsByStreet(hand, i), currentStreetIdx - 1, hand.gameType) : hcBase;
+          const hcParsed = parseCardNotation(hcDisplay);
+          const hcSet = new Set(hcParsed.map(c => c.rank + c.suit));
+          const hcDoor = new Set();
+          hand.streets.forEach((s, si) => {
+            if (si > currentStreetIdx && !s.cards?.board) return;
+            parseCardNotation(s.cards?.board || '').forEach(c => { if (c.suit !== 'x') hcDoor.add(c.rank + c.suit); });
+            (s.cards?.opponents || []).forEach(o => { if (o && o !== 'MUCK') parseCardNotation(o).forEach(c => { if (c.suit !== 'x') hcDoor.add(c.rank + c.suit); }); });
+          });
+          const hcMaxCards = gameCfg.heroCards || 2;
+          // The cards dealt, not those held: Pineapple's hero holds one fewer after the flop's throw.
+          const heroHasCards = parseCardNotation(hcBase).length >= hcMaxCards;
+          const pickerOpen = showHeroCardPicker || !heroHasCards;
+          if (!pickerOpen) return null;
+          const hcRanks = ranksFor(hand.gameType);
+          const hcSuits = [{key:'h',color:'#ef4444'},{key:'d',color:'#3b82f6'},{key:'c',color:'#22c55e'},{key:'s',color:'var(--text)'}];
+          const toggleHCard = (card) => {
+            setHand(prev => {
+              const base = (prev.streets[0] && prev.streets[0].cards.hero) || '';
+              const curParsed = parseCardNotation(base);
+              const curSet = new Set(curParsed.map(c => c.rank + c.suit));
+              let newCards;
+              if (curSet.has(card)) newCards = curParsed.filter(c => (c.rank + c.suit) !== card).map(c => c.rank + c.suit).join('');
+              else { if (curParsed.length >= hcMaxCards) return prev; newCards = base + card; }
+              return { ...prev, streets: prev.streets.map((s, si) => si === 0 ? { ...s, cards: { ...s.cards, hero: newCards } } : s) };
+            });
+          };
+          return (
+            <div className={'gto-hero-picker' + (heroHasCards ? ' has-cards' : '')}>
+              <div className="gto-picker-label">
+                {heroHasCards ? 'Change your cards: tap one to take it back' : 'Select Your Cards'}
+              </div>
+              <div className={pickerGridClass(hcRanks)}>
+                {hcSuits.map(suit => (
+                  <React.Fragment key={suit.key}>
+                    {hcRanks.map(rank => {
+                      const card = rank + suit.key;
+                      const isSelected = hcSet.has(card);
+                      const out = !isSelected && hcDoor.has(card);
+                      return <button key={card} className={'card-picker-btn' + (isSelected ? ' selected' : '') + (out ? ' used' : '')} disabled={out} onClick={() => toggleHCard(card)}>
+                        <img src={'/cards/cards_gui_' + rank + suit.key + '.svg'} alt={card} loading="eager" />
+                      </button>;
+                    })}
+                  </React.Fragment>
+                ))}
+              </div>
+              {showHeroCardPicker && (
+                <div className="gto-btn-row">
+                  <button type="button" className="btn btn-primary btn-sm" disabled={!heroHasCards} onClick={() => setShowHeroCardPicker(false)}>Done</button>
+                </div>
+              )}
+            </div>
+          );
+        };
         return (
           <div key={i} ref={isActive ? activeSeatRef : null} className={seatClass}
-            onClick={act && !isActive ? () => undoToPlayer(i) : undefined}
+            onClick={act && !isActive ? () => rewindToPlayer(i) : undefined}
             style={act && !isActive ? {cursor:'pointer'} : undefined}>
             <div className="gto-seat-strip">{p.position}</div>
             <div className="gto-seat-content">
@@ -4428,7 +4999,13 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                     if (!baseCards) return null;
                     const isDrawGameLocal = hasDraws(category, gameCfg);
                     const displayCards = isDrawGameLocal ? computeDrawHand(baseCards, getPlayerDrawsByStreet(hand, i), currentStreetIdx - 1, hand.gameType) : baseCards;
-                    return <span className="gto-seat-hero-cards"><CardRow text={displayCards} max={gameCfg.heroCards || 2} /></span>;
+                    return (
+                      <button type="button" className="gto-seat-hero-cards gto-hero-cards-btn" aria-label="Change your cards"
+                        aria-expanded={showHeroCardPicker}
+                        onClick={e => { e.stopPropagation(); setShowHeroCardPicker(v => !v); }}>
+                        <CardRow text={displayCards} max={gameCfg.heroCards || 2} />
+                      </button>
+                    );
                   })()}
                   {gameCfg.isStud && (() => {
                     // Show accumulated board cards for stud players
@@ -4485,55 +5062,15 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                   {act && !isActive && <span className={'gto-seat-result-badge ' + act.action}>{actionLabel}</span>}
                 </div>
               </div>
+              {!isActive && i === heroIdx && !gameCfg.isStud && showHeroCardPicker && (
+                <div className="gto-seat-detail-wrap" onClick={e => e.stopPropagation()}><div className="gto-seat-detail-inner"><div className="gto-seat-detail">
+                  {heroPicker()}
+                </div></div></div>
+              )}
               {isActive && (
                 <div className="gto-seat-detail-wrap"><div className="gto-seat-detail-inner"><div className="gto-seat-detail">
-                  {/* Hero card picker — shows when hero is active */}
-                  {i === heroIdx && isActive && !gameCfg.isStud && (() => {
-                    const hcBase = (hand.streets[0] && hand.streets[0].cards.hero) || '';
-                    const isDrawGameLocal = hasDraws(category, gameCfg);
-                    const hcDisplay = isDrawGameLocal ? computeDrawHand(hcBase, getPlayerDrawsByStreet(hand, i), currentStreetIdx - 1, hand.gameType) : hcBase;
-                    const hcParsed = parseCardNotation(hcDisplay);
-                    const hcSet = new Set(hcParsed.map(c => c.rank + c.suit));
-                    const hcDoor = new Set(parseCardNotation(hand.streets[0]?.cards.board || '').map(c => c.rank + c.suit));
-                    const hcMaxCards = gameCfg.heroCards || 2;
-                    // The cards dealt, not those held: Pineapple's hero holds one fewer after the flop's throw.
-                    const heroHasCards = parseCardNotation(hcBase).length >= hcMaxCards;
-                    const pickerOpen = showHeroCardPicker || !heroHasCards;
-                    if (!pickerOpen) return null;
-                    const hcRanks = ranksFor(hand.gameType);
-                    const hcSuits = [{key:'h',color:'#ef4444'},{key:'d',color:'#3b82f6'},{key:'c',color:'#22c55e'},{key:'s',color:'var(--text)'}];
-                    const toggleHCard = (card) => {
-                      setHand(prev => {
-                        const base = (prev.streets[0] && prev.streets[0].cards.hero) || '';
-                        const curParsed = parseCardNotation(base);
-                        const curSet = new Set(curParsed.map(c => c.rank + c.suit));
-                        let newCards;
-                        if (curSet.has(card)) newCards = curParsed.filter(c => (c.rank + c.suit) !== card).map(c => c.rank + c.suit).join('');
-                        else { if (curParsed.length >= hcMaxCards) return prev; newCards = base + card; }
-                        return { ...prev, streets: prev.streets.map((s, si) => si === 0 ? { ...s, cards: { ...s.cards, hero: newCards } } : s) };
-                      });
-                    };
-                    return (
-                      <div className={'gto-hero-picker' + (heroHasCards ? ' has-cards' : '')}>
-                        <div className="gto-picker-label">
-                          {heroHasCards ? 'Edit Cards' : 'Select Your Cards'}
-                        </div>
-                        <div className={pickerGridClass(hcRanks)}>
-                          {hcSuits.map(suit => (
-                            <React.Fragment key={suit.key}>
-                              {hcRanks.map(rank => {
-                                const card = rank + suit.key;
-                                const isSelected = hcSet.has(card);
-                                return <button key={card} className={'card-picker-btn' + (isSelected ? ' selected' : '') + (hcDoor.has(card) ? ' used' : '')} disabled={hcDoor.has(card)} onClick={() => toggleHCard(card)}>
-                                  <img src={'/cards/cards_gui_' + rank + suit.key + '.svg'} alt={card} loading="eager" />
-                                </button>;
-                              })}
-                            </React.Fragment>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()}
+                  {/* Hero card picker: open while the hero's cards are incomplete, or reopened from the seat */}
+                  {i === heroIdx && !gameCfg.isStud && heroPicker()}
                   {/* Stud bring-in: first action on 3rd street */}
                   {gameCfg.isStud && currentStreetIdx === 0 && studInfo && studInfo.bringInIdx === currentActor && !(currentStreet.actions || []).length ? (
                     <div className="gto-action-row">
@@ -4552,9 +5089,12 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                       {!canCheck && <button className="gto-action-btn" onClick={() => addAction('fold')}><span className="gto-action-icon fold">&#x2715;</span><span className="gto-action-label">Fold</span></button>}
                       {canCheck ? <button className="gto-action-btn" onClick={() => addAction('check')}><span className="gto-action-icon check">&#x2713;</span><span className="gto-action-label">Check</span></button>
                         : <button className="gto-action-btn" onClick={() => addAction('call', Math.min(callAmount, playerStack))}><span className="gto-action-icon call">&#x2B24;</span><span className="gto-action-label">Call {formatChipAmount(Math.min(callAmount, playerStack))}</span></button>}
-                      {flCanRaise && playerStack > callAmount && (canCheck
+                      {flCanRaise && canRaiseHere && (canCheck
                         ? <button className="gto-action-btn" onClick={() => addAction('bet', Math.min(flBetSize, playerStack))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Bet {formatChipAmount(Math.min(flBetSize, playerStack))}</span></button>
                         : <button className="gto-action-btn" onClick={() => addAction('raise', Math.min(flRaiseIncrement, playerStack))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Raise to {formatChipAmount(Math.min(flRaiseToTotal, playerStack + playerContrib))}</span></button>
+                      )}
+                      {flCanRaise && canRaiseHere && canCheck && flOpenPairChoice && flBigBet > flBetSize && (
+                        <button className="gto-action-btn" onClick={() => addAction('bet', Math.min(flBigBet, playerStack))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Bet {formatChipAmount(Math.min(flBigBet, playerStack))}</span></button>
                       )}
                     </div>
                   ) : isPotLimit ? (
@@ -4564,8 +5104,10 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                           {!canCheck && <button className="gto-action-btn" onClick={() => addAction('fold')}><span className="gto-action-icon fold">&#x2715;</span><span className="gto-action-label">Fold</span></button>}
                           {canCheck ? <button className="gto-action-btn" onClick={() => addAction('check')}><span className="gto-action-icon check">&#x2713;</span><span className="gto-action-label">Check</span></button>
                             : <button className="gto-action-btn" onClick={() => addAction('call', Math.min(callAmount, playerStack))}><span className="gto-action-icon call">&#x2B24;</span><span className="gto-action-label">Call {formatChipAmount(Math.min(callAmount, playerStack))}</span></button>}
-                          {playerStack > callAmount && <button className="gto-action-btn" onClick={() => { setShowRaiseInput(true); setBetAmount(String(canCheck ? Math.min((hand.blinds||{}).bb||0, playerStack) : Math.min(minRaiseIncrement, playerStack))); }}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">{canCheck ? 'Bet' : 'Raise'}</span></button>}
-                          {playerStack > callAmount && <button className="gto-action-btn" onClick={() => { const potIncrement = canCheck ? Math.min(plMaxBet, playerStack) : Math.min(plMaxRaiseIncrement, playerStack); addAction(canCheck ? 'bet' : 'raise', potIncrement); }}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Pot {formatChipAmount(Math.min(canCheck ? plMaxBet : plRaiseToTotal, playerStack + playerContrib))}</span></button>}
+                          {canRaiseHere && <button className="gto-action-btn" onClick={() => { setShowRaiseInput(true); setBetAmount(String(betMin)); }}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">{canCheck ? 'Bet' : 'Raise'}</span></button>}
+                          {/* With nothing to call, the figure is what goes in, so it is capped at the stack;
+                              facing a bet it is the total raised to (entry vs oracle, 7). */}
+                          {canRaiseHere && <button className="gto-action-btn" onClick={() => addAction(canCheck ? 'bet' : 'raise', betMax)}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Pot {formatChipAmount(canCheck ? betMax : Math.min(plRaiseToTotal, playerStack + playerContrib))}</span></button>}
                         </div>
                       )}
                       {showRaiseInput && (
@@ -4573,19 +5115,12 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                           <div className="gto-sizing-row">
                             {[{label:'Min',mult:0},{label:'1/3',mult:1/3},{label:'1/2',mult:1/2},{label:'2/3',mult:2/3},{label:'Pot',mult:1}].map(s => {
                               let pillAmt;
-                              if (canCheck) pillAmt = s.mult === 0 ? Math.min((hand.blinds||{}).bb||0, playerStack) : Math.min(Math.round(plMaxBet * s.mult), playerStack);
-                              else { if (s.mult === 0) pillAmt = Math.min(minRaiseIncrement, playerStack); else { const raiseSize = Math.round(plPotAfterCall * s.mult); pillAmt = Math.max(Math.min(callAmount + raiseSize, plMaxRaiseIncrement, playerStack), Math.min(minRaiseIncrement, playerStack)); } }
+                              if (canCheck) pillAmt = s.mult === 0 ? betMin : Math.min(roundAmt(plMaxBet * s.mult), playerStack);
+                              else { if (s.mult === 0) pillAmt = betMin; else { const raiseSize = roundAmt(plPotAfterCall * s.mult); pillAmt = Math.max(Math.min(chipRound(callAmount + raiseSize), betMax), betMin); } }
                               return <button key={s.label} className="gto-sizing-pill" onClick={() => setBetAmount(String(pillAmt))}>{s.label}</button>;
                             })}
                           </div>
-                          <div className="gto-raise-slider-row">
-                            <input type="range" className="gto-raise-slider" min={canCheck ? Math.min((hand.blinds||{}).bb||0, playerStack) : Math.min(minRaiseIncrement, playerStack)} max={canCheck ? Math.min(plMaxBet, playerStack) : Math.min(plMaxRaiseIncrement, playerStack)} step={1} value={Number(betAmount)||0} onChange={e => setBetAmount(e.target.value)} />
-                          </div>
-                          <div className="gto-raise-input-row">
-                            <input type="text" inputMode="decimal" value={betAmount} onChange={e => setBetAmount(e.target.value)} autoFocus />
-                            <button className="btn btn-primary btn-sm" onClick={() => { const amt = Math.min(Number(betAmount)||0, canCheck ? Math.min(plMaxBet, playerStack) : Math.min(plMaxRaiseIncrement, playerStack)); if (amt > 0) addAction(canCheck ? 'bet' : 'raise', amt); }}>Confirm</button>
-                            <button className="btn btn-ghost btn-sm" onClick={() => setShowRaiseInput(false)}>Cancel</button>
-                          </div>
+                          {raiseBox}
                         </>
                       )}
                     </>
@@ -4597,8 +5132,8 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                           {!canCheck && <button className="gto-action-btn" onClick={() => addAction('fold')}><span className="gto-action-icon fold">&#x2715;</span><span className="gto-action-label">Fold</span></button>}
                           {canCheck ? <button className="gto-action-btn" onClick={() => addAction('check')}><span className="gto-action-icon check">&#x2713;</span><span className="gto-action-label">Check</span></button>
                             : <button className="gto-action-btn" onClick={() => addAction('call', Math.min(callAmount, playerStack))}><span className="gto-action-icon call">&#x2B24;</span><span className="gto-action-label">Call {formatChipAmount(Math.min(callAmount, playerStack))}</span></button>}
-                          <button className="gto-action-btn" onClick={() => { setShowRaiseInput(true); setBetAmount(String(canCheck ? ((hand.blinds||{}).bb||0) : Math.min(minRaiseIncrement, playerStack))); }}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">{canCheck ? 'Bet' : 'Raise'}</span></button>
-                          <button className="gto-action-btn" onClick={() => addAction(canCheck ? 'bet' : 'raise', playerStack)}><span className="gto-action-icon allin">&#x2605;</span><span className="gto-action-label">All-in</span></button>
+                          {canRaiseHere && <button className="gto-action-btn" onClick={() => { setShowRaiseInput(true); setBetAmount(String(betMin)); }}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">{canCheck ? 'Bet' : 'Raise'}</span></button>}
+                          {canRaiseHere && <button className="gto-action-btn" onClick={() => addAction(canCheck ? 'bet' : 'raise', playerStack)}><span className="gto-action-icon allin">&#x2605;</span><span className="gto-action-label">All-in</span></button>}
                         </div>
                       )}
                       {showRaiseInput && (
@@ -4606,20 +5141,13 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                           <div className="gto-sizing-row">
                             {[{label:'Min',mult:0},{label:'1/3',mult:1/3},{label:'1/2',mult:1/2},{label:'2/3',mult:2/3},{label:'Pot',mult:1}].map(s => {
                               let pillAmt;
-                              if (canCheck) pillAmt = s.mult === 0 ? Math.min((hand.blinds||{}).bb||0, playerStack) : Math.min(Math.round(currentPot * s.mult), playerStack);
-                              else { if (s.mult === 0) pillAmt = Math.min(minRaiseIncrement, playerStack); else { const potAfterCall = currentPot + callAmount; pillAmt = Math.min(callAmount + Math.round(potAfterCall * s.mult), playerStack); } }
+                              if (canCheck) pillAmt = s.mult === 0 ? betMin : Math.min(roundAmt(currentPot * s.mult), playerStack);
+                              else { if (s.mult === 0) pillAmt = betMin; else { const potAfterCall = chipRound(currentPot + callAmount); pillAmt = Math.max(Math.min(chipRound(callAmount + roundAmt(potAfterCall * s.mult)), playerStack), betMin); } }
                               return <button key={s.label} className="gto-sizing-pill" onClick={() => setBetAmount(String(pillAmt))}>{s.label}</button>;
                             })}
-                            <button className="gto-sizing-pill" onClick={() => setBetAmount(String(playerStack))}>All-In</button>
+                            <button className="gto-sizing-pill" onClick={() => setBetAmount(String(playerStack))}>All-in</button>
                           </div>
-                          <div className="gto-raise-slider-row">
-                            <input type="range" className="gto-raise-slider" min={canCheck ? Math.min((hand.blinds||{}).bb||0, playerStack) : Math.min(minRaiseIncrement, playerStack)} max={playerStack} step={1} value={Number(betAmount)||0} onChange={e => setBetAmount(e.target.value)} />
-                          </div>
-                          <div className="gto-raise-input-row">
-                            <input type="text" inputMode="decimal" value={betAmount} onChange={e => setBetAmount(e.target.value)} autoFocus />
-                            <button className="btn btn-primary btn-sm" onClick={() => { const amt = Math.min(Number(betAmount)||0, playerStack); if (amt > 0) addAction(canCheck ? 'bet' : 'raise', amt); }}>Confirm</button>
-                            <button className="btn btn-ghost btn-sm" onClick={() => setShowRaiseInput(false)}>Cancel</button>
-                          </div>
+                          {raiseBox}
                         </>
                       )}
                     </>
@@ -4634,7 +5162,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
         <div className="gto-sticky-footer">
           <div className="gto-street-card">
             <div className="gto-btn-row gto-foot-row">
-              <button className="gto-undo-btn" onClick={undoLastAction}>Undo</button>
+              <button className="gto-undo-btn" disabled={!canUndo} onClick={undoLastAction}>Undo</button>
               {/* Back to the seat setup to fix names / stacks / positions without
                   losing the hand — everything entered so far is kept in state. */}
               <button className="btn btn-ghost btn-sm" onClick={() => setPhase('setup')}>Back to Setup</button>
@@ -4677,6 +5205,66 @@ class ReplayErrorBoundary extends React.Component {
   }
 }
 
+// ── An unfinished hand, kept on the device ───────────────
+// Everything typed into the entry screens lives in React state, so Cancel, a reload or the
+// browser's Back used to throw the hand away. One draft is kept in localStorage while a hand is
+// being entered, and the list offers it back as "Unfinished hand".
+const DRAFT_KEY = 'replayerDraft';
+const ENTRY_PHASES = ['setup', 'ofc_entry', 'hero_cards', 'door_cards', 'action', 'board_door', 'board_entry', 'stud_deal', 'draw_discard', 'draw_cards_entry', 'showdown', 'result'];
+function readEntryDraft() {
+  try {
+    const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
+    return d && d.hand && Array.isArray(d.hand.players) && Array.isArray(d.hand.streets) ? d : null;
+  } catch { return null; }
+}
+// Whether a hand holds anything that took effort to enter: a card, an action, a draw, a result.
+function handHasEntries(h) {
+  if (!h) return false;
+  const filled = (v) => Array.isArray(v) ? v.some(filled) : (v && typeof v === 'object') ? Object.values(v).some(filled) : !!v;
+  return (h.streets || []).some(s => (s.actions || []).length > 0 || (s.draws || []).length > 0 || filled(s.cards))
+    || filled(h.ofcRows) || !!(h.result && (h.result.winners || []).length);
+}
+// Where the entry screens open: a phase the entry knows and a street the hand has.
+function entryPlace(at, hand) {
+  const phase = at && ENTRY_PHASES.includes(at.phase) ? at.phase : 'setup';
+  const n = ((hand && hand.streets) || []).length;
+  const streetIdx = at && Number.isInteger(at.streetIdx) && at.streetIdx >= 0 && at.streetIdx < n ? at.streetIdx : 0;
+  return { phase, streetIdx };
+}
+// Edit opens a finished hand on its last screen, the result, with every street one Back away;
+// it used to open Setup, whose Next skipped the first betting round.
+function editPlace(hand) {
+  if (!hand || !(hand.result && (hand.result.winners || []).length)) return null;
+  if (hand.gameType === 'OFC') return null;
+  const streets = hand.streets || [];
+  let last = 0;
+  streets.forEach((s, i) => { if ((s.actions || []).length || (s.draws || []).length) last = i; });
+  return { phase: 'result', streetIdx: last };
+}
+// A custom game's rules travel with its hand (customConfig). A hand opened in a session that never
+// made that game registers them before anything reads HAND_CONFIG.
+function registerCustomGame(handData) {
+  if (!handData || !handData.gameType || HAND_CONFIG[handData.gameType]) return;
+  const streets = handData.streets || [];
+  const cc = handData.customConfig;
+  const hasBoard = cc ? !!cc.hasBoard : streets.some(s => s.cards?.board);
+  const names = (cc && cc.streetNames) || streets.map(s => s.name);
+  HAND_CONFIG[handData.gameType] = { heroCards: (cc && cc.heroCards) || 2, hasBoard, boardMax: hasBoard ? 5 : 0, isStud: !!(cc && cc.isStud), heroPlaceholder: '' };
+  STREET_DEFS['custom_' + handData.gameType] = {
+    streets: names,
+    boardCards: names.map((_, i) => !hasBoard ? 0 : i === 0 ? 0 : i === 1 ? 3 : 1),
+  };
+}
+function agoLabel(ms) {
+  const mins = Math.max(0, Math.round((Date.now() - (Number(ms) || 0)) / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + ' min ago';
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return hrs + (hrs === 1 ? ' hour ago' : ' hours ago');
+  const days = Math.round(hrs / 24);
+  return days + (days === 1 ? ' day ago' : ' days ago');
+}
+
 // ══════════════════════════════════════════════════════════
 // ── Main Hand Replayer View ──────────────────────────────
 // ══════════════════════════════════════════════════════════
@@ -4704,15 +5292,66 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   // as the next default, and stored on each new hand (hand.tripsBeatStraight).
   const [sdTrips, setSdTrips] = useState(() => { try { const v = localStorage.getItem('shortDeckTripsBeatStraight'); return v === '1' ? true : v === '0' ? false : null; } catch { return null; } });
   const [sdAsk, setSdAsk] = useState(false);
+  // The question is asked as a Short Deck hand is made, and its answer makes the hand: it used to
+  // open when the game was picked and drop the user back at the list, where dismissing it and
+  // pressing Create recorded "a straight beats trips" unasked.
+  const sdAnswered = useRef(false);
   const chooseSdRule = (v) => {
     setSdTrips(v);
     try { localStorage.setItem('shortDeckTripsBeatStraight', v ? '1' : '0'); } catch { /* private mode */ }
     setSdAsk(false);
+    sdAnswered.current = true;
+    setPendingCreate(true);
   };
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [isPublic, setIsPublic] = useState(false);
   const [loading, setLoading] = useState(true);
+  // The unfinished hand (DRAFT_KEY above). `entryAt` is where the entry screens are, as they
+  // report it; `entryResume` is where they open; `entryStart` is the hand object they opened
+  // with, so a saved hand opened by Edit and left alone is not a draft (null: it already is one).
+  const [draft, setDraft] = useState(readEntryDraft);
+  const [entryAt, setEntryAt] = useState(null);
+  const [entryResume, setEntryResume] = useState(null);
+  const entryStart = useRef(null);
+  const draftHand = useRef(null);     // the hand object last written as the draft
+  const clearDraft = () => {
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* private mode */ }
+    draftHand.current = null;
+    setDraft(null);
+  };
+  const writeDraft = (hand, at) => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ hand, handId: currentHandId, title, notes, isPublic, at, savedAt: Date.now() }));
+      draftHand.current = hand;
+    } catch { /* private mode, or the store is full: the hand is still on screen */ }
+  };
+  const openEntry = (hand, at = null, { fromDraft = false } = {}) => {
+    entryStart.current = fromDraft ? null : hand;
+    setCurrentHand(hand);
+    setEntryResume(at);
+    setEntryAt(at);
+    setMode('entry');
+  };
+  // One draft is kept, so starting another entry over it asks first.
+  const draftInTheWay = () => {
+    if (!readEntryDraft()) return false;
+    if (window.confirm('You have an unfinished hand. Starting another one discards it.')) { clearDraft(); return false; }
+    return true;
+  };
+  useEffect(() => {
+    if (mode !== 'entry' || !currentHand) return;
+    const dirty = currentHand !== entryStart.current || (!currentHandId && handHasEntries(currentHand));
+    if (dirty) writeDraft(currentHand, entryAt);
+  }, [mode, currentHand, currentHandId, title, notes, isPublic, entryAt]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (mode === 'list') setDraft(readEntryDraft()); }, [mode]);
+  // Cancel, from Setup or mid-hand: ask before anything entered is thrown away.
+  const cancelEntry = () => {
+    const lose = currentHandId ? currentHand !== entryStart.current : handHasEntries(currentHand);
+    if (lose && !window.confirm(currentHandId ? 'Discard your changes to this hand?' : 'Discard this hand? Everything entered so far will be lost.')) return;
+    clearDraft();
+    setMode('list');
+  };
   const [bettingStructure, setBettingStructure] = useState('No Limit');
   const [selectedGame, setSelectedGame] = useState("Hold'em");
   const [selectedCategory, setSelectedCategory] = useState("Hold'em");
@@ -4820,7 +5459,6 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 
   const handleGameSelect = (game) => {
     setSelectedGame(game);
-    if (game === 'Short Deck') setSdAsk(true);
     if (defaultStructure[game]) setBettingStructure(defaultStructure[game]);
     const map = structureGameMap[defaultStructure[game] || 'No Limit'];
     if (map && map[game]) setSelectedGameType(map[game]);
@@ -4873,8 +5511,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     if (row.game === 'Double Board Bomb Pot') setDoubleBoard(true);
     else if (!['holdem', 'omaha'].includes(row.family)) setDoubleBoard(false);
     setPaletteOpen(false);
-    // Short Deck asks its rule first (ShortDeckRuleDialog); the Create button makes it after.
-    if (create && row.game !== 'Short Deck') setPendingCreate(true);
+    // Short Deck asks its rule first (startNewHand opens ShortDeckRuleDialog); the answer makes it.
+    if (create) setPendingCreate(true);
   };
   // The guess is the starting pick, once per visit to the list (never over a choice made since).
   const guessApplied = useRef(false);
@@ -4930,7 +5568,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       });
       if (!res.ok) {
         console.error('Failed to load hand:', res.status, res.statusText);
-        if (toast?.info) toast.info(`Failed to load hand (${res.status})`);
+        toast.error(res.status === 404 ? "That hand is no longer saved." : `Couldn't open the hand (${res.status}).`);
+        if (res.status === 404) fetchHands();
         return;
       }
       {
@@ -4944,25 +5583,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         // Normalize missing fields so the replay view never crashes on old/incomplete records
         if (!handData.streets) handData.streets = [];
         if (!handData.players) handData.players = [];
-        if (handData.gameType && !HAND_CONFIG[handData.gameType]) {
-          const cc = handData.customConfig;
-          if (cc) {
-            HAND_CONFIG[handData.gameType] = { heroCards: cc.heroCards || 2, hasBoard: !!cc.hasBoard, boardMax: cc.hasBoard ? 5 : 0, isStud: !!cc.isStud, heroPlaceholder: '' };
-            STREET_DEFS['custom_' + handData.gameType] = {
-              streets: cc.streetNames || handData.streets.map(s => s.name),
-              boardCards: (cc.streetNames || handData.streets.map(s => s.name)).map((_, i) => !cc.hasBoard ? 0 : i === 0 ? 0 : i === 1 ? 3 : 1),
-            };
-          } else {
-            // Fallback: infer from hand data
-            const streets = handData.streets || [];
-            const hasBoard = streets.some(s => s.cards?.board);
-            HAND_CONFIG[handData.gameType] = { heroCards: 2, hasBoard, boardMax: hasBoard ? 5 : 0, isStud: false, heroPlaceholder: '' };
-            STREET_DEFS['custom_' + handData.gameType] = {
-              streets: streets.map(s => s.name),
-              boardCards: streets.map((_, i) => !hasBoard ? 0 : i === 0 ? 0 : i === 1 ? 3 : 1),
-            };
-          }
-        }
+        registerCustomGame(handData);
         setCurrentHand(handData);
         setCurrentHandId(data.id);
         setHandIsShared(false);
@@ -4973,7 +5594,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       }
     } catch (e) {
       console.error('Failed to load hand:', e);
-      if (toast?.info) toast.info('Failed to load hand: ' + (e.message || 'network error'));
+      toast.error("Couldn't open the hand: " + (e.message || 'network error'));
     }
   };
 
@@ -5000,31 +5621,71 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         if (res.ok) { const data = await res.json(); setCurrentHandId(data.id); }
       }
       // A guest can build and replay a hand, but only an account keeps one (requireRegistered).
-      if (res.status === 403) { if (toast?.info) toast.info('Register to keep your hands. This one replays until you leave.'); setLoading(false); return; }
+      // A hand from the entry screens stays on the device as the unfinished hand (over.draft).
+      if (res.status === 403) {
+        toast.info(over.draft ? 'Register to keep your hands. Until then this one is kept on this device only.'
+          : 'Register to keep your hands. This one replays until you leave.');
+        setLoading(false);
+        return;
+      }
       if (!res.ok) throw new Error('HTTP ' + res.status);
       fetchHands();
-      toast('Hand saved');
+      if (over.draft) clearDraft();
+      toast.success('Hand saved');
     } catch (e) {
       console.error('Failed to save hand:', e);
-      if (toast?.info) toast.info("Couldn't save the hand: " + (e.message || 'network error'));
+      toast.error("Couldn't save the hand: " + (e.message || 'network error') + '.'
+        + (over.draft ? ' It is kept on this device: Hands, Unfinished hand.' : ''));
     }
     setLoading(false);
   };
 
-  const deleteHand = async (handId) => {
+  // Delete asks first, naming the hand, and says what happened: it used to delete on one tap,
+  // unchecked and in silence.
+  const deleteHand = async (h) => {
     if (!token) return;
+    const name = h.title || 'Untitled';
+    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
     try {
-      await fetch(`${API_URL}/replayer/hands/${handId}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
+      const res = await fetch(`${API_URL}/replayer/hands/${h.id}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
+      if (!res.ok && res.status !== 404) throw new Error('HTTP ' + res.status);
+      const d = readEntryDraft();
+      if (d && d.handId === h.id) clearDraft();     // unsaved changes to a hand that is gone
       fetchHands();
-      toast('Hand deleted');
-    } catch (e) { console.error('Failed to delete hand:', e); }
+      toast.success('Hand deleted');
+    } catch (e) {
+      console.error('Failed to delete hand:', e);
+      toast.error("Couldn't delete the hand: " + (e.message || 'network error'));
+    }
   };
 
   const handleEntryDone = (hand) => {
     setCurrentHand(hand);
     setHandIsShared(false);
-    saveHand(hand);
+    writeDraft(hand, entryAt);          // on the device until the save has landed
+    saveHand(hand, { draft: true });
     setMode('replay');
+  };
+
+  // Edit: a finished hand opens on its result. A hand whose save failed is itself the draft.
+  const editCurrentHand = () => {
+    if (!currentHand) return;
+    if (currentHand === draftHand.current) { openEntry(currentHand, editPlace(currentHand), { fromDraft: true }); return; }
+    if (draftInTheWay()) return;
+    openEntry(currentHand, editPlace(currentHand));
+  };
+  const resumeDraft = () => {
+    const d = readEntryDraft();
+    if (!d) { setDraft(null); return; }
+    const hand = canonicalHand(d.hand);
+    registerCustomGame(hand);
+    setCurrentHandId(d.handId || null);
+    setHandIsShared(false);
+    setTitle(d.title || ''); setNotes(d.notes || ''); setIsPublic(!!d.isPublic);
+    openEntry(hand, d.at || null, { fromDraft: true });
+  };
+  const discardDraft = () => {
+    if (window.confirm('Discard the unfinished hand? This cannot be undone.')) clearDraft();
   };
 
   const handleParseShorthand = () => {
@@ -5037,6 +5698,11 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   };
 
   const startNewHand = () => {
+    // Short Deck asks which rule the game plays before the hand exists; its answer comes back here.
+    if (selectedGame === 'Short Deck' && !sdAnswered.current) { setSdAsk(true); return; }
+    sdAnswered.current = false;
+    if (draftInTheWay()) return;
+    let made;
     if (selectedGameType === 'Custom') {
       const gameName = customGameName.trim() || 'Custom';
       const heroCards = Math.max(1, Math.min(13, customHeroCards));
@@ -5064,7 +5730,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         streets: customDef.streets.map(name => ({ name, cards: { hero: '', opponents: [''], board: '' }, actions: [], draws: [] })),
         result: null,
       };
-      setCurrentHand(hand);
+      made = hand;
     } else {
       const hand = createEmptyHand(selectedGameType, heroName);
       if (hand.gameType === 'Short Deck') hand.tripsBeatStraight = sdTrips === true;
@@ -5077,7 +5743,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         hand.doubleBoard = true;
         hand.streets = hand.streets.map(s => ({ ...s, cards: { ...s.cards, board2: '' } }));
       }
-      setCurrentHand(hand);
+      made = hand;
       recordGameUse(selectedGame, bettingStructure, selectedMix);
     }
     setCurrentHandId(null);
@@ -5085,7 +5751,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     setTitle('');
     setNotes('');
     setIsPublic(false);
-    setMode('entry');
+    openEntry(made);
   };
   // A palette pick makes the hand once its game, structure and mix are in state (pickVariant).
   useEffect(() => {
@@ -5119,7 +5785,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             token={token}
             heroName={heroName}
             playedAt={(() => { const row = currentHandId != null && hands.find(h => h.id === currentHandId); return row ? playedAtOf(row) : null; })()}
-            onEdit={() => setMode('entry')}
+            onEdit={editCurrentHand}
             onBack={() => { setMode('list'); fetchHands(); }}
             cardSplay={cardSplay}
             onSolveSpot={onSolveSpot}
@@ -5134,9 +5800,22 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 
   // ── Entry mode ──
   if (mode === 'entry' && currentHand) {
+    /* What the header carries depends on the screen: the game's name on every one (a hand could be
+       typed in start to finish without the screen saying what game it was), Format on Setup alone,
+       and Title and Share on Setup and on Result, where a hand gets named. On the screens between,
+       those three rows held more than a quarter of a phone. The classic form is one long screen and
+       keeps them all. */
+    const classicEntry = entryTab !== 'form' || !(entryMode === 'gto' || currentHand.gameType === 'OFC');
+    const entryPhase = classicEntry ? 'setup' : ((entryAt && entryAt.phase) || 'setup');
+    const onSetup = entryPhase === 'setup';
+    const onEnds = onSetup || entryPhase === 'result';
+    const gameLine = [currentHand.gameType, currentHand.doubleBoard ? 'Double board' : '', currentHand.mix || '']
+      .filter(Boolean).join(' · ');
+    const isCash = (currentHand.gameMode || 'mtt') === 'cash';
     return (
       <div className="replayer-view replayer-entry-view">
         <div className="gto-sticky-header">
+          <div className="entry-game-name">{gameLine}</div>
           {/* Form / Text toggle — hidden for now (2026-10-01); entry opens on Form and
               GTO Style every time, so hiding the switches pins exactly that. */}
           {SHOW_ENTRY_MODE_TOGGLES && <div className="live-update-tabs" style={{marginBottom:'var(--space-md)'}}>
@@ -5151,37 +5830,38 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             {/* Tournament or cash. A cash game is money, so its stacks and pots
                 carry a currency symbol; a straddle is a cash-game wager, so
                 switching it on down in the blinds flips this to Cash for you. */}
-            <div className="replayer-row entry-game-row" style={{marginBottom:'var(--space-md)', alignItems:'flex-end'}}>
+            {onSetup && <div className="replayer-row entry-game-row" style={{marginBottom:'var(--space-md)', alignItems:'flex-end'}}>
               <div className="replayer-field" style={{flex:'1 1 auto'}}>
-                <label>Game</label>
-                <div className="live-update-tabs" style={{margin:0}}>
-                  <button type="button" className={(currentHand.gameMode || 'mtt') !== 'cash' ? 'active' : ''}
-                    onClick={() => setCurrentHand(h => ({ ...h, gameMode: 'mtt' }))}>MTT</button>
-                  <button type="button" className={(currentHand.gameMode || 'mtt') === 'cash' ? 'active' : ''}
-                    onClick={() => setCurrentHand(h => ({ ...h, gameMode: 'cash' }))}>Cash</button>
+                {/* "Format", not "Game": the two buttons are tournament or cash, and the game is the line above. */}
+                <label id="entry-format-label">Format</label>
+                <div className="live-update-tabs" style={{margin:0}} role="group" aria-labelledby="entry-format-label">
+                  <button type="button" className={isCash ? '' : 'active'} aria-pressed={!isCash}
+                    onClick={() => setCurrentHand(h => withGameMode(h, 'mtt'))}>MTT</button>
+                  <button type="button" className={isCash ? 'active' : ''} aria-pressed={isCash}
+                    onClick={() => setCurrentHand(h => withGameMode(h, 'cash'))}>Cash</button>
                 </div>
               </div>
-              {currentHand.gameMode === 'cash' && (
+              {isCash && (
                 <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 12)'}}>
-                  <label>Currency</label>
-                  <select value={currentHand.currency || 'USD'}
+                  <label htmlFor="entry-currency">Currency</label>
+                  <select id="entry-currency" value={currentHand.currency || 'USD'}
                     onChange={e => setCurrentHand(h => ({ ...h, currency: e.target.value }))}>
                     {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>)}
                   </select>
                 </div>
               )}
-            </div>
-            <div className="replayer-row" style={{marginBottom:'var(--space-md)'}}>
+            </div>}
+            {onEnds && <div className="replayer-row" style={{marginBottom:'var(--space-md)'}}>
               <div className="replayer-field">
-                <label>Title</label>
-                <input type="text" placeholder="e.g. Huge pot with AA" value={title} onChange={e => setTitle(e.target.value)} />
+                <label htmlFor="entry-title">Title</label>
+                <input id="entry-title" type="text" placeholder="e.g. Huge pot with AA" value={title} onChange={e => setTitle(e.target.value)} />
               </div>
-            </div>
+            </div>}
             {/* 76: .replayer-notes-area was fully styled — label, textarea,
                 focus ring, all tokenised — with no JSX consumer anywhere, and
                 isPublic went into the save payload with no control that could
                 ever set it. Both were saved and neither was editable. */}
-            <div className="replayer-notes-area">
+            {onEnds && <div className="replayer-notes-area">
               {/* The notes box is hidden for now (2026-10-01); saved notes still show in replay. */}
               {SHOW_ENTRY_NOTES && <>
                 <label htmlFor="replayer-notes">Notes</label>
@@ -5194,7 +5874,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                   aria-pressed={isPublic} aria-label="Share this hand publicly"
                   onClick={() => setIsPublic(v => !v)} />
               </div>
-            </div>
+            </div>}
           </>}
           <div id="gto-sticky-slot"></div>
         </div>
@@ -5224,15 +5904,17 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             hand={currentHand}
             setHand={setCurrentHand}
             onDone={handleEntryDone}
-            onCancel={() => setMode('list')}
+            onCancel={cancelEntry}
             heroName={heroName}
+            resume={entryResume}
+            onProgress={setEntryAt}
           />
         ) : (
           <HandReplayerEntry
             hand={currentHand}
             setHand={setCurrentHand}
             onDone={handleEntryDone}
-            onCancel={() => setMode('list')}
+            onCancel={cancelEntry}
           />
         )}
       </div>
@@ -5247,9 +5929,11 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         // travel with the saved hand. "Open in replayer" saves at once — before this nothing
         // quick add produced was ever stored; "Review & save" saves when the form is done.
         const desc = String(description || '').trim();
+        if (target === 'entry' && draftInTheWay()) return;
         setCurrentHand(hand); setCurrentHandId(null); setHandIsShared(false);
         setTitle(''); setNotes(desc); setIsPublic(false);
-        if (target === 'entry') { setMode('entry'); return; }
+        // A hand read from a description is whole: it opens on its result, as Edit does.
+        if (target === 'entry') { openEntry(hand, editPlace(hand)); return; }
         setMode('replay');
         saveHand(hand, { id: null, notes: desc });
       }} />;
@@ -5314,6 +5998,34 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   }
 
   // ── List mode ──
+  /* The unfinished hand, first in the list, drawn as a saved row is. The row opens it where it
+     stopped (rows open on a press); its one button throws it away, after a question. */
+  const rowKey = (open) => (e) => { if (e.key === 'Enter' && e.target === e.currentTarget) open(); };
+  const draftRow = draft && (() => {
+    const dh = draft.hand;
+    const v = getVariantStrip(dh.gameType);
+    const cfg = HAND_CONFIG[dh.gameType] || HAND_CONFIG_DEFAULT;
+    return (
+      <div className="replayer-hand-card is-row is-draft" tabIndex={0} onClick={resumeDraft} onKeyDown={rowKey(resumeDraft)}>
+        <div className={'replayer-hand-strip fam-' + v.family} style={{ background: v.color }} title={dh.gameType}>
+          <span className="replayer-hand-strip-abbr">{v.abbr}</span>
+        </div>
+        <div className="replayer-hand-card-content">
+          <div className="replayer-hand-card-cards" aria-hidden="true">
+            <CardRow text={heroCardsOf(dh)} stud={cfg.isStud} max={cfg.isStud ? 3 : (cfg.heroCards || 2)} splay={0} />
+          </div>
+          <div className="replayer-hand-card-body">
+            <span className="replayer-hand-card-title">Unfinished hand</span>
+            <span className="replayer-hand-card-meta">{'Continue · ' + agoLabel(draft.savedAt)}</span>
+          </div>
+          <div className="replayer-hand-card-actions" onClick={e => e.stopPropagation()}>
+            <button type="button" className="btn btn-ghost btn-sm" aria-label="Discard the unfinished hand" onClick={discardDraft}><span>Discard</span></button>
+          </div>
+        </div>
+      </div>
+    );
+  })();
+  const toggleDoubleBoard = () => setDoubleBoard(d => !d);
   return (
     <div className="replayer-view is-list">
       {/* Title dropped — the top-bar subtitle reads "hands archive" on this tab. */}
@@ -5348,8 +6060,10 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         {currentRow && ['holdem', 'omaha'].includes(currentRow.family) && (
           <div className="game-picker vp-stud">
             <div className="game-check-group">
-              <div className={`game-check-row has-check${doubleBoard ? ' selected' : ''}`} onClick={() => setDoubleBoard(d => !d)}>
-                <div className={`game-check-box${doubleBoard ? ' checked' : ''}`}>
+              <div className={`game-check-row has-check${doubleBoard ? ' selected' : ''}`}
+                role="checkbox" aria-checked={doubleBoard} tabIndex={0} onClick={toggleDoubleBoard}
+                onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleDoubleBoard(); } }}>
+                <div className={`game-check-box${doubleBoard ? ' checked' : ''}`} aria-hidden="true">
                   {doubleBoard && <span style={{color:'#fff',fontSize:'calc(var(--subrow) * 1.125)',lineHeight:1,fontWeight:700}}>✓</span>}
                 </div>
                 <span className={`game-check-row-label is-caps${doubleBoard ? ' selected' : ''}`}>Double board</span>
@@ -5408,8 +6122,10 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
            the empty state drew two card backs, a line and a button — so
            whichever one resolved, the layout moved. Same outer structure, so
           the change between them is a cross-fade rather than a reflow. */}
+      {/* One Create button, the one under the launcher: the empty state used to repeat it. */}
       {hands.length === 0 ? (
         <div className="replayer-hand-list">
+          {draftRow}
           <div className="replayer-hand-card is-row is-empty">
             <div className="replayer-hand-card-content">
               <div className="replayer-hand-card-cards" aria-hidden="true">
@@ -5419,23 +6135,19 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                 <span className="replayer-hand-card-title">No saved hands yet</span>
                 <span className="replayer-hand-card-meta">Record one and it will replay here</span>
               </div>
-              <div className="replayer-hand-card-actions">
-                <button className="btn btn-primary btn-sm" onClick={startNewHand}>
-                  <span>Create {variantDisplayName} Hand</span>
-                </button>
-              </div>
             </div>
           </div>
         </div>
       ) : (
         <div className="replayer-hand-list">
+          {draftRow}
           {hands.map(h => (
             /* 59: a title, a game chip and a Delete button — no cards, no
                result, no date — in an app about cards, while the stylesheet
                shipped -meta and -actions classes this list never used. Nobody
                looks for "Hand 14"; they look for that AA hand they lost. */
             <div key={h.id} className={'replayer-hand-card is-row' + (outcomeOf(h) ? ' outcome-' + outcomeOf(h) : '')}
-              onClick={() => loadHand(h.id)}
+              tabIndex={0} onClick={() => loadHand(h.id)} onKeyDown={rowKey(() => loadHand(h.id))}
             >
               {/* The strip the schedule uses for venues, carrying the variant
                   instead — a saved hand has no venue, and the game is the thing
@@ -5499,7 +6211,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                 </span>
               </div>
               <div className="replayer-hand-card-actions" onClick={e => e.stopPropagation()}>
-                <button className="btn btn-ghost btn-sm" onClick={() => deleteHand(h.id)}><span>Delete</span></button>
+                <button type="button" className="btn btn-ghost btn-sm" aria-label={'Delete ' + (h.title || 'Untitled')} onClick={() => deleteHand(h)}><span>Delete</span></button>
               </div>
             </div>
                 </div>

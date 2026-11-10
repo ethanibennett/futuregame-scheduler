@@ -41,17 +41,26 @@ export function Palette({ rows, mixes, history, current, onPick, onClose }) {
   useEffect(() => { setHi(0); }, [q]);
 
   const found = useMemo(() => search(rows, mixes, q), [rows, mixes, q]);
+  /* A game found by name lists the mixes that deal it folded under one line: ten mixes under the one
+     game buried the row being looked for (entry audit 34). A mix found by its own name stays open. */
+  const [mixesOpen, setMixesOpen] = useState(false);
+  useEffect(() => { setMixesOpen(false); }, [q]);
+  const shownMixes = useMemo(() => {
+    if (!found.byGame || found.rows.length === 0 || mixesOpen) return found.mixes;
+    return found.mixes.filter((m) => !found.byGame.has(m.key));
+  }, [found, mixesOpen]);
+  const foldedMixes = found.mixes.length - shownMixes.length;
   const recent = useMemo(() => recentRows(rows, history), [rows, history]);
   // The flat list of what can be picked, in display order (for ↑↓ and ↵).
   const items = useMemo(() => {
-    if (q.trim()) return [...found.rows.map((r) => ({ row: r })), ...found.mixes.flatMap((m) => m.games.map((g) => ({ row: g, mix: m.mix })))];
+    if (q.trim()) return [...found.rows.map((r) => ({ row: r })), ...shownMixes.flatMap((m) => m.games.map((g) => ({ row: g, mix: m.mix })))];
     const out = recent.map((x) => ({ row: x.row, mix: x.mix }));
     for (const f of FAMILIES) {
       if (f.id === 'mixed') { if (openMix) { const m = mixes.find((x) => x.mix === openMix); if (m) out.push(...m.games.map((g) => ({ row: g, mix: m.mix }))); } continue; }
       out.push(...rows.filter((r) => r.family === f.id && !r.rare).map((r) => ({ row: r })));
     }
     return out;
-  }, [q, found, recent, rows, mixes, openMix]);
+  }, [q, found, shownMixes, recent, rows, mixes, openMix]);
 
   const onKey = (e) => {
     if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
@@ -92,13 +101,20 @@ export function Palette({ rows, mixes, history, current, onPick, onClose }) {
     <>
       {found.rows.length === 0 && found.mixes.length === 0 && <div className="vp-empty">No game matches “{q}”</div>}
       {found.rows.map((r) => rowEl(r))}
-      {found.mixes.length > 0 && <div className="vp-sec"><span>Mixes that deal it</span></div>}
-      {found.mixes.map((m) => (
+      {shownMixes.length > 0 && <div className="vp-sec"><span>Mixes that deal it</span></div>}
+      {shownMixes.map((m) => (
         <div key={m.key} className="vp-mixblock">
           <div className="vp-mixname"><span>{m.mix}</span></div>
           {m.games.map((g) => rowEl(g, m.mix))}
         </div>
       ))}
+      {foldedMixes > 0 && (
+        <button type="button" className="vp-row vp-mixrow" aria-expanded={false} onClick={() => setMixesOpen(true)}>
+          <span className="vp-row-check" aria-hidden="true">▸</span>
+          <span className="vp-row-name">Mixes containing it</span>
+          <span className="vp-row-count">{foldedMixes}</span>
+        </button>
+      )}
     </>
   ) : (
     <>
@@ -139,6 +155,7 @@ export function Palette({ rows, mixes, history, current, onPick, onClose }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><line x1="16.5" y1="16.5" x2="21" y2="21" /></svg>
           <input ref={inputRef} type="search" value={q} onChange={(e) => setQ(e.target.value)}
             placeholder="Search games: PLO8, O8, deuce…" aria-label="Search games" autoComplete="off" autoCorrect="off" spellCheck={false} />
+          {!desktop && <button type="button" className="vp-close" onClick={onClose}>Close</button>}
         </div>
         {!q.trim() && (
           <div className="vp-jumps">

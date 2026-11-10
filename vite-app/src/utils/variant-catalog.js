@@ -96,8 +96,10 @@ export const gameTypeOf = (game, structure) => (STRUCTURE_GAME_MAP[structure] ||
 // PL Razz, NL Omaha hi) appear only in search results.
 /* A named game with no rules of its own stays out of the picker until it is built (owner, 2026-11-05: every game on
    offer has to work): it would be dealt and scored as a plainer game, and announce the wrong winner. Every game the
-   catalog names has its rules now (docs/replayer-hidden-games.md), so this is empty; it stays as the place for the next. */
-export const UNBUILT_GAMES = new Set([]);
+   catalog names has its rules now (docs/replayer-hidden-games.md) but one: the Bomb Pot row dealt a double-board PLO
+   hand with blinds and a preflop round, where a bomb pot is an ante from every player and no betting before the flop
+   (entry audit 25). Double-board PLO itself is still offered, through the Double board switch. */
+export const UNBUILT_GAMES = new Set(['Double Board Bomb Pot']);
 
 export const FAMILIES = [
   { id: 'holdem', label: "Hold'em", games: ["Hold'em", 'Pineapple', 'Short Deck'] },
@@ -130,6 +132,7 @@ const ALIASES = {
   "Hold'em|Limit": ['lhe', 'limit holdem', 'fl holdem', 'fixed limit'],
   "Hold'em|Pot Limit": ['plh', 'pot limit holdem'],
   'Short Deck|No Limit': ['6+', 'six plus', 'shortdeck', 'sd'],
+  'Pineapple|No Limit': ['crazy pineapple', 'pineapple holdem'],
   'Omaha|Pot Limit': ['plo', 'plo4', 'omaha', 'pot limit omaha'],
   'Omaha|Limit': ['lo', 'limit omaha', 'lo hi'],
   'Omaha|No Limit': ['nlo'],
@@ -141,15 +144,15 @@ const ALIASES = {
   'PLO6|Pot Limit': ['plo6', '6 card omaha'],
   'PLO6 8/b|Pot Limit': ['plo6 8', 'big easy', '6 card o8'],
   'Double Board Bomb Pot|Pot Limit': ['bomb pot', 'double board'],
-  'Stud Hi|Limit': ['stud', 'seven card stud', '7 stud', '7cs'],
-  'Stud 8/b|Limit': ['stud 8', 'stud hi lo', 'stud8', 'eight or better'],
+  'Stud Hi|Limit': ['stud', 'seven card stud', '7 stud', '7cs', '7 card stud', 'stud high'],
+  'Stud 8/b|Limit': ['stud 8', 'stud hi lo', 'stud8', 'eight or better', 'stud 8 or better', 'stud eight or better', '7 card stud hi lo'],
   'Razz|Limit': ['razz', 'a5 stud'],
   '2-7 Razz|Limit': ['27 razz', 'deuce razz'],
-  '2-7 Triple Draw|Limit': ['27td', '2-7 td', 'deuce', 'deuce to seven', 'triple draw', 'td'],
+  '2-7 Triple Draw|Limit': ['27td', '2-7 td', 'deuce', 'deuce to seven', 'triple draw', 'td', 'lowball', 'deuce to seven lowball'],
   '2-7 Triple Draw|Pot Limit': ['pl 27 td', 'pl deuce'],
-  '2-7 Single Draw|No Limit': ['27sd', 'nl 27', 'single draw', 'kansas city'],
-  'A-5 Triple Draw|Limit': ['a5td', 'a-5 td', 'ace to five'],
-  'A-5 Single Draw|No Limit': ['a5sd'],
+  '2-7 Single Draw|No Limit': ['27sd', 'nl 27', 'single draw', 'kansas city', 'kansas city lowball', 'lowball'],
+  'A-5 Triple Draw|Limit': ['a5td', 'a-5 td', 'ace to five', 'ace to five lowball', 'lowball'],
+  'A-5 Single Draw|No Limit': ['a5sd', 'california lowball', 'california'],
   '5-Card Draw|No Limit': ['5cd', 'five card draw', 'draw hi'],
   'Badugi|Limit': ['badugi'],
   'Badeucy|Limit': ['badeucy'],
@@ -216,16 +219,37 @@ export function buildMixes(rows) {
 
 // ── The matcher (the study's direction 3): letters and digits only, so "O/8", "o 8" and "o8" meet ─
 const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9+]/g, '');
+/* Whether a and b are one typing slip apart: a letter added, dropped, changed, or two swapped. */
+function oneSlip(a, b) {
+  if (a === b) return false;
+  const la = a.length, lb = b.length;
+  if (Math.abs(la - lb) > 1) return false;
+  let i = 0;
+  while (i < la && i < lb && a[i] === b[i]) i += 1;
+  if (la === lb) {
+    if (a.slice(i + 1) === b.slice(i + 1)) return true;                                   // changed
+    return a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2);    // swapped
+  }
+  return la > lb ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1);           // added / dropped
+}
 function score(q, text) {
   const t = norm(text);
   if (!t || !q) return 0;
   if (t === q) return 100;
   if (t.startsWith(q)) return 88;
   if (t.includes(q)) return 72;
-  if (q.length >= 3) {          // in-order letters, 3+ typed only (fewer is noise)
-    let i = 0;
-    for (const ch of t) if (ch === q[i]) i += 1;
-    if (i === q.length) return 40;
+  /* One slip from a name, a word of it, or its start (entry audit 34: "razzz", "baduci", "hodlem" and
+     "tripple draw" found nothing). Four letters at least: a slip in three is another word. */
+  if (q.length >= 4) {
+    const words = String(text || '').toLowerCase().split(/[^a-z0-9+]+/).filter(Boolean);
+    if (oneSlip(q, t) || words.some((w) => w.length >= 4 && oneSlip(q, w)) || oneSlip(q, t.slice(0, q.length)) || oneSlip(q, t.slice(0, q.length + 1))) return 50;
+  }
+  /* The letters in order, close together: "o8" style shorthand. Letters spread across a long name
+     were noise ("cash" found a championship mix, "nlh" found No Limit Omaha). */
+  if (q.length >= 3) {
+    let i = 0, first = -1, last = -1;
+    for (let k = 0; k < t.length && i < q.length; k += 1) if (t[k] === q[i]) { if (first < 0) first = k; last = k; i += 1; }
+    if (i === q.length && last - first < q.length * 2) return 40;
   }
   return 0;
 }
@@ -240,9 +264,10 @@ export function search(rows, mixes, query) {
     return { r, s: s - (r.rare ? 5 : 0) };
   }).filter((x) => x.s > 0).sort((a, b) => b.s - a.s);
   const best = new Map(scored.map((x) => [x.r.key, x.s]));
-  const ms = mixes.map((m) => ({ m, s: Math.max(score(q, m.mix), 0.6 * Math.max(0, ...m.games.map((g) => best.get(g.key) || 0))) }))
+  const ms = mixes.map((m) => { const own = score(q, m.mix); return { m, own, s: Math.max(own, 0.6 * Math.max(0, ...m.games.map((g) => best.get(g.key) || 0))) }; })
     .filter((x) => x.s > 0).sort((a, b) => b.s - a.s);
-  return { rows: scored.map((x) => x.r), mixes: ms.map((x) => x.m) };
+  // `byGame`: the mixes found only because they deal a game found; the palette folds them under the game.
+  return { rows: scored.map((x) => x.r), mixes: ms.map((x) => x.m), byGame: new Set(ms.filter((x) => x.own < 72).map((x) => x.m.key)) };
 }
 
 // ── Recent: the last distinct picks (replayer_game_history, newest first) ─────────────────────

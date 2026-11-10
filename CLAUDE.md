@@ -73,7 +73,7 @@ sessions opened here own scheduler work.
   screens: enter a hand built to tell that game's rules apart, step the replay, check the winner and every chip, reopen it, open
   its share link signed out; then every `test/hh-io/fixtures` hand through the replay, chips to the end (`--only fixtures`). Forced bets
   are capped at the stack, blind before ante, as in the export (`capPost`). A named game with no rules of its own goes in `UNBUILT_GAMES` (`utils/variant-catalog.js`), out of
-  the picker, because it would be scored as a plainer game; none is there now. **The fourteen built 2026-11-05** (Pineapple, Courchevel, Stud Hi/Lo Regular, Razzdugi, Razzdeucy, Archie 66 and 99, Ari, the Dramahas, Dramadugi, Omajack):
+  the picker, because it would be scored as a plainer game: the Bomb Pot row is there (2026-11-10, entry audit 25: it dealt blinds and a preflop round; double-board PLO stays, through the Double board switch). **The fourteen built 2026-11-05** (Pineapple, Courchevel, Stud Hi/Lo Regular, Razzdugi, Razzdeucy, Archie 66 and 99, Ari, the Dramahas, Dramadugi, Omajack):
   rules, sources and the owner's open defaults in `docs/replayer-hidden-games.md`; every Dramaha row has a Limit row beside it, and in a game of two different hands the odd chip goes to the half using the most of the player's own cards (owner, `oddChipToLo`). A new game type goes in `HAND_CONFIG`, `GAME_EVAL`, the
   variant strips, `GAME_CODES` and, for a draw game, the category lists. Hands is one tab for every account; Study, the Scanner and
   typing or saying a hand stay with admins.
@@ -87,6 +87,12 @@ sessions opened here own scheduler work.
   dependency: it lives in a throwaway venv, only to make more hands. What it pinned down: cash pots settle in exact cents
   (`chipRound`; the felt still shows whole dollars, owner: "No cents"), and a stud tie's odd chip goes to the high card by
   suit (`studOddChipKey`, TDA 2015). Each place PokerKit itself settles differently is a `pk-` tag, explained in the README.
+  **The entry screens are held to it too** (`npm run check:replayer-entry-oracle`, ports 4860-4869; `docs/entry-audit/`):
+  corpus hands typed in key by key, each screen's offer checked against PokerKit's. What it fixed: the pot-limit pot counts a
+  big-blind ante; a raise is offered only where one is legal (someone could call more, the stack covers more than the call,
+  and the betting was reopened: a full raise, or shorts adding up to one, TDA rule 43; half a bet in limit); the smallest raise
+  is the last FULL raise; a typed amount out of range is refused with the range, never cut; a folded hero is never scored.
+  Amounts in the entry go through `parseAmount`/`AmountField` (cents in cash, whole chips in a tournament, "1,500", "25k").
 - **Hands > Study** (owner, 2026-11-04: one training experience; `components/StudyHub.jsx`, `StudyHead.jsx`, `study-hub.css`):
   the Hands row is Replayer, Study, Scanner, and Study is one list of the solver tools: Practice (Play a hand, Hand trainer,
   Quick spots, Three-way Razz), Look up (Watch the solver, Solve a spot, Price a draw). Each opens under the same header and

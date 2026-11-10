@@ -5,7 +5,7 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-11-05 (from Windows) — newest section first. Earlier notes: 2026-10-21, 2026-10-13, then 2026-09-30, live
+Last updated: 2026-11-10 (from Windows) — newest section first. Earlier notes: 2026-10-21, 2026-10-13, then 2026-09-30, live
 tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
@@ -13,6 +13,25 @@ Below it the 2026-09-25 Schedule grid sweep, then the dated sections back throug
 wsop-console side and verified against both live services.
 
 ---
+
+## 2026-11-10 — Hand entry held to PokerKit, and the entry audit fixed
+
+Owner: "a full audit of the replayer hand entry process from the user's perspective. This should also be perfect."
+The audit is `docs/entry-audit/findings.md` (47 findings), the check against PokerKit `entry-vs-oracle.md`
+(`npm run check:replayer-entry-oracle`, ports 4860-4869), and what became of each `fixed.md`. Waiting on the owner:
+a draw card back from a reshuffle (refused on purpose), the position labels at seven to nine handed (stored in every
+saved hand), 5r controls against 44pt targets, the narrow desktop entry column, and a real Bomb Pot (out of the picker).
+**Traps:** both guard scripts that drive the entry (`check-replayer-entry-oracle.mjs`, `check-replayer-games.mjs`) find
+screens by their wording: a renamed title or button breaks them, so grep them when you change entry copy. The entry's
+GTOEntryView declares every hook at its top: its phases are early returns. A line of text under a control that is not a
+whole r tall moves every seat below it off the grid by a layout unit, and `check:controls` then fails on a label far away.
+
+Also this day, proposals only and not built, each a private gallery with a shared Pick list: the Laws of UX audit
+(111), Bankroll design (100), Replayer animations (100, https://claude.ai/artifact/HkxW651qbqkvsTF74zFX9G) and App
+improvements (408, 99 bugs, https://claude.ai/artifact/TAPjgLdyahG33nB8cSKBZW); the source folders are `docs/catalogues/`
+and `docs/ux-audit/` (untracked). **Privacy bugs found there, not yet fixed:** private plans in the public share link's
+data and in friends' views (improvements 355), a Travel Day's note on the public page (357), all guests sharing user 0's
+schedule (8), and sessions surviving a password reset (403).
 
 ## 2026-11-05 — The fourteen hidden games
 

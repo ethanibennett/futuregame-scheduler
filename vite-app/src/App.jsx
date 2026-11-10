@@ -2435,6 +2435,8 @@ function App() {
               });
             }}
             title="Notifications"
+            aria-label={notifCount > 0 ? `Notifications, ${notifCount} new` : 'Notifications'}
+            aria-expanded={!!showNotifications}
           >
             <Icon.bell />
             {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}

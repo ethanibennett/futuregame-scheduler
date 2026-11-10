@@ -330,7 +330,7 @@ async function runRow(browser, row) {
         await tap(p.locator('.gto-btn-row button.btn-primary').first(), 'draw round done');
         continue;
       }
-      if (screen.section.startsWith('Card Details')) {
+      if (/^Card [Dd]etails/.test(screen.section)) {
         const discardCard = cards(plan.discard)[0];
         const img = p.locator(`.gto-dce-hand img[alt="${discardCard}"]`).first();
         if (await img.count()) await tap(img, 'discard ' + discardCard);
@@ -346,7 +346,15 @@ async function runRow(browser, row) {
           const b = p.locator(`.gto-phase-card .card-picker-btn:has(img[alt="${c}"])`).first();
           if (await b.count() && !(await b.evaluate((el) => el.classList.contains('selected')))) await tap(b, 'showdown ' + c);
         }
-        await tap(p.locator('button.btn-primary:has-text("Continue to Result")').first(), 'Continue to Result');
+        // Any other opponent still in shows nothing: they muck, as a player would mark them. A hand left
+        // blank is not judged (entry audit 11), so the winner would be left for the user to mark.
+        for (const head of await p.locator('.gto-sd-head').all()) {
+          const nm = ((await head.locator('.gto-sd-name').innerText().catch(() => '')) || '').trim();
+          if (!nm || nm === 'Opp 1') continue;
+          const m = head.locator('button:has-text("Muck")').first();
+          if (await m.count()) await tap(m, 'muck ' + nm);
+        }
+        await tap(p.locator('.gto-btn-row button.btn-primary:has-text("Continue")').first(), 'Continue to the result');
         continue;
       }
       if (screen.section === 'Result') {

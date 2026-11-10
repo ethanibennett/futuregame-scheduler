@@ -98,9 +98,29 @@ node test\replayer-oracle\check-export.mjs $env:TEMP\hands.jsonl; node test\repl
 made, from `--per-game 1000 --seed 1`). A failing hand prints its id; `--show "<id>"` on either
 check prints that hand, what the reader made of it and what the oracle expects.
 
+## Typing the corpus in: the entry screens
+
+`npm run check:replayer-entry-oracle` (`scripts/check-replayer-entry-oracle.mjs`, ports 4860-4869)
+enters corpus hands through the entry screens in WebKit, as a player would, and holds every screen
+to PokerKit: what each one offers (no raise where none is allowed, the smallest raise, the pot-limit
+figure, the call), what it accepts, and the saved hand replayed to the corpus's stacks. Its own
+report and the causes it found are `docs/entry-audit/entry-vs-oracle.md`.
+
+**Mac or PC** (every cause it found, from the repo alone):
+
+```bash
+node scripts/check-replayer-entry-oracle.mjs --ids "PLO#0,PLH#186,NL 2-7 SD#65,NLH#2,NLH#12,NLH#32,NLO8#6,PLO#48,Stud Hi#6,Razz#28,Stud 8#7,PLH#318" --jobs 2
+```
+
+`--per-game 5 --jobs 3` runs five of every game (about 25 minutes); `--build <folder>` serves another
+build folder; `--trace` prints each step; `--all-in-button` presses All-in for an all-in call. It
+types figures key by key, and in limit games it sets the cap to 4 and turns "Uncapped heads-up" off
+to match PokerKit. It does not enter straddles. A draw hand where a card comes back from a
+reshuffle of the discards is refused: the entry keeps a thrown card out of the deck on purpose, and
+whether to let it back is an open question for the owner.
+
 ## Not covered
 
 The generator plays the twenty games above. The other games in the picker (the Dramahas, Archie,
-Razzdugi and the rest, double boards, bomb pots, run-it-twice) have no outside engine to hold them
-to; `npm run check:replayer-games` and the unit tests cover those. These checks start from a saved
-hand: typing one in through the entry screens is `npm run check:replayer-games`' ground.
+Razzdugi and the rest, double boards, run-it-twice) have no outside engine to hold them to;
+`npm run check:replayer-games` and the unit tests cover those.
