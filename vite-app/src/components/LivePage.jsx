@@ -25,13 +25,26 @@ const FEATURES = [
   ['Every result, recorded', 'Your season, from the results you log.'],
 ];
 
+/* The app itself, not a description of it (UX pick 12): its clash alert over two of its Schedule
+   cards. Generic events with blank strips: the page names no room. */
+const DEMO = [['12:00 PM', 'NLH Main Event', '$600'], ['1:00 PM', 'PLO Freezeout', '$400']];
+
+// The figures the server wrote into the page (serveLive), so the card paints with it; else fetched.
+function inlineSummary() {
+  try {
+    const el = document.getElementById('live-summary');
+    return el ? JSON.parse(el.textContent) : null;
+  } catch { return null; }
+}
+
 export default function LivePage() {
   const theme = useThemeChoice({ followDevice: true });
   const ct = useMemo(() => campaignFrom(window.location.search), []);
   const android = useMemo(() => /Android/i.test(navigator.userAgent || ''), []);
-  const [sum, setSum] = useState(null);
+  const [sum, setSum] = useState(inlineSummary);
   useEffect(() => {
     captureLanding(window.location.search, document.referrer, '/live');
+    if (sum) return undefined;
     let on = true;
     fetch(`${API_URL}/public/live-summary`).then((r) => (r.ok ? r.json() : null)).then((d) => { if (on) setSum(d); }).catch(() => {});
     return () => { on = false; };
@@ -58,6 +71,28 @@ export default function LivePage() {
           your backup for when you bust, and puts your results and your crew beside the plan.
         </p>
 
+        <section className="lp-demo" aria-label="What the app shows">
+          <div className="an-cell lp-alert">2 events have a time conflict</div>
+          {DEMO.map(([time, name, buyin]) => (
+            <div key={name} className="lp-ev">
+              <span className="lp-ev-strip" aria-hidden="true" />
+              <span className="lp-ev-main">
+                <span className="an-cell an-note lp-ev-time">{time}</span>
+                <span className="an-cell lp-ev-name">{name}</span>
+              </span>
+              <span className="an-cell an-val lp-ev-buy">{buyin}</span>
+            </div>
+          ))}
+        </section>
+
+        <div className="lp-ctas">
+          {store && <a className="lp-cta ctl is-primary" href={store}>Download on the App Store</a>}
+          <a className={'lp-cta ctl' + (store ? '' : ' is-primary')} href={webLink(ct)}>
+            {android ? 'Open the web app' : 'Use it in your browser'}
+          </a>
+          {!store && !android && <p className="an-p lp-soon">On iPhone and iPad from 5 January.</p>}
+        </div>
+
         <section className="lp-card" aria-label="The next 30 days">
           <div className="an-cell an-lbl an-lbl-3">The next 30 days</div>
           <div className="an-cell lp-figure">{fig.headline || ' '}</div>
@@ -72,14 +107,6 @@ export default function LivePage() {
             </li>
           ))}
         </ul>
-
-        <div className="lp-ctas">
-          {store && <a className="lp-cta ctl is-primary" href={store}>Download on the App Store</a>}
-          <a className={'lp-cta ctl' + (store ? '' : ' is-primary')} href={webLink(ct)}>
-            {android ? 'Open the web app' : 'Use it in your browser'}
-          </a>
-          {!store && !android && <p className="an-p lp-soon">On iPhone and iPad from 5 January.</p>}
-        </div>
 
         <footer className="an-p lp-foot">
           {/* The launch plan's footer, word for word (section 11, "Lines that ship on every paid post"). */}

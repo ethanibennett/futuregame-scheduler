@@ -837,6 +837,8 @@ export default function TournamentsView({
   useEffect(() => {
     const onApplied = (e) => {
       const d = (e && e.detail) || {};
+      // Everywhere chosen in setup is an answer, not a gap: no worldwide line for it.
+      if (Object.prototype.hasOwnProperty.call(d, 'location') && !(d.location && (d.location.userLocation || d.location.locationRegion))) keepWorldwide();
       setFilters(f => {
         const next = { ...f };
         if (Object.prototype.hasOwnProperty.call(d, 'location')) {
@@ -913,6 +915,18 @@ export default function TournamentsView({
   }, []);
   const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
   const locationBtnRef = useRef(null);
+  /* With no location set, the list says it is worldwide and offers Near me (UX pick 9). The ✕ keeps
+     everywhere as a deliberate answer, on this device. */
+  const [worldwideOk, setWorldwideOk] = useState(() => { try { return localStorage.getItem('locWorldwide') === '1'; } catch { return false; } });
+  const keepWorldwide = () => { setWorldwideOk(true); try { localStorage.setItem('locWorldwide', '1'); } catch { /* storage off */ } };
+  const nearMe = () => {
+    if (typeof window === 'undefined' || window.isSecureContext === false || !navigator.geolocation) { setLocationDropdownOpen(true); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setFiltersWithScroll(f => ({ ...f, userLocation: { lat: pos.coords.latitude, lng: pos.coords.longitude }, maxDistance: '100', locationRegion: null, locationLabel: 'Current Location' })),
+      () => setLocationDropdownOpen(true),
+      { enableHighAccuracy: false, timeout: 10000 }
+    );
+  };
   const [importDropdownOpen, setImportDropdownOpen] = useState(false);
   const importBtnRef = useRef(null);
   const [dateBreakTop, setDateBreakTop] = useState(0);
@@ -1384,6 +1398,14 @@ export default function TournamentsView({
           );
         })()}
       </div>
+
+      {!filters.locationRegion && !filters.userLocation && !worldwideOk && (
+        <div className="worldwide-line" role="status">
+          <span className="worldwide-text">Showing rooms worldwide</span>
+          <button type="button" className="worldwide-near" onClick={nearMe}>Near me</button>
+          <button type="button" className="worldwide-x" onClick={keepWorldwide} aria-label="Keep showing every room"><Icon.x /></button>
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <Filtered

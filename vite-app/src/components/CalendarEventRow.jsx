@@ -1056,13 +1056,21 @@ The feed's own values return at the next hourly sync — your edits stay visible
                   {/* Action row */}
                   {!readOnly && (
                     <div className="cal-action-row">
-                      <button
-                        className={`cal-action-btn ${isInSchedule ? 'remove' : ''}`}
-                        onClick={() => onToggle(tournament.id)}
-                      >
-                        <span className="cal-action-icon">{isInSchedule ? <Icon.x /> : <Icon.plus />}</span>
-                        <span className="cal-action-label">{isInSchedule ? 'Remove' : 'Add'}</span>
-                      </button>
+                      {isInSchedule ? (
+                        <button className="cal-action-btn remove" onClick={() => onToggle(tournament.id)}>
+                          <span className="cal-action-icon"><Icon.x /></span>
+                          <span className="cal-action-label">Remove</span>
+                        </button>
+                      ) : (
+                        /* Saving an event is the step the app is for (UX pick 5): while it is not saved,
+                           Add is the card's one filled control, inset 1g and 1r in its 6r row. */
+                        <button className="cal-action-btn add-cta" onClick={() => onToggle(tournament.id)}>
+                          <span className="cal-add-face">
+                            <Icon.plus />
+                            <span>{isAdmin && onAdminEdit && !editing ? 'Add' : 'Add to My Schedule'}</span>
+                          </span>
+                        </button>
+                      )}
                       {isInSchedule && onToggleAnchor && (
                         <button
                           className={`cal-action-btn anchor-btn ${isAnchor ? 'locked' : ''}`}

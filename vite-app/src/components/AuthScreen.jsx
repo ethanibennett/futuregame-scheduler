@@ -11,11 +11,27 @@ const HEARD_OPTIONS = [
   ['press', 'A news story'], ['appstore', 'The App Store'], ['search', 'A web search'], ['other', 'Somewhere else'],
 ];
 
-export default function AuthScreen({ onSubmit, error, success, theme, toggleTheme, onForgotPassword, onGuestLogin, initialRegister }) {
+/* Whether this browser already knows where the player came from (a campaign tag kept by
+   utils/live-page.js captureLanding, or the web app's ?src=). Then sign-up does not ask. */
+function campaignKnown() {
+  try {
+    const first = JSON.parse(localStorage.getItem('acqSource') || '{}') || {};
+    if (first.ct || first.utm_source || first.src) return true;
+  } catch { /* storage off */ }
+  try { return !!new URLSearchParams(window.location.search).get('src'); } catch { return false; }
+}
+
+/* Sign In and Create Account (Laws of UX picks 7, 8, 11, 14; owner, 2026-11-10): the two account
+   actions are the card's two first buttons, sign-up asks for a name, an email and a password, and a
+   tap is answered at once ("Signing in…", the fields locked) while the request runs. */
+export default function AuthScreen({ onSubmit, error, success, theme, toggleTheme, onForgotPassword, onGuestLogin, initialRegister, busy = false, onRegisterShown }) {
   const [isRegister, setIsRegister] = useState(!!initialRegister);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
+  const [email, setEmail] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const nextThemeLabel = THEME_LABEL[nextTheme(theme)];
   const [season, setSeason] = useState(getStoredSeasonLabel);
+  const askHeard = isRegister && !campaignKnown();
   // The Schedule's date range. On the web it is already in the page; the native app's page ships in the
   // app, so it asks, and a failed ask leaves the last label it knew.
   useEffect(() => {
@@ -29,6 +45,12 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
     }).catch(() => {});
     return () => { on = false; };
   }, []);
+  // Create Account shown: fetch first-run setup's code now, so it opens the moment the account exists.
+  useEffect(() => { if (isRegister && onRegisterShown) onRegisterShown(); }, [isRegister, onRegisterShown]);
+
+  const submitLabel = busy
+    ? (isRegister ? 'Creating your account…' : 'Signing in…')
+    : (isRegister ? 'Create Account' : 'Sign In');
 
   return (
     <div className="auth-wrap">
@@ -38,75 +60,80 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
         </div>
         <div className="auth-logo">
           <h1>futurega.me</h1>
-          <p>{season}</p>
+          <p>{isRegister ? 'Create your free account' : season}</p>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
 
-        <form onSubmit={e => onSubmit(e, isRegister, keepSignedIn)}>
-          {isRegister && (
+        <form onSubmit={e => onSubmit(e, isRegister, keepSignedIn)} aria-busy={busy}>
+          <fieldset className="auth-fields" disabled={busy}>
+            {isRegister && (
+              <div className="form-field">
+                <label htmlFor="auth-name">Your name</label>
+                <input id="auth-name" type="text" name="realName" placeholder="First and last name" required maxLength="40" autoComplete="name" />
+              </div>
+            )}
             <div className="form-field">
-              <label>Full Name</label>
-              <input type="text" name="realName" placeholder="Your real name" required maxLength="40" autoComplete="name" />
+              <label htmlFor="auth-email">Email</label>
+              <input id="auth-email" type="email" name="email" placeholder="you@example.com" required autoComplete="email"
+                value={email} onChange={e => setEmail(e.target.value)} />
             </div>
-          )}
-          {isRegister && (
             <div className="form-field">
-              <label>Username</label>
-              <input type="text" name="username" placeholder="Choose a username" required autoComplete="username" />
+              <label htmlFor="auth-password">Password</label>
+              <div className="auth-pw">
+                <input id="auth-password" type={showPassword ? 'text' : 'password'} name="password"
+                  placeholder={isRegister ? 'At least 8 characters' : 'Your password'} required minLength={isRegister ? 8 : 6}
+                  autoComplete={isRegister ? 'new-password' : 'current-password'} />
+                <button type="button" className="auth-pw-toggle" onClick={() => setShowPassword(v => !v)}
+                  aria-pressed={showPassword} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
             </div>
-          )}
-          <div className="form-field">
-            <label>Email</label>
-            <input type="email" name="email" placeholder="you@example.com" required autoComplete="email" />
-          </div>
-          <div className="form-field">
-            <label>Password</label>
-            <input type="password" name="password" placeholder={isRegister ? 'At least 8 characters' : 'Your password'} required minLength={isRegister ? 8 : 6} autoComplete={isRegister ? 'new-password' : 'current-password'} />
-          </div>
-          {isRegister && (
-            <div className="form-field">
-              {/* Where the player heard of the app (launch plan, growth measurement; optional). */}
-              <label htmlFor="auth-heard">How did you hear about us?</label>
-              <select id="auth-heard" name="heard" defaultValue="">
-                <option value="">Prefer not to say</option>
-                {HEARD_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-            </div>
-          )}
-          {!isRegister && (
-            <label className="auth-keep" style={{display:'flex',alignItems:'center',gap:'var(--space-sm)',fontSize:'calc(var(--gu) * 1.178)',color:'var(--text-muted)',cursor:'pointer'}}>
-              <input type="checkbox" checked={keepSignedIn} onChange={e => setKeepSignedIn(e.target.checked)}
-                style={{accentColor:'var(--accent)',cursor:'pointer'}} />
-              Keep me signed in
-            </label>
-          )}
-          <button type="submit" className="btn btn-primary btn-full" style={{marginTop:'var(--space-md)'}}>
-            {isRegister ? 'Create Account' : 'Sign In'}
+            {askHeard && (
+              <div className="form-field">
+                {/* Where the player heard of the app (launch plan, growth measurement; optional), asked
+                    only when no campaign tag already says. No preset answer. */}
+                <label htmlFor="auth-heard">How did you hear about us?</label>
+                <select id="auth-heard" name="heard" defaultValue="">
+                  <option value="">Choose one (optional)</option>
+                  {HEARD_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+            )}
+            {!isRegister && (
+              <label className="auth-keep" style={{display:'flex',alignItems:'center',gap:'var(--space-sm)',fontSize:'calc(var(--gu) * 1.178)',color:'var(--text-muted)',cursor:'pointer'}}>
+                <input type="checkbox" checked={keepSignedIn} onChange={e => setKeepSignedIn(e.target.checked)}
+                  style={{accentColor:'var(--accent)',cursor:'pointer'}} />
+                Keep me signed in
+              </label>
+            )}
+          </fieldset>
+          <button type="submit" className="btn btn-primary btn-full auth-submit" style={{marginTop:'var(--space-md)'}} disabled={busy}>
+            {busy && <span className="auth-spinner" aria-hidden="true" />}
+            {submitLabel}
           </button>
         </form>
 
-        {!isRegister && (
+        {isRegister ? (
           <p className="auth-hint" style={{textAlign:'center',marginTop:'calc(var(--subrow) * 2)'}}>
-            <button onClick={onForgotPassword}
-              className="auth-link-quiet">
+            {'Already have an account? '}
+            <button type="button" onClick={() => setIsRegister(false)} className="auth-link">Sign in</button>
+          </p>
+        ) : (
+          <>
+            <button type="button" className="btn btn-ghost btn-full auth-create" onClick={() => setIsRegister(true)}>
+              Create an account
+            </button>
+            <button type="button" className="auth-link-quiet auth-forgot" onClick={() => onForgotPassword(email)}>
               Forgot password?
             </button>
-          </p>
+          </>
         )}
 
-        <p className="auth-hint" style={{textAlign:'center',marginTop:'calc(var(--subrow) * 2)'}}>
-          {isRegister ? 'Already have an account? ' : "Don't have an account? "}
-          <button onClick={() => setIsRegister(r => !r)}
-            className="auth-link">
-            {isRegister ? 'Sign in' : 'Register'}
-          </button>
-        </p>
-
         <div className="auth-divider">
-          <button onClick={onGuestLogin} className="btn btn-ghost btn-full"
-            >
+          <button type="button" onClick={onGuestLogin} className="btn btn-ghost btn-full">
             Continue as Guest
           </button>
           <p style={{textAlign:'center',marginTop:'var(--space-md)',fontSize:'calc(var(--gu) * 1.060)',color:'var(--text-muted)',opacity:0.7}}>

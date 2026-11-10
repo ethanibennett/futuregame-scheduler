@@ -3208,7 +3208,11 @@
     .replayer-view.is-list .replayer-hand-card-actions { grid-column: 5; grid-row: 1 / -1; align-self: center; display:block; }
     /* Empty state: the same 8r row (cards 3..10g, text 12g) with nothing in the action
        column. padding-left 2g stands in for the strip. */
-    .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-content { padding-left: calc(var(--gu) * 2); }
+    /* Empty (UX pick 10): the title and its line centred across the card, the row's height kept. */
+    .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-content {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding-left: 0;
+    }
+    .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-body { align-items: center; }
     .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-cards .card-unknown { height: calc(var(--subrow) * 4); width: calc(var(--subrow) * 2.857); }
     /* Loading: the card slot is 4g (5..9g, both valid lines) instead of a centred 2g. */
     .replayer-view.is-list .replayer-hand-card-cards > .skeleton { margin-left: calc(var(--gu) * 2); margin-right: auto; }
@@ -8377,6 +8381,35 @@
     .auth-card .auth-hint { line-height: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }   /* one line; its inline link button would grow the line box */
     .auth-card .auth-keep { height: calc(var(--subrow) * 2); margin-top: var(--subrow); }
     .auth-card .auth-divider { border-top: 0; box-shadow: inset 0 var(--bw-hair) 0 var(--border); padding-top: calc(var(--subrow) * 3); }
+    /* Sign In's two account actions first (Laws of UX pick 7, owner 2026-11-10): Create an account is
+       a 31g x 5r button 2r under Sign In, the ghost face in the brand's text and line; Forgot password?
+       keeps its words in a 31g x 4r tap box 1r below, label centred. */
+    .auth-card .auth-create { margin-top: calc(var(--subrow) * 2); color: var(--brand); border-color: var(--brand-line); }
+    .auth-card .auth-forgot {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; height: calc(var(--subrow) * 4); margin-top: var(--subrow);
+    }
+    /* The fields lock while the request runs (pick 8); the fieldset itself adds nothing to the layout. */
+    .auth-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
+    /* Show / Hide inside the 6r password field (pick 11): 6g x 4r, 1g from its right edge, 1r in. */
+    .auth-pw { position: relative; }
+    .auth-pw input { width: 100%; padding-right: calc(var(--gu) * 8); }
+    .auth-pw-toggle {
+      position: absolute; right: var(--gu); top: var(--subrow);
+      width: calc(var(--gu) * 6); height: calc(var(--subrow) * 4);
+      display: flex; align-items: center; justify-content: center;
+      background: none; border: 0; padding: 0; cursor: pointer; border-radius: var(--radius-xs);
+      font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps); text-indent: var(--track-caps); text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    /* The submit's answer within a frame (pick 8): a 1.5g ring 1g before "Signing in…". */
+    .auth-submit { gap: var(--gu); }
+    .auth-spinner {
+      width: calc(var(--gu) * 1.5); height: calc(var(--gu) * 1.5); flex: 0 0 auto; box-sizing: border-box;
+      border: var(--bw-fine) solid currentColor; border-right-color: transparent; border-radius: var(--radius-circle);
+      animation: spin var(--dur-amble) linear infinite;
+    }
 
     .form-field { display: flex; flex-direction: column; gap: var(--space-sm); margin-bottom: var(--space-xl); }
 
@@ -8578,6 +8611,21 @@
     .toast-message {
       flex: 1;
       min-width: 0;
+    }
+    /* A toast's one action (View after the first save, Undo after a remove): 6g x 3r, label centred. */
+    .toast-action {
+      flex: 0 0 auto; width: calc(var(--gu) * 6); height: calc(var(--subrow) * 3);
+      display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
+      background: none; color: inherit; border: var(--bw-hair) solid currentColor; border-radius: var(--radius-xs);
+      font: inherit; font-weight: var(--fw-bold); text-transform: uppercase;
+      letter-spacing: var(--track-caps); text-indent: var(--track-caps);
+    }
+    /* The guest banner's button (UX pick 3): 3r tall, its width rounded up to whole g (snap-g). */
+    .guest-banner-btn {
+      flex: 0 0 auto; height: calc(var(--subrow) * 3); padding: 0 var(--gu); box-sizing: border-box;
+      display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+      background: var(--ov-black-3); color: #000; border: 0; border-radius: var(--radius-xs);
+      font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
     }
     @keyframes toastIn {
       from { opacity: 0; transform: translateY(calc(var(--subrow) * 1.5)) scale(0.95); }
@@ -16482,6 +16530,43 @@
       min-height: calc(var(--subrow) * 2);
       box-sizing: border-box;
     }
+
+    /* With no location set (UX pick 9): a 35g x 5r line, the brand's hairline and tint, saying the
+       list is worldwide; Near me 9g x 3r brand-filled, then a 3g x 3r ✕, each 1r in from top and bottom. */
+    .worldwide-line {
+      display: grid; grid-template-columns: 1fr calc(var(--gu) * 9) calc(var(--gu) * 3); column-gap: var(--gu);
+      height: calc(var(--subrow) * 5); box-sizing: border-box; padding: 0 var(--gu); margin-bottom: var(--subrow);
+      background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-hair) var(--brand-line); border-radius: var(--radius-xs);
+    }
+    .worldwide-text {
+      align-self: start; line-height: 1; padding-top: calc(var(--subrow) * 3 - 1cap);
+      text-box-trim: trim-start; text-box-edge: cap alphabetic;
+      font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .worldwide-near, .worldwide-x {
+      align-self: start; margin-top: var(--subrow); height: calc(var(--subrow) * 3); padding: 0; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; border-radius: var(--radius-xs);
+    }
+    .worldwide-near {
+      background: var(--brand); color: var(--on-brand); border: 0;
+      font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      text-transform: uppercase; letter-spacing: var(--track-caps); text-indent: var(--track-caps);
+    }
+    .worldwide-x { background: none; border: 0; color: var(--text-muted); }
+    .worldwide-x svg { width: var(--icon-sm, var(--icon-md)); height: var(--icon-sm, var(--icon-md)); }
+
+    /* Add, while the event is not saved (Laws of UX pick 5): the 6r row keeps its box and holds a
+       brand-filled 4r face inset 1g and 1r (31g on the phone's 33g row), label centred. */
+    .cal-action-btn.add-cta { padding: var(--subrow) var(--gu); justify-content: center; }
+    .cal-add-face {
+      width: 100%; height: calc(var(--subrow) * 4); box-sizing: border-box;
+      display: flex; align-items: center; justify-content: center; gap: var(--gu);
+      background: var(--brand); color: var(--on-brand); border-radius: var(--radius-xs);
+      font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold);
+      text-transform: uppercase; letter-spacing: var(--track-caps); text-indent: var(--track-caps); white-space: nowrap;
+    }
+    .cal-add-face svg { width: var(--icon-md); height: var(--icon-md); flex: 0 0 auto; }
 
     /* The location pickers in the bankroll switcher's tile (owner, 2026-10-20; Schedule and Cash): 5r,
        a hairline box, a caps LOCATION label seated on r2 over the place on r4, the

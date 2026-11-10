@@ -1004,9 +1004,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
         <FirstRun
           icon="tracking"
           title="Log your first result"
-          body="Cashes and bust-outs both count — your ROI needs a few before it tells you anything."
-          actionLabel="Log result"
-          onAction={() => { setShowAddForm(true); setEditingId(null); }}
+          body="Use Log Result above after each event. Cashes and bust-outs both count: your ROI needs a few before it tells you anything."
         />
       ) : (
         <div className="tr-months">

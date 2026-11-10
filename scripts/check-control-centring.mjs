@@ -2680,7 +2680,7 @@ function finalize(c) {
   step('auth-login', signedOut, 0, { signedOut: true });
   step('auth-register', async () => {
     await signedOut();
-    await tap('button:has-text("Create account"), button:has-text("Sign up"), button:has-text("Register"), a:has-text("Sign up")', 900);
+    await tap('button:has-text("Create an account"), button:has-text("Create account"), button:has-text("Sign up"), button:has-text("Register"), a:has-text("Sign up")', 900);
   }, 1, { signedOut: true });
   step('auth-forgot', async () => {
     await signedOut();

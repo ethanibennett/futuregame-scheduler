@@ -45,7 +45,7 @@ export default function ResetPasswordForm({ resetToken, theme, toggleTheme }) {
     <div className="auth-wrap">
       <div className="auth-card snap-place">
         <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'var(--space-md)'}}>
-          <ThemeButton theme={theme} nextThemeLabel={nextThemeLabel} onToggle={toggleTheme} className="btn btn-ghost btn-sm snap-g" />
+          <ThemeButton theme={theme} nextThemeLabel={nextThemeLabel} onToggle={toggleTheme} />
         </div>
         <div className="auth-logo">
           <h1>futurega.me</h1>

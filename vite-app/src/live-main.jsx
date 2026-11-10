@@ -1,7 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import LivePage from './components/LivePage.jsx';
-import './styles.css';
+// Only the part of styles.css this page uses (scripts/make-live-css.mjs; UX pick 13), not the whole app's.
+import './live.generated.css';
 import { captureLanding } from './utils/live-page.js';
 
 // futurega.me/live's own entry (scripts/make-live-html.mjs): the landing page alone, without the app's

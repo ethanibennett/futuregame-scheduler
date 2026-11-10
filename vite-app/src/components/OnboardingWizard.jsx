@@ -143,7 +143,9 @@ export default function OnboardingWizard({ token, isGuest = false, tournaments, 
   // The live count, with the answers as they stand.
   const loc = useMemo(() => locationFrom(a, prev.current.loc, rows), [a, rows]);
   const merged = useMemo(() => filtersFrom(a, prev.current.filters, rows), [a, rows]);
-  const showOnlineNow = merged.showOnline !== false;
+  // A missing showOnline is the default, which is off (WIZARD_DEFAULTS, the live-only defaults): the
+  // count and the last button promise what the list will show (UX pick 2).
+  const showOnlineNow = merged.showOnline === true;
   const counts = useMemo(() => (tournaments && tournaments.length ? countSetup(tournaments, loc, merged, getToday()) : null),
     [tournaments, loc, merged]);
   const status = statusLine(counts, { located: isLocated(loc), showOnline: showOnlineNow });
@@ -168,6 +170,8 @@ export default function OnboardingWizard({ token, isGuest = false, tournaments, 
     window.dispatchEvent(new CustomEvent('onboarding-applied', { detail }));
     markOnboarded();
     if (remote) pushServerOnboarding(token, { skipped, filters: sub });
+    // A guest's setup is kept for the account they may create (App.jsx carryGuestOver).
+    else { try { localStorage.setItem('guestSetup', skipped ? 'skipped' : '1'); } catch { /* storage off */ } }
   };
 
   const finish = () => {

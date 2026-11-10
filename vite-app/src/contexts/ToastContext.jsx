@@ -12,9 +12,9 @@ let toastIdCounter = 0;
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
 
-  const addToast = useCallback((message, type = 'info', duration = 3500) => {
+  const addToast = useCallback((message, type = 'info', duration = 3500, action = null) => {
     const id = ++toastIdCounter;
-    setToasts(prev => [...prev, { id, message, type }]);
+    setToasts(prev => [...prev, { id, message, type, action }]);
     setTimeout(() => {
       setToasts(prev => prev.map(t => t.id === id ? { ...t, exiting: true } : t));
       setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 200);
@@ -27,9 +27,10 @@ export function ToastProvider({ children }) {
   }, []);
 
   const ctx = useMemo(() => ({
-    success: (msg) => addToast(msg, 'success'),
-    error: (msg) => addToast(msg, 'error', 5000),
-    info: (msg) => addToast(msg, 'info'),
+    // opts: { duration, action: { label, onClick } } (a toast's one button, e.g. View or Undo).
+    success: (msg, opts = {}) => addToast(msg, 'success', opts.duration || 3500, opts.action || null),
+    error: (msg, opts = {}) => addToast(msg, 'error', opts.duration || 5000, opts.action || null),
+    info: (msg, opts = {}) => addToast(msg, 'info', opts.duration || 3500, opts.action || null),
   }), [addToast]);
 
   const icons = { success: '\u2713', error: '\u2715', info: '\u2139' };
@@ -47,6 +48,12 @@ export function ToastProvider({ children }) {
             >
               <span className="toast-icon">{icons[t.type]}</span>
               <span className="toast-message">{t.message}</span>
+              {t.action && (
+                <button type="button" className="toast-action"
+                  onClick={(e) => { e.stopPropagation(); dismiss(t.id); t.action.onClick(); }}>
+                  {t.action.label}
+                </button>
+              )}
             </div>
           ))}
         </div>,

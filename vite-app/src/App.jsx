@@ -56,8 +56,8 @@ import { backerTokenFromPath } from './utils/backer-page.js';
 import SkeletonDashboard from './components/SkeletonDashboard.jsx';
 import SkeletonSchedule from './components/SkeletonSchedule.jsx';
 import RealNamePrompt from './components/RealNamePrompt.jsx';
-import { hasOnboarded, markOnboarded, clearOnboarded, readLocalLocation, readLocalFilters, migrateLiveOnlyDefaults } from './utils/location-prefs.js';
-import { fetchServerOnboarding, adoptServerOnboarding } from './utils/onboarding.js';
+import { hasOnboarded, markOnboarded, clearOnboarded, readLocalLocation, readLocalFilters, migrateLiveOnlyDefaults, pushServerLocation } from './utils/location-prefs.js';
+import { fetchServerOnboarding, adoptServerOnboarding, pushServerOnboarding, wizardSubset } from './utils/onboarding.js';
 import NotificationsPanel from './components/NotificationsPanel.jsx';
 import SwapModal from './components/SwapModal.jsx';
 import MilestoneCelebration from './components/MilestoneCelebration.jsx';
@@ -218,6 +218,14 @@ function readGuestPicks() {
     return Array.isArray(v) ? v.filter(Number.isFinite) : [];
   } catch { return []; }
 }
+/* A guest who finished ('1') or skipped ('skipped') setup on this device (OnboardingWizard writes
+   it); the answers themselves are this device's (location-prefs). */
+function guestSetupState() {
+  try { return localStorage.getItem('guestSetup'); } catch { return null; }
+}
+// Setup's code, fetched while Create Account is filled in, so it opens the moment the account exists.
+const prefetchSetup = () => { import('./components/OnboardingWizard.jsx').catch(() => {}); };
+
 function writeGuestPicks(ids) {
   try { localStorage.setItem(GUEST_PICKS_KEY, JSON.stringify(ids)); } catch { /* storage off: this visit only */ }
 }
@@ -229,6 +237,8 @@ function App() {
   const [username, setUsername] = useState(localStorage.getItem('username') || sessionStorage.getItem('username'));
   const [isGuest, setIsGuest] = useState(localStorage.getItem('isGuest') === 'true');
   const [authView, setAuthView] = useState('login');
+  const [authBusy, setAuthBusy] = useState(false);       // Sign In / Create Account answered at once (UX pick 8)
+  const [forgotEmail, setForgotEmail] = useState('');    // Sign In's address, carried to Forgot (UX pick 14)
   const [currentView, _setCurrentView] = useState('dashboard');
   // Set when the dashboard's Up Next card is tapped; ScheduleView consumes it
   // to expand and scroll to that row, then clears it so a later visit to the
@@ -962,13 +972,13 @@ function App() {
     const fd = new FormData(e.target);
     const email = fd.get('email');
     const password = fd.get('password');
-    const usernameInput = fd.get('username');
     const realNameInput = fd.get('realName');
 
+    setAuthBusy(true);
     try {
       const endpoint = isRegister ? '/register' : '/login';
       const body = isRegister
-        ? { username: usernameInput, email, password, realName: realNameInput, source: signupSource(fd.get('heard')) }
+        ? { email, password, realName: realNameInput, source: signupSource(fd.get('heard')) }
         : { email, password };
 
       const res = await fetch(`${API_URL}${endpoint}`, {
@@ -981,12 +991,40 @@ function App() {
 
       if (isRegister) {
         // Create Account signs you in. An older server answers with no session: say so.
-        if (data.token) completeSignIn(data, true);
+        if (data.token) { completeSignIn(data, true); carryGuestOver(data.token); }
         else setSuccess('Account created. Sign in to continue.');
       } else {
         completeSignIn(data, keepSignedIn);
       }
     } catch { setError('Network error. Please try again.'); }
+    finally { setAuthBusy(false); }
+  };
+
+  /* A guest who creates an account keeps what they did as a guest (UX pick 3): the events saved on
+     this device go into the new account, and setup answered as a guest is not asked again. */
+  const carryGuestOver = (newToken) => {
+    const picks = readGuestPicks();
+    if (picks.length) {
+      Promise.all(picks.map((id) => fetch(`${API_URL}/schedule`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${newToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournamentId: id }),
+      }).then((r) => r.ok, () => false))).then((oks) => {
+        const kept = oks.filter(Boolean).length;
+        writeGuestPicks([]);
+        setGuestPicks([]);
+        if (kept) toast.success(`Your ${kept} saved event${kept === 1 ? ' is' : 's are'} in your new account`);
+      });
+    }
+    const setup = guestSetupState();
+    if (setup) {
+      markOnboarded();
+      onboardingRec.current = undefined;
+      const loc = readLocalLocation();
+      if (loc) pushServerLocation(newToken, loc);
+      pushServerOnboarding(newToken, { skipped: setup === 'skipped', filters: wizardSubset(readLocalFilters() || {}) });
+      try { localStorage.removeItem('guestSetup'); } catch { /* storage off */ }
+    }
   };
 
   // A session from /api/login or /api/register.
@@ -1138,43 +1176,62 @@ function App() {
     else toast.success(`Cleared ${cleared} override${cleared === 1 ? '' : 's'}`);
   }, [token, toast]);
 
+  /* The first event saved is the moment the app is for (UX pick 5): it is confirmed, with a way to
+     the list it went to. */
+  const confirmFirstSave = useCallback(() => {
+    toast.success('Added to My Schedule · 1 event', {
+      duration: 6000,
+      action: { label: 'View', onClick: () => { setCurrentView('schedule'); requestAnimationFrame(() => landMySchedule()); } },
+    });
+  }, [toast]);
+
   const toggleTournament = useCallback(async (tournamentId) => {
     haptic();
     if (isGuest) {
+      const first = !guestPicks.length;
       setGuestPicks(prev => {
         const next = prev.includes(tournamentId) ? prev.filter(id => id !== tournamentId) : [...prev, tournamentId];
         writeGuestPicks(next);
         return next;
       });
+      if (first) confirmFirstSave();
       return;
     }
     const existing = mySchedule.find(t => t.id === tournamentId);
     const isIn = !!existing;
+    // Optimistic: the card shows the change at once; a refusal puts it back and says so.
+    const before = mySchedule;
+    const firstSave = !isIn && !before.some(t => t.venue !== 'Personal');
+    if (isIn) setMySchedule(prev => prev.filter(t => t.id !== tournamentId));
+    else {
+      const t = tournaments.find(x => x.id === tournamentId);
+      if (t) setMySchedule(prev => [...prev, { ...t }]);
+    }
     try {
+      let res;
       if (isIn) {
-        if (existing.venue === 'Personal') {
-          await fetch(`${API_URL}/personal-event/${tournamentId}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` }
-          });
-        } else {
-          await fetch(`${API_URL}/schedule/${tournamentId}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` }
-          });
-        }
+        const path = existing.venue === 'Personal' ? 'personal-event' : 'schedule';
+        res = await fetch(`${API_URL}/${path}/${tournamentId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        });
       } else {
-        const saved = await fetch(`${API_URL}/schedule`, {
+        res = await fetch(`${API_URL}/schedule`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ tournamentId })
         });
         // The third saved event is a moment to ask for a rating (utils/review-prompt.js).
-        if (saved.ok) noteReviewMoment('saved');
+        if (res.ok) noteReviewMoment('saved');
       }
+      if (!res.ok) throw new Error(String(res.status));
+      if (firstSave) confirmFirstSave();
       fetchMySchedule();
-    } catch { setError('Failed to update schedule'); }
-  }, [token, mySchedule, isGuest]);
+    } catch {
+      setMySchedule(before);
+      toast.error(isIn ? 'Could not remove it. Try again.' : 'Could not add it. Try again.');
+    }
+  }, [token, mySchedule, isGuest, guestPicks, tournaments, toast, confirmFirstSave]);
 
   const addPersonalEvent = useCallback(async (date, type, notes) => {
     try {
@@ -1879,6 +1936,7 @@ function App() {
   if (!token) {
     if (authView === 'forgot') {
       return <ForgotPasswordForm
+        initialEmail={forgotEmail}
         onBack={() => setAuthView('login')}
         theme={theme}
         toggleTheme={toggleTheme}
@@ -1890,9 +1948,11 @@ function App() {
       success={success}
       theme={theme}
       toggleTheme={toggleTheme}
-      onForgotPassword={() => { setError(''); setSuccess(''); setAuthView('forgot'); }}
+      onForgotPassword={(typed) => { setError(''); setSuccess(''); setForgotEmail(typed || ''); setAuthView('forgot'); }}
       onGuestLogin={handleGuestLogin}
       initialRegister={authView === 'register'}
+      busy={authBusy}
+      onRegisterShown={prefetchSetup}
     />;
   }
 
@@ -2427,10 +2487,11 @@ function App() {
         /* Classed so the full-bleed replayer can hide it: a banner about
            saving schedules has nothing to say over a hand replay. */
         <div className="guest-banner" style={{background:'var(--accent)',color:'#000',padding:'calc(var(--subrow) * 1) calc(var(--subrow) * 2)',display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:'calc(var(--gu) * 1.178)',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
-          <span>Guest mode -- your schedule won't be saved. Register to keep it!</span>
-          <button onClick={() => { handleLogout(); setAuthView('register'); }}
-            style={{background:'rgba(0,0,0,0.2)',color:'#000',border:'none',borderRadius:'calc(var(--subrow) * 0.5)',padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1.5)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.104)',fontWeight: 'var(--fw-bold)',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
-            Register
+          <span>{guestPicks.length
+            ? `Create an account to keep your ${guestPicks.length} saved event${guestPicks.length === 1 ? '' : 's'}`
+            : 'Browsing as a guest. An account keeps your schedule.'}</span>
+          <button className="guest-banner-btn snap-g" onClick={() => { handleLogout(); setAuthView('register'); }}>
+            Create account
           </button>
         </div>
       )}

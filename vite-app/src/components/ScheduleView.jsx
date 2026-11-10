@@ -353,12 +353,16 @@ export default function ScheduleView({
       )}
 
       {sorted.length === 0 ? (
+        /* Named after the real tab, and saying how adding works (UX picks 5 and 10). In the desktop pane
+           the list is already open beside it, so there is no button. */
         <FirstRun
           icon="star"
           title="Build your schedule"
-          body="Add events from All Tournaments and they collect here, sorted by date with your travel days in between."
-          actionLabel="Browse tournaments"
-          onAction={onNavigate ? () => onNavigate('tournaments') : undefined}
+          body={onSelectEvent
+            ? 'Your first event goes here. Add the selected event above, or pick another from the list.'
+            : 'Open any event on the Schedule tab and tap Add. Your events collect here by date, with travel days between.'}
+          actionLabel={onSelectEvent ? undefined : 'Open the Schedule'}
+          onAction={onNavigate && !onSelectEvent ? () => onNavigate('tournaments') : undefined}
         />
       ) : (
       <div>

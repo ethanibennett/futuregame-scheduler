@@ -2,8 +2,9 @@
    top bar, the theme button, .an-clip's painted room). Every size in g and r; baselines seated with
    an-cell's p = 2(k - h/2 - c), c the face's own (see backer-page.css's header). From the content's top:
    3r, the title (display 2xl in a 3r row, baseline on line 3), 2r, the lede (an-p, 2r lines), 3r, the
-   figures card (15r), 3r, the features (a 2r heading and an an-p note each, 1r apart), 3r, the
-   buttons (35g x 5r, 1r apart), 3r, the foot. */
+   app itself (UX pick 12: a 4r clash alert, then two 7r Schedule cards 1r apart), 3r, the buttons
+   (35g x 5r, 1r apart), 3r, the figures card (15r), 3r, the features (a 2r heading and an an-p note
+   each, 1r apart), 3r, the foot. */
 .lp-title {
   --h: 3; --p: 0.7514;
   margin-top: calc(var(--subrow) * 3);
@@ -48,6 +49,33 @@
   font-weight: var(--fw-bold);
   color: var(--text);
 }
+
+/* The app itself (UX pick 12): its clash alert and two of its Schedule cards, outlined in the conflict
+   red, each strip blank (the page names no room). Univers Condensed sm (c .6511): the alert's line on
+   line 3 of 4 (p .6978), a card's name on line 3 of its 3r (p 1.6978) under the 2r time (an-note), the
+   buy-in (an-val, Libre Baskerville md) 3r down so its baseline is the name's: 6r into the 7r card. */
+.lp-demo { margin-top: calc(var(--subrow) * 3); }
+.lp-alert {
+  --h: 4; --p: 0.6978;
+  padding-left: var(--gu); padding-right: var(--gu);
+  border-radius: var(--radius-xs);
+  background: var(--danger-bg); box-shadow: inset 0 0 0 var(--bw-hair) var(--danger); color: var(--danger);
+  font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold);
+}
+.lp-ev {
+  display: grid; grid-template-columns: calc(var(--gu) * 2) minmax(0, 1fr) calc(var(--gu) * 8); column-gap: var(--gu);
+  margin-top: var(--subrow); height: calc(var(--subrow) * 7); box-sizing: border-box; padding-right: var(--gu);
+  border-radius: var(--radius-xs); overflow: hidden;
+  background: var(--surface); box-shadow: inset 0 0 0 var(--bw-fine) var(--danger);
+}
+.lp-ev-strip { background: var(--surface2); }
+.lp-ev-main { display: block; min-width: 0; padding-top: var(--subrow); }
+.lp-ev-name {
+  --h: 3; --p: 1.6978;
+  font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text);
+  overflow: hidden; text-overflow: ellipsis;
+}
+.lp-ev-buy { margin-top: calc(var(--subrow) * 3); text-align: right; }
 
 /* The buttons: whole 35g x 5r boxes, the label centred in them (.ctl), the rule for every control. */
 .lp-ctas { margin-top: calc(var(--subrow) * 3); display: grid; row-gap: var(--subrow); }

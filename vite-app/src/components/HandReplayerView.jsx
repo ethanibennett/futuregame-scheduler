@@ -5487,13 +5487,11 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         <div className="replayer-hand-list">
           {draftRow}
           <div className="replayer-hand-card is-row is-empty">
+            {/* Centred across the card, saying what the list is for (UX pick 10). */}
             <div className="replayer-hand-card-content">
-              <div className="replayer-hand-card-cards" aria-hidden="true">
-                <span className="card-unknown" /><span className="card-unknown" />
-              </div>
               <div className="replayer-hand-card-body">
                 <span className="replayer-hand-card-title">No saved hands yet</span>
-                <span className="replayer-hand-card-meta">Record one and it will replay here</span>
+                <span className="replayer-hand-card-meta">Hands you create are kept here to replay and share.</span>
               </div>
             </div>
           </div>

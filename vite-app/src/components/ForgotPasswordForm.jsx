@@ -4,9 +4,10 @@ import { THEME_LABEL } from '../utils/utils.js';
 import { nextTheme } from '../utils/theme.js';
 import { API_URL } from '../utils/api.js';
 
-export default function ForgotPasswordForm({ onBack, theme, toggleTheme }) {
+export default function ForgotPasswordForm({ onBack, theme, toggleTheme, initialEmail = '' }) {
   const nextThemeLabel = THEME_LABEL[nextTheme(theme)];
-  const [email, setEmail] = useState('');
+  // The address typed on Sign In comes along (Laws of UX pick 14).
+  const [email, setEmail] = useState(initialEmail);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,7 +34,7 @@ export default function ForgotPasswordForm({ onBack, theme, toggleTheme }) {
     <div className="auth-wrap">
       <div className="auth-card snap-place">
         <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'var(--space-md)'}}>
-          <ThemeButton theme={theme} nextThemeLabel={nextThemeLabel} onToggle={toggleTheme} className="btn btn-ghost btn-sm snap-g" />
+          <ThemeButton theme={theme} nextThemeLabel={nextThemeLabel} onToggle={toggleTheme} />
         </div>
         <div className="auth-logo">
           <h1>futurega.me</h1>

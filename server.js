@@ -462,6 +462,23 @@ app.use('/api/staking', authenticateToken, requireAppAdmin);
 // account behind it is free for anyone to sign up as. Reserve them all outright.
 const RESERVED_USERNAMES = new Set([...APP_ADMIN_USERNAMES, ...EVENT_EDITOR_USERNAMES]);
 
+/* A username made from a sign-up's name: lower case, accents dropped, words joined by dots, only
+   the characters a username allows, at most 16 before a number. A reserved or taken name gets the
+   first free number from 2 (pat.player2). */
+function deriveUsername(realName) {
+  const base = String(realName || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '').slice(0, 16).replace(/\.+$/, '') || 'player';
+  const stem = base.length >= 2 ? base : 'player';
+  const free = (name) => {
+    if (RESERVED_USERNAMES.has(name) || APP_ADMIN_USERNAMES.has(name)) return false;
+    const r = db.exec('SELECT 1 FROM users WHERE LOWER(username) = ?', [name]);
+    return !(r.length && r[0].values.length);
+  };
+  if (free(stem)) return stem;
+  for (let n = 2; n < 10000; n++) if (free(stem + n)) return stem + n;
+  return stem + Date.now().toString(36).slice(-4);
+}
+
 // /cash/games is the heatmap's catalog: every (room, game, stakes) the watcher has ever recorded,
 // a full scan of its history (over a second on the box, longer on the hosted copy). It changes only
 // by a few counts between polls, so it is kept here and served at once, refreshed in the background
@@ -1002,6 +1019,12 @@ function serveLive(req, res) {
 `
       + `<meta name="build-version" content="${BUILD_VERSION}">
 </head>`);
+  // The figures in the page, so the card paints with it (LivePage.jsx reads #live-summary first).
+  try {
+    const json = JSON.stringify(liveSummary()).replace(/</g, '\\u003c');
+    html = html.replace('</head>', `<script id="live-summary" type="application/json">${json}</script>
+</head>`);
+  } catch (e) { /* the database is not up yet: the page asks for them */ }
   res.set('Cache-Control', 'no-cache');
   res.type('html').send(html);
 }
@@ -1073,8 +1096,10 @@ app.get('/api/admin/growth', authenticateToken, requireAppAdmin, (req, res) => {
 // appStore is the store link's parts once the app is listed (APP_STORE_ID and the campaign provider
 // token APP_STORE_PT, both unset until launch); the page adds the ad's campaign (?ct=) to it.
 let liveSummaryCache = null;
-app.get('/api/public/live-summary', (req, res) => {
-  try {
+/* The landing page's figures: live events, series and rooms in the next 30 days, cached ten minutes.
+   Served at /api/public/live-summary and written into /live itself (serveLive), so the figure card
+   paints with the page (UX pick 13). */
+function liveSummary() {
     const now = Date.now();
     if (!liveSummaryCache || now - liveSummaryCache.at > 10 * 60e3) {
       const from = new Date(now).toISOString().slice(0, 10);
@@ -1098,9 +1123,14 @@ app.get('/api/public/live-summary', (req, res) => {
     }
     const id = String(process.env.APP_STORE_ID || '').trim(), pt = String(process.env.APP_STORE_PT || '').trim();
     const appStore = /^\d{6,12}$/.test(id) && /^[A-Za-z0-9]{3,32}$/.test(pt) ? { id, pt } : null;
-    res.set('Cache-Control', 'public, max-age=600');
     // seasonLabel: for the native app's sign-in, whose page ships in the app and so has none in it.
-    res.json({ ...liveSummaryCache.body, appStore, seasonLabel: currentSeasonLabel() });
+    return { ...liveSummaryCache.body, appStore, seasonLabel: currentSeasonLabel() };
+}
+app.get('/api/public/live-summary', (req, res) => {
+  try {
+    const body = liveSummary();
+    res.set('Cache-Control', 'public, max-age=600');
+    res.json(body);
   } catch (e) {
     console.error('[live-summary]', e.message);
     res.status(500).json({ error: 'Something went wrong' });
@@ -1609,6 +1639,17 @@ async function initDatabase() {
     db.run('ALTER TABLE users ADD COLUMN hand_replayer_access INTEGER DEFAULT 0');
   } catch (e) {
     // Column already exists — ignore
+  }
+
+  // Migrate: addresses in lower case (sign-in and reset match in any case). A pair that differs only
+  // in case is left as it is and logged; sign-in tries each of them.
+  try {
+    const twins = db.exec("SELECT LOWER(TRIM(email)) FROM users GROUP BY LOWER(TRIM(email)) HAVING COUNT(*) > 1");
+    if (twins.length && twins[0].values.length) console.warn(`[auth] ${twins[0].values.length} email(s) differ only in case; left as typed`);
+    db.run(`UPDATE users SET email = LOWER(TRIM(email)) WHERE email != LOWER(TRIM(email))
+              AND LOWER(TRIM(email)) NOT IN (SELECT LOWER(TRIM(email)) FROM users GROUP BY LOWER(TRIM(email)) HAVING COUNT(*) > 1)`);
+  } catch (e) {
+    console.error('[auth] email case migration:', e.message);
   }
 
   // Migrate: the session version (sessionRefusal below). A password reset bumps it, which ends
@@ -4120,12 +4161,19 @@ function sanitizeOnboardingFilters(f) {
 // User registration
 app.post('/api/register', registerLimit, async (req, res) => {
   try {
-    const { username, email, password, realName } = req.body;
+    const { password, realName } = req.body;
+    // An address is matched in any case (sign-in, reset), so it is kept in lower case.
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
 
     // Validate real name
     if (!realName || realName.trim().length < 1 || realName.trim().length > 40) {
       return res.status(400).json({ error: 'Full name is required (max 40 characters)' });
     }
+
+    // Sign-up asks for a name, an email and a password (owner, 2026-11-10): with no username given,
+    // one is made from the name ("Pat Player" -> pat.player, pat.player2 when taken). Settings can
+    // change it; sign-in is by email.
+    const username = req.body.username ? String(req.body.username) : deriveUsername(realName);
 
     // Validate username
     if (!username || username.length < 2 || username.length > 20) {
@@ -4208,21 +4256,18 @@ app.post('/api/login', loginLimit, async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const stmt = db.prepare('SELECT * FROM users WHERE email = ?');
-    stmt.bind([email]);
-
-    let user = null;
-    while (stmt.step()) {
-      user = stmt.getAsObject();
-    }
+    // The address in any case (owner, 2026-11-10: "an email signs in whatever its case").
+    const stmt = db.prepare('SELECT * FROM users WHERE LOWER(email) = LOWER(?) ORDER BY id');
+    stmt.bind([typeof email === 'string' ? email.trim() : '']);
+    const candidates = [];
+    while (stmt.step()) candidates.push(stmt.getAsObject());
     stmt.free();
 
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    let user = null;
+    for (const c of candidates) {
+      if (typeof password === 'string' && await bcrypt.compare(password, c.password)) { user = c; break; }
     }
-
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
+    if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -4464,8 +4509,8 @@ app.post('/api/forgot-password', forgotLimit, async (req, res) => {
 
     const successMsg = { message: 'If an account with that email exists, a reset link has been sent.' };
 
-    const stmt = db.prepare('SELECT id, email FROM users WHERE email = ?');
-    stmt.bind([email.trim().toLowerCase()]);
+    const stmt = db.prepare('SELECT id, email FROM users WHERE LOWER(email) = ? ORDER BY id');
+    stmt.bind([String(email).trim().toLowerCase()]);
     let user = null;
     if (stmt.step()) { user = stmt.getAsObject(); }
     stmt.free();
