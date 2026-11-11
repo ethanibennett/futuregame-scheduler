@@ -77,6 +77,9 @@ function ReportTable({ rep, signed, rate }) {
         <span className="an-cell an-lbl an-lbl-3b an-num" role="columnheader">{rep.key === 'month' ? 'Net' : 'Profit'}</span>
         <span className="an-cell an-lbl an-lbl-3b an-num" role="columnheader">{RATE_HEAD[rep.rateKind] || ''}</span>
         {hourly && <span className="an-cell an-lbl an-lbl-3b an-num br-unit" role="columnheader">{col.label}</span>}
+        {/* Desktop (Bankroll design 43): the bar has a column of its own. */}
+        <span className="an-cell an-lbl an-lbl-3b br-scale-head" aria-hidden="true" />
+        <span className="an-cell an-lbl an-lbl-3b br-scale-head" aria-hidden="true">Profit, to scale</span>
       </div>
       {rep.rows.map((r, i) => {
         const b = layout.bars[i];
@@ -92,9 +95,9 @@ function ReportTable({ rep, signed, rate }) {
             <span className="br-track" aria-hidden="true">
               {b.width > 0 && (
                 <span className={'br-fill' + (r.profit < 0 ? ' is-neg' : '')}
-                  style={{ left: `calc(var(--gu) * ${b.start})`, width: `calc(var(--gu) * ${b.width})` }} />
+                  style={{ left: `${((b.start / 35) * 100).toFixed(3)}%`, width: `${((b.width / 35) * 100).toFixed(3)}%` }} />
               )}
-              {layout.zero > 0 && layout.zero < 35 && <span className="br-zero" style={{ left: `calc(var(--gu) * ${layout.zero})` }} />}
+              {layout.zero > 0 && layout.zero < 35 && <span className="br-zero" style={{ left: `${((layout.zero / 35) * 100).toFixed(3)}%` }} />}
             </span>
           </div>
         );

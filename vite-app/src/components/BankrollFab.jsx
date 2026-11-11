@@ -20,21 +20,30 @@ import './bankroll-fab.css';
 // A form or sheet the + would open holds it away (hooks/useBankrollFab.js), and a hidden + takes
 // its open menu with it.
 //
-// The menu is portalled to the body like the user menu in App.jsx: 16g wide, 5r rows, an inset
-// hairline ring, its right edge on the + and 1r above it. Escape or a tap outside closes it and
-// returns focus to the +; the arrow keys, Home and End move between the choices.
+// The menu is portalled to the body: a raised layer over a page that dims behind it (Bankroll design
+// 37), 20g wide, 6r rows each led by its kind's mark in a 3g x 4r --brand-quiet cell, its right edge on
+// the + and 1r above it (below the desktop bar's Add button). It arrives from the button's corner in the
+// 200 ms the + takes to turn (38). Escape or a tap outside closes it and returns focus to the +; the arrow
+// keys, Home and End move between the choices.
+//
+// variant 'bar' (Bankroll design 49 and 87): on desktop the + is a labelled "+ Add" in the bankroll's band
+// at the top of the pane (Bankrolls.jsx BankrollSwitcher), and the floating one is not drawn there.
 
-const ROW_R = 5;
-const WIDTH_G = 16;
+const ROW_R = 6;
+const WIDTH_G = 20;
+const MARK = { tournament: 'ring', 'cash-add': 'cards', 'cash-start': 'clock', expense: 'dollarSign' };
 
-function FabMenu({ id, anchor, items, onPick, onClose }) {
+function FabMenu({ id, anchor, items, onPick, onClose, leaving = false }) {
   const ref = useRef(null);
   const [style, setStyle] = useState(null);
+  const [below, setBelow] = useState(false);
   useLayoutEffect(() => {
     const r = anchor.getBoundingClientRect();
     const { G } = gridGeom();
-    // Right edge on the + (a g line), one row per choice, its foot 1r above the +'s top (an r line).
+    // Right edge on the + (a g line), one row per choice, its foot 1r above the +'s top (an r line), or
+    // its top 1r under a button in the top half (the desktop bar's Add).
     setStyle(gridPanelStyle(r, items.length * ROW_R, r.right / G - WIDTH_G));
+    setBelow(r.top < window.innerHeight / 2);
   }, [anchor, items.length]);
   const placed = !!style;
   useEffect(() => {
@@ -66,14 +75,18 @@ function FabMenu({ id, anchor, items, onPick, onClose }) {
   };
   return createPortal(
     <>
-      <div className="bk-fab-scrim" onClick={() => onClose(true)} />
+      <div className={'bk-fab-scrim' + (leaving ? ' is-leaving' : '')} onClick={() => onClose(true)} />
       {placed && (
-        <div ref={ref} id={id} className="bk-fab-menu" role="menu" aria-label="Add a session" style={style} onKeyDown={onKeyDown}>
-          {items.map((it) => (
-            <button key={it.key} type="button" role="menuitem" className="bk-fab-item" onClick={() => onPick(it.intent)}>
-              <span className="bk-fab-item-t">{it.label}</span>
-            </button>
-          ))}
+        <div ref={ref} id={id} className={'bk-fab-menu' + (below ? ' is-below' : '') + (leaving ? ' is-leaving' : '')} role="menu" aria-label="Add a session" style={style} onKeyDown={onKeyDown}>
+          {items.map((it) => {
+            const Mark = Icon[MARK[it.key]] || Icon.plus;
+            return (
+              <button key={it.key} type="button" role="menuitem" className="bk-fab-item" onClick={() => onPick(it.intent)}>
+                <span className="bk-fab-mark" aria-hidden="true"><Mark /></span>
+                <span className="bk-fab-item-t">{it.label}</span>
+              </button>
+            );
+          })}
         </div>
       )}
     </>,
@@ -81,7 +94,7 @@ function FabMenu({ id, anchor, items, onPick, onClose }) {
   );
 }
 
-export default function BankrollFab({ scope = 'page', isAdmin, onPick }) {
+export default function BankrollFab({ scope = 'page', isAdmin, onPick, variant = 'float' }) {
   const held = useBankrollFabHeld(scope);
   const live = useLiveSessionNow();
   const items = useMemo(() => fabItems({ isAdmin: !!isAdmin, live: !!live }), [isAdmin, live]);
@@ -89,32 +102,36 @@ export default function BankrollFab({ scope = 'page', isAdmin, onPick }) {
   const menuId = useId();
   const btnRef = useRef(null);
   const [open, setOpen] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  // It leaves in --dur-fast (Bankroll design 38): the menu fades out before it goes.
   const close = useCallback((refocus) => {
-    setOpen(false);
+    setLeaving(true);
+    setTimeout(() => { setOpen(false); setLeaving(false); }, 120);
     if (refocus) btnRef.current?.focus({ preventScroll: true });
   }, []);
   // A form or sheet opened under an open menu (or the + hidden some other way): the menu goes too.
   useEffect(() => { if (held) setOpen(false); }, [held]);
   // The choice to a single one (the live session ended under an open menu, say): nothing to show.
   useEffect(() => { if (!menu) setOpen(false); }, [menu]);
-  if (held) return null;
+  if (held && variant !== 'bar') return null;
+  const bar = variant === 'bar';
   return (
     <>
       <button
         ref={btnRef}
         type="button"
-        className={'bk-fab bk-fab--' + scope}
+        className={bar ? 'bk-add-btn ctl' : 'bk-fab bk-fab--' + scope}
         aria-label="Add a session"
         aria-haspopup={menu ? 'menu' : undefined}
-        aria-expanded={menu ? open : undefined}
+        aria-expanded={menu ? open && !leaving : undefined}
         aria-controls={menu && open ? menuId : undefined}
-        onClick={() => (menu ? setOpen((o) => !o) : onPick(items[0].intent))}
+        onClick={() => (menu ? (open ? close(false) : setOpen(true)) : onPick(items[0].intent))}
       >
-        <Icon.plus />
+        {bar ? <span className="bk-add-label">+ Add</span> : <Icon.plus />}
       </button>
       {menu && open && (
-        <FabMenu id={menuId} anchor={btnRef.current} items={items} onClose={close}
-          onPick={(intent) => { setOpen(false); onPick(intent); }} />
+        <FabMenu id={menuId} anchor={btnRef.current} items={items} onClose={close} leaving={leaving}
+          onPick={(intent) => { setOpen(false); setLeaving(false); onPick(intent); }} />
       )}
     </>
   );

@@ -2,14 +2,15 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { API_URL } from '../utils/api.js';
 import { bankrollQuery } from '../utils/bankrolls.js';
 import { convertAmount, formatCurrencyAmount, getToday } from '../utils/utils.js';
-import { BANKROLL_RANGES, chronological, rangeFrom, stepGeometry, fmtSignedCents, fmtShort } from '../utils/backer-page.js';
+import { BANKROLL_RANGES, chronological, rangeFrom, stepGeometry, fmtSignedCents, fmtShort, fmtDay } from '../utils/backer-page.js';
 import { shapePath, useLineStyle } from '../utils/line-style.js';
-import { BankrollGraph, MonthBreak, RANGE_KEY, readRange } from './ResultCardParts.jsx';
+import { BankrollGraph, MonthBreak, RANGE_KEY, readRange, runningToDate, useListView, ListBar, LinesHead, ResultLine } from './ResultCardParts.jsx';
 import { RangeStrip } from './BackerChart.jsx';
 import { SessionRow } from './CashSessions.jsx';
 import { MoneyParts } from './SwissParts.jsx';
 import { openInResults } from '../hooks/useResultsFocus.js';
-import { useToast } from '../contexts/ToastContext.jsx';
+import { FirstRun, LoadFailed } from './EmptyState.jsx';
+import { SkeletonBlocks } from './SkeletonBankroll.jsx';
 
 /*
  * Bankroll › Logs › All (owner, 2026-10-20: "Add 'All' to the MTT/cash dropdown and give the option to
@@ -183,20 +184,23 @@ function byMonth(items) {
   return out;
 }
 
-export default function ResultsAll({ token, bk, entries, isoDay, resultNet, exchangeRates, renderEntry }) {
-  const toast = useToast();
+export default function ResultsAll({ token, bk, entries, isoDay, resultNet, resultCost = null, exchangeRates, renderEntry, onLog = null }) {
   const [sessions, setSessions] = useState([]);
+  const [state, setState] = useState('loading'); // the sessions: loading | ready | failed
+  const [retry, setRetry] = useState(0);
   const [mode, setMode] = useState(readMode);
+  const [view, setView] = useListView();
+  const [openLine, setOpenLine] = useState(null);
   const pickMode = (k) => { setMode(k); try { localStorage.setItem(MODE_KEY, k); } catch { /* private mode */ } };
   const q = bankrollQuery(bk.selected);
   useEffect(() => {
     let on = true;
     fetch(`${API_URL}/cash-sessions${q}`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json().then((d) => { if (!r.ok) throw new Error(d.error || 'Request failed'); return d; }))
-      .then((d) => { if (on) setSessions(d.sessions || []); })
-      .catch((e) => { if (on && toast) toast.error(e.message); });
+      .then((d) => { if (on) { setSessions(d.sessions || []); setState('ready'); } })
+      .catch(() => { if (on) setState('failed'); });
     return () => { on = false; };
-  }, [token, q]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [token, q, retry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toUsdCents = (amount, cur) => Math.round(convertAmount(Number(amount) || 0, cur || 'USD', 'USD', exchangeRates) * 100);
   const items = useMemo(() => [
@@ -208,6 +212,7 @@ export default function ResultsAll({ token, bk, entries, isoDay, resultNet, exch
   ].filter((it) => it.date), [entries, sessions, exchangeRates]); // eslint-disable-line react-hooks/exhaustive-deps
   const events = useMemo(() => items.map((it) => ({ date: it.date, shareCents: it.cents, game: it.game, kind: it.kind })), [items]);
   const months = useMemo(() => byMonth(items), [items]);
+  const toDates = useMemo(() => runningToDate(months.map((g) => g.net)), [months]);
 
   const sum = (k) => items.reduce((t, it) => t + (it.kind === k ? it.cents : 0), 0);
   const mttCents = sum('mtt'), cashCents = sum('cash'), totalCents = mttCents + cashCents;
@@ -244,20 +249,50 @@ export default function ResultsAll({ token, bk, entries, isoDay, resultNet, exch
         ? <BankrollGraph events={events} label="Profit" control={modeStrip} />
         : <OverlayGraph events={events} control={modeStrip} />}
 
-      {items.length === 0 ? (
-        <div className="an-cell an-note">Nothing logged yet: results and cash sessions show here together.</div>
-      ) : (
-        <div className="tr-months">
-          {months.map((g) => (
+      {/* A failed load says so (Bankroll design 97); loading holds the shape (46); empty only once the
+          sessions have answered, in the tab's one empty block with its two ways in (45). */}
+      {state === 'failed' && <LoadFailed inline={items.length > 0} title="Your cash sessions did not load" onRetry={() => { setState('loading'); setRetry((n) => n + 1); }} />}
+      {items.length === 0 && state === 'loading' ? (
+        <SkeletonBlocks label="Loading your results" blocks={[
+          { h: 21, card: true, bars: [[4, 1], [12, 2], [20, 1]] },
+          { h: 10, card: true, bars: [[6, 1], [14, 1], [6, 2, 'end']] }, { h: 10, card: true, bars: [[6, 1], [14, 1], [6, 2, 'end']] },
+        ]} />
+      ) : items.length === 0 ? (state === 'ready' ? (
+        <FirstRun block icon="tracking" title="Nothing logged in this bankroll yet"
+          body="Results and cash sessions show here together, newest first."
+          actionLabel={onLog ? 'Log result' : undefined} onAction={onLog ? () => onLog({ kind: 'tournament' }) : undefined}
+          secondary={onLog ? { label: 'Add a cash session', onClick: () => onLog({ kind: 'cash-add' }) } : null} />
+      ) : null) : (
+        <>
+        <ListBar count={items.length} view={view} onView={(v) => { setView(v); setOpenLine(null); }} />
+        <div className={'tr-months' + (view === 'lines' ? ' tr-lines' : '')}>
+          {view === 'lines' && <LinesHead />}
+          {months.map((g, gi) => (
             <div key={g.key} className="tr-month">
-              <MonthBreak monthKey={g.key} count={g.items.length} net={g.net}
+              <MonthBreak monthKey={g.key} count={g.items.length} net={g.net} toDate={toDates[gi]}
                 fmtNet={(v) => (v > 0 ? '+' : '') + formatCurrencyAmount(Math.round(v), 'USD')} noun="result" />
-              {g.items.map((it) => (it.kind === 'cash'
-                ? <SessionRow key={'cs-' + it.session.id} s={it.session} onOpen={() => openInResults('cash', it.session.id)} />
-                : <div key={it.entry.id} data-entry-id={it.entry.id}>{renderEntry(it.entry)}</div>))}
+              {g.items.map((it) => {
+                const key = it.kind === 'cash' ? 'cs-' + it.session.id : 'te-' + it.entry.id;
+                if (view === 'lines' && openLine !== key) {
+                  const cash = it.kind === 'cash';
+                  const cost = cash ? Number(it.session.buy_in) || 0 : resultCost ? resultCost(it.entry) / 100 : null;
+                  return (
+                    <ResultLine key={key} date={fmtDay(it.date)} tone={it.cents}
+                      game={cash ? (it.session.game || 'Cash') + (it.session.stakes ? ' ' + it.session.stakes : '') : it.entry.event_name}
+                      {...(cash ? { room: it.session.room || '' } : { venue: it.entry.venue, property: it.entry.property })}
+                      played={cost == null ? '' : formatCurrencyAmount(Math.round(cost), cash ? it.session.currency || 'USD' : 'USD')}
+                      amount={fmtSignedCents(it.cents)} label={`${it.game || ''}, ${fmtDay(it.date)}: ${fmtSignedCents(it.cents)}`}
+                      onOpen={() => (cash ? openInResults('cash', it.session.id) : setOpenLine(key))} />
+                  );
+                }
+                return it.kind === 'cash'
+                  ? <SessionRow key={key} s={it.session} onOpen={() => openInResults('cash', it.session.id)} />
+                  : <div key={key} data-entry-id={it.entry.id}>{renderEntry(it.entry, { defaultOpen: openLine === key })}</div>;
+              })}
             </div>
           ))}
         </div>
+        </>
       )}
     </div>
   );

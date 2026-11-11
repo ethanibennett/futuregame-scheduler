@@ -413,3 +413,20 @@
 /* A label sits with its own field (UX pick 82): 2r between field groups. They were 0.57r from the field
    above and 0.61r from their own. */
 .cs-fields { row-gap: calc(var(--subrow) * 2); }
+
+/* A session opened reads as a receipt (Bankroll design 40): Buy-in and Cash-out, then Net under a --bw-1
+   --text-muted rule, its label bold --text, its value a size up in its colour: the sum drawn as a sum. 2r on,
+   the session's facts (Bankroll, Tags). The hairlines under the rows read in dark too. */
+.cs-receipt .cs-kv.is-sum { box-shadow: inset 0 var(--bw-1) 0 0 var(--text-muted); }
+.cs-receipt .cs-kv.is-sum > .cs-kv-label { color: var(--text); font-weight: var(--fw-bold); }
+.cs-receipt .cs-kv.is-sum > .cs-kv-value { font-size: var(--fs-md); }
+.cs-receipt-after { margin-top: calc(var(--subrow) * 2); }
+.cs-kv { box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border-strong); }
+.cs-receipt .cs-kv:nth-last-child(2) { box-shadow: none; }
+/* Cash stats (Bankroll design 42): the table by stakes paints its gains and losses (the head row's --text was
+   out-ranking the colour rule), the body at the regular weight; the totals row bold under a --bw-1 rule. */
+.cs-stats > .cs-hero { margin-top: calc(var(--subrow) * 2); }
+.cs-brow > .cs-t.is-pos { color: var(--pos); }
+.cs-brow > .cs-t.is-neg { color: var(--neg); }
+.cs-brow.is-total { box-shadow: inset 0 var(--bw-1) 0 0 var(--text-muted); }
+.cs-brow.is-total > .cs-t { font-weight: var(--fw-bold); }

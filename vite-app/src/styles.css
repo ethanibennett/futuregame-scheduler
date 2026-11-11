@@ -17443,3 +17443,209 @@
     .cash-pick-select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; appearance: none; -webkit-appearance: none; border: 0; }
     .live-update-tabs.cash-metric { margin: var(--subrow) 0 calc(var(--subrow) * 2); height: calc(var(--subrow) * 3); box-sizing: border-box; }
     .live-update-tabs.cash-metric button { padding: 0; height: 100%; }
+
+    /* ── Bankroll design upgrades: shared recipes (styles.css loads last, so these win) ── */
+    /* One switch (Bankroll design 34): a single 35g x 5r track with a hairline and --radius-sm; the selected
+       segment --brand-quiet with a --brand hairline and label, the others --text-muted; each label centred
+       in its whole-g segment. A switch between modes now reads apart from a chip that fills one field, which
+       keeps its ring. Add expense's Expense | Income, the Expenses sheet's All | Expenses | Income, Move
+       money's kinds, Cash Stats' strip and the graph ranges. */
+    .tx-seg2, .bk-seg {
+      display: grid; column-gap: 0; width: calc(var(--gu) * 35); height: calc(var(--subrow) * 5);
+      box-sizing: border-box; border-radius: var(--radius-sm);
+      background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+    }
+    .tx-seg2 { grid-template-columns: calc(var(--gu) * 18) calc(var(--gu) * 17); }
+    .bk-seg { grid-template-columns: repeat(2, calc(var(--gu) * 12)) calc(var(--gu) * 11); }
+    .tx-seg2 > .bk-seg-btn, .bk-seg > .bk-seg-btn {
+      width: 100%; height: 100%; border-radius: var(--radius-sm);
+      background: transparent; box-shadow: none; color: var(--text-muted);
+    }
+    .tx-seg2 > .bk-seg-btn.is-on, .bk-seg > .bk-seg-btn.is-on {
+      background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-hair) var(--brand); color: var(--brand-ink, var(--brand));
+    }
+    .tx-seg2 > .bk-seg-btn > span, .bk-seg > .bk-seg-btn > span { text-align: center; }
+    .cash-mode-tabs.cs-seg { border-radius: var(--radius-sm); }
+    .cash-mode-tabs.cs-seg button { border-radius: var(--radius-sm); background: transparent; color: var(--text-muted); }
+    .cash-mode-tabs.cs-seg button.active { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-hair) var(--brand); color: var(--brand-ink, var(--brand)); }
+    .bp-seg, .bp-seg > button, .bd-seg, .bd-seg > button { border-radius: var(--radius-sm); }
+    .bp-seg > button.is-on, .bd-seg > button.is-on { box-shadow: inset 0 0 0 var(--bw-hair) var(--brand); }
+    @media (hover: hover) and (pointer: fine) {
+      .tx-seg2 > .bk-seg-btn:not(.is-on):hover, .bk-seg > .bk-seg-btn:not(.is-on):hover,
+      .cash-mode-tabs.cs-seg button:not(.active):hover, .bp-seg > button:not(.is-on):hover {
+        background: var(--hover-overlay); color: var(--text);
+      }
+    }
+    /* A button that cannot be pressed yet (Bankroll design 39): its own look at full opacity, a --surface2
+       fill, a hairline and a --text-muted label, not the brand colour at 38%; the brand fill arrives when
+       the form can be saved. */
+    .bk-btn:disabled, .bk-btn--brand:disabled {
+      opacity: 1; background: var(--surface2); box-shadow: inset 0 0 0 var(--bw-hair) var(--border); color: var(--text-muted);
+    }
+    /* Expense rows (Bankroll design 30): a 4g date (its widest is 2.94g), what the money was for first and
+       its category after it in --text-muted --fs-xs, every amount with its cents, the cents quiet, so the
+       whole units line up down the 9g column. */
+    .tx-row { grid-template-columns: calc(var(--gu) * 4) minmax(0, 1fr) calc(var(--gu) * 9); }
+    .tx-row-what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tx-row-cat { font-size: var(--fs-xs); color: var(--text-muted); }
+    .tx-cents { font-size: var(--fs-2xs); font-weight: var(--fw-regular); }
+    .tx-row.is-bone { pointer-events: none; }
+    .tx-row.is-bone > .sk-bone { align-self: end; margin-bottom: var(--subrow); }
+    .tx-row.is-bone > .sk-bone:last-child { justify-self: end; }
+    /* The sign and the currency in the amount field (Bankroll design 35): "−$" in --neg for money out, "+$"
+       in --pos for money in, at --fs-xl bold, 1g in; the figure starts at 4g (5g for a longer mark), at
+       --fs-xl; the placeholder quiet. */
+    .tx-amount-wrap { position: relative; display: block; }
+    .tx-amount-mark {
+      position: absolute; left: var(--gu); top: 0; height: calc(var(--subrow) * 6);
+      display: flex; align-items: center; pointer-events: none;
+      font-size: var(--fs-xl); font-weight: var(--fw-bold); font-variant-numeric: var(--num-tabular);
+    }
+    .tx-amount-mark.is-neg { color: var(--neg); }
+    .tx-amount-mark.is-pos { color: var(--pos); }
+    .tx-amount-input { font-size: var(--fs-xl); padding-left: calc(var(--gu) * 4); }
+    .tx-amount-wrap.is-code .tx-amount-input { padding-left: calc(var(--gu) * 5); }
+    .tx-amount-input::placeholder { color: var(--text-muted); font-weight: var(--fw-regular); }
+    /* The Trips list (Bankroll design 41): each trip's net on the right edge, where every other list keeps
+       its amount; "· 3 tagged" joins the dates. */
+    .tx-trip-row > .tx-trip-net { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text); font-variant-numeric: var(--num-tabular); white-space: nowrap; }
+    .tx-trip-row > .tx-trip-net.is-pos { color: var(--pos); }
+    .tx-trip-row > .tx-trip-net.is-neg { color: var(--neg); }
+    /* Seven figures fit (Bankroll design 50): a tile's whole-unit figure steps down a size before any ellipsis. */
+    .tx-sec .tx-cell-val.is-long { font-size: var(--fs-sm); }
+    .tx-cell-val > .sk-bone { vertical-align: bottom; }
+    /* MoneyField's mark (Bankroll design 35): the sign and currency 1g in, the figure past it. */
+    .money-field.has-mark > input { padding-left: calc(var(--gu) * 4); }
+    .money-field.has-mark.is-code > input { padding-left: calc(var(--gu) * 5); }
+    .money-mark {
+      position: absolute; left: var(--gu); top: 0; bottom: 0;
+      display: flex; align-items: center; pointer-events: none;
+      font-weight: var(--fw-bold); color: var(--text-muted); font-variant-numeric: var(--num-tabular);
+    }
+    .money-mark.is-pos { color: var(--pos); }
+    .money-mark.is-neg { color: var(--neg); }
+    /* Bankroll history (Bankroll design 31): a 4r month head in caps over a fine strong rule; 6r rows, the
+       day 4g | what moved over its note | the amount | 3g; a transfer's amount unsigned and quiet. */
+    .bk-ledger-month {
+      height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 3 - 1cap); box-sizing: border-box;
+      font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-muted);
+      box-shadow: inset 0 calc(var(--bw-fine) * -1) 0 0 var(--line-strong);
+    }
+    .bk-ledger-row.is-move { grid-template-columns: calc(var(--gu) * 4) minmax(0, 1fr) auto calc(var(--gu) * 3); height: calc(var(--subrow) * 6); }
+    .bk-ledger-row.is-move > span { height: calc(var(--subrow) * 6); }
+    .bk-ledger-row.is-move > .bk-ledger-lines { display: flex; flex-direction: column; padding-top: 0; min-width: 0; }
+    .bk-ledger-lines > .bk-ledger-what { height: calc(var(--subrow) * 3); padding-top: calc(var(--subrow) * 3 - 1cap); box-sizing: border-box; font-size: var(--fs-sm); color: var(--text); }
+    .bk-ledger-lines > .bk-ledger-note { height: calc(var(--subrow) * 3); padding-top: calc(var(--subrow) * 2 - 1cap); box-sizing: border-box; font-size: var(--fs-xs); color: var(--text-muted); }
+    .bk-ledger-row.is-move > .bk-ledger-amt { color: var(--text); padding-left: var(--gu); }
+    .bk-ledger-row.is-move > .bk-ledger-amt.is-quiet { color: var(--text-muted); font-weight: var(--fw-regular); }
+    /* Manage, grouped by role (Bankroll design 32): 4r caps heads; 6r rows, the name at --fs-md over a quiet
+       line, the balance --fs-md bold on the right; the roll's total in a 4r row under a fine strong rule. */
+    .bk-group-head {
+      height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 3 - 1cap); box-sizing: border-box;
+      font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-muted);
+    }
+    /* The two-line rows' lines take the sheet's text recipe (the cap trim seats each baseline by its padding). */
+    .bk-row-l > span, .bk-ledger-lines > span {
+      display: block; box-sizing: border-box; min-width: 0; margin: 0; white-space: nowrap;
+      overflow-x: clip; overflow-y: visible; text-overflow: ellipsis;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .bk-row.bk-row-6 { grid-template-columns: minmax(0, 1fr) auto; height: calc(var(--subrow) * 6); }
+    .bk-row.bk-row-6 > .bk-row-l { display: flex; flex-direction: column; height: calc(var(--subrow) * 6); padding-top: 0; min-width: 0; }
+    .bk-row-6 .bk-row-name { height: calc(var(--subrow) * 3); padding-top: calc(var(--subrow) * 3 - 1cap); box-sizing: border-box; font-size: var(--fs-md); }
+    .bk-row-6 .bk-row-meta { height: calc(var(--subrow) * 3); padding-top: calc(var(--subrow) * 2 - 1cap); box-sizing: border-box; }
+    .bk-row.bk-row-6 > .bk-row-bal { height: calc(var(--subrow) * 3); padding-top: calc(var(--subrow) * 3 - 1cap); font-size: var(--fs-md); }
+    .bk-roll-total {
+      display: flex; justify-content: space-between; height: calc(var(--subrow) * 4); box-sizing: border-box;
+      padding-top: calc(var(--subrow) * 3 - 1cap); box-shadow: inset 0 var(--bw-fine) 0 0 var(--line-strong);
+      font-size: var(--fs-sm); font-weight: var(--fw-bold); font-variant-numeric: var(--num-tabular);
+    }
+    .bk-archived .bk-row-name, .bk-archived .bk-row-bal { color: var(--text-muted); }
+    /* The opened bankroll is a card (Bankroll design 33): --surface, a --border-strong hairline, --radius; its
+       fields in two 16g columns; Set balance 11g x 4r on its input's row; Save on the left of the actions,
+       Archive and Delete on the right, over a hairline. */
+    .bk-open-card {
+      margin: var(--subrow) calc(var(--gu) * -1); padding: 0 var(--gu) calc(var(--subrow) * 2);
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border-strong);
+    }
+    .bk-open-card > .bk-row { box-shadow: none; }
+    .bk-open-card > .bk-editor { box-shadow: none; padding-bottom: 0; }
+    .bk-open-card .bk-fields { grid-template-columns: repeat(2, calc(var(--gu) * 16)); }
+    .bk-open-card .bk-setbal { grid-template-columns: calc(var(--gu) * 22) calc(var(--gu) * 11); align-items: end; }
+    .bk-open-card .bk-setbal > .bk-actions { margin-top: 0; }
+    .bk-open-card .bk-setbal .bk-btn { width: calc(var(--gu) * 11); height: calc(var(--subrow) * 4); }
+    .bk-open-card .bk-editor > .bk-actions { padding-top: calc(var(--subrow) * 2); box-shadow: inset 0 var(--bw-hair) 0 0 var(--border); }
+    .bk-open-card .bk-editor > .bk-actions > :first-child { margin-right: auto; }
+    /* The saved notice (Bankroll design 47). App-wide: a --surface-raised card with a --border-strong
+       hairline and --elev-2, the text in --text (the literal greens and reds read 2.28:1 on white), the icon
+       alone carrying the kind (--pos, --neg, --brand); a whole 5r tall and 35g wide, 2r over the nav's snap
+       line. In on --dur-snap, out on --dur-fast. On the phone's Bankroll tab it sits in the + button's row,
+       29g, 1g short of the +, so it never covers the live cash bar or its Open. */
+    .toast-container {
+      bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * 2);
+      width: calc(var(--gu) * 35); max-width: none;
+      gap: var(--subrow);
+    }
+    .toast {
+      min-height: calc(var(--subrow) * 5); box-sizing: border-box;
+      padding: var(--subrow) var(--gu); gap: var(--gu);
+      border-radius: var(--radius-sm);
+      animation: toastIn var(--dur-snap) var(--ease-out);
+    }
+    .toast.exiting { animation: toastOut var(--dur-fast) var(--ease-out) forwards; }
+    .toast-error, .toast-success, .toast-info {
+      background: var(--surface-raised); border: 0; color: var(--text);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border-strong), var(--elev-2);
+    }
+    .toast-success .toast-icon { color: var(--pos); }
+    .toast-error .toast-icon { color: var(--neg); }
+    .toast-info .toast-icon { color: var(--brand-ink, var(--brand)); }
+    body:has(.app-shell:not(.is-desktop) .bk-fab--page) .toast-container {
+      left: calc(50% - var(--gu) * 17.5); transform: none; width: calc(var(--gu) * 29);
+      bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * 3);
+    }
+    body:has(.app-shell:not(.is-desktop) .bk-fab--page):has(.cs-bar) .toast-container {
+      bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * 8);
+    }
+    /* The tournament result form in the sheets' hand (Bankroll design 36): a 3r sentence-case title;
+       sentence-case labels in --fs-xs --text-muted on a 3r line over 4r fields with hairline borders, in two
+       16g columns; buy-ins a stepper (5g | the typeable middle | 5g); Cashed? the one switch; the sheets'
+       5r buttons. */
+    form.tracking-card.tr-form .tr-form-title {
+      height: calc(var(--subrow) * 3); padding-top: calc(var(--subrow) * 2 - 1cap); box-sizing: border-box; margin-bottom: var(--subrow);
+      font-family: var(--font-condensed); font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    form.tracking-card.tr-form .filter-group > label {
+      height: calc(var(--subrow) * 3); line-height: normal; padding-top: calc(var(--subrow) * 2 - 1cap); box-sizing: border-box;
+      font-size: var(--fs-xs); font-weight: var(--fw-regular); text-transform: none; letter-spacing: 0; color: var(--text-muted);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    form.tracking-card.tr-form .filter-group select,
+    form.tracking-card.tr-form .filter-group input {
+      height: calc(var(--subrow) * 4); padding-inline: var(--gu); border: 0; border-radius: var(--radius-sm);
+      background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text);
+    }
+    form.tracking-card.tr-form .filter-group select:focus-visible,
+    form.tracking-card.tr-form .filter-group input:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+    form.tracking-card.tr-form .tracking-form-grid { grid-template-columns: repeat(2, calc(var(--gu) * 16)); column-gap: var(--gu); }
+    form.tracking-card.tr-form .filter-group { margin-bottom: calc(var(--subrow) * 2); }
+    form.tracking-card.tr-form .tracking-form-grid > .filter-group { margin-bottom: 0; }
+    .tr-stepper { display: grid; grid-template-columns: calc(var(--gu) * 5) minmax(0, 1fr) calc(var(--gu) * 5); height: calc(var(--subrow) * 4); }
+    .tr-stepper > button {
+      display: flex; align-items: center; justify-content: center; margin: 0; padding: 0; border: 0;
+      background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border); color: var(--text);
+      font-family: var(--font-condensed); font-size: var(--fs-md); font-weight: var(--fw-bold); cursor: pointer;
+    }
+    .tr-stepper > button:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+    .tr-stepper > button:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+    form.tracking-card.tr-form .tr-stepper > input { border-radius: 0; text-align: center; font-variant-numeric: var(--num-tabular); }
+    .tr-cashed { display: flex; align-items: center; gap: var(--gu); }
+    .tr-cashed-seg.tx-seg2 { width: calc(var(--gu) * 16); height: calc(var(--subrow) * 4); margin-top: 0; grid-template-columns: repeat(2, var(--col)); }
+    .tr-form-actions { margin-top: 0; }
+    .tr-form-actions > .tr-form-submit { width: calc(var(--gu) * 11); }
+    form.tracking-card.tr-form .bk-picker > label { height: calc(var(--subrow) * 3); line-height: normal; padding-top: calc(var(--subrow) * 2 - 1cap); box-sizing: border-box; font-size: var(--fs-xs); font-weight: var(--fw-regular); text-transform: none; letter-spacing: 0; color: var(--text-muted); }

@@ -423,6 +423,9 @@ function App() {
 
   // Tracking
   const [trackingData, setTrackingData] = useState([]);
+  // Whether the results have answered (Bankroll design 46, 97): the list never says "log your first
+  // result" before it knows, and a failed load says so.
+  const [trackingState, setTrackingState] = useState('loading');
   // A form or entry in Results that the home asked for (its Log menu, To log's Cashed, the Last
   // result card): { kind, ... } — TrackingView opens it once and clears it (onIntentDone).
   const [resultsIntent, setResultsIntent] = useState(null);
@@ -695,9 +698,11 @@ function App() {
       const res = await fetch(`${API_URL}/tracking`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       setTrackingData(Array.isArray(data) ? data : []);
-    } catch (e) { console.error('Fetch tracking:', e); toast.error('Failed to load tracking data'); }
+      setTrackingState('ready');
+    } catch (e) { console.error('Fetch tracking:', e); setTrackingState('failed'); }
   };
 
   // Results > Delete results (components/ResetResults.jsx): one bankroll's results (or, asked for
@@ -2199,6 +2204,8 @@ function App() {
                 intent={resultsIntent}
                 onIntentDone={clearResultsIntent}
                 onLog={logIntoResults}
+                trackingState={trackingState}
+                onRetryTracking={() => { setTrackingState('loading'); fetchTracking(); }}
                 onSetPlayed={setNotPlayed}
                 onAddDnp={(date, note) => addPersonalEvent(date, DNP_TYPE, note)}
                 onDeleteDnp={toggleTournament}

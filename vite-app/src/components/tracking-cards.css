@@ -247,3 +247,103 @@
 }
 /* "Search all events" under the log form's event list (UX pick 80): the field's 5r, 1r under it. */
 .tr-search-all { display: block; width: 100%; box-sizing: border-box; margin-top: var(--subrow); }
+
+/* ── Bankroll design upgrades, part B: the result cards ──────────── */
+/* The game and what it paid on one line (26): the amount moves to the title's r8 at --fs-lg, in its face
+   and colours; its sub-line (cost, place or rate) moves up to the date's r4. The amount's cell is a 2r grid
+   cell at the top of the title row, so its trimmed baseline lands on r8 even when the title wraps; 1g kept
+   between the title and the amount. Scoped to the Bankroll's cards: the Schedule's keep theirs. */
+.tr-card .cal-bar-row1 > .cal-event-money > .cal-event-gtd { grid-row: 1; }
+.tr-card .cal-bar-row2 { grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--gu); }
+.tr-card .tr-amt-cell { grid-column: 2; grid-row: 1; align-self: start; display: grid; align-items: end; justify-items: end; height: calc(var(--subrow) * 2); }
+.tr-card .tr-amt-cell > .tr-amt { font-size: var(--fs-lg); white-space: nowrap; }
+/* One card height in a mixed list (27): the chevron leaves its own 2r row for a 1g x 1r mark in the card's
+   bottom-right corner, under the amount, so a tournament is 10r like a cash session. The whole card opens
+   on a tap already. Open, the chevron is back in its row over the divider. */
+.tr-card:not(.open) > .cal-event-row-content { position: relative; }
+.tr-card:not(.open) > .cal-event-row-content > .cal-event-chevron {
+  position: absolute; right: var(--gu); bottom: calc(var(--subrow) * 0.5);
+  width: var(--gu); height: var(--subrow); padding: 0;
+}
+.tr-card:not(.open) > .cal-event-row-content > .cal-event-chevron svg { width: var(--subrow); height: var(--subrow); }
+/* A month break carries the running total under its net (28), on the break's 6r line. */
+.tr-month-break { position: sticky; }
+/* A break with its running total is 6r (the pill's 4r and 2r under it), so the total sits 2r under the net. */
+.schedule-date-break.tr-month-break:has(.tr-month-todate) { padding-bottom: calc(var(--subrow) * 2); }
+.tr-month-todate {
+  position: absolute; right: var(--gu); bottom: 0;
+  font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text-muted);
+  line-height: calc(var(--subrow) * 2); white-space: nowrap; font-variant-numeric: var(--num-tabular);
+  text-box-trim: trim-both; text-box-edge: cap alphabetic;
+}
+.tr-month-todate b { font-weight: var(--fw-bold); color: var(--text); }
+/* The list's 4r bar (29): the count, and Cards | Lines on the one switch recipe (34): a track with a
+   hairline, the selected segment --brand-quiet with a --brand hairline and label, labels centred. */
+.tr-listbar { display: flex; align-items: center; justify-content: space-between; height: calc(var(--subrow) * 4); margin-bottom: calc(var(--subrow) * 2); }
+.tr-listbar-count { color: var(--text-muted); min-width: 0; }
+.tr-seg {
+  display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 6)); flex: none;
+  height: calc(var(--subrow) * 4); border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+}
+.tr-seg-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%; margin: 0; padding: 0; border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-muted);
+  font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); cursor: pointer;
+}
+.tr-seg-btn.is-on { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-hair) var(--brand); color: var(--brand-ink, var(--brand)); }
+.tr-seg-btn:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+@media (hover: hover) and (pointer: fine) { .tr-seg-btn:not(.is-on):hover { background: var(--hover-overlay); color: var(--text); } }
+/* A line (29): 4r, the day 4g | a 0.5g bar in the room's colour, 2r on the baseline | the game, then the room
+   muted | the amount in the title face. A hairline under each. */
+.tr-line {
+  display: grid; grid-template-columns: calc(var(--gu) * 4) var(--gu) minmax(0, 1fr) auto; align-items: start;
+  height: calc(var(--subrow) * 4); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.tr-line:focus-visible { outline: var(--focus-ring); outline-offset: calc(var(--bw-2) * -1); }
+@media (hover: hover) and (pointer: fine) {
+  .tr-line { margin-inline: calc(var(--gu) * -1); padding-inline: var(--gu); }
+  .tr-line:hover { background: var(--hover-overlay); }
+}
+.tr-line-date { color: var(--text-muted); }
+.tr-line-bar { width: calc(var(--gu) * 0.5); height: calc(var(--subrow) * 2); margin-top: var(--subrow); border-radius: var(--radius-xs); }
+.tr-line-roomcol, .tr-line-played { display: none; }
+.tr-line-room { font-size: var(--fs-xs); color: var(--text-muted); }
+/* The title face at --fs-sm bold, baseline on line 3 of 4 (p from Libre Baskerville's c at this size). */
+.an-cell.tr-line-amt { font-family: var(--font-title); font-weight: var(--fw-bold); --p: 0.759; padding-left: var(--gu); }
+.tr-line-amt.is-pos { color: var(--pos); }
+.tr-line-amt.is-neg { color: var(--neg); }
+.tr-lines-head { display: none; }
+.tr-lines .tr-month-break { margin-bottom: 0; }
+/* Desktop (48): a table across the pane, Date 5g | Room 9g | Game | Played 6g | Net 8g, under a 3r header
+   (caps over a --bw-1 --border-strong rule) that stays at the top of the pane, under the bankroll's band
+   (--bk-band-h); the month breaks stick 3r under the header. */
+.app-shell.is-desktop .tr-lines { --tr-break-top: calc(var(--bk-band-h, 0px) + var(--subrow) * 3); }
+/* The Bankroll column is 35g on desktop (UX pick 08), so the table folds Room into the Game cell, as on the
+   phone (the item's own fallback): Date 5g | the bar | Game | Played 6g | Net 8g. */
+.app-shell.is-desktop .tr-lines-head,
+.app-shell.is-desktop .tr-line {
+  grid-template-columns: calc(var(--gu) * 4) var(--gu) minmax(0, 1fr) calc(var(--gu) * 6) var(--col);
+  column-gap: var(--gu);
+}
+.app-shell.is-desktop .tr-lines-head > .tr-line-roomcol { display: none; }
+.app-shell.is-desktop .tr-lines-head {
+  display: grid; align-items: start; position: sticky; top: var(--bk-band-h, 0px); z-index: 6;
+  height: calc(var(--subrow) * 3); background: var(--bg);
+  box-shadow: inset 0 calc(var(--bw-1) * -1) 0 var(--border-strong);
+}
+.app-shell.is-desktop .tr-line-played { display: block; }
+.app-shell.is-desktop .an-cell.tr-line-amt { padding-left: 0; }
+/* Desktop (Bankroll design 49 and 87): the bankroll's band stays at the top of the pane, 7r (the 5r
+   picker, Manage and "+ Add", 1r over and under), on --bg with a hairline under it, so the bankroll,
+   Manage and Add are in reach at any scroll and nothing floats over a figure. The month breaks, and the
+   Lines table's header, stick under it (--bk-band-h). */
+.app-shell.is-desktop .bk-bar.bk-bar--sched {
+  position: sticky; top: 0; z-index: 7;
+  padding-top: var(--subrow); padding-bottom: var(--subrow); margin-bottom: var(--subrow);
+  background: var(--bg); box-shadow: 0 var(--bw-hair) 0 var(--border);
+}
+.app-shell.is-desktop .bk-bar.bk-bar--sched .bk-grid--row { grid-template-columns: calc(var(--gu) * 17) var(--col) var(--col); }
+.app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.bk-bar--sched) { --bk-band-h: calc(var(--subrow) * 7); --tr-break-top: var(--bk-band-h); }

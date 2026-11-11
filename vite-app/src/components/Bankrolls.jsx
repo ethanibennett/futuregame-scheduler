@@ -22,7 +22,7 @@ const signed = (v, cur) => (v > 0 ? '+' : '') + money(v, cur);
 const tone = (v) => (v < 0 ? ' is-neg' : '');
 
 // ── Switcher ────────────────────────────────────────────────────────────────
-export function BankrollSwitcher({ bk, balances, onManage }) {
+export function BankrollSwitcher({ bk, balances, onManage, add = null }) {
   const cells = [{ id: BANKROLL_ALL, name: 'All' }, ...bk.visible];
   return (
     /* In the Schedule's scheme (owner, 2026-10-16): no title row (the top bar says Bankroll); the
@@ -54,6 +54,7 @@ export function BankrollSwitcher({ bk, balances, onManage }) {
         <button type="button" className="bk-cell bk-act" onClick={onManage} title="Manage bankrolls">
           <span className="bk-act-label">Manage</span>
         </button>
+        {add}
       </div>
     </section>
   );
@@ -214,7 +215,14 @@ function MoveMoney({ bk, toast, onMoved }) {
           <Field label="Bankroll" wide>{select(target, setTarget)}</Field>
         )}
         <Field label={`Amount (${kind === 'transfer' ? cur(from) : cur(target)})`}>
-          <MoneyField value={amount} placeholder="0" onChange={(e) => setAmount(e.target.value)} />
+          {/* The sign and the currency in the field (Bankroll design 35): a deposit in, a withdrawal out, a
+              transfer the currency alone. */}
+          <MoneyField value={amount} placeholder="0" onChange={(e) => setAmount(e.target.value)}
+            mark={(() => {
+              const c = CURRENCY_CONFIG[kind === 'transfer' ? cur(from) : cur(target)] || CURRENCY_CONFIG.USD;
+              return kind === 'transfer' ? { text: c.symbol, tone: null }
+                : { text: (kind === 'deposit' ? '+' : '−') + c.symbol, tone: kind === 'deposit' ? 'pos' : 'neg' };
+            })()} />
         </Field>
         <Field label="Date"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
         {cross && (
@@ -236,35 +244,85 @@ const KIND_LABEL = {
   correction: 'Correction', settlement: 'Paid to backers',
 };
 
+/** The history's moves (Bankroll design 31): the two halves of a transfer (one transfer_id) are one move;
+ *  a half whose partner is not in the list stays a row of its own. Grouped by month, in the list's order. */
+export function ledgerMoves(rows) {
+  const moves = [];
+  const byT = new Map();
+  for (const a of rows || []) {
+    if (a.transfer_id) {
+      let m = byT.get(a.transfer_id);
+      if (!m) { m = { key: 't' + a.transfer_id, date: a.occurred_on, note: a.note || '', parts: [] }; byT.set(a.transfer_id, m); moves.push(m); }
+      m.parts.push(a);
+      if (!m.note && a.note) m.note = a.note;
+    } else moves.push({ key: 'a' + a.id, date: a.occurred_on, note: a.note || '', parts: [a] });
+  }
+  const months = [];
+  for (const m of moves) {
+    const k = String(m.date || '').slice(0, 7);
+    let g = months[months.length - 1];
+    if (!g || g.key !== k) { g = { key: k, moves: [] }; months.push(g); }
+    g.moves.push(m);
+  }
+  return months;
+}
+const MONTH_CAPS = (k) => { const [y, m] = String(k).split('-').map(Number); return y && m ? new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : 'Undated'; };
+
 function Ledger({ bk, rows, toast, onChanged }) {
-  /* No one-tap delete (UX pick 78): every row ended in a 3g x that deleted at once, a $10,000 opening
-     deposit or both sides of a transfer, with no question. A tap opens the row, as an expense row opens,
-     and Delete is there, in the danger colour. */
-  const [openId, setOpenId] = useState(null);
+  /* No one-tap delete (UX pick 78): a tap opens the row, and Delete is there, in the danger colour.
+     One row per move, by month, in a neutral tone (Bankroll design 31): a transfer is one move between two
+     bankrolls ("Main → WSOP fund"), its amount unsigned and quiet; a deposit or a withdrawal carries its sign
+     in bold --text. No green or red here: a transfer or a withdrawal is not a loss. */
+  const [openKey, setOpenKey] = useState(null);
   const nameOf = (id) => (bk.bankrolls.find((b) => b.id === entryBankrollKey({ bankroll_id: id })) || { name: '?' }).name;
   const curOf = (id) => (bk.bankrolls.find((b) => b.id === entryBankrollKey({ bankroll_id: id })) || { currency: 'USD' }).currency;
+  const months = useMemo(() => ledgerMoves(rows), [rows]);
+  const describe = (m) => {
+    if (m.parts.length === 2) {
+      const out = m.parts.find((p) => p.amount < 0) || m.parts[0];
+      const inn = m.parts.find((p) => p !== out) || m.parts[1];
+      return { what: `${nameOf(out.bankroll_id)} \u2192 ${nameOf(inn.bankroll_id)}`, amt: money(Math.abs(out.amount), curOf(out.bankroll_id)), quiet: true };
+    }
+    const a = m.parts[0];
+    const verb = a.kind === 'deposit' ? `Deposit to ${nameOf(a.bankroll_id)}` : a.kind === 'withdrawal' ? `Withdrawal from ${nameOf(a.bankroll_id)}`
+      : `${KIND_LABEL[a.kind] || a.kind} · ${nameOf(a.bankroll_id)}`;
+    return { what: verb, amt: signed(a.amount, curOf(a.bankroll_id)), quiet: false };
+  };
   return (
     <section className="bk-section">
       <h3 className="bk-section-title">History</h3>
-      {rows.length === 0 ? <p className="bk-line bk-muted">No deposits, withdrawals or transfers yet.</p> : rows.map((a) => (
-        <React.Fragment key={a.id}>
-          <div className={'bk-ledger-row' + (openId === a.id ? ' is-open' : '')} role="button" tabIndex={0} aria-expanded={openId === a.id}
-            onClick={() => setOpenId(openId === a.id ? null : a.id)}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(openId === a.id ? null : a.id); } }}>
-            <span className="bk-ledger-date">{shortDay(a.occurred_on) || a.occurred_on}</span>
-            <span className="bk-ledger-what">{nameOf(a.bankroll_id)} · {KIND_LABEL[a.kind] || a.kind}{a.note ? ` · ${a.note}` : ''}</span>
-            <span className={'bk-ledger-amt' + tone(a.amount)}>{signed(a.amount, curOf(a.bankroll_id))}</span>
-            <span className="bk-ledger-chev" aria-hidden="true">{openId === a.id ? '\u2304' : '\u203A'}</span>
-          </div>
-          {openId === a.id && (
-            <div className="bk-ledger-open">
-              <button type="button" className="bk-btn" onClick={() => setOpenId(null)}><span>Keep</span></button>
-              <button type="button" className="bk-btn bk-danger"
-                onClick={async () => { try { await bk.removeAdjustment(a.id); setOpenId(null); onChanged(); toast.success(a.transfer_id ? 'Transfer deleted, both sides' : 'Deleted'); } catch (e) { toast.error(e.message); } }}>
-                <span>{a.transfer_id ? 'Delete transfer (both sides)' : 'Delete'}</span>
-              </button>
-            </div>
-          )}
+      {rows.length === 0 ? <p className="bk-line bk-muted">No deposits, withdrawals or transfers yet.</p> : months.map((g) => (
+        <React.Fragment key={g.key}>
+          <div className="bk-ledger-month">{MONTH_CAPS(g.key)}</div>
+          {g.moves.map((m) => {
+            const d = describe(m);
+            const open = openKey === m.key;
+            const transfer = m.parts.some((p) => p.transfer_id);
+            return (
+              <React.Fragment key={m.key}>
+                <div className={'bk-ledger-row is-move' + (open ? ' is-open' : '')} role="button" tabIndex={0} aria-expanded={open}
+                  onClick={() => setOpenKey(open ? null : m.key)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenKey(open ? null : m.key); } }}>
+                  <span className="bk-ledger-date">{shortDay(m.date) || m.date}</span>
+                  <span className="bk-ledger-lines">
+                    <span className="bk-ledger-what">{d.what}</span>
+                    <span className="bk-ledger-note">{m.note}</span>
+                  </span>
+                  <span className={'bk-ledger-amt' + (d.quiet ? ' is-quiet' : '')}>{d.amt}</span>
+                  <span className="bk-ledger-chev" aria-hidden="true">{open ? '\u2304' : '\u203A'}</span>
+                </div>
+                {open && (
+                  <div className="bk-ledger-open">
+                    <button type="button" className="bk-btn" onClick={() => setOpenKey(null)}><span>Keep</span></button>
+                    <button type="button" className="bk-btn bk-danger"
+                      onClick={async () => { try { await bk.removeAdjustment(m.parts[0].id); setOpenKey(null); onChanged(); toast.success(transfer ? 'Transfer deleted, both sides' : 'Deleted'); } catch (e) { toast.error(e.message); } }}>
+                      <span>{transfer ? 'Delete transfer (both sides)' : 'Delete'}</span>
+                    </button>
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          })}
         </React.Fragment>
       ))}
     </section>
@@ -315,19 +373,39 @@ export function BankrollManager({ bk, balances, onClose }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   const archived = useMemo(() => bk.bankrolls.filter((b) => b.archived), [bk.bankrolls]);
+  // Grouped by role (Bankroll design 32): what counts toward the roll, what is set aside (the WSOP fund,
+  // or a bankroll kept out of the roll), and the archived; the roll's total closes the first group.
+  const inRoll = bk.visible.filter((b) => b.role !== 'fund' && b.in_roll !== 0);
+  const aside = bk.visible.filter((b) => b.role === 'fund' || b.in_roll === 0);
+  const balOf = (b) => balances.get(b.id) || { start: 0, adjustments: 0, results: 0, balance: 0, currency: b.currency };
+  const rollTotal = (() => {
+    const by = new Map();
+    for (const b of inRoll) { const x = balOf(b); by.set(x.currency, (by.get(x.currency) || 0) + (Number(x.balance) || 0)); }
+    return [...by].map(([c, v]) => money(v, c)).join(' · ');
+  })();
+  const metaOf = (b) => (b.role === 'fund'
+    ? `The WSOP fund${b.target_amount ? ` · target ${money(b.target_amount, b.currency)}` : ''}${b.target_date ? ` by ${new Date(b.target_date + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}` : ''}`
+    : `${b.entry_count} result${b.entry_count === 1 ? '' : 's'} · ${b.currency}`);
   const row = (b) => {
-    const bal = balances.get(b.id) || { start: 0, adjustments: 0, results: 0, balance: 0, currency: b.currency };
-    return (
-      <React.Fragment key={b.id}>
-        <button type="button" className={'bk-row' + (open === b.id ? ' is-open' : '')} aria-expanded={open === b.id}
-          onClick={() => setOpen(open === b.id ? null : b.id)}>
+    const bal = balOf(b);
+    const isOpen = open === b.id;
+    const button = (
+      <button type="button" className={'bk-row bk-row-6' + (isOpen ? ' is-open' : '')} aria-expanded={isOpen}
+        onClick={() => setOpen(isOpen ? null : b.id)}>
+        <span className="bk-row-l">
           <span className="bk-row-name">{b.name}</span>
-          <span className="bk-row-meta">{b.entry_count} result{b.entry_count === 1 ? '' : 's'} · {b.currency}</span>
-          <span className={'bk-row-bal' + tone(bal.balance)}>{money(bal.balance, bal.currency)}</span>
-        </button>
-        {open === b.id && <BankrollEditor b={b} bal={bal} bk={bk} toast={toast} onDone={() => { setOpen(null); loadLedger(); }} />}
-      </React.Fragment>
+          <span className="bk-row-meta">{metaOf(b)}</span>
+        </span>
+        <span className={'bk-row-bal' + tone(bal.balance)}>{money(bal.balance, bal.currency)}</span>
+      </button>
     );
+    // The opened bankroll is one card with its editor (Bankroll design 33), so its fields plainly belong to it.
+    return isOpen ? (
+      <div key={b.id} className="bk-open-card">
+        {button}
+        <BankrollEditor b={b} bal={bal} bk={bk} toast={toast} onDone={() => { setOpen(null); loadLedger(); }} />
+      </div>
+    ) : <React.Fragment key={b.id}>{button}</React.Fragment>;
   };
   return createPortal(
     <div className="bk-scrim" onClick={onClose}>
@@ -337,9 +415,13 @@ export function BankrollManager({ bk, balances, onClose }) {
           <Btn w={6} onClick={onClose}>Done</Btn>
         </div>
         <section className="bk-section">
-          {bk.visible.map(row)}
-          {archived.length > 0 && <h3 className="bk-section-title bk-muted">Archived</h3>}
-          {archived.map(row)}
+          <div className="bk-group-head">In the roll</div>
+          {inRoll.map(row)}
+          <div className="bk-roll-total"><span>The roll</span><span>{rollTotal}</span></div>
+          {aside.length > 0 && <div className="bk-group-head">Set aside</div>}
+          {aside.map(row)}
+          {archived.length > 0 && <div className="bk-group-head">Archived</div>}
+          <div className="bk-archived">{archived.map(row)}</div>
         </section>
         <MoveMoney bk={bk} toast={toast} onMoved={loadLedger} />
         <NewBankroll bk={bk} toast={toast} />

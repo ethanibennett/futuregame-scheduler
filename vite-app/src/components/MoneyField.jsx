@@ -8,14 +8,17 @@ import { parseMoney, moneyEcho } from '../utils/money.js';
    focus it keeps what was typed and shows, 1g in from its right edge, what that read as ("= $1,200")
    whenever it is not simply the number, or, in the danger colour, why it cannot be read. Leaving the
    field puts the last good reading back. */
-export default function MoneyField({ value, onChange, allowNegative = false, sym = '$', onFocus, onBlur, ...rest }) {
+/* mark (Bankroll design 35): { text, tone: 'pos' | 'neg' | null } drawn in the field 1g in from its left, the
+   figure moved past it, so the field shows the sign and the currency it will be saved with. */
+export default function MoneyField({ value, onChange, allowNegative = false, sym = '$', onFocus, onBlur, mark = null, ...rest }) {
   const [text, setText] = useState(null);
   const shown = text != null ? text : (value == null ? '' : String(value));
   const r = text != null && text.trim() !== '' ? parseMoney(text, { allowNegative }) : null;
   const echo = r && !r.error ? moneyEcho(text, r.value, sym) : null;
   const send = (v) => { if (onChange) onChange({ target: { value: v } }); };
   return (
-    <span className={'money-field' + (r && r.error ? ' is-invalid' : '')}>
+    <span className={'money-field' + (r && r.error ? ' is-invalid' : '') + (mark ? ' has-mark' + (mark.text.length > 2 ? ' is-code' : '') : '')}>
+      {mark && <span className={'money-mark' + (mark.tone ? ' is-' + mark.tone : '')} aria-hidden="true">{mark.text}</span>}
       <input {...rest} type="text" inputMode="decimal" value={shown}
         aria-invalid={r && r.error ? true : undefined}
         onFocus={(e) => { setText(shown); if (onFocus) onFocus(e); }}

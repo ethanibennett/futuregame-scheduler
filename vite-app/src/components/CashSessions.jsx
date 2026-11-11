@@ -32,7 +32,7 @@ import {
   swingSeries, swingSummary, chartPath,
 } from '../utils/cash-sessions.js';
 import { cashBbGroups, bbColumn, bbFigures, bbBasis, unitLabel } from '../utils/bb-hr.js';
-import { CardStrip, MonthBreak, BankrollGraph } from './ResultCardParts.jsx';
+import { CardStrip, MonthBreak, BankrollGraph, runningToDate, useListView, ListBar, LinesHead, ResultLine } from './ResultCardParts.jsx';
 import { MoneyParts, SwissLines } from './SwissParts.jsx';
 import { fmtDay } from '../utils/backer-page.js';
 import useLiveCashSession, { setLiveSession } from '../hooks/useLiveCashSession.js';
@@ -44,6 +44,8 @@ import BackerNotify from './BackerNotify.jsx';
 import PostsToBackers from './PostsToBackers.jsx';
 import { cashPreviewQuery } from '../utils/standing-ui.js';
 import MoneyField from './MoneyField.jsx';
+import { FirstRun, LoadFailed } from './EmptyState.jsx';
+import { SkeletonBlocks } from './SkeletonBankroll.jsx';
 
 const money = (v, cur) => formatCurrencyAmount(Math.round(v || 0), cur || 'USD');
 const signed = (v, cur) => (v > 0 ? '+' : '') + money(v, cur);
@@ -341,13 +343,9 @@ function Stats({ stats, sessions }) {
   const o = stats.overall, cur = stats.currency;
   const winPct = stats.sessions ? Math.round((o.wins / stats.sessions) * 100) : 0;
   const bbFigs = bbFigures(bb.overall);
+  // The page leads with its net as a session does (Bankroll design 42): a hero of the net and the rate, the
+  // bb/hr figures and the count on the two lines under it; the rest as rows.
   const rows = [
-    ['Net', signed(o.net, cur), o.net],
-    ['Per hour', perHour(o.hourly, cur), o.hourly],
-    // One row per unit that qualifies (bb first; BB only when limit sessions do), else one dash.
-    ...(bbFigs.length ? bbFigs : [null]).map((f) => (f ? [f.label, f.text, f.tone] : [unitLabel('bb'), '—', 0])),
-    ['Hours', formatHours(o.hours)],
-    ['Sessions', String(stats.sessions)],
     ['Won · lost', `${o.wins} · ${o.losses} (${winPct}%)`],
     ['Avg length', o.avg_hours == null ? '—' : formatHours(o.avg_hours)],
     ['Per session', signed(o.net / stats.sessions, cur), o.net],
@@ -363,6 +361,12 @@ function Stats({ stats, sessions }) {
   const col = bbColumn(groups.map((g) => bbBy.get(g.key) || none));
   return (
     <section className="cs-stats" aria-label="Cash stats">
+      <div className="cs-hero">
+        <span className={'cs-t cs-hero-net' + tone(o.net)}>{signed(o.net, cur)}</span>
+        <span className={'cs-t cs-hero-rate cs-r' + tone(o.hourly || 0)}>{perHour(o.hourly, cur)}</span>
+      </div>
+      <p className="cs-t cs-detail-what">{bbFigs.length ? bbFigs.map((f) => f.text + ' ' + f.label).join(' · ') : `${unitLabel('bb')} —`}</p>
+      <p className="cs-t cs-detail-when">{plural(stats.sessions, 'session')} · {formatHours(o.hours)}</p>
       <div className="cs-kv2">
         {rows.map(([label, value, sign]) => (
           <div key={label} className="cs-kv">
@@ -399,6 +403,17 @@ function Stats({ stats, sessions }) {
           </div>
         );
       })}
+      {/* The table ends in its total (Bankroll design 42), under a rule; its bb/hr blank, since the column can
+          mix two units (the hero carries both). */}
+      {groups.length > 1 && (
+        <div className="cs-brow is-total">
+          <span className="cs-t">All {({ byStakes: 'stakes', byGame: 'games', byRoom: 'rooms' })[by]}</span>
+          <span className="cs-t">{formatHours(o.hours)}</span>
+          <span className={'cs-t' + tone(o.net)}>{signed(o.net, cur)}</span>
+          <span className={'cs-t' + tone(o.hourly || 0)}>{o.hourly == null ? '—' : signed(o.hourly, cur)}</span>
+          <span className="cs-t" />
+        </div>
+      )}
     </section>
   );
 }
@@ -458,7 +473,6 @@ export function SessionRow({ s, onOpen }) {
             <span className="cal-event-time">{fmtDay(s.session_date)} · {formatHours(s.hours)}</span>
             <SwissLines name={game} stage={stage} time={`${fmtDay(s.session_date)} · ${formatHours(s.hours)}`} />
             <span className="cal-event-money">
-              <span className={'cal-event-buyin tr-amt' + tone(s.net)}>{signed(s.net, cur)}</span>
               {hourly != null && <span className="cal-event-gtd">{signed(hourly, cur)}/h</span>}
             </span>
           </div>
@@ -466,6 +480,7 @@ export function SessionRow({ s, onOpen }) {
             <span className="cal-event-name" title={game}>
               {stage ? (<><span className="cal-event-base">{game}</span><span className="cal-event-stage">{stage}</span></>) : game}
             </span>
+            <span className="tr-amt-cell"><span className={'cal-event-buyin tr-amt' + tone(s.net)}>{signed(s.net, cur)}</span></span>
           </div>
         </div>
       </div>
@@ -477,14 +492,24 @@ function SessionList({ sessions, stats, onOpen }) {
   const months = groupByMonth(sessions);
   const byMonth = new Map(((stats && stats.byMonth) || []).map((m) => [m.key, m]));
   const cur = stats ? stats.currency : (sessions[0] && sessions[0].currency) || 'USD';
+  const totals = months.map((m) => byMonth.get(m.key) || monthTotals(m.sessions));
+  const toDates = runningToDate(totals.map((t) => t.net));
+  const [view, setView] = useListView();
+  const lines = view === 'lines';
   return (
-    <section className="cs-list" aria-label="Cash sessions">
-      {months.map((m) => {
-        const t = byMonth.get(m.key) || monthTotals(m.sessions);
+    <section className={'cs-list' + (lines ? ' tr-lines' : '')} aria-label="Cash sessions">
+      <ListBar count={sessions.length} noun="session" view={view} onView={setView} />
+      {lines && <LinesHead />}
+      {months.map((m, mi) => {
+        const t = totals[mi];
         return (
           <div key={m.key} className="tr-month">
-            <MonthBreak monthKey={m.key} count={m.sessions.length} net={t.net} fmtNet={(v) => signed(v, cur)} noun="session" />
-            {m.sessions.map((s) => <SessionRow key={s.id} s={s} onOpen={() => onOpen(s.id)} />)}
+            <MonthBreak monthKey={m.key} count={m.sessions.length} net={t.net} fmtNet={(v) => signed(v, cur)} noun="session" toDate={toDates[mi]} />
+            {m.sessions.map((s) => (lines
+              ? <ResultLine key={s.id} date={fmtDay(s.session_date)} room={s.room || ''} game={sessionGame(s) || 'Cash'} tone={Number(s.net) || 0}
+                  played={money(s.buy_in, s.currency)} amount={signed(s.net, s.currency)}
+                  label={`${sessionGame(s) || 'Cash'}, ${fmtDay(s.session_date)}: ${signed(s.net, s.currency)}`} onOpen={() => onOpen(s.id)} />
+              : <SessionRow key={s.id} s={s} onOpen={() => onOpen(s.id)} />))}
           </div>
         );
       })}
@@ -497,19 +522,28 @@ function SessionDetail({ s, stacks, bk, busy, confirm, onConfirm, onDelete, toke
   const cur = s.currency;
   const hourly = sessionHourly(s);
   const bankroll = (bk.bankrolls.find((b) => b.id === s.bankroll_id) || { name: s.bankroll_id === BANKROLL_MAIN ? 'Main' : '—' }).name;
-  const rows = [
-    ['Length', formatHours(s.hours)],
+  // A receipt (Bankroll design 40): what went in, what came out, then Net under a rule, drawn as the sum, each
+  // figure once (the hero already says the net and the rate; the length joins the when line). At the table
+  // stays only where it differs from Net (tips or expenses), above the rule with what made the difference.
+  const differs = Math.round((Number(s.result) || 0) * 100) !== Math.round((Number(s.net) || 0) * 100);
+  const sum = [
     ['Buy-in', money(s.buy_in, cur) + (s.rebuys ? ` (${plural(s.rebuys, 'rebuy')})` : '')],
     ['Cash-out', money(s.cash_out, cur)],
-    ['At the table', signed(s.result, cur), s.result],
+    differs ? ['At the table', signed(s.result, cur), s.result] : null,
     s.tips ? ['Tips', money(s.tips, cur)] : null,
     s.expenses ? ['Expenses', money(s.expenses, cur)] : null,
-    ['Net', signed(s.net, cur), s.net],
-    ['Per hour', perHour(hourly, cur), hourly],
+  ].filter(Boolean);
+  const after = [
     stacks.length ? ['High / low', `${signed(swingSummary(stacks).high, cur)} / ${signed(swingSummary(stacks).low, cur)}`] : null,
     ['Bankroll', bankroll],
     s.tags.length ? ['Tags', s.tags.join(', ')] : null,
   ].filter(Boolean);
+  const kv = ([label, value, sign]) => (
+    <div key={label} className="cs-kv">
+      <span className="cs-t cs-kv-label">{label}</span>
+      <span className={'cs-t cs-kv-value' + tone(sign || 0)}>{value}</span>
+    </div>
+  );
   return (
     <section className="cs-detail" aria-label="Session">
       <div className="cs-hero">
@@ -517,21 +551,21 @@ function SessionDetail({ s, stacks, bk, busy, confirm, onConfirm, onDelete, toke
         <span className={'cs-t cs-hero-rate cs-r' + tone(hourly || 0)}>{perHour(hourly, cur)}</span>
       </div>
       <p className="cs-t cs-detail-what">{[sessionGame(s) || 'Cash', s.room].filter(Boolean).join(' · ')}</p>
-      <p className="cs-t cs-detail-when">{longDay(s.session_date)} · {clockTime(s.started_at)} – {clockTime(s.ended_at)}</p>
+      <p className="cs-t cs-detail-when">{longDay(s.session_date)} · {clockTime(s.started_at)} – {clockTime(s.ended_at)} · {formatHours(s.hours)}</p>
       {stacks.length > 0 && (
         <>
           <h3 className="cs-t cs-sec-title">Stack over the session · {plural(stacks.length, 'update')}</h3>
           <Chart className="cs-chart--detail" points={swingSeries(s, stacks)} label="Stack over the session" />
         </>
       )}
-      <div className="cs-kv1">
-        {rows.map(([label, value, sign]) => (
-          <div key={label} className="cs-kv">
-            <span className="cs-t cs-kv-label">{label}</span>
-            <span className={'cs-t cs-kv-value' + tone(sign || 0)}>{value}</span>
-          </div>
-        ))}
+      <div className="cs-kv1 cs-receipt">
+        {sum.map(kv)}
+        <div className="cs-kv is-sum">
+          <span className="cs-t cs-kv-label">Net</span>
+          <span className={'cs-t cs-kv-value' + tone(s.net)}>{signed(s.net, cur)}</span>
+        </div>
       </div>
+      <div className="cs-kv1 cs-receipt-after">{after.map(kv)}</div>
       <h3 className="cs-t cs-sec-title">Notes</h3>
       <p className={'cs-notes' + (s.notes ? '' : ' is-empty')}>{s.notes || 'No notes. Edit to add some.'}</p>
       {token && <BackerNotify token={token} refTable="cash_sessions" refId={s.id} />}
@@ -559,6 +593,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
   const [sessions, setSessions] = useState([]);
   const [stats, setStats] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
   // null = automatic (the running session if there is one, else the list) | 'list' | 'live' |
   // 'add' | 'start' | { detail: id } | { edit: id }
   const [screen, setScreen] = useState(null);
@@ -586,8 +621,9 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
       const [list, st] = await Promise.all([call('GET', q), call('GET', '/stats' + q)]);
       setSessions(list.sessions || []);
       setStats(st);
-    } catch (e) { toast.error(e.message); }
-    setLoaded(true);
+      setFailed(false);
+      setLoaded(true);
+    } catch (e) { setFailed(true); }
   }, [call, q]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [load]);
   // A session ended elsewhere (another device) lands in the list when the live store notices.
@@ -761,10 +797,22 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
           </button>
         )}
         {live && <LiveRow session={live} skew={skew} onOpen={() => go('live')} />}
-        {loaded && !ended.length && (
-          <p className="cs-t cs-note">No cash sessions{bk.selected !== 'all' ? ' in this bankroll' : ''} yet. Start the clock at the table, or add a past one.</p>
+        {/* Loading holds the list's shape (Bankroll design 46, 95); a failed load says so with Try again (97);
+            the empty block only once the answer says there is nothing (45, 96). Start session is above, so
+            the block has no action of its own. */}
+        {!loaded && !failed && (
+          <SkeletonBlocks label="Loading the sessions" blocks={[
+            { h: 21, card: true, bars: [[4, 1], [12, 2], [20, 1]] }, { h: 27, card: true, bars: [[8, 1]] },
+            { h: 10, card: true, bars: [[6, 1], [14, 1], [6, 2, 'end']] }, { h: 10, card: true, bars: [[6, 1], [14, 1], [6, 2, 'end']] },
+          ]} />
         )}
-        <SessionList sessions={ended} stats={stats} onOpen={(id) => go({ detail: id })} />
+        {failed && !loaded && <LoadFailed title="Your sessions did not load" onRetry={load} />}
+        {failed && loaded && <LoadFailed inline title="Your sessions did not load" onRetry={load} />}
+        {loaded && !ended.length && !live && (
+          <FirstRun block icon="cards" title={`No cash sessions${bk.selected !== 'all' ? ' in this bankroll' : ''} yet`}
+            body="Start the clock at the table, or add a past session with the button beside it." />
+        )}
+        {ended.length > 0 && <SessionList sessions={ended} stats={stats} onOpen={(id) => go({ detail: id })} />}
       </>
     );
   }

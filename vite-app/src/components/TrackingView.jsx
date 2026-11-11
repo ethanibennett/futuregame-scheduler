@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
 import Icon from './Icon.jsx';
-import { FirstRun } from './EmptyState.jsx';
+import { FirstRun, LoadFailed } from './EmptyState.jsx';
+import { SkeletonBlocks } from './SkeletonBankroll.jsx';
 import ShareMenu from './ShareMenu.jsx';
 import WrapUpViewer from './WrapUpViewer.jsx';
 import { API_URL } from '../utils/api.js';
@@ -13,7 +14,7 @@ import {
 import { fmtDay } from '../utils/backer-page.js';
 import './tracking-cards.css';
 import { MoneyParts, SwissLines } from './SwissParts.jsx';
-import { CardStrip, CardName, CardChevron, MonthBreak, barKeys, stop, BankrollGraph } from './ResultCardParts.jsx';
+import { CardStrip, CardName, CardChevron, MonthBreak, barKeys, stop, BankrollGraph, runningToDate, useListView, ListBar, LinesHead, ResultLine } from './ResultCardParts.jsx';
 const ResultsAll = React.lazy(() => import('./ResultsAll.jsx'));
 import { BankrollSwitcher, BankrollManager, BankrollPicker } from './Bankrolls.jsx';
 import { filterByBankroll, balancesFromSummary, defaultBankrollFor } from '../utils/bankrolls.js';
@@ -23,6 +24,7 @@ import { resultMoney, awaitingResults, eventNo, isoDay } from '../utils/home.js'
 import { resolveConditions } from '../utils/home-upnext.js';
 import { publishDisplayCurrency } from '../hooks/useDisplayCurrency.js';
 import AnalyticsLauncher from './AnalyticsLauncher.jsx';
+import BankrollFab from './BankrollFab.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { ResultsKindTabs } from './CashLive.jsx';
 import { useResultsKind, setResultsKind } from '../hooks/useLiveCashSession.js';
@@ -113,11 +115,11 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
   };
 
   return (
-    <form onSubmit={handleSubmit} className="tracking-card" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
-      {/* Every row of the form a whole number of r (a 3r title, 2r labels over 5r fields, 2r
-          between groups), so its controls and everything under the form start on r lines. */}
-      <div style={{fontSize:'calc(var(--gu) * 1.325)',fontWeight:700,color:'var(--text)',lineHeight:'calc(var(--subrow) * 3)',marginBottom:'var(--subrow)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
-        {isEdit ? `${isNew ? 'Log' : 'Edit'}: ${tournamentLabel}` : 'Log Tournament Result'}
+    <form onSubmit={handleSubmit} className="tracking-card tr-form" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
+      {/* In the sheets' hand (Bankroll design 36): sentence-case labels on a 3r line over 4r hairline fields in
+          two 16g columns, buy-ins a stepper, Cashed? the one switch, the buttons the sheets'. Every row whole r. */}
+      <div className="tr-form-title">
+        {isEdit ? `${isNew ? 'Log' : 'Edit'}: ${tournamentLabel}` : 'Log a tournament result'}
       </div>
 
       {!isEdit && (
@@ -147,17 +149,23 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
 
       <div className="tracking-form-grid">
         <div className="filter-group">
-          <label>Buy-ins</label>
-          <input type="number" min="1" max="50" value={numEntries} placeholder="re-entries count"
-            onChange={e => setNumEntries(e.target.value)} />
+          <label htmlFor="tr-buyins">Buy-ins</label>
+          <div className="tr-stepper">
+            <button type="button" aria-label="One fewer buy-in" onClick={() => setNumEntries(n => String(Math.max(1, (parseInt(n, 10) || 1) - 1)))}>{'\u2212'}</button>
+            <input id="tr-buyins" type="text" inputMode="numeric" value={numEntries} placeholder="1"
+              onChange={e => setNumEntries(e.target.value.replace(/[^0-9]/g, '').slice(0, 2))} />
+            <button type="button" aria-label="One more buy-in" onClick={() => setNumEntries(n => String(Math.min(50, (parseInt(n, 10) || 0) + 1)))}>+</button>
+          </div>
         </div>
         <div className="filter-group">
           <label>Cashed?</label>
-          <div style={{display:'flex',gap:'var(--gu)',alignItems:'center'}}>
-            <button type="button" className={`filter-chip ${!cashed ? 'active' : ''}`}
-              onClick={() => { setCashed(false); setShowLfg(false); }}>No</button>
-            <button type="button" className={`filter-chip ${cashed ? 'active' : ''}`}
-              onClick={() => { if (!cashed) { setCashed(true); setShowLfg(true); setTimeout(() => setShowLfg(false), 1000); } }}>Yes</button>
+          <div className="tr-cashed">
+            <div className="tx-seg2 tr-cashed-seg" role="radiogroup" aria-label="Cashed?">
+              <button type="button" role="radio" aria-checked={!cashed} className={'bk-seg-btn' + (!cashed ? ' is-on' : '')}
+                onClick={() => { setCashed(false); setShowLfg(false); }}><span>No</span></button>
+              <button type="button" role="radio" aria-checked={cashed} className={'bk-seg-btn' + (cashed ? ' is-on' : '')}
+                onClick={() => { if (!cashed) { setCashed(true); setShowLfg(true); setTimeout(() => setShowLfg(false), 1000); } }}><span>Yes</span></button>
+            </div>
             {showLfg && <span className="lfg-burst" style={{fontSize:'calc(var(--gu) * 1.325)',marginLeft:'var(--space-xs)'}}>lfg!</span>}
           </div>
         </div>
@@ -166,12 +174,12 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
       {cashed && (
         <div className="tracking-form-grid">
           <div className="filter-group">
-            <label>Finish Place</label>
+            <label>Finish place</label>
             <input type="number" min="1" value={finishPlace}
               onChange={e => setFinishPlace(e.target.value)} placeholder="e.g. 3" />
           </div>
           <div className="filter-group">
-            <label>Cash Amount ($)</label>
+            <label>Cash amount ($)</label>
             <MoneyField value={cashAmount}
               onChange={e => setCashAmount(e.target.value)} placeholder="e.g. 15000" />
           </div>
@@ -180,14 +188,9 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
 
       {showFieldSize && (
         <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
-          <label>Field Size (total entries)</label>
+          <label>Field size (total entries) · for POY points</label>
           <input type="number" min="1" value={totalFieldSize}
-            onChange={e => setTotalFieldSize(e.target.value)} placeholder="e.g. 8500"
-            style={{padding:'var(--space-ml) var(--space-lg)',border:'var(--bw-1) solid var(--border)',borderRadius:'var(--radius-sm)',
-              background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.325)',width:'100%'}} />
-          <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',lineHeight:'calc(var(--subrow) * 2)',display:'block'}}>
-            Used for POY points calculation
-          </span>
+            onChange={e => setTotalFieldSize(e.target.value)} placeholder="e.g. 8500" />
         </div>
       )}
 
@@ -196,17 +199,13 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
       <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
         <label>Subheading (optional)</label>
         <input type="text" value={subtitle} maxLength={60} onChange={e => setSubtitle(e.target.value)}
-          placeholder="Shown under the game"
-          style={{padding:'var(--space-ml) var(--space-lg)',border:'var(--bw-1) solid var(--border)',borderRadius:'var(--radius-sm)',
-            background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.325)',width:'100%'}} />
+          placeholder="Shown under the game" />
       </div>
 
       <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
         <label>Notes (optional)</label>
         <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
-          placeholder="Optional notes about this session"
-          style={{padding:'var(--space-ml) var(--space-lg)',border:'var(--bw-1) solid var(--border)',borderRadius:'var(--radius-sm)',
-            background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.325)',width:'100%'}} />
+          placeholder="Optional notes about this session" />
       </div>
 
       {/* Seated like the rest of the card's text (.tr-seat: each line's baseline on a 2r line), so
@@ -217,11 +216,9 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
         </p>
       )}
 
-      <div style={{display:'flex',gap:'var(--gu)'}}>
-        <button type="submit" className="btn btn-primary btn-sm" style={{width:'calc(var(--gu) * 10)',padding:0}}>
-          {conflict ? 'Replace it' : isEdit && !isNew ? 'Save Changes' : 'Log Result'}
-        </button>
-        <button type="button" className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 6)',padding:0}} onClick={onCancel}>Cancel</button>
+      <div className="bk-actions tr-form-actions">
+        <button type="submit" className="bk-btn bk-btn--brand tr-form-submit"><span>{conflict ? 'Replace it' : isEdit && !isNew ? 'Save changes' : 'Log result'}</span></button>
+        <button type="button" className="bk-btn bk-w8" onClick={onCancel}><span>Cancel</span></button>
       </div>
 
       {/* The owner's cut of what is typed, before it is saved (Phase 8): the server's own figures;
@@ -251,8 +248,8 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
 }
 
 // ── Tracking Entry Row ──────────────────────────────────────
-function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCancelEdit, displayCurrency, exchangeRates, bankrolls, notifyToken = null }) {
-  const [open, setOpen] = useState(false);
+function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCancelEdit, displayCurrency, exchangeRates, bankrolls, notifyToken = null, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
   const toggle = () => setOpen((v) => !v);
   const from = nativeCurrency(entry.venue);
   const to = displayCurrency === 'NATIVE' ? from : displayCurrency;
@@ -308,12 +305,14 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
             <span className="cal-event-time">{[fmtDay(isoDay(entry.date)), entries > 1 ? entries + ' entries' : ''].filter(Boolean).join(' · ')}</span>
             <SwissLines name={entry.event_name} time={[fmtDay(isoDay(entry.date)), entries > 1 ? entries + ' entries' : ''].filter(Boolean).join(' · ')} />
             <span className="cal-event-money">
-              <span className={'cal-event-buyin tr-amt' + tone}>{fmtSigned(profit)}</span>
               <span className="cal-event-gtd">{under}</span>
             </span>
           </div>
+          {/* The game and what it paid on one line (Bankroll design 26): the amount on the title's r8, larger;
+              its sub-line up on the date's r4. */}
           <div className="cal-bar-row2">
             <CardName name={entry.event_name} />
+            <span className="tr-amt-cell"><span className={'cal-event-buyin tr-amt' + tone}>{fmtSigned(profit)}</span></span>
           </div>
         </div>
         <CardChevron open={open} onToggle={toggle} />
@@ -502,7 +501,7 @@ function DidNotPlayDayForm({ onSave, onCancel }) {
 }
 
 // ── Tracking View (main export) ─────────────────────────────
-export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone, onLog, deepLink = null, onSetPlayed = null, onAddDnp = null, onDeleteDnp = null }) {
+export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone, onLog, deepLink = null, onSetPlayed = null, onAddDnp = null, onDeleteDnp = null, trackingState = 'ready', onRetryTracking = null }) {
   const toast = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -681,6 +680,9 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listItems, netCode, exchangeRates]);
+  const monthsToDate = useMemo(() => runningToDate(months.map((g) => g.net)), [months]);
+  const [listView, setListView] = useListView();
+  const [openLine, setOpenLine] = useState(null);
 
   // What the home asked for (App's resultsIntent): a form, an entry, a sheet. The cash and
   // expense ones are handed to the view that owns that form, which reports back itself.
@@ -808,7 +810,8 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   return (
     <div>
       {bk.enabled && (
-        <BankrollSwitcher bk={bk} balances={bankrollBalances} onManage={() => setShowBankrolls(true)} />
+        <BankrollSwitcher bk={bk} balances={bankrollBalances} onManage={() => setShowBankrolls(true)}
+          add={onLog ? <BankrollFab variant="bar" scope="page" isAdmin={isAdmin} onPick={onLog} /> : null} />
       )}
       {showBankrolls && (
         <BankrollManager bk={bk} balances={bankrollBalances} onClose={() => setShowBankrolls(false)} />
@@ -831,10 +834,12 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
         </>
       ) : isAdmin && resultsKind === 'all' ? (
         <Suspense fallback={null}>
-          <ResultsAll token={token} bk={bk} entries={trackingData} isoDay={isoDay} exchangeRates={exchangeRates}
+          <ResultsAll token={token} bk={bk} entries={trackingData} isoDay={isoDay} exchangeRates={exchangeRates} onLog={onLog}
             resultNet={(e) => Math.round(convertAmount(resultMoney(e).net, nativeCurrency(e.venue), 'USD', exchangeRates) * 100)}
-            renderEntry={(entry) => (
+            resultCost={(e) => Math.round(convertAmount(resultMoney(e).cost, nativeCurrency(e.venue), 'USD', exchangeRates) * 100)}
+            renderEntry={(entry, opts = {}) => (
               <TrackingEntryRow
+                defaultOpen={!!opts.defaultOpen}
                 entry={entry}
                 onEdit={() => setEditingId(entry.id)}
                 onDelete={() => onDelete(entry.id)}
@@ -1041,18 +1046,38 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       )}
       </div>
 
-      {trackingData.length === 0 && notPlayedEvents.length === 0 && !showAddForm && !pendingFormId ? (
+      {trackingState === 'failed' && (
+        <LoadFailed inline={trackingData.length > 0} title="Your results did not load" onRetry={onRetryTracking} />
+      )}
+      {trackingData.length === 0 && trackingState !== 'ready' ? (trackingState === 'loading' ? (
+        <SkeletonBlocks label="Loading your results" blocks={[
+          { h: 21, card: true, bars: [[4, 1], [12, 2], [20, 1], [8, 1], [8, 1]] }, { h: 27, card: true, bars: [[8, 1]] },
+          { h: 10, card: true, bars: [[6, 1], [14, 1], [6, 2, 'end']] }, { h: 10, card: true, bars: [[6, 1], [14, 1], [6, 2, 'end']] },
+        ]} />
+      ) : null) : trackingData.length === 0 && notPlayedEvents.length === 0 && !showAddForm && !pendingFormId ? (
         <FirstRun
           icon="tracking"
           title="Log your first result"
           body="Use Log Result above after each event. Cashes and bust-outs both count: your ROI needs a few before it tells you anything."
         />
       ) : (
-        <div className="tr-months">
-          {months.map((g) => (
+        <>
+        {isAdmin && trackingData.length > 0 && <ListBar count={trackingData.length} view={listView} onView={(v) => { setListView(v); setOpenLine(null); }} />}
+        <div className={'tr-months' + (isAdmin && listView === 'lines' ? ' tr-lines' : '')}>
+          {isAdmin && listView === 'lines' && <LinesHead />}
+          {months.map((g, gi) => (
             <div key={g.key} className="tr-month">
-              <MonthBreak monthKey={g.key} count={g.items.length} net={g.net} fmtNet={fmtMonthNet} />
-              {g.items.map(({ entry, dnp }) => dnp ? (
+              <MonthBreak monthKey={g.key} count={g.items.length} net={g.net} fmtNet={fmtMonthNet} toDate={monthsToDate[gi]} />
+              {g.items.map(({ entry, dnp }) => (isAdmin && listView === 'lines' && entry && openLine !== entry.id) ? (() => {
+                const m = resultMoney(entry);
+                const conv = (v) => convertAmount(v, nativeCurrency(entry.venue), netCode, exchangeRates);
+                return (
+                  <ResultLine key={'l' + entry.id} date={fmtDay(isoDay(entry.date))} venue={entry.venue} property={entry.property}
+                    game={entry.event_name} tone={m.net} played={formatCurrencyAmount(Math.round(conv(m.cost)), netCode)}
+                    amount={fmtMonthNet(conv(m.net))} label={`${entry.event_name}, ${fmtDay(isoDay(entry.date))}: ${fmtMonthNet(conv(m.net))}`}
+                    onOpen={() => setOpenLine(entry.id)} />
+                );
+              })() : dnp ? (
                 <div key={'dnp-' + dnp.id}>
                   {dnpForm && dnpForm.fromList && dnpForm.event.id === dnp.id ? (
                     <DidNotPlayForm event={dnp} initialNote={dnpForm.note} onSave={saveDnp} onCancel={() => setDnpForm(null)} />
@@ -1075,12 +1100,14 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
                     exchangeRates={exchangeRates}
                     bankrolls={formBankrolls}
                     notifyToken={isAdmin ? token : null}
+                    defaultOpen={openLine === entry.id}
                   />
                 </div>
               ))}
             </div>
           ))}
         </div>
+        </>
       )}
 
       {/* Delete results: the bankroll on show only, typed confirmation (moved off the home). */}

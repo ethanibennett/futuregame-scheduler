@@ -25,18 +25,25 @@ function resolveIcon(name, fallback) {
 
 /* block (Bankroll design 96): drawn as one card, the Bankroll tab's one empty state: --surface, a hairline
    ring, 4r of padding, a 3g mark, the title, one sentence, one action (only where the page has none above it). */
-export function FirstRun({ icon = 'star', title, body, actionLabel, onAction, compact = false, block = false }) {
+export function FirstRun({ icon = 'star', title, body, actionLabel, onAction, compact = false, block = false, secondary = null }) {
   const Glyph = resolveIcon(icon, 'star');
   return (
     <div className={(compact ? 'empty-state empty-state-compact' : 'empty-state') + (block ? ' is-block' : '')}>
       <Glyph />
       <h3>{title}</h3>
       {body ? <p>{body}</p> : null}
-      {actionLabel && onAction ? (
+      {actionLabel && onAction && !secondary ? (
         <button type="button" className="empty-state-action snap-g-centred" onClick={onAction}>
           {/* snap-g-centred: the width rounds up to whole g with its parent's parity, so centred it sits on g lines. */}
           <span className="empty-state-action-label">{actionLabel}</span>
         </button>
+      ) : null}
+      {/* Two actions (Bankroll design 45): the first in the brand, the second quiet beside it. */}
+      {actionLabel && onAction && secondary ? (
+        <div className="empty-state-actions">
+          <button type="button" className="empty-state-action snap-g-centred" onClick={onAction}><span className="empty-state-action-label">{actionLabel}</span></button>
+          <button type="button" className="empty-state-action empty-state-action-quiet snap-g-centred" onClick={secondary.onClick}><span className="empty-state-action-label">{secondary.label}</span></button>
+        </div>
       ) : null}
     </div>
   );

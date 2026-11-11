@@ -114,3 +114,18 @@
 .br-fdone { left: calc(var(--gu) * 28); }
 .br-fsec { margin-top: calc(var(--subrow) * 2); }
 .br-fsec > .an-sec { margin-bottom: var(--subrow); }
+
+/* Desktop (Bankroll design 43): the table takes the pane's 62g, names in full, 4r rows with hairline rules,
+   and the profit bar in a 15g column of its own ("Profit, to scale") instead of behind the figures. The
+   bar's positions are fractions of its track, so the phone's 35g track and this 15g one share them. */
+.br-scale-head { display: none; }
+/* The Bankroll column is 35g on desktop (UX pick 08); a table is the one thing that gains from width, so
+   this one is its exception (the item's own condition), 62g wide. */
+.app-shell.is-desktop .br-table { width: calc(var(--gu) * 62); }
+.app-shell.is-desktop .br-cols { grid-template-columns: calc(var(--gu) * 24) calc(var(--gu) * 4) calc(var(--gu) * 9) calc(var(--gu) * 9) var(--gu) calc(var(--gu) * 15); }
+.app-shell.is-desktop .br-cols-bb { grid-template-columns: calc(var(--gu) * 20) calc(var(--gu) * 3) var(--col) var(--col) calc(var(--gu) * 7) var(--gu) calc(var(--gu) * 15); }
+.app-shell.is-desktop .br-scale-head { display: block; }
+.app-shell.is-desktop .br-row { grid-template-rows: calc(var(--subrow) * 4); height: calc(var(--subrow) * 4); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border); }
+.app-shell.is-desktop .br-track { grid-column: -2; grid-row: 1; width: auto; height: var(--subrow); margin-top: calc(var(--subrow) * 2); }
+.app-shell.is-desktop .br-row.is-2 { grid-template-rows: calc(var(--subrow) * 4) calc(var(--subrow) * 4); height: calc(var(--subrow) * 8); }
+.app-shell.is-desktop .br-row.is-2 .br-track { grid-row: 1; }

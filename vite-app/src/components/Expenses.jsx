@@ -14,6 +14,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
+import { FirstRun, LoadFailed } from './EmptyState.jsx';
+import { Bone } from './SkeletonBankroll.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { API_URL } from '../utils/api.js';
 import { CURRENCY_CONFIG, convertAmount, nativeCurrency, getToday, normaliseDate, MINUS } from '../utils/utils.js';
@@ -37,6 +39,20 @@ function money(v, cur = 'USD') {
   return cfg.pos === 'suf' ? `${sign}${num} ${cfg.symbol}` : `${sign}${cfg.symbol}${num}`;
 }
 const signed = (v, cur) => (v > 0 ? '+' : '') + money(v, cur);
+// A row's amount with its cents always shown and set apart (Bankroll design 30): the whole units on one
+// edge down the column, ".00" quiet.
+function CentsAmount({ v, cur }) {
+  const n = Number(v) || 0;
+  const cfg = CURRENCY_CONFIG[cur] || CURRENCY_CONFIG.USD;
+  const a = Math.abs(n);
+  const [whole, cents] = a.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).split('.');
+  const sign = n < 0 ? MINUS : n > 0 ? '+' : '';
+  const body = <>{whole}<span className="tx-cents">.{cents}</span></>;
+  return cfg.pos === 'suf' ? <>{sign}{body} {cfg.symbol}</> : <>{sign}{cfg.symbol}{body}</>;
+}
+// A tile's figure (Bankroll design 50): whole units, a step down in size before any ellipsis.
+const tileMoney = (v, cur) => money(Math.round(Number(v) || 0), cur);
+const tileFit = (text) => (text.length > 12 ? ' is-long' : '');
 const tone = (v) => (v < 0 ? ' is-neg' : v > 0 ? ' is-pos' : '');
 
 function useApi(token) {
@@ -92,12 +108,14 @@ function Sheet({ title, label, onClose, closeText = 'Done', children }) {
 
 // One transaction as a row: date | category · note | amount. A button when it can be edited.
 function TxRow({ t, onOpen }) {
-  const what = [categoryLabel(t.kind, t.category), isOutsideRoll(t) && OUTSIDE_ROLL_LABEL, t.note || t.series || t.tournament_name || t.trip_name].filter(Boolean).join(' · ');
+  // What the money was for leads; the category follows it, quiet (Bankroll design 30).
+  const lead = t.note || t.series || t.tournament_name || t.trip_name;
+  const cat = [categoryLabel(t.kind, t.category), isOutsideRoll(t) && OUTSIDE_ROLL_LABEL].filter(Boolean).join(' · ');
   const inner = (
     <>
       <span className="tx-row-date">{shortDay(t.occurred_on)}</span>
-      <span className="tx-row-what">{what}</span>
-      <span className={'tx-row-amt' + tone(signedAmount(t))}>{signed(signedAmount(t), t.currency)}</span>
+      <span className="tx-row-what">{lead ? <>{lead}<span className="tx-row-cat"> {cat}</span></> : cat}</span>
+      <span className={'tx-row-amt' + tone(signedAmount(t))}><CentsAmount v={signedAmount(t)} cur={t.currency} /></span>
     </>
   );
   return onOpen
@@ -184,9 +202,17 @@ function TxSheet({ api, toast, tx, preset, bankrolls, trips, events, onSaved, on
       <div className="tx-amount">
         <label className="tx-amount-field">
           <span className="bk-field-label">Amount</span>
-          <input className="tx-amount-input" type="text" inputMode="decimal" autoComplete="off" placeholder="0"
-            value={amount} autoFocus={!editing} onChange={(e) => setAmount(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') save(); }} />
+          {/* The sign and the currency it will be saved with sit in the field, in the kind's colour
+              (Bankroll design 35); a code longer than one mark moves the figure 1g further in. */}
+          <span className={'tx-amount-wrap' + ((CURRENCY_CONFIG[currency] || CURRENCY_CONFIG.USD).symbol.length > 1 ? ' is-code' : '')}>
+            <span className={'tx-amount-mark ' + (kind === 'income' ? 'is-pos' : 'is-neg')} aria-hidden="true">
+              {(kind === 'income' ? '+' : MINUS) + (CURRENCY_CONFIG[currency] || CURRENCY_CONFIG.USD).symbol}
+            </span>
+            <input className="tx-amount-input" type="text" inputMode="decimal" autoComplete="off" placeholder="0"
+              value={amount} autoFocus={!editing} onChange={(e) => setAmount(e.target.value)}
+              aria-label={`Amount, ${kind === 'income' ? 'money in' : 'money out'}, ${currency}`}
+              onKeyDown={(e) => { if (e.key === 'Enter') save(); }} />
+          </span>
         </label>
         <label className="tx-amount-field">
           <span className="bk-field-label">Currency</span>
@@ -263,7 +289,10 @@ function AllSheet({ list, cur, convert, nameOf, onOpen, onClose, toast }) {
       </div>
       <section className="bk-section">
         <h3 className="bk-section-title">By category</h3>
-        {totals.count === 0 && <p className="bk-line bk-muted">Nothing logged yet.</p>}
+        {totals.count === 0 && (
+          <FirstRun block icon="dollarSign" title="No expenses or income yet"
+            body="Food, travel, rakeback and the rest show here by category, with what they did to the roll." />
+        )}
         {totals.expense.map((c) => <PlRow key={'e' + c.key} label={c.label} value={-c.amount} cur={cur} />)}
         {totals.income.map((c) => <PlRow key={'i' + c.key} label={c.label} value={c.amount} cur={cur} />)}
         {totals.count > 0 && <PlRow total label={kind === 'all' ? 'Net' : 'Total'} value={totals.net} cur={cur} />}
@@ -399,7 +428,26 @@ function TripDetail({ api, toast, tripId, bankrolls, rates, onAdd, onOpen, onBac
   );
 }
 
+// Each trip's net for the list (Bankroll design 41): the trip page's own sum (tripPnl over GET /trips/:id),
+// so the list and the page never differ. Fetched when the list shows; a handful of trips at most.
+function useTripNets(api, trips, bankrolls, rates, on, version) {
+  const [nets, setNets] = useState({});
+  useEffect(() => {
+    if (!on) return undefined;
+    let live = true;
+    Promise.all(trips.map((t) => api('GET', `/trips/${t.id}`).then((data) => {
+      const roll = data.trip.bankroll === BANKROLL_ALL ? null : bankrolls.find((b) => b.id === data.trip.bankroll);
+      const cur = roll ? roll.currency : 'USD';
+      const p = tripPnl(data, { currency: cur, convert: (v, from, to) => convertAmount(v, from, to, rates), nativeCurrency });
+      return [t.id, { net: p.net, cur }];
+    }).catch(() => [t.id, null]))).then((list) => { if (live) setNets(Object.fromEntries(list)); });
+    return () => { live = false; };
+  }, [trips, on, version, rates]); // eslint-disable-line react-hooks/exhaustive-deps
+  return nets;
+}
+
 function TripsSheet({ api, toast, trips, bankrolls, rates, openId, onOpenTrip, onAdd, onOpen, onChanged, onClose, version }) {
+  const nets = useTripNets(api, trips, bankrolls, rates, !openId, version);
   const create = async (body) => {
     try {
       const r = await api('POST', '/trips', body);
@@ -422,8 +470,10 @@ function TripsSheet({ api, toast, trips, bankrolls, rates, openId, onOpenTrip, o
             {trips.map((t) => (
               <button key={t.id} type="button" className="tx-trip-row" onClick={() => onOpenTrip(t.id)}>
                 <span className="tx-trip-name">{t.name}</span>
-                <span className="tx-trip-count">{t.transaction_count} tagged</span>
-                <span className="tx-trip-meta">{tripRange(t.start_date, t.end_date)}</span>
+                <span className={'tx-trip-count tx-trip-net' + (nets[t.id] ? tone(nets[t.id].net) : '')}>
+                  {nets[t.id] ? signed(Math.round(nets[t.id].net * 100) / 100, nets[t.id].cur) : ''}
+                </span>
+                <span className="tx-trip-meta">{tripRange(t.start_date, t.end_date)} · {t.transaction_count} tagged</span>
               </button>
             ))}
           </section>
@@ -445,6 +495,7 @@ export default function ExpensesSection({ token, bankroll = BANKROLL_ALL, bankro
   const toast = useToast();
   const api = useApi(token);
   const [list, setList] = useState(null);
+  const [failed, setFailed] = useState(false);
   const [trips, setTrips] = useState([]);
   // One sheet at a time: { type: 'add', tx?, preset?, back? } | { type: 'all' } | { type: 'trips', tripId? }
   const [sheet, setSheet] = useState(null);
@@ -468,7 +519,8 @@ export default function ExpensesSection({ token, bankroll = BANKROLL_ALL, bankro
       ]);
       setList(t.transactions || []);
       setTrips(tr.trips || []);
-    } catch (e) { setList([]); console.error('Expenses:', e); }
+      setFailed(false);
+    } catch (e) { setFailed(true); console.error('Expenses:', e); }
   }, [api, bankroll]);
   useEffect(() => { load(); }, [load]);
   const changed = useCallback(() => { load(); setVersion((v) => v + 1); if (onChanged) onChanged(); }, [load, onChanged]);
@@ -531,21 +583,23 @@ export default function ExpensesSection({ token, bankroll = BANKROLL_ALL, bankro
         </button>
       </div>
       <div className="tx-sum">
-        <div className="tx-cell">
-          <span className="tx-cell-label">Expenses {year}</span>
-          <span className="tx-cell-val">{money(yearTotals.expenses, cur)}</span>
-        </div>
-        <div className="tx-cell">
-          <span className="tx-cell-label">Income {year}</span>
-          <span className="tx-cell-val">{money(yearTotals.income_total, cur)}</span>
-        </div>
-        <div className="tx-cell">
-          <span className="tx-cell-label">Net {year}</span>
-          <span className={'tx-cell-val' + tone(yearTotals.net)}>{signed(yearTotals.net, cur)}</span>
-        </div>
+        {/* Whole units, a step down in size before any ellipsis (Bankroll design 50); quiet blocks, never
+            "$0", until the list has answered (46). */}
+        {[['Expenses', money, yearTotals.expenses, ''], ['Income', money, yearTotals.income_total, ''], ['Net', signed, yearTotals.net, tone(yearTotals.net)]].map(([label, f, v, t]) => {
+          const text = list ? (f === signed ? (v > 0 ? '+' : '') : '') + tileMoney(v, cur) : '';
+          return (
+            <div key={label} className="tx-cell">
+              <span className="tx-cell-label">{label} {year}</span>
+              <span className={'tx-cell-val' + (list ? t + tileFit(text) : '')}>{list ? text : <Bone w={6} h={2} />}</span>
+            </div>
+          );
+        })}
       </div>
       <div className="tx-list">
         {list && list.length === 0 && <p className="tx-line">Log travel, rooms, food, tips and rakeback here.</p>}
+        {/* A failed load says so (Bankroll design 97): never the empty text, which means nothing was logged. */}
+        {failed && !list && <LoadFailed inline title="Your expenses did not load" onRetry={load} />}
+        {!list && !failed && [0, 1, 2].map((i) => <div key={i} className="tx-row is-bone" aria-hidden="true"><Bone w={3} /><Bone w={14} /><Bone w={6} /></div>)}
         {(list || []).slice(0, RECENT).map((t) => <TxRow key={t.id} t={t} onOpen={openTx(null)} />)}
       </div>
       <div className="bk-actions">

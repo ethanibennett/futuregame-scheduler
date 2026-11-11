@@ -21,8 +21,12 @@ import {
  * between rows, in 4 x 8g, 3 x 11g or 2 x 17g columns (1g gaps, 35g).
  */
 
-// Columns per section: short labels four to a row, names two.
-const COLS = { types: 3, bankrolls: 4, games: 4, stakes: 2, rooms: 2, formats: 2, weekdays: 4, dayparts: 4 };
+// Columns per section, by the kind of label (Bankroll design 44): names two to a row (bankrolls, rooms), games
+// three, short ladders four (cash stakes) or three (buy-in bands, "$300–799"), the rest as they were.
+const COLS = { types: 3, bankrolls: 2, games: 3, stakes: 4, buyins: 3, rooms: 2, formats: 2, weekdays: 4, dayparts: 4 };
+// "Stakes / buy-in" reads as two ladders, each rising left to right: the cash stakes (cs:) and the
+// tournament buy-in bands (bi:). One filter underneath; only the drawing is split.
+const PARTS = { stakes: [['stakes', 'Cash stakes', (o) => String(o.key).startsWith('cs:')], ['buyins', 'Buy-in', (o) => String(o.key).startsWith('bi:')]] };
 
 export function Chip({ on, n, disabled, onClick, children }) {
   // The name and its count centred on their ink, not their advances (utils/ink-balance.js).
@@ -57,21 +61,23 @@ export default function BankrollFilters({ facts, filters, onChange, onClose, tod
     // A dimension with a single value everywhere filters nothing; leave it out unless it is on.
     if (opts.length < 2 && !(filters[d.key] || []).length && d.key !== 'types') return null;
     const counts = facetCounts(facts, filters, d.key, today);
-    return (
-      <section key={d.key} className="br-fsec" aria-labelledby={`br-f-${d.key}`}>
-        <h3 className="an-cell an-sec" id={`br-f-${d.key}`}>{d.label}</h3>
-        <div className={`br-grid br-grid-${COLS[d.key]}`} role="group" aria-labelledby={`br-f-${d.key}`}>
-          {opts.map((o) => {
-            const on = (filters[d.key] || []).includes(o.key);
-            const n = counts[o.key] || 0;
-            return (
-              <Chip key={o.key} on={on} n={n} disabled={!on && n === 0}
-                onClick={() => onChange(toggle(filters, d.key, o.key))}>{o.label}</Chip>
-            );
-          })}
+    const chip = (o) => {
+      const on = (filters[d.key] || []).includes(o.key);
+      const n = counts[o.key] || 0;
+      return (
+        <Chip key={o.key} on={on} n={n} disabled={!on && n === 0}
+          onClick={() => onChange(toggle(filters, d.key, o.key))}>{o.label}</Chip>
+      );
+    };
+    const parts = (PARTS[d.key] || [[d.key, d.label, () => true]]).map(([k, label, has]) => [k, label, opts.filter(has)]).filter((p) => p[2].length);
+    return parts.map(([k, label, list]) => (
+      <section key={k} className="br-fsec" aria-labelledby={`br-f-${k}`}>
+        <h3 className="an-cell an-sec" id={`br-f-${k}`}>{label}</h3>
+        <div className={`br-grid br-grid-${COLS[k]}`} role="group" aria-labelledby={`br-f-${k}`}>
+          {list.map(chip)}
         </div>
       </section>
-    );
+    ));
   });
 
   return createPortal(
