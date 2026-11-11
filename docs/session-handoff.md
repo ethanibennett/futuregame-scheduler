@@ -14,6 +14,32 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-11-11 — The Features catalogue: 44 picks built (every one but 3, 6, 7, 24, 28, 50)
+
+- `docs/catalogues/features`. The architecture and what a later change has to keep are in CLAUDE.md ("The Features
+  catalogue, built"); the server's modules are listed in `lib/feature-mounts.js`.
+- **Waiting on the Mac:** the Live Activity (10) needs a Widget Extension target named FuturegameWidgets (steps at the
+  top of `ios/App/FuturegameWidgets/FuturegameWidgets.swift`). Until then `LiveActivityPlugin` reports the request
+  failed and nothing shows. The nightly TestFlight build compiles the four new plugins in `AppDelegate.swift` for the
+  first time, and the entitlements now ask for Sign in with Apple and `applinks:futurega.me`: automatic signing with the
+  Admin key has to add both capabilities to the App ID. Watch the next nightly run; a signing error there is this.
+- **Waiting on the owner:** Android app links need `ANDROID_CERT_SHA256` on Render (the release key's fingerprint).
+  Sign in with Apple on the WEB needs a Services ID (`APPLE_SIGNIN_AUDIENCES`); the apps work without one.
+- **Built in part, said where it shows:**
+  - 13 (pay ladder): typed boards only; reading WSOP+'s PayoutStructure from the hub is not built.
+  - 10 (Live Activity): the app updates it while it is open (the level's end counts down on its own); the server's
+    ActivityKit pushes when the room clock moves are not built.
+  - 30 (played in): set from the replay's Tags and event sheet, not in the entry's setup, so it does not fill blinds.
+  - 15 (your stop): set from the live bar's sheet, not as fields on Start.
+  - 17 (mileage): straight line x 1.2; road miles wait for a map key. The IRS table ends at 2025's 70¢ (labelled).
+  - 26 (send a hand): a friend's hand is "Sent to you" in Hands and the bell; replies are kept and listed per hand, but
+    the replay does not yet draw them on the street they were written on.
+  - 36 (scan a code) reads with the camera through jsQR on the web and in the app; there is no native scanner.
+- **Fixed on the way:** a fresh database's `live_updates` gets every column at creation now (the old note below is
+  closed); the push-tap handler had a backspace character in its calendar regex (from an older commit).
+- Guards: phone and desktop controls and clipping on the touched views; the new sheets that open only on a tap
+  (packages, tickets, the rules sheet, Report a problem) were not reached by the guards' scripts.
+
 ## 2026-11-11 — App improvements: 96 picks built, 154 and 158 not
 
 - The picks from the App improvements catalogue (`docs/catalogues/app-improvements`), marked Built on the artifact
@@ -34,9 +60,8 @@ wsop-console side and verified against both live services.
   - `DELETE /api/live-update/:id` is a 404 for nothing matched; `?all=1` is Undo start. A cash needs its amount (POST
     and PUT /api/tracking answer 400). Swap offers are saved at once and send `swap-offer` to the receiver; a
     crossbook keeps its `cap`. A refused sign-up (400) refunds its attempt.
-- **Found on the way:** a fresh database's `live_updates` lacks the columns its migration adds, because the
-  migration runs before the table is created (prod is fine; `test/live-update-undo.test.js` adds them to its scratch
-  DB). Worth a fix before any new environment is stood up.
+- **Found on the way:** a fresh database's `live_updates` lacked the columns its migration adds, because the
+  migration runs before the table is created. Fixed in the Features commit (the table is checked after its CREATE).
 
 ## 2026-11-11 — Bankroll design upgrades, picks 1-100 but 10, 76, 79 (four commits)
 

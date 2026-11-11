@@ -1,3 +1,4 @@
+import { ComingUpCard, StatementCard, SweatBlock } from './BackerExtras.jsx';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import SettleInline from './SettleInline.jsx';
 import useWordmarkFit from '../hooks/useWordmarkFit.js';
@@ -172,6 +173,9 @@ function LiveBeacon({ live }) {
               {!abbr && live.room ? (<><span className="cal-event-base">{live.title}</span><span className="cal-event-stage">{live.room}</span></>) : live.title}
             </span>
           </div>
+          {/* Where they sit (Features 12), and the run's chips where the player shares them (23). */}
+          {live.seat && <div className="bx-seat">{live.seat}</div>}
+          {live.sweat && <SweatBlock sweat={live.sweat} />}
         </div>
       </div>
     </section>
@@ -598,6 +602,7 @@ export default function BackerPage({ token }) {
         </div>
 
         {live && <LiveBeacon live={live} />}
+        {feed.comingUp && <ComingUpCard up={feed.comingUp} />}
 
         {(events.length > 0 || sum.opening !== 0) && (
           <section className="bp-total" aria-label="Running total">
@@ -639,6 +644,7 @@ export default function BackerPage({ token }) {
         ) : (
           <>
             {/* No heading row: the month breaks lead straight in (owner, 2026-10-14). */}
+            <StatementCard feed={feed} name={name} />
             <section className="bp-sessions" aria-label="Sessions, newest first">
               {months.map((g) => (
                 <div key={g.key} className="bp-month">

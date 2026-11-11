@@ -18,6 +18,9 @@ const SolverPlayView = lazy(() => import('./SolverPlayView.jsx'));
 const SolverView = lazy(() => import('./SolverView.jsx'));
 const DrawStudyView = lazy(() => import('./DrawStudyView.jsx'));
 const RangesView = lazy(() => import('./RangesView.jsx'));
+// The look-ups that need no solver (Features 34, 35).
+const DealCalculatorView = lazy(() => import('./StudyLookups.jsx').then((m) => ({ default: m.DealCalculatorView })));
+const OddsView = lazy(() => import('./StudyLookups.jsx').then((m) => ({ default: m.OddsView })));
 
 const T = (b, lh) => (lh ? { '--hs-b': b, '--hs-lh': lh } : { '--hs-b': b });
 
@@ -33,6 +36,8 @@ export const STUDY_GROUPS = [
     ['solve', 'Solve a spot', 'Set up a Razz or Stud 8 spot and get the exact answer.'],
     ['draw', 'Price a draw', 'Every bet and every discard at one decision, priced.'],
     ['ranges', 'Pre-draw ranges', 'Which hands to open, limp, 3-bet and 4-bet in 2-7 triple draw.'],
+    ['odds', 'Odds', 'Type the hands and the board, in any board or stud game.'],
+    ['deal', 'Deal calculator', 'ICM and chip-chop figures for a final table.'],
   ]],
 ];
 
@@ -51,6 +56,8 @@ export default function StudyHub({ tool, onTool, onPlayHand, fallback, pendingSo
         {tool === 'solve' && <SolverView onBack={back} pendingSpot={pendingSolverSpot} onConsumeSpot={onConsumeSolverSpot} />}
         {tool === 'draw' && <DrawStudyView onBack={back} pendingSpot={pendingDrawSpot} onConsumeSpot={onConsumeDrawSpot} />}
         {tool === 'ranges' && <RangesView onBack={back} />}
+        {tool === 'odds' && <OddsView onBack={back} />}
+        {tool === 'deal' && <DealCalculatorView onBack={back} />}
       </Suspense>
     );
   }

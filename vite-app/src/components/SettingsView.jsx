@@ -6,6 +6,7 @@ import { THEME_LABEL, THEME_ICON, SERIF_LABEL, SERIF_STACK, SERIF_ORDER, setDebu
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { SITE_URL, API_URL } from '../utils/api.js';
+import { NotificationsSection, AccountSecurityRows, PrivacySection, InviteRow, BlockedRow, DataSection } from './SettingsMore.jsx';
 
 // Avatars on the r grid (a px size floored the account row to 8.22r). A circle
 // can't be whole g AND whole r, so each sits centred in a whole-g cell (CSS).
@@ -19,7 +20,8 @@ const seatedInitial = (baselineR) => ({
   textBoxTrim: 'trim-both', textBoxEdge: 'cap alphabetic',
 });
 
-export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, pickTheme = null, onFindPeople = null, contrast, toggleContrast, serifFont, toggleSerifFont, onLogout, onDebugTimeChange, shareToken, onGenerateShareToken, onRevokeShareToken, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, token, isAdmin, seasonLabel, isGuest, onEditHome = null, onEditName, onGuestExit = null }) {
+export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, pickTheme = null, onFindPeople = null, contrast, toggleContrast, serifFont, toggleSerifFont, onLogout, onDebugTimeChange, shareToken, onGenerateShareToken, onRevokeShareToken, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, token, isAdmin, seasonLabel, isGuest, onEditHome = null, onEditName, onGuestExit = null,
+  onToken = null, pushPerm = 'default', onEnablePush = null, onShowCode = null, onBlocksChanged = null }) {
   const toast = useToast();
   const displayName = useDisplayName();
   const [debugInput, setDebugInput] = useState(getDebugNow());
@@ -128,8 +130,12 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
               </button>
             </div>
           </div>
+          {/* Email, password and the devices signed in (Features 42). */}
+          <AccountSecurityRows token={token} onToken={onToken} />
         </div>
       </div>
+
+      <NotificationsSection token={token} pushPerm={pushPerm} onEnablePush={onEnablePush} />
 
       <div className="settings-section">
         <div className="settings-section-label">Sharing</div>
@@ -198,6 +204,8 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
               </div>
             )}
           </div>
+          <InviteRow token={token} onShowCode={onShowCode} />
+          <BlockedRow token={token} onChange={onBlocksChanged} />
         </div>
       </div>
 
@@ -277,6 +285,8 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
         </div>
       </div>
 
+      <PrivacySection />
+
       {isAdmin && (
       <div className="settings-section">
         <div className="settings-section-label">Debug Tools</div>
@@ -312,6 +322,8 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
           </button>
         </div>
       </div>
+
+      {!isGuest && username && <DataSection token={token} />}
 
       {!isGuest && username && (
       <div className="settings-section">

@@ -24,6 +24,7 @@ export function tabHash(view) {
 
 /** The tab a "#/<tab>" address names, or null. */
 export function viewFromHash(hash) {
-  const m = /^#\/([a-z/]+)$/.exec(String(hash || '').trim().toLowerCase());
+  // A query after the tab ("#/settings?email=changed") belongs to the tab, not to its address.
+  const m = /^#\/([a-z/]+)$/.exec(String(hash || '').trim().toLowerCase().split('?')[0]);
   return m && PATH_TAB[m[1]] ? PATH_TAB[m[1]] : null;
 }

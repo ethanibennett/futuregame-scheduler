@@ -8,6 +8,8 @@ import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
 const ScheduleExportModal = lazy(() => import('./ScheduleExportModal.jsx'));
 import { FirstRun } from './EmptyState.jsx';
 import ScheduleSwitch from './ScheduleSwitch.jsx';
+import SavedChangesCard from './SavedChangesCard.jsx';
+import TripBudgetCard, { tripRuns } from './TripBudgetCard.jsx';
 import { normaliseDate, getToday, parseTournamentTime, detectConflicts, lateRegCloseOf, extractConditions, getVenueInfo, getVenueCoords } from '../utils/utils.js';
 import { suggestTravelDay } from '../utils/travel-suggest.js';
 import { detectOverlaps } from '../utils/overlaps.js';
@@ -135,7 +137,9 @@ export default function ScheduleView({
   // The Schedule tab's view switch, on the phone (UX picks 20, 95).
   onSwitchView, mineCount = 0,
   // Desktop only (docs/desktop-layout.md): rows select into the detail pane.
-  onSelectEvent, selectedEventId
+  onSelectEvent, selectedEventId,
+  // The Features' My Schedule blocks (2026-11-11): the calendar feed (1), changed events (4), trip budgets (5).
+  token = null, isGuestView = false,
 }) {
   // The scroll container is whatever pane this view is mounted in: the phone's
   // .content-area, or a desktop pane's .dk-scroll. Resolved from the view's own
@@ -155,6 +159,11 @@ export default function ScheduleView({
     const joined = list.length > 1 ? list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1] : list[0];
     return (sameMonth ? `${joined} ${parts[0].mon}` : joined) + (days.length > 6 ? ' …' : '');
   }, [mySchedule, conflicts]);
+  // Saved events that moved (Features 4): their cards carry a "Moved" tag until the change is seen.
+  const [changedIds, setChangedIds] = useState(() => new Set());
+  const movedCss = useMemo(() => (changedIds.size
+    ? [...changedIds].map(id => `.schedule-clash-scope [data-tid="${String(id).replace(/"/g, '')}"] .cal-event-time::after`).join(',') + '{content:"Moved";margin-left:calc(var(--gu) * 0.5);padding:0 calc(var(--gu) * 0.5);border-radius:var(--radius-xs);background:var(--warn-bg);color:var(--warn);font-size:var(--fs-2xs);font-weight:var(--fw-bold)}'
+    : ''), [changedIds]);
   const clashCss = useMemo(() => (conflicts.size
     ? [...conflicts].map(id => `.schedule-clash-scope [data-tid="${String(id).replace(/"/g, '')}"] .cal-event-time`).join(',') + '{color:var(--warn)}'
     : ''), [conflicts]);
@@ -251,6 +260,8 @@ export default function ScheduleView({
     withTs.sort((a, b) => a.ts - b.ts);
     return withTs.map(x => x.t);
   }, [mySchedule]);
+  // A trip's budget (Features 5): the run of saved events each upcoming Travel Day opens.
+  const trips = useMemo(() => tripRuns(sorted, getToday()), [sorted]);
 
   // The travel day the schedule implies, offered when Travel opens (UX pick 33).
   const travelSuggestion = useMemo(() => suggestTravelDay(sorted, {
@@ -508,6 +519,11 @@ export default function ScheduleView({
       )}
       {/* The clashing cards' start times in --warn (App improvements 57), by id, so the rows' memo is untouched. */}
       {clashCss && <style>{clashCss}</style>}
+      {movedCss && <style>{movedCss}</style>}
+      {token && (
+        <SavedChangesCard token={token} onChangedIds={setChangedIds}
+          onRemove={(id) => { const t = (mySchedule || []).find(x => x.id === id); if (t && onToggle) onToggle(t); }} />
+      )}
       {overlaps.size > 0 && (
         <div className="overlap-summary" role="status">
           <Icon.warn /> {overlaps.size} event{overlaps.size === 1 ? ' starts' : 's start'} while one of yours is still in late reg
@@ -541,7 +557,8 @@ export default function ScheduleView({
                   // A row not yet rendered stands in at a whole 13r (a 12r card and its 1r gap, as
                   // the Schedule tab's list does): at 11.75r every unrendered row above the one
                   // scrolled to put everything under it a fraction of an r off the grid.
-                  <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto calc(var(--subrow) * 13)'}}>
+                  <div key={t.id} style={trips.has(t.id) ? undefined : {contentVisibility:'auto', containIntrinsicSize:'auto calc(var(--subrow) * 13)'}}>
+                    {trips.has(t.id) && <TripBudgetCard trip={trips.get(t.id)} token={token} isAdmin={isAdmin} />}
                     {needsFull ? (
                       <CalendarEventRow
                         tournament={t}
@@ -596,7 +613,7 @@ export default function ScheduleView({
       </div>
       )}
 
-      {showExportModal && <Suspense fallback={null}><ScheduleExportModal events={sorted} onClose={() => setShowExportModal(false)} /></Suspense>}
+      {showExportModal && <Suspense fallback={null}><ScheduleExportModal events={sorted} token={token} onClose={() => setShowExportModal(false)} /></Suspense>}
       <div ref={fabContainerRef} />
     </div>
   );

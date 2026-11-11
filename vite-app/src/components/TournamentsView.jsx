@@ -4,6 +4,7 @@ import { isOnline as isOnlineEvent } from '../utils/utils.js';
 import { useSwissBoard } from './SwissParts.jsx';
 import { createPortal, flushSync } from 'react-dom';
 import Icon from './Icon.jsx';
+import NewNearYouCard from './NewNearYouCard.jsx';
 import DateBreak from './DateBreak.jsx';
 import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
 import LocationDropdown from './LocationDropdown.jsx';
@@ -1271,6 +1272,8 @@ export default function TournamentsView({
     decorated.sort((a, b) => (a.ts - b.ts) || (a.num - b.num));
     return decorated.map(x => x.t);
   }, [tournaments, searchToks, deferredFilters, endedVenues]);
+  // The rooms the list shows, for New near you (Features 8): its location filter decides what is near.
+  const newNearVenues = useMemo(() => new Set(filtered.map((t) => t.venue)), [filtered]);
 
   /* "Showing 140 of 1,892": the upcoming events the list shows, of those its location and online
      choices leave with no filter on (the default kinds: no satellites, no restarts). */
@@ -1548,6 +1551,11 @@ export default function TournamentsView({
           <button type="button" className="worldwide-near" onClick={nearMe}>Near me</button>
           <button type="button" className="worldwide-x" onClick={keepWorldwide} aria-label="Keep showing every room"><Icon.x /></button>
         </div>
+      )}
+
+      {/* New series near you, and at rooms you follow (Features 8). */}
+      {filtered.length > 0 && (
+        <NewNearYouCard tournaments={tournaments} shownVenues={newNearVenues} token={token} onOpenSeries={(v) => setSearch(v)} />
       )}
 
       {/* Three states kept apart (App improvements 5): the list failed to load, there is no schedule, or the

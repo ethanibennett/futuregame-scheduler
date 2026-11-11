@@ -20,7 +20,7 @@ export default function HomeBankrollLine({ summary, onOpen }) {
   const label = `Balance ${money(line.balance)}, all bankrolls. Tournament cap ${line.cap.note ? `none, ${line.cap.note}` : `${line.cap.value} a bullet`}`
     + `${line.signal ? `: ${line.signal.label}` : ''}. Open the bankroll rules`;
   return (
-    <section className="dashboard-section hm-bank" aria-label="Bankroll">
+    <section data-money-zone="" className="dashboard-section hm-bank" aria-label="Bankroll">
       <div className="dashboard-section-header hm-period-head">
         <div className="hm-cell hm-sec-title"><span className="hm-clip">Bankroll</span></div>
         <span className="hm-cell hm-f-2xs hm-period-scope">{`All bankrolls · ${line.currency}`}</span>

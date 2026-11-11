@@ -1,3 +1,4 @@
+import CashAlertsButton from './CashAlerts.jsx';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { API_URL } from '../utils/api.js';
@@ -407,7 +408,11 @@ export default function CashView({ token, onModeChange, sidePane = null }) {
 
       {status !== 'error' && data && (
         <>
-          <p className="cb-snap">Snapshot {ago(data.ts) || '—'}{fetchedAt ? ` · refreshed ${ago(new Date(fetchedAt).toISOString())}` : ''}</p>
+          <div className="ca-line">
+            <p className="cb-snap">Snapshot {ago(data.ts) || '—'}{fetchedAt ? ` · refreshed ${ago(new Date(fetchedAt).toISOString())}` : ''}</p>
+            {/* Tell me when my game opens (Features 14). */}
+            {token && <CashAlertsButton token={token} venues={data.venues} />}
+          </div>
 
           {venues.length === 0 && (
             <div style={{ color: 'var(--text-muted, #aaa)', padding: 'var(--space-2xl)', textAlign: 'center' }}>

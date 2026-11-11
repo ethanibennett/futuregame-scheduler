@@ -149,6 +149,8 @@ const loginLimit = authLimitMiddleware(authAttempts, authKeys('login', 'email'),
 const registerLimit = authLimitMiddleware(authAttempts, authKeys('register'), { label: 'register' });
 const forgotLimit = authLimitMiddleware(authAttempts, authKeys('forgot', 'email'), { label: 'forgot-password' });
 const resetLimit = authLimitMiddleware(authAttempts, authKeys('reset'), { label: 'reset-password' });
+// A password or email change in Settings (Features 42): the same windows, per address.
+const accountLimit = authLimitMiddleware(authAttempts, authKeys('account'), { label: 'account-change' });
 
 // Rate limiters for sensitive endpoints (applied per-route below)
 const adminLimiter = rateLimit({
@@ -174,6 +176,15 @@ if (process.env.SMTP_HOST) {
   console.log('Mail transporter configured');
 } else {
   console.log('SMTP not configured — password reset emails will be logged to console');
+}
+
+/** One email (Features 42: an address change). Logged instead where SMTP is not set up. */
+async function sendMail(toEmail, subject, html, devLine) {
+  if (mailTransporter) {
+    await mailTransporter.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to: toEmail, subject, html });
+  } else {
+    console.log(`[DEV] mail to ${toEmail}: ${subject}${devLine ? ' ' + devLine : ''}`);
+  }
 }
 
 async function sendResetEmail(toEmail, resetToken) {
@@ -574,6 +585,7 @@ const bankrollManagement = require('./lib/bankroll-management');
 const bankrollImport = require('./lib/bankroll-import');
 const cashSessions = require('./lib/cash-sessions');
 const growth = require('./lib/growth');   // first-party growth measurement (launch plan, action 5)
+const features = require('./lib/feature-mounts');   // the Features catalogue's modules (docs/catalogues/features)
 const appleBilling = require('./lib/billing/apple');   // App Store purchases on the account (launch plan, action 10)
 const attribution = require('./lib/attribution');   // SKAdNetwork / AdAttributionKit postback copies, Apple Ads (launch plan §13)
 const billingFeatures = require('./lib/billing/features');   // what each plan unlocks; PAYWALL_LIVE off = all open
@@ -654,6 +666,14 @@ app.get('/api/backer/:token/feed', (req, res) => {
     // After the money cutover (standing_live cutover 'live', §11.4) the SQL source is the only one:
     // a token no backers row owns is not served from the old roster any more.
     const feed = backerSurface.buildFeed(db, token, { source: backerSurface.pageSource(), strict: backerSurface.pageSource() === 'sql' && standingLive.cutoverLive(db) });
+    // Coming up this week (Features 21): only when the player turned it on for this backer, so a page
+    // without it gets the feed byte for byte as before.
+    const extras = require('./lib/backer-extras');
+    if (feed && !feed.error && extras.optionsOf(db, token).comingUp) {
+      const player = backerSurface.pagePlayer(db, token, { strict: backerSurface.pageSource() === 'sql' && standingLive.cutoverLive(db) });
+      const up = extras.comingUp(db, player == null ? HAM_OWNER_ID : player, token, { source: backerSurface.pageSource() });
+      if (up) feed.comingUp = up;
+    }
     res.set('Cache-Control', 'no-store');
     res.json(feed);
   } catch (err) {
@@ -672,7 +692,20 @@ app.get('/api/backer/:token/live', (req, res) => {
     const player = backerSurface.pagePlayer(db, token, { strict });
     if (player === undefined) return res.status(404).json({ error: 'Not found' });
     res.set('Cache-Control', 'no-store');
-    res.json({ live: require('./lib/backer-live').liveSession(db, player == null ? HAM_OWNER_ID : player) });
+    const ownerOf = player == null ? HAM_OWNER_ID : player;
+    const live = require('./lib/backer-live').liveSession(db, ownerOf, Date.now(), { withRun: true });
+    if (live) {
+      const runId = live.tournamentId;
+      delete live.tournamentId;
+      // Sweat a run (Features 23): chips only, only where the player turned it on for this backer, only
+      // for a run inside their stakes.
+      const extras = require('./lib/backer-extras');
+      if (live.kind === 'tournament' && runId && extras.optionsOf(db, token).sweat) {
+        const sw = extras.sweat(db, ownerOf, token, runId, { source: backerSurface.pageSource() });
+        if (sw) live.sweat = sw;
+      }
+    }
+    res.json({ live });
   } catch (err) {
     console.error('Backer live error:', err);
     res.status(500).json({ error: 'live failed' });
@@ -1383,6 +1416,7 @@ async function initDatabase() {
     )
   `);
   growth.migrate(db);   // growth_events + user_days (lib/growth.js), every boot, idempotent
+  features.migrateAll(db);   // the Features catalogue's tables (lib/feature-mounts.js)
   appleBilling.migrate(db);   // users.app_account_token + apple_notifications (lib/billing/apple.js)
   attribution.migrate(db);    // attribution_postbacks (lib/attribution.js)
   // The line under the game on a backer's session card (owner, 2026-10-15): a result's and a cash
@@ -3723,6 +3757,21 @@ async function initDatabase() {
       FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
     )
   `);
+  // Every column live_updates has gained, checked here as well: the migrations that add them run before
+  // this CREATE, so a fresh database got the bare table and every live update failed on it. Table and seat
+  // (Features 12) are the newest.
+  {
+    const have = new Set();
+    const info = db.exec('PRAGMA table_info(live_updates)');
+    if (info.length) for (const r of info[0].values) have.add(r[1]);
+    for (const [c, type] of [['stack', 'INTEGER'], ['sb', 'INTEGER'], ['bb', 'INTEGER'], ['bb_ante', 'INTEGER'], ['is_itm', 'INTEGER DEFAULT 0'],
+      ['total_entries', 'INTEGER'], ['is_bagged', 'INTEGER DEFAULT 0'], ['bag_day', 'INTEGER'], ['locked_amount', 'INTEGER'],
+      ['is_final_table', 'INTEGER DEFAULT 0'], ['places_left', 'INTEGER'], ['first_place_prize', 'INTEGER'], ['is_reg_closed', 'INTEGER DEFAULT 0'],
+      ['bubble', 'INTEGER'], ['is_busted', 'INTEGER DEFAULT 0'], ['is_deal', 'INTEGER DEFAULT 0'], ['deal_place', 'INTEGER'], ['deal_payout', 'INTEGER'],
+      ['play_started_at', 'DATETIME'], ['table_no', 'TEXT'], ['seat_no', 'INTEGER']]) {
+      if (!have.has(c)) db.run(`ALTER TABLE live_updates ADD COLUMN ${c} ${type}`);
+    }
+  }
 
   // ── Saved Hands (Hand Replayer) ──
   db.run(`
@@ -3944,8 +3993,14 @@ function tokenVersionOf(id) {
   }
 }
 /** A 90-day account session for { id, username }, stamped with the account's session version. */
-function signSession(user, expiresIn = '90d') {
-  return jwt.sign({ id: user.id, username: user.username, tv: tokenVersionOf(user.id) || 0 }, JWT_SECRET, { expiresIn });
+function signSession(user, expiresIn = '90d', extra = null) {
+  return jwt.sign({ id: user.id, username: user.username, tv: tokenVersionOf(user.id) || 0, ...(extra || {}) }, JWT_SECRET, { expiresIn });
+}
+/** A sign-in on a device (Features 42): a user_sessions row, its sid carried in the token. */
+function issueSession(user, req) {
+  let sid = null;
+  try { sid = features.accountSecurity.newSession(db, user.id, features.accountSecurity.deviceLabel(req.headers['user-agent'], req.body && req.body.device)); } catch (e) { console.error('[account] session row:', e.message); }
+  return signSession(user, '90d', sid ? { sid } : null);
 }
 /** A verified token's payload -> null when its session stands, else why it does not. */
 function sessionRefusal(user) {
@@ -3954,6 +4009,7 @@ function sessionRefusal(user) {
   if (v === undefined) return null;
   if (v === null) return 'Account no longer exists';
   if ((Number(user.tv) || 0) !== v) return 'Signed out: the password was changed. Please sign in again.';
+  if (user.sid && features.accountSecurity.sessionRevoked(db, user.sid, user.id) === true) return 'Signed out on this device. Please sign in again.';
   return null;
 }
 
@@ -4227,8 +4283,17 @@ app.post('/api/register', registerLimit, async (req, res) => {
     );
     const idRow = db.exec('SELECT id FROM users WHERE username = ?', [username]);
     const userId = idRow.length && idRow[0].values.length ? idRow[0].values[0][0] : null;
+    // An invite link (Features 37): the new account is connected to the inviter, as the card above the
+    // form said it would be. The sign-up's source records it.
+    let inviterId = null;
+    if (userId != null && req.body.invite) {
+      try { inviterId = features.invites.acceptAtSignup(db, userId, req.body.invite); } catch (e) { console.error('[invite] connect:', e.message); }
+    }
     // Where the sign-up came from (the browser's first touch and "How did you hear about us?").
-    if (userId != null) { try { growth.recordSignup(db, userId, req.body.source); } catch (e) { console.error('[growth] signup:', e.message); } }
+    if (userId != null) {
+      const source = inviterId ? { ...(req.body.source || {}), src: 'invite', inviter: inviterId } : req.body.source;
+      try { growth.recordSignup(db, userId, source); } catch (e) { console.error('[growth] signup:', e.message); }
+    }
 
     await saveDatabase();
 
@@ -4239,11 +4304,12 @@ app.post('/api/register', registerLimit, async (req, res) => {
     // the 201 and its message, and asks the user to sign in as before). onboarding is null: a new
     // account has not been through first-run setup.
     if (userId == null) return res.status(201).json({ message: 'User created successfully' });
-    const token = signSession({ id: userId, username });
+    const token = issueSession({ id: userId, username }, req);
     setSessionCookie(res, token);
     res.status(201).json({
       message: 'User created successfully',
       token, username, userId, avatar: null, realName: realName.trim(), handReplayerAccess: false, onboarding: null,
+      invitedBy: inviterId || null,
     });
   } catch (error) {
     if (error.message && error.message.includes('UNIQUE')) {
@@ -4281,7 +4347,7 @@ app.post('/api/login', loginLimit, async (req, res) => {
       req.authLimit.clear(`login:${accountKey(email)}`);
     }
 
-    const token = signSession(user);
+    const token = issueSession(user, req);
 
     // Also drop the JWT as an httpOnly session cookie so a same-origin navigation
     // to /console carries it (shared login with the console). Header-based
@@ -4305,7 +4371,14 @@ app.post('/api/guest-login', (req, res) => {
 
 // Sign out: the device forgets its token, and this drops the httpOnly session cookie that /console
 // trusts, which the app cannot reach from JavaScript.
-app.post('/api/logout', (req, res) => {
+app.post('/api/logout', async (req, res) => {
+  // The device's session row is ended too (Features 42), so Settings stops listing it.
+  try {
+    const h = req.headers['authorization'];
+    const t = h && h.split(' ')[1];
+    const p = t ? jwt.verify(t, JWT_SECRET) : null;
+    if (p && p.sid && !p.isGuest) { features.accountSecurity.revoke(db, p.id, p.sid); await saveDatabase(); }
+  } catch (_) { /* an expired or foreign token: nothing to end */ }
   res.clearCookie(SESSION_COOKIE, { path: '/' });
   res.json({ ok: true });
 });
@@ -4443,10 +4516,13 @@ function deleteUserAccount(userId) {
                      'cash_session_stacks', 'cash_sessions', 'bankroll_transactions', 'bankroll_trips', 'bankroll_adjustments', 'bankrolls',
                      'bankroll_prefs', 'bankroll_import_keys',
                      'session_extras', 'money_locations', 'money_settings', 'money_import_runs',
-                     'growth_events', 'user_days', 'apple_notifications']) {   // growth (lib/growth.js) and App Store notices go with the account
+                     'growth_events', 'user_days', 'apple_notifications', ...features.USER_TABLES]) {   // growth (lib/growth.js) and App Store notices go with the account
       run(t, `DELETE FROM ${t} WHERE user_id = ?`, [uid]);
     }
     run('shared_hands', 'DELETE FROM shared_hands WHERE uploaded_by = ?', [uid]);
+    // Blocks either way, and the reports this account filed (a report ABOUT it stays for the record).
+    run('user_blocks', 'DELETE FROM user_blocks WHERE user_id = ? OR blocked_id = ?', [uid, uid]);
+    run('reports', 'DELETE FROM reports WHERE reporter_id = ?', [uid]);
 
     // Shared events they imported stay; only the pointer to them goes.
     run('tournaments', 'UPDATE tournaments SET uploaded_by = NULL WHERE uploaded_by = ?', [uid]);
@@ -5355,7 +5431,9 @@ app.get('/api/users/search', authenticateToken, requireRegistered, (req, res) =>
     const results = [];
     while (stmt.step()) results.push(stmt.getAsObject());
     stmt.free();
-    res.json(results);
+    // Anyone blocked either way is left out (Features 38).
+    const hidden = features.safety.blockSet(db, me);
+    res.json(hidden.size ? results.filter((u) => !hidden.has(Number(u.id))) : results);
   } catch (err) {
     console.error('User search error:', err);
     res.status(500).json({ error: 'Search failed' });
@@ -5374,6 +5452,8 @@ app.post('/api/share-request', authenticateToken, requireRegistered, async (req,
 
     if (!target) return res.status(404).json({ error: 'User not found' });
     if (target.id === req.user.id) return res.status(400).json({ error: "Can't share with yourself" });
+    // Blocked either way: answered as sent, and nothing is (Features 38: they are not told).
+    if (features.safety.isBlocked(db, req.user.id, target.id)) return res.json({ message: `Request sent to ${username}` });
 
     // Check if already connected or pending (either direction)
     const chk = db.prepare(
@@ -5396,6 +5476,8 @@ app.post('/api/share-request', authenticateToken, requireRegistered, async (req,
     );
     try { growth.recordOnce(db, req.user.id, 'followed'); } catch (e) { console.error('[growth] followed:', e.message); }   // growth: first buddy request
     await saveDatabase();
+    // The bell lists requests itself; this is the push (Features 39).
+    features.push.send(target.id, 'requests', { title: 'Connection request', body: `${req.user.username} wants to connect`, url: '/#/social', ref: `req:${req.user.id}` }).catch(() => {});
     res.json({ message: `Request sent to ${username}` });
   } catch (error) {
     console.error(error);
@@ -5752,6 +5834,7 @@ app.post('/api/groups/:id/members', authenticateToken, requireRegistered, async 
       })}\n\n`;
       for (const client of invitedClients) client.write(msg);
     }
+    features.push.send(targetUser.id, 'requests', { title: 'Group invite', body: `${req.user.username} invited you to ${group ? group.name : 'a group'}`, url: '/#/social', ref: `ginv:${lastId}` }).catch(() => {});
 
     res.status(201).json({ message: `Invite sent to ${targetUser.username}` });
   } catch (error) {
@@ -5851,7 +5934,7 @@ app.get('/api/groups/:id/feed', authenticateToken, (req, res) => {
     // Get messages
     let msgSql = `
       SELECT gm.id, 'message' AS type, gm.user_id, u.username, u.avatar, u.real_name,
-             gm.message AS content, gm.created_at
+             gm.message AS content, gm.created_at, gm.kind, gm.hand_link_id
       FROM group_messages gm
       JOIN users u ON gm.user_id = u.id
       WHERE gm.group_id = ?
@@ -5874,7 +5957,9 @@ app.get('/api/groups/:id/feed', authenticateToken, (req, res) => {
     // Sort chronologically (oldest first) for display
     feed.sort((a, b) => a.created_at < b.created_at ? -1 : 1);
 
-    res.json(feed);
+    // Messages from anyone blocked either way are hidden (Features 38).
+    const hidden = features.safety.blockSet(db, req.user.id);
+    res.json(hidden.size ? feed.filter((m) => !hidden.has(Number(m.user_id))) : feed);
   } catch (error) {
     console.error('Group feed error:', error);
     res.status(500).json({ error: 'Something went wrong' });
@@ -5899,6 +5984,8 @@ app.post('/api/groups/:id/messages', authenticateToken, requireRegistered, async
 
     db.run('INSERT INTO group_messages (group_id, user_id, message) VALUES (?, ?, ?)',
       [groupId, req.user.id, message.trim()]);
+    // Before saving, which resets it: the id travels with the message, so it can be reported (Features 38).
+    const msgId = db.exec('SELECT last_insert_rowid()')[0].values[0][0];
     await saveDatabase();
 
     // Get avatar from DB (not in JWT)
@@ -5916,8 +6003,30 @@ app.post('/api/groups/:id/messages', authenticateToken, requireRegistered, async
       realName: avRow.real_name || null,
       avatar: avRow.avatar || null,
       message: message.trim(),
-      createdAt: now
+      createdAt: now,
+      id: msgId,
     });
+
+    // Push to the other members, each by their own Group messages switch: all, mentions only, off, or
+    // this group muted (Features 39). Anyone who blocked the sender, or whom the sender blocked, is skipped.
+    try {
+      const gRow = db.exec('SELECT name FROM groups WHERE id = ?', [groupId]);
+      const gName = gRow.length && gRow[0].values.length ? gRow[0].values[0][0] : 'Your group';
+      const hidden = features.safety.blockSet(db, req.user.id);
+      const st = db.prepare('SELECT u.id, u.username FROM group_members gm JOIN users u ON u.id = gm.user_id WHERE gm.group_id = ? AND gm.user_id != ?');
+      st.bind([groupId, req.user.id]);
+      const others = [];
+      while (st.step()) others.push(st.getAsObject());
+      st.free();
+      const text = message.trim();
+      for (const o of others) {
+        if (hidden.has(Number(o.id))) continue;
+        features.push.send(o.id, 'groups', {
+          title: gName, body: `${req.user.username}: ${text.length > 120 ? text.slice(0, 119) + '…' : text}`,
+          url: '/#/social', groupId, mention: features.playerPush.mentions(text, o.username),
+        }).catch(() => {});
+      }
+    } catch (e) { console.error('[push] group message:', e.message); }
 
     res.status(201).json({ message: 'Sent' });
   } catch (error) {
@@ -5960,8 +6069,10 @@ app.get('/api/groups/:id/schedule', authenticateToken, (req, res) => {
     const byTournament = new Map();
     const { normaliseDate: normDay } = require('./lib/analytics');
     const since = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const hiddenIds = features.safety.blockSet(db, req.user.id);   // Features 38
     for (const row of scheduleForOthers(rows)) {
       if (row.venue === 'Personal') continue;
+      if (hiddenIds.has(Number(row.user_id))) continue;
       const day = normDay(row.date);
       if (day && day < since) continue;
       if (!byTournament.has(row.tournament_id)) {
@@ -6285,7 +6396,10 @@ app.get('/api/notifications', authenticateToken, (req, res) => {
     while (swapStmt.step()) swapSuggestions.push(swapStmt.getAsObject());
     swapStmt.free();
 
-    res.json({ groupInvites, buddyRequests, acceptedBuddies, swapSuggestions, lastSeenNotifications: lastSeen });
+    // The Features' own items (lib/notices.js): a saved event that moved, a hand sent to you, a reply.
+    let notices = [];
+    if (!req.user.isGuest) { try { notices = features.notices.list(db, uid); } catch (e) { console.error('[notices] list:', e.message); } }
+    res.json({ groupInvites, buddyRequests, acceptedBuddies, swapSuggestions, notices, lastSeenNotifications: lastSeen });
   } catch (error) {
     console.error('Get notifications error:', error);
     res.status(500).json({ error: 'Something went wrong' });
@@ -6806,8 +6920,8 @@ app.get('/api/analytics', authenticateToken, requireAppAdmin, async (req, res) =
 // room (property), online flag + site, and the room's city/state from the PokerAtlas directory
 // (else the venue's region from venue_coords). All years: the client picks the year and does the
 // math (vite-app/src/utils/tax-report.js). te.* carries bankroll_id once that column exists.
-app.get('/api/tax-report/entries', authenticateToken, requireAppAdmin, (req, res) => {
-  try {
+/** A player's results as the tax report reads them (also the preparer link's, Features 19). */
+function taxEntriesFor(userId) {
     const stmt = db.prepare(`
       SELECT te.*,
              t.event_number, t.event_name, t.date, t.time, t.buyin, t.game_variant,
@@ -6818,7 +6932,7 @@ app.get('/api/tax-report/entries', authenticateToken, requireAppAdmin, (req, res
       WHERE te.user_id = ?
       ORDER BY t.date, t.time
     `);
-    stmt.bind([req.user.id]);
+    stmt.bind([userId]);
     const dir = getVenueDirectory();
     const entries = [];
     while (stmt.step()) {
@@ -6834,7 +6948,11 @@ app.get('/api/tax-report/entries', authenticateToken, requireAppAdmin, (req, res
       });
     }
     stmt.free();
-    res.json({ entries });
+    return entries;
+}
+app.get('/api/tax-report/entries', authenticateToken, requireAppAdmin, (req, res) => {
+  try {
+    res.json({ entries: taxEntriesFor(req.user.id) });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
@@ -6847,6 +6965,19 @@ app.post('/api/live-update', authenticateToken, requireRegistered, async (req, r
   try {
     const { tournamentId, stack, sb, bb, bbAnte, isRegClosed, bubble, isItm, lockedAmount, isFinalTable, placesLeft, firstPlacePrize, isDeal, dealPlace, dealPayout, isBusted, totalEntries, isBagged, bagDay, playStartedAt } = req.body;
     if (!tournamentId) return res.status(400).json({ error: 'Tournament is required' });
+    // Table and seat (Features 12): kept with the run. A post that does not say carries the last pair on.
+    const cleanTable = (v) => (v == null || v === '' ? null : String(v).replace(/[^A-Za-z0-9-]/g, '').slice(0, 8) || null);
+    const cleanSeat = (v) => { const n = Math.round(Number(v)); return n >= 1 && n <= 12 ? n : null; };
+    let tableNo = req.body.tableNo !== undefined ? cleanTable(req.body.tableNo) : undefined;
+    let seatNo = req.body.seatNo !== undefined ? cleanSeat(req.body.seatNo) : undefined;
+    if (tableNo === undefined && seatNo === undefined) {
+      try {
+        const prev = db.exec('SELECT table_no, seat_no FROM live_updates WHERE user_id = ? AND tournament_id = ? ORDER BY id DESC LIMIT 1', [req.user.id, Number(tournamentId)]);
+        if (prev.length && prev[0].values.length) { tableNo = prev[0].values[0][0]; seatNo = prev[0].values[0][1]; }
+      } catch (_) { /* no columns on an old DB */ }
+    }
+    tableNo = tableNo === undefined ? null : tableNo;
+    seatNo = seatNo === undefined ? null : seatNo;
     if (!isBusted && (!stack || stack < 0)) return res.status(400).json({ error: 'Stack is required' });
 
     const checkStmt = db.prepare('SELECT id FROM tournaments WHERE id = ?');
@@ -6862,8 +6993,8 @@ app.post('/api/live-update', authenticateToken, requireRegistered, async (req, r
     if (!inSchedule) return res.status(400).json({ error: 'Tournament not in your schedule' });
 
     db.run(
-      `INSERT INTO live_updates (user_id, tournament_id, update_text, stack, sb, bb, bb_ante, is_reg_closed, bubble, is_itm, locked_amount, is_final_table, places_left, first_place_prize, is_deal, deal_place, deal_payout, is_busted, total_entries, is_bagged, bag_day, play_started_at)
-       VALUES (?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO live_updates (user_id, tournament_id, update_text, stack, sb, bb, bb_ante, is_reg_closed, bubble, is_itm, locked_amount, is_final_table, places_left, first_place_prize, is_deal, deal_place, deal_payout, is_busted, total_entries, is_bagged, bag_day, play_started_at, table_no, seat_no)
+       VALUES (?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [req.user.id, tournamentId,
        Math.round(Number(stack)) || 0,
        sb ? Math.round(Number(sb)) : null,
@@ -6883,7 +7014,9 @@ app.post('/api/live-update', authenticateToken, requireRegistered, async (req, r
        totalEntries ? Math.round(Number(totalEntries)) : null,
        isBagged ? 1 : 0,
        isBagged && bagDay ? Math.round(Number(bagDay)) : null,
-       playStartedAt || null]
+       playStartedAt || null,
+       // A bust ends the seat; a bag keeps it as the next day's (Features 12).
+       isBusted ? null : tableNo, isBusted ? null : seatNo]
     );
     await saveDatabase();
 
@@ -6916,8 +7049,17 @@ app.post('/api/live-update', authenticateToken, requireRegistered, async (req, r
       isBagged: !!isBagged,
       bagDay: isBagged && bagDay ? Math.round(Number(bagDay)) : null,
       playStartedAt: playStartedAt || null,
+      // Where they sit, only while the run is live (Features 12): never on a shared schedule link.
+      tableNo: isBusted ? null : tableNo, seatNo: isBusted ? null : seatNo,
       updatedAt: new Date().toISOString()
     });
+    // A connection's bust or bag reaches the phones of those who asked for it (Features 39; off by default).
+    if (isBusted || isBagged) {
+      const what = isBusted ? 'busted' : (bagDay ? `bagged for Day ${Math.round(Number(bagDay))}` : 'bagged');
+      for (const b of getBuddyIds(req.user.id)) {
+        features.push.send(b, 'friends', { title: `${req.user.username} ${what}`, body: tInfo.event_name || '', url: '/#/social', ref: `lu:${req.user.id}:${tournamentId}:${isBusted ? 'b' : 'g'}` }).catch(() => {});
+      }
+    }
 
     // SSE: broadcast to user's groups
     const userGroups = getUserGroupIds(req.user.id);
@@ -6951,6 +7093,7 @@ app.get('/api/live-updates/active', authenticateToken, (req, res) => {
              lu.is_final_table, lu.places_left, lu.first_place_prize,
              lu.is_deal, lu.deal_place, lu.deal_payout, lu.is_busted,
              lu.total_entries, lu.is_bagged, lu.bag_day, lu.play_started_at,
+             lu.table_no, lu.seat_no,
              lu.created_at, t.event_name, t.venue, t.date,
              (SELECT COUNT(*) FROM live_updates b WHERE b.user_id = lu.user_id AND b.tournament_id = lu.tournament_id AND b.is_busted = 1) AS bust_count,
              -- The event's bag history: the latest update alone forgets a Day 1 bag once Day 2
@@ -8333,13 +8476,21 @@ app.post('/api/hand-links', authenticateToken, requireRegistered, async (req, re
   if (!shorthand || typeof shorthand !== 'string' || shorthand.length > 4000) {
     return res.status(400).json({ error: 'shorthand required' });
   }
-  const id = handLinkId(shorthand);
+  // A question (Features 27): the hand as far as the hero's decision, and where it stops. Its own link.
+  const q = req.body && req.body.question;
+  const isQ = q && typeof q.shorthand === 'string' && q.shorthand.length <= 4000 && Number.isInteger(q.street) && Number.isInteger(q.action);
+  const id = isQ ? handLinkId(`${shorthand}:q:${q.street}:${q.action}`) : handLinkId(shorthand);
   const cleanTitle = (typeof title === 'string' && title.trim()) ? title.trim().slice(0, 80) : null;
   try {
     const existing = db.exec('SELECT id FROM shared_hands WHERE id = ?', [id]);
     if (!existing.length || !existing[0].values.length) {
-      db.run('INSERT INTO shared_hands (id, shorthand, title, uploaded_by) VALUES (?, ?, ?, ?)',
-        [id, shorthand, cleanTitle, req.user.id]);
+      if (isQ) {
+        db.run('INSERT INTO shared_hands (id, shorthand, title, uploaded_by, question_shorthand, stop_street, stop_action) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [id, shorthand, cleanTitle, req.user.id, q.shorthand, q.street, q.action]);
+      } else {
+        db.run('INSERT INTO shared_hands (id, shorthand, title, uploaded_by) VALUES (?, ?, ?, ?)',
+          [id, shorthand, cleanTitle, req.user.id]);
+      }
       await saveDatabase();
     }
     res.json({ id });
@@ -8351,11 +8502,13 @@ app.post('/api/hand-links', authenticateToken, requireRegistered, async (req, re
 
 // Resolve a short link back to the hand. Public: anyone with the link can view,
 // exactly like the old #h/ links.
-app.get('/api/hand-links/:id', (req, res) => {
+app.get('/api/hand-links/:id', features.handSocial.optionalAuthWith(jwt, JWT_SECRET), (req, res) => {
   try {
-    const rows = db.exec('SELECT shorthand FROM shared_hands WHERE id = ?', [String(req.params.id)]);
-    if (!rows.length || !rows[0].values.length) return res.status(404).json({ error: 'not found' });
-    res.json({ shorthand: rows[0].values[0][0] });
+    // A question link (Features 27) gives the hand only to the stop until this viewer has answered.
+    const out = features.handSocial.resolveLink(db, req.params.id, req);
+    if (!out) return res.status(404).json({ error: 'not found' });
+    res.set('Cache-Control', 'no-store');
+    res.json(out);
   } catch (e) {
     res.status(500).json({ error: 'lookup failed' });
   }
@@ -8435,6 +8588,12 @@ app.post('/api/replayer/hands', authenticateToken, requireRegistered, async (req
     const { handData: hand, gameType: bodyGameType, title, notes, isPublic } = req.body;
     if (!hand) return res.status(400).json({ error: 'handData is required' });
     const gameType = bodyGameType || hand.gameType || 'custom';
+    // A save from the device's outbox (Features 46) carries a client id: a retry of one that landed is the same hand.
+    const clientId = typeof hand.clientId === 'string' ? hand.clientId.replace(/[^A-Za-z0-9]/g, '').slice(0, 40) : '';
+    if (clientId) {
+      const dup = db.exec('SELECT id FROM saved_hands WHERE user_id = ? AND instr(hand_data, ?) > 0 LIMIT 1', [req.user.id, `"clientId":"${clientId}"`]);
+      if (dup.length && dup[0].values.length) return res.status(200).json({ id: dup[0].values[0][0], duplicate: true });
+    }
     db.run(
       'INSERT INTO saved_hands (user_id, hand_data, game_type, title, notes, is_public) VALUES (?, ?, ?, ?, ?, ?)',
       [req.user.id, JSON.stringify(hand), gameType, title || hand.title || null, notes || hand.notes || null, isPublic ? 1 : 0]
@@ -11171,6 +11330,7 @@ app.post('/api/swap-suggest', authenticateToken, requireRegistered, async (req, 
     const their = parseFloat(theirPct) || 0;
     if (my <= 0 || my > 100 || their <= 0 || their > 100) return res.status(400).json({ error: 'Percentages must be 1-100' });
     if (toUserId === req.user.id) return res.status(400).json({ error: "Can't swap with yourself" });
+    if (features.safety.isBlocked(db, req.user.id, toUserId)) return res.json({ message: 'Suggestion sent' });   // Features 38
 
     // Check for existing pending suggestion for same pair + tournament
     const chk = db.prepare(
@@ -11189,6 +11349,11 @@ app.post('/api/swap-suggest', authenticateToken, requireRegistered, async (req, 
     await saveDatabase();
     const clients = sseClients.get(Number(toUserId));
     if (clients) for (const c of clients) c.write(`event: swap-offer\ndata: ${JSON.stringify({ fromUserId: req.user.id, tournamentId })}\n\n`);
+    try {
+      const tr = db.exec('SELECT event_name FROM tournaments WHERE id = ?', [Number(tournamentId)]);
+      const ev = tr.length && tr[0].values.length ? tr[0].values[0][0] : 'an event';
+      features.push.send(Number(toUserId), 'swaps', { title: type === 'crossbook' ? 'Crossbook offer' : 'Swap offer', body: `${req.user.username}: ${my}% of ${ev}`, url: '/#/social', ref: `swap:${req.user.id}:${tournamentId}` }).catch(() => {});
+    } catch (_) { /* the offer stands without its push */ }
     res.json({ message: 'Suggestion sent' });
   } catch (err) {
     console.error('Swap suggest error:', err);
@@ -11494,6 +11659,29 @@ async function sendPushToAdmin(title, body, url) {
     return { configured: true, results: [], pruned: 0, error: err.message };
   }
 }
+
+// The Features catalogue's modules get the push and mail plumbing above (lib/feature-mounts.js).
+features.init({
+  getDb: () => db, saveDatabase, authenticateToken, requireRegistered, bcrypt, signSession, sendMail,
+  webpush, vapidConfigured: () => !!process.env.VAPID_PUBLIC_KEY, sendApnsOne, apnsConfigured: () => !!apnsAuthToken(),
+  sendPushToAdmin, accountLimiter: accountLimit, appleLimiter: loginLimit,
+  jwt, issueSession, deriveUsername, growth, setSessionCookie, parseOnboarding,
+  requireAppAdmin, getOwnerId: () => HAM_OWNER_ID, tokenForViewId: (d, id) => backerSurface.tokenForViewId(d, id),
+  jwtSecret: JWT_SECRET, broadcastToGroup: (gid, ev, payload) => broadcastToGroup(gid, ev, payload),
+  taxEntriesFor: (uid) => taxEntriesFor(uid),
+  followShares: (table, ids) => followShares(table, ids),
+  // The cash watcher's board as the owner reads it (Features 14: the alerts' snapshot).
+  fetchCashCurrent: async () => {
+    if (HAM_OWNER_ID == null) return null;
+    const tok = jwt.sign({ id: HAM_OWNER_ID, username: 'ham' }, JWT_SECRET, { expiresIn: '10m' });
+    const r = await fetch(`${CASHWATCHER_URL}/api/current`, { headers: { cookie: `${SESSION_COOKIE}=${encodeURIComponent(tok)}`, accept: 'application/json' }, redirect: 'manual', signal: AbortSignal.timeout(15000) });
+    return r.ok ? r.json() : null;
+  },
+  publicLimiter: rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests' } }),
+  appUrl: () => process.env.APP_URL || `http://localhost:${PORT}`,
+  isAppAdmin: (req) => !!(req.user && !req.user.isGuest && APP_ADMIN_USERNAMES.has(String(req.user.username || '').toLowerCase())),
+  onMessageRemoved: (groupId, id) => broadcastToGroup(groupId, 'group-message-removed', { groupId, id }),
+});
 
 // ── Cron plumbing (backer weekly digests) ──
 // The console nudge/checklist/Oura crons moved to the standalone dashboard
@@ -12140,6 +12328,8 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
       console.log(`[${label}] manifest lists no series — skipping ingest and prune (treating it as a failed emit, not an empty schedule)`);
       return;
     }
+    // Saved events as they stand before this run (Features 4), to tell their players what changed.
+    const savedSnap = features.beforeFeedRun(db);
     pruned = pruneFeedVenues(manifestVenues, label, tag).pruned;
     // Retire any hand-added bridge series this feed has now taken over (no-op when none match).
     supersedeBridges(new Set(manifestVenues), label);
@@ -12220,6 +12410,12 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
     // Within-series stale prune, only once rows actually landed (a wholesale failure must not be
     // read as "every series emptied"), mirroring the empty-manifest guard above.
     if (upserts + inserts > 0) pruned += reconcileFeedSeries(seenByVenue, label, tag);
+    if (upserts + inserts > 0) {
+      await features.afterFeedRun(db, savedSnap, {
+        carried: (r) => (seenByVenue.get(r.venue) || new Set()).has(r.event_number || ''),
+        venues: new Set(manifestVenues),
+      });
+    }
     if (upserts + inserts + pruned > 0) {
       // Overrides go on AFTER the upsert, which is the whole point: the upsert has just
       // overwritten every field the feed owns, including any admin correction.
@@ -13764,7 +13960,16 @@ app.post('/api/tournaments/feed-sync/:token', async (req, res) => {
   }
 
   try {
+    const savedSnap = features.beforeFeedRun(db);   // Features 4: saved events before this push
     const result = await upsertTournamentsByStableId(tournaments, 'mtt-feed');
+    if ((result.inserted + result.updated) > 0) {
+      const pushedKeys = new Set(tournaments.map((t) => `${t.venue}|${t.event_number || ''}`));
+      const pushedIds = new Set(tournaments.map((t) => t.stable_id).filter(Boolean));
+      await features.afterFeedRun(db, savedSnap, {
+        carried: (r) => pushedKeys.has(`${r.venue}|${r.event_number || ''}`) || (r.stable_id && pushedIds.has(r.stable_id)),
+        venues: Array.isArray(feedVenues) && feedVenues.length ? new Set(feedVenues) : new Set(tournaments.map((t) => t.venue)),
+      });
+    }
     // Venue coordinates: the pusher's resolved map first, then any per-row location fields, then
     // this side's own resolver for whatever is still unplaced (in the background — Nominatim is
     // rate-limited and the push must not wait on it).
@@ -14540,6 +14745,12 @@ app.post('/api/admin/discord-settle/test', authenticateToken, async (req, res) =
 
 // SPA catch-all for /shared/* routes
 app.get('/shared/:token', serveIndex);
+// An invite link (Features 37): the app reads the token from the path.
+app.get('/i/:token', serveIndex);
+// A package's page (Features 20): the app shell; the link is the whole of the access.
+app.get('/p/:token', (req, res, next) => { res.set({ 'X-Robots-Tag': 'noindex', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store' }); next(); }, serveIndex);
+// A preparer's read-only tax report (Features 19): the app shell, the link the whole of the access.
+app.get('/t/:token', (req, res, next) => { res.set({ 'X-Robots-Tag': 'noindex', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store' }); next(); }, serveIndex);
 
 // Start server
 initDatabase().then(() => {
@@ -14550,6 +14761,12 @@ initDatabase().then(() => {
     getDb: () => db, getOwnerId: () => HAM_OWNER_ID, port: PORT, saveDatabase,
     signToken: (payload, opts) => jwt.sign({ ...payload, tv: tokenVersionOf(payload.id) || 0 }, JWT_SECRET, opts),
   });
+  // The Features catalogue's routes (lib/feature-mounts.js): push switches, the bell's notices, blocks and
+  // reports, account security, and the rest as they land. Its tables are checked once more here, after every
+  // migration of initDatabase, for the columns it adds to tables those create late (group_messages,
+  // shared_hands) on a fresh database.
+  try { features.migrateAll(db); } catch (e) { console.error('[features] late migration:', e.message); }
+  features.mountAll(app);
   // The session bridge's PC side (lib/session-bridge.js; docs/session-bridge.md): OFF without BRIDGE_TOKEN.
   try { require('./lib/session-bridge').migrate(db); } catch (e) { console.error('[session-bridge] table:', e.message); }
   require('./lib/session-bridge').mountRoutes(app, { getDb: () => db, saveDatabase });

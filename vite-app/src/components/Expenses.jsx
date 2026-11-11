@@ -11,6 +11,8 @@
 // Data: /api/bankrolls/transactions and /api/bankrolls/trips (lib/bankroll-transactions.js).
 // Arithmetic: utils/transactions.js. No receipts: this app keeps uploads only as base64 in the DB
 // (avatars, staking proofs), which is not acceptable for receipts, so photos are left out.
+import MileageCard from './MileageCard.jsx';
+import TicketsCard from './TicketsCard.jsx';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
@@ -602,6 +604,10 @@ export default function ExpensesSection({ token, bankroll = BANKROLL_ALL, bankro
         {!list && !failed && [0, 1, 2].map((i) => <div key={i} className="tx-row is-bone" aria-hidden="true"><Bone w={3} /><Bone w={14} /><Bone w={6} /></div>)}
         {(list || []).slice(0, RECENT).map((t) => <TxRow key={t.id} t={t} onOpen={openTx(null)} />)}
       </div>
+      {/* The mileage log (Features 17): every room played this year, from home. */}
+      <MileageCard token={token} events={events} year={new Date().getFullYear()} />
+      {/* Tickets (Features 16): seats, chips and vouchers, valued and used. */}
+      <TicketsCard token={token} events={events} />
       <div className="bk-actions">
         <Btn onClick={() => setSheet({ type: 'trips' })}>Trips{trips.length ? ` · ${trips.length}` : ''}</Btn>
         <Btn disabled={!list || !list.length} onClick={() => setSheet({ type: 'all' })}>All{list && list.length > RECENT ? ` · ${list.length}` : ''}</Btn>

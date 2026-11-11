@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense, startTransition } from 'react';
 import useBackToClose from './hooks/useBackToClose.js';
 import { tabHash, viewFromHash } from './utils/tab-address.js';
+import AppLockVeil from './components/AppLockVeil.jsx';
+import { applyMoneyMask, installRevealOnHold } from './utils/hide-money.js';
+import './components/features.css';
+// Hide money (Features 44): the mask is this device's, set before the first paint of any figure.
+applyMoneyMask();
+installRevealOnHold();
 import TabErrorBoundary from './components/TabErrorBoundary.jsx';
 import useWordmarkFit from './hooks/useWordmarkFit.js';
 import { balancesFromSummary } from './utils/bankrolls.js';
@@ -73,6 +79,12 @@ const HandReplayerView = lazy(() => import('./components/HandReplayerView.jsx'))
 const StudyHub = lazy(() => import('./components/StudyHub.jsx'));
 const StakingView = lazy(() => import('./components/StakingView.jsx'));
 const AdminView = lazy(() => import('./components/AdminView.jsx'));
+// The Features catalogue's sheets (2026-11-11): loaded when first opened.
+const ReportProblemSheet = lazy(() => import('./components/ReportProblemSheet.jsx'));
+const AtTableSheet = lazy(() => import('./components/AtTableSheet.jsx'));
+const SearchEverything = lazy(() => import('./components/SearchEverything.jsx'));
+const TaxReportViewLazy = lazy(() => import('./components/TaxReportView.jsx'));
+const PackagePageLazy = lazy(() => import('./components/Packages.jsx').then((m) => ({ default: m.PackagePage })));
 const AdminBatchesView = lazy(() => import('./components/AdminBatchesView.jsx'));
 const CashView = lazy(() => import('./components/CashView.jsx'));
 // Edit home: the sheet that chooses and orders the Dashboard's sections, loaded when first opened.
@@ -103,6 +115,27 @@ const HAND_SHORTHAND = HAND_MATCH ? decodeURIComponent(HAND_MATCH[1]) : null;
 // needs a fetch to resolve, handled in an effect below.
 const PATH_HAND_MATCH = window.location.pathname.match(/^\/h\/([A-Za-z0-9]{1,16})$/);
 const PATH_HAND_ID = PATH_HAND_MATCH ? PATH_HAND_MATCH[1] : null;
+
+// An invite link, /i/<token> (Features 37): kept for this tab until it is used, so a sign-in or a
+// sign-up started from it still carries it.
+const TAX_LINK_MATCH = window.location.pathname.match(/^\/t\/([A-Za-z0-9_-]{10,40})$/);
+const TAX_LINK_TOKEN = TAX_LINK_MATCH ? TAX_LINK_MATCH[1] : null;
+const PACKAGE_MATCH = window.location.pathname.match(/^\/p\/([A-Za-z0-9_-]{10,40})$/);
+const PACKAGE_TOKEN = PACKAGE_MATCH ? PACKAGE_MATCH[1] : null;
+const INVITE_PATH_MATCH = window.location.pathname.match(/^\/i\/([A-Za-z0-9_-]{6,40})$/);
+if (INVITE_PATH_MATCH) { try { sessionStorage.setItem('pendingInvite', INVITE_PATH_MATCH[1]); } catch { /* storage off */ } }
+const pendingInvite = () => { try { return sessionStorage.getItem('pendingInvite'); } catch { return null; } };
+const clearInvite = () => { try { sessionStorage.removeItem('pendingInvite'); } catch { /* storage off */ } };
+// Which device a sign-in is from, for Settings' list of devices (Features 42). The web is told by its browser.
+const DEVICE_HINT = (() => {
+  const C = window.Capacitor;
+  if (!(C && C.isNativePlatform && C.isNativePlatform())) return undefined;
+  const ua = navigator.userAgent || '';
+  if (/Macintosh/.test(ua)) return 'Mac app';
+  if (/iPad/.test(ua)) return 'iPad app';
+  if (/Android/.test(ua)) return 'Android app';
+  return 'iPhone app';
+})();
 
 // Detect notification deep link: /?find=<query> — a new-series push tap lands on the calendar
 // with this query applied (web push opens the URL; the native tap listener parses the same form).
@@ -240,7 +273,7 @@ function App() {
   const authUsername = useMemo(() => tokenUsername(token), [token]);
   const [username, setUsername] = useState(localStorage.getItem('username') || sessionStorage.getItem('username'));
   const [isGuest, setIsGuest] = useState(localStorage.getItem('isGuest') === 'true');
-  const [authView, setAuthView] = useState('login');
+  const [authView, setAuthView] = useState(() => (INVITE_PATH_MATCH ? 'register' : 'login'));
   const [authBusy, setAuthBusy] = useState(false);       // Sign In / Create Account answered at once (UX pick 8)
   const [forgotEmail, setForgotEmail] = useState('');    // Sign In's address, carried to Forgot (UX pick 14)
   // A tab's address opens it (App improvements 453): a reload, or a Home Screen relaunch, keeps the tab.
@@ -465,6 +498,15 @@ function App() {
   const [notifications, setNotifications] = useState({ groupInvites: [], buddyRequests: [], acceptedBuddies: [] });
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  // Features 36, 37, 38, 48 (2026-11-11).
+  const [hiddenIds, setHiddenIds] = useState(() => new Set());
+  const hiddenRef = useRef(hiddenIds);
+  hiddenRef.current = hiddenIds;
+  const [socialFocus, setSocialFocus] = useState(null);
+  const [showReport, setShowReport] = useState(false);
+  const [showAtTable, setShowAtTable] = useState(false);
+  // Desktop: one search box for everything (Features 49), ⌘K / Ctrl+K, or / outside a field.
+  const [showSearch, setShowSearch] = useState(false);
   // Back closes these first (App improvements 454).
   useBackToClose(showNotifications, () => setShowNotifications(false));
   useBackToClose(showUserMenu, () => setShowUserMenu(false));
@@ -577,18 +619,37 @@ function App() {
   // (The #h/ fragment above is decoded synchronously; this one needs the server.)
   // A link that does not open says so (App improvements 155): it read "Loading…" for ever.
   const [sharedHandError, setSharedHandError] = useState(false);
+  // A question link (Features 27): the hand to the hero's decision until this viewer answers.
+  const [sharedQuestion, setSharedQuestion] = useState(null);
+  const linkHeaders = () => {
+    const h = {};
+    try { const d = localStorage.getItem('deviceId'); if (d) h['X-Device-Id'] = d; } catch { /* storage off */ }
+    const t = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (t && localStorage.getItem('isGuest') !== 'true') h.Authorization = 'Bearer ' + t;
+    return h;
+  };
+  const onSharedQuestionAnswered = useCallback(() => {
+    if (!PATH_HAND_ID) return;
+    fetch(`${API_URL}/hand-links/${PATH_HAND_ID}`, { headers: linkHeaders() }).then((r) => (r.ok ? r.json() : null)).then((d) => {
+      if (!d || !d.shorthand) return;
+      const full = decodeHand(d.shorthand);
+      if (full) setSharedHandData(full);
+      setSharedQuestion(d.question ? { linkId: PATH_HAND_ID, answered: !!d.answered, tally: d.tally || null } : null);
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!PATH_HAND_ID) return;
     const failed = () => {
       setSharedHandError(true);
       if (token) toast.error("This hand link doesn't open. It may have been copied wrong, or the hand is no longer shared.");
     };
-    fetch(`${API_URL}/hand-links/${PATH_HAND_ID}`)
+    fetch(`${API_URL}/hand-links/${PATH_HAND_ID}`, { headers: linkHeaders() })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (!d || !d.shorthand) { failed(); return; }
         const decoded = decodeHand(d.shorthand);
         if (!decoded) { failed(); return; }
+        if (d.question) setSharedQuestion({ linkId: PATH_HAND_ID, answered: !!d.answered, tally: d.tally || null });
         setSharedHandData(decoded);
         setSharedHandArrived(true);
         setCurrentView('hands');
@@ -1027,7 +1088,7 @@ function App() {
   };
 
   // Swap offers count too (App improvements 361: one arriving alone showed no badge).
-  const notifCount = notifications.groupInvites.length + notifications.buddyRequests.length + notifications.acceptedBuddies.length + (notifications.swapSuggestions || []).length;
+  const notifCount = notifications.groupInvites.length + notifications.buddyRequests.length + notifications.acceptedBuddies.length + (notifications.swapSuggestions || []).length + (notifications.notices || []).length;
 
   const handleGenerateShareToken = async () => {
     try {
@@ -1085,8 +1146,8 @@ function App() {
     try {
       const endpoint = isRegister ? '/register' : '/login';
       const body = isRegister
-        ? { email, password, realName: realNameInput, source: signupSource(fd.get('heard')) }
-        : { email, password };
+        ? { email, password, realName: realNameInput, source: signupSource(fd.get('heard')), invite: pendingInvite() || undefined, device: DEVICE_HINT }
+        : { email, password, device: DEVICE_HINT };
 
       const res = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
@@ -1098,7 +1159,11 @@ function App() {
 
       if (isRegister) {
         // Create Account signs you in. An older server answers with no session: say so.
-        if (data.token) { completeSignIn(data, true); carryGuestOver(data.token); }
+        if (data.token) {
+          completeSignIn(data, true); carryGuestOver(data.token);
+          // Signed up from an invite: connected already, and the app opens on the inviter's week.
+          if (data.invitedBy) { clearInvite(); setSocialFocus(data.invitedBy); setCurrentView('social'); }
+        }
         else setSuccess('Account created. Sign in to continue.');
       } else {
         completeSignIn(data, keepSignedIn);
@@ -1162,6 +1227,31 @@ function App() {
     if (!data.realName) setShowRealNamePrompt(true);
   };
 
+  // Sign in with Apple (Features 41): the native app's AppleSignIn plugin, then POST /api/auth/apple.
+  const appleAvailable = (() => {
+    const C = window.Capacitor;
+    return !!(C && C.isNativePlatform && C.isNativePlatform() && C.registerPlugin && (!C.isPluginAvailable || C.isPluginAvailable('AppleSignIn')));
+  })();
+  const handleAppleSignIn = async () => {
+    setError(''); setSuccess('');
+    setAuthBusy(true);
+    try {
+      const AS = window.Capacitor.registerPlugin('AppleSignIn');
+      const r = await AS.authorize();
+      const res = await fetch(`${API_URL}/auth/apple`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identityToken: r.identityToken, givenName: r.givenName, familyName: r.familyName, device: DEVICE_HINT, source: signupSource(null), invite: pendingInvite() || undefined }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(data.error || 'Sign in with Apple failed. Please try again.'); return; }
+      completeSignIn(data, true);
+      if (data.created) carryGuestOver(data.token);
+      if (data.invitedBy) { clearInvite(); setSocialFocus(data.invitedBy); setCurrentView('social'); }
+    } catch (e) {
+      if (!/cancel/i.test(String((e && e.message) || e))) setError('Sign in with Apple did not finish. Please try again.');
+    } finally { setAuthBusy(false); }
+  };
+
   const handleGuestLogin = async () => {
     setError(''); setSuccess('');
     try {
@@ -1180,7 +1270,7 @@ function App() {
   };
 
   const handleLogout = () => {
-    fetch(`${API_URL}/logout`, { method: 'POST' }).catch(() => {});
+    fetch(`${API_URL}/logout`, { method: 'POST', headers: token ? { Authorization: 'Bearer ' + token } : {} }).catch(() => {});
     ['token','username','avatar','isGuest','realName','sessionOnly'].forEach(k => {
       localStorage.removeItem(k);
       sessionStorage.removeItem(k);
@@ -1538,8 +1628,9 @@ function App() {
         try {
           const d = JSON.parse(e.data);
           if (d.groupId != null && String(d.groupId) !== String(activeGroupRef.current)) { fetchMyGroups(); return; }
+          if (hiddenRef.current.has(Number(d.userId))) return;
           setGroupFeed(prev => [...prev, {
-            id: Date.now(), type: 'message',
+            id: d.id || Date.now(), type: 'message',
             user_id: d.userId, username: d.username, real_name: d.realName || null, avatar: d.avatar,
             content: d.message, created_at: d.createdAt
           }]);
@@ -1547,6 +1638,10 @@ function App() {
         } catch (err) { console.error('SSE group-message error:', err); }
       });
       es.addEventListener('group-updated', () => fetchMyGroups());
+      // A reported message the owner removed (Features 38).
+      es.addEventListener('group-message-removed', (e) => {
+        try { const d = JSON.parse(e.data); setGroupFeed(prev => prev.filter(m => m.id !== d.id)); } catch { /* malformed */ }
+      });
       es.addEventListener('group-deleted', (e) => {
         try {
           const d = JSON.parse(e.data);
@@ -1702,7 +1797,9 @@ function App() {
   const nativePush = !!(window.Capacitor && window.Capacitor.isNativePlatform());
   const pushSupported = nativePush ||
     ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window);
-  const isPushAdmin = !!token && !isGuest && APP_ADMIN_USERNAMES.includes(authUsername);
+  // Every signed-in player can have pushes since Features 39 (their kinds switched in Settings); the
+  // admins' own alerts ride the same registration.
+  const isPushAdmin = !!token && !isGuest;
   const [pushPerm, setPushPerm] = useState(() =>
     nativePush ? 'default' : (pushSupported ? Notification.permission : 'denied'));
 
@@ -1727,6 +1824,88 @@ function App() {
     const c = document.querySelector('.content-area');
     if (c) requestAnimationFrame(() => { c.scrollTop = 0; });
   }, [setCurrentView]);
+  // Where a push tap or a bell item points (Features 39): a tab address ("/#/social"), a /?find= event, an
+  // admin batch, or a shared hand.
+  const openAppUrl = useCallback((url) => {
+    if (typeof url !== 'string' || !url) return;
+    const b = batchIdFrom(url);
+    if (b != null) { openBatch(b); return; }
+    const m = url.match(/[?&]find=([^&#]*)/);
+    if (m) { applyFindLink(decodeURIComponent(m[1].replace(/\+/g, ' '))); return; }
+    const hi = url.indexOf('#');
+    const v = hi >= 0 ? viewFromHash(url.slice(hi).split('?')[0]) : null;
+    if (v) { setCurrentView(v); return; }
+    const vm = url.match(/[?&]view=([a-z]+)/);
+    if (vm) { setCurrentView(vm[1]); return; }
+    if (/^\/(h|i|shared)\//.test(url)) window.location.assign(url);
+  }, [openBatch, applyFindLink, setCurrentView]);
+
+  // A new token for this device (Features 42: a password change, Sign out others), kept where the old one was.
+  const replaceToken = useCallback((t) => {
+    if (!t) return;
+    try {
+      if (localStorage.getItem('token')) localStorage.setItem('token', t);
+      else sessionStorage.setItem('token', t);
+    } catch { /* storage off */ }
+    setToken(t);
+  }, []);
+
+  // The people blocked either way (Features 38): their live messages are not shown.
+  const refreshBlocks = useCallback(() => {
+    if (!token || isGuest) return;
+    fetch(`${API_URL}/blocks`, { headers: { Authorization: 'Bearer ' + token } })
+      .then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setHiddenIds(new Set((d.hidden || []).map(Number))); }).catch(() => {});
+  }, [token, isGuest]);
+  useEffect(() => { refreshBlocks(); }, [refreshBlocks]);
+
+  useEffect(() => {
+    if (!token || isGuest) return undefined;
+    const onKey = (e) => {
+      if (!window.matchMedia('(min-width: 1024px)').matches) return;
+      // Hands keeps ⌘K and / for its game palette.
+      if (document.querySelector('.tab-panel.tab-active[data-tab="hands"]')) return;
+      const t = e.target;
+      const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+      if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setShowSearch(true); }
+      else if (e.key === '/' && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); setShowSearch(true); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [token, isGuest]);
+
+  // An invite opened while signed in (Features 37): a connection request to the inviter.
+  useEffect(() => {
+    const inv = pendingInvite();
+    if (!token || isGuest || !inv) return;
+    clearInvite();
+    fetch(`${API_URL}/invite/${encodeURIComponent(inv)}/connect`, { method: 'POST', headers: { Authorization: 'Bearer ' + token } })
+      .then((r) => r.json().then((d) => ({ ok: r.ok, d }))).then(({ ok, d }) => {
+        if (!ok) { toast.error(d.error || 'That invite has expired'); return; }
+        toast.success(d.status === 'connected' ? `You and ${d.username} are connected` : d.status === 'pending' ? `A request to ${d.username} is waiting` : `Request sent to ${d.username}`);
+        setCurrentView('social');
+      }).catch(() => {});
+    if (INVITE_PATH_MATCH && window.history.replaceState) window.history.replaceState(null, '', '/');
+  }, [token, isGuest]);
+
+  // futurega.me links open in the app (Features 47): the native DeepLinks plugin hands over the URL, and
+  // the app reloads at that path, where a hand, a schedule or an invite opens as it does on the web.
+  useEffect(() => {
+    const C = window.Capacitor;
+    if (!(C && C.isNativePlatform && C.isNativePlatform() && C.registerPlugin)) return undefined;
+    if (C.isPluginAvailable && !C.isPluginAvailable('DeepLinks')) return undefined;
+    const DL = C.registerPlugin('DeepLinks');
+    const go = (u) => {
+      try {
+        const url = new URL(u);
+        if (!/(^|\.)futurega\.me$/.test(url.hostname)) return;
+        if (/^\/(h|shared|i)\//.test(url.pathname) && window.location.pathname !== url.pathname) window.location.assign(url.pathname + url.search);
+      } catch { /* not a URL */ }
+    };
+    DL.getLaunchUrl().then((r) => { if (r && r.url) go(r.url); }).catch(() => {});
+    const h = DL.addListener('appUrlOpen', (e) => go(e && e.url));
+    return () => { Promise.resolve(h).then((x) => x && x.remove && x.remove()).catch(() => {}); };
+  }, []);
+
   // /?batch=<id>: an admin push tap. Waits for a session, then opens the batch only for an app
   // admin; anyone else just loses the param.
   const batchLinkHandled = useRef(false);
@@ -1809,12 +1988,7 @@ function App() {
             tapListenerArmed.current = true;
             PushNotifications.addListener('pushNotificationActionPerformed', (a) => {
               const url = a && a.notification && a.notification.data && a.notification.data.url;
-              if (typeof url !== 'string') return;
-              const b = batchIdFrom(url);
-              if (b != null) { openBatch(b); return; }
-              const m = url.match(/[?&]find=([^&]*)/);
-              if (m) applyFindLink(decodeURIComponent(m[1].replace(/\+/g, ' ')));
-              else if (/[?&]view=calendar/.test(url)) setCurrentView('calendar');
+              openAppUrl(url);
             });
           }
           const state = nativePermState(await PushNotifications.checkPermissions());
@@ -1827,7 +2001,7 @@ function App() {
       }
       if (Notification.permission === 'granted') void subscribeToPush();
     })();
-  }, [isPushAdmin, pushSupported, nativePush, subscribeToPush]);
+  }, [isPushAdmin, pushSupported, nativePush, subscribeToPush, openAppUrl]);
 
   // isAdmin is a STAGED-ROLLOUT flag, not an authorisation one. It gates the Hands tab, the
   // solver/replayer panel and StakingView — none of whose endpoints are admin-gated server side —
@@ -2107,6 +2281,16 @@ function App() {
   }, [isDesktop, currentView, scheduleFocusId, dk.tier, selectEvent, setCurrentView]);
 
   // ── Render: shared schedule page ──
+  // A package's page (Features 20), before any sign-in.
+  if (PACKAGE_TOKEN) return <Suspense fallback={<LazyFallback />}><PackagePageLazy token={PACKAGE_TOKEN} /></Suspense>;
+  // A preparer's read-only tax report (Features 19), before any sign-in.
+  if (TAX_LINK_TOKEN) {
+    return (
+      <div className="app-shell taxlink-shell">
+        <main className="content-area"><Suspense fallback={<LazyFallback />}><TaxReportViewLazy preparer={{ token: TAX_LINK_TOKEN }} token={null} /></Suspense></main>
+      </div>
+    );
+  }
   if (SHARED_TOKEN) {
     return <SharedScheduleView shareToken={SHARED_TOKEN} />;
   }
@@ -2140,7 +2324,8 @@ function App() {
         {sharedHandData
           ? <Suspense fallback={<LazyFallback />}>
               <HandReplayerView token={null} heroName="Hero" cardSplay={cardSplay}
-                initialHand={sharedHandData} onClearInitialHand={() => {}} linkedReplay />
+                initialHand={sharedHandData} onClearInitialHand={() => {}} linkedReplay
+                sharedQuestion={sharedQuestion} onSharedQuestionAnswered={onSharedQuestionAnswered} />
             </Suspense>
           : <LazyFallback />}
       </div>
@@ -2170,6 +2355,8 @@ function App() {
       initialRegister={authView === 'register'}
       busy={authBusy}
       onRegisterShown={prefetchSetup}
+      invite={pendingInvite()}
+      onAppleSignIn={appleAvailable ? handleAppleSignIn : null}
     />;
   }
 
@@ -2269,6 +2456,7 @@ function App() {
             {visitedTabs.has('schedule') && (!dataLoaded ? <SkeletonSchedule /> :
               <ScheduleView
                 key={debugTimeKey}
+                token={isGuest ? null : token}
                 onNavigate={(v) => setCurrentView(v)}
                 onSwitchView={isDesktop ? undefined : switchScheduleView}
                 mineCount={mineCount}
@@ -2324,7 +2512,7 @@ function App() {
             </TabErrorBoundary>
             </div>
 
-            <div className={'tab-panel' + (currentView === 'tracking' ? ' tab-active' : '')} data-tab="tracking" style={{display: currentView === 'tracking' ? undefined : 'none', height: currentView === 'tracking' ? '100%' : undefined}}>
+            <div data-money-zone="" className={'tab-panel' + (currentView === 'tracking' ? ' tab-active' : '')} data-tab="tracking" style={{display: currentView === 'tracking' ? undefined : 'none', height: currentView === 'tracking' ? '100%' : undefined}}>
             <TabErrorBoundary name="Bankroll" onSchedule={() => setCurrentView('tournaments')}>
             {visitedTabs.has('tracking') && (
               <TrackingView
@@ -2373,7 +2561,7 @@ function App() {
                             onPlayHand={() => { setDrillAsk(true); setDrillFromStudy(true); setHandsTool('replayer'); }}
                             pendingSolverSpot={pendingSolverSpot} onConsumeSolverSpot={() => setPendingSolverSpot(null)}
                             pendingDrawSpot={pendingDrawSpot} onConsumeDrawSpot={() => setPendingDrawSpot(null)} /></Suspense>
-                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setStudyTool('solve'); setHandsTool('study'); }) : undefined} onStudyDraw={isAdmin ? (spot => { setPendingDrawSpot(spot); setStudyTool('draw'); setHandsTool('study'); }) : undefined} quickAdd={isAdmin} drillEnabled={isAdmin} drillAsk={drillAsk} onDrillAsked={() => setDrillAsk(false)} onDrillBack={drillFromStudy ? (() => { setDrillFromStudy(false); setHandsTool('study'); }) : null} schedule={mySchedule} updates={myActiveUpdates} sidePane={isDesktop ? dkSideHands : null} onSplitChange={setHandsSplit} active={currentView === 'hands'} /></Suspense>}
+                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setStudyTool('solve'); setHandsTool('study'); }) : undefined} onStudyDraw={isAdmin ? (spot => { setPendingDrawSpot(spot); setStudyTool('draw'); setHandsTool('study'); }) : undefined} quickAdd={isAdmin} drillEnabled={isAdmin} drillAsk={drillAsk} onDrillAsked={() => setDrillAsk(false)} onDrillBack={drillFromStudy ? (() => { setDrillFromStudy(false); setHandsTool('study'); }) : null} schedule={mySchedule} updates={myActiveUpdates} sidePane={isDesktop ? dkSideHands : null} onSplitChange={setHandsSplit} active={currentView === 'hands'} sharedQuestion={sharedQuestion} onSharedQuestionAnswered={onSharedQuestionAnswered} /></Suspense>}
                     </div>
                   </div>
             )}
@@ -2415,6 +2603,11 @@ function App() {
                 isGuest={isGuest}
                 onEditHome={isGuest ? null : openHomeEdit}
                 onEditName={isGuest ? undefined : () => setEditingName(true)}
+                onToken={replaceToken}
+                pushPerm={pushSupported ? pushPerm : 'denied'}
+                onEnablePush={isPushAdmin && pushSupported ? subscribeToPush : null}
+                onShowCode={isGuest ? null : () => setShowAtTable(true)}
+                onBlocksChanged={() => { refreshBlocks(); fetchShareBuddies(); }}
               />
             )}
             </TabErrorBoundary>
@@ -2449,7 +2642,7 @@ function App() {
             </TabErrorBoundary>
             </div>
 
-            <div className={'tab-panel' + (currentView === 'cash' ? ' tab-active' : '')} data-tab="cash" style={{display: currentView === 'cash' ? undefined : 'none', height: currentView === 'cash' ? '100%' : undefined}}>
+            <div data-money-zone="" className={'tab-panel' + (currentView === 'cash' ? ' tab-active' : '')} data-tab="cash" style={{display: currentView === 'cash' ? undefined : 'none', height: currentView === 'cash' ? '100%' : undefined}}>
             <TabErrorBoundary name="Cash" onSchedule={() => setCurrentView('tournaments')}>
             {visitedTabs.has('cash') && isAdmin && (
               <Suspense fallback={<LazyFallback />}><CashView token={token} onModeChange={setCashMode} sidePane={isDesktop ? dkSideCash : null} /></Suspense>
@@ -2457,7 +2650,7 @@ function App() {
             </TabErrorBoundary>
             </div>
 
-            <div className={'tab-panel' + (currentView === 'staking' ? ' tab-active' : '')} data-tab="staking" style={{display: currentView === 'staking' ? undefined : 'none', height: currentView === 'staking' ? '100%' : undefined}}>
+            <div data-money-zone="" className={'tab-panel' + (currentView === 'staking' ? ' tab-active' : '')} data-tab="staking" style={{display: currentView === 'staking' ? undefined : 'none', height: currentView === 'staking' ? '100%' : undefined}}>
             <TabErrorBoundary name="Staking" onSchedule={() => setCurrentView('tournaments')}>
             {visitedTabs.has('staking') && (
               isAdmin
@@ -2491,6 +2684,12 @@ function App() {
                 token={token}
                 onRemoveBuddy={handleRemoveBuddy}
                 fetchShareBuddies={fetchShareBuddies}
+                onShowCode={isGuest ? null : () => setShowAtTable(true)}
+                hiddenIds={hiddenIds}
+                onBlocked={() => { refreshBlocks(); fetchShareBuddies(); }}
+                mySchedule={mySchedule}
+                focusBuddyId={socialFocus}
+                onFocusUsed={() => setSocialFocus(null)}
               />
             )}
             </TabErrorBoundary>
@@ -2724,6 +2923,7 @@ function App() {
                     !isDesktop && row('social', 'Social', Icon.people, go('social')),
                     !isDesktop && handReplayerAccess && !isAdmin && row('hands', 'Hand Replayer', Icon.cards, go('hands')),
                     row('settings', 'Settings', Icon.gear, go('settings')),
+                    !isGuest && row('report', 'Report a problem', Icon.warn, () => { setShowUserMenu(false); setShowReport(true); }),
                   ].filter(Boolean);
                   const admin = isAdmin && !isDesktop ? [
                     row('staking', 'Staking', Icon.handshake, go('staking')),
@@ -2786,6 +2986,24 @@ function App() {
         /></Suspense>
       )}
 
+      {showReport && (
+        <Suspense fallback={null}><ReportProblemSheet token={token} view={currentView} onClose={() => setShowReport(false)} /></Suspense>
+      )}
+      {showAtTable && (
+        <Suspense fallback={null}><AtTableSheet token={token} name={realName || username} onClose={() => setShowAtTable(false)} onConnected={fetchShareBuddies} /></Suspense>
+      )}
+      {!isGuest && <AppLockVeil />}
+      {showSearch && (
+        <Suspense fallback={null}>
+          <SearchEverything open={showSearch} onClose={() => setShowSearch(false)} token={token}
+            tournaments={tournaments} mySchedule={mySchedule} buddies={shareBuddies} groups={myGroups}
+            onEvent={(t) => { setCurrentView('tournaments'); if (isDesktop) selectEvent(t.id); }}
+            onHand={() => setCurrentView('hands')}
+            onPerson={(b) => { setSocialFocus(b.id); setCurrentView('social'); }}
+            onGroup={(g) => { setCurrentView('social'); setActiveGroupId(g.id); fetchGroupFeed(g.id); }}
+            onSettings={() => setCurrentView('settings')} />
+        </Suspense>
+      )}
       {showNotifications && (
         <NotificationsPanel
           notifications={notifications}
@@ -2795,6 +3013,7 @@ function App() {
           fetchShareBuddies={fetchShareBuddies}
           fetchMyGroups={fetchMyGroups}
           onEnablePush={isPushAdmin && pushSupported && pushPerm === 'default' ? subscribeToPush : null}
+          onOpenUrl={openAppUrl}
         />
       )}
 
@@ -2838,7 +3057,7 @@ function App() {
             <div className="dk-pane dk-pane-side" style={dkSideTab ? undefined : { display: 'none' }}>
               <div className="dk-side-host" ref={setDkSideHands} style={dkSideTab === 'hands' ? undefined : { display: 'none' }} />
               <div className="dk-side-host" ref={setDkSideCash} style={dkSideTab === 'cash' ? undefined : { display: 'none' }} />
-              <div className="dk-side-host dk-scroll dk-side-bankroll" ref={setDkSideBankroll} style={dkSideTab === 'bankroll' ? undefined : { display: 'none' }} />
+              <div data-money-zone="" className="dk-side-host dk-scroll dk-side-bankroll" ref={setDkSideBankroll} style={dkSideTab === 'bankroll' ? undefined : { display: 'none' }} />
             </div>
           )}
           {/* One right pane, two blocks (owner, 2026-10-10: My Schedule goes UNDER the event details,

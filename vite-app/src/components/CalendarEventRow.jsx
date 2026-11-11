@@ -3,6 +3,8 @@ import { StripLabel, SwissLines } from './SwissParts.jsx';
 import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
 import LateRegBar from './LateRegBar.jsx';
+import FlightCompareSheet from './FlightCompareSheet.jsx';
+import { flightsOf } from '../utils/flights.js';
 import useTick from '../hooks/useTick.js';
 import { wsopStructureUrlFor } from '../utils/wsop-structure-pages.js';
 import {
@@ -11,7 +13,7 @@ import {
   getMaxEntries, getVenueTzAbbr, getNow, isTbd,
   formatConditionBadge,
   getIfIBustEvents, getIfIBagEvents, describeGame,
-  currencySymbol, VENUE_BRAND_VAR, splitEventStage, formatChips, getVenueCoords, getToday,
+  currencySymbol, VENUE_BRAND_VAR, splitEventStage, formatChips, getVenueCoords, getToday, formatBuyin,
 } from '../utils/utils.js';
 import { registerClock, useClockStore, liveView, clockRegEnd, clockFieldLabel, lateRegOver, fmtClock, isCompleted, clockAskable } from '../utils/live-clocks.js';
 import { API_URL } from '../utils/api.js';
@@ -267,6 +269,64 @@ function ClockRow({ live, tournament }) {
       <span className="cal-live-time">{live.state === 'paused' ? 'Paused' : fmtClock(live.remaining)}</span>
       {field && <span className="cal-live-field">{field}</span>}
     </div>
+  );
+}
+
+// Guarantee watch (Features 9, 2026-11-11): while late reg is open, the prize pool against the guarantee.
+// The pool is the room clock's when it publishes one, else entries x what each buy-in adds to it (buy-in
+// less the house fee and rake) where the feed has the fee; without either it says nothing rather than
+// guess. "Covered" or the shortfall, a bar, and how many more entries cover it. Never a word of value.
+export function guaranteeWatch(tournament, live) {
+  const gtd = Number(tournament && tournament.prize_pool) || 0;
+  if (!gtd || !live) return null;
+  const entries = Number(live.entries) || 0;
+  const buyin = Number(tournament.buyin) || 0;
+  const fee = tournament.house_fee != null && tournament.house_fee !== '' ? Number(tournament.house_fee) || 0 : null;
+  const rakeD = Number(tournament.rake_dollars) || 0;
+  const rakePct = Number(tournament.rake_pct) || 0;
+  const perEntry = fee != null || rakeD || rakePct ? Math.max(0, buyin - (fee || 0) - rakeD - buyin * rakePct / 100) : null;
+  let pool = Number(live.prizePool) > 0 ? Number(live.prizePool) : null;
+  let source = 'clock';
+  if (pool == null && entries && perEntry) { pool = entries * perEntry; source = 'entries'; }
+  if (pool == null) return null;
+  const short = gtd - pool;
+  return { gtd, pool, short, covered: short <= 0, share: Math.min(1, pool / gtd), more: short > 0 && perEntry ? Math.ceil(short / perEntry) : null, perEntry, source };
+}
+
+function GuaranteeRow({ tournament, live }) {
+  const g = guaranteeWatch(tournament, live);
+  if (!g) return null;
+  const m = (v) => formatBuyin(Math.round(v), tournament.venue);
+  return (
+    <div className="gw-row">
+      <div className="gw-line">
+        <span className="gw-what">{`Prize pool ${m(g.pool)} of ${m(g.gtd)} GTD`}</span>
+        <span className={'gw-gap' + (g.covered ? ' is-covered' : '')}>{g.covered ? 'covered' : `${m(g.short)} short`}</span>
+      </div>
+      <div className="gw-bar" aria-hidden="true"><span style={{ width: `${Math.round(g.share * 100)}%` }} /></div>
+      <div className="gw-note">
+        {g.covered ? (g.source === 'clock' ? 'The room’s clock shows the pool past the guarantee.' : 'Entries so far cover the guarantee.')
+          : g.more != null ? `${g.more.toLocaleString('en-US')} more entr${g.more === 1 ? 'y covers' : 'ies cover'} it at ${m(g.perEntry)} each to the pool`
+            : 'The room’s clock gives the pool; the fee per entry is not known.'}
+      </div>
+    </div>
+  );
+}
+
+// Compare flights (Features 2): a button in an opened Day 1 card when the event has other flights.
+function FlightCompareButton({ tournament, allTournaments, scheduleIds, onToggle, onSetCondition }) {
+  const [openSheet, setOpenSheet] = useState(false);
+  const group = useMemo(() => flightsOf(tournament, allTournaments), [tournament, allTournaments]);
+  if (!group) return null;
+  const has = (id) => (scheduleIds instanceof Set ? scheduleIds.has(id) : Array.isArray(scheduleIds) && scheduleIds.includes(id));
+  const mine = (allTournaments || []).filter((t) => has(t.id));
+  return (
+    <>
+      <button type="button" className="btn btn-ghost ctl flt-open-btn" onClick={(e) => { e.stopPropagation(); setOpenSheet(true); }}>
+        <span>{`Compare ${group.flights.length} flights`}</span>
+      </button>
+      {openSheet && <FlightCompareSheet group={group} mySchedule={mine} onToggle={onToggle} onSetCondition={onSetCondition} onClose={() => setOpenSheet(false)} />}
+    </>
   );
 }
 
@@ -883,6 +943,8 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
                       close came from the clock alone lost its bar the moment it was expanded. */}
                   <LateRegBar completed={completed} lateRegEnd={(live && clockRegEnd(tournament, live)) || tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} levelMin={tournament.level_duration} reentry={tournament.reentry} />
                   {live && open && <ClockRow live={live} tournament={tournament} />}
+                  {live && open && !lateRegOver(tournament, live) && <GuaranteeRow tournament={tournament} live={live} />}
+                  {open && allTournaments && <FlightCompareButton tournament={tournament} allTournaments={allTournaments} scheduleIds={scheduleIds} onToggle={onToggle} onSetCondition={onSetCondition} />}
 
                   {buddyEvents && buddyEvents[tournament.id] && buddyEvents[tournament.id].length > 0 && (
                     <BuddyAvatarRow buddies={buddyEvents[tournament.id]}

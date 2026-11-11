@@ -385,6 +385,7 @@
 .bd-inline > :first-child, .bd-inline > .bd-section:first-of-type, .bd-inline > .bd-hero:first-child { margin-top: 0; }
 .bd-sample.is-warn { color: var(--warn); }
 .bd-sample.is-warn { color: var(--warn); }
-/* The balance's 3xl figures paint 0.6px under their 4r cell on desktop (check:clipping): the box gains 0.5r of
-   painted room below, taken back by an equal negative margin, so nothing under it moves. */
-.an-cell.bd-hero-bal { height: calc(var(--subrow) * (var(--h) + 0.5)); margin-bottom: calc(var(--subrow) * -0.5); }
+/* The balance's 3xl figures paint under their 4r cell (check:clipping: 0.6px on desktop, 4.25px on a phone,
+   where the face's descent is a larger share of the cell): the box gains 1.25r of painted room below, taken
+   back by an equal negative margin, so nothing under it moves. */
+.an-cell.bd-hero-bal { height: calc(var(--subrow) * (var(--h) + 1.25)); margin-bottom: calc(var(--subrow) * -1.25); }

@@ -496,6 +496,47 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   once) and `user_days` (an account active that UTC day, written by `authenticateToken`). The weekly
   cohort report (sign-ups, activated within 7 days, D7, D30, by source) is `GET /api/admin/growth`
   (app admins). No SDK, no ATT prompt. Test: `npm run test:growth`.
+- **The Features catalogue, built** (owner picks 2026-11-11: every one of `docs/catalogues/features` but 3, 6, 7,
+  24, 28 and 50). Server modules are registered in ONE place, `lib/feature-mounts.js` (`init` at load, `migrateAll`
+  in initDatabase AND again at boot, after every late table exists, `mountAll` beside the MCP endpoint);
+  `USER_TABLES` there is what an account deletion also clears. What a later change has to keep:
+  - **Pushes to any player** (39, `lib/player-push.js`): `sendPushToUser` is `features.push.send(userId, kind, …)`,
+    switched per kind in Settings › Notifications (`notification_prefs`; `group:<id>` = off mutes one group),
+    de-duplicated and capped per day (`player_push_log`). Gated like the backer side: on where RENDER is set,
+    `PLAYER_DELIVERY=1|0` overrides; every boot logs `[push] player delivery is ON|OFF`. A scratch server never
+    pushes. `features.notify()` = a bell line (`lib/notices.js`, the bell's `notices`) plus that push.
+  - **Blocks** (38, `lib/safety.js`): every check is EITHER way (`blockSet`, `isBlocked`). A block ends the
+    connection; search, requests, swap offers, a group's feed and schedule, hand shares and replies leave the other
+    out; a refused request answers as sent (they are not told). Reports go to Admin's inbox (`AdminInbox.jsx`) with
+    Remove; group messages carry their `id` now (also on SSE).
+  - **Sessions** (42, `lib/account-security.js`): login and register issue `issueSession` (a `user_sessions` row,
+    `sid` in the JWT); `sessionRefusal` refuses a revoked sid. Password change and Sign out others bump
+    `token_version` and return the device a fresh token (`onToken` / `replaceToken`). Email changes wait for the
+    link sent to the new address (`email_changes`).
+  - **Links**: `/i/<token>` invites (37/36; sign-up connects, signed in sends a request; the QR is the same link),
+    `/cal/<token>.ics` (1), `/t/<token>` the preparer's read-only tax year (19), `/p/<token>` a package (20). Each is
+    its own revocable token table, noindex, no-store, never the share token or a JWT.
+  - **Feed runs** (4, 8): `features.beforeFeedRun(db)` before, `afterFeedRun(db, snap, { carried, venues })` after,
+    in BOTH the local ingest and production's feed-sync. A saved event's date/time/buy-in change or its second
+    missed run (`event_feed_miss`) is an `event_changes` row, a bell line and a push; a new series at a followed
+    room (`room_follows`) likewise.
+  - **The backer page** (12, 21, 22, 23): `backer_page_options` per link (re-keyed on rotation via
+    `TOKEN_COLUMNS`): coming-up (`feed.comingUp`, only when on, so the feed is otherwise byte for byte unchanged)
+    and the sweat (`live.sweat`, chips only, only in the backer's action). `liveSession(..., { withRun })` keeps the
+    run id off the default shape. The statement is built in the browser (`BackerExtras.jsx`).
+  - **Hands** (26, 27, 29-32, 46): tags, annotations and the event live in the hand JSON (no schema change); a
+    question link (`shared_hands.question_shorthand`, `stop_street`) gives the hand only to the stop until the
+    viewer answers (`hand_answers`, one per account or device); `/api/replayer/import` reads PokerStars text with
+    `lib/hh-import`; an outbox save carries `hand.clientId` and the server matches a retry to its hand.
+  - **Hide money** (44, `utils/hide-money.js`) masks text inside `[data-money-zone]` (Bankroll, Cash, Staking,
+    Home's result, period and bankroll blocks, the trip card, the pay ladder). New money screens need the attribute.
+  - **Native** (41, 43, 47, 10): `AppLockPlugin`, `AppleSignInPlugin`, `DeepLinksPlugin`, `LiveActivityPlugin`
+    compiled in `AppDelegate.swift` and registered in `MainViewController`; entitlements gained Sign in with Apple
+    and `applinks:futurega.me` (`/.well-known/apple-app-site-association` is served); Info.plist gained the Face ID
+    reason and `NSSupportsLiveActivities`. The Live Activity's UI is `ios/App/FuturegameWidgets/`, NOT yet a target:
+    the Mac adds the Widget Extension (steps in that file). Android links need `ANDROID_CERT_SHA256`.
+  - Tests: `npm run test:features-social` (ports 4750-4759), and `game-rules`, `odds`, `plans-in-common` in
+    `test:utils`. Catalogue figures (ICM, the PLO 8/b odds) are held by `odds.test.mjs`.
 
 ## Hazards
 - ⚠️ **Junction hazard**: checking out any pre-carve branch (e.g. `wip/windows-mtt-feed`)

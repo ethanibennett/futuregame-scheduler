@@ -6502,6 +6502,7 @@
     .replayer-hilo-low.animate { transform: translateY(calc(var(--subrow) * 1)); }
 
 
+
     /* ── Replayer Settings Panel ── */
     /* 64: --z-sticky is 100, which ties with the bottom nav — the scrim only
        won by portal document order — while its own panel sits at --z-panel
@@ -9015,6 +9016,17 @@
        4g - 3r (the 2.5r knob plus its two 0.25r insets). */
     .settings-view .settings-toggle { width: calc(var(--gu) * 4); }
     .settings-view .settings-toggle.on::after { transform: translateX(calc(var(--gu) * 4 - var(--subrow) * 3)); }
+
+    /* The Features' Settings rows (SettingsMore.jsx, 2026-11-11). A label with its Change button on one
+       3r line: the button is the Theme row's 3r x 7g control, so both share the line. */
+    .settings-row--stack > .settings-spread { margin-top: 0; justify-content: space-between; align-items: flex-start; }
+    .settings-view .settings-spread > .settings-btn.btn-sm { width: calc(var(--gu) * 7); height: calc(var(--subrow) * 3); }
+    .settings-form { display: flex; flex-direction: column; gap: var(--subrow); }
+    .settings-form > .settings-help { margin-top: 0; }
+    .settings-seg--3 .settings-seg-btn,
+    .settings-seg--3 .settings-seg-btn + .settings-seg-btn { width: calc(var(--gu) * 5); }
+    .settings-device .settings-people-name { padding-left: 0; }
+    .settings-muted { color: var(--text-muted); }
 
     /* Inputs: 5r, frame as an inset shadow. Text baseline on +3r: the line box
        is centred in the content box, so with content = line-height the baseline

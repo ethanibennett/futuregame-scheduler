@@ -120,7 +120,34 @@ function ShareRows({ b, thisYear, weekStart, next }) {
   );
 }
 
-function BackerCard({ b, open, onToggle, thisYear, onCopy, onSettle, settling, onDiscord, compact = false, wide = false, weekStart, next }) {
+/* What this backer's page may show (Features 21, 23; off until turned on): this week's events in their
+   action, and the chips of a run in their action while it is live. */
+function PageOptions({ id, token, name }) {
+  const [opts, setOpts] = useState(null);
+  useEffect(() => {
+    let on = true;
+    fetch(`${API_URL}/staking/standing/backers/${encodeURIComponent(id)}/page-options`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null)).then((d) => { if (on && d) setOpts(d); }).catch(() => {});
+    return () => { on = false; };
+  }, [id, token]);
+  if (!opts) return null;
+  const set = async (k) => {
+    const next = { ...opts, [k]: !opts[k] };
+    setOpts(next);
+    const r = await fetch(`${API_URL}/staking/standing/backers/${encodeURIComponent(id)}/page-options`, {
+      method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ [k]: next[k] }),
+    }).catch(() => null);
+    if (!r || !r.ok) setOpts(opts);
+  };
+  return (
+    <div className="bb-pageopts">
+      <label className="bb-pageopt"><input type="checkbox" checked={opts.comingUp} onChange={() => set('comingUp')} /><span>{`Show ${name} this week’s events in their action`}</span></label>
+      <label className="bb-pageopt"><input type="checkbox" checked={opts.sweat} onChange={() => set('sweat')} /><span>{`Share chip counts on runs in ${name}’s action`}</span></label>
+    </div>
+  );
+}
+
+function BackerCard({ b, open, onToggle, thisYear, onCopy, onSettle, settling, onDiscord, compact = false, wide = false, weekStart, next, token = null }) {
   const liRef = useRef(null);
   useOpenSpring(open, liRef, '.bb-detail');
   const id = 'bb-shares-' + b.id.replace(/[^\w-]+/g, '-');
@@ -157,6 +184,7 @@ function BackerCard({ b, open, onToggle, thisYear, onCopy, onSettle, settling, o
       <div className="an-cell an-note an-clip bb-states" title={delivery.long}>
         {delivery.short} · {b.discord ? `Sunday noon reminder on · id ending ${b.discord.hint}` : 'No Discord id: no Sunday reminder'}
       </div>
+      {open && token && <PageOptions id={b.id} token={token} name={b.name || 'them'} />}
     </div>
   );
   return (
@@ -305,7 +333,7 @@ export default function BankrollBackers({ bk }) {
   const many = list.length > 8;
   const card = (b, compact) => (
     <BackerCard key={b.id} b={b} open={open.has(b.id)} onToggle={() => toggle(b.id)} compact={compact} wide={wide}
-      thisYear={thisYear} onCopy={copy} onSettle={settle} settling={settling} onDiscord={setDiscord} weekStart={weekStart} next={next} />
+      thisYear={thisYear} onCopy={copy} onSettle={settle} settling={settling} onDiscord={setDiscord} weekStart={weekStart} next={next} token={bk.token} />
   );
   const forbidden = state.status === 'error' && state.error === 'forbidden';
   const total = sides.owedToYou + sides.youOwe;

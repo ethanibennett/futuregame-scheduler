@@ -27,10 +27,19 @@ function swapDay(ss) {
   return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
-export default function NotificationsPanel({ notifications, token, onClose, fetchNotifications, fetchShareBuddies, fetchMyGroups, onEnablePush }) {
+export default function NotificationsPanel({ notifications, token, onClose, fetchNotifications, fetchShareBuddies, fetchMyGroups, onEnablePush, onOpenUrl = null }) {
   const displayName = useDisplayName();
-  const { groupInvites = [], buddyRequests = [], acceptedBuddies = [], swapSuggestions = [] } = notifications || {};
-  const isEmpty = groupInvites.length === 0 && buddyRequests.length === 0 && acceptedBuddies.length === 0 && swapSuggestions.length === 0;
+  const { groupInvites = [], buddyRequests = [], acceptedBuddies = [], swapSuggestions = [], notices = [] } = notifications || {};
+  const isEmpty = groupInvites.length === 0 && buddyRequests.length === 0 && acceptedBuddies.length === 0 && swapSuggestions.length === 0 && notices.length === 0;
+
+  /* The Features' own items (lib/notices.js): a saved event that moved, a hand sent to you, a reply to a
+     problem you reported. Open goes where the item points; the cross dismisses it. */
+  const dismissNotice = async (id) => {
+    try {
+      await fetch(`${API_URL}/notices/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      fetchNotifications();
+    } catch {}
+  };
 
   const handleAcceptGroupInvite = async (inviteId) => {
     try {
@@ -132,6 +141,28 @@ export default function NotificationsPanel({ notifications, token, onClose, fetc
           </div>
         ) : (
           <div className="notif-list">
+            {notices.length > 0 && (
+              <div className="notif-section">
+                <div className="notif-section-title">For you</div>
+                {notices.map(n => (
+                  <div key={`nt-${n.id}`} className="notif-item notif-notice" data-kind={n.kind}>
+                    <div className="notif-item-content">
+                      <div className="notif-item-text">
+                        <strong>{n.title}</strong>
+                        {n.body && <div className="notif-notice-body">{n.body}</div>}
+                      </div>
+                      <div className="notif-item-time">{timeAgo(new Date(n.created_at).toISOString())}</div>
+                    </div>
+                    <div className="notif-item-actions">
+                      {n.url && onOpenUrl && (
+                        <button className="btn btn-primary btn-xs" onClick={() => { onOpenUrl(n.url); onClose(); }}>Open</button>
+                      )}
+                      <button className="btn btn-ghost btn-xs" onClick={() => dismissNotice(n.id)}>Dismiss</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             {groupInvites.length > 0 && (
               <div className="notif-section">
                 <div className="notif-section-title">Group Invites</div>

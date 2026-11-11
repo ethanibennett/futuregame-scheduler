@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import CalendarFeedCard from './CalendarFeedCard.jsx';
 import Icon from './Icon.jsx';
 import { getVenueInfo, normaliseDate, getToday, parseTournamentTime, VENUE_COORDS, LOCATION_REGIONS, nativeCurrency, formatCurrencyAmount } from '../utils/utils.js';
 import { generateSchedulePDF, generateScheduleImages, shareOrDownloadCanvas } from '../utils/export.js';
@@ -14,7 +15,7 @@ const DEFAULT_BUYIN_RANGES = [
 ];
 const inRange = (b, r) => b >= r.min && b <= (r.max === Infinity ? 1e12 : r.max);
 
-export default function ScheduleExportModal({ events, onClose }) {
+export default function ScheduleExportModal({ events, onClose, token = null }) {
   const [mode, setMode] = useState('menu'); // menu | preview
   const [canvases, setCanvases] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -178,6 +179,9 @@ export default function ScheduleExportModal({ events, onClose }) {
         {mode === 'menu' ? (
           <>
             <h3>Export Schedule</h3>
+
+            {/* Subscribe in a calendar app (Features 1), above the PDF and images. */}
+            <CalendarFeedCard token={token} />
 
             {/* On the grid (owner rule, 2026-10-10): every row of the menu a whole number of r
                 (2r labels and checkbox rows, a 5r field, 3r text buttons, 2r between groups), so

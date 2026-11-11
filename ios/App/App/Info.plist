@@ -99,6 +99,10 @@
 	<string>futurega.me listens while you describe a hand in Quick add</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>futurega.me turns the hand you describe into text in Quick add</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>futurega.me uses Face ID to unlock the app when you turn on the lock in Settings</string>
 	<key>NSCameraUsageDescription</key>
 	<string>futurega.me uses the camera for table scanning and registration photos</string>
 	<key>NSPhotoLibraryUsageDescription</key>

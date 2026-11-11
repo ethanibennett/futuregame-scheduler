@@ -198,7 +198,7 @@ export default function HomeLastResult({ results, rates, isAdmin, token, canLog 
   }
 
   return (
-    <section className="dashboard-section hm-last" aria-label="Last result">
+    <section data-money-zone="" className="dashboard-section hm-last" aria-label="Last result">
       <div className="dashboard-section-header">
         <div className="dashboard-section-title">Last result</div>
         <span className="hm-head-right">

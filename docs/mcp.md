@@ -39,6 +39,9 @@ Owner, 2026-10-23: "build an MCP so that I can use Claude chat to communicate wi
 | `bankroll_summary` | the bankrolls and balances | `GET /api/bankrolls/summary` |
 | `recent_results` | logged tournament results, newest first | `GET /api/tracking` |
 | `backers` | each backer's standing and any Settled press in progress; **never a page link or token** | `GET /api/staking/standing/backers` |
+| `open_now` | live events started and still registering, the one closing soonest first, each with its room clock (Features 25) | `GET /api/tournaments`, `POST /api/live-clocks` |
+| `post_update` | a stack, blinds, entries, a bust or a bag on a saved event; Undo on the Dashboard removes it | `POST /api/live-update` |
+| `plan_if_bust` | set or clear "play this only if I bust (or bag) that one" | `PUT` / `DELETE /api/schedule/:id/condition` |
 
 Every tool is a call on the app's own REST API as the owner: a 2-minute JWT is minted per call and the
 request goes to `http://127.0.0.1:PORT/api/...`, so each route's own checks and side effects apply

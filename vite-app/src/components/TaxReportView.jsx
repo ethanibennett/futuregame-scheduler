@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import './TaxReportView.css';
 import { API_URL } from '../utils/api.js';
 import { setAsideView } from '../utils/money-homes.js';
+import TaxQuarters from './TaxQuarters.jsx';
 import { getToday, nativeCurrency, getVenueInfo } from '../utils/utils.js';
 import { buildTaxReport, availableYears, defaultTaxYear } from '../utils/tax-report.js';
 import {
@@ -85,11 +86,47 @@ function Para({ children, muted, strong }) {
   return <p className={'taxr-p' + (muted ? ' is-muted' : '') + (strong ? ' is-strong' : '')}>{children}</p>;
 }
 
-export default function TaxReportView({ token, onClose, bankrollId = null }) {
+/* For your preparer (Features 19): a read-only link to this year's report, its CSV and PDF, and nothing else;
+   who it was made for, when it was last opened, Copy link and Turn off. */
+function PreparerLinkCard({ token, year }) {
+  const [links, setLinks] = React.useState([]);
+  const [label, setLabel] = React.useState('');
+  const load = React.useCallback(() => {
+    fetch(`${API_URL}/tax-links`, { headers: { Authorization: 'Bearer ' + token } }).then((r) => (r.ok ? r.json() : null)).then((d) => d && setLinks(d.links || [])).catch(() => {});
+  }, [token]);
+  React.useEffect(() => { load(); }, [load]);
+  const mine = links.filter((l) => Number(l.year) === Number(year));
+  const make = async () => {
+    const r = await fetch(`${API_URL}/tax-links`, { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ year, label: label.trim() || null }) }).catch(() => null);
+    if (r && r.ok) { setLabel(''); load(); }
+  };
+  const off = async (t) => { await fetch(`${API_URL}/tax-links/${t}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }).catch(() => {}); load(); };
+  return (
+    <div className="taxr-block tq-block">
+      <div className="tq-head"><span className="taxr-t">For your preparer</span></div>
+      <p className="tq-note">{`A read-only link to the ${year} report, its CSV and PDF, and nothing else of your account. It lasts to April 30, ${Number(year) + 1}.`}</p>
+      {mine.map((l) => (
+        <div key={l.token} className="tq-row tl-row">
+          <span>{l.label || 'A link'}</span>
+          <span>{l.opened_at ? `opened ${new Date(l.opened_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'not opened yet'}</span>
+          <span className="tq-act"><button type="button" className="tq-mark" onClick={() => navigator.clipboard.writeText(l.url).catch(() => {})}><span>Copy link</span></button></span>
+          <span className="tq-act"><button type="button" className="tq-mark" onClick={() => off(l.token)}><span>Turn off</span></button></span>
+        </div>
+      ))}
+      <div className="tl-new">
+        <input value={label} maxLength={60} placeholder="Who it is for, e.g. Dana, CPA" onChange={(e) => setLabel(e.target.value)} />
+        <button type="button" className="tq-mark" onClick={make}><span>Make a link</span></button>
+      </div>
+    </div>
+  );
+}
+
+export default function TaxReportView({ token, onClose, bankrollId = null, preparer = null }) {
   const [entries, setEntries] = useState(null);
   const [error, setError] = useState(null);
   const [rates, setRates] = useState(null);
   const [taxPct, setTaxPct] = useState(30);
+  const [taxPaid, setTaxPaid] = useState({});   // Features 18: quarterly payments marked paid
   const [year, setYearRaw] = useState(() => defaultTaxYear(getToday()));
   // The results pick the opening year once they load (UX pick 83), unless a year was chosen already.
   const yearChosen = useRef(false);
@@ -102,6 +139,22 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
 
   useEffect(() => {
     let live = true;
+    // A preparer's link (Features 19): the one year, read-only, from the link alone.
+    if (preparer) {
+      fetch(`${API_URL}/tax-link/${encodeURIComponent(preparer.token)}`)
+        .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+        .then(({ ok, j }) => {
+          if (!live) return;
+          if (!ok) { setError(j.error || 'This link does not open.'); return; }
+          yearChosen.current = true;
+          setYearRaw(Number(j.year));
+          setEntries(j.entries || []);
+          setTransactions(j.transactions || []);
+          setTaxPct(j.taxSetAsidePct);
+        }).catch(() => { if (live) setError('No connection. Try again.'); });
+      fetch(`${API_URL}/exchange-rates`).then((r) => r.json()).then((j) => { if (live) setRates(j.rates || null); }).catch(() => {});
+      return () => { live = false; };
+    }
     fetch(`${API_URL}/tax-report/entries`, { headers: { Authorization: 'Bearer ' + token } })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status === 403 ? 'The tax report is in beta for admins only.' : 'Could not load your results.'))))
       .then((j) => { if (live) setEntries(j.entries || []); })
@@ -112,7 +165,7 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
       .catch(() => {});
     fetch(`${API_URL}/exchange-rates`).then((r) => r.json()).then((j) => { if (live) setRates(j.rates || null); }).catch(() => {});
     // Phase 10: the set-aside rate (money_settings.taxSetAsidePct, the dashboard's 30% default).
-    fetch(`${API_URL}/bankrolls/money/homes`, { headers: { Authorization: 'Bearer ' + token } }).then((r) => (r.ok ? r.json() : null)).then((j) => { if (live && j) setTaxPct(j.taxSetAsidePct); }).catch(() => {});
+    fetch(`${API_URL}/bankrolls/money/homes`, { headers: { Authorization: 'Bearer ' + token } }).then((r) => (r.ok ? r.json() : null)).then((j) => { if (live && j) { setTaxPct(j.taxSetAsidePct); setTaxPaid(j.taxPaid || {}); } }).catch(() => {});
     return () => { live = false; };
   }, [token]);
 
@@ -125,13 +178,22 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
   const emptyYear = !!entries && !withCurrency.some((e) => yearOf(e) === year);
   const jumpYear = emptyYear ? years.find((y) => y !== year && withCurrency.some((e) => yearOf(e) === y)) : null;
   const jumpCount = jumpYear ? withCurrency.filter((e) => yearOf(e) === jumpYear).length : 0;
+  // The mileage log's line (Features 17): "Car, standard mileage", added from Expenses for this year.
+  const withMileage = useMemo(() => {
+    if (preparer) return transactions;
+    try {
+      const m = JSON.parse(localStorage.getItem(`mileage:${year}`) || 'null');
+      if (m && m.amount > 0) return [...transactions, { id: `mileage-${year}`, occurred_on: `${year}-12-31`, kind: 'expense', category: 'travel', amount: m.amount, currency: 'USD', note: `Car, standard mileage: ${m.miles} mi at ${m.rate}` }];
+    } catch { /* storage off */ }
+    return transactions;
+  }, [transactions, year, preparer]);
   const report = useMemo(() => buildTaxReport(withCurrency, {
     year,
     bankrollId,
-    transactions,
+    transactions: withMileage,
     // rates are units per USD (the Tracking tab's /exchange-rates).
     toUSD: rates ? (v, cur) => (rates[cur] ? v / rates[cur] : NaN) : null,
-  }), [withCurrency, year, bankrollId, rates, transactions]);
+  }), [withCurrency, year, bankrollId, rates, withMileage]);
 
   const yi = years.indexOf(year);
   const older = yi >= 0 && yi < years.length - 1 ? years[yi + 1] : null;
@@ -162,11 +224,11 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
       <Header title="Tax Report" right={<span className="taxr-badge">Beta</span>} />
 
       <div className="taxr-bar">
-        <button type="button" className="taxr-btn" onClick={onClose}><span className="taxr-t">‹ Results</span></button>
+        {!preparer && <button type="button" className="taxr-btn" onClick={onClose}><span className="taxr-t">‹ Results</span></button>}
         <div className="taxr-year">
-          <button type="button" className="taxr-btn" disabled={!older} onClick={() => older && setYear(older)} aria-label="Earlier year"><span className="taxr-t">‹</span></button>
+          {!preparer && <button type="button" className="taxr-btn" disabled={!older} onClick={() => older && setYear(older)} aria-label="Earlier year"><span className="taxr-t">‹</span></button>}
           <span className="taxr-t taxr-year-label">{year}</span>
-          <button type="button" className="taxr-btn" disabled={!newer} onClick={() => newer && setYear(newer)} aria-label="Later year"><span className="taxr-t">›</span></button>
+          {!preparer && <button type="button" className="taxr-btn" disabled={!newer} onClick={() => newer && setYear(newer)} aria-label="Later year"><span className="taxr-t">›</span></button>}
         </div>
         <button type="button" className="taxr-btn is-brand" disabled={!entries || !!busy} onClick={() => run('csv')}><span className="taxr-t">{busy === 'csv' ? 'Saving…' : 'CSV'}</span></button>
         <button type="button" className="taxr-btn is-brand" disabled={!entries || !!busy} onClick={() => run('pdf')}><span className="taxr-t">{busy === 'pdf' ? 'Saving…' : 'PDF'}</span></button>
@@ -175,6 +237,8 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
       <WholeRows className="taxr-card">
         <Para strong>{TAX_DISCLAIMER}</Para>
       </WholeRows>
+      {preparer && <p className="tq-note">A read-only copy the player shared for this tax year. It holds their results and logged expenses and income, as they recorded them.</p>}
+      {!preparer && token && <PreparerLinkCard token={token} year={year} />}
 
       {error && <div className="taxr-t taxr-t3 taxr-msg">{error}</div>}
       {!error && !entries && <div className="taxr-t taxr-t3 taxr-msg">Loading…</div>}
@@ -227,6 +291,9 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
               ))}
             </WholeRows>
           )}
+
+          {/* The IRS's four periods (Features 18). */}
+          {taxPct != null && <TaxQuarters year={Number(year)} months={report.months} pct={taxPct} paid={taxPaid} token={preparer ? null : token} usd={usd} onPaid={setTaxPaid} />}
 
           <WholeRows className="taxr-block">
             <Header title="Possible W-2Gs" right={<span className="taxr-badge">{report.w2g.length}</span>} />

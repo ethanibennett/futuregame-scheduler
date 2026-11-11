@@ -1,3 +1,4 @@
+import { PackagesPanel } from './Packages.jsx';
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
@@ -276,6 +277,7 @@ export default function StakingView({ token, tournaments, mySchedule, deepLink =
   return (
     <div>
       <StakingSeriesList
+        packagesSlot={<PackagesPanel token={token} series={series} mySchedule={mySchedule} />}
         series={series}
         loading={loading}
         onSelect={s => { setActiveSeriesId(s.id); setSubView('detail'); }}
@@ -300,7 +302,7 @@ export default function StakingView({ token, tournaments, mySchedule, deepLink =
 
 // ── Series List ────────────────────────────────────────────
 
-function StakingSeriesList({ series, loading, onSelect, onCreate, onBackers, onStanding, onBackerSummary, onSettings }) {
+function StakingSeriesList({ series, loading, onSelect, onCreate, onBackers, onStanding, onBackerSummary, onSettings, packagesSlot = null }) {
   if (loading) return <div style={{textAlign:'center',padding:'calc(var(--subrow) * 5)',color:'var(--text-muted)'}}>Loading&hellip;</div>;
 
   return (
@@ -355,6 +357,8 @@ function StakingSeriesList({ series, loading, onSelect, onCreate, onBackers, onS
           </div>
         </button>
       ))}
+      {/* Sell a package (Features 20). */}
+      {packagesSlot}
     </div>
   );
 }

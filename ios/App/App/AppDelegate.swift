@@ -1,5 +1,10 @@
 import UIKit
 import Capacitor
+import LocalAuthentication
+import AuthenticationServices
+#if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
+import ActivityKit
+#endif
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -106,11 +111,32 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // A cold launch FROM a URL / universal link arrives in connectionOptions,
         // not through the openURL callbacks below.
         if let url = connectionOptions.urlContexts.first?.url {
+            DeepLinksPlugin.launchURL = url
             _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: url, options: [:])
         }
         if let activity = connectionOptions.userActivities.first {
+            if let web = activity.webpageURL { DeepLinksPlugin.launchURL = web }
             _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, continue: activity, restorationHandler: { _ in })
         }
+    }
+
+    // The app lock's privacy screen (Features 43): while the lock is on, the snapshot the app switcher
+    // takes is a blur, not the Dashboard's figures. The setting is written by AppLockPlugin.
+    private var privacyView: UIView?
+
+    func sceneWillResignActive(_ scene: UIScene) {
+        guard UserDefaults.standard.bool(forKey: "fgPrivacyScreen"), privacyView == nil else { return }
+        guard let w = window ?? (scene as? UIWindowScene)?.windows.first else { return }
+        let blur = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterial))
+        blur.frame = w.bounds
+        blur.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        w.addSubview(blur)
+        privacyView = blur
+    }
+
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        privacyView?.removeFromSuperview()
+        privacyView = nil
     }
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
@@ -275,6 +301,255 @@ public class InstagramStoriesPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 }
 
+// ── App lock (Features 43, 2026-11-11) ───────────────────────────────────────
+// Face ID / Touch ID with the device passcode as the fallback (.deviceOwnerAuthentication), for the
+// JS lock screen (vite-app/src/utils/app-lock.js). setPrivacyScreen stores the flag SceneDelegate
+// reads to blur the app-switcher snapshot. Needs NSFaceIDUsageDescription in Info.plist.
+@objc(AppLockPlugin)
+public class AppLockPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "AppLockPlugin"
+    public let jsName = "AppLock"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "available", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "authenticate", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setPrivacyScreen", returnType: CAPPluginReturnPromise)
+    ]
+
+    @objc func available(_ call: CAPPluginCall) {
+        let ctx = LAContext()
+        var error: NSError?
+        let can = ctx.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
+        var bio: NSError?
+        _ = ctx.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &bio)
+        var kind = "passcode"
+        switch ctx.biometryType {
+        case .faceID: kind = "faceID"
+        case .touchID: kind = "touchID"
+        default: kind = "passcode"
+        }
+        call.resolve(["available": can, "biometry": kind])
+    }
+
+    @objc func authenticate(_ call: CAPPluginCall) {
+        let reason = call.getString("reason") ?? "Unlock futurega.me"
+        let ctx = LAContext()
+        ctx.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { ok, _ in
+            DispatchQueue.main.async {
+                call.resolve(["ok": ok])
+            }
+        }
+    }
+
+    @objc func setPrivacyScreen(_ call: CAPPluginCall) {
+        UserDefaults.standard.set(call.getBool("enabled") ?? false, forKey: "fgPrivacyScreen")
+        call.resolve()
+    }
+}
+
+// ── Sign in with Apple (Features 41, 2026-11-11) ─────────────────────────────
+// Apple's own sheet; the identity token goes to POST /api/auth/apple, which checks it against Apple's
+// published keys. Needs the com.apple.developer.applesignin entitlement.
+@objc(AppleSignInPlugin)
+public class AppleSignInPlugin: CAPPlugin, CAPBridgedPlugin, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+    public let identifier = "AppleSignInPlugin"
+    public let jsName = "AppleSignIn"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "authorize", returnType: CAPPluginReturnPromise)
+    ]
+    private var pendingCall: CAPPluginCall?
+
+    @objc func authorize(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            self.pendingCall = call
+            let request = ASAuthorizationAppleIDProvider().createRequest()
+            request.requestedScopes = [.fullName, .email]
+            if let nonce = call.getString("nonce") { request.nonce = nonce }
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = self
+            controller.presentationContextProvider = self
+            controller.performRequests()
+        }
+    }
+
+    public func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        if let w = self.bridge?.viewController?.view.window { return w }
+        return ASPresentationAnchor()
+    }
+
+    public func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        guard let call = pendingCall else { return }
+        pendingCall = nil
+        guard let cred = authorization.credential as? ASAuthorizationAppleIDCredential,
+              let data = cred.identityToken,
+              let token = String(data: data, encoding: .utf8) else {
+            call.reject("No identity token")
+            return
+        }
+        var result: [String: Any] = ["identityToken": token, "user": cred.user]
+        if let email = cred.email { result["email"] = email }
+        if let given = cred.fullName?.givenName { result["givenName"] = given }
+        if let family = cred.fullName?.familyName { result["familyName"] = family }
+        call.resolve(result)
+    }
+
+    public func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        guard let call = pendingCall else { return }
+        pendingCall = nil
+        let canceled = (error as NSError).code == ASAuthorizationError.canceled.rawValue
+        call.reject(canceled ? "canceled" : error.localizedDescription)
+    }
+}
+
+// ── Links that open in the app (Features 47, 2026-11-11) ─────────────────────
+// futurega.me/h/, /shared/ and /i/ links open here when the app is installed (applinks:futurega.me in
+// the entitlements, apple-app-site-association served by server.js). Capacitor's delegate proxy posts
+// each opened URL; this relays it to JS as "appUrlOpen". A cold launch's link can arrive before the
+// bridge exists, so SceneDelegate keeps it in launchURL for getLaunchUrl.
+@objc(DeepLinksPlugin)
+public class DeepLinksPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "DeepLinksPlugin"
+    public let jsName = "DeepLinks"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "getLaunchUrl", returnType: CAPPluginReturnPromise)
+    ]
+    static var launchURL: URL?
+
+    override public func load() {
+        NotificationCenter.default.addObserver(self, selector: #selector(onUniversalLink(_:)), name: .capacitorOpenUniversalLink, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onOpenURL(_:)), name: .capacitorOpenURL, object: nil)
+    }
+
+    @objc func onUniversalLink(_ note: Notification) {
+        guard let obj = note.object as? [String: Any], let url = obj["url"] as? URL else { return }
+        notifyListeners("appUrlOpen", data: ["url": url.absoluteString], retainUntilConsumed: true)
+    }
+
+    @objc func onOpenURL(_ note: Notification) {
+        guard let obj = note.object as? [String: Any], let url = obj["url"] as? URL else { return }
+        notifyListeners("appUrlOpen", data: ["url": url.absoluteString], retainUntilConsumed: true)
+    }
+
+    @objc func getLaunchUrl(_ call: CAPPluginCall) {
+        if let url = DeepLinksPlugin.launchURL {
+            DeepLinksPlugin.launchURL = nil
+            call.resolve(["url": url.absoluteString])
+        } else {
+            call.resolve([:])
+        }
+    }
+}
+
+// ── The event you are playing on the lock screen (Features 10, 2026-11-11) ──────
+// A Live Activity started when a run starts on the Dashboard, updated as the room's clock moves and ended
+// at a bust, a bag or Finish. The level's end is a date, so the lock screen counts it down by itself
+// (Text(timerInterval:)) with no push per second. Its UI lives in the FuturegameWidgets extension target
+// (ios/App/FuturegameWidgets/), which carries the same PlayingAttributes; without that target the
+// request fails and the plugin says so. iPhone only: Mac Catalyst has no Live Activities.
+#if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
+@available(iOS 16.2, *)
+struct PlayingAttributes: ActivityAttributes {
+    public struct ContentState: Codable, Hashable {
+        var level: Int
+        var blinds: String
+        var levelEndsAt: Date?
+        var stack: Int
+        var bigBlinds: Int?
+        var lateRegClosesAt: Date?
+        var note: String?
+    }
+    var event: String
+    var room: String
+}
+#endif
+
+@objc(LiveActivityPlugin)
+public class LiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "LiveActivityPlugin"
+    public let jsName = "LiveActivity"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "available", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "start", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "update", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "end", returnType: CAPPluginReturnPromise)
+    ]
+
+    @objc func available(_ call: CAPPluginCall) {
+        #if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
+        if #available(iOS 16.2, *) {
+            call.resolve(["available": ActivityAuthorizationInfo().areActivitiesEnabled])
+            return
+        }
+        #endif
+        call.resolve(["available": false])
+    }
+
+    #if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
+    @available(iOS 16.2, *)
+    private func state(_ call: CAPPluginCall) -> PlayingAttributes.ContentState {
+        func date(_ key: String) -> Date? {
+            guard let ms = call.getDouble(key), ms > 0 else { return nil }
+            return Date(timeIntervalSince1970: ms / 1000)
+        }
+        return PlayingAttributes.ContentState(
+            level: call.getInt("level") ?? 0,
+            blinds: call.getString("blinds") ?? "",
+            levelEndsAt: date("levelEndsAt"),
+            stack: call.getInt("stack") ?? 0,
+            bigBlinds: call.getInt("bigBlinds"),
+            lateRegClosesAt: date("lateRegClosesAt"),
+            note: call.getString("note")
+        )
+    }
+    #endif
+
+    @objc func start(_ call: CAPPluginCall) {
+        #if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
+        if #available(iOS 16.2, *) {
+            let attrs = PlayingAttributes(event: call.getString("event") ?? "Tournament", room: call.getString("room") ?? "")
+            let content = ActivityContent(state: state(call), staleDate: nil)
+            Task {
+                for a in Activity<PlayingAttributes>.activities { await a.end(nil, dismissalPolicy: .immediate) }
+                do {
+                    let a = try Activity.request(attributes: attrs, content: content, pushType: nil)
+                    call.resolve(["id": a.id])
+                } catch {
+                    call.reject(error.localizedDescription)
+                }
+            }
+            return
+        }
+        #endif
+        call.reject("Live Activities are not available here")
+    }
+
+    @objc func update(_ call: CAPPluginCall) {
+        #if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
+        if #available(iOS 16.2, *) {
+            let content = ActivityContent(state: state(call), staleDate: nil)
+            Task {
+                for a in Activity<PlayingAttributes>.activities { await a.update(content) }
+                call.resolve()
+            }
+            return
+        }
+        #endif
+        call.resolve()
+    }
+
+    @objc func end(_ call: CAPPluginCall) {
+        #if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
+        if #available(iOS 16.2, *) {
+            Task {
+                for a in Activity<PlayingAttributes>.activities { await a.end(nil, dismissalPolicy: .default) }
+                call.resolve()
+            }
+            return
+        }
+        #endif
+        call.resolve()
+    }
+}
+
 // ── Root view controller: registers the app-local plugin ─────────────────────
 // Capacitor only auto-registers its built-ins and the PACKAGE plugins listed in
 // capacitor.config.json's packageClassList (registerPlugins() reads that file; it
@@ -286,5 +561,9 @@ public class InstagramStoriesPlugin: CAPPlugin, CAPBridgedPlugin {
 class MainViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(InstagramStoriesPlugin())
+        bridge?.registerPluginInstance(AppLockPlugin())
+        bridge?.registerPluginInstance(AppleSignInPlugin())
+        bridge?.registerPluginInstance(DeepLinksPlugin())
+        bridge?.registerPluginInstance(LiveActivityPlugin())
     }
 }

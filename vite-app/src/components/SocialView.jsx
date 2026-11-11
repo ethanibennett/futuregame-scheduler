@@ -7,6 +7,9 @@ import { API_URL } from '../utils/api.js';
 import { tokenClaims } from '../utils/session-claims.js';
 import { withoutDnpMarkers } from '../utils/didnt-play.js';
 import { getVenueInfo, getVenueBrandColor, normaliseDate, getToday, formatBuyin, formatLiveUpdate, parseTournamentTime } from '../utils/utils.js';
+import MessageSheet from './MessageSheet.jsx';
+import { plansInCommon } from '../utils/plans-in-common.js';
+import './features.css';
 
 // Avatars on the r grid (a px size floored each card to 7.18r): 5r, centred in
 // a 4g cell (a circle can't be whole g and whole r), the initial a trimmed
@@ -131,9 +134,21 @@ function CreateGroupModal({ shareBuddies, displayName, token, onClose, onCreated
 // ── Group Detail View ───────────────────────────────────────
 function GroupDetailView({
   group, groupFeed, groupSchedule, fetchGroupFeed, fetchGroupSchedule,
-  fetchMyGroups, shareBuddies, buddyLiveUpdates, displayName, token, onBack
+  fetchMyGroups, shareBuddies, buddyLiveUpdates, displayName, token, onBack,
+  hiddenIds = null, onBlocked = null,
 }) {
   const [segment, setSegment] = useState('feed');
+  // Press and hold (or right-click) a message for Report, Block and Mute (Features 38).
+  const [heldMsg, setHeldMsg] = useState(null);
+  const holdRef = React.useRef(null);
+  const myId = tokenClaims(token)?.id;
+  const holdProps = (item) => (item.type !== 'message' ? {} : {
+    onPointerDown: () => { clearTimeout(holdRef.current); holdRef.current = setTimeout(() => setHeldMsg(item), 500); },
+    onPointerUp: () => clearTimeout(holdRef.current),
+    onPointerLeave: () => clearTimeout(holdRef.current),
+    onPointerCancel: () => clearTimeout(holdRef.current),
+    onContextMenu: (e) => { e.preventDefault(); setHeldMsg(item); },
+  });
   const [members, setMembers] = useState([]);
   const [msgText, setMsgText] = useState('');
   const [sending, setSending] = useState(false);
@@ -355,8 +370,8 @@ function GroupDetailView({
               <div className="group-empty">
                 No messages yet. Say something!
               </div>
-            ) : groupFeed.map((item, i) => (
-              <div key={item.id || i} className={`group-feed-item ${item.type}`}>
+            ) : groupFeed.filter((item) => !(hiddenIds && hiddenIds.has(Number(item.user_id)))).map((item, i) => (
+              <div key={item.id || i} className={`group-feed-item ${item.type}${heldMsg && heldMsg.id === item.id ? ' is-held' : ''}`} {...holdProps(item)}>
                 <div className="group-feed-avatar">
                   <Avatar src={item.avatar} username={item.username || '?'} size={AVATAR_5R} style={item.avatar ? undefined : SEATED_INITIAL_5R} />
                 </div>
@@ -390,6 +405,11 @@ function GroupDetailView({
             <button onClick={handleSend} disabled={sending || !msgText.trim()}><span>{sendFail ? 'Retry' : 'Send'}</span></button>
           </div>
           {sendFail && <p className="group-send-fail" role="alert">{sendFail}</p>}
+          {heldMsg && (
+            <MessageSheet token={token} item={heldMsg} group={group} isOwn={Number(heldMsg.user_id) === Number(myId)}
+              onClose={() => setHeldMsg(null)}
+              onBlocked={(uid) => { if (onBlocked) onBlocked(uid); fetchGroupFeed(groupId); }} />
+          )}
         </div>
       )}
 
@@ -583,6 +603,8 @@ export default function SocialView({
   token, onRemoveBuddy, fetchShareBuddies,
   // Requests waiting for an answer, and the answers (UX pick 42).
   pendingIncoming = [], onAcceptRequest, onRejectRequest,
+  // Features 36, 38, 40 (2026-11-11): the at-the-table code, blocks, and the player's own plan.
+  onShowCode = null, hiddenIds = null, onBlocked = null, mySchedule = null, focusBuddyId = null, onFocusUsed = null,
 }) {
   const [expandedId, setExpandedId] = useState(null);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -598,6 +620,14 @@ export default function SocialView({
   const [searchSlow, setSearchSlow] = useState(false);
   const searchTimerRef = useRef(null);
   const slowTimerRef = useRef(null);
+  const [confirmBlockId, setConfirmBlockId] = useState(null);
+  const [onlyMineFor, setOnlyMineFor] = useState(null);
+  const blockBuddy = async (buddy) => {
+    try {
+      const r = await fetch(`${API_URL}/blocks`, { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: buddy.id }) });
+      if (r.ok) { setConfirmBlockId(null); setExpandedId(null); if (onBlocked) onBlocked(buddy.id); if (fetchShareBuddies) fetchShareBuddies(); }
+    } catch { /* stays as it was */ }
+  };
 
   const handleSearchChange = (val) => {
     setSearchQuery(val);
@@ -679,6 +709,13 @@ export default function SocialView({
     }
   };
 
+  useEffect(() => {
+    if (!focusBuddyId || !(shareBuddies || []).some((b) => b.id === focusBuddyId)) return;
+    if (expandedId !== focusBuddyId) toggleBuddy(focusBuddyId);
+    if (onFocusUsed) onFocusUsed();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusBuddyId, shareBuddies]);
+
   // If a group is active, show GroupDetailView
   if (activeGroupId) {
     const group = myGroups.find(g => g.id === activeGroupId);
@@ -695,6 +732,8 @@ export default function SocialView({
         displayName={displayName}
         token={token}
         onBack={() => { setActiveGroupId(null); setExpandedId(null); }}
+        hiddenIds={hiddenIds}
+        onBlocked={onBlocked}
       />
     );
   }
@@ -806,6 +845,7 @@ export default function SocialView({
         {requests}
         <div className={'dashboard-section-header' + (requests ? ' social-section-gap' : '')}>
           <div className="dashboard-section-title">Connections</div>
+          {onShowCode && <button type="button" className="dashboard-section-badge social-new-btn social-code-btn" onClick={onShowCode}><span>Add at the table</span></button>}
         </div>
         {searchBar}
         <div className="social-empty">
@@ -865,7 +905,9 @@ export default function SocialView({
       {/* Connections section */}
       <div className="dashboard-section-header social-section-gap">
         <div className="dashboard-section-title">Connections</div>
-        {hasBuddies && <span className="dashboard-section-badge dashboard-section-badge--wide">{shareBuddies.length} friend{shareBuddies.length !== 1 ? 's' : ''}</span>}
+        {onShowCode
+          ? <button type="button" className="dashboard-section-badge social-new-btn social-code-btn" onClick={onShowCode}><span>Add at the table</span></button>
+          : (hasBuddies && <span className="dashboard-section-badge dashboard-section-badge--wide">{shareBuddies.length} friend{shareBuddies.length !== 1 ? 's' : ''}</span>)}
       </div>
       {searchBar}
       {hasBuddies && (
@@ -961,6 +1003,7 @@ export default function SocialView({
                   if (upcoming.length === 0) {
                     return <div className="social-sched-msg">No upcoming events</div>;
                   }
+                  const pic = mySchedule ? plansInCommon(upcoming, mySchedule, todayISO) : null;
                   // Group by date
                   const groups = [];
                   let cur = null;
@@ -974,6 +1017,22 @@ export default function SocialView({
                       <div className="social-sched-hd">
                         Upcoming Schedule ({upcoming.length} event{upcoming.length !== 1 ? 's' : ''})
                       </div>
+                      {pic && (
+                        <div className="pic-counts">
+                          <div className="pic-box"><b>{pic.together}</b><span>together</span></div>
+                          <div className="pic-box"><b>{pic.onlyThem}</b><span>{`only ${displayName(buddy).split(' ')[0] || 'them'}`}</span></div>
+                          <button type="button" className={'pic-box pic-box--btn' + (onlyMineFor === buddy.id ? ' is-on' : '')}
+                            onClick={(e) => { e.stopPropagation(); setOnlyMineFor(onlyMineFor === buddy.id ? null : buddy.id); }}>
+                            <b>{pic.onlyMine.length}</b><span>only you</span>
+                          </button>
+                        </div>
+                      )}
+                      {pic && onlyMineFor === buddy.id && (
+                        <div className="pic-mine">
+                          {pic.onlyMine.length === 0 ? <div className="social-sched-msg">They are in every event you are</div>
+                            : pic.onlyMine.map((t) => <div key={t.id} className="pic-mine-row">{`${t.date} · ${t.event_name}`}</div>)}
+                        </div>
+                      )}
                       <div className="social-sched-grid">
                       {groups.map(group => {
                         const dateObj = new Date(group.date + 'T12:00:00');
@@ -990,7 +1049,11 @@ export default function SocialView({
                                   <span className="social-sched-date">{i === 0 ? dateLabel : ''}</span>
                                   <span className="social-sched-abbr" style={{color: getVenueBrandColor(v.abbr)}}>{v.abbr}</span>
                                   <span className="social-sched-time">{t.time || 'TBD'}</span>
-                                  <span className="social-sched-name">{t.event_name}</span>
+                                  <span className="social-sched-name">
+                                    {pic && <span className={'pic-mark pic-mark--' + (pic.mark.get(t.id) || 'theirs')} title={pic.note.get(t.id) || ''} aria-label={pic.mark.get(t.id) === 'both' ? 'You are both in it' : pic.mark.get(t.id) === 'flight' ? 'You play another flight' : 'Only them'} />}
+                                    {t.event_name}
+                                    {pic && pic.note.get(t.id) && <span className="pic-note">{pic.note.get(t.id)}</span>}
+                                  </span>
                                   <span className="social-sched-buyin">{formatBuyin(t.buyin, t.venue)}</span>
                                 </React.Fragment>
                               );
@@ -1049,11 +1112,20 @@ export default function SocialView({
                           onClick={(e) => { e.stopPropagation(); onRemoveBuddy(buddy.id); setConfirmRemoveId(null); setExpandedId(null); }}
                         ><span>Remove</span></button>
                       </div>
+                    ) : confirmBlockId === buddy.id ? (
+                      <div className="social-confirm">
+                        <span className="social-confirm-text">{`Block ${displayName(buddy)}? They are not told.`}</span>
+                        <button className="social-confirm-btn" onClick={(e) => { e.stopPropagation(); setConfirmBlockId(null); }}><span>Cancel</span></button>
+                        <button className="social-confirm-btn is-danger" onClick={(e) => { e.stopPropagation(); blockBuddy(buddy); }}><span>Block</span></button>
+                      </div>
                     ) : (
-                      <button
-                        className="social-remove-quiet"
-                        onClick={(e) => { e.stopPropagation(); setConfirmRemoveId(buddy.id); }}
-                      ><span>Remove connection\u2026</span></button>
+                      <div className="social-quiet-row">
+                        <button
+                          className="social-remove-quiet"
+                          onClick={(e) => { e.stopPropagation(); setConfirmRemoveId(buddy.id); }}
+                        ><span>Remove connection\u2026</span></button>
+                        <button className="social-remove-quiet" onClick={(e) => { e.stopPropagation(); setConfirmBlockId(buddy.id); }}><span>Block\u2026</span></button>
+                      </div>
                     )}
                   </div>
                 )}

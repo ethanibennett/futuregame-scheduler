@@ -100,7 +100,7 @@ export default function HomePeriod({ admin, bk, results, schedule, updates, plan
   const open = () => onOpen && onOpen(model.mode === 'trip' && trip ? { kind: 'trip', tripId: trip.id } : { kind: 'overview' });
   const where = model.mode === 'trip' ? 'the trip' : admin && !ledgerFailed ? 'the bankroll overview' : 'Results';
   return (
-    <section className="dashboard-section hm-period" aria-label={`${model.title}: the numbers`}>
+    <section data-money-zone="" className="dashboard-section hm-period" aria-label={`${model.title}: the numbers`}>
       <div className="dashboard-section-header hm-period-head">
         <div className="hm-cell hm-sec-title"><span className="hm-clip">{model.title}</span></div>
         {/* Not twice in a row: the bankroll line's header above may already say it. */}

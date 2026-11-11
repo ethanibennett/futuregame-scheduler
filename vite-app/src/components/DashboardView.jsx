@@ -11,6 +11,8 @@ import {
   CURRENCY_CONFIG, splitEventStage,
 } from '../utils/utils.js';
 import { API_URL } from '../utils/api.js';
+import PayLadder from './PayLadder.jsx';
+import { syncLiveActivity } from '../utils/live-activity.js';
 import { homeCurrency, playingEnded } from '../utils/home.js';
 import { gridGeom } from '../utils/grid-panel.js';
 import { resolveConditions, offLast, planKind, openBags } from '../utils/home-upnext.js';
@@ -95,6 +97,26 @@ function MiniLateRegBar({ lateRegEnd, date, time, openOnly, venue, startAt, comp
 // Friends Playing and Connections left the home (verdict "placement"): they live in Social, one
 // tap from the tab bar. The Table Scanner left it too: it is the Playing card's Scan action now,
 // and a tool in Hands.
+/* At the bust, before firing again (Features 11, 2026-11-11): the four facts a re-entry rests on, in one
+   block over the menu: late reg left, the new stack in big blinds now, this event's bullets and what they come
+   to counting the next one, and where the player sits (Features 12). Facts, never advice. */
+function ReentryCheck({ event, blindInfo, bulletNum, now }) {
+  const close = lateRegCloseOf(event);
+  const left = Number.isFinite(close) ? close - now : NaN;
+  const stack = Number(event.starting_chips) || 0;
+  const bb = blindInfo && Number(blindInfo.bb) > 0 ? Number(blindInfo.bb) : null;
+  const next = bulletNum + 1;
+  const fmtLeft = (ms) => { const m = Math.max(0, Math.round(ms / 60000)); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} m` : `${m} min`; };
+  return (
+    <div className="rx-block">
+      <div className="rx-label">If you re-enter now</div>
+      <div className="rx-row"><span>Late reg</span><b>{Number.isFinite(left) ? (left > 0 ? `${fmtLeft(left)} left · ${new Date(close).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : 'closed') : 'not known'}</b></div>
+      <div className="rx-row"><span>New stack</span><b>{stack ? `${stack.toLocaleString('en-US')}${bb ? ` · ${Math.floor(stack / bb)} BB at ${formatChips(blindInfo.sb)}/${formatChips(bb)}` : ''}` : 'not known'}</b></div>
+      <div className="rx-row"><span>{`Bullet ${next}`}</span><b>{`${formatBuyin((Number(event.buyin) || 0) * next, event.venue)} in, counting this one`}</b></div>
+    </div>
+  );
+}
+
 export default function DashboardView({
   mySchedule, myActiveUpdates, trackingData, onPost, onDeleteUpdate,
   onAddTracking, onNavigate, tournaments, onToggle,
@@ -534,6 +556,29 @@ export default function DashboardView({
     [whatsNextEvents, activeEventMap]
   );
 
+  // The event being played on the lock screen (Features 10): the first run in progress, with the room's
+  // clock where it answers (the level's end counts down on the lock screen by itself).
+  useEffect(() => {
+    if (demoStates) return;
+    const ev = whatsNextEvents.find(e => !!activeEventMap[e.id]);
+    if (!ev) { syncLiveActivity(null); return; }
+    const u = activeEventMap[ev.id];
+    const live = liveClockFor(ev);
+    const bb = live && Number(live.bb) > 0 ? Number(live.bb) : (Number(u.bb) || null);
+    const stack = Number(u.stack) || 0;
+    const end = effectiveLateRegEnd(ev);
+    const close = end ? lateRegCloseOf(ev, end) : NaN;
+    syncLiveActivity({
+      id: ev.id, event: ev.event_name, room: ev.property || ev.venue,
+      level: live ? live.level : 0,
+      blinds: live ? `${formatChips(live.sb)}/${formatChips(live.bb)}${live.ante ? '/' + formatChips(live.ante) : ''}` : (u.bb ? `${formatChips(u.sb)}/${formatChips(u.bb)}` : ''),
+      levelEndsAt: live && Number.isFinite(live.remaining) ? Date.now() + live.remaining * 1000 : 0,
+      stack, bigBlinds: bb ? Math.floor(stack / bb) : undefined,
+      lateRegClosesAt: Number.isFinite(close) && close > Date.now() ? close : 0,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [whatsNextEvents, activeEventMap, liveClocks, demoStates]);
+
   const nextUpEventId = useMemo(() => {
     if (hasActivePlaying) return null;
     const nextUp = whatsNextEvents.find(e =>
@@ -751,6 +796,29 @@ export default function DashboardView({
             </div>
           </div>
         )}
+        {/* The pay ladder (Features 13): once the player is in the money. */}
+        {isExpanded && isCurrentlyPlaying && activeEventMap[event.id] && Number(activeEventMap[event.id].is_itm) === 1 && (
+          <PayLadder token={token} event={event} left={(live && Number(live.playersLeft)) || Number(activeEventMap[event.id].places_left) || 0} />
+        )}
+        {/* Table and seat (Features 12): kept with the run; Moved asks for the new pair. */}
+        {isExpanded && isCurrentlyPlaying && (() => {
+          const u = activeEventMap[event.id];
+          const has = u && (u.table_no || u.seat_no);
+          const ask = (e) => {
+            e.stopPropagation();
+            const a = window.prompt('Table and seat, e.g. 34 6', has ? `${u.table_no || ''} ${u.seat_no || ''}`.trim() : '');
+            if (a == null || !onPost) return;
+            const [tbl, seat] = a.trim().split(/[\s,/-]+/);
+            onPost({ tournamentId: event.id, stack: Number(u.stack) || startingChips, sb: u.sb || undefined, bb: u.bb || undefined, bbAnte: u.bb_ante || undefined, tableNo: tbl || '', seatNo: seat || '' });
+          };
+          return (
+            <div className="seat-line">
+              {has ? <span className="seat-pair">{[u.table_no ? `Table ${u.table_no}` : null, u.seat_no ? `Seat ${u.seat_no}` : null].filter(Boolean).join(' · ')}</span>
+                : <span className="seat-none">No table yet</span>}
+              <button type="button" className="seat-btn" onClick={ask}><span className="dash-t">{has ? 'Moved' : 'Add table'}</span></button>
+            </div>
+          );
+        })()}
         {/* A room clock gone quiet says when it was last heard (App improvements 104), never a frozen LIVE. */}
         {isExpanded && live && live.stale && (
           <div className="dash-live-field is-stale"><span className="dash-t">Room clock last heard {Math.max(1, Math.round((now - live.heardAt) / 60000))} min ago ({new Date(live.heardAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })})</span></div>
@@ -835,7 +903,9 @@ export default function DashboardView({
 
             if (showBustMenu) {
               return (
-                /* The two outcomes as a player says them, Cancel quiet (UX pick 40). */
+                <>
+                {canRebuy && <ReentryCheck event={event} blindInfo={blindInfo} bulletNum={bulletNum} now={now} />}
+                {/* The two outcomes as a player says them, Cancel quiet (UX pick 40). */}
                 <div className="dash-status-row is-bust-menu">
                   <button className="dash-cancel-quiet" onClick={() => setBustMenuEventId(null)}><span className="dash-t">Cancel</span></button>
                   {canRebuy && (
@@ -870,6 +940,7 @@ export default function DashboardView({
                     setBustMenuEventId(null);
                   }}><span className="dash-t">Out for good</span></button>
                 </div>
+                </>
               );
             }
 

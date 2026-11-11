@@ -15,6 +15,8 @@ import { parseCardNotation, evaluateHand, evaluateShowdown, assignNeutralSuits, 
          boardKey, handBoards, boardCount, multiBoardWinners, multiBoardEvals, multiBoardShaped, combinesHiLo,
          seatOrderFromButton } from '../utils/poker-engine.js';
 import { encodeHand, VISUAL_SWITCHES } from '../utils/hand-shorthand.js';
+import { MomentNote, NoteTrack, NoteSheet, DetailsSheet, SendHandSheet, QuestionCard, ImportHandsSheet, SentToYou, noteAt, heroDecisionNext, questionHand } from './HandExtras.jsx';
+import { keepListCopy, listCopy, outbox as readOutbox, addToOutbox, flushOutbox } from '../utils/hand-outbox.js';
 import { loadCardImages, ensureExportFonts } from '../utils/export.js';
 import {
   MotionRegistry, SPRINGS_FLAG_KEY, readSpringsFlag, springSetFor, rateFor,
@@ -5078,7 +5080,8 @@ function agoLabel(ms) {
    the main pane and the replay of the chosen hand opens beside it (portalled there), with a prompt in
    its place while none is open; onSplitChange says whether the split is showing (entry, quick add and
    the drill still take the main pane alone). */
-export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, onStudyDraw, linkedReplay, quickAdd, drillEnabled, drillAsk, onDrillAsked = false, schedule = null, updates = null, sidePane = null, onSplitChange = null, onDrillBack = null, active = true }) {
+export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, onStudyDraw, linkedReplay, quickAdd, drillEnabled, drillAsk, onDrillAsked = false, schedule = null, updates = null, sidePane = null, onSplitChange = null, onDrillBack = null, active = true,
+  sharedQuestion = null, onSharedQuestionAnswered = null }) {
   const toast = useToast();
   const [mode, setMode] = useState(initialHand ? 'replay' : 'list');
   // Back from a hand puts the list where it was and marks the hand for a moment (App improvements 166).
@@ -5288,12 +5291,40 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         fetch(`${API_URL}/replayer/games`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       // Hands saved before 2026-10-14 call six-card PLO hi-lo "Big Easy"; the list says PLO6 8/b.
-      if (handsRes.ok) { const rows = await handsRes.json(); setHands(Array.isArray(rows) ? rows.map(canonicalHand) : rows); setHandsLoadError(false); }
+      if (handsRes.ok) { const rows = await handsRes.json(); setHands(Array.isArray(rows) ? rows.map(canonicalHand) : rows); setHandsLoadError(false); setOfflineCopy(false); keepListCopy(rows); }
       else setHandsLoadError(true);
       if (gamesRes.ok) setGames(await gamesRes.json());
-    } catch (e) { console.error('Replayer fetch error:', e); setHandsLoadError(true); }
+    } catch (e) {
+      // No signal (Features 46): the copy kept on this device, under a banner saying so.
+      const copy = listCopy();
+      if (copy && Array.isArray(copy.rows) && copy.rows.length) { setHands(copy.rows.map(canonicalHand)); setOfflineCopy(true); setHandsLoadError(false); }
+      else { console.error('Replayer fetch error:', e); setHandsLoadError(true); }
+    }
     finally { setLoading(false); }
   }, [token]);
+  const [offlineCopy, setOfflineCopy] = useState(false);
+  const [waiting, setWaiting] = useState(() => readOutbox());
+  // The outbox uploads by itself when requests succeed again: at load, when the device says it is online,
+  // and every minute while anything waits.
+  useEffect(() => {
+    if (!token) return undefined;
+    let on = true;
+    const flush = async () => {
+      if (!readOutbox().length) return;
+      const r = await flushOutbox(API_URL, token);
+      if (!on) return;
+      setWaiting(readOutbox());
+      if (r.sent) { toast.success(`${r.sent} hand${r.sent === 1 ? '' : 's'} uploaded`); fetchHands(); }
+    };
+    flush();
+    window.addEventListener('online', flush);
+    const id = setInterval(flush, 60000);
+    return () => { on = false; window.removeEventListener('online', flush); clearInterval(id); };
+  }, [token, fetchHands]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Tags (Features 31): every tag the saved hands carry, and the one the list is filtered by.
+  const allHandTags = useMemo(() => [...new Set((hands || []).flatMap((h) => (Array.isArray(h.tags) ? h.tags : [])))].sort(), [hands]);
+  const [tagFilter, setTagFilter] = useState(null);
+  const [showImport, setShowImport] = useState(false);
 
   useEffect(() => { if (token) fetchHands(); }, [token, fetchHands]);
 
@@ -5382,9 +5413,18 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       if (over.draft) clearDraft();
       toast.success('Hand saved');
     } catch (e) {
-      console.error('Failed to save hand:', e);
-      toast.error("Couldn't save the hand: " + (e.message || 'network error') + '.'
-        + (over.draft ? ' It is kept on this device: Hands, Unfinished hand.' : ''));
+      if (e instanceof TypeError || !navigator.onLine) {
+        // No signal: kept on this device, uploaded when requests succeed again (Features 46).
+        const payload = { handData: hand, gameType: hand.gameType, title: title || autoTitle(hand) || (hand.gameType + ' Hand'), notes: saveNotes, isPublic };
+        addToOutbox(payload, handId || null);
+        setWaiting(readOutbox());
+        if (over.draft) clearDraft();
+        toast.info('No signal. The hand is kept on this phone and uploads when the signal is back.');
+      } else {
+        console.error('Failed to save hand:', e);
+        toast.error("Couldn't save the hand: " + (e.message || 'network error') + '.'
+          + (over.draft ? ' It is kept on this device: Hands, Unfinished hand.' : ''));
+      }
     }
     setLoading(false);
   };
@@ -5598,6 +5638,10 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             linkedReplay={linkedReplay}
             sharedHand={handIsShared}
             inPane={!!sidePane}
+            onSaveExtras={currentHandId && !handIsShared ? (patch) => { const merged = { ...currentHand, ...patch }; setCurrentHand(merged); saveHand(merged); } : null}
+            allTags={allHandTags}
+            question={handIsShared ? sharedQuestion : null}
+            onQuestionAnswered={onSharedQuestionAnswered}
           />
         </ReplayErrorBoundary>
       </div>
@@ -5903,14 +5947,51 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 
       {/* Saved hands list. The heading carries the hand-history export (all hands,
           as PokerStars-format text for PokerTracker 4) at its right. */}
+      <SentToYou token={token} />
+      {offlineCopy && (
+        <div className="hx-offline" role="status">{`No signal. Showing the copy on this phone${waiting.length ? ` · ${waiting.length} waiting to upload` : ''}`}</div>
+      )}
       <div className="replayer-list-heading">
         <span>Saved Hands</span>
-        {hands.length > 0 && (
-          <button type="button" className="btn btn-ghost btn-sm ctl snap-g replayer-hh-export-btn" onClick={() => setShowHhExport(true)}>
-            <span>Export for PokerTracker</span>
-          </button>
-        )}
+        <span className="hx-head-btns">
+          {token && (
+            <button type="button" className="btn btn-ghost btn-sm ctl snap-g replayer-hh-export-btn" onClick={() => setShowImport(true)}>
+              <span>Import</span>
+            </button>
+          )}
+          {hands.length > 0 && (
+            <button type="button" className="btn btn-ghost btn-sm ctl snap-g replayer-hh-export-btn" onClick={() => setShowHhExport(true)}>
+              <span>Export for PokerTracker</span>
+            </button>
+          )}
+        </span>
       </div>
+      {showImport && <ImportHandsSheet token={token} onClose={() => setShowImport(false)}
+        onDone={(d) => { toast.success(`${d.saved} hand${d.saved === 1 ? '' : 's'} imported${d.duplicates ? `, ${d.duplicates} already saved` : ''}`); setTagFilter(d.tag); fetchHands(); }} />}
+      {allHandTags.length > 0 && (
+        <div className="hx-tagrow" role="radiogroup" aria-label="Filter by tag">
+          <button type="button" role="radio" aria-checked={!tagFilter} className={'hx-tag' + (!tagFilter ? ' is-on' : '')} onClick={() => setTagFilter(null)}><span>All</span></button>
+          {allHandTags.map((t) => (
+            <button key={t} type="button" role="radio" aria-checked={tagFilter === t} className={'hx-tag' + (tagFilter === t ? ' is-on' : '')} onClick={() => setTagFilter(tagFilter === t ? null : t)}>
+              <span>{`${t} ${hands.filter((h) => Array.isArray(h.tags) && h.tags.includes(t)).length}`}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {waiting.length > 0 && (
+        <div className="replayer-hand-list hx-waiting">
+          {waiting.map((w) => (
+            <div key={w.clientId} className="replayer-hand-card is-row is-empty">
+              <div className="replayer-hand-card-content">
+                <div className="replayer-hand-card-body">
+                  <span className="replayer-hand-card-title">{(w.payload && w.payload.title) || 'A hand'}</span>
+                  <span className="replayer-hand-card-meta"><span className="hx-wait-chip">Waiting to upload</span></span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       {sdAsk && <ShortDeckRuleDialog value={sdTrips} onChoose={chooseSdRule} onClose={() => setSdAsk(false)} />}
       {showHhExport && createPortal(
         <HandHistoryExportSheet rows={hands} heroName={heroName} toast={toast} onClose={() => setShowHhExport(false)} />,
@@ -5963,7 +6044,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       ) : (
         <div className="replayer-hand-list">
           {draftRow}
-          {hands.filter(h => !goneIds.has(h.id)).map(h => (
+          {hands.filter(h => !goneIds.has(h.id) && (!tagFilter || (Array.isArray(h.tags) && h.tags.includes(tagFilter)))).map(h => (
             /* 59: a title, a game chip and a Delete button — no cards, no
                result, no date — in an app about cards, while the stylesheet
                shipped -meta and -actions classes this list never used. Nobody
@@ -6029,6 +6110,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                       blind stud does not have over a small bet. */}
                   {formatStakes(h)}
                   {h.created_at ? ' \u00b7 ' + new Date(h.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(undefined, {month:'short', day:'numeric'}) : ''}
+                  {h.event && h.event.title ? ' \u00b7 ' + h.event.title : ''}
+                  {Array.isArray(h.tags) && h.tags.length > 0 && <span className="hx-row-tag">{h.tags[0]}</span>}
                 </span>
                 {openingId === h.id && <span className="replayer-hand-card-meta is-opening-line">Opening\u2026</span>}
               </div>
@@ -6154,7 +6237,8 @@ function HandHistoryExportSheet({ rows, heroName, toast, onClose }) {
 // ══════════════════════════════════════════════════════════
 // ── Replay View Sub-component ────────────────────────────
 // ══════════════════════════════════════════════════════════
-function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, cardSplay, onSolveSpot, onStudyDraw, linkedReplay, heroName, playedAt, sharedHand, drill = null, inPane = false, notes = null }) {
+function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, cardSplay, onSolveSpot, onStudyDraw, linkedReplay, heroName, playedAt, sharedHand, drill = null, inPane = false, notes = null,
+  onSaveExtras = null, allTags = [], question = null, onQuestionAnswered = null }) {
   /* The GIF export's completion toasts referenced `toast` from inside this
      component, where it was never declared - the outer HandReplayerView owns
      the one call to useToast(). Optional chaining does not save an UNDECLARED
@@ -7371,6 +7455,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const [exportPreview, setExportPreview] = useState(null);
   const [inspecting, setInspecting] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  // Features 26, 27, 29, 31 (2026-11-11).
+  const [noteEditing, setNoteEditing] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   // Esc closes the share sheet, a dialog on the desktop (UX pick 71).
   useEffect(() => {
     if (!showExportMenu) return undefined;
@@ -7500,6 +7588,35 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
 
   // Share link
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
+  /* The hand's short link, minted without copying it (Features 26, 27): the plain one for Send in the app, or a
+     question that stops at the hero's next decision. Resolves to the link's id, or null. */
+  const mintHandLink = useCallback(async (asQuestion) => {
+    if (!token) return null;
+    const full = encodeHand({ ...hand, feltColor });
+    if (!full) return null;
+    const b = hand.blinds || {};
+    const title = `${hand.gameType} ${b.sb || 0}/${b.bb || 0}${b.ante ? '/' + b.ante : ''}`;
+    const body = { shorthand: full, title };
+    if (asQuestion) {
+      const qs = encodeHand({ ...questionHand(hand, streetIdx, actionIdx), feltColor });
+      if (!qs) return null;
+      body.question = { shorthand: qs, street: streetIdx, action: actionIdx };
+    }
+    try {
+      const res = await fetch(`${API_URL}/hand-links`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify(body) });
+      if (!res.ok) return null;
+      const d = await res.json();
+      return d && d.id ? d.id : null;
+    } catch { return null; }
+  }, [token, hand, feltColor, streetIdx, actionIdx]);
+  const askQuestion = useCallback(async () => {
+    const id = await mintHandLink(true);
+    if (!id) { toast.error('The question link was not made; check the connection'); return; }
+    const url = SITE_URL + '/h/' + id;
+    try { await navigator.clipboard.writeText(url); toast.success('Question link copied: it stops at your decision'); }
+    catch { if (navigator.share) navigator.share({ url }).catch(() => {}); else toast.info(url); }
+  }, [mintHandLink, toast]);
+
   const copyShareLink = useCallback(async () => {
     try {
       // Carry the felt the sharer is looking at, so the link reproduces their
@@ -9156,6 +9273,34 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           itself, so a change is judged against the live table. Top-right,
           over the stadium's empty corner; the gear keeps the full panel. */}
       {notes && <NotesChip notes={notes} />}
+      {!drill && onSaveExtras && (
+        <span className="hx-chips">
+          <button type="button" className="replayer-notes-chip ctl hx-chip" onClick={() => setNoteEditing(true)}><span>{noteAt(hand, streetIdx, actionIdx) ? 'Edit note' : 'Note here'}</span></button>
+          <button type="button" className="replayer-notes-chip ctl hx-chip" onClick={() => setDetailsOpen(true)}><span>{(hand.tags && hand.tags.length) ? `Tags · ${hand.tags.length}` : 'Tags'}</span></button>
+        </span>
+      )}
+      {!drill && <MomentNote note={noteAt(hand, streetIdx, actionIdx)} onEdit={onSaveExtras ? () => setNoteEditing(true) : null} />}
+      {!drill && <NoteTrack hand={hand} streetIdx={streetIdx} onJump={(si, ai) => { setPlaying(false); setStreetIdx(si); setActionIdx(ai); }} />}
+      {noteEditing && onSaveExtras && (
+        <NoteSheet initial={(noteAt(hand, streetIdx, actionIdx) || {}).text || ''}
+          where={`${((hand.streets || [])[streetIdx] || {}).name || 'This street'}, after action ${actionIdx + 1}`}
+          onClose={() => setNoteEditing(false)}
+          onSave={(text) => {
+            const rest = (hand.annotations || []).filter((n) => !(n.street === streetIdx && n.action === actionIdx));
+            onSaveExtras({ annotations: text ? [...rest, { street: streetIdx, action: actionIdx, text }] : rest });
+          }} />
+      )}
+      {detailsOpen && onSaveExtras && (
+        <DetailsSheet hand={hand} token={token} allTags={allTags} onClose={() => setDetailsOpen(false)} onSave={(patch) => onSaveExtras(patch)} />
+      )}
+      {sendOpen && token && (
+        <SendHandSheet token={token} toast={toast} title={hand.title || null} step={streetIdx} onClose={() => setSendOpen(false)} mintLink={() => mintHandLink(false)} />
+      )}
+      {question && !question.answered && (
+        <QuestionCard linkId={question.linkId} token={token} answered={false}
+          onAnswered={(choice, tally) => { if (onQuestionAnswered) onQuestionAnswered(choice, tally); }} />
+      )}
+      {question && question.answered && question.tally && <QuestionCard linkId={question.linkId} answered tally={question.tally} />}
       <button ref={quickBtnRef} className={'replayer-quick-btn' + (showQuick ? ' is-open' : '')}
         aria-label="Table settings" aria-expanded={showQuick} aria-haspopup="dialog"
         onClick={() => setShowQuick(v => !v)}>
@@ -10298,6 +10443,20 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   <span className="share-desc">A still of the hand at this point</span>
                 </div>
               </div>
+              {token && !sharedHand && (
+                <div className="share-menu-grid is-main hx-share-row">
+                  <div className="share-menu-item" onClick={() => { setShowExportMenu(false); setSendOpen(true); }}>
+                    <span className="share-label">Send in the app</span>
+                    <span className="share-desc">To friends or a group, to talk it over on the hand</span>
+                  </div>
+                  <div className={'share-menu-item' + (heroDecisionNext(hand, streetIdx, actionIdx) ? '' : ' is-disabled')}
+                    aria-disabled={!heroDecisionNext(hand, streetIdx, actionIdx)}
+                    onClick={() => { if (!heroDecisionNext(hand, streetIdx, actionIdx)) { toast.info('Step to just before your decision, then ask'); return; } setShowExportMenu(false); askQuestion(); }}>
+                    <span className="share-label">Ask what they would do</span>
+                    <span className="share-desc">It stops at your decision; they answer before they see the rest</span>
+                  </div>
+                </div>
+              )}
               <div className="rss-sec"><span>Video</span></div>
               <div className="share-menu-grid rss-video">
                 <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')} title="9:16 video, ready to post"

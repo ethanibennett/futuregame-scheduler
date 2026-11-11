@@ -3,6 +3,35 @@ import { createPortal } from 'react-dom';
 import { FAMILIES, rowStrip, search, recentRows, historyFromHands, playCounts, familyRows } from '../utils/variant-catalog.js';
 import { getVenueInfo } from '../utils/utils.js';
 import './variant-picker.css';
+import { rulesFor } from '../utils/game-rules.js';
+import useBackToClose from '../hooks/useBackToClose.js';
+
+/* The rules of a game (Features 33): the betting, the order of play and how the pot is won, as the replayer
+   plays it, with Create a hand of it. */
+function RulesSheet({ row, onCreate, onClose }) {
+  useBackToClose(true, onClose);
+  const r = rulesFor(row);
+  if (!r) return null;
+  return createPortal(
+    <>
+      <div className="share-menu-backdrop vp-rules-backdrop" onClick={onClose} />
+      <div className="share-menu-panel grid-sheet vp-rules" role="dialog" aria-label={`The rules of ${r.title}`}>
+        <h3>{r.title}</h3>
+        <p className="vp-rules-p">{r.structure}</p>
+        <ol className="vp-rules-order">{r.order.map((o, i) => <li key={i}>{o}</li>)}</ol>
+        {r.halves.map(([t, rule]) => (
+          <div key={t} className="vp-rules-half"><b>{t}</b><span>{rule}</span></div>
+        ))}
+        {r.split && <p className="vp-rules-p">{r.split}</p>}
+        <div className="rp-actions">
+          <button type="button" className="btn btn-ghost ctl rp-btn" onClick={onClose}><span>Close</span></button>
+          <button type="button" className="btn btn-primary ctl rp-btn" onClick={() => { onClose(); onCreate(row); }}><span>{`Create a ${row.name} hand`}</span></button>
+        </div>
+      </div>
+    </>,
+    document.body,
+  );
+}
 
 /*
  * The New Hand variant picker (owner, 2026-10-20: "implement the new variant picker"), the Variant
@@ -32,6 +61,7 @@ const isDesktopNow = () => (typeof window !== 'undefined' && window.matchMedia ?
 
 export function Palette({ rows, mixes, history, current, onPick, onClose, hands = null }) {
   const [q, setQ] = useState('');
+  const [rulesRow, setRulesRow] = useState(null);
   const [openMix, setOpenMix] = useState(null);
   const [hi, setHi] = useState(0);
   const desktop = isDesktopNow();
@@ -102,6 +132,10 @@ export function Palette({ rows, mixes, history, current, onPick, onClose, hands 
         onClick={() => onPick(r, { mix, create: true })}>
         <span className="vp-row-check" aria-hidden="true">{on ? '✓' : ''}</span>
         <span className="vp-row-name">{r.name}{mix ? <span className="vp-row-mix"> · {mix}</span> : null}</span>
+        {!r.custom && (
+          <span className="vp-row-info" role="button" tabIndex={-1} aria-label={`The rules of ${r.name}`}
+            onClick={(e) => { e.stopPropagation(); setRulesRow(r); }}>i</span>
+        )}
         <Tag row={r} />
       </button>
     );
@@ -190,6 +224,7 @@ export function Palette({ rows, mixes, history, current, onPick, onClose, hands 
           </div>
         )}
       </div>
+      {rulesRow && <RulesSheet row={rulesRow} onClose={() => setRulesRow(null)} onCreate={(r) => onPick(r, { create: true })} />}
     </div>,
     document.body,
   );

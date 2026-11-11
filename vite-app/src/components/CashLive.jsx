@@ -14,6 +14,7 @@ import './CashSessions.css';
 import useLiveCashSession, { RESULTS_SECTIONS, useResultsKind, setResultsKind } from '../hooks/useLiveCashSession.js';
 import { formatClock, liveElapsed, sessionGame } from '../utils/cash-sessions.js';
 import { formatCurrencyAmount } from '../utils/utils.js';
+import { useSessionStop, stopState, stopLine, StopSheet } from './SessionStop.jsx';
 import useTick from '../hooks/useTick.js';
 
 // The sections grouped (owner, 2026-10-20: nine chips over three rows were too many): four 8g chips in
@@ -105,21 +106,33 @@ export function ResultsKindTabs() {
 }
 
 export function LiveCashBar({ enabled, token, currentView, onOpen }) {
-  const { session, skew } = useLiveCashSession({ enabled, token });
+  const { session, skew, stacks } = useLiveCashSession({ enabled, token });
+  // Your stop (Features 15): the nearer line, and a sheet that asks once when either is reached.
+  const { stop, save } = useSessionStop(token, session && session.id);
+  const [stopOpen, setStopOpen] = useState(false);
   const kind = useResultsKind();
   // Off on the home too: the session is its first Up Next card there (HomeCashCard), which says the
   // same and more.
   const hidden = !session || currentView === 'hands' || currentView === 'dashboard' || (currentView === 'tracking' && kind === 'cash');
   useTick(!hidden);
+  const st = stopState(stop, session, stacks, Date.now());
+  const askedKey = session && st && st.reached ? `stopAsked:${session.id}:${st.reached}` : null;
+  useEffect(() => {
+    if (!askedKey || hidden) return;
+    try { if (sessionStorage.getItem(askedKey)) return; sessionStorage.setItem(askedKey, '1'); } catch { /* storage off */ }
+    setStopOpen(true);
+  }, [askedKey, hidden]);
   if (hidden) return null;
   const what = [sessionGame(session), session.room].filter(Boolean).join(' · ');
+  const line = stopLine(st, session);
   return (
-    <div className="cs-bar" role="status" aria-label="Cash session running">
-      <span className="cs-t cs-bar-text">
+    <div className={'cs-bar' + (st && st.reached ? ' is-at-stop' : '')} role="status" aria-label="Cash session running">
+      <button type="button" className="cs-t cs-bar-text cs-bar-tap" onClick={() => setStopOpen(true)} aria-label="Your stop">
         <span className="cs-dot" aria-hidden="true">●</span>{' '}
         <b className="cs-bar-clock">{formatClock(liveElapsed(session, Date.now(), skew))}</b>
-        {what ? ` · ${what}` : ''} · {formatCurrencyAmount(session.buy_in, session.currency)} in
-      </span>
+        {line ? ` · ${line}` : `${what ? ` · ${what}` : ''} · ${formatCurrencyAmount(session.buy_in, session.currency)} in`}
+      </button>
+      {stopOpen && <StopSheet stop={stop} session={session} stacks={stacks} onSave={save} onCashOut={() => { setResultsKind('cash'); onOpen(); }} onClose={() => setStopOpen(false)} />}
       <button type="button" className="cs-btn cs-btn--brand" style={{ '--w': 6, '--h': 3 }}
         onClick={() => { setResultsKind('cash'); onOpen(); }}><span>Open</span></button>
     </div>
