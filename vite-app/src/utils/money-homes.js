@@ -10,6 +10,7 @@ export function normaliseHomes(d) {
   return {
     fund: f ? {
       bankrollId: f.bankrollId, name: f.name || 'WSOP fund', saved: num(f.saved), target: f.target == null ? null : num(f.target), targetDate: f.targetDate || null,
+      firstActivityDate: f.firstActivityDate || null,
       pace: f.pace && typeof f.pace === 'object' ? { left: num(f.pace.left), monthsLeft: f.pace.monthsLeft == null ? null : num(f.pace.monthsLeft), needPerMonth: f.pace.needPerMonth == null ? null : num(f.pace.needPerMonth), perMonthSoFar: f.pace.perMonthSoFar == null ? null : num(f.pace.perMonthSoFar), onTrack: f.pace.onTrack == null ? null : !!f.pace.onTrack } : null,
     } : null,
     locations: (Array.isArray(d.locations) ? d.locations : []).map((l) => ({ id: l.id, name: String(l.name || ''), amount: num(l.amount), currency: l.currency || 'USD' })),
@@ -42,6 +43,24 @@ export function fundView(fund, money, fmtDate = (d) => d) {
     note: fund.targetDate && fund.target > 0 ? `${Math.round(pct * 100)}% · by ${fmtDate(fund.targetDate)}` : 'no target set',
     pace, soFar,
   };
+}
+
+/**
+ * Where the fund should stand today (Bankroll design 14): the straight line from nothing on its first
+ * entry to the target on its day. It is the server's own pace test (lib/money-homes.js fundPace) drawn:
+ * onTrack is perMonthSoFar × monthsLeft ≥ left, i.e. saved ≥ target × elapsed / (elapsed + monthsLeft),
+ * so the fund is behind exactly when its balance is under this line. null without a target, a day or a
+ * first entry. Months are the server's: 365.25 / 12 days.
+ */
+export function fundPaceToday(fund, today) {
+  if (!fund || !(fund.target > 0) || !fund.targetDate || !fund.firstActivityDate || !today) return null;
+  const MONTH = (365.25 / 12) * 864e5;
+  const at = (d) => Date.parse(d + 'T12:00:00Z');
+  const elapsed = (at(today) - at(fund.firstActivityDate)) / MONTH;
+  const left = (at(fund.targetDate) - at(today)) / MONTH;
+  if (!(elapsed > 0)) return 0;
+  if (!(left > 0)) return fund.target;
+  return Math.round((fund.target * elapsed) / (elapsed + left) * 100) / 100;
 }
 
 /** The drift row: a short value (the difference) and its note (the ledger's total). */

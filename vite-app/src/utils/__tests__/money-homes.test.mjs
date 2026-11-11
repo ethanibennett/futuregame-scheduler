@@ -1,7 +1,7 @@
 // node --test src/utils/__tests__/money-homes.test.mjs  (from vite-app/)
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normaliseHomes, fundView, driftView, setAsideView } from '../money-homes.js';
+import { normaliseHomes, fundView, driftView, setAsideView, fundPaceToday } from '../money-homes.js';
 
 const money = (v) => '$' + Math.round(v).toLocaleString('en-US');
 test('the fund rows: progress, pace, so far, no target, short values only', () => {
@@ -22,4 +22,22 @@ test('the drift line and the set-aside line', () => {
   assert.deepEqual(setAsideView(12000, 30, money), { label: 'Set aside for tax (30%)', value: '$3,600', note: '30% of the net' });
   assert.deepEqual(setAsideView(-500, 30, money), { label: 'Set aside for tax (30%)', value: '$0', note: 'nothing to set aside on a losing year' });
   assert.equal(setAsideView(1000, undefined, money).label, 'Set aside for tax (30%)');
+});
+
+test('fundPaceToday is the server pace test drawn: behind exactly when saved is under it', () => {
+  const fund = normaliseHomes({ fund: { saved: 18500, target: 65000, targetDate: '2027-05-25', firstActivityDate: '2026-03-01' } }).fund;
+  const pace = fundPaceToday(fund, '2026-11-10');
+  // elapsed ≈ 8.3 months, left ≈ 6.5 months → about 56% of 65,000
+  assert.ok(pace > 35000 && pace < 38000, String(pace));
+  // The server's onTrack: perMonthSoFar × monthsLeft ≥ left, with the same months
+  const MONTH = (365.25 / 12) * 864e5, at = (d) => Date.parse(d + 'T12:00:00Z');
+  const elapsed = (at('2026-11-10') - at('2026-03-01')) / MONTH, left = (at('2027-05-25') - at('2026-11-10')) / MONTH;
+  for (const saved of [pace - 1, pace + 1]) {
+    const onTrack = (saved / elapsed) * left >= 65000 - saved;
+    assert.equal(onTrack, saved >= pace);
+  }
+  assert.equal(fundPaceToday({ ...fund, target: null }, '2026-11-10'), null);
+  assert.equal(fundPaceToday({ ...fund, firstActivityDate: null }, '2026-11-10'), null);
+  assert.equal(fundPaceToday(fund, '2027-06-01'), 65000);
+  assert.equal(fundPaceToday(fund, '2026-03-01'), 0);
 });

@@ -278,7 +278,7 @@
       --accent:    #a0a0a0;
       --accent2:   #888888;
       --text:      #e8e8e8;
-      --text-muted:#808080;
+      --text-muted:#828282;  /* 4.91:1 on --bg, 4.53:1 on --surface (Bankroll design 90) */
       --bg-contrast: #111111;
       --venue-hs-bg:   #141414;
       --venue-wynn-bg: #141414;
@@ -1354,6 +1354,15 @@
       --neg:       #b2453c;
       --neg-quiet: rgba(178,69,60,0.12);
     }
+    /* Cloudy's mid-grey took light's pair to 3.35:1 (gain) and 3.40:1 (loss) on the page, under the
+       4.5:1 small text needs (Bankroll design 89). Its own deeper pair, the backer page's since 10-24:
+       gain 4.79:1 on the page and 5.35:1 on a card, loss 4.77:1 and 5.32:1. */
+    [data-theme="cloudy"] {
+      --pos:       #0a5f36;
+      --pos-quiet: rgba(10,95,54,0.12);
+      --neg:       #952f28;
+      --neg-quiet: rgba(149,47,40,0.12);
+    }
 
     /* Chart series: the bankroll dashboard's trend graph (BankrollChart.jsx) draws Total,
        Tournaments and Cash as three lines, each with a translucent fill under it, and the
@@ -1401,7 +1410,8 @@
       --series-fill-tourn: 0.125;
       --series-fill-cash:  0.11;
     }
-    [data-theme="light"]  { --series-cash: #4c1d95; }
+    /* Light takes cloudy's violet (Bankroll design 11): #4c1d95 was 1.59:1 against the near-black Total line. */
+    [data-theme="light"]  { --series-cash: #6419e6; }
     [data-theme="cloudy"] { --series-cash: #6419e6; }
     [data-contrast="high"] { --series-cash: #a78bfa; }
     [data-theme="light"][data-contrast="high"]  { --series-cash: #6d28d9; }
@@ -1851,7 +1861,7 @@
       --accent:    #555555;
       --accent2:   #777777;
       --text:      #1a1a1a;
-      --text-muted:#888888;
+      --text-muted:#707070;  /* 4.54 and 4.95:1 (Bankroll design 90; was #888, 3.25:1) */
       --bg-contrast: #ffffff;
       --venue-hs-bg:   #eeeeee;
       --venue-wynn-bg: #eeeeee;
@@ -1914,7 +1924,7 @@
       --accent:    #8898b8;
       --accent2:   #6878a0;
       --text:      #d8dce8;
-      --text-muted:#6878a0;
+      --text-muted:#7785a9;  /* 4.96 and 4.52:1 (Bankroll design 90) */
       --bg-contrast: #0d1525;
       --venue-hs-bg:   #121a2a;
       --venue-wynn-bg: #121a2a;
@@ -1963,7 +1973,7 @@
       --accent:    #505050;
       --accent2:   #686868;
       --text:      #1a1a1a;
-      --text-muted:#606060;
+      --text-muted:#565656;  /* 4.52 and 5.05:1 (Bankroll design 90) */
       --bg-contrast: #c8c8c8;
       --venue-hs-bg:   #c4c4c4;
       --venue-wynn-bg: #c4c4c4;
@@ -9507,6 +9517,33 @@
     .empty-state-compact p { font-size: var(--fs-sm); }
 
     .empty-state p { max-width: 34ch; margin-left: auto; margin-right: auto; line-height: calc(var(--subrow) * 2); }
+    /* One empty state on the Bankroll tab (Bankroll design 96), and the failed load (97): one card,
+       --surface with a hairline ring and 4r of padding; a 3g x 4r mark 2r over the title; the title
+       --fs-md bold on a 3r line, 1r over one sentence in --fs-sm on 3r lines; the action 4r tall (inside
+       a card, Bankroll design 99), 2r under it. A failed load's mark is --neg. */
+    .empty-state.is-block {
+      padding: calc(var(--subrow) * 4) var(--gu);
+      background: var(--surface); border-radius: var(--radius-sm);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1);
+    }
+    .empty-state.is-block svg { width: calc(var(--gu) * 3); height: calc(var(--subrow) * 4); margin: 0 auto calc(var(--subrow) * 2); opacity: 1; color: var(--text-muted); }
+    .empty-state.is-block h3 { font-size: var(--fs-md); font-weight: var(--fw-bold); line-height: calc(var(--subrow) * 3); margin: 0 0 var(--subrow); }
+    .empty-state.is-block p { font-size: var(--fs-sm); line-height: calc(var(--subrow) * 3); margin: 0 auto; max-width: none; }
+    .empty-state.is-block.is-failed svg { color: var(--neg); }
+    .empty-state.is-block .empty-state-action { border-radius: var(--radius); }
+    /* The cached list's one-line notice (Bankroll design 97): the same words over what is still shown. */
+    .load-failed-line {
+      display: flex; align-items: center; justify-content: space-between; gap: var(--gu);
+      min-height: calc(var(--subrow) * 5); margin: 0 0 var(--subrow);
+      font-size: var(--fs-xs); color: var(--text-muted);
+    }
+    .load-failed-retry {
+      flex: none; display: flex; align-items: center; justify-content: center;
+      width: var(--col); height: calc(var(--subrow) * 4); margin: 0; padding: 0;
+      border: 0; border-radius: var(--radius); background: transparent;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text); cursor: pointer;
+    }
 
     .empty-state-actions {
       display: flex; flex-wrap: wrap; justify-content: center;

@@ -4,8 +4,9 @@ import { RANGES } from '../utils/bankroll-ledger.js';
 import { bbFigures, bbColumn, bbBasis, unitLabel } from '../utils/bb-hr.js';
 import {
   SECTIONS, OPEN_STORE_KEY, parseOpen, overviewTables, groupTable, ledgerScope, sameScope,
-  fmtMoney, moneySign, fmtPct, fmtCount, fmtHours, fmtRatio, DASH,
+  fmtMoney, moneySign, fmtPct, fmtCount, fmtHours, fmtRatio, DASH, columnMoney,
 } from '../utils/bankroll-overview.js';
+import { Bone } from './SkeletonBankroll.jsx';
 import { Glyph } from './Icon.jsx';
 import { fundView, driftView } from '../utils/money-homes.js';
 import './bankroll-overview-tables.css';
@@ -51,10 +52,13 @@ const RANGE_TEXT = { ...Object.fromEntries(RANGES), all: 'All time' };
 const plural = (n, word) => `${fmtCount(n)} ${word}${n === 1 ? '' : 's'}`;
 
 // A figure cell: right-aligned, tabular; green / red only when it is signed money.
+// A dash is not a figure (Bankroll design 18): an empty cell is quiet, in the label colour at the
+// regular weight, so the bold column holds only totals.
 function Fig({ v, text, toned, title, bold, cls }) {
+  const dash = text === DASH;
   return (
     <span role="cell" title={title}
-      className={'an-cell an-td an-num an-clip ovt-fig' + (toned && v != null ? tone(v) : '') + (bold ? ' is-strong' : '') + (cls ? ' ' + cls : '')}>
+      className={'an-cell an-td an-num an-clip ovt-fig' + (toned && v != null && !dash ? tone(v) : '') + (bold && !dash ? ' is-strong' : '') + (dash ? ' is-dash' : '') + (cls ? ' ' + cls : '')}>
       {text}
     </span>
   );
@@ -121,16 +125,30 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
   // Busy until they are the ones asked for.
   const fsc = facts.scope ? ledgerScope(facts.scope, { key: bkKey, currency: asked, bankrolls: bk.bankrolls }) : sc;
   const fcfg = CURRENCY_CONFIG[fsc.currency] || CURRENCY_CONFIG.USD;
-  const fsm = (v) => fmtMoney(v, fcfg, { sign: true });
   const factsBusy = sc.stale || (facts.list != null && (facts.status === 'loading' || fsc.stale));
   const games = useMemo(() => (facts.list ? groupTable(facts.list, 'game', t.window) : null), [facts.list, t.window]);
   const rooms = useMemo(() => (facts.list ? groupTable(facts.list, 'room', t.window) : null), [facts.list, t.window]);
 
   const S = t.summary, X = t.sessions, B = t.bankroll;
+  // One precision per column (Bankroll design 17): each money column prints whole units while its widest
+  // figure fits its 8g cell, else the compact form for every figure in it. Closed headlines keep compact.
+  const col = (vals, g = 8) => columnMoney(vals, g, cfg);
+  const amt = (x) => (x ? x.amount : null);
+  const sumC = col([S.cash.buyins, S.cash.cashouts, S.cash.costs, S.cash.net, S.cash.result]);
+  const sumT = col([S.tournaments.buyins, S.tournaments.cashouts, S.tournaments.net, S.tournaments.result]);
+  const sumX = col([S.total.buyins, S.total.cashouts, S.total.costs, S.total.net, S.total.other, S.total.result, S.total.moved, S.total.change]);
+  const sesC = col([X.cash.hourly, X.cash.avgBuyin, X.cash.avgProfit, amt(X.cash.best), amt(X.cash.worst)]);
+  const sesT = col([X.tournaments.avgBuyin, X.tournaments.avgProfit, amt(X.tournaments.best), amt(X.tournaments.worst)]);
+  const sesX = col([X.total.hourly, X.total.avgBuyin, X.total.avgProfit, amt(X.total.best), amt(X.total.worst)]);
+  const bnk = col([B.balance, B.peak.value, B.below, B.drawdown && B.drawdown.amount, B.moved]);
+  const per = {
+    results: col(t.periods.map((r) => r.results)), moved: col(t.periods.map((r) => r.moved)), net: col(t.periods.map((r) => r.net)),
+  };
   const mUsd = (v) => fmtMoney(v, CURRENCY_CONFIG.USD);
   const scopeOf = (x) => `${RANGE_TEXT[range] || range} · ${x.name}`;
   const scope = scopeOf(sc), factsScope = scopeOf(fsc);
   const periodsLabel = t.bucket === 'year' ? 'By year' : 'By month';
+  const periodMax = t.periods.reduce((m, r) => Math.max(m, Math.abs(Number(r.net) || 0)), 0);
 
   const ror = (() => {
     if (!risk) return { text: '…', note: 'tournaments' };
@@ -145,13 +163,17 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
   const played = X.total.count;
   const headline = {
     summary: { text: sm(S.total.result), v: S.total.result, toned: true },
-    sessions: { text: played ? `${fmtCount(played)} played` : 'None played' },
-    games: { text: games ? (games.named ? plural(games.named, 'game') : DASH) : '…' },
-    rooms: { text: rooms ? (rooms.named ? plural(rooms.named, 'room') : DASH) : '…' },
+    // A count steps back to the label weight (Bankroll design 15): money leads the closed list.
+    sessions: { text: played ? `${fmtCount(played)} played` : 'None played', count: true },
+    games: { text: games ? (games.named ? plural(games.named, 'game') : DASH) : '…', count: true },
+    rooms: { text: rooms ? (rooms.named ? plural(rooms.named, 'room') : DASH) : '…', count: true },
     bankroll: { text: m(B.balance), v: Math.min(0, moneySign(B.balance)), toned: true },
-    periods: { text: t.periods.length ? plural(t.periods.length, t.bucket) : DASH },
+    // By month, drawn (Bankroll design 21): the year's shape as a strip of bars in place of the count.
+    periods: t.periods.length ? { strip: true, text: plural(t.periods.length, t.bucket) } : { text: DASH, count: true },
     // Phase 10: the places the money sits, against the ledger (USD, the ledger's own currency).
-    money: homes ? { text: homes.locations.length ? mUsd(homes.locationsTotal) : 'Not listed', v: homes.locations.length ? -Math.abs(Math.round(homes.drift)) : 0, toned: homes.locations.length > 0 } : { text: '…' },
+    // A count that disagrees with the ledger is a warning, not a loss (Bankroll design 22): the total in
+    // --text, a --warn dot before it while the places and the ledger differ.
+    money: homes ? { text: homes.locations.length ? mUsd(homes.locationsTotal) : 'Not listed', warn: homes.locations.length > 0 && Math.abs(homes.drift) >= 0.5, count: !homes.locations.length } : { text: '…' },
   };
   const fund = homes && homes.fund ? fundView(homes.fund, mUsd, fmtDate) : null;
 
@@ -172,30 +194,30 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
     );
   });
 
-  const extreme = (x) => (x ? { v: x.amount, text: sm(x.amount), toned: true, title: `${x.label}, ${fmtDate(x.date)}` } : { text: DASH });
+  const extreme = (x, c) => (x ? { v: x.amount, text: c.sm(x.amount), toned: true, title: `${x.label}, ${fmtDate(x.date)}` } : { text: DASH });
 
   const body = {
     summary: (
       <>
         <div className="ovt-table" role="table" aria-label={`Summary, ${scope}`}>
           <Head3 />
-          <Row3 label="Buy-ins" cells={[{ text: m(S.cash.buyins) }, { text: m(S.tournaments.buyins) }, { text: m(S.total.buyins) }]} />
-          <Row3 label="Cash-outs" cells={[{ text: m(S.cash.cashouts) }, { text: m(S.tournaments.cashouts) }, { text: m(S.total.cashouts) }]} />
+          <Row3 label="Buy-ins" cells={[{ text: sumC.m(S.cash.buyins) }, { text: sumT.m(S.tournaments.buyins) }, { text: sumX.m(S.total.buyins) }]} />
+          <Row3 label="Cash-outs" cells={[{ text: sumC.m(S.cash.cashouts) }, { text: sumT.m(S.tournaments.cashouts) }, { text: sumX.m(S.total.cashouts) }]} />
           {S.showCosts && (
             <Row3 label="Tips & costs" title="Cash sessions: tips and table costs"
-              cells={[{ v: S.cash.costs, text: sm(S.cash.costs), toned: true }, { text: DASH }, { v: S.total.costs, text: sm(S.total.costs), toned: true }]} />
+              cells={[{ v: S.cash.costs, text: sumC.sm(S.cash.costs), toned: true }, { text: DASH }, { v: S.total.costs, text: sumX.sm(S.total.costs), toned: true }]} />
           )}
           <Row3 label="Net profit" cells={[
-            { v: S.cash.net, text: sm(S.cash.net), toned: true }, { v: S.tournaments.net, text: sm(S.tournaments.net), toned: true },
-            { v: S.total.net, text: sm(S.total.net), toned: true }]} />
-          <RowTotal label="Expenses & income" v={S.total.other} text={sm(S.total.other)} toned />
+            { v: S.cash.net, text: sumC.sm(S.cash.net), toned: true }, { v: S.tournaments.net, text: sumT.sm(S.tournaments.net), toned: true },
+            { v: S.total.net, text: sumX.sm(S.total.net), toned: true }]} />
+          <RowTotal label="Expenses & income" v={S.total.other} text={sumX.sm(S.total.other)} toned />
           <Row3 strong label="Total result" title="Every result in the range: the profit over the graph" cells={[
-            { v: S.cash.result, text: sm(S.cash.result), toned: true }, { v: S.tournaments.result, text: sm(S.tournaments.result), toned: true },
-            { v: S.total.result, text: sm(S.total.result), toned: true }]} />
+            { v: S.cash.result, text: sumC.sm(S.cash.result), toned: true }, { v: S.tournaments.result, text: sumT.sm(S.tournaments.result), toned: true },
+            { v: S.total.result, text: sumX.sm(S.total.result), toned: true }]} />
           <RowTotal label="Deposits & withdrawals" title="Money moved in or out (transfers included); not a result"
-            v={S.total.moved} text={sm(S.total.moved)} />
+            v={S.total.moved} text={sumX.sm(S.total.moved)} />
           <RowTotal label="Balance change" title="Total result plus money moved: what the balance did over the range"
-            v={S.total.change} text={sm(S.total.change)} toned />
+            v={S.total.change} text={sumX.sm(S.total.change)} toned />
         </div>
         <p className="an-p ovt-note">Total result is the profit over the graph: every result, never money moved. Results are
           gross of any staking shares sold.</p>
@@ -209,20 +231,20 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
           <Row3 label="Bullets" title="Tournament entries, re-entries included" cells={[{ text: DASH }, { text: fmtCount(X.tournaments.bullets) }, { text: DASH }]} />
           <Row3 label="Hours" cells={[{ text: fmtHours(X.cash.hours) }, { text: fmtHours(X.tournaments.hours) }, { text: fmtHours(X.total.hours) }]} />
           <Row3 label={perHour} cells={[
-            { v: X.cash.hourly, text: sm(X.cash.hourly), toned: true }, { text: DASH }, { v: X.total.hourly, text: sm(X.total.hourly), toned: true }]} />
+            { v: X.cash.hourly, text: sesC.sm(X.cash.hourly), toned: true }, { text: DASH }, { v: X.total.hourly, text: sesX.sm(X.total.hourly), toned: true }]} />
           {bbRows}
           <Row3 label="ROI" cells={[{ text: DASH }, { text: fmtPct(X.tournaments.roi, { sign: true }) }, { text: fmtPct(X.total.roi, { sign: true }) }]} />
           <Row3 label="Won % / ITM" title="Cash: winning sessions. Tournaments: cashes per entry (re-entries count), as in Analytics."
             cells={[{ text: fmtPct(X.cash.won) }, { text: fmtPct(X.tournaments.won) }, { text: fmtPct(X.total.won) }]} />
           <Row3 label="Avg buy-in" title="Buy-ins per session or event (rebuys and re-entries included)"
-            cells={[{ text: m(X.cash.avgBuyin) }, { text: m(X.tournaments.avgBuyin) }, { text: m(X.total.avgBuyin) }]} />
+            cells={[{ text: sesC.m(X.cash.avgBuyin) }, { text: sesT.m(X.tournaments.avgBuyin) }, { text: sesX.m(X.total.avgBuyin) }]} />
           <Row3 label="Avg profit" cells={[
-            { v: X.cash.avgProfit, text: sm(X.cash.avgProfit), toned: true }, { v: X.tournaments.avgProfit, text: sm(X.tournaments.avgProfit), toned: true },
-            { v: X.total.avgProfit, text: sm(X.total.avgProfit), toned: true }]} />
+            { v: X.cash.avgProfit, text: sesC.sm(X.cash.avgProfit), toned: true }, { v: X.tournaments.avgProfit, text: sesT.sm(X.tournaments.avgProfit), toned: true },
+            { v: X.total.avgProfit, text: sesX.sm(X.total.avgProfit), toned: true }]} />
           <Row3 label="Avg rebuys" title="Rebuys per cash session; re-entries per tournament"
             cells={[{ text: fmtRatio(X.cash.avgRebuys) }, { text: fmtRatio(X.tournaments.avgRebuys) }, { text: fmtRatio(X.total.avgRebuys) }]} />
-          <Row3 label="Biggest win" cells={[extreme(X.cash.best), extreme(X.tournaments.best), extreme(X.total.best)]} />
-          <Row3 label="Biggest loss" cells={[extreme(X.cash.worst), extreme(X.tournaments.worst), extreme(X.total.worst)]} />
+          <Row3 label="Biggest win" cells={[extreme(X.cash.best, sesC), extreme(X.tournaments.best, sesT), extreme(X.total.best, sesX)]} />
+          <Row3 label="Biggest loss" cells={[extreme(X.cash.worst, sesC), extreme(X.tournaments.worst, sesT), extreme(X.total.worst, sesX)]} />
         </div>
         <p className="an-p ovt-note">Hours, {perHour} and bb/hr are cash only: a tournament result carries no playing time.
           bb/hr is each session&apos;s net over its own big blind, over the hours; a session with no readable big blind in its
@@ -230,17 +252,17 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
           tournaments only. Hands are not recorded, so there is no {cfg.symbol}/100.</p>
       </>
     ),
-    games: <Groups data={games} status={facts.status} dim="game" scope={factsScope} sm={fsm} perHour={`${fcfg.symbol}/h`} />,
-    rooms: <Groups data={rooms} status={facts.status} dim="room" scope={factsScope} sm={fsm} perHour={`${fcfg.symbol}/h`} />,
+    games: <Groups data={games} status={facts.status} dim="game" scope={factsScope} cfg={fcfg} perHour={`${fcfg.symbol}/h`} />,
+    rooms: <Groups data={rooms} status={facts.status} dim="room" scope={factsScope} cfg={fcfg} perHour={`${fcfg.symbol}/h`} />,
     bankroll: (
       <>
         <div className="ovt-table" role="table" aria-label={`Bankroll, ${scope}`}>
-          <BRow label="Balance" note={currency} text={m(B.balance)} v={Math.min(0, moneySign(B.balance))} />
-          <BRow label="Peak" note={B.peak.date ? `all time · ${fmtDate(B.peak.date)}` : 'all time'} text={m(B.peak.value)} />
-          <BRow label="Below the peak" text={below ? sm(-below) : 'At the peak'} v={-below} />
+          <BRow label="Balance" note={currency} text={bnk.m(B.balance)} v={Math.min(0, moneySign(B.balance))} />
+          <BRow label="Peak" note={B.peak.date ? `all time · ${fmtDate(B.peak.date)}` : 'all time'} text={bnk.m(B.peak.value)} />
+          <BRow label="Below the peak" text={below ? bnk.sm(-below) : 'At the peak'} v={-below} />
           <BRow label="Deepest drawdown" note={dd ? `${fmtDate(dd.from)} – ${fmtDate(dd.to)}` : RANGE_TEXT[range]}
-            text={dd ? sm(-dd.amount) : 'None'} v={dd ? -dd.amount : 0} />
-          <BRow label="Deposits & withdrawals" text={sm(B.moved)} />
+            text={dd ? bnk.sm(-dd.amount) : 'None'} v={dd ? -dd.amount : 0} />
+          <BRow label="Deposits & withdrawals" text={bnk.sm(B.moved)} />
           {/* A probability, not money: never green / red. */}
           <BRow label="Risk of ruin" note={ror.note} text={ror.text} />
           {/* Phase 10: the fund's target and pace (the bankroll with role 'fund'; Manage bankrolls sets it). */}
@@ -252,7 +274,9 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
           from a peak inside the range. Risk of ruin is explained under Rules.</p>
       </>
     ),
-    money: homes ? <MoneyPlaces homes={homes} money={mUsd} onSave={onSaveLocations} /> : <p className="an-p ovt-note">Loading…</p>,
+    money: homes ? <MoneyPlaces homes={homes} onSave={onSaveLocations}
+      money={columnMoney([...homes.locations.map((l) => (l.currency === 'USD' ? l.amount : null)), homes.locationsTotal, homes.roll + homes.wsopFund], 8, CURRENCY_CONFIG.USD).m} />
+      : <p className="an-p ovt-note">Loading…</p>,
     periods: t.periods.length ? (
       <div className="ovt-table" role="table" aria-label={`${periodsLabel}, ${scope}`}>
         <div role="row" className="ovt-thead ovt-c4">
@@ -262,11 +286,12 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
           <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>Net</span></span>
         </div>
         {t.periods.map((r) => (
-          <div key={r.key} role="row" className="ovt-row ovt-c4">
+          <div key={r.key} role="row" className="ovt-row ovt-c4 ovt-mrow">
+            <MonthBar v={r.net} max={periodMax} />
             <span role="rowheader" className="an-cell an-td an-clip ovt-lab">{r.label}</span>
-            <Fig v={r.results} text={r.results ? sm(r.results) : DASH} toned />
-            <Fig text={r.moved ? sm(r.moved) : DASH} />
-            <Fig v={r.net} text={sm(r.net)} toned bold />
+            <Fig v={r.results} text={r.results ? per.results.sm(r.results) : DASH} toned />
+            <Fig text={r.moved ? per.moved.sm(r.moved) : DASH} />
+            <Fig v={r.net} text={per.net.sm(r.net)} toned bold />
           </div>
         ))}
       </div>
@@ -291,7 +316,11 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
                   <span className="ovt-name">{label}</span>
                   <span className="ovt-scope">{sec.key === 'money' ? 'as last counted' : isFacts ? factsScope : scope}</span>
                 </span>
-                <span className={'ovt-headline' + (h.toned && h.v != null ? tone(h.v) : '')} aria-hidden={isOpen ? 'true' : undefined}>{h.text}</span>
+                {h.strip ? <MonthStrip periods={t.periods} label={h.text} hidden={isOpen} /> : (
+                  <span className={'ovt-headline' + (h.toned && h.v != null ? tone(h.v) : '') + (h.count ? ' is-count' : '')} aria-hidden={isOpen ? 'true' : undefined}>
+                    {h.warn && <i className="ovt-warn-dot" aria-label="The places and the ledger differ" role="img" />}{h.text}
+                  </span>
+                )}
               </button>
             </h3>
             <div className="ovt-body" id={`ovt-b-${sec.key}`} role="region" aria-labelledby={`ovt-h-${sec.key}`}
@@ -329,7 +358,7 @@ function MoneyPlaces({ homes, money, onSave }) {
       <div className="ovt-table" role="table" aria-label="Where the money is">
         {homes.locations.map((l) => <BRow key={l.id} label={l.name} note={l.currency !== 'USD' ? l.currency : undefined} text={l.currency === 'USD' ? money(l.amount) : `${l.amount.toLocaleString('en-US')} ${l.currency}`} />)}
         {homes.locations.length > 0 && <BRow label="In all" note={homes.foreign ? 'USD places only' : undefined} text={money(homes.locationsTotal)} />}
-        <BRow label="Against the ledger" note={drift.note} text={drift.text} v={drift.tone} />
+        <BRow label="Against the ledger" note={drift.note} text={drift.text} cls={drift.tone < 0 ? 'is-warn' : 'is-quiet'} />
       </div>
       {editing ? (
         <div className="bk-fields bd-fields bd-block ovt-places-edit">
@@ -358,12 +387,12 @@ function MoneyPlaces({ homes, money, onSave }) {
 
 // Bankroll: label | a muted note (what the figure covers) | the value. Without a note the label
 // takes the note's columns too.
-function BRow({ label, note, text, v }) {
+function BRow({ label, note, text, v, cls = '' }) {
   return (
     <div role="row" className="ovt-row ovt-cb">
       <span role="rowheader" aria-colspan={note ? undefined : 2} className={'an-cell an-td an-clip ovt-lab' + (note ? '' : ' ovt-span2')}>{label}</span>
       {note && <span role="cell" className="an-cell an-note ovt-note-4 an-clip">{note}</span>}
-      <span role="cell" className={'an-cell an-td an-num an-clip ovt-fig is-strong' + tone(v)}>{text}</span>
+      <span role="cell" className={'an-cell an-td an-num an-clip ovt-fig' + (cls === 'is-quiet' ? '' : ' is-strong') + (cls ? ' ' + cls : tone(v))}>{text}</span>
     </div>
   );
 }
@@ -372,7 +401,7 @@ function BRow({ label, note, text, v }) {
 // tournament's is ROI), each led by a head row keyed to its column colour. The cash block carries
 // bb/hr beside $/h (utils/bb-hr.js bbColumn): a row with both units, which is rare, runs onto a
 // second 4r line for the big-bet figure (.is-2), so the two are never read as one.
-function Groups({ data, status, dim, scope, sm, perHour }) {
+function Groups({ data, status, dim, scope, cfg, perHour }) {
   if (!data) {
     return <p className="an-p ovt-note">{status === 'error' ? `The ${dim === 'game' ? 'games' : 'rooms'} could not load.` : 'Loading…'}</p>;
   }
@@ -382,14 +411,21 @@ function Groups({ data, status, dim, scope, sm, perHour }) {
     if (rows.length === 0) return false;
     const cash = type === 'cash';
     const col = cash ? bbColumn(rows.map((r) => r.bbhr)) : null;
+    // A column of nothing but dashes is not drawn (Bankroll design 20): its 4g go to the names. Tournament
+    // results carry no playing time, so their Hours column is always one.
+    const hours = rows.some((r) => fmtHours(r.hours) !== DASH);
+    const cols = (cash ? 'ovt-c6' : 'ovt-c5') + (hours ? '' : ' no-hours');
+    // One precision per column (Bankroll design 17): the rate's 6g (cash) and the total's 8g.
+    const rateM = cash ? columnMoney(rows.map((r) => r.rate), 6, cfg) : null;
+    const totM = columnMoney(rows.map((r) => r.total), 8, cfg);
     return (
       <div className="ovt-table ovt-group" role="table" aria-label={`${what}s, ${cash ? 'cash' : 'tournaments'}, ${scope}`}>
-        <div role="row" className={'ovt-thead ' + (cash ? 'ovt-c6' : 'ovt-c5')}>
+        <div role="row" className={'ovt-thead ' + cols}>
           <span role="columnheader" className={'an-cell an-lbl an-lbl-3b ovt-th is-key ' + (cash ? 'is-cash' : 'is-tourn')}>
             <span>{cash ? 'Cash' : 'Tournaments'}</span>
           </span>
           <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>{cash ? 'Sessions' : 'Events'}</span></span>
-          <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>Hours</span></span>
+          {hours && <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>Hours</span></span>}
           <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span className={cash ? 'ovt-unit' : undefined}>{cash ? perHour : 'ROI'}</span></span>
           {cash && <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span className="ovt-unit">{col.label}</span></span>}
           <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>Total</span></span>
@@ -397,17 +433,17 @@ function Groups({ data, status, dim, scope, sm, perHour }) {
         {rows.map((r) => {
           const lines = cash ? col.lines(r.bbhr) : null;
           return (
-            <div key={r.key} role="row" className={'ovt-row ' + (cash ? 'ovt-c6' : 'ovt-c5') + (lines && lines.length > 1 ? ' is-2' : '')}>
+            <div key={r.key} role="row" className={'ovt-row ' + cols + (lines && lines.length > 1 ? ' is-2' : '')}>
               <span role="rowheader" className={'an-cell an-td an-clip ovt-lab' + (r.label == null ? ' is-muted' : '')} title={r.label || undefined}>
                 {r.label == null ? 'Not recorded' : r.label}
               </span>
               <Fig text={fmtCount(r.n)} />
-              <Fig text={fmtHours(r.hours)} />
+              {hours && <Fig text={fmtHours(r.hours)} />}
               {cash
-                ? <Fig v={r.rate} text={sm(r.rate)} toned />
+                ? <Fig v={r.rate} text={rateM.sm(r.rate)} toned />
                 : <Fig text={fmtPct(r.rate, { sign: true })} />}
               {cash && <Fig v={lines[0].tone} text={lines[0].text} toned title={lines[0].unit ? bbBasis(r.bbhr[lines[0].unit]) : undefined} />}
-              <Fig v={r.total} text={sm(r.total)} toned bold />
+              <Fig v={r.total} text={totM.sm(r.total)} toned bold />
               {lines && lines.length > 1 && (
                 <Fig key="bb2" v={lines[1].tone} text={lines[1].text} toned cls="ovt-bb2" title={bbBasis(r.bbhr[lines[1].unit])} />
               )}
@@ -424,5 +460,52 @@ function Groups({ data, status, dim, scope, sm, perHour }) {
       <p className="an-p ovt-note">Sorted by total. Hours are cash only: a tournament result carries no playing time.
         bb/hr is each cash session&apos;s net over its own big blind, over the hours; a session with no readable big blind is left out.</p>
     </>
+  );
+}
+
+/**
+ * By month, drawn (Bankroll design 21). MonthBar: a 1r bar from a zero line at 9g in an open row, 3g = the
+ * largest month, gain to the right and loss to the left, its outer end rounded. MonthStrip: the closed
+ * header's 8g x 3r strip of the year, one 0.5g bar a month on a 0.75g pitch (less when there are more
+ * than eleven), 1.5r = the largest month, oldest first; it reads as the count it replaces.
+ */
+function MonthBar({ v, max }) {
+  const n = Number(v) || 0;
+  if (!max || !n) return null;
+  const w = (Math.abs(n) / max) * 3;
+  return <i className={'ovt-mbar' + (n < 0 ? ' is-neg' : '')} aria-hidden="true" style={{ '--w': w.toFixed(3) }} />;
+}
+function MonthStrip({ periods, label, hidden }) {
+  const rows = [...periods].sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+  const max = rows.reduce((m, r) => Math.max(m, Math.abs(Number(r.net) || 0)), 0);
+  const pitch = Math.min(0.75, 8.25 / Math.max(1, rows.length));
+  return (
+    <span className="ovt-headline ovt-strip" role="img" aria-label={label} aria-hidden={hidden ? 'true' : undefined}>
+      {rows.map((r, i) => {
+        const n = Number(r.net) || 0;
+        const h = max ? (Math.abs(n) / max) * 1.5 : 0;
+        return <i key={r.key} className={'ovt-sbar' + (n < 0 ? ' is-neg' : '')} style={{ '--x': (8 - (rows.length - 1) * pitch - 0.5 + i * pitch).toFixed(3), '--sh': h.toFixed(3) }} />;
+      })}
+    </span>
+  );
+}
+
+/** The section list while the ledger is on the way (Bankroll design 4): each header at its 5r with its
+ *  real name, the headline a quiet 5g block ending on the column's edge. */
+export function OverviewTablesFrame() {
+  return (
+    <div className="ovt is-frame" aria-hidden="true">
+      {SECTIONS.map((sec) => (
+        <section key={sec.key} className="ovt-sec">
+          <div className="ovt-h">
+            <div className="ovt-head">
+              <span className="ovt-chev"><Glyph name="chevronDown" /></span>
+              <span className="ovt-title"><span className="ovt-name">{sec.label}</span></span>
+              <span className="ovt-headline"><Bone w={5} /></span>
+            </div>
+          </div>
+        </section>
+      ))}
+    </div>
   );
 }

@@ -89,13 +89,13 @@ export function moneySign(v) {
  * Whole units decide the sign and the 10k threshold; the compact body rounds the UNROUNDED
  * magnitude once (rounding to whole units first would turn 13,349.63 into $13.4k).
  */
-export function fmtMoney(v, cfg = { symbol: '$', pos: 'pre' }, { sign = false } = {}) {
+export function fmtMoney(v, cfg = { symbol: '$', pos: 'pre' }, { sign = false, whole = false } = {}) {
   if (!fin(v)) return DASH;
   const x = Number(v);
   const r = Math.abs(Math.round(x));
   const a = Math.abs(x);
   let body;
-  if (r >= 1e4) {
+  if (r >= 1e4 && !whole) {
     const k = Math.round(a / 100) / 10;
     body = k >= 1000 ? (Math.round(a / 1e5) / 10).toFixed(1) + 'M' : k.toFixed(1) + 'k';
   } else {
@@ -105,6 +105,32 @@ export function fmtMoney(v, cfg = { symbol: '$', pos: 'pre' }, { sign = false } 
   const s = sg < 0 ? MINUS : sign && sg > 0 ? '+' : '';
   return cfg.pos === 'suf' ? `${s}${body} ${cfg.symbol}` : `${s}${cfg.symbol}${body}`;
 }
+/**
+ * One precision per column (Bankroll design 17): whole units for every figure of a column while its widest
+ * fits the cell, else the compact form for all of them, never "$94.8k" over "−$1,310". The width is the
+ * figure's in g at the table's 13px tabular figures, as measured: a digit, the sign and a one-letter symbol
+ * 0.53g each, a comma 0.27g ("+$254,990" 4.58g, "+$1,254,990" 5.38g, "−$11,254,990" 5.91g), and the figure
+ * keeps 1g clear of the cell's left edge. `values` may hold nulls; `cellG` is the column's width in g.
+ */
+export function columnWhole(values, cellG, cfg = { symbol: '$', pos: 'pre' }) {
+  let max = 0;
+  for (const v of values) if (fin(v)) max = Math.max(max, Math.abs(Math.round(Number(v))));
+  const digits = String(max).length;
+  const commas = Math.floor((digits - 1) / 3);
+  const sym = String(cfg.symbol || '').length + (cfg.pos === 'suf' ? 1 : 0);
+  const w = 0.53 * (1 + sym + digits) + 0.27 * commas + 0.1;
+  return w <= cellG - 1;
+}
+/** fmtMoney for one column: `whole` from columnWhole over the column's figures. */
+export function columnMoney(values, cellG, cfg) {
+  const whole = columnWhole(values, cellG, cfg);
+  return {
+    whole,
+    m: (v) => fmtMoney(v, cfg, { whole }),
+    sm: (v) => fmtMoney(v, cfg, { sign: true, whole }),
+  };
+}
+
 /** A ratio as a percentage: one decimal under 10%, whole above. A value that shows as 0 is unsigned. */
 export function fmtPct(x, { sign = false } = {}) {
   if (!fin(x)) return DASH;

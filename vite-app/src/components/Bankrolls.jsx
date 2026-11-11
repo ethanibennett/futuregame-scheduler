@@ -15,6 +15,7 @@ import { CURRENCY_CONFIG, formatCurrencyAmount, getToday } from '../utils/utils.
 import { BANKROLL_ALL, BANKROLL_MAIN, entryBankrollKey } from '../utils/bankrolls.js';
 import MoneyField from './MoneyField.jsx';
 import { shortDay } from '../utils/transactions.js';
+import { Bone } from './SkeletonBankroll.jsx';
 
 const money = (v, cur) => formatCurrencyAmount(Math.round(v || 0), cur || 'USD');
 const signed = (v, cur) => (v > 0 ? '+' : '') + money(v, cur);
@@ -32,10 +33,12 @@ export function BankrollSwitcher({ bk, balances, onManage }) {
         {(() => {
           const cur = cells.find((c) => c.id === bk.selected) || cells[0];
           const bal = balances.get(cur.id) || { balance: 0, currency: 'USD' };
+          // Until the summary lands nothing here is known (Bankroll design 4): quiet blocks, never "All $0".
+          const loading = !bk.summary;
           return (
-            <label className="bk-cell bk-pick">
-              <span className="bk-cell-name">{cur.name}</span>
-              <span className={'bk-cell-bal' + tone(bal.balance)}>{money(bal.balance, bal.currency)}</span>
+            <label className={'bk-cell bk-pick' + (loading ? ' is-loading' : '')} aria-busy={loading ? 'true' : undefined}>
+              <span className="bk-cell-name">{loading ? <Bone w={5} /> : cur.name}</span>
+              <span className={'bk-cell-bal' + (loading ? '' : tone(bal.balance))}>{loading ? <Bone w={6} h={2} /> : money(bal.balance, bal.currency)}</span>
               <svg className="bk-pick-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
               {/* The native list (on a phone, the system picker), laid over the whole tile. */}
               <select className="bk-pick-select" aria-label="Bankroll" value={String(cur.id)}

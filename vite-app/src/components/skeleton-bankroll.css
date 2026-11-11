@@ -1,0 +1,23 @@
+/* The Bankroll tab's loading frame (SkeletonBankroll.jsx; Bankroll design 4 and 95). Still blocks, no
+   shimmer. Every size is whole g by whole r; a bone's bottom sits on the r line its text will sit on. */
+.sk-bone {
+  display: inline-block; vertical-align: bottom; flex: none;
+  width: calc(var(--gu) * var(--w)); height: calc(var(--subrow) * var(--h));
+  border-radius: var(--radius-xs);
+  background: var(--border);
+}
+.sk-line { display: flex; align-items: flex-end; height: calc(var(--subrow) * var(--lh)); }
+.sk-line.is-end { justify-content: flex-end; }
+.sk-blocks { display: flex; flex-direction: column; gap: calc(var(--subrow) * 2); }
+.sk-block {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--subrow);
+  height: calc(var(--subrow) * var(--bh)); box-sizing: border-box;
+  padding: calc(var(--subrow) * 2) var(--gu);
+  overflow: hidden;
+}
+.sk-block.is-card {
+  background: var(--surface); border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1);
+}
+.sk-block .sk-bone { background: var(--surface2); }
+.sk-block .sk-bone.is-end { align-self: flex-end; }

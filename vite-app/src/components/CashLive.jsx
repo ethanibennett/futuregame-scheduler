@@ -50,9 +50,14 @@ export function ResultsKindTabs() {
     try { localStorage.setItem(LAST_KEY, JSON.stringify(next)); } catch { /* private mode */ }
   }, [kind]); // eslint-disable-line react-hooks/exhaustive-deps
   const shown = (g) => (g.keys.includes(kind) ? kind : (g.keys.includes(last[g.id]) ? last[g.id] : g.keys[0]));
-  const openMenu = (g) => {
+  // The menu hangs from its own chip (Bankroll design 2): a chip in the strip's left half opens it from the
+  // strip's left edge, one in the right half from its right edge, so the 17g panel's edge is the chip's.
+  const openMenu = (g, el) => {
     const r = stripRef.current ? stripRef.current.getBoundingClientRect() : null;
-    setMenu((m) => (m && m.id === g.id ? null : { id: g.id, top: r ? r.bottom : 0 }));
+    const c = el ? el.getBoundingClientRect() : null;
+    const right = !!(r && c && c.left + c.width / 2 > r.left + r.width / 2);
+    const pos = !r ? { left: 0 } : right ? { right: document.documentElement.clientWidth - r.right } : { left: r.left };
+    setMenu((m) => (m && m.id === g.id ? null : { id: g.id, top: r ? r.bottom : 0, right, pos }));
   };
   const pick = (k) => { setMenu(null); setResultsKind(k); };
   const open = menu && RESULTS_GROUPS.find((g) => g.id === menu.id);
@@ -76,7 +81,7 @@ export function ResultsKindTabs() {
                 onClick={() => pick(k)}><span className="kind-toggle-label">{SECTION_LABEL[k]}</span></button>
               <button type="button" className={'kind-toggle-caret' + (on ? ' active' : '')} aria-haspopup="menu"
                 aria-expanded={!!(menu && menu.id === g.id)} aria-label={`${g.label}: ${g.keys.map((x) => SECTION_LABEL[x]).join(', ')}`}
-                onClick={() => openMenu(g)}><Caret /></button>
+                onClick={(e) => openMenu(g, e.currentTarget.parentElement)}><Caret /></button>
             </div>
           );
         })}
@@ -84,7 +89,7 @@ export function ResultsKindTabs() {
       {open && createPortal(
         <>
           <div className="dropdown-backdrop" style={{ zIndex: 'var(--z-scrim)' }} onClick={() => setMenu(null)} />
-          <div className="online-room-menu rk-menu" role="menu" aria-label={open.label} style={{ top: menu.top }}>
+          <div className={'online-room-menu rk-menu' + (menu.right ? ' is-right' : '')} role="menu" aria-label={open.label} style={{ top: menu.top, ...menu.pos }}>
             {open.keys.map((k) => (
               <button key={k} type="button" role="menuitemradio" aria-checked={kind === k}
                 className={'rk-menu-item' + (kind === k ? ' is-on' : '')} onClick={() => pick(k)}>

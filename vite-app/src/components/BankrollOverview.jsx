@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { MoneyParts } from './SwissParts.jsx';
 import { API_URL } from '../utils/api.js';
-import { normaliseHomes, fundView } from '../utils/money-homes.js';
+import { normaliseHomes, fundView, fundPaceToday } from '../utils/money-homes.js';
+import { BoneLine } from './SkeletonBankroll.jsx';
 import { CURRENCY_CONFIG, formatCurrencyAmount } from '../utils/utils.js';
 import {
   RANGES, RANGE_NOUN, rangeWindow, within, balanceSeries, chartSpan,
@@ -10,7 +11,7 @@ import {
 import { ledgerScope } from '../utils/bankroll-overview.js';
 import { setResultsKind } from '../hooks/useLiveCashSession.js';
 import BankrollChart from './BankrollChart.jsx';
-import BankrollOverviewTables from './BankrollOverviewTables.jsx';
+import BankrollOverviewTables, { OverviewTablesFrame } from './BankrollOverviewTables.jsx';
 
 /**
  * The bankroll dashboard's Overview tab (beta, app admins). The layout of a serious poker tracker,
@@ -96,6 +97,14 @@ export default function BankrollOverview({ d, risk, bk, bkKey, currency: asked, 
   };
   const toggleFill = () => { const v = !fill; setFillState(v); store.set('bankrollFill', v ? '1' : '0'); };
 
+  // The WSOP fund's own Overview (Bankroll design 14): the bankroll in hand is the one whose Role is the
+  // fund. Its hero names the target, and its graph opens in Balance from its first entry, against the pace.
+  const bRow = sc.key !== 'all' ? (bk.bankrolls || []).find((x) => String(x.id) === sc.key) : null;
+  const fund = bRow && bRow.role === 'fund' && homes && homes.fund && String(homes.fund.bankrollId) === sc.key && homes.fund.target > 0 ? homes.fund : null;
+  const [fundMode, setFundMode] = useState('balance');
+  const gMode = fund ? fundMode : mode;
+  const chartRange = fund && gMode === 'balance' ? 'all' : range;
+
   const entries = d.entries;
   const view = useMemo(() => {
     const w = rangeWindow(range, today);
@@ -114,6 +123,19 @@ export default function BankrollOverview({ d, risk, bk, bkKey, currency: asked, 
       recent: recentResults(win, 6),
     };
   }, [d, entries, range, today]);
+  // The graph's own window: the range's, except the fund's Balance, which runs from its first entry.
+  const gView = useMemo(() => {
+    if (chartRange === range) return view;
+    const w = rangeWindow(chartRange, today);
+    const win = within(entries, w);
+    const { start, end } = chartSpan(w, win, today);
+    return { ...view, start, end, rows: gameSeries(win, { from: start }), balPts: balanceSeries(win, { opening: d.opening.total_display, from: w.from }) };
+  }, [view, chartRange, range, entries, today, d]);
+  // A young bankroll (Bankroll design 12): its first entry is later than the range's start, so the axis
+  // starts there (with 1g of lead-in) instead of months of flat zero.
+  const firstDay = entries.length ? entries[0].date : null;
+  const young = !!(firstDay && chartRange !== 'all' && firstDay > gView.start && firstDay <= gView.end);
+  const gStart = young ? firstDay : gView.start;
 
   const s = view.stats;
   const noun = RANGE_NOUN[range];
@@ -125,38 +147,63 @@ export default function BankrollOverview({ d, risk, bk, bkKey, currency: asked, 
   // of their own, so the note says so whenever they move it. Balance: one line, deposits included.
   const cfg = CURRENCY_CONFIG[currency] || CURRENCY_CONFIG.USD;
   const tick = (v, step) => compactMoney(v, { ...cfg, step });
-  const lastRow = view.rows[view.rows.length - 1];
-  const has = { total: view.rows.length > 1, tourn: s.mtt.events > 0, cash: s.cash.sessions > 0 };
-  const chartLines = mode === 'profit'
-    ? SERIES.map(([key, label]) => ({ key, label, on: shown.includes(key), has: has[key], points: seriesLine(view.rows, key), end: lastRow[key] }))
+  const compact = (v) => compactMoney(v, cfg);
+  const lastRow = gView.rows[gView.rows.length - 1];
+  const has = { total: gView.rows.length > 1, tourn: s.mtt.events > 0, cash: s.cash.sessions > 0 };
+  const balLine = { key: 'balance', label: 'Balance', on: true, has: gView.balPts.length > 1 || gView.balPts[0].value !== 0, points: gView.balPts, end: gView.balPts[gView.balPts.length - 1].value };
+  // The fund's pace (Bankroll design 14): the server's own test drawn, from nothing on its first entry to
+  // where the target says it should stand today (utils/money-homes fundPaceToday).
+  const paceToday = fund ? fundPaceToday(fund, today) : null;
+  const paceLine = fund && paceToday != null && fund.firstActivityDate
+    ? { key: 'pace', label: 'Pace today', on: true, has: true, straight: true, fixed: true, points: [{ date: fund.firstActivityDate, value: 0 }, { date: today, value: paceToday }], end: paceToday }
+    : null;
+  const chartLines = gMode === 'profit'
+    ? SERIES.map(([key, label]) => ({ key, label, on: shown.includes(key), has: has[key], points: seriesLine(gView.rows, key), end: lastRow[key] }))
     // A range with no entries still has a balance, the one carried in: it draws flat at that and the
     // pill shows it (the hero on the same screen does). Only an empty, zero bankroll says nothing.
-    : [{ key: 'balance', label: 'Balance', on: true, has: view.balPts.length > 1 || view.balPts[0].value !== 0, points: view.balPts, end: view.balPts[view.balPts.length - 1].value }];
-  const chartNote = mode === 'balance' ? 'Balance, deposits and withdrawals included'
-    : shown.includes('total') && lastRow.other !== 0 ? `Total includes expenses & income ${signed(lastRow.other)}`
-      : 'Cumulative results';
+    : [balLine, ...(paceLine ? [paceLine] : [])];
+  const chartNote = fund && gMode === 'balance' ? 'Balance against the pace to the target'
+    : gMode === 'balance' ? 'Balance, deposits and withdrawals included'
+      : shown.includes('total') && lastRow.other !== 0 ? `Total includes expenses & income ${signed(lastRow.other)}`
+        : 'Cumulative results';
+  const usd = (x) => formatCurrencyAmount(Math.round(x || 0), 'USD');
 
   return (
     <>
       {/* Hero: the balance now | the range's profit. */}
+      {/* The balance leads (Bankroll design 5): one figure at the top size; the range's profit a step down.
+          On the fund's own page the second column is the target (Bankroll design 14). */}
       <div className={'bd-hero' + (busy ? ' is-busy' : '')} aria-busy={busy ? 'true' : undefined}>
         <div className="bd-hero-col">
           <div className="an-cell an-lbl an-lbl-2 an-clip">Balance</div>
-          <div className={'an-cell bd-hero-val an-clip' + (d.closing.total_display < 0 ? ' an-neg' : '')}><MoneyParts text={money(d.closing.total_display)} /></div>
+          <div className={'an-cell bd-hero-val bd-hero-bal an-clip' + (d.closing.total_display < 0 ? ' an-neg' : '')}><MoneyParts text={money(d.closing.total_display)} /></div>
           <div className="an-cell an-note bd-note-3 an-clip">{currency} · {sc.key === 'all' ? 'every bankroll' : sc.name}</div>
         </div>
-        <div className="bd-hero-col an-num">
-          <div className="an-cell an-lbl an-lbl-2 an-clip">Profit · {rangeLabel}</div>
-          <div className={'an-cell bd-hero-val an-clip' + tone(s.results)}><MoneyParts text={signed(s.results)} /></div>
-          <div className="an-cell an-note bd-note-3 an-clip">
-            {count(s.mtt.events)} {s.mtt.events === 1 ? 'event' : 'events'} · {count(s.cash.sessions)} cash {s.cash.sessions === 1 ? 'session' : 'sessions'}
+        {fund ? (
+          <div className="bd-hero-col an-num">
+            <div className="an-cell an-lbl an-lbl-2 an-clip">Target{fund.targetDate ? ' · ' + fmtDate(fund.targetDate) : ''}</div>
+            <div className="an-cell bd-hero-val bd-hero-pl an-clip"><MoneyParts text={usd(fund.target)} /></div>
+            <div className="an-cell an-note bd-note-3 an-clip">
+              {fund.pace && fund.pace.left > 0
+                ? `${usd(fund.pace.left)} to go${fund.pace.needPerMonth != null && fund.pace.monthsLeft > 0 ? ' · ' + usd(fund.pace.needPerMonth) + ' a month' : ''}`
+                : 'The target is met'}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="bd-hero-col an-num">
+            <div className="an-cell an-lbl an-lbl-2 an-clip">Profit · {rangeLabel}</div>
+            <div className={'an-cell bd-hero-val bd-hero-pl an-clip' + tone(s.results)}><MoneyParts text={signed(s.results)} /></div>
+            <div className="an-cell an-note bd-note-3 an-clip">
+              {count(s.mtt.events)} {s.mtt.events === 1 ? 'event' : 'events'} · {count(s.cash.sessions)} cash {s.cash.sessions === 1 ? 'session' : 'sessions'}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* The WSOP fund as a goal you can see (UX pick 87): its bar, with a tick at the share of the time
-          gone, at the top of the Overview, where it was three rows of text in a folded table. */}
-      {(() => {
+          gone, at the top of the Overview, where it was three rows of text in a folded table. Not on the
+          fund's own page, whose hero and graph say it (Bankroll design 14). */}
+      {!fund && (() => {
         const f = homes && homes.fund && homes.fund.target > 0 ? homes.fund : null;
         if (!f) return null;
         const usdM = (x) => formatCurrencyAmount(Math.round(x || 0), 'USD');
@@ -178,10 +225,11 @@ export default function BankrollOverview({ d, risk, bk, bkKey, currency: asked, 
         );
       })()}
 
-      <BankrollChart lines={chartLines} onToggle={mode === 'profit' ? toggleSeries : null} fill={fill} onFill={toggleFill}
-        start={view.start} end={view.end} money={mode === 'profit' ? signed : money} tick={tick} fmtDate={fmtDate}
-        zero={mode === 'profit'} what={mode === 'profit' ? 'Cumulative results' : 'Balance'} note={chartNote} busy={busy}
-        control={<Segmented className="bd-mode" label="Graph" options={[['profit', 'Profit'], ['balance', 'Balance']]} value={mode} onChange={setMode} />} />
+      <BankrollChart lines={chartLines} onToggle={gMode === 'profit' ? toggleSeries : null} fill={fill} onFill={toggleFill}
+        start={gStart} end={gView.end} lead={young} money={gMode === 'profit' ? signed : money} tick={tick} compact={compact} fmtDate={fmtDate}
+        zero={gMode === 'profit'} what={gMode === 'profit' ? 'Cumulative results' : 'Balance'} note={chartNote} busy={busy}
+        markPeaks={gMode === 'balance' && !fund} endDots={!!paceLine && gMode === 'balance'}
+        control={<Segmented className="bd-mode" label="Graph" options={[['profit', 'Profit'], ['balance', 'Balance']]} value={gMode} onChange={fund ? setFundMode : setMode} />} />
       <Segmented className="bd-range" label="Range" options={RANGES} value={range} onChange={setRange} />
 
       {view.win.length === 0 && <p className="an-p bd-after">Nothing in the ledger for {noun}.</p>}
@@ -197,18 +245,20 @@ export default function BankrollOverview({ d, risk, bk, bkKey, currency: asked, 
         {view.recent.length > 0 && (
           <ul className={'bd-recent' + (busy ? ' is-busy' : '')} aria-label="Latest sessions" aria-busy={busy ? 'true' : undefined}>
             {view.recent.map((e) => (
+              /* Read like the tables (Bankroll design 23): the name and what it was on the left, the amount and
+                 its day on the right, every amount ending on the column's edge. */
               <li key={e.source + ':' + e.ref.id} className="bd-recent-row">
                 <div className="bd-recent-l">
-                  <span className={'an-cell bd-recent-amt an-clip' + tone(e.amount_display)}>{signed(e.amount_display)}</span>
-                  <span className="an-cell an-note an-clip">{fmtDate(e.date)}</span>
-                </div>
-                <div className="bd-recent-r an-num">
                   <span className="an-cell bd-recent-name an-clip" title={e.label}>{e.label.replace(/^Cash /, '')}</span>
                   <span className="an-cell an-note an-clip">
                     {e.source === 'cash-sessions'
                       ? `Cash${Number(e.hours) > 0 ? ' · ' + hrs(Number(e.hours)) : ''}`
                       : `Tournament${Number(e.units) > 1 ? ` · ${e.units} bullets` : ''}`}
                   </span>
+                </div>
+                <div className="bd-recent-r an-num">
+                  <span className={'an-cell bd-recent-amt an-clip' + tone(e.amount_display)}>{signed(e.amount_display)}</span>
+                  <span className="an-cell an-note an-clip">{fmtDate(e.date)}</span>
                 </div>
               </li>
             ))}
@@ -223,3 +273,37 @@ export default function BankrollOverview({ d, risk, bk, bkKey, currency: asked, 
   );
 }
 
+
+/**
+ * The Overview while its ledger is on the way (Bankroll design 4): the page's frame at its loaded heights
+ * (the hero 9r, the graph 26r under its head and pills, the range 4r, each section header 5r). Labels,
+ * controls and section names are real; every figure not yet known is a quiet block on its text's r line,
+ * never "$0". The heights come from the same rules as the loaded page, so nothing jumps when it lands.
+ */
+export function OverviewFrame({ today, fmtDate }) {
+  const lines = SERIES.map(([key, label]) => ({ key, label, on: true, has: false, points: [], end: 0 }));
+  const range = store.get('bankrollRange', 'ytd', (v) => RANGE_KEYS.has(v));
+  const mode = store.get('bankrollChart', 'profit', (v) => v === 'profit' || v === 'balance');
+  const none = () => {};
+  return (
+    <div className="bd-frame" role="status" aria-busy="true" aria-label="Loading the bankroll">
+      <div className="bd-hero">
+        <div className="bd-hero-col">
+          <div className="an-cell an-lbl an-lbl-2">Balance</div>
+          <BoneLine h={4} w={9} bh={2} />
+          <BoneLine h={3} w={8} />
+        </div>
+        <div className="bd-hero-col">
+          <div className="an-cell an-lbl an-lbl-2 an-num">Profit</div>
+          <BoneLine h={4} w={9} bh={2} end />
+          <BoneLine h={3} w={14} end />
+        </div>
+      </div>
+      <BankrollChart loading lines={lines} start={today} end={today} money={() => ''} tick={() => ''} fmtDate={fmtDate}
+        fill onFill={none} note={mode === 'balance' ? 'Balance, deposits and withdrawals included' : 'Cumulative results'}
+        control={<Segmented className="bd-mode" label="Graph" options={[['profit', 'Profit'], ['balance', 'Balance']]} value={mode} onChange={none} />} />
+      <Segmented className="bd-range" label="Range" options={RANGES} value={range} onChange={none} />
+      <OverviewTablesFrame />
+    </div>
+  );
+}

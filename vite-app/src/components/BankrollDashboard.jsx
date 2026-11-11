@@ -7,7 +7,8 @@ import { portalTarget } from '../utils/grid-panel.js';
 import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
 import { goalProgress, ledgerToCsv, fmtRule } from '../utils/bankroll-ledger.js';
 import BankrollFab from './BankrollFab.jsx';
-import BankrollOverview from './BankrollOverview.jsx';
+import BankrollOverview, { OverviewFrame } from './BankrollOverview.jsx';
+import { LoadFailed } from './EmptyState.jsx';
 import BankrollImport from './BankrollImport.jsx';
 import BankrollImportDashboard from './BankrollImportDashboard.jsx';
 import BankrollReports from './BankrollReports.jsx';
@@ -109,9 +110,31 @@ function Rules({ guide, prefs, money, onSave, saving }) {
             note={`${guide.cash.buyins} buy-ins for a stake${custom.cash ? '' : ' (default)'}`} />
         </div>
       )}
-      {signal && (
-        <p className="an-p"><strong className={signal.cls}>{signal.head}.</strong> {signal.text}</p>
-      )}
+      {/* The rule's verdict is the page's answer (Bankroll design 25): a block in the Goals' form, 2r under
+          the stats. Its head says the verdict and the two figures it compares; the bar puts the cap at 80%
+          of its width with a tick, the average as the fill, and what runs past the cap in --neg (an average
+          far over it is clamped at the bar's end, the figure still exact). */}
+      {signal && (() => {
+        const avg = Number(g.recentAvg) || 0, cap = Number(g.cap) || 0;
+        const bar = g.signal !== 'none' && g.reason !== 'empty' && avg > 0 && cap > 0;
+        const at = (v) => Math.min(100, (v / cap) * 80);
+        return (
+          <div className="bd-goal bd-verdict">
+            <div className="bd-goal-head bd-verdict-head">
+              <span className={'an-cell an-td an-clip bd-verdict-word ' + signal.cls}>{signal.head}</span>
+              <span className="an-cell an-td an-num an-clip">{bar ? `${money(avg)} average · cap ${money(cap)}` : `cap ${money(cap)}`}</span>
+            </div>
+            {bar && (
+              <div className="bd-bar" role="img" aria-label={`Average ${money(avg)} against a cap of ${money(cap)}`}>
+                <div className={'bd-bar-fill' + (g.signal === 'up' ? ' is-done' : '')} style={{ width: at(Math.min(avg, cap)).toFixed(2) + '%' }} />
+                {avg > cap && <div className="bd-bar-over" style={{ left: '80%', width: (at(avg) - 80).toFixed(2) + '%' }} />}
+                <div className="bd-bar-pace" style={{ left: '80%' }} />
+              </div>
+            )}
+            <div className="an-cell an-note bd-note-3 an-clip">{signal.text}</div>
+          </div>
+        );
+      })()}
       <div className="bk-fields bd-fields bd-block">
         <label className="bk-field">
           <span className="bk-field-label">MTT: buy-ins in the roll</span>
@@ -153,11 +176,18 @@ function Goals({ goals, entries, money, today, onSave, saving, currency }) {
         const what = `${g.period === 'month' ? 'Monthly' : 'Yearly'} ${g.metric === 'profit' ? 'profit' : 'volume'}`;
         const fmt = (v) => (g.metric === 'profit' ? money(v) : `${Math.round(v).toLocaleString()} played`);
         const pct = Math.max(0, Math.min(1, p.fraction));
+        // Where it stands (Bankroll design 24): behind its pace, the track from the fill to the tick is drawn
+        // in --warn-line, the tick in --warn and the note says so; the achieved figure leads.
+        const behind = p.fraction < 1 && p.elapsed < 1 && p.fraction < p.elapsed;
+        const pctText = `${Math.round(p.fraction * 100)}`.replace('-', MINUS);
         return (
           <div key={g.id} className="bd-goal">
             <div className="bd-goal-head">
               <span className="an-cell an-td an-clip">{what}</span>
-              <span className={'an-cell an-td an-num an-clip' + (p.fraction >= 1 ? ' an-pos' : '')}>{fmt(p.done)} of {fmt(p.target)}</span>
+              <span className="an-cell an-td an-num an-clip">
+                <strong className={'bd-goal-done' + (p.done < 0 ? ' an-neg' : p.fraction >= 1 ? ' an-pos' : '')}>{fmt(p.done)}</strong>
+                <span className="bd-goal-of"> of {fmt(p.target)}</span>
+              </span>
               <button type="button" className="bd-x" aria-label={`Remove the ${what.toLowerCase()} goal`} disabled={saving}
                 onClick={() => save(list.filter((x) => x.id !== g.id))}>
                 <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1L9 9M9 1L1 9" /></svg>
@@ -165,10 +195,12 @@ function Goals({ goals, entries, money, today, onSave, saving, currency }) {
             </div>
             <div className="bd-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct * 100)}>
               <div className={'bd-bar-fill' + (p.fraction >= 1 ? ' is-done' : '')} style={{ width: `${pct * 100}%` }} />
-              {p.elapsed < 1 && <div className="bd-bar-pace" style={{ left: `${p.elapsed * 100}%` }} />}
+              {behind && <div className="bd-bar-gap" style={{ left: `${pct * 100}%`, width: `${(p.elapsed - pct) * 100}%` }} />}
+              {p.elapsed < 1 && <div className={'bd-bar-pace' + (behind ? ' is-warn' : '')} style={{ left: `${p.elapsed * 100}%` }} />}
             </div>
             <div className="an-cell an-note an-clip">
-              {Math.round(p.fraction * 100)}% done · {Math.round(p.elapsed * 100)}% of the {g.period} gone{p.fraction >= 1 ? ' · reached' : p.ahead ? ' · ahead of pace' : ''}
+              {pctText}% done · {Math.round(p.elapsed * 100)}% of the {g.period} gone
+              {p.fraction >= 1 ? <span className="bd-up"> · reached</span> : behind ? <span className="bd-warn"> · behind pace</span> : p.ahead && p.elapsed < 1 ? <span className="bd-up"> · ahead of pace</span> : ''}
             </div>
           </div>
         );
@@ -331,10 +363,15 @@ export default function BankrollDashboard({ bk, onClose = () => {}, initialTab =
             <>
               {!inline && <Seg cols="bd-seg4" label="Bankroll" options={chips} value={key} onChange={setKey} />}
               {!inline && <TabStrip className="bd-tabs" label="Show" options={TABS} value={tab} onChange={setTab} btnClass="bk-seg-btn bd-tab" />}
-              {ledger.status === 'error' && <p className="an-p">The ledger could not load. Close and try again.</p>}
+              {ledger.status === 'error' && (
+                <div className="bd-block">
+                  <LoadFailed title="Your bankroll did not load" onRetry={() => setVersion((v) => v + 1)} />
+                </div>
+              )}
               {d && d.sources.some((s) => !s.ok) && (
                 <p className="an-p">Not included (a ledger source failed): {d.sources.filter((s) => !s.ok).map((s) => s.name).join(', ')}.</p>
               )}
+              {tab === 'balance' && !d && ledger.status === 'loading' && <OverviewFrame today={today} fmtDate={fmtDate} />}
               {tab === 'balance' && d && (
                 <BankrollOverview d={d} risk={risk} bk={bk} bkKey={key} currency={currency}
                   today={today} fmtDate={fmtDate} onClose={onClose} />

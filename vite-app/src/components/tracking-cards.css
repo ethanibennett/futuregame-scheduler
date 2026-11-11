@@ -175,8 +175,17 @@
 /* The grouped section strip (CashLive.jsx ResultsKindTabs): four 8g chips in one row, 1g apart (35g),
    as the Schedule's kind toggles: MTT/Cash, Insights and Manage the Online chip's 6g label + 2g caret,
    Overview a plain chip (owner, 2026-10-20). */
-/* The group's menu: the Online menu's panel, one 4r row per section, the one in view in the accent. */
-.rk-menu { padding: var(--subrow) 0; }
+/* The group's menu (Bankroll design 2): two chips wide (17g) and hung from its own chip, its edge on the
+   chip's edge (ResultsKindTabs sets left or right: the strip's left half opens from the strip's left, the
+   right half from its right), 1r under the strip. Three 4r rows, no padding, so the panel is a whole 12r;
+   a hairline ring and the elevation token every other sheet uses, not the Online menu's literal shadow. */
+.online-room-menu.rk-menu {
+  right: auto;
+  width: calc(var(--gu) * 17);
+  padding: 0; border: 0;
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-2);
+}
+.online-room-menu.rk-menu.is-right { left: auto; }
 .rk-menu-item {
   display: flex; align-items: center;
   width: 100%; height: calc(var(--subrow) * 4);
@@ -186,7 +195,7 @@
   letter-spacing: var(--track-caps); text-transform: uppercase; text-align: left;
   color: var(--text-muted); cursor: pointer;
 }
-.rk-menu-item.is-on { color: var(--accent); }
+.rk-menu-item.is-on { color: var(--brand-ink, var(--brand)); }
 .rk-menu-item + .rk-menu-item { box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
 @media (hover: hover) and (pointer: fine) { .rk-menu-item:hover { color: var(--text); background: var(--hover-overlay); } }
 .rk-menu-item:focus-visible { outline: var(--focus-ring); outline-offset: calc(var(--bw-2) * -1); }
@@ -202,5 +211,39 @@
 .kind-toggles.results-kind-tabs .kind-toggle::after, .kind-toggles.results-kind-tabs .kind-toggle-caret::after,
 .kind-toggles.tr-add-kind .kind-toggle::after, .kind-toggles.tr-add-kind .kind-toggle-caret::after { inset: 0; }
 .kind-toggles.results-kind-tabs .kind-toggle-caret svg { width: calc(var(--subrow) * 1.5); height: calc(var(--subrow) * 1.5); }
+/* One selected state on the Bankroll tab (Bankroll design 1): the section chip, its caret and the Goals
+   toggles take the range control's tint (.bd-seg > button.is-on), not the grey accent (a literal
+   rgba(160,160,160,.1)) nor a 3px brand ring. Boxes unchanged. Scoped: the Schedule's kind toggles keep theirs. */
+.kind-toggles.results-kind-tabs .kind-toggle.active,
+.kind-toggles.results-kind-tabs .kind-toggle-caret.active {
+  background: var(--brand-quiet); border-color: var(--brand); color: var(--brand-ink, var(--brand));
+}
+.bd-seg2 .bk-seg-btn.is-on { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-fine) var(--brand); color: var(--brand-ink, var(--brand)); }
+
+/* The pointer (Bankroll design 3 and 88): one recipe for everything a pointer can press on the tab, the
+   rail's: a --hover-overlay fill over the control's own background, a muted label to --text, a ring or
+   border from --border to --border-strong, over --dur-fast. A full-width row's fill bleeds 1g either side
+   (the zebra rows already do), so its text never touches the fill's edge. Pointer devices only: a touch
+   never keeps a stuck hover. */
+.kind-toggles.results-kind-tabs .kind-toggle, .kind-toggles.results-kind-tabs .kind-toggle-caret,
+.bd-seg > button, .bd-sp, .bd-opt, .bk-cell.bk-act, .bk-cell.bk-pick, .bd-inline .bk-btn, .ovt-head, .ovt-row {
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .kind-toggles.results-kind-tabs .kind-toggle:not(.active):hover,
+  .kind-toggles.results-kind-tabs .kind-toggle-caret:not(.active):hover,
+  .bk-cell.bk-act:hover, .bk-cell.bk-pick:hover {
+    background-image: linear-gradient(var(--hover-overlay), var(--hover-overlay));
+    border-color: var(--border-strong); color: var(--text);
+  }
+  .bk-cell.bk-pick:hover .bk-cell-name { color: var(--text); }
+  .bd-seg > button:not(.is-on):hover, .bd-opt:not(.is-on):hover, .bd-sp:not(.is-on):hover, .bd-inline .bk-btn:not(:disabled):not(.bk-btn--brand):hover {
+    background-image: linear-gradient(var(--hover-overlay), var(--hover-overlay)); color: var(--text);
+  }
+  .bd-opt:not(.is-on):hover, .bd-sp:not(.is-on):hover { box-shadow: inset 0 0 0 var(--bw-hair) var(--border-strong); }
+  .ovt-head:hover, .ovt-row:hover { background-image: linear-gradient(var(--hover-overlay), var(--hover-overlay)); }
+  .ovt-head:hover .ovt-name, .ovt-head:hover .ovt-chev { color: var(--text); }
+}
 /* "Search all events" under the log form's event list (UX pick 80): the field's 5r, 1r under it. */
 .tr-search-all { display: block; width: 100%; box-sizing: border-box; margin-top: var(--subrow); }

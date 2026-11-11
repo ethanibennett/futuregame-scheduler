@@ -353,3 +353,19 @@ test('Games and rooms: a cash row carries bb/hr; a tournament row none', () => {
   assert.ok(Math.abs(g.cash[0].bbhr.bb.rate - (100 - 140) / 8) < 1e-9, 'native_profit (500), not the converted profit (600)');
   assert.equal(g.tournament[0].bbhr, null);
 });
+
+test('columnWhole: whole dollars while the widest figure fits its cell (Bankroll design 17)', async () => {
+  const { columnWhole, columnMoney } = await import('../bankroll-overview.js');
+  const usd = { symbol: '$', pos: 'pre' };
+  assert.equal(columnWhole([94800, -1310, null], 8, usd), true);
+  assert.equal(columnWhole([11254990], 8, usd), true);          // 5.91g in an 8g cell
+  assert.equal(columnWhole([1254990], 5, usd), false);          // 5.38g does not fit 5g less 1g
+  assert.equal(columnWhole([254990], 6, usd), true);
+  assert.equal(columnWhole([], 8, usd), true);
+  const c = columnMoney([94800, -1310], 8, usd);
+  assert.equal(c.sm(94800), '+$94,800');
+  assert.equal(c.sm(-1310), '−$1,310');
+  const k = columnMoney([1254990, 12], 5, usd);
+  assert.equal(k.m(1254990), '$1.3M');
+  assert.equal(k.m(12), '$12');
+});

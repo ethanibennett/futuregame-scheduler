@@ -88,6 +88,11 @@
   font-variant-numeric: var(--num-tabular);
 }
 .bd-hero-val.an-pos { color: var(--pos); }
+/* The balance leads (Bankroll design 5): the top size; the range's profit (or the fund's target) a step
+   down. Both keep their baseline on line 6 of the 9r column (line 4 of the 4r cell); p from c measured in
+   WebKit at 402 and 1440 wide (scratch baseline probe), split between the two. */
+.bd-hero-val.bd-hero-bal { font-size: var(--fs-3xl); --p: 1.3106; }
+.bd-hero-val.bd-hero-pl { font-size: var(--fs-xl); --p: 2.1314; }
 .bd-hero-val.an-neg { color: var(--neg); }
 .an-cell.bd-note-3 { --h: 3; --p: 1.9574; }   /* an-note, baseline on line 3 of 3 */
 .an-cell.bd-note-4 { --h: 4; --p: 0.9574; }   /* an-note, baseline on line 3 of 4 */
@@ -103,17 +108,19 @@
    game over what it was on the right 21g; both pairs seated on lines 3 and 5. */
 .bd-recent { list-style: none; margin: 0; padding: 0; }
 .bd-recent-row {
-  display: grid; grid-template-columns: calc(var(--gu) * 14) calc(var(--gu) * 21); align-items: start;
+  /* Read like the tables (Bankroll design 23): the name and its line under it on the left 23g, the amount
+     and its day on the right 12g, every amount ending on the column's edge. */
+  display: grid; grid-template-columns: calc(var(--gu) * 23) calc(var(--gu) * 12); align-items: start;
   height: calc(var(--subrow) * 6);
   box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
 }
 .bd-recent-l, .bd-recent-r { min-width: 0; }
 .bd-recent-amt {
-  /* Display face xl, baseline on line 3 of 3. an-title's p (1.1784) measured 0.008r high at 402 and
-     0.055r low at 1440; this splits it, 0.03r either side. */
-  --h: 3; --p: 1.1314;
-  font-family: var(--font-display); font-size: var(--fs-xl); color: var(--text);
-  font-variant-numeric: var(--num-tabular);
+  /* Univers Condensed md bold, tabular lining figures, baseline on line 3 of 3 (Bankroll design 23: a
+     table's figure, no longer the display face at a size only the hero should have). */
+  --h: 3; --p: 1.5582;
+  font-family: var(--font-condensed); font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--text);
+  font-variant-numeric: lining-nums tabular-nums;
 }
 .bd-recent-amt.an-pos { color: var(--pos); }
 .bd-recent-amt.an-neg { color: var(--neg); }
@@ -147,11 +154,18 @@
   display: grid; grid-template-columns: calc(var(--gu) * 22) calc(var(--gu) * 12); column-gap: var(--gu);
   align-items: start; height: calc(var(--subrow) * 4);
 }
-.bd-axis {
-  display: grid; grid-template-columns: calc(var(--gu) * 5) repeat(3, calc(var(--gu) * 10));
-}
-.bd-axis > :nth-child(3) { text-align: center; }
-.bd-axis > :last-child { text-align: right; }
+/* The time axis (Bankroll design 7): a 2r row under the plot. The year in the 5g under the labels; each
+   calendar band's name centred in its band (BankrollChart sets left and width in g); a young bankroll's
+   first day at its entry. While the pointer reads a day, the bands step aside for that day's date. */
+.bd-axis { position: relative; width: calc(var(--gu) * 35); height: calc(var(--subrow) * 2); }
+.bd-axis > .an-cell { position: absolute; top: 0; }
+.bd-axis-year { left: 0; width: calc(var(--gu) * 5); }
+.bd-axis-band { text-align: center; }
+.bd-axis-start { color: var(--text); }
+.bd-axis-now { color: var(--text); transform: translateX(-50%); }
+.bd-axis-now.is-end { transform: translateX(-100%); }
+.bd-axis-now.is-start { transform: none; }
+.bd-axis.is-reading > .bd-axis-band, .bd-axis.is-reading > .bd-axis-start { visibility: hidden; }
 
 /* The pills: the legend and the switch in one. Whole g x 5r controls whose two-line face (the
    swatch and name over the end value) is centred both ways (owner rule 2026-10-10). On: the
@@ -199,21 +213,51 @@
 .bd-sp-tourn, .bd-c-tourn { --c: var(--series-tourn); --fa: var(--series-fill-tourn); }
 .bd-sp-cash, .bd-c-cash { --c: var(--series-cash); --fa: var(--series-fill-cash); }
 
-.bd-chart { position: relative; width: calc(var(--gu) * 35); height: calc(var(--subrow) * 26); }
+/* touch-action pan-y: a horizontal press-and-drag reads the graph (Bankroll design 8), a vertical one
+   still scrolls the page (the browser takes it and the reading ends on pointercancel). */
+.bd-chart { position: relative; width: calc(var(--gu) * 35); height: calc(var(--subrow) * 26); touch-action: pan-y; }
+@media (hover: hover) and (pointer: fine) { .bd-chart:not(.is-empty) { cursor: crosshair; } }
 .bd-chart svg {
   position: absolute; left: 0; top: calc(var(--subrow) * 2);
   display: block; width: 100%; height: calc(var(--subrow) * 24); overflow: visible;
 }
 .bd-tick { position: absolute; left: 0; top: calc(var(--subrow) * var(--k)); width: calc(var(--gu) * 5); }
-.bd-chart-msg { position: absolute; left: 0; right: 0; top: calc(var(--subrow) * 12); text-align: center; }
-.bd-grid { stroke: var(--border); stroke-width: var(--bw-hair); }
-.bd-zero { stroke: var(--text-muted); stroke-width: var(--bw-fine); }
+.bd-tick.is-zero { color: var(--text); }
+/* An empty range (Bankroll design 13): the note in the 3r over the zero line (12r down the plot), from
+   5g, 30g wide; its baseline 1r above the line. */
+.bd-chart-msg { position: absolute; left: calc(var(--gu) * 5); width: calc(var(--gu) * 30); top: calc(var(--subrow) * 11); text-align: center; }
+.bd-series.is-none > .bd-sp { opacity: var(--state-disabled); }
+/* The zero line outranks the grid (Bankroll design 6): the grid a fine line in --border, zero a hairline
+   in --text-muted, drawn over the fill and under the lines. */
+.bd-grid { stroke: var(--border); stroke-width: var(--bw-fine); }
+.bd-zero { stroke: var(--text-muted); stroke-width: var(--bw-hair); }
+.bd-cursor { stroke: var(--text-muted); stroke-width: var(--bw-hair); }
+/* Dots: the pointer's reading on each line, a young line's entries (small), where each line ends, and
+   the named peak and trough. HTML over the stretched SVG, so they stay round. */
+.bd-dot {
+  position: absolute; width: var(--subrow); height: var(--subrow);
+  border-radius: var(--radius-circle, 50%); background: var(--c);
+  box-shadow: 0 0 0 var(--bw-fine) var(--bg);
+  transform: translate(-50%, -50%); pointer-events: none;
+}
+.bd-dot.is-small { width: calc(var(--subrow) * 0.75); height: calc(var(--subrow) * 0.75); }
+.bd-mark-dot.is-peak { background: var(--text); }
+.bd-mark-dot.is-trough { background: var(--neg); }
+.bd-mark { position: absolute; white-space: nowrap; pointer-events: none; }
+.bd-mark.is-peak { color: var(--text); }
+.bd-mark.is-trough { color: var(--neg); }
+.bd-mark.is-right { text-align: right; }
+.bd-line.is-dashed { stroke-dasharray: var(--bw-2) var(--bw-2); }
+.bd-sp-pace, .bd-c-pace { --c: var(--text-muted); }
 .bd-line { fill: none; stroke: var(--c); stroke-width: var(--bw-fine); stroke-linejoin: round; }
 /* Total, drawn under the others, runs a hairline wider (.bd-under, only while other lines are on):
    where it coincides with Tournaments or Cash, half a hairline of it shows either side, a hint
    rather than a casing, and where it runs apart it is barely heavier than the other two. */
 .bd-line.bd-under { stroke-width: var(--bw-hair); }
-.bd-area { fill: var(--c); fill-opacity: var(--fa); stroke: none; }
+/* One fill, under the top line on show, clipped at zero: gain above, loss below (Bankroll design 6). */
+.bd-area { stroke: none; }
+.bd-area.is-pos { fill: var(--pos-quiet); }
+.bd-area.is-neg { fill: var(--neg-quiet); }
 .bd-peak { fill: none; stroke: var(--text-muted); stroke-width: var(--bw-hair); stroke-dasharray: var(--bw-2) var(--bw-2); }
 .bd-dd { fill: var(--neg-quiet); stroke: none; }
 
@@ -309,3 +353,17 @@
 .bd-chart-head.is-options .bd-opt.is-on { color: var(--text); box-shadow: inset 0 0 0 var(--bw-fine) var(--text-muted); }
 .bd-series.is-lines { grid-template-columns: repeat(3, calc(var(--gu) * 11)); }
 .bd-chart-note { margin-top: var(--subrow); display: block; }
+
+/* Goals show where they stand (Bankroll design 24): the achieved figure leads in bold, the target muted;
+   behind its pace, the track from the fill to the tick in --warn-line, the tick in --warn. */
+.bd-goal-done { font-weight: var(--fw-bold); }
+.bd-goal-of { color: var(--text-muted); }
+.bd-bar-gap { position: absolute; top: 0; bottom: 0; background: var(--warn-line); }
+.bd-bar-pace.is-warn { background: var(--warn); }
+.an-sheet .bd-warn, .bd-inline .bd-warn { color: var(--warn); }
+/* The rule's verdict (Bankroll design 25): the Goals' form, 8r (a 4r head, the 1r bar, a 3r note), 2r
+   under the stats. The verdict in bold (--p raised for the bold face, as the tables' totals). */
+.bd-verdict { margin-top: calc(var(--subrow) * 2); }
+.bd-goal-head.bd-verdict-head { grid-template-columns: calc(var(--gu) * 15) calc(var(--gu) * 20); }
+.an-cell.bd-verdict-word { font-weight: var(--fw-bold); --p: 0.7586; }
+.bd-bar-over { position: absolute; top: 0; bottom: 0; background: var(--neg); }

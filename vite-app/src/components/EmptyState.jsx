@@ -23,10 +23,12 @@ function resolveIcon(name, fallback) {
   return Icon[name] || Icon[fallback];
 }
 
-export function FirstRun({ icon = 'star', title, body, actionLabel, onAction, compact = false }) {
+/* block (Bankroll design 96): drawn as one card, the Bankroll tab's one empty state: --surface, a hairline
+   ring, 4r of padding, a 3g mark, the title, one sentence, one action (only where the page has none above it). */
+export function FirstRun({ icon = 'star', title, body, actionLabel, onAction, compact = false, block = false }) {
   const Glyph = resolveIcon(icon, 'star');
   return (
-    <div className={compact ? 'empty-state empty-state-compact' : 'empty-state'}>
+    <div className={(compact ? 'empty-state empty-state-compact' : 'empty-state') + (block ? ' is-block' : '')}>
       <Glyph />
       <h3>{title}</h3>
       {body ? <p>{body}</p> : null}
@@ -74,4 +76,33 @@ export function Filtered({ icon = 'filter', title, hint, actions = [], compact =
   );
 }
 
-export default { FirstRun, Filtered };
+/**
+ * A failed load says so (Bankroll design 97): the empty block with a --neg mark, a title naming what did
+ * not load, one sentence, and Try again, which refetches that section. The empty text belongs only to a
+ * response that says the list is empty; a failed request shows this instead.
+ */
+export function LoadFailed({ title = 'This did not load', body = 'Nothing is lost. Check the connection and try again.', onRetry, retryLabel = 'Try again', inline = false }) {
+  const Glyph = resolveIcon('warn', 'empty');
+  if (inline) {
+    return (
+      <p className="load-failed-line" role="alert">
+        <span>{title}. {body}</span>
+        {onRetry ? <button type="button" className="load-failed-retry" onClick={onRetry}>{retryLabel}</button> : null}
+      </p>
+    );
+  }
+  return (
+    <div className="empty-state is-block is-failed" role="alert">
+      <Glyph />
+      <h3>{title}</h3>
+      {body ? <p>{body}</p> : null}
+      {onRetry ? (
+        <button type="button" className="empty-state-action snap-g-centred" onClick={onRetry}>
+          <span className="empty-state-action-label">{retryLabel}</span>
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+export default { FirstRun, Filtered, LoadFailed };

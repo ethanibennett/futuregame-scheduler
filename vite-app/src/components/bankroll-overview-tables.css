@@ -198,3 +198,49 @@
 
 .ovt-group + .ovt-group { margin-top: calc(var(--subrow) * 2); }
 .ovt-table + .ovt-note, .ovt-group + .ovt-note { margin-top: var(--subrow); }
+
+/* ── Bankroll design upgrades, part A ─────────────────────────── */
+/* The closed header gives its figure only the room it needs (16): the title takes the rest, so a scope
+   like "as last counted" reads whole. The figure still ends on the column's edge, at most 12g, 1g clear. */
+.ovt-head { grid-template-columns: var(--subcol) minmax(0, 1fr) auto; }
+.ovt-head > .ovt-headline { max-width: calc(var(--gu) * 12); margin-left: var(--gu); }
+/* A count steps back to the label weight (15): money leads the closed list. */
+.ovt-headline.is-count { font-weight: var(--fw-regular); color: var(--text-muted); }
+/* A count that disagrees with the ledger (22): a 0.75r --warn dot before the total, the total in --text. */
+.ovt-warn-dot {
+  display: inline-block; vertical-align: middle;
+  width: calc(var(--subrow) * 0.75); height: calc(var(--subrow) * 0.75); margin-right: calc(var(--gu) * 0.5);
+  border-radius: var(--radius-circle, 50%); background: var(--warn);
+}
+.ovt-fig.is-warn { color: var(--warn); }
+.ovt-fig.is-quiet { color: var(--text-muted); }
+/* A dash is not a figure (18): quiet, at the regular weight, in every column. */
+.ovt-fig.is-dash { color: var(--text-muted); font-weight: var(--fw-regular); }
+/* Colour marks the verdict only (19): a row's bold total keeps its green or red; a rate beside it keeps
+   its sign and reads in --text. */
+.ovt-fig.an-pos:not(.is-strong), .ovt-fig.an-neg:not(.is-strong) { color: var(--text); }
+/* A column of nothing but dashes is not drawn (20): Games and Rooms without Hours give its 4g to the names. */
+.ovt-c5.no-hours { grid-template-columns: minmax(calc(var(--gu) * 15), 1fr) calc(var(--gu) * 5) calc(var(--gu) * 7) var(--col); }
+.ovt-c6.no-hours { grid-template-columns: minmax(calc(var(--gu) * 12), 1fr) calc(var(--gu) * 4) calc(var(--gu) * 6) calc(var(--gu) * 5) var(--col); }
+.ovt-c6.no-hours .ovt-bb2 { grid-column: 4; }
+/* By month, drawn (21). Open: a 1r bar on each row's baseline from a zero line at 9g, 3g = the largest
+   month; it stays in 6g to 12g, clear of the name and the first figure. */
+.ovt-mrow { position: relative; }
+.ovt-mbar {
+  position: absolute; top: calc(var(--subrow) * 2); left: calc(var(--gu) * 9);
+  width: calc(var(--gu) * var(--w)); height: var(--subrow);
+  background: var(--pos); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.ovt-mbar.is-neg { left: calc(var(--gu) * (9 - var(--w))); background: var(--neg); border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+/* Closed: the year's shape, an 8g x 3r strip, its zero at mid-height. */
+.ovt-strip { position: relative; display: block; width: calc(var(--gu) * 8); height: calc(var(--subrow) * 3); overflow: visible; }
+.ovt-sbar {
+  position: absolute; left: calc(var(--gu) * var(--x)); width: calc(var(--gu) * 0.5);
+  bottom: calc(var(--subrow) * 1.5); height: calc(var(--subrow) * var(--sh));
+  background: var(--pos); border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+}
+.ovt-sbar.is-neg { bottom: auto; top: calc(var(--subrow) * 1.5); background: var(--neg); border-radius: 0 0 var(--radius-xs) var(--radius-xs); }
+/* The section list while the ledger loads (4). */
+.ovt.is-frame .ovt-head { cursor: default; }
+.ovt.is-frame .ovt-headline { overflow: visible; }
+.ovt.is-frame .ovt-headline .sk-bone { vertical-align: middle; }
