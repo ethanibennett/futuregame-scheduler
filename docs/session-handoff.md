@@ -5,7 +5,7 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-11-10 (from Windows) — newest section first. Earlier notes: 2026-10-21, 2026-10-13, then 2026-09-30, live
+Last updated: 2026-11-11 (from Windows) — newest section first. Earlier notes: 2026-10-21, 2026-10-13, then 2026-09-30, live
 tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
@@ -14,12 +14,43 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-11-11 — The Laws of UX audit, the rest: 68, 97, 107; the older grid flags
+
+- **107, every desktop tab ends on the shell's right edge:** the header's right group no longer moves between tabs
+  (114g of 115 at 1440, 87g of 88 at 1024, measured on all nine tabs). Hands and Cash got real second panes; the
+  home's NUMBERS pane runs to the edge; every other tab is one pane to the edge with its content where it was
+  (`--dk-grow`). My call, since the proposal left it open: no placeholder panes, and no re-layout of Settings,
+  Admin, Social, Results or Staking into two panes (the plan's own phase 2 for each, in `docs/desktop-layout.md`).
+- **68, desktop Hands:** the saved list beside the replay; ↑/↓ step through hands; the replay is contained in its
+  pane (the landscape table, its bar stacked: track, transport, actions). Cash on desktop shows Live and the
+  heatmaps side by side, with no switch.
+- **97, the Schedule tab under 400 ms:** the list is windowed by day. Re-showing it measured 216 ms on the phone and
+  330 ms on desktop (was 870 / 1,300; first visit 1.3 / 1.5 s, was 2.9 / 3.1 s), 77 rows on show of 474. A probe
+  scrolled 85 steps down, back and into the never-shown past days with 0 px of jump, and today lands on the filters'
+  foot as before. **Found on the way:** coming back to a tab lost its scroll position since pick 46 (a tab press is
+  a transition; the restore ran a frame too soon and was clamped to the old tab's height). The restore is now a
+  layout effect after the commit; away-and-back holds the same row to the pixel on both layouts.
+- **The older flags, fixed:** Staking's badges (whole-g pills, centred), its ✎ (the pencil icon now: the glyph's ink
+  sat 1.8px low) / ✕ / Edit buttons (whole g); the backer summary cards (every line 2r, and gap 0: the card class's
+  1g gap fell between a column card's rows as 1.41r); Reports' chips with a count (Univers has no proportional
+  figures, and a trailing "1" stands in a 556-unit advance with 147 after its ink: `balanceInkX` in
+  `utils/ink-balance.js`, the date pills' helper along the line only); the MTT chip on Bankroll (the open side's
+  hairline as padding); the Live update hand tab (3g opponent chips 1g apart, whole-r card rows and result lines, the
+  game caption 2r: it was 1.94r); the desktop sheets (`:root.dk-on .share-menu-panel.grid-sheet` pads 1g on the right:
+  the grid sheet's pad took the WINDOW's fraction of a g, 0.9g at 1440, so the export sheet's content was 43.1g and
+  its right-aligned controls 0.1g off); the desktop right pane under a Travel Day (its note ran on a 2.43r line, so
+  the open card and all of My Schedule under it sat 0.43r off; `.cal-personal-notes`, 2r, baseline seated); and My
+  Schedule's selected-row scroll (`scrollBelowSticky` counted the header in flow, 8.5r, not stuck, 7r: half an r off).
+- **Probes** (scratch, not in the repo): `probe-split.mjs` (every tab's panes and the header, the Hands split),
+  `probe-latency.mjs` (the Schedule tab's show time, MTT feed ingested on a scratch server: `DISABLE_FEED_INGEST: ''`,
+  no `SYNC_TOKEN`, so nothing is pushed), `probe-scroll.mjs` (landing, jumps, away and back, pressed again).
+
 ## 2026-11-10 — The Laws of UX audit, built (picks 1-111 but 4, 6, 31)
 
 - Three commits: sign-up and first run (picks 1-14), the Schedule (15-33), then one for the rest (Dashboard and
   Social 34-51, Hands and the replayer 52-72, Bankroll and backers 73-90, Cash / Settings / navigation 91-111), which
   share too many files to split cleanly. CLAUDE.md ("The Laws of UX audit, built") lists what later changes must keep.
-- **Partly built, by design or for want of a decision:** 97 (the tab lights in the press's frame; the windowed
+- **Partly built, by design or for want of a decision (all three finished 2026-11-11, above):** 97 (the tab lights in the press's frame; the windowed
   Schedule list and the post-commit profiling are L and not done), 107 (every desktop tab ending on the shell's right
   edge needs a second pane per wide tab: a product decision), 68 (the desktop Hands list beside the replay: the
   full-window replay is `position: fixed` over the window, so it needs containing first). 56 (resume an unfinished
@@ -31,7 +62,7 @@ wsop-console side and verified against both live services.
 - **Traps:** the guards skip views their seed has no data for (a playing event, buddies, a swap), so a "not reached"
   list is mostly data, not breakage. The Live update panel's hand tab ("Post Hand", the 2-5 chips) is off the r
   lines; it was never reached by a guard before this run and was not touched here.
-- **First measured with data, not touched here (open):** with the staking, standing and backer demos seeded, the
+- **First measured with data, not touched here (fixed 2026-11-11, above, the Live update hand tab too):** with the staking, standing and backer demos seeded, the
   guard reaches Staking for the first time and flags its ACTIVE / SETTLED badges and the ✎ / ✕ / Edit `btn-sm`
   buttons (not whole g, not on a line) and the backer summary cards (13.66r and 10.41r tall); Reports' filter chips
   with a count read off centre (the count sits in the label); the MTT chip on Bankroll is off centre as in every

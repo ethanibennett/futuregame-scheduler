@@ -2642,6 +2642,13 @@
     .live-update-panel .live-update-last { line-height: calc(var(--subrow) * 2); padding-block: calc(var(--subrow) * 0.5); }
     .live-update-panel .live-update-tournament-label { line-height: calc(var(--subrow) * 2); }
     .live-update-panel .hand-game-pills { gap: var(--subrow); }
+    /* The hand tab on the r lines too: a field's cards one 4r row under its input, a result line 4r
+       (2r of text, its hairline inside the 1r pads). */
+    .live-update-panel .card-row { height: calc(var(--subrow) * 4); min-height: 0; flex-wrap: nowrap; }
+    .live-update-panel .hand-result {
+      line-height: calc(var(--subrow) * 2); margin-top: 0; box-sizing: border-box;
+      padding: calc(var(--subrow) - var(--bw-hair)) var(--gu);
+    }
 
     .live-update-row {
       display: flex;
@@ -2787,7 +2794,10 @@
 
     /* ── Hand game pills (legacy — kept for hand editor) ── */
     .hand-game-pills { display:flex; flex-direction:column; gap: var(--space-xs); }
-    .hand-game-label { font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); }
+    /* One 2r caption, its baseline on its bottom (the onboarding's .ob-label): on its natural line
+       height it was 1.94r, which put every field under it in Live update's Hand tab 0.06r off. */
+    .hand-game-label { font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps);
+      height: calc(var(--subrow) * 2); box-sizing: border-box; padding-top: calc(var(--subrow) * 2 - 1cap); line-height: 1; white-space: nowrap; }
 
     /* ── Game picker: tabbed checklist ── (Hands tab, list screen only) */
     /* Grid (2026-09-30, measured at 402px, g=10.865 r=7.714, origin = .top-bar top):
@@ -9202,7 +9212,11 @@
       width: calc(var(--gu) * 6);
       border-right: 0;
       border-top-right-radius: 0; border-bottom-right-radius: 0;
+      /* The open side's width as padding, so the label centres on the box and not on a content box
+         one hairline right of it (the MTT chip read 0.8px off centre). */
+      padding-right: var(--bw-hair);
     }
+    .kind-toggle-split > .kind-toggle.active { padding-right: var(--bw-fine); }
     .kind-toggle-caret {
       width: var(--subcol);
       height: 100%;
@@ -10701,6 +10715,18 @@
       text-box-trim: none;
       position: relative;
       top: calc(var(--subrow) * 0.419);
+    }
+    /* A personal day's note beside its name ("— PHL to LAS, ..."): one 2r line like the name's. On its
+       natural line it was 2.43r, which made the open Travel Day card 0.43r off whole and put My
+       Schedule under it (its header buttons, every date pill) off the grid with it. */
+    /* Its baseline then sits 0.455r above the line's foot (measured, WebKit 1440 wide: 15.545r against
+       r16 beside the open card's name); moved down by that, it is on the r-line, as the name is. The
+       font and the line both scale with g, so it is one constant in r. */
+    .cal-personal-notes {
+      font-size: calc(var(--gu) * 1.149); color: var(--text-muted); font-style: italic;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      line-height: var(--cal-title-line);
+      position: relative; top: calc(var(--subrow) * 0.455);
     }
     /* A flight card carries the title on line 1 (.cal-event-base) and "- Flight A"
        on line 2 (.cal-event-stage). Each is a trimmed block, but text-box-trim
@@ -13781,10 +13807,11 @@
     @media (hover: hover) and (pointer: fine) {
       .staking-series-card:hover { border-color: var(--accent); }
     }
+    /* A whole-g pill (snap-g in StakingView), its label centred in it (owner rule, 2026-10-10). */
     .staking-badge {
       font-size: var(--fs-2xs); font-weight: var(--fw-bold); text-transform: uppercase;
-      height: calc(var(--subrow) * 2); line-height: calc(var(--subrow) * 2); box-sizing: border-box;
-      display: inline-flex; align-items: center;
+      height: calc(var(--subrow) * 2); line-height: 1; box-sizing: border-box;
+      display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
       padding: 0 var(--space-md); border-radius: var(--radius-pill); letter-spacing: var(--track-caps);
       border: var(--bw-hair) solid;
     }
@@ -15581,9 +15608,24 @@
     /* .dk-pane-home: the Dashboard's NOW pane, the list's 37g without the list's nav band
        (.dk-pane-list::after below is the Schedule list's phone parity; the home has no nav on
        desktop, and its own spacer is 0 there, home.css). */
-    .dk-pane-list, .dk-pane-mine, .dk-pane-home { width: calc(var(--gu) * (37 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
-    .dk-pane-detail { width: calc(var(--gu) * (9 * var(--dk-detail-n) + 1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
-    .dk-pane-wide { width: calc(var(--gu) * (9 * var(--dk-wide-n) + 1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
+    .dk-pane-list, .dk-pane-home, .dk-pane-split { width: calc(var(--gu) * (37 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
+    .dk-pane-detail, .dk-pane-side { width: calc(var(--gu) * (9 * var(--dk-detail-n) + 1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
+    /* Every tab ends on the shell's right edge (UX pick 107). The header's right group follows the
+       rightmost pane (owner, 2026-10-21), and that pane ended somewhere else on each tab, so the bell, the
+       theme button and the name jumped 39g at a tab press. Now: the list and the right pane on the
+       Schedule; NOW and the NUMBERS on the home; the list and its second pane on Hands and Cash
+       (.dk-pane-split + .dk-pane-side); and one pane to the edge on every other tab. A pane that grew keeps
+       its content where it was: the growth (--dk-grow) is padding on its right, so nothing in it is laid
+       out again, and what hangs from its right edge (the dev keys, the Results +) is moved in by the same. */
+    .dk-pane-mine { width: calc(var(--gu) * (9 * var(--dk-detail-n) + 1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
+    .app-shell.is-desktop .dk-pane-mine > .dk-scroll { padding-right: calc(var(--gu) * (9 * var(--dk-detail-n) - 35 + var(--dk-ov-g, 0))); }
+    .dk-pane-wide {
+      /* the list's 37g, the 1g gap and the right pane's 9N+1, each scroller's lane included */
+      width: calc(var(--gu) * (39 + 9 * var(--dk-detail-n) + 2 * (var(--dk-sb-g, 0) + var(--dk-ov-g, 0))));
+      /* how much wider that is than the 9N+1 the tab's content was laid out in */
+      --dk-grow: calc(var(--gu) * (38 + 9 * var(--dk-detail-n) - 9 * var(--dk-wide-n) + var(--dk-sb-g, 0) + var(--dk-ov-g, 0)));
+    }
+    .app-shell.is-desktop .dk-pane-wide > .content-area { padding-right: calc(var(--dk-grow) + var(--gu) * (1 + var(--dk-ov-g, 0))); }
     /* --dk-ov-g (useDesktopLayout OVERLAY_LANE_G): where scrollbars overlay the content, each scroller
        keeps that many g on its right for the bar to float in, so it never sits on a card's edge or the
        selection ring (owner, 2026-10-13). The pane is widened by the same, so the content keeps its 37g
@@ -15608,6 +15650,7 @@
     .dk-fab-scope .grid-dev-toggle,
     .dk-pane-wide > .grid-dev-toggle { right: calc(var(--gu) * (1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
     .dk-pane-wide > .grid-dev-toggle { position: absolute; }
+    .dk-pane-wide > .grid-dev-toggle { right: calc(var(--dk-grow, 0px) + var(--gu) * (1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
     /* Centred in its pane, on a g line. Desktop-only, for two things a phone never has: a classic
        scrollbar (--dk-sb-g) widens the pane but not the content beside it, so the middle is taken
        without it (with a 15px scrollbar the list's button sat at 15g of the 37g, 1g right of
@@ -15676,6 +15719,63 @@
       padding: var(--subrow) var(--gu);
     }
     .app-shell.is-desktop .gto-sticky-footer > * { max-width: calc(var(--gu) * 53); margin: 0; }
+
+    /* ── The second pane of Hands and Cash (UX picks 68, 107) ──
+       Hands: the saved hands in the 37g list pane, the chosen hand's replay beside them (portalled into
+       .dk-side-host by HandReplayerView). Cash: Live in the list pane, the heatmaps beside it. The list
+       pane has no nav band (.dk-pane-list's is the Schedule's phone parity), so its scroller keeps 2r. */
+    .dk-pane-split .content-area { padding-bottom: calc(var(--subrow) * 2); }
+    .dk-pane-split > .grid-dev-toggle { position: absolute; right: calc(var(--gu) * (1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
+    .dk-side-host { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+    /* The replay fills the pane: its title over the table, the table, then the bar. */
+    .dk-side-host > .replayer-view.is-replay { flex: 1 1 auto; max-width: none; margin: 0; height: auto; }
+    .dk-side-host > .replayer-view.is-replay > .replayer-header { padding: 0 var(--gu); margin-bottom: var(--subrow); }
+    .dk-side-host > .replayer-view.is-replay > .replayer-notes-area { padding: 0 var(--gu); }
+    /* In the pane, not over the window: in flow, under the title (the window-filling replay is fixed). */
+    .replayer-in-pane.replayer-landscape { position: relative; inset: auto; z-index: auto; }
+    /* The pane is 37g to 64g, too narrow for the window's one row of transport (29g) and actions (35g):
+       they stack, under the street track (UX pick 67), each centred on the pane's g lines (snap-place).
+       The track 4r, the transport 6r, the actions 4r, 1r between and around them. */
+    .replayer-in-pane.replayer-landscape { --transport-h: calc(var(--subrow) * 18); }
+    .replayer-in-pane.replayer-landscape .replayer-bottom-fixed {
+      flex-direction: column; justify-content: center; gap: var(--subrow); padding: 0;
+    }
+    /* The track's own grid back, over the landscape bar's "> div { display: flex; gap }": its 1g
+       gaps, its cells stretched, no bottom margin (the column's gap spaces it). */
+    .replayer-in-pane.replayer-landscape .replayer-bottom-fixed > .replayer-street-track {
+      display: grid; column-gap: var(--gu); row-gap: 0; align-items: stretch; margin: 0 auto;
+    }
+    [data-capturing] .replayer-in-pane.replayer-landscape .replayer-bottom-fixed > .replayer-street-track { display: none; }
+    .replayer-in-pane.replayer-landscape:has(.replayer-bar-notes) { --transport-h: calc(var(--subrow) * 21); }
+    .app-shell.is-desktop .replayer-in-pane.replayer-landscape .replayer-bottom-fixed > .replayer-bar-notes {
+      position: static; left: auto; width: calc(var(--gu) * 35); transform: none;
+    }
+    /* No hand open: what the pane is for, seated on the r lines. */
+    .dk-hands-empty { padding: 0 var(--gu); max-width: calc(var(--gu) * 35); }
+    .dk-hands-empty-title {
+      margin: 0; color: var(--text);
+      font-family: var(--font-title); font-size: var(--fs-lg); font-weight: var(--fw-regular);
+      line-height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 4 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .dk-hands-empty-meta {
+      margin: 0; color: var(--text-muted);
+      font-family: var(--font-condensed); font-size: var(--fs-sm);
+      line-height: calc(var(--subrow) * 3); padding-top: calc(var(--subrow) * 3 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    /* The chosen hand in the list: its card ringed in the brand line, as the Schedule's selected event
+       (a ring outside the box, so the outcome's right edge and the layout are untouched). */
+    .replayer-hand-card.is-row.is-selected { box-shadow: var(--elev-1), 0 0 0 var(--bw-2) var(--brand); }
+    /* Cash: the heatmaps under a 6r head, as the event pane's (title baseline on 4r). */
+    .cash-side { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 0 var(--gu); }
+    .dk-side-title {
+      flex: none; margin: 0; color: var(--text);
+      font-family: var(--font-title); font-size: var(--fs-lg); font-weight: var(--fw-regular);
+      line-height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 4 - 1cap);
+      margin-bottom: calc(var(--subrow) * 2);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
 
 
     /* ── Event detail pane: a 6r head (title baseline on 4r), then the card ── */
@@ -17144,14 +17244,21 @@
     .replayer-landscape .replayer-bottom-fixed > .replayer-street-track { display: none; }
     [data-capturing] .replayer-street-track { display: none; }
     /* Desktop sheets (UX pick 71): a centred 46g dialog 12r under the top, on the shell's g lines
-       (--dk-sheet-x from App), --radius-lg and --elev-3, whole-r tall at most; the phone unchanged. */
+       (--dk-sheet-x from App), --radius-lg and --elev-3, whole-r tall at most; the phone unchanged.
+       A classic scrollbar widens it by its own width (--dk-sb-g, on the root) and keeps its gutter,
+       as the panes do, so the content stays whole g whether the sheet scrolls or not. */
     :root.dk-on .share-menu-panel {
       left: calc(50% - var(--gu) * var(--dk-shell-n) / 2 + var(--gu) * var(--dk-sheet-x)); right: auto;
-      width: calc(var(--gu) * 46); box-sizing: border-box;
+      width: calc(var(--gu) * (46 + var(--dk-sb-g, 0))); box-sizing: border-box; scrollbar-gutter: stable;
       top: calc(var(--subrow) * 12); bottom: auto;
       max-height: round(down, 100dvh - var(--subrow) * 24, var(--subrow));
       border-radius: var(--radius-lg); box-shadow: var(--elev-3);
     }
+    /* A grid sheet's right pad takes the WINDOW's fraction of a g (its 100% is the window, 0.9g at
+       1440), which a phone sheet spanning the window needs; the 46g dialog is whole g already, so
+       that fraction made its content 43.1g and set every right-aligned control 0.1g off its line
+       (the export sheet's All / None, + Add Range, the range ✕). */
+    :root.dk-on .share-menu-panel.grid-sheet { padding-right: var(--gu); }
     /* The hero's draw on the Draw Round (UX pick 60): the hand's cards as discard toggles (the Card
        details step's), "Draw N" in the brand colour, and the new-card picker under the hand. */
     .replayer-entry-view .gto-draw-marks { display: grid; row-gap: var(--subrow); }

@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { portalTarget } from '../utils/grid-panel.js';
+import useInkBalance from '../hooks/useInkBalance.js';
+import { balanceInkX } from '../utils/ink-balance.js';
 import {
   DIMENSIONS, DATE_PRESETS, optionsFor, facetCounts, rangeCounts, yearOptions, toggle, setRange, activeCount, applyFilters, clearAll,
 } from '../utils/bankroll-filters.js';
@@ -23,8 +25,11 @@ import {
 const COLS = { types: 3, bankrolls: 4, games: 4, stakes: 2, rooms: 2, formats: 2, weekdays: 4, dayparts: 4 };
 
 export function Chip({ on, n, disabled, onClick, children }) {
+  // The name and its count centred on their ink, not their advances (utils/ink-balance.js).
+  const ref = useRef(null);
+  useInkBalance(ref, [typeof children === 'object' ? '' : String(children), n], balanceInkX);
   return (
-    <button type="button" className={'br-chip ctl' + (on ? ' is-on' : '')} aria-pressed={on} disabled={disabled} onClick={onClick}>
+    <button type="button" ref={ref} className={'br-chip ctl' + (on ? ' is-on' : '')} aria-pressed={on} disabled={disabled} onClick={onClick}>
       <span className="br-opt-name">{children}</span>
       {n != null && <span className="br-opt-n">{n}</span>}
     </button>

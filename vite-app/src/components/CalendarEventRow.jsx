@@ -85,7 +85,15 @@ function scrollBelowSticky(el) {
   let filtersH = 0;
   const sticky = scope.querySelector('.sticky-filters')
               || scope.querySelector('.schedule-sticky-header');
-  if (sticky) filtersH = sticky.getBoundingClientRect().height;
+  // My Schedule's header counts where its bottom sits once STUCK (its sticky top, -1.5r, plus its
+  // 8.5r), as its own landing does (App.jsx landMySchedule): counted in flow, a selected row's stop
+  // fell half an r off the grid, and every row and date pill in the pane with it. The Schedule's
+  // filters keep their in-flow height, the gap signed off above.
+  if (sticky) {
+    filtersH = sticky.classList.contains('schedule-sticky-header')
+      ? Math.max(0, (parseFloat(getComputedStyle(sticky).top) || 0) + sticky.getBoundingClientRect().height)
+      : sticky.getBoundingClientRect().height;
+  }
   let dateBreakH = 0;
   const dateGroup = el.closest('[data-date-group]');
   if (dateGroup) {
@@ -653,7 +661,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
                 {tournament.event_name === 'Travel Day' ? '\u2708\uFE0F ' : tournament.event_name === 'Day Off' ? '\uD83C\uDFD6\uFE0F ' : ''}{tournament.event_name}
               </span>
               {tournament.notes && (
-                <span style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', fontStyle:'italic', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                <span className="cal-personal-notes">
                   {'\u2014'} {tournament.notes}
                 </span>
               )}
@@ -1264,7 +1272,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
                 {tournament.event_name === 'Travel Day' ? '✈️ ' : tournament.event_name === 'Day Off' ? '🏖️ ' : ''}{tournament.event_name}
               </span>
               {tournament.notes && (
-                <span style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', fontStyle:'italic', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                <span className="cal-personal-notes">
                   {'—'} {tournament.notes}
                 </span>
               )}

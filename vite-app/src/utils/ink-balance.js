@@ -136,6 +136,31 @@ export function balanceDateInk(label) {
   label.style.paddingLeft = r(rsb - lsb);
 }
 
+/**
+ * The same balance along the line only, for a control whose label is not trimmed to cap height: a
+ * Reports filter chip, a name and its count ("All time 1", BankrollFilters.jsx). The runs are the
+ * box's element children; the first is padded on its left or the last on its right, by the
+ * difference of their outer bearings, so the runs' box the chip centres is their ink. Univers has
+ * no proportional figures (pnum is not in it): a trailing 1 stands in a 556-unit advance with 147
+ * units after its ink, which left every such chip ~1px left of centre. Across the line the chip
+ * centres the line box as before.
+ */
+export function balanceInkX(box) {
+  if (!box || !box.children || !box.children.length) return;
+  const runs = [...box.children].filter(el => (el.textContent || '').trim());
+  if (!runs.length) return;
+  const first = runs[0], last = runs[runs.length - 1];
+  const a = inkOf(first, first.textContent.trim());
+  const z = last === first ? a : inkOf(last, last.textContent.trim());
+  if (a.lsb == null || z.rsb == null) return;
+  const size = (el) => parseFloat(getComputedStyle(el).fontSize) || 1;
+  // How much more room the right side has than the left, in the first run's em.
+  const d = (z.rsb * size(last) - a.lsb * size(first)) / size(first);
+  const em = (v) => `${Math.max(0, v).toFixed(4)}em`;
+  first.style.paddingLeft = em(d);
+  last.style.paddingRight = em(-d * size(first) / size(last));
+}
+
 /** The fonts a label's runs render in, with their text: what to wait for before measuring. */
 export function dateInkFonts(label) {
   if (!label || !label.children) return [];

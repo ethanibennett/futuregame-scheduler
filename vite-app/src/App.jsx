@@ -275,7 +275,17 @@ function App() {
         const container = document.querySelector('.content-area');
         if (container) scrollPositions.current[prev] = container.scrollTop;
         setVisitedTabs(s => { const n = new Set(s); n.add(v); return n; });
-        requestAnimationFrame(() => {
+        // The scroll comes back once the new tab is COMMITTED (the layout effect on currentView
+        // below), not on the next frame: a tab press is a transition (UX pick 46), and a slow one
+        // committed after that frame, so the place was set on the old tab and clamped to its height.
+        pendingScroll.current = v;
+      }
+      return v;
+    });
+  }, []);
+  const pendingScroll = useRef(null);
+  const restoreTabScroll = useCallback((v) => {
+        {
           const c = document.querySelector('.content-area');
           if (c && v === 'schedule') {
             landMySchedule();
@@ -296,11 +306,14 @@ function App() {
             panel.offsetHeight;
             panel.style.animation = '';
           }
-        });
-      }
-      return v;
-    });
+        }
   }, []);
+  useLayoutEffect(() => {
+    const v = pendingScroll.current;
+    if (!v || v !== currentView) return;
+    pendingScroll.current = null;
+    restoreTabScroll(v);
+  }, [currentView, restoreTabScroll]);
 
   const [tournaments, setTournaments] = useState([]);
   // Header subtitle — the months the loaded feed actually spans, so it tracks
@@ -1759,7 +1772,9 @@ function App() {
     root.classList.add('dk-on');
     root.style.setProperty('--dk-shell-n', String(dk.shellG));
     root.style.setProperty('--dk-sheet-x', String(Math.max(0, Math.round((dk.shellG - 46) / 2))));
-  }, [isDesktop, dk.shellG]);
+    // A classic scrollbar's width in g, so a dialog that scrolls keeps its 44g of content (styles.css).
+    root.style.setProperty('--dk-sb-g', String(dk.sbG));
+  }, [isDesktop, dk.shellG, dk.sbG]);
   // (Declared above the running head, which reads isDesktop.)
   // The Swiss theme's running head: the section, then its scope (catalogue item 7).
   const swissRunningHead = useMemo(() => {
@@ -1856,6 +1871,12 @@ function App() {
   }, [isDesktop, currentView]);
   // The home's second pane (its NUMBERS column), set by a callback ref once the pane mounts.
   const [dkHomeRight, setDkHomeRight] = useState(null);
+  /* The second pane of Hands and Cash on desktop (UX picks 68, 107): one host per tab, each view portals
+     into its own, so a tab kept mounted in the background never shows in another's pane. Hands says
+     whether its split is showing (the entry, quick add and the drill take the main pane alone). */
+  const [dkSideHands, setDkSideHands] = useState(null);
+  const [dkSideCash, setDkSideCash] = useState(null);
+  const [handsSplit, setHandsSplit] = useState(true);
   // Closing an event animates like opening one, in reverse (owner, 2026-10-11): the details keep
   // rendering, marked closing, until their collapse ends, so My Schedule rises into their place
   // instead of jumping. Worked out during render (React's "previous value in state" pattern) so
@@ -2199,7 +2220,7 @@ function App() {
                             onPlayHand={() => { setDrillAsk(true); setHandsTool('replayer'); }}
                             pendingSolverSpot={pendingSolverSpot} onConsumeSolverSpot={() => setPendingSolverSpot(null)}
                             pendingDrawSpot={pendingDrawSpot} onConsumeDrawSpot={() => setPendingDrawSpot(null)} /></Suspense>
-                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setStudyTool('solve'); setHandsTool('study'); }) : undefined} onStudyDraw={isAdmin ? (spot => { setPendingDrawSpot(spot); setStudyTool('draw'); setHandsTool('study'); }) : undefined} quickAdd={isAdmin} drillEnabled={isAdmin} drillAsk={drillAsk} onDrillAsked={() => setDrillAsk(false)} schedule={mySchedule} updates={myActiveUpdates} /></Suspense>}
+                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setStudyTool('solve'); setHandsTool('study'); }) : undefined} onStudyDraw={isAdmin ? (spot => { setPendingDrawSpot(spot); setStudyTool('draw'); setHandsTool('study'); }) : undefined} quickAdd={isAdmin} drillEnabled={isAdmin} drillAsk={drillAsk} onDrillAsked={() => setDrillAsk(false)} schedule={mySchedule} updates={myActiveUpdates} sidePane={isDesktop ? dkSideHands : null} onSplitChange={setHandsSplit} /></Suspense>}
                     </div>
                   </div>
             )}
@@ -2269,7 +2290,7 @@ function App() {
 
             <div className={'tab-panel' + (currentView === 'cash' ? ' tab-active' : '')} data-tab="cash" style={{display: currentView === 'cash' ? undefined : 'none', height: currentView === 'cash' ? '100%' : undefined}}>
             {visitedTabs.has('cash') && isAdmin && (
-              <Suspense fallback={<LazyFallback />}><CashView token={token} onModeChange={setCashMode} /></Suspense>
+              <Suspense fallback={<LazyFallback />}><CashView token={token} onModeChange={setCashMode} sidePane={isDesktop ? dkSideCash : null} /></Suspense>
             )}
             </div>
 
@@ -2434,6 +2455,12 @@ function App() {
   // list's own panel: on desktop My Schedule (the right pane) carries a [data-today-scroll] too.
   /* A tab answers the tap in its first frame (UX pick 46): the bar lights at once and the view, whose
      render is the slow part, follows as a transition. */
+  /* Which tab's second pane is showing (desktop): Hands while its list and replay are split, Cash for
+     the admins who have it. Every other tab's main pane runs to the shell's right edge (UX pick 107). */
+  const handsOnReplayer = !(isAdmin && (handsTool === 'scanner' || handsTool === 'study'));
+  const dkSideTab = !isDesktop ? null
+    : currentView === 'hands' && handsOnReplayer && handsSplit ? 'hands'
+    : currentView === 'cash' && isAdmin ? 'cash' : null;
   const onNavChange = (v) => {
     if (v === currentView && v === 'tournaments') { landListOnToday(); return; }
     setNavPending(v);
@@ -2614,7 +2641,7 @@ function App() {
               onChange={v => (v === 'batches' ? openBatch(null) : onNavChange(v))}
             />
           )}
-          <div className={!isDesktop ? 'layout-contents' : 'dk-pane dk-pane-main ' + (currentView === 'tournaments' || currentView === 'calendar' ? 'dk-pane-list dk-fab-scope' : currentView === 'dashboard' ? 'dk-pane-home' : 'dk-pane-wide')}>
+          <div className={!isDesktop ? 'layout-contents' : 'dk-pane dk-pane-main ' + (currentView === 'tournaments' || currentView === 'calendar' ? 'dk-pane-list dk-fab-scope' : currentView === 'dashboard' ? 'dk-pane-home' : dkSideTab ? 'dk-pane-split' : 'dk-pane-wide')}>
             {primaryColumn}
             {devToggles}
             {/* The Results tab's floating +: a direct child of the main pane, so on desktop it sits
@@ -2631,6 +2658,15 @@ function App() {
           {isDesktop && (
             <div className="dk-pane dk-pane-mine" style={currentView === 'dashboard' ? undefined : { display: 'none' }}>
               <div className="dk-scroll dk-home-right" ref={setDkHomeRight} />
+            </div>
+          )}
+          {/* Hands' and Cash's second pane (UX picks 68, 107): the replay beside the saved hands, the
+              heatmaps beside Live. Mounted for the whole desktop session, like the home's, so what is
+              portalled in keeps its state across tabs. */}
+          {isDesktop && (
+            <div className="dk-pane dk-pane-side" style={dkSideTab ? undefined : { display: 'none' }}>
+              <div className="dk-side-host" ref={setDkSideHands} style={dkSideTab === 'hands' ? undefined : { display: 'none' }} />
+              <div className="dk-side-host" ref={setDkSideCash} style={dkSideTab === 'cash' ? undefined : { display: 'none' }} />
             </div>
           )}
           {/* One right pane, two blocks (owner, 2026-10-10: My Schedule goes UNDER the event details,

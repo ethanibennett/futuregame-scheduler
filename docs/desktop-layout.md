@@ -4,8 +4,9 @@ The website answers the browser's proportions: a wide, landscape window gets a
 real desktop layout (side rail plus two or three panes); every other window, and
 the iOS app on a phone, gets the phone layout exactly as it was. Phase 1 (this
 change) ships the shell and the Schedule tab. The Dashboard has had its two
-panes since 2026-10-12. The other tabs render in one capped pane until their own
-phase.
+panes since 2026-10-12, Hands and Cash since 2026-11-11. Since 2026-11-11 every
+tab's panes end on the shell's right edge (§7, "Every tab ends on the shell's
+right edge"); the other tabs are one pane to that edge until their own phase.
 
 Code: `vite-app/src/hooks/useDesktopLayout.js` (the decision and the counts),
 `components/DesktopRail.jsx`, `components/DesktopEventDetail.jsx`, the
@@ -475,25 +476,50 @@ NUMBERS). On the phone they are one scrolling column, NOW first. On desktop:
 This is the same list | detail | context shape as Schedule. The feed is the
 reading pane.
 
-### Hands, incl. the replayer (phase 2; today: one capped pane)
+### Every tab ends on the shell's right edge (built 2026-11-11, UX pick 107)
+
+The header's right group follows the rightmost pane (owner, 2026-10-21), and that pane used to end
+in a different place on each tab, so the bell, the theme button and the name jumped 39g at a tab
+press (x 1307 on Schedule, 993 on the Dashboard, 854 on the wide tabs, at 1440). Now every tab's
+panes end on the shell's edge, so `--dk-head-inset` measures 0 everywhere and the name sits at
+114g of 115 (1440) and 87g of 88 (1024) on every tab:
+
+- Schedule: list 37 | the right pane 9N+1 (as before).
+- Dashboard: NOW 37 | NUMBERS, now 9N+1 (`.dk-pane-mine`); its 35g blocks stay where they were,
+  the growth is padding on the scroller's right.
+- Hands and Cash: list 37 (`.dk-pane-split`) | a second pane 9N+1 (`.dk-pane-side`), below.
+- Every other tab (Social, Results, Staking, Settings, Admin, New events): one pane to the edge
+  (`.dk-pane-wide`, the list's 37 + 1 + 9N+1). Its content stays in the 9·wideN+1 it was laid out
+  in: the difference (`--dk-grow`) is padding on the scroller's right, and what hangs from the
+  pane's right edge (the dev keys, the Results +) is moved in by the same.
+
+### Hands, incl. the replayer (built 2026-11-11, UX pick 68)
 
 ```
-│ rail │ saved hands + tool switcher 37g │ replayer table 9N+1 (N=5–7) │ action log / hand text 37g │
+│ rail │ saved hands + New Hand 37g │ the chosen hand's replay 9N+1 │
 ```
 
-- The table is the reason for the wide middle pane. The replayer's own 16×32
-  grid (`docs`: 2026-08-30 handoff) scales with the pane, not the window.
-- The full-bleed / landscape replay modes become "fill the middle pane" on
-  desktop. Their `position: fixed` gets `.dk-fab-scope`-style containment on that
-  pane only, after their own portalled sheets are audited.
-- The solver and trainers take the middle pane. The tool switcher (now the
-  footer row) moves to the top of the left pane.
+- `HandReplayerView` gets the second pane's host (`sidePane`, App's `dkSideHands`) and portals into
+  it: the replay of the chosen hand, or, with none open, a prompt ("No hand open"). The list stays
+  in the main pane, the chosen row ringed in the brand line (`.is-selected`). ↑ and ↓ open the hand
+  above or below (← and → stay with the transport, Space plays), only while Hands is on screen.
+- The replay in the pane is the landscape table (`replayer-in-pane`, forced landscape whatever the
+  window's shape), in flow under its title instead of fixed over the window, so the header and rail
+  stay. The pane is 37g to 64g, too narrow for the window's one row of transport (29g) and actions
+  (35g), so they stack under the street track: 18r of bar, each row on the pane's g lines
+  (`snap-place`). Back reads Close.
+- The entry screens, quick add and the drill still take the main pane alone, at full width
+  (`onSplitChange` tells App, which hides the second pane). Study and the Scanner likewise.
+- Not built: the action log as a third pane (no room at 1440: the shell is 115g).
 
-### Cash (phase 2; today: one capped pane)
+### Cash (built 2026-11-11, with pick 107)
 
 ```
-│ rail │ live games list 37g │ heatmap 9N+1 (N=5–7) │
+│ rail │ live games list 37g │ heatmaps 9N+1 │
 ```
+
+`CashView` portals the heatmaps into the second pane (`dkSideCash`) under a 6r "Heatmaps" head;
+the Live / Heatmaps switch is gone on desktop and Refresh reloads both.
 
 ### Settings (phase 2; today: one capped pane)
 

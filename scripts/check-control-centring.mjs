@@ -1800,7 +1800,8 @@ function finalize(c) {
     if (await revoke.count()) { await revoke.first().click({ timeout: 3000 }).catch(() => {}); await p.waitForTimeout(800); }
   }, 2);
   step('cash-live', () => nav('Cash'), 1);
-  step('cash-heatmaps', async () => { await nav('Cash'); await click('.cash-mode-tabs button:has-text("Heatmaps")', 1500); }, 1);
+  // On desktop the heatmaps sit beside Live in the Cash tab's second pane (UX pick 107): no switch.
+  step('cash-heatmaps', async () => { await nav('Cash'); if (desktop) await p.waitForTimeout(1500); else await click('.cash-mode-tabs button:has-text("Heatmaps")', 1500); }, 1);
   step('hands', () => nav('Hands'), 1);
   // The New Hand variant picker's palette (VariantPicker.jsx), open; then with a search typed.
   step('hands-palette', async () => { await nav('Hands'); await tap('.vp-launcher', 800); }, 1);

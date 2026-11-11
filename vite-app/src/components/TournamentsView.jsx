@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import { isOnline as isOnlineEvent } from '../utils/utils.js';
 import { useSwissBoard } from './SwissParts.jsx';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import Icon from './Icon.jsx';
 import DateBreak from './DateBreak.jsx';
 import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
@@ -862,7 +862,20 @@ export default function TournamentsView({
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const filterToggleRef = useRef(null);
   const [focusEventId, setFocusEventId] = useState(null);
-  const [renderedGroupCount, setRenderedGroupCount] = useState(8);
+  /* The list, windowed by day (UX pick 97). Only the days within a screen and a half of the view carry
+     their rows; every other day is a placeholder of its last measured height (an estimate before it was
+     ever shown), keeping its data-date-group so Today, Next and the date pills still find it. Every row
+     of every day used to stay rendered (474 rows, 13.9k nodes on the scratch feed), and showing the tab
+     laid them all out again: 0.9 s on a phone, 1.3 s on desktop. The day's element is the same one
+     either way, so the observers follow it across the switch. While the tab is hidden its observers
+     see nothing (a zero box) and keep what was live, so the tab comes back as it was left. */
+  const [liveDates, setLiveDates] = useState(null);   // null: the first window, worked out from today
+  const liveRef = useRef(new Set());
+  const groupHeights = useRef(new Map());               // date -> its height in r, while it was live
+  const listRef = useRef(null);
+  const liveAnchor = useRef(null);                      // the day at the top, held still across a change
+  const groupIO = useRef(null);
+  const groupRO = useRef(null);
   // Track which rows have been tapped open — only those get the full
   // CalendarEventRow with hooks/context. All others render the zero-hook
   // CalendarEventRowLite shell.
@@ -870,7 +883,6 @@ export default function TournamentsView({
   const activateRow = useCallback((id) => {
     setActivatedIds(prev => { const s = new Set(prev); s.add(id); return s; });
   }, []);
-  const loadMoreRef = useRef(null);
   const todayScrollRef = useRef(null);
   const hasScrolled = useRef(false);
   const stickyFiltersRef = useRef(null);
@@ -897,6 +909,21 @@ export default function TournamentsView({
   const scrollDateGroupToTop = useCallback((dateGroupEl, behavior = 'smooth') => {
     const container = document.querySelector('.content-area');
     if (!container || !dateGroupEl) return;
+    // A jump to a day outside the window (UX pick 97): that day and the next ones until 40 events get
+    // their rows first, so the landing is measured on them and lands on rows, not on a stand-in.
+    const day = dateGroupEl.getAttribute && dateGroupEl.getAttribute('data-date-group');
+    if (day && !liveRef.current.has(day)) {
+      const groups = dateGroupsRef.current || [];
+      const at = groups.findIndex(g => g.date === day);
+      const next = new Set(liveRef.current);
+      for (let k = Math.max(0, at - 1), n = 0; at >= 0 && k < groups.length && (k <= at || n < 40); k++) {
+        next.add(groups[k].date);
+        if (k >= at) n += groups[k].events.length;
+      }
+      next.add(day);
+      liveRef.current = next;
+      flushSync(() => setLiveDates(next));
+    }
     // Self-measuring landing that worked on device for months: read the actual
     // sticky height from the DOM and land the group's top 2px below it. Robust to
     // whatever the real device layout/safe-area produces (a computed r-target was
@@ -979,27 +1006,84 @@ export default function TournamentsView({
     });
   }, [scrollDateGroupToTop]);
 
-  // Progressive rendering — load more date groups as user scrolls near
-  // bottom. Bump aggressively (+30) so a single IO fire actually grows the
-  // visible slice past initialCount (previously +10 was a no-op for the
-  // first few fires when initialCount was already 30+).
+  /* The window's observers (UX pick 97): one IntersectionObserver over the days, its margin a screen and
+     a half above and below the scroller (a share of the root, which the API takes as it is), and one
+     ResizeObserver keeping each live day's height. Created once; each render observes the days on show
+     (observing an element twice is a no-op). */
   useEffect(() => {
-    const el = loadMoreRef.current;
-    if (!el) return;
-    // rootMargin is an IntersectionObserver API value — the spec requires an
-    // absolute px/% length and rejects calc()/var(), so derive the 150-subrow
-    // pre-load buffer from r in JS and emit it as the px the API demands.
-    // g freezes at 430px (styles.css --gu), so a desktop pane — a 37g phone canvas in a wide
-    // window — pre-loads at the phone's distance, not 3.35x further (same cap as CalendarEventRow).
-    const r = (Math.min(window.innerWidth, 430) / 37) * 0.71;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setRenderedGroupCount(prev => prev + 30);
+    const root = document.querySelector('.content-area');
+    if (!root || typeof IntersectionObserver !== 'function') return undefined;
+    const rPx = () => {
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)';
+      document.body.appendChild(probe);
+      const r = probe.getBoundingClientRect().height / 100;
+      probe.remove();
+      return r;
+    };
+    let r = 0;
+    groupIO.current = new IntersectionObserver((entries) => {
+      let next = null;
+      for (const e of entries) {
+        const b = e.boundingClientRect;
+        if (!b.width && !b.height) continue;   // the tab is hidden: keep the window it had
+        const d = e.target.getAttribute('data-date-group');
+        const cur = next || liveRef.current;
+        if (e.isIntersecting === cur.has(d)) continue;
+        next = next || new Set(liveRef.current);
+        if (e.isIntersecting) next.add(d); else next.delete(d);
       }
-    }, { rootMargin: `${Math.round(r * 150)}px` });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [renderedGroupCount]);
+      if (!next) return;
+      // Hold the day at the top of the view still: a day above it changing between its placeholder
+      // and its rows must not move what is being read (measured in the content's own coordinates, so
+      // a scroll meanwhile is not undone).
+      const list = listRef.current;
+      if (list) {
+        const rt = root.getBoundingClientRect().top;
+        for (const el of list.children) {
+          if (!el.hasAttribute('data-date-group')) continue;
+          const q = el.getBoundingClientRect();
+          if (q.bottom > rt) { liveAnchor.current = { date: el.getAttribute('data-date-group'), at: q.top - rt + root.scrollTop }; break; }
+        }
+      }
+      liveRef.current = next;
+      setLiveDates(next);
+    }, { root, rootMargin: '150% 0px' });
+    groupRO.current = typeof ResizeObserver === 'function' ? new ResizeObserver((entries) => {
+      if (!r) r = rPx();
+      for (const e of entries) {
+        const d = e.target.getAttribute('data-date-group');
+        if (!liveRef.current.has(d)) continue;
+        const h = e.target.getBoundingClientRect().height;
+        if (h > 0 && r > 0) groupHeights.current.set(d, h / r);
+      }
+    }) : null;
+    return () => {
+      if (groupIO.current) groupIO.current.disconnect();
+      if (groupRO.current) groupRO.current.disconnect();
+      groupIO.current = null; groupRO.current = null;
+    };
+  }, []);
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    for (const el of list.children) {
+      if (!el.hasAttribute('data-date-group')) continue;
+      if (groupIO.current) groupIO.current.observe(el);
+      if (groupRO.current) groupRO.current.observe(el);
+    }
+  });
+  useLayoutEffect(() => {
+    const a = liveAnchor.current;
+    liveAnchor.current = null;
+    const root = document.querySelector('.content-area');
+    const list = listRef.current;
+    if (!a || !root || !list) return;
+    const el = [...list.children].find(c => c.getAttribute('data-date-group') === a.date);
+    if (!el) return;
+    const delta = (el.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop) - a.at;
+    if (Math.abs(delta) > 0.5) root.scrollTop += delta;
+  }, [liveDates]);
 
   // When search changes, scroll to today/next
   const prevSearchRef = useRef(deferredSearch);
@@ -1210,6 +1294,8 @@ export default function TournamentsView({
     }
     return groups;
   }, [filtered]);
+  const dateGroupsRef = useRef(null);
+  dateGroupsRef.current = dateGroups;
 
   // Back-to-today FAB
   useEffect(() => {
@@ -1453,20 +1539,38 @@ export default function TournamentsView({
           actions={[{ label: 'Clear filters', onClick: clearAllFilters }]}
         />
       ) : (
-        <div className="schedule-list-tail">
+        <div className="schedule-list-tail" ref={listRef}>
           {(() => {
             const todayISO = getToday();
             const groups = dateGroups;
             // Find today's group index so we render enough to include it
             const todayGroupIdx = groups.findIndex(g => g.date >= todayISO);
-            const initialCount = Math.max(8, todayGroupIdx + 4);
             // First paint: skip past dates so initial reconciliation only
             // covers the rows the user can actually see after scroll-to-today.
             // Past gets backfilled on the next idle tick (see includePast).
             const startIdx = includePast || todayGroupIdx < 0 ? 0 : todayGroupIdx;
-            const endIdx = Math.min(groups.length, Math.max(renderedGroupCount, initialCount));
+            /* The window (UX pick 97): until the observer has spoken, the day before today and today
+               onwards until 40 events; then whatever it says is near the view. A placeholder stands
+               at its day's last measured height, else at the rows' average measured height. */
+            let live = liveDates;
+            if (!live) {
+              live = new Set();
+              const at = todayGroupIdx < 0 ? Math.max(0, groups.length - 1) : todayGroupIdx;
+              let n = 0;
+              for (let k = Math.max(0, at - 1); k < groups.length && (k <= at || n < 40); k++) {
+                live.add(groups[k].date);
+                if (k >= at) n += groups[k].events.length;
+              }
+            }
+            liveRef.current = live;
+            let seenR = 0, seenRows = 0;
+            for (const g of groups) {
+              const h = groupHeights.current.get(g.date);
+              if (h != null && g.events.length) { seenR += h - 5; seenRows += g.events.length; }
+            }
+            const rowR = seenRows ? Math.max(4, seenR / seenRows) : 12;
             let scrollRefAssigned = false;
-            return groups.slice(startIdx, endIdx).map((group, gi) => {
+            return groups.slice(startIdx).map((group, gi) => {
               const isToday = group.date === todayISO;
               const past = group.date < todayISO;
               const dateObj = new Date(group.date + 'T12:00:00');
@@ -1477,15 +1581,20 @@ export default function TournamentsView({
               if (needsRef) scrollRefAssigned = true;
               const dayEventCount = group.events.filter(t => !t.is_restart).length;
               const isCollapsed = collapsedDates.has(group.date);
+              const isLive = isCollapsed || live.has(group.date);
+              const standIn = isLive ? null : (groupHeights.current.get(group.date) ?? (5 + group.events.length * rowR));
               return (
-                <div key={group.date} ref={needsRef ? todayScrollRef : undefined} data-today-scroll={needsRef ? 'true' : undefined} data-date-group={group.date} style={{marginTop: gi === 0 ? 0 : 'var(--subrow)'}}>
-                  <DateBreak date={group.date} top={dateBreakTop} isToday={isToday} eventCount={dayEventCount} collapsed={isCollapsed} onToggle={() => toggleDateCollapsed(group.date)} onPillClick={(e) => { e.stopPropagation(); const grp = e.currentTarget.closest('[data-date-group]'); if (grp) scrollDateGroupToTop(grp); }} />
-                  {!isCollapsed && group.events.map(t => {
+                <div key={group.date} ref={needsRef ? todayScrollRef : undefined} data-today-scroll={needsRef ? 'true' : undefined} data-date-group={group.date}
+                  style={{marginTop: gi === 0 ? 0 : 'var(--subrow)', ...(standIn != null ? { height: `calc(var(--subrow) * ${standIn.toFixed(3)})` } : null)}}>
+                  {isLive && <DateBreak date={group.date} top={dateBreakTop} isToday={isToday} eventCount={dayEventCount} collapsed={isCollapsed} onToggle={() => toggleDateCollapsed(group.date)} onPillClick={(e) => { e.stopPropagation(); const grp = e.currentTarget.closest('[data-date-group]'); if (grp) scrollDateGroupToTop(grp); }} />}
+                  {isLive && !isCollapsed && group.events.map(t => {
                     // Yesterday's event still running past midnight needs the full row for its live
                     // clock too (clockAskable: started within 18 h, not known complete).
                     const needsFull = isToday || activatedIds.has(t.id) || focusEventId === t.id || clockAskable(t);
                     return (
-                    <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto calc(var(--subrow) * 13)'}}>
+                    /* No content-visibility: the window does that job now, and a row it skipped came
+                       back 13r tall after every remount, so a live day's measured height was wrong. */
+                    <div key={t.id}>
                       {needsFull ? (
                         <CalendarEventRow
                           tournament={t}
@@ -1532,7 +1641,6 @@ export default function TournamentsView({
               );
             });
           })()}
-          <div ref={loadMoreRef} style={{height: 1}} />
         </div>
       )}
 

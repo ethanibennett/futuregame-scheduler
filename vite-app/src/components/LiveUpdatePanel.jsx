@@ -724,9 +724,10 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
                       </div>
                       <div className="live-update-field">
                         <label>Additional Opponents</label>
-                        <div style={{display:'flex',gap:'calc(var(--subrow) * 0.75)',marginTop:'calc(var(--subrow) * 0.5)'}}>
+                        {/* Four 3g chips 1g apart, under the 2r label (owner rule, 2026-10-10). */}
+                        <div style={{display:'flex',gap:'var(--gu)'}}>
                           {[2, 3, 4, 5].map(n => (
-                            <button key={n} type="button" className={`filter-chip ${numOpponents === n ? 'active' : ''}`} onClick={() => setNumOpponents(numOpponents === n ? 1 : n)}>
+                            <button key={n} type="button" className={`filter-chip ctl ${numOpponents === n ? 'active' : ''}`} style={{flex:'0 0 auto',width:'calc(var(--gu) * 3)',padding:0}} onClick={() => setNumOpponents(numOpponents === n ? 1 : n)}>
                               {n}
                             </button>
                           ))}

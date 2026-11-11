@@ -50,7 +50,8 @@
    top bar. Above the live cash bar (5r, its own snap) when one shows. */
 .app-shell.is-desktop .dk-pane-wide > .bk-fab--page {
   position: absolute;
-  right: calc(var(--gu) * (1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0))));
+  /* + --dk-grow: the pane runs to the shell's edge (UX pick 107), its content where it was. */
+  right: calc(var(--dk-grow, 0px) + var(--gu) * (1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0))));
   bottom: calc(var(--subrow) * 2);
 }
 .app-shell.is-desktop:has(.cs-bar) .dk-pane-wide > .bk-fab--page {

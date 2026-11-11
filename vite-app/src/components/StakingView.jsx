@@ -344,11 +344,13 @@ function StakingSeriesList({ series, loading, onSelect, onCreate, onBackers, onS
                 </div>
               )}
             </div>
-            <div style={{display:'flex',alignItems:'center',gap:'var(--space-md)'}}>
-              <span className={`staking-badge staking-badge-${s.status}`}>
+            {/* On the grid: the badge a whole-g pill (snap-g), 1g, then the chevron in a 1g cell, the
+                row 2r tall, so the badge's edges fall on g lines and its top on an r line. */}
+            <div style={{display:'flex',alignItems:'center',gap:'var(--gu)',height:'calc(var(--subrow) * 2)'}}>
+              <span className={`staking-badge staking-badge-${s.status} snap-g`}>
                 {s.status === 'pre' ? 'Pre' : s.status === 'active' ? 'Active' : 'Settled'}
               </span>
-              <span style={{color:'var(--text-muted)',fontSize:'calc(var(--subrow) * 2)'}}>&rsaquo;</span>
+              <span style={{color:'var(--text-muted)',fontSize:'calc(var(--subrow) * 2)',width:'var(--gu)',textAlign:'center',lineHeight:1}}>&rsaquo;</span>
             </div>
           </div>
         </button>
@@ -547,9 +549,10 @@ function BackerManager({ token, backers, fetchBackers, onBack }) {
               {b.phone && <div style={{fontSize:'calc(var(--subrow) * 1.5)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>{b.phone}</div>}
               {b.notes && <div style={{fontSize:'calc(var(--subrow) * 1.375)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)',fontStyle:'italic'}}>{b.notes}</div>}
             </div>
-            <div style={{display:'flex',gap:'var(--space-sm)'}}>
-              <button className="btn btn-ghost btn-sm" onClick={() => openEdit(b)} style={{fontSize:'calc(var(--subrow) * 1.375)'}}>Edit</button>
-              <button className="btn btn-ghost btn-sm" onClick={() => handleDelete(b.id)} style={{fontSize:'calc(var(--subrow) * 1.375)',color:'#ef4444'}}>{'\u2715'}</button>
+            {/* Whole-g buttons 1g apart, their labels centred (owner rule, 2026-10-10). */}
+            <div style={{display:'flex',gap:'var(--gu)'}}>
+              <button className="btn btn-ghost btn-sm ctl" onClick={() => openEdit(b)} style={{fontSize:'calc(var(--subrow) * 1.375)',width:'calc(var(--gu) * 5)',padding:0}}>Edit</button>
+              <button className="btn btn-ghost btn-sm ctl" onClick={() => handleDelete(b.id)} aria-label={'Delete ' + b.name} style={{fontSize:'calc(var(--subrow) * 1.375)',color:'var(--neg)',width:'calc(var(--gu) * 3)',padding:0}}>{'\u2715'}</button>
             </div>
           </div>
         ))}
@@ -605,21 +608,25 @@ function BackerSummaryView({ token, onBack, onManage }) {
         const badge = get1099Status(b.ytd_winnings);
         const isExpanded = expandedId === b.id;
         return (
-          <div key={b.id} className="staking-backer-card" style={{flexDirection:'column',alignItems:'stretch',cursor:'pointer'}}
+          // A column: the card class's 1g gap would fall between its rows as 1.41r (gap 0, so whole r).
+          <div key={b.id} className="staking-backer-card" style={{flexDirection:'column',alignItems:'stretch',gap:0,cursor:'pointer'}}
             onClick={() => setExpandedId(isExpanded ? null : b.id)}>
             {/* Header row */}
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
               <div style={{minWidth:0,flex:1}}>
-                <div style={{display:'flex',alignItems:'center',gap:'var(--space-md)',flexWrap:'wrap'}}>
+                {/* Every piece of this line 2r tall, the wrapped ones too, so the card is whole r. */}
+                <div style={{display:'flex',alignItems:'center',columnGap:'var(--space-md)',rowGap:0,flexWrap:'wrap'}}>
                   <span style={{fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--subrow) * 1.75)',lineHeight:'calc(var(--subrow) * 2)'}}>{b.name}</span>
                   {badge && (
                     <span style={{
-                      fontSize:'calc(var(--subrow) * 1.25)',fontWeight: 'var(--fw-bold)',color:'#fff',padding:'var(--space-2xs) var(--space-md)',borderRadius:999,
+                      fontSize:'calc(var(--subrow) * 1.25)',fontWeight: 'var(--fw-bold)',color:'#fff',padding:'0 var(--space-md)',borderRadius:'var(--radius-pill)',
+                      height:'calc(var(--subrow) * 2)',display:'inline-flex',alignItems:'center',lineHeight:1,boxSizing:'border-box',
                       background: badge.color, letterSpacing:'calc(var(--subrow) * 0.0625)'
                     }}>{badge.label}</span>
                   )}
                   {b.active_count > 0 && (
-                    <span style={{fontSize:'calc(var(--subrow) * 1.25)',color:'var(--text-muted)',background:'var(--hover-overlay)',padding:'var(--space-2xs) var(--space-sm)',borderRadius:'var(--radius-xs)'}}>
+                    <span style={{fontSize:'calc(var(--subrow) * 1.25)',color:'var(--text-muted)',background:'var(--hover-overlay)',padding:'0 var(--space-sm)',borderRadius:'var(--radius-xs)',
+                      height:'calc(var(--subrow) * 2)',display:'inline-flex',alignItems:'center',lineHeight:1,boxSizing:'border-box'}}>
                       {b.active_count} active
                     </span>
                   )}
@@ -650,7 +657,7 @@ function BackerSummaryView({ token, onBack, onManage }) {
                 <div style={{fontSize:'calc(var(--subrow) * 1.25)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>Returned</div>
               </div>
               <div style={{textAlign:'center'}}>
-                <div style={{fontSize:'calc(var(--subrow) * 1.5)',fontWeight: 'var(--fw-bold)',color: b.ytd_winnings > 0 ? '#f59e0b' : 'var(--text-muted)'}}>
+                <div style={{fontSize:'calc(var(--subrow) * 1.5)',lineHeight:'calc(var(--subrow) * 2)',fontWeight: 'var(--fw-bold)',color: b.ytd_winnings > 0 ? '#f59e0b' : 'var(--text-muted)'}}>
                   {formatBuyin(b.ytd_winnings)}
                 </div>
                 <div style={{fontSize:'calc(var(--subrow) * 1.25)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>YTD</div>
@@ -660,12 +667,14 @@ function BackerSummaryView({ token, onBack, onManage }) {
 
             {/* Expanded: active agreements */}
             {isExpanded && b.agreements && b.agreements.length > 0 && (
-              <div style={{marginTop:'var(--space-ml)',paddingTop:'var(--space-md)',borderTop:'var(--bw-hair) solid var(--border)'}}>
-                <div style={{fontSize:'calc(var(--subrow) * 1.375)',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'calc(var(--subrow) * 0.125)',marginBottom:'var(--space-sm)',
+              /* Whole r throughout: 1r, the rule (a shadow, out of the box), 1r, a 2r caption, 1r, then
+                 4r rows. */
+              <div style={{marginTop:'var(--space-md)',paddingTop:'var(--space-md)',boxShadow:'inset 0 var(--bw-hair) 0 0 var(--border)'}}>
+                <div style={{fontSize:'calc(var(--subrow) * 1.375)',lineHeight:'calc(var(--subrow) * 2)',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'calc(var(--subrow) * 0.125)',marginBottom:'var(--space-md)',
                   fontFamily:'Univers Condensed, Univers, sans-serif'}}>Active Agreements</div>
                 {b.agreements.map((ag, i) => (
                   <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
-                    padding:'calc(var(--subrow) * 0.625) 0',borderBottom:'var(--bw-hair) solid var(--border)',fontSize:'calc(var(--subrow) * 1.5)'}}>
+                    height:'calc(var(--subrow) * 4)',boxSizing:'border-box',boxShadow:'inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border)',fontSize:'calc(var(--subrow) * 1.5)'}}>
                     <div style={{minWidth:0,flex:1}}>
                       <span style={{fontWeight: 'var(--fw-regular)'}}>{ag.series_name}</span>
                       <span style={{marginLeft:'var(--space-sm)',fontSize:'calc(var(--subrow) * 1.375)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>{BACKER_TYPE_LABELS[ag.backer_type] || ag.backer_type}</span>
@@ -676,7 +685,7 @@ function BackerSummaryView({ token, onBack, onManage }) {
               </div>
             )}
             {isExpanded && b.agreements && b.agreements.length === 0 && (
-              <div style={{marginTop:'var(--space-ml)',paddingTop:'var(--space-md)',borderTop:'var(--bw-hair) solid var(--border)',fontSize:'calc(var(--subrow) * 1.5)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>
+              <div style={{marginTop:'var(--space-md)',paddingTop:'var(--space-md)',boxShadow:'inset 0 var(--bw-hair) 0 0 var(--border)',fontSize:'calc(var(--subrow) * 1.5)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>
                 No active agreements
               </div>
             )}
@@ -735,10 +744,10 @@ function StakingSeriesDetail({ series, token, backers, tournaments, mySchedule, 
             {agreements.length} agreement{agreements.length !== 1 ? 's' : ''} &middot; {totalPct}% sold
           </div>
         </div>
-        <span className={`staking-badge staking-badge-${series.status}`}>
+        <span className={`staking-badge staking-badge-${series.status} snap-g`}>
           {series.status === 'pre' ? 'Pre' : series.status === 'active' ? 'Active' : 'Settled'}
         </span>
-        <button className="btn btn-ghost btn-sm" onClick={onEdit} style={{fontSize:'calc(var(--subrow) * 1.5)',marginLeft:'var(--space-xs)'}}>{'\u270E'}</button>
+        <button className="btn btn-ghost btn-sm ctl" onClick={onEdit} aria-label="Edit the series" style={{flex:'0 0 auto',width:'calc(var(--gu) * 3)',padding:0}}><Icon.pencil /></button>
       </div>
 
       <div className="group-segments">
@@ -866,7 +875,7 @@ function AgreementsList({ agreements, token, fetchAgreements, onAdd }) {
                 <input type="checkbox" checked={!!ag.is_active} onChange={() => toggleActive(ag)} />
                 <span className="toggle-slider" />
               </label>
-              <button className="btn btn-ghost btn-sm" onClick={() => handleDelete(ag.id)} style={{fontSize:'calc(var(--subrow) * 1.375)',color:'#ef4444',padding:'var(--space-2xs) var(--space-xs)'}}>{'\u2715'}</button>
+              <button className="btn btn-ghost btn-sm ctl" onClick={() => handleDelete(ag.id)} aria-label="Delete the agreement" style={{fontSize:'calc(var(--subrow) * 1.375)',color:'var(--neg)',width:'calc(var(--gu) * 3)',flex:'0 0 auto',padding:0}}>{'\u2715'}</button>
             </div>
           </div>
         </div>

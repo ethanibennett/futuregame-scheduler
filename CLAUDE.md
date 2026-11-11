@@ -16,7 +16,9 @@ sessions opened here own scheduler work.
 - **Desktop layout**: any window >= 1024px wide (browser, iPad app, Mac app) gets a side rail +
   2 panes (Schedule = list | right pane, the selected event on top and My Schedule under it;
   the third column was dropped 2026-10-10; the two panes sit 2g apart on the background, 2026-10-13) on the SAME g as the phone (g stays 430px/37; panes
-  are 9N+1 g, widened by a classic scrollbar's width where one shows). Everything narrower, and
+  are 9N+1 g, widened by a classic scrollbar's width where one shows). Every tab's panes end on the
+  shell's right edge (2026-11-11): Hands and Cash are list | second pane, the rest one pane to the edge.
+  Everything narrower, and
   every phone, is the phone layout, pixel-identical. Design and per-tab plan: `docs/desktop-layout.md`.
 - **Backend**: `server.js` — Express 5 + sql.js (SQLite loaded to memory, saved on write).
   `JWT_SECRET` env required. `DB_PATH` env overrides the default `poker-tournaments.db`.
@@ -673,8 +675,22 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   - On the desktop every `.share-menu-panel` is a centred 46g dialog (`:root.dk-on`, `--dk-sheet-x` set by App).
   - `/live` gets its own small stylesheet, `src/live.generated.css`, made from `styles.css` by
     `vite-app/scripts/make-live-css.mjs` on every vite start (gitignored, like `live.html`).
-  - Not built, needing a decision or a session of their own: 68 (desktop Hands list beside the replay), 97's windowed
-    Schedule list and profiling (its press-first half is in), 107 (every desktop tab to the shell's right edge).
+  - **Every desktop tab ends on the shell's right edge** (107, 2026-11-11), so the header's right group never moves:
+    Hands and Cash are list 37g | a second pane (`.dk-pane-split` + `.dk-pane-side`, App's `dkSideHands` /
+    `dkSideCash` hosts the views portal into), the home's NUMBERS pane is 9N+1, and every other tab is one pane to
+    the edge whose content keeps its old width (`--dk-grow` is padding on its right; anything hung from the pane's
+    right edge adds it). `docs/desktop-layout.md` §7.
+  - **Hands on desktop is the saved list beside the replay** (68): `HandReplayerView`'s `sidePane` gets the replay
+    (`replayer-in-pane`: the landscape table in flow, its transport and actions stacked under the street track) or
+    a "No hand open" prompt; ↑/↓ open the next hand. Entry, quick add and the drill take the main pane alone
+    (`onSplitChange`). The replay over the whole window remains for a shared link signed out and the drill.
+  - **The Schedule list is windowed by day** (97): only days within 1.5 screens carry their rows; the rest are
+    placeholders at their last measured height (`TournamentsView` `liveDates`, `groupHeights`), keeping
+    `data-date-group` / `data-today-scroll`, so find a day by those, never a row by `data-tid` off screen. A jump
+    (`scrollDateGroupToTop`) makes its day live first; a day changing above the view is held still by an anchor.
+    Rows no longer use content-visibility. Re-showing the tab went from ~0.9 s / 1.3 s to ~0.2 s / 0.33 s (phone /
+    desktop) on the 474-row scratch feed. A tab's scroll comes back in a layout effect after the tab commits
+    (`restoreTabScroll`), since a tab press is a transition.
 - **What we tout at launch:** `docs/launch-features.md`, with the plan's guardrails and what is open to everyone today.
 - Update this file when architecture or suite topology changes — it is the handoff.
 - **Session state** lives in `docs/session-handoff.md` — what shipped recently,

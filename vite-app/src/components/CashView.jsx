@@ -192,7 +192,9 @@ function CashLocationPicker({ token, onSaved, trailing = null }) {
   );
 }
 
-export default function CashView({ token, onModeChange }) {
+/* sidePane (desktop, UX picks 107 and the proposal's Cash pane): the shell's second pane. Given one,
+   Live stays in the main pane and the heatmaps sit beside it, so the two need no switch. */
+export default function CashView({ token, onModeChange, sidePane = null }) {
   const [data, setData] = useState(null);
   // The games whose per-table rows are open (UX pick 96), by room and game.
   const [openGames, setOpenGames] = useState(() => new Set());
@@ -210,12 +212,18 @@ export default function CashView({ token, onModeChange }) {
   const [hidden, setHidden] = useState(() => {
     try { const s = localStorage.getItem(HIDDEN_KEY); return new Set(s ? JSON.parse(s) : []); } catch { return new Set(); }
   });
-  const [mode, setMode] = useState(() => localStorage.getItem('cashMode') || 'live'); // 'live' | 'heatmap'
+  const [storedMode, setMode] = useState(() => localStorage.getItem('cashMode') || 'live'); // 'live' | 'heatmap'
+  const split = !!sidePane;
+  const mode = split ? 'live' : storedMode;
   const setModePersist = useCallback((m) => {
     setMode(m);
     try { localStorage.setItem('cashMode', m); } catch { /* ignore */ }
     if (onModeChange) onModeChange(m); // the top bar's subtitle names the mode
   }, [onModeChange]);
+  // Split, the subtitle names Live (the main pane); back on the phone layout, the stored mode again.
+  useEffect(() => { if (onModeChange) onModeChange(mode); }, [mode, onModeChange]);
+  // Refresh in the split reloads both: the board, and the heatmaps' room list.
+  const [heatBump, setHeatBump] = useState(0);
 
   const toggleVariant = useCallback((variant) => {
     setHidden(prev => {
@@ -326,7 +334,7 @@ export default function CashView({ token, onModeChange }) {
       {/* Refresh shares the location field's row (owner, 2026-10-10), in its fourth column, on both
           views: Live reloads the board, Heatmaps re-reads its room list. */}
       <CashLocationPicker token={token} onSaved={bumpLocation} trailing={
-        <button type="button" className="cb-refresh" onClick={mode === 'heatmap' ? bumpLocation : load}
+        <button type="button" className="cb-refresh" onClick={split ? () => { load(); setHeatBump(b => b + 1); } : mode === 'heatmap' ? bumpLocation : load}
           style={{ width: 'var(--col)', flex: '0 0 auto', height: CTRL_H, boxSizing: 'border-box', border: 'var(--bw-hair) solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 'var(--radius-sm)', padding: 0, cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.060)', whiteSpace: 'nowrap' }}>
           {mode === 'live' && status === 'loading' ? 'Loading…' : 'Refresh'}
         </button>
@@ -334,17 +342,28 @@ export default function CashView({ token, onModeChange }) {
 
       {/* Live / Heatmaps: the same segmented strip as the hand entry's MTT / Cash, 1r under the
           location row on BOTH views, so it never moves when you switch. */}
+      {!split && (
       <div className="live-update-tabs cash-mode-tabs" style={{ marginTop: 0, marginBottom: 'var(--space-xl)' }}>
         {[['live', 'Live'], ['heatmap', 'Heatmaps']].map(([m, lbl]) => (
           <button key={m} type="button" className={mode === m ? 'active' : ''} aria-pressed={mode === m}
             onClick={() => setModePersist(m)}>{lbl}</button>
         ))}
       </div>
+      )}
 
       {mode === 'heatmap' && (
         <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <CashHeatmap token={token} locationVersion={locationVersion} />
         </div>
+      )}
+      {split && createPortal(
+        <div className="cash-side">
+          <div className="dk-side-title"><span>Heatmaps</span></div>
+          <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <CashHeatmap token={token} locationVersion={locationVersion + heatBump} />
+          </div>
+        </div>,
+        sidePane
       )}
 
       {mode === 'live' && (<>

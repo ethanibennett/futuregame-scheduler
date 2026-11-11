@@ -606,7 +606,7 @@ function heroCardsOf(h) {
    the action wanted least. A horizontal drag past half the button's width leaves it open; a tap on
    the row then closes it rather than opening the hand. A vertical move is a scroll and is left alone
    (touch-action: pan-y). The Delete key on a focused row does the same as the button. */
-function SwipeDeleteRow({ className, onOpen, onDelete, label, children }) {
+function SwipeDeleteRow({ className, onOpen, onDelete, label, children, rowId = null, selected = false }) {
   const [shift, setShift] = useState(0);      // in g, 0 to -6
   const [dragging, setDragging] = useState(false);
   const drag = useRef(null);
@@ -638,8 +638,8 @@ function SwipeDeleteRow({ className, onOpen, onDelete, label, children }) {
     if (d && d.live) setShift(s => (s <= -3 ? -6 : 0));
   };
   return (
-    <div className={className + ' is-swipe' + (open ? ' is-swiped' : '') + (dragging ? ' is-dragging' : '')}
-      tabIndex={0} aria-keyshortcuts="Delete"
+    <div className={className + ' is-swipe' + (open ? ' is-swiped' : '') + (dragging ? ' is-dragging' : '') + (selected ? ' is-selected' : '')}
+      tabIndex={0} aria-keyshortcuts="Delete" data-hand-id={rowId == null ? undefined : rowId} aria-current={selected ? 'true' : undefined}
       onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
       onClick={(e) => {
         if (moved.current) { moved.current = false; return; }
@@ -5021,7 +5021,11 @@ function agoLabel(ms) {
 // ══════════════════════════════════════════════════════════
 // ── Main Hand Replayer View ──────────────────────────────
 // ══════════════════════════════════════════════════════════
-export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, onStudyDraw, linkedReplay, quickAdd, drillEnabled, drillAsk, onDrillAsked = false, schedule = null, updates = null }) {
+/* sidePane (desktop, UX pick 68): the element of the shell's second pane. Given one, the list stays in
+   the main pane and the replay of the chosen hand opens beside it (portalled there), with a prompt in
+   its place while none is open; onSplitChange says whether the split is showing (entry, quick add and
+   the drill still take the main pane alone). */
+export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, onStudyDraw, linkedReplay, quickAdd, drillEnabled, drillAsk, onDrillAsked = false, schedule = null, updates = null, sidePane = null, onSplitChange = null }) {
   const toast = useToast();
   const [mode, setMode] = useState(initialHand ? 'replay' : 'list');
   // Hands > Study > Play a hand.
@@ -5459,10 +5463,39 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     startNewHand();
   }, [pendingCreate]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── The desktop split (UX pick 68) ──
+  const split = !!sidePane && (mode === 'list' || (mode === 'replay' && !!currentHand));
+  useEffect(() => { if (onSplitChange) onSplitChange(split); }, [split, onSplitChange]);
+  /* ↑ and ↓ open the hand above or below the one on show (← and → stay with the transport). Only while
+     the Hands tab is the one on screen: its pane host is hidden on every other tab. */
+  useEffect(() => {
+    if (!split) return undefined;
+    const onKey = (e) => {
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      if (e.defaultPrevented || e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (!sidePane.isConnected || sidePane.offsetParent === null) return;
+      if (document.querySelector('.share-menu-panel, .vp-scrim, .replayer-settings-panel')) return;
+      const rows = hands.filter(h => !goneIds.has(h.id));
+      if (!rows.length) return;
+      const at = mode === 'replay' ? rows.findIndex(h => h.id === currentHandId) : -1;
+      const next = e.key === 'ArrowDown' ? (at < 0 ? 0 : at + 1) : (at < 0 ? rows.length - 1 : at - 1);
+      if (next < 0 || next >= rows.length) return;
+      e.preventDefault();
+      openRow(rows[next]);
+      requestAnimationFrame(() => {
+        const el = document.querySelector('[data-hand-id="' + rows[next].id + '"]');
+        if (el) el.scrollIntoView({ block: 'nearest' });
+      });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [split, sidePane, hands, goneIds, mode, currentHandId, openingId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Replay mode ──
-  if (mode === 'replay' && currentHand) {
-    return (
-      <div className="replayer-view is-replay">
+  const replayEl = mode === 'replay' && currentHand ? (
+      <div className={'replayer-view is-replay' + (sidePane ? ' is-in-pane' : '')}>
         <div className="replayer-header">
           <h2>{title || autoTitle(currentHand) || currentHand.gameType + ' Hand'}</h2>
           <span className="replayer-hand-card-game">{currentHand.gameType + (currentHand.blinds ? ' ' + formatChipAmount(currentHand.blinds.sb) + '/' + formatChipAmount(currentHand.blinds.bb) + (currentHand.blinds.ante ? '/' + formatChipAmount(currentHand.blinds.ante) : '') : '')}</span>
@@ -5491,11 +5524,12 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             onStudyDraw={onStudyDraw}
             linkedReplay={linkedReplay}
             sharedHand={handIsShared}
+            inPane={!!sidePane}
           />
         </ReplayErrorBoundary>
       </div>
-    );
-  }
+  ) : null;
+  if (replayEl && !sidePane) return replayEl;
 
   // ── Entry mode ──
   if (mode === 'entry' && currentHand) {
@@ -5709,7 +5743,18 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     );
   })();
   const toggleDoubleBoard = () => setDoubleBoard(d => !d);
+  /* The second pane with no hand open: what goes there, and how to get one there. */
+  const paneEmpty = (
+    <div className="dk-hands-empty">
+      <p className="dk-hands-empty-title">{hands.length ? 'No hand open' : 'Your replays open here'}</p>
+      <p className="dk-hands-empty-meta">{hands.length
+        ? 'Choose a saved hand on the left to replay it here. ↑ and ↓ step through the list.'
+        : 'Create a hand on the left, or watch the sample hand.'}</p>
+    </div>
+  );
   return (
+    <>
+    {sidePane && createPortal(replayEl || paneEmpty, sidePane)}
     <div className="replayer-view is-list">
       {/* Title dropped — the top-bar subtitle reads "hands archive" on this tab. */}
 
@@ -5833,7 +5878,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                result, no date — in an app about cards, while the stylesheet
                shipped -meta and -actions classes this list never used. Nobody
                looks for "Hand 14"; they look for that AA hand they lost. */
-            <SwipeDeleteRow key={h.id} label={displayTitle(h)}
+            <SwipeDeleteRow key={h.id} label={displayTitle(h)} rowId={h.id}
+              selected={split && mode === 'replay' && currentHandId === h.id}
               className={'replayer-hand-card is-row' + (outcomeOf(h) ? ' outcome-' + outcomeOf(h) : '') + (openingId === h.id ? ' is-opening' : '')}
               onOpen={() => openRow(h)} onDelete={() => deleteHand(h)}
             >
@@ -5923,6 +5969,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         </div>
       )}
     </div>
+    </>
   );
 }
 
@@ -6020,7 +6067,7 @@ function HandHistoryExportSheet({ rows, heroName, toast, onClose }) {
 // ══════════════════════════════════════════════════════════
 // ── Replay View Sub-component ────────────────────────────
 // ══════════════════════════════════════════════════════════
-function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, cardSplay, onSolveSpot, onStudyDraw, linkedReplay, heroName, playedAt, sharedHand, drill = null }) {
+function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, cardSplay, onSolveSpot, onStudyDraw, linkedReplay, heroName, playedAt, sharedHand, drill = null, inPane = false }) {
   /* The GIF export's completion toasts referenced `toast` from inside this
      component, where it was never declared - the outer HandReplayerView owns
      the one call to useToast(). Optional chaining does not save an UNDECLARED
@@ -6040,7 +6087,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      mode must not do is come out bigger than the space it has, which is
      handled where the table is sized rather than by refusing to enter here. */
   const LANDSCAPE_Q = '(orientation: landscape)';
-  const [isLandscape, setIsLandscape] = useState(() => window.matchMedia(LANDSCAPE_Q).matches);
+  /* In the desktop Hands pane (UX pick 68) the table is always the landscape one: the pane is a
+     desktop pane, and the portrait mode is a phone's full screen (fixed, its paddings from the window). */
+  const [windowLandscape, setIsLandscape] = useState(() => window.matchMedia(LANDSCAPE_Q).matches);
+  const isLandscape = inPane || windowLandscape;
   useEffect(() => {
     const mql = window.matchMedia(LANDSCAPE_Q);
     const handler = (e) => { setIsLandscape(e.matches); };
@@ -8989,6 +9039,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
        letterboxed the table. */
     <div className={'replayer-replay' + hcDeckClass
       + (isLandscape ? ' replayer-landscape' : ' replayer-fullbleed')
+      + (inPane ? ' replayer-in-pane' : '')
       + (rewinding ? ' is-rewinding' : '')}>
       {showSettings && <ReplayerSettingsPanel onClose={() => setShowSettings(false)} settings={rSettings} onUpdate={handleSettingsUpdate} />}
 
@@ -10067,7 +10118,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           {/* A shared link is a clean view of one hand — no navigating back to a
               list that is not there, no editing someone else's hand, no
               re-sharing chrome. Ethan: drop Back/Edit/Share on a linked replay. */}
-          {!linkedReplay && <button className="btn btn-ghost btn-sm rab-back" onClick={onBack}><span className="rs-t">Back</span></button>}
+          {!linkedReplay && <button className="btn btn-ghost btn-sm rab-back" onClick={onBack}><span className="rs-t">{inPane ? 'Close' : 'Back'}</span></button>}
           {!linkedReplay && <button className="btn btn-ghost btn-sm rab-edit" onClick={onEdit}><span className="rs-t">Edit</span></button>}
           {onStudyDraw && drawStudyGame && (
             <button className={'btn btn-sm rab-solve ' + (canStudyDraw ? 'btn-primary' : 'btn-ghost')}

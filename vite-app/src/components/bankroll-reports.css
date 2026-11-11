@@ -99,7 +99,10 @@
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   padding-block: calc(var(--subrow) * 0.5); margin-block: calc(var(--subrow) * -0.5);
 }
-.br-opt-n { flex: none; font-weight: var(--fw-regular); color: var(--text-muted); font-variant-numeric: var(--num-tabular); }
+/* The face's own figures, no numeric feature: a count in a chip lines up with nothing, and the chip is
+   centred on its ink by Chip (BankrollFilters.jsx, utils/ink-balance.js balanceInkX), whose canvas
+   draws the default figures (it cannot apply font-variant-numeric). */
+.br-opt-n { flex: none; font-weight: var(--fw-regular); color: var(--text-muted); }
 .br-chip.is-on .br-opt-n { color: var(--brand-ink, var(--brand)); }
 
 /* ── The filter sheet: over the dashboard sheet ─────────────────── */
