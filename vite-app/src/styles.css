@@ -3180,6 +3180,13 @@
       padding-block: 0.3em; margin-block: -0.3em;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
+    /* The heading's buttons (Import, Export for PokerTracker) share one span: not a line of text, a 4r row of
+       buttons on the heading's bottom line (the rule above made it a 2r clipped line, and Import sat 1.36r low). */
+    .replayer-view.is-list .replayer-list-heading > span.hx-head-btns {
+      display: flex; align-items: flex-end; justify-content: flex-end; gap: var(--gu);
+      height: calc(var(--subrow) * 4); line-height: normal; overflow: visible; white-space: normal;
+      padding-block: 0; margin-block: 0; text-box-trim: none; max-width: none; align-self: end; justify-self: end;
+    }
     /* A button's label: centred by its button, untrimmed, its line box holding the descenders. */
     .replayer-view.is-list .btn > span {
       display:block; min-width:0; max-width:100%;
