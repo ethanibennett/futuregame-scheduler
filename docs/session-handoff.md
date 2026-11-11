@@ -54,7 +54,9 @@ wsop-console side and verified against both live services.
 - **TestFlight (owner, 2026-11-11: "has this all been pushed to Testflight? if not please do that"):** nothing had
   shipped since `2a2ecb7` (2026-11-06). The nightly's runs of 11-10 (`f0d9cbf`, four) and 11-11 (`3d47eec`, two) all
   failed because the Mac was closed: no log at all, or `curl: (56) Connection reset` fetching Capacitor's
-  xcframeworks. With the runner back online, master `7305774` was dispatched by hand (run `43062104175`).
+  xcframeworks. With the runner back online, master `7305774` was dispatched by hand: run `43062104175` succeeded,
+  build **2137** uploaded (16:51 UTC) and processing at App Store Connect. The nightly compares SHAs only, so it will
+  build the handoff commit after it too: the same app under a new number.
 - **Waiting on the owner:** whether any of Settings, Admin, Social, Results or Staking should get a second desktop
   pane (107 leaves each one pane to the edge).
 - **Left uncommitted, not this work:** another session's Pre-draw ranges (`RangesView.jsx`,
