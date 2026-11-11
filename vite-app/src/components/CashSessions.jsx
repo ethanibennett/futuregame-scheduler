@@ -43,6 +43,7 @@ import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
 import BackerNotify from './BackerNotify.jsx';
 import PostsToBackers from './PostsToBackers.jsx';
 import { cashPreviewQuery } from '../utils/standing-ui.js';
+import MoneyField from './MoneyField.jsx';
 
 const money = (v, cur) => formatCurrencyAmount(Math.round(v || 0), cur || 'USD');
 const signed = (v, cur) => (v > 0 ? '+' : '') + money(v, cur);
@@ -91,7 +92,9 @@ function RoomInput({ value, onChange, rooms }) {
     </>
   );
 }
-const Num = (props) => <input type="number" inputMode="numeric" min="0" {...props} />;
+// Amounts read as every money field does (UX pick 73: "$1,200", "1.2k"); a count stays a number field.
+const Num = (props) => <MoneyField {...props} />;
+const Count = (props) => <input type="number" inputMode="numeric" min="0" {...props} />;
 const Notes = (props) => <textarea maxLength={500} rows={2} placeholder="Optional — the table, a hand, how you played" {...props} />;
 
 // ── A line chart: the cumulative graph (x = session) and a session's swing (x = time) ────────────
@@ -175,7 +178,7 @@ function SessionForm({ bk, rooms, sessions, session, onSave, onCancel, busy, tok
         <Field label="Notes" wide note><Notes value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
         {more && (
           <>
-            <Field label="Rebuys (count)"><Num value={rebuys} max="999" onChange={(e) => setRebuys(e.target.value)} /></Field>
+            <Field label="Rebuys (count)"><Count value={rebuys} max="999" onChange={(e) => setRebuys(e.target.value)} /></Field>
             <Field label="Bankroll"><BankrollSelect bk={bk} value={bankroll} onChange={setBankroll} /></Field>
             <Field label="Tips"><Num value={tips} placeholder="0" onChange={(e) => setTips(e.target.value)} /></Field>
             <Field label="Expenses"><Num value={expenses} placeholder="0" onChange={(e) => setExpenses(e.target.value)} /></Field>

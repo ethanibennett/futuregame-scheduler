@@ -185,3 +185,12 @@
 /* Truncates on a narrow pane; the half-r padding, cancelled by the margin, is the descenders' room. */
 .an-launch-go { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   padding-block: calc(var(--subrow) * 0.5); margin-block: calc(var(--subrow) * -0.5); color: var(--text-muted); font-weight: var(--fw-regular); }
+/* "How these are worked out ›" (UX pick 90): a 3r line in the brand colour, its caps seated on line 2;
+   open, the method's paragraphs under it. */
+.an-how { margin: 0; }
+.an-how-sum {
+  display: block; list-style: none; cursor: pointer; height: calc(var(--subrow) * 3); box-sizing: border-box;
+  padding-top: calc(var(--subrow) * 2 - 1cap); line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+  font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--brand);
+}
+.an-how-sum::-webkit-details-marker { display: none; }

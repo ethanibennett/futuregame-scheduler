@@ -348,7 +348,11 @@ export default function DashboardView({
       ];
     }
     const events = [...baggedEvents, ...activePrevDayEvents];
-    if (baggedEvents.length > 0) {
+    // Only a bag that restarts TODAY makes today's other events conditional on it (UX pick 37): one that
+    // restarts tomorrow used to dash every event of today as "Conditional on bag".
+    const bagRestartsToday = baggedEvents.some(b => (tournaments || []).some(t =>
+      t.is_restart && t.parent_event === b.event_number && normaliseDate(t.date) === todayISO));
+    if (bagRestartsToday) {
       // With a bag to come back to, today's other events are conditional on it — unless an event
       // carries its own plan, which says (or will say) for itself whether it is on.
       events.push(...todayEvents.map(t => (resolvedPlans.has(Number(t.id)) ? t : {
@@ -390,7 +394,7 @@ export default function DashboardView({
 
     // A plan that is off (its parent went the other way) goes to the very end, dimmed.
     return offLast([...events, ...later], resolvedPlans);
-  }, [baggedEvents, activePrevDayEvents, todayEvents, mySchedule, todayISO, demoStates, demoCard, resolvedPlans]);
+  }, [baggedEvents, activePrevDayEvents, todayEvents, mySchedule, todayISO, demoStates, demoCard, resolvedPlans, tournaments]);
 
   // The carousel's slides: the running cash session's card first (admins), then the events.
   const showCash = !!cashSession && !demoStates && !demoCard;
@@ -398,20 +402,12 @@ export default function DashboardView({
     () => (showCash ? [{ id: `cash-${cashSession.id}`, _cash: true }, ...whatsNextEvents] : whatsNextEvents),
     [showCash, cashSession, whatsNextEvents]);
 
-  // The section title names the next event's day (owner, 2026-10-11): TODAY or TOMORROW while the
-  // carousel shows the first card and that event is today or tomorrow; any later card, or a next
-  // event further out, is UP NEXT. A change crossfades: the outgoing title fades out over the
-  // incoming one, both seated on the same baseline.
-  const tomorrowISO = useMemo(() => {
-    const [y, m, d] = todayISO.split('-').map(Number);
-    return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
-  }, [todayISO]);
-  const upNextTitle = (() => {
-    if (!slides.length || Math.min(selectedUpNextIdx, slides.length - 1) !== 0) return 'Up Next';
-    if (slides[0]._cash) return 'Today'; // the session running now
-    const day = normaliseDate(slides[0].date);
-    return day === todayISO ? 'Today' : day === tomorrowISO ? 'Tomorrow' : 'Up Next';
-  })();
+  const [numbersReady, setNumbersReady] = useState(false);
+  useEffect(() => { const id = requestAnimationFrame(() => setNumbersReady(true)); return () => cancelAnimationFrame(id); }, []);
+  // The card's More menu (UX pick 41): { id, top, right } while open.
+  const [moreMenu, setMoreMenu] = useState(null);
+  // One title for every card (UX pick 36): it flipped between Today, Tomorrow and Up Next as you paged.
+  const upNextTitle = 'Up Next';
   const prevUpNextTitle = useRef(upNextTitle);
   const [upNextTitleOut, setUpNextTitleOut] = useState(null); // { text, key } while fading out
   useLayoutEffect(() => {
@@ -692,11 +688,43 @@ export default function DashboardView({
           </div>
           <div className="dash-event-buyin"><span className="dash-t">{formatBuyin(event.buyin, event.venue)}</span></div>
           {onToggle && (
-            <button className="dash-undo-x muted" onClick={(e) => { e.stopPropagation(); if (confirm('Remove from schedule?')) onToggle(event.id); }} title="Remove from schedule"><span className="dash-t">&#10005;</span></button>
+            <button className="dash-undo-x muted dash-more-btn" aria-haspopup="menu" aria-label="More for this event"
+              onClick={(e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); setMoreMenu({ id: event.id, top: r.bottom, right: window.innerWidth - r.right }); }}
+              title="More">
+              {/* Three drawn dots, centred by the box: the \u22EF glyph sat 1px under the middle. */}
+              <svg className="dash-more-dots" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
+            </button>
           )}
         </div>
 
-        {isExpanded && blindInfo && (
+        {/* A bagged event is stopped: its boxes read the bag, its size in big blinds at the level it was
+            bagged, and when it restarts, not a running clock (UX pick 37). */}
+        {isExpanded && event._type === 'bagged' && event._bagUpdate && Number(event._bagUpdate.stack) > 0 && (() => {
+          const bu = event._bagUpdate;
+          const bag = Number(bu.stack);
+          const bagBb = Number(bu.bb) || 0;
+          const restartT = (tournaments || []).find(t => t.is_restart && t.parent_event === event.event_number && normaliseDate(t.date) > normaliseDate(event.date));
+          const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          const rd = restartT ? normaliseDate(restartT.date) : null;
+          const restartLabel = restartT ? `${WD[new Date(rd + 'T12:00:00').getDay()]} ${(restartT.time || '').replace(':00 ', ' ')}` : '\u2014';
+          return (
+            <div className="dash-event-stats">
+              <div className="dash-stat-box">
+                <div className="dash-stat-value">{bag.toLocaleString()}</div>
+                <div className="dash-stat-label">Bag</div>
+              </div>
+              <div className="dash-stat-box">
+                <div className="dash-stat-value">{bagBb ? `${Math.floor(bag / bagBb).toLocaleString()} BB` : '\u2014'}</div>
+                <div className="dash-stat-label">{bagBb ? `At ${formatChips(Number(bu.sb) || 0)}/${formatChips(bagBb)}${Number(bu.bb_ante) ? '/' + formatChips(Number(bu.bb_ante)) : ''}` : 'Big blinds'}</div>
+              </div>
+              <div className="dash-stat-box">
+                <div className="dash-stat-value">{restartLabel}</div>
+                <div className="dash-stat-label">Day {bu.bag_day || 2}</div>
+              </div>
+            </div>
+          );
+        })()}
+        {isExpanded && blindInfo && !(event._type === 'bagged' && event._bagUpdate && Number(event._bagUpdate.stack) > 0) && (
           <div className="dash-event-stats">
             <div className="dash-stat-box">
               <div className="dash-stat-value">{blindInfo.ante ? `${formatChips(blindInfo.sb)}/${formatChips(blindInfo.bb)}/${formatChips(blindInfo.ante)}` : `${formatChips(blindInfo.sb)}/${formatChips(blindInfo.bb)}`}</div>
@@ -734,8 +762,8 @@ export default function DashboardView({
               const m = Math.floor((diffMs % 3600000) / 60000);
               return (
                 <div className="dash-restart-badge">
-                  <Icon.restart /><span className="dash-t">Restart in {h}:{String(m).padStart(2, '0')}</span>
-                  <button className="dash-unbag-x" onClick={(e) => { e.stopPropagation(); if (confirm('Undo bag?')) undoBag(); }} title="Undo bag"><span className="dash-t">&#10005;</span></button>
+                  <Icon.restart /><span className="dash-t">Restarts in {h > 0 ? `${h} h ${m} m` : `${m} m`}</span>
+                  <button className="dash-unbag-x is-word snap-g" onClick={(e) => { e.stopPropagation(); if (confirm('Undo bag?')) undoBag(); }} title="Undo bag"><span className="dash-t">Undo</span></button>
                 </div>
               );
             }
@@ -743,7 +771,7 @@ export default function DashboardView({
           return (
             <div className="dash-restart-badge">
               <Icon.restart /><span className="dash-t">Bagged</span>
-              <button className="dash-unbag-x" onClick={(e) => { e.stopPropagation(); if (confirm('Undo bag?')) undoBag(); }} title="Undo bag"><span className="dash-t">&#10005;</span></button>
+              <button className="dash-unbag-x is-word snap-g" onClick={(e) => { e.stopPropagation(); if (confirm('Undo bag?')) undoBag(); }} title="Undo bag"><span className="dash-t">Undo</span></button>
             </div>
           );
         })()}
@@ -762,10 +790,10 @@ export default function DashboardView({
               <div className="dash-status-row">
                 <div className="dash-finished-badge">
                   <span className="dash-t">Finished</span>
-                  <button className="dash-undo-x muted" onClick={(e) => {
+                  <button className="dash-undo-x muted is-word snap-g" onClick={(e) => {
                     e.stopPropagation();
                     if (bustedUpd?.id && onDeleteUpdate && confirm('Undo finish? This will restore the event to playing.')) onDeleteUpdate(bustedUpd.id);
-                  }} title="Undo finish"><span className="dash-t">&#10005;</span></button>
+                  }} title="Undo finish"><span className="dash-t">Undo</span></button>
                 </div>
                 {canRebuy ? (
                   <button className="dash-rebuy-btn" onClick={() => {
@@ -777,7 +805,7 @@ export default function DashboardView({
                         playStartedAt: new Date().toISOString(),
                       });
                     }
-                  }}><span className="dash-t">Rebuys: {maxEntries >= 99 ? 'Unlimited' : maxEntries - usedEntries}</span></button>
+                  }}><span className="dash-t">Re-enter · {maxEntries >= 99 ? 'unlimited' : `${maxEntries - usedEntries} left`}</span></button>
                 ) : (
                   <div className="dash-no-rebuy"><span className="dash-t">All entries used</span></div>
                 )}
@@ -794,8 +822,9 @@ export default function DashboardView({
 
             if (showBustMenu) {
               return (
-                <div className="dash-status-row">
-                  <button className="dash-update-btn" onClick={() => setBustMenuEventId(null)}><span className="dash-t">Cancel</span></button>
+                /* The two outcomes as a player says them, Cancel quiet (UX pick 40). */
+                <div className="dash-status-row is-bust-menu">
+                  <button className="dash-cancel-quiet" onClick={() => setBustMenuEventId(null)}><span className="dash-t">Cancel</span></button>
                   {canRebuy && (
                     <button className="dash-rebuy-btn" onClick={() => {
                       haptic(25);
@@ -818,7 +847,7 @@ export default function DashboardView({
                         }, 300);
                       }
                       setBustMenuEventId(null);
-                    }}><span className="dash-t">Rebuys: {maxEntries >= 99 ? 'Unlimited' : maxEntries - bulletNum}</span></button>
+                    }}><span className="dash-t">Re-enter · {maxEntries >= 99 ? 'unlimited' : `${maxEntries - bulletNum} left`}</span></button>
                   )}
                   <button className="dash-bust-btn" onClick={() => {
                     haptic(25);
@@ -826,7 +855,7 @@ export default function DashboardView({
                       detail: { tab: 'finish', tournamentId: event.id }
                     }));
                     setBustMenuEventId(null);
-                  }}><span className="dash-t">Finish</span></button>
+                  }}><span className="dash-t">Out for good</span></button>
                 </div>
               );
             }
@@ -835,10 +864,10 @@ export default function DashboardView({
               <div className="dash-status-stack">
                 <div className="dash-playing-badge">
                   <span className="dash-playing-dot" /><span className="dash-t">Currently Playing{bulletNum > 1 ? `; Bullet ${bulletNum}` : ''}</span>
-                  <button className="dash-undo-x" onClick={(e) => {
+                  <button className="dash-undo-x is-word snap-g" onClick={(e) => {
                     e.stopPropagation();
                     if (activeUpd?.id && onDeleteUpdate && confirm('Undo playing status for this event?')) onDeleteUpdate(activeUpd.id);
-                  }} title="Undo start"><span className="dash-t">&#10005;</span></button>
+                  }} title="Undo start"><span className="dash-t">Undo</span></button>
                 </div>
                 <div className="dash-action-row dash-action-row--4">
                   {/* Scan table (was the home's Table Scanner section): opens the photo picker
@@ -1018,7 +1047,7 @@ export default function DashboardView({
                     {/* Events are numbered, as the header's badge counts them ('26 events'): the
                         running cash session's card is a slide, not an event, so it reads CASH and
                         the events run 1 / 26 to 26 / 26 (it used to read 1 / 27 under '26 events'). */}
-                    <span className="dash-upnext-pos">{showCash && safeIdx === 0 ? 'Cash' : `${showCash ? safeIdx : safeIdx + 1} / ${whatsNextEvents.length}`}</span>
+                    <span className="dash-upnext-pos">{`${safeIdx + 1} / ${slides.length}`}</span>
                     <button
                       type="button"
                       className="dash-upnext-step"
@@ -1028,12 +1057,62 @@ export default function DashboardView({
                     ><Icon.chevRight /></button>
                   </div>
                 )}
+                {/* What comes after the card on show (UX pick 36): the next three in the period card's 4r
+                    rows, each paging the carousel to it, then the way to the whole schedule. Only while
+                    there are at least two other cards. */}
+                {slides.length >= 3 && safeIdx < slides.length - 1 && (() => {
+                  const next = slides.slice(safeIdx + 1, safeIdx + 4).map((s, k) => ({ s, i: safeIdx + 1 + k }));
+                  const more = slides.length - (safeIdx + 1 + next.length);
+                  const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                  const when = (e) => {
+                    if (activeEventMap[e.id]) return 'Playing';
+                    const d = normaliseDate(e.date);
+                    if (d === todayISO) return e.time || 'Today';
+                    const wd = d ? WD[new Date(d + 'T12:00:00').getDay()] : '';
+                    return [wd, e.time].filter(Boolean).join(' ');
+                  };
+                  return (
+                    <div className="hm-then" role="list" aria-label="Then">
+                      {next.map(({ s, i }) => (
+                        <button key={s.id} type="button" role="listitem" className="hm-prow hm-then-row" onClick={() => setSelectedUpNextIdx(i)}>
+                          <span className="hm-cell hm-f-sm hm-prow-l">
+                            <span className="hm-clip">{s._cash ? 'Cash session' : s.event_name}
+                              {!s._cash && <span className="hm-prow-s">{(getVenueInfo(s.venue, s.property) || {}).abbr || s.venue}</span>}
+                            </span>
+                          </span>
+                          <span className="hm-cell hm-f-sm-b hm-prow-v"><span className="hm-clip">{s._cash ? 'Now' : when(s)}</span></span>
+                        </button>
+                      ))}
+                      <button type="button" role="listitem" className="hm-prow hm-then-row" onClick={() => onNavigate && onNavigate('schedule')}>
+                        <span className="hm-cell hm-f-sm hm-prow-l is-muted"><span className="hm-clip">{more > 0 ? `${more} more on your schedule` : 'Your whole schedule'}</span></span>
+                        <span className="hm-cell hm-f-sm-b hm-prow-v"><span className="hm-clip">{'All \u203A'}</span></span>
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             );
           })() : (
             // Nothing scheduled (§1(d)): one 5r prompt with the week's events near the user, which
             // opens the Schedule.
             <HomeNothingNext tournaments={tournaments} today={todayISO} onOpen={() => onNavigate('tournaments')} />
+          )}
+          {moreMenu && createPortal(
+            <>
+              <div className="dropdown-backdrop" style={{ zIndex: 'var(--z-scrim)' }} onClick={() => setMoreMenu(null)} />
+              <div className="dash-more-menu" role="menu" style={{ top: `calc(${moreMenu.top}px + var(--subrow))`, right: `${moreMenu.right}px` }}>
+                {onOpenInSchedule && (
+                  <button type="button" role="menuitem" className="dash-more-item" onClick={() => { const id = moreMenu.id; setMoreMenu(null); onOpenInSchedule(id); }}>Open in My Schedule</button>
+                )}
+                {onToggle && (
+                  <button type="button" role="menuitem" className="dash-more-item is-danger" onClick={() => {
+                    const id = moreMenu.id; setMoreMenu(null);
+                    if (confirm('Remove from schedule?')) onToggle(id);
+                  }}>Remove from schedule\u2026</button>
+                )}
+              </div>
+            </>,
+            document.body
           )}
         </div>
   );
@@ -1100,7 +1179,9 @@ export default function DashboardView({
   // Which of a column's sections take room: To log when something waits, Last result when there is a
   // way to log, the bankroll line when it has a line. (Up Next and the period block always do.)
   const rendersSomething = (id) => (id === 'tolog' ? !!onLog && toLogShown : id === 'last' ? !!onLog : id === 'bankroll' ? !!num.bankLine : true);
-  const renderColumn = (ids) => ids.map((id) => (SECTIONS[id] ? SECTIONS[id](ids) : null));
+  // Up Next first, the NUMBERS a frame later (UX pick 46): the first frame carries what is next.
+  const numbersIds = new Set(view.numbers);
+  const renderColumn = (ids) => ids.filter((id) => numbersReady || !numbersIds.has(id)).map((id) => (SECTIONS[id] ? SECTIONS[id](ids) : null));
 
   // The Edit home control: the main column's last item (the phone's one column, desktop's NOW pane),
   // 11g x 4r centred in the 35g column (13..24g of the canvas), in the home's control face.

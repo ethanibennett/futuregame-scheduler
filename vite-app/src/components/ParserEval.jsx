@@ -14,6 +14,12 @@ export default function ParserEval({ token }) {
   const load = useCallback(() => fetch(`${API_URL}/admin/quick-add-eval`, { headers: { Authorization: `Bearer ${token}` } })
     .then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setS(d); }).catch(() => {}), [token]);
   useEffect(() => { load(); }, [load]);
+  // Tell the app a run is going, so its Admin row and the rail can show how far (UX pick 111).
+  useEffect(() => {
+    if (!s) return;
+    const pct = s.running && s.progress && s.progress.total ? Math.round((s.progress.done / s.progress.total) * 100) : 0;
+    window.dispatchEvent(new CustomEvent('fg:eval', { detail: { running: !!s.running, pct } }));
+  }, [s]);
   useEffect(() => {
     if (!s || !s.running) return undefined;
     const id = setInterval(load, 5000);
@@ -33,9 +39,22 @@ export default function ParserEval({ token }) {
       {!s || (!s.running && !s.report) ? (
         <p className="an-p">The corpus of real hands through the live model, scored. Decides whether quick add opens to everyone.</p>
       ) : null}
-      {s && s.running && (
-        <p className="an-p">Running{s.progress ? `: ${s.progress.done} of ${s.progress.total} hands` : ''}. This page checks every 5 seconds.</p>
-      )}
+      {s && s.running && (() => {
+        /* How far it has got (UX pick 111, Goal-Gradient): a 35g x 1r bar and the time left at the rate
+           so far, and that the page can be left. */
+        const p = s.progress || null;
+        const frac = p && p.total ? Math.min(1, p.done / p.total) : 0;
+        const ms = p && p.done > 0 && s.startedAt ? ((Date.now() - s.startedAt) / p.done) * (p.total - p.done) : null;
+        const left = ms == null ? '' : ms < 90e3 ? ' \u00b7 about a minute left' : ` \u00b7 about ${Math.round(ms / 60e3)} min left`;
+        return (
+          <>
+            <div className="parser-eval-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(frac * 100)}>
+              <div className="parser-eval-fill" style={{ width: (frac * 100).toFixed(1) + '%' }} />
+            </div>
+            <p className="an-p">{p ? `${p.done} of ${p.total} hands${left}.` : 'Starting.'} You can leave this page.</p>
+          </>
+        );
+      })()}
       {s && !s.running && s.report && (
         <>
           <p className="an-p">Last run {new Date(s.finishedAt).toLocaleString()}{s.exitCode ? ' (finished with errors)' : ''}.</p>

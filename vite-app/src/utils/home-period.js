@@ -239,6 +239,18 @@ export function tripStats(data, opts = {}) {
 }
 
 // ── Words ─────────────────────────────────────────────────────────────────────────────────
+/* A series' name as a player says it (UX pick 45): no leading year, and a trailing "(room)" becomes
+   " · " and the room's first name ("2026 Fall Poker Open (Borgata Hotel Casino & Spa)" ->
+   "Fall Poker Open · Borgata"). */
+export function seriesTitle(venue) {
+  let t = String(venue || '').replace(/^\s*(19|20)\d{2}\s+/, '').trim();
+  const m = /\s*\(([^)]+)\)\s*$/.exec(t);
+  if (!m) return t;
+  t = t.slice(0, m.index).trim();
+  const room = m[1].split(/\s+(?:Hotel|Casino|Resort|Poker Room|&|and)\b/i)[0].trim();
+  return room ? `${t} \u00b7 ${room}` : t;
+}
+
 export function plural(n, one, many = `${one}s`) { return `${Number(n).toLocaleString('en-US')} ${n === 1 ? one : many}`; }
 function trim1(x) { const r = Math.round(x * 10) / 10; return r % 1 === 0 ? String(r) : r.toFixed(1); }
 /** ROI as a whole percent with its sign ('+12%', '−36%', '0%'); a half rounds away from zero. */
@@ -429,7 +441,7 @@ export function buildPeriod(input) {
     }
     const n = daysBetween(series.from, series.to) + 1, k = daysBetween(series.from, today) + 1;
     return {
-      mode: 'series', title: series.venue, scope: `Tournaments · ${currency}`,
+      mode: 'series', title: seriesTitle(series.venue), scope: `Tournaments · ${currency}`,
       net: s.count ? s.net : null,
       sample: !s.count ? 'Nothing logged in this series yet' : s.net == null ? 'Waiting for exchange rates' : leadSample(s),
       side: [{ text: dayRange(series.from, series.to) }, { text: `day ${k} of ${n}` }],

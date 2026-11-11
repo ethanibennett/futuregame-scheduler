@@ -41,6 +41,22 @@ const BackerNotify = lazy(() => import('./BackerNotify.jsx'));
 const PostsToBackers = lazy(() => import('./PostsToBackers.jsx'));
 
 // ── Tracking Entry Form ─────────────────────────────────────
+/* The log form's events (UX pick 80): My Schedule's, unlogged, newest first; the one it opens on is the
+   most recent that has started (today or before), the event the home's To log offers. The select was
+   every tournament without a result, over a thousand on the live feed, My Schedule's oldest first. */
+const eventLabel = (t) => (t.event_number ? '#' + t.event_number + ' \u2014 ' : '') + t.event_name;
+function myLoggable(tournaments, mySchedule, existingEntryIds) {
+  const ids = new Set((mySchedule || []).map(t => t.id));
+  const key = (t) => isoDay(t.date) || '';
+  return (tournaments || [])
+    .filter(t => ids.has(t.id) && (!existingEntryIds || !existingEntryIds.has(t.id)))
+    .sort((a, b) => key(b).localeCompare(key(a)));
+}
+function justPlayed(tournaments, mySchedule, existingEntryIds) {
+  const today = getToday();
+  const t = myLoggable(tournaments, mySchedule, existingEntryIds).find(e => { const d = isoDay(e.date); return d && d <= today; });
+  return t ? String(t.id) : '';
+}
 // isNew with isEdit: a NEW result for one known event (the home's To log), so no event picker,
 // but it reads as logging, not editing. conflict: the sentence saying a result is already logged
 // for the event (the server refused to log over it); the form keeps what was typed, and its
@@ -48,7 +64,8 @@ const PostsToBackers = lazy(() => import('./PostsToBackers.jsx'));
 // notify: { token, refId } on an admin's edit of a saved result, for the Backers block under the
 // form (components/BackerNotify.jsx: the saved result's backer shares and the Notify tap).
 function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, existingEntryIds, initialValues, tournamentLabel, entryForPOY, onSubmit, onCancel, isEdit, isNew = false, bankrolls, conflict = null, notify = null }) {
-  const [tournamentId, setTournamentId] = useState(initialValues?.tournamentId || '');
+  const [tournamentId, setTournamentId] = useState(() => initialValues?.tournamentId || (isEdit ? '' : justPlayed(tournaments, mySchedule, existingEntryIds)));
+  const [allQuery, setAllQuery] = useState('');
   const [numEntries, setNumEntries] = useState(initialValues?.numEntries || 1);
   const [cashed, setCashed] = useState(initialValues?.cashed || false);
   const [finishPlace, setFinishPlace] = useState(initialValues?.finishPlace || '');
@@ -60,18 +77,17 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
   const [showLfg, setShowLfg] = useState(false);
   const [bankrollId, setBankrollId] = useState(initialValues?.bankrollId || 'main'); // beta: only sent when `bankrolls` is
 
-  const tournamentOptions = useMemo(() => {
-    if (isEdit) return [];
-    const scheduleIds = new Set((mySchedule || []).map(t => t.id));
+  const tournamentOptions = useMemo(() => (isEdit ? [] : myLoggable(tournaments, mySchedule, existingEntryIds)), [tournaments, mySchedule, existingEntryIds, isEdit]);
+  // Everything else behind a typed search, not a scroll (UX pick 80): two letters or more.
+  const otherOptions = useMemo(() => {
+    const q = allQuery.trim().toLowerCase();
+    if (isEdit || q.length < 2) return [];
+    const mine = new Set(tournamentOptions.map(t => t.id));
     return (tournaments || [])
-      .filter(t => !existingEntryIds || !existingEntryIds.has(t.id))
-      .sort((a, b) => {
-        const aS = scheduleIds.has(a.id) ? 0 : 1;
-        const bS = scheduleIds.has(b.id) ? 0 : 1;
-        if (aS !== bS) return aS - bS;
-        return new Date(a.date) - new Date(b.date);
-      });
-  }, [tournaments, mySchedule, existingEntryIds, isEdit]);
+      .filter(t => !mine.has(t.id) && (!existingEntryIds || !existingEntryIds.has(t.id)))
+      .filter(t => [t.event_name, t.venue, t.event_number].some(v => String(v || '').toLowerCase().includes(q)))
+      .slice(0, 60);
+  }, [allQuery, tournaments, tournamentOptions, existingEntryIds, isEdit]);
 
   const showFieldSize = useMemo(() => {
     if (isEdit && entryForPOY) return isPOYEligible(entryForPOY);
@@ -88,7 +104,7 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
       numEntries: parseInt(numEntries) || 1,
       cashed,
       finishPlace: cashed && finishPlace ? parseInt(finishPlace) : null,
-      cashAmount: cashed && cashAmount ? parseInt(cashAmount) : 0,
+      cashAmount: cashed && cashAmount ? Math.round(Number(cashAmount)) : 0,
       notes: notes || null,
       subtitle: subtitle.trim() || null,
       totalFieldSize: totalFieldSize ? parseInt(totalFieldSize) : null,
@@ -106,22 +122,33 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
 
       {!isEdit && (
         <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
-          <label>Tournament</label>
+          <label>Tournament · from My Schedule, newest first</label>
           <select value={tournamentId} onChange={e => setTournamentId(e.target.value)} required>
             <option value="">Select event...</option>
             {tournamentOptions.map(t => (
               <option key={t.id} value={t.id}>
-                #{t.event_number} &mdash; {t.event_name} ({t.date}) &mdash; {currencySymbol(t.venue, t.currency)}{Number(t.buyin).toLocaleString()}
+                {eventLabel(t)} ({t.date}) &mdash; {currencySymbol(t.venue, t.currency)}{Number(t.buyin).toLocaleString()}
               </option>
             ))}
+            {otherOptions.length > 0 && (
+              <optgroup label={'Matching \u201c' + allQuery.trim() + '\u201d'}>
+                {otherOptions.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {eventLabel(t)} ({t.date}) &mdash; {currencySymbol(t.venue, t.currency)}{Number(t.buyin).toLocaleString()}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
+          <input type="search" className="tr-search-all" value={allQuery} onChange={e => setAllQuery(e.target.value)}
+            placeholder="Search all events" aria-label="Search all events" autoComplete="off" />
         </div>
       )}
 
       <div className="tracking-form-grid">
         <div className="filter-group">
-          <label>Buy-ins (incl. re-entries)</label>
-          <input type="number" min="1" max="50" value={numEntries}
+          <label>Buy-ins</label>
+          <input type="number" min="1" max="50" value={numEntries} placeholder="re-entries count"
             onChange={e => setNumEntries(e.target.value)} />
         </div>
         <div className="filter-group">
@@ -145,7 +172,7 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
           </div>
           <div className="filter-group">
             <label>Cash Amount ($)</label>
-            <input type="number" min="0" value={cashAmount}
+            <MoneyField value={cashAmount}
               onChange={e => setCashAmount(e.target.value)} placeholder="e.g. 15000" />
           </div>
         </div>
@@ -256,7 +283,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
         }}
         bankrolls={bankrolls}
         entryForPOY={entry}
-        tournamentLabel={`#${entry.event_number} ${entry.event_name}`}
+        tournamentLabel={(entry.event_number ? `#${entry.event_number} ` : '') + entry.event_name}
         onSubmit={onUpdate}
         onCancel={onCancelEdit}
         isEdit
@@ -362,6 +389,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
 // The card parts (strip, name, chevron, month break) live in ResultCardParts.jsx, shared with Cash.
 
 import { isDnpMarker } from '../utils/didnt-play.js';
+import MoneyField from './MoneyField.jsx';
 
 // ── Didn't play (owner, 2026-10-16) ──────────────────────────
 // Results' Didn't play: the event stays on the schedule, marked not played
@@ -788,7 +816,19 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       {/* Cash sessions (beta, admins): Tournaments | Cash. Everyone else sees no strip. */}
       {isAdmin && <ResultsKindTabs />}
       {dashSection ? (
-        <Suspense fallback={null}><BankrollDashboard inline tab={resultsKind} bk={bk} onLog={onLog} /></Suspense>
+        <>
+          <Suspense fallback={null}><BankrollDashboard inline tab={resultsKind} bk={bk} onLog={onLog} /></Suspense>
+          {/* Money in and out (UX pick 77): Expenses & income on the Overview with the other tables. On
+              the MTT log it sat between the summary and the results, 20r, so no result showed on arrival. */}
+          {isAdmin && resultsKind === 'balance' && (
+            <Suspense fallback={null}>
+              <div className="tr-money-inout">
+                <ExpensesSection token={token} bankroll={bk.selected} bankrolls={bk.bankrolls} rates={exchangeRates}
+                  events={allTrackingData} onChanged={bk.refresh} intent={expenseIntent} onIntentDone={onIntentDone} />
+              </div>
+            </Suspense>
+          )}
+        </>
       ) : isAdmin && resultsKind === 'all' ? (
         <Suspense fallback={null}>
           <ResultsAll token={token} bk={bk} entries={trackingData} isoDay={isoDay} exchangeRates={exchangeRates}
@@ -885,8 +925,9 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       {/* Analytics BETA: app admins only (staged rollout); everyone else sees no change. */}
       {isAdmin && trackingData.length > 0 && <AnalyticsLauncher bankroll={bk.selected} />}
 
-      {/* Expenses & income BETA: app admins only; follows the bankroll switcher's selection. */}
-      {isAdmin && bk.enabled && (
+      {/* Expenses & income BETA: on the Overview now (UX pick 77); here only while the + menu's
+          "Expense or income" has its form open. */}
+      {isAdmin && bk.enabled && expenseIntent && (
         <Suspense fallback={null}>
           <ExpensesSection token={token} bankroll={bk.selected} bankrolls={bk.bankrolls} rates={exchangeRates}
             events={allTrackingData} onChanged={bk.refresh} intent={expenseIntent} onIntentDone={onIntentDone} />
@@ -938,7 +979,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
           existingEntryIds={existingEntryIds}
           initialValues={{ tournamentId: pendingFormId, ...newEntryBankroll }}
           bankrolls={formBankrolls}
-          tournamentLabel={`#${(pendingEvent.event_number || '').replace(/^[A-Za-z]+-/, '')} ${pendingEvent.event_name}`}
+          tournamentLabel={(pendingEvent.event_number ? `#${String(pendingEvent.event_number).replace(/^[A-Za-z]+-/, '')} ` : '') + pendingEvent.event_name}
           entryForPOY={pendingEvent}
           onSubmit={(data) => { onAdd({ ...data, tournamentId: pendingFormId }); setPendingFormId(null); }}
           onCancel={() => setPendingFormId(null)}

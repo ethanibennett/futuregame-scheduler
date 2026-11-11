@@ -152,3 +152,12 @@
   padding-top: 0;
   line-height: 1;
 }
+/* A filter chip that is on looks the same on both tabs (UX pick 100): the Schedule's kind toggles' values,
+   off the surface and a hairline, on the accent ring and text on a light wash. Whole-g widths (CashView --cw). */
+.cb-variants { grid-template-columns: repeat(var(--n, 6), calc(var(--gu) * var(--cw, 5))); justify-content: start; }
+.cb-chip { background: var(--surface); border-color: var(--border); color: var(--text-muted); }
+.cb-chip.is-on { background: rgba(160,160,160,0.1); border-color: var(--accent); border-width: var(--bw-fine); color: var(--accent); }
+/* One row per game (UX pick 96): a game with several tables opens on a tap; the chevron after the WL. */
+.cb-row.is-game { cursor: pointer; }
+.cb-row.is-game.is-open { background: var(--hover-overlay); }
+.cb-chev { margin-left: calc(var(--gu) * 0.5); color: var(--text-muted); }

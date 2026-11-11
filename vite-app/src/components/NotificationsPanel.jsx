@@ -105,16 +105,6 @@ export default function NotificationsPanel({ notifications, token, onClose, fetc
             aria-label="Close"
           ><Icon.x /></button>
         </div>
-        {onEnablePush && (
-          // Push permission must be requested from a tap — iOS drops a load-time request — so
-          // this button, rendered only while permission is still undecided, IS the request path.
-          // 1r above and below, 1g in: the 30g x 4r button on the panel's lines.
-          <div className="notif-section" style={{ padding: 'var(--subrow) var(--gu)' }}>
-            <button className="btn btn-primary btn-sm" style={{ width: '100%' }} onClick={onEnablePush}>
-              Enable push notifications on this device
-            </button>
-          </div>
-        )}
         {isEmpty ? (
           <div className="notif-empty">
             <div style={{ width: 'calc(var(--subrow) * 2.5)', height: 'calc(var(--subrow) * 2.5)', margin: '0 auto var(--space-md)', color: 'var(--text-muted)' }}>
@@ -217,6 +207,12 @@ export default function NotificationsPanel({ notifications, token, onClose, fetc
               </div>
             )}
           </div>
+        )}
+        {/* The request first, the setting last (UX pick 50): push is offered at the foot as a quiet
+            hairline row. It must still be asked from a tap (iOS drops a load-time request), so this
+            row, shown only while permission is undecided, IS the request path. */}
+        {onEnablePush && (
+          <button type="button" className="notif-push-row" onClick={onEnablePush}>Get these on this device</button>
         )}
       </div>
     </>,

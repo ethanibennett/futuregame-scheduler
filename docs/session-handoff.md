@@ -14,6 +14,33 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-11-10 — The Laws of UX audit, built (picks 1-111 but 4, 6, 31)
+
+- Three commits: sign-up and first run (picks 1-14), the Schedule (15-33), then one for the rest (Dashboard and
+  Social 34-51, Hands and the replayer 52-72, Bankroll and backers 73-90, Cash / Settings / navigation 91-111), which
+  share too many files to split cleanly. CLAUDE.md ("The Laws of UX audit, built") lists what later changes must keep.
+- **Partly built, by design or for want of a decision:** 97 (the tab lights in the press's frame; the windowed
+  Schedule list and the post-commit profiling are L and not done), 107 (every desktop tab ending on the shell's right
+  edge needs a second pane per wide tab: a product decision), 68 (the desktop Hands list beside the replay: the
+  full-window replay is `position: fixed` over the window, so it needs containing first). 56 (resume an unfinished
+  hand) had shipped with the entry audit.
+- **Checks:** `npm test` (util tests, the new ones wired into `test:utils`), the touched server suites, the entry
+  oracle on a sample (39 of 40; the one is a 6-handed triple draw where the deck runs out and a discard comes back,
+  which the showdown picker refuses: older than this work), `check:replayer-games` on the rows the Hands changes
+  touch, and one guard pass over every touched view.
+- **Traps:** the guards skip views their seed has no data for (a playing event, buddies, a swap), so a "not reached"
+  list is mostly data, not breakage. The Live update panel's hand tab ("Post Hand", the 2-5 chips) is off the r
+  lines; it was never reached by a guard before this run and was not touched here.
+- **First measured with data, not touched here (open):** with the staking, standing and backer demos seeded, the
+  guard reaches Staking for the first time and flags its ACTIVE / SETTLED badges and the ✎ / ✕ / Edit `btn-sm`
+  buttons (not whole g, not on a line) and the backer summary cards (13.66r and 10.41r tall); Reports' filter chips
+  with a count read off centre (the count sits in the label); the MTT chip on Bankroll is off centre as in every
+  run before. Still unreached on a scratch DB: the cash-session screens and both Notify blocks (no live or saved
+  cash session in any seed) and Expenses' All sheet (no entries).
+- **The street track is the phone's.** The desktop's full-window replay is `.replayer-landscape`, whose bottom
+  bar's `> div { display: flex }` used to beat the track's hide and put it in the one centred row; the hide is now
+  `.replayer-landscape .replayer-bottom-fixed > .replayer-street-track`.
+
 ## 2026-11-10 — Code cleanup; privacy fixes; the Sunday-noon Discord run; quick add re-synced
 
 - **Cleanup** (owner: "a full audit of all code to make sure it's as clean and efficient as possible"): about

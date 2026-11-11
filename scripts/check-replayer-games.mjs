@@ -207,7 +207,8 @@ async function runRow(browser, row) {
     if (await b.isDisabled()) throw new Error('card already used: ' + card);
     await tap(b, 'card ' + card);
   };
-  const primary = (text) => p.locator('.gto-entry button.btn-primary, .replayer-entry-view button.btn-primary').filter({ hasText: text }).first();
+  // The entry's buttons sit in the fixed footer (UX pick 58), portalled outside the entry view.
+  const primary = (text) => p.locator('.gto-entry button.btn-primary, .replayer-entry-view button.btn-primary, .gto-sticky-footer button.btn-primary').filter({ hasText: text }).first();
 
   try {
     await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
@@ -231,19 +232,15 @@ async function runRow(browser, row) {
       const q = p.locator('[role="dialog"] button').first();
       if (await q.count()) { await q.click(); await p.waitForTimeout(300); }
     }
-    if (row.toggle) {
-      // A toggle sits under the launcher: back out of the entry the pick opened, set it, create again.
-      if (await p.locator('.gto-entry').count()) {
-        await p.locator('.gto-entry button:has-text("Cancel")').first().click();
-        await p.waitForTimeout(500);
-      }
-      await p.locator('.game-check-row').filter({ hasText: new RegExp('^\\s*' + row.toggle, 'i') }).first().click();
-      await p.waitForTimeout(150);
-    }
     if (!(await p.locator('.gto-entry').count())) {
       const create = p.locator('.replayer-list-create button').first();
       await create.click();
       await p.waitForTimeout(500);
+    }
+    if (row.toggle) {
+      // A toggle the hand's setup carries (Double board, beside Straddle since UX pick 62).
+      await p.locator(`.replayer-entry-view button.replayer-settings-toggle[aria-label="${row.toggle}"]`).first().click();
+      await p.waitForTimeout(150);
     }
     if (!(await p.locator('.gto-entry').count())) throw new Error('the entry screen did not open');
 

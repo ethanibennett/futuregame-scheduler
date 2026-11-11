@@ -56,7 +56,10 @@ await p.waitForTimeout(1500);
 for (const s of ['Skip', 'Close']) await p.getByRole('button', { name: s, exact: true }).first().click({ timeout: 500 }).catch(() => {});
 await p.locator(desktop ? '.dk-rail-item:has-text("Hands")' : '.bottom-nav .nav-tab:has-text("Hands")').first().click({ timeout: 8000, force: true });
 await p.waitForTimeout(1200);
-await p.getByRole('button', { name: 'Play a hand', exact: true }).click({ timeout: 8000 });
+// Study > Practice > Play a hand (UX pick 62 took it off the Hands list).
+await p.locator('.hands-tool-row button:text-is("Study")').first().click({ timeout: 8000 });
+await p.waitForTimeout(600);
+await p.locator('.study-row:has-text("Play a hand")').first().click({ timeout: 8000 });
 await p.waitForTimeout(600);
 await snap('setup');
 

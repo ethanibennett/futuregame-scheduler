@@ -8,6 +8,7 @@ import {
   toPaymentBody, paymentView,
 } from '../utils/standing-ui.js';
 import './standing.css';
+import MoneyField from './MoneyField.jsx';
 
 /**
  * Standing agreements (the Staking tab › Standing; docs/bankroll-merge.md Phase 8, on Phase 7's
@@ -108,7 +109,7 @@ function AddForm({ api, backers, formats, channels, onSaved, onCancel }) {
       )}
       <div className="sd-two">
         <label className="staking-field"><span>Starts</span><input type="date" value={f.effectiveFrom} onChange={(e) => put({ effectiveFrom: e.target.value })} /></label>
-        <label className="staking-field"><span>Opening ($, + = you owe)</span><input type="number" inputMode="decimal" step="0.01" value={f.openingCents} onChange={(e) => put({ openingCents: e.target.value })} placeholder="0" /></label>
+        <label className="staking-field"><span>Opening ($, + = you owe)</span><MoneyField allowNegative value={f.openingCents} onChange={(e) => put({ openingCents: e.target.value })} placeholder="0" /></label>
       </div>
       <StakeRows rows={f.stakes} setRows={(stakes) => put({ stakes })} formats={formats} channels={channels} />
       <div className="sd-actions">
@@ -255,7 +256,7 @@ function Payouts({ api, a, onChanged }) {
         </ul>
       )}
       <div className="sd-two">
-        <label className="staking-field"><span>Amount ($)</span><input type="number" inputMode="numeric" min="1" step="1" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></label>
+        <label className="staking-field"><span>Amount ($)</span><MoneyField value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></label>
         <label className="staking-field"><span>Who paid</span>
           <select value={f.direction} onChange={(e) => setF({ ...f, direction: e.target.value })}>
             <option value="out">I paid them</option>
@@ -317,9 +318,16 @@ function Card({ api, a, formats, channels, owner, reload }) {
           <Btn w={7} onClick={() => setOpen(open === 'stakes' ? null : 'stakes')}>Stakes</Btn>
           <Btn w={7} onClick={() => setOpen(open === 'shares' ? null : 'shares')}>Shares</Btn>
           <Btn w={8} onClick={() => setOpen(open === 'payouts' ? null : 'payouts')}>Payouts</Btn>
-          <Btn w={8} onClick={() => setOpen(open === 'delivery' ? null : 'delivery')}>Delivery</Btn>
-          <Btn w={8} onClick={() => setOpen(open === 'link' ? null : 'link')}>New link</Btn>
-          <Btn w={4} tone="ghost" title="End this agreement" onClick={() => setOpen(open === 'end' ? null : 'end')}>End</Btn>
+          {/* Four choices, the rest behind More (UX pick 85): six equal buttons put End, which cannot be
+              taken back, beside New link in the same style. Under More it is in the warning tone. */}
+          <Btn w={8} onClick={() => setOpen(['more', 'delivery', 'link', 'end'].includes(open) ? null : 'more')}>{['more', 'delivery', 'link', 'end'].includes(open) ? 'Less' : 'More'}</Btn>
+        </div>
+      )}
+      {a.status !== 'ended' && ['more', 'delivery', 'link', 'end'].includes(open) && (
+        <div className="sd-card-act">
+          <Btn w={8} onClick={() => setOpen(open === 'delivery' ? 'more' : 'delivery')}>Delivery</Btn>
+          <Btn w={8} onClick={() => setOpen(open === 'link' ? 'more' : 'link')}>New link</Btn>
+          <Btn w={8} tone="warn" title="End this agreement" onClick={() => setOpen(open === 'end' ? 'more' : 'end')}>End</Btn>
         </div>
       )}
       {a.status === 'ended' && <div className="sd-card-act"><Btn w={7} onClick={() => setOpen(open === 'shares' ? null : 'shares')}>Shares</Btn><Btn w={8} onClick={() => setOpen(open === 'payouts' ? null : 'payouts')}>Payouts</Btn></div>}
@@ -404,14 +412,15 @@ export default function StandingView({ token, backers, onBack }) {
         </button>
       </div>
       <p className="sd-text">A standing agreement is a backer&rsquo;s share of every result of a game, from a day on. A share is recorded only when you tap Notify on a result; an edit after that follows it silently.</p>
-      {owner && <p className="sd-text sd-text--muted">{stateLine(state)}</p>}
+      {/* Said only when it matters (UX pick 85): "Posting is on (unset)" was the code's word for normal. */}
+      {owner && state.posting === 'off' && <p className="sd-text sd-text--muted">{stateLine(state)}</p>}
       {owner && state.posting === 'off' && (
         <div className="sd-actions"><Btn w={14} tone="brand" disabled={busy === 'posting'} onClick={() => setPosting(true)}>Turn posting on</Btn></div>
       )}
       {adding && list && <AddForm api={api} backers={backers || []} formats={list.formats} channels={list.channels} onSaved={() => { setAdding(false); reload(); }} onCancel={() => setAdding(false)} />}
       {owner && driftLines.length > 0 && (
         <section className="sd-drift" aria-label="Shares a result moved under">
-          <h3 className="sd-t sd-sec">Moved underneath ({driftLines.length})</h3>
+          <h3 className="sd-t sd-sec">Changed after sending ({driftLines.length})</h3>
           <p className="sd-text">A feed edit changed these results after their shares were sent. Nothing applies by itself.</p>
           <ul className="sd-events">
             {driftLines.map((l) => (

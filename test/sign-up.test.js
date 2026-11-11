@@ -74,6 +74,23 @@ const PORTS = [4760, 4769];
       assert.strictEqual(r.status, 200);
     });
 
+    // Social search (UX pick 43): a person with a request waiting is returned flagged, not dropped.
+    await test('people search: a pending request is flagged both ways, not dropped', async () => {
+      const sam = (await call('POST', '/api/register', { realName: 'Sam Searcher', email: 'sam@example.test', password: 'sign-up-pass-1' })).json;
+      const tia = (await call('POST', '/api/register', { realName: 'Tia Target', email: 'tia@example.test', password: 'sign-up-pass-1' })).json;
+      const authed = async (token, method, p, body) => {
+        const res = await fetch(base + p, { method, headers: { Authorization: 'Bearer ' + token, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
+        return { status: res.status, json: await res.json().catch(() => null) };
+      };
+      assert.strictEqual((await authed(sam.token, 'POST', '/api/share-request', { username: tia.username })).status < 300, true);
+      const fromSam = (await authed(sam.token, 'GET', '/api/users/search?q=tia')).json;
+      assert.deepStrictEqual(fromSam.map((u) => [u.username, u.pending]), [[tia.username, 'outgoing']]);
+      const fromTia = (await authed(tia.token, 'GET', '/api/users/search?q=sam')).json;
+      assert.deepStrictEqual(fromTia.map((u) => [u.username, u.pending]), [[sam.username, 'incoming']]);
+      const none = (await authed(sam.token, 'GET', '/api/users/search?q=pat')).json;
+      assert.ok(none.every((u) => u.pending == null), 'no request with pat');
+    });
+
     await srv.stop();
     let db = sc.open();
     await test('the address is kept in lower case, and the reset link was made for it', async () => {

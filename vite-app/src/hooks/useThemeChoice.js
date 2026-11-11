@@ -68,5 +68,8 @@ export default function useThemeChoice({ followDevice = false, admin = false } =
   // `admin` lets the button step into the admin-only themes (utils/theme.js ADMIN_ONLY_THEMES).
   const toggleTheme = useCallback(() => setState((s) => ({ theme: nextTheme(!admin && ADMIN_ONLY_THEMES.includes(s.theme) ? theme : s.theme, admin), chosen: true })), [admin, theme]);
 
-  return { theme, toggleTheme, nextThemeLabel: nextThemeLabel(theme, admin) };
+  // A theme picked by name (Settings' tiles, UX pick 108); an admin-only one only for an admin.
+  const setTheme = useCallback((t) => { if (admin || !ADMIN_ONLY_THEMES.includes(t)) setState({ theme: t, chosen: true }); }, [admin]);
+
+  return { theme, toggleTheme, setTheme, nextThemeLabel: nextThemeLabel(theme, admin) };
 }

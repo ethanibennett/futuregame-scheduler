@@ -1,6 +1,8 @@
 import React, { lazy, Suspense } from 'react';
 import { useSolverAvailability, offered } from './StudyHead.jsx';
 import './study-hub.css';
+import { studyTags } from '../utils/study-tags.js';
+import { getVariantStrip } from '../utils/utils.js';
 
 /*
  * Hands > Study (owner, 2026-11-04: one training experience). Every solver tool used to be its own chip in the
@@ -59,6 +61,14 @@ export default function StudyHub({ tool, onTool, onPlayHand, fallback, pendingSo
             <button key={id} type="button" className="hs-btn hs-left hs-row study-row" onClick={() => open(id)} style={{ '--hs-h': 8 }}>
               <span className="hs-t hs-sm hs-bold hs-clip" style={T(3)}>{name}</span>
               <span className="hs-t hs-xs hs-mut hs-clip" style={T(2)}>{note}</span>
+              {/* The games it covers (UX pick 72), coloured as the saved list's strips. */}
+              {studyTags(id, avail).length > 0 && (
+                <span className="study-tags" aria-label={'Games: ' + studyTags(id, avail).map((t) => t.label).join(', ')}>
+                  {studyTags(id, avail).map((t) => (
+                    <span key={t.id} className="study-tag" style={{ background: getVariantStrip(t.gameType).color }}>{t.label}</span>
+                  ))}
+                </span>
+              )}
             </button>
           ))}
         </section>

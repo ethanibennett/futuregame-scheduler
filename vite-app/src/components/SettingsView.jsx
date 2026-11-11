@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
+import { themeOrder } from '../utils/theme.js';
 import { THEME_LABEL, THEME_ICON, SERIF_LABEL, SERIF_STACK, SERIF_ORDER, setDebugNow, getDebugNow, haptic, getStoredSeasonLabel } from '../utils/utils.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -18,7 +19,7 @@ const seatedInitial = (baselineR) => ({
   textBoxTrim: 'trim-both', textBoxEdge: 'cap alphabetic',
 });
 
-export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, contrast, toggleContrast, serifFont, toggleSerifFont, onLogout, onDebugTimeChange, shareToken, onGenerateShareToken, onRevokeShareToken, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, token, isAdmin, seasonLabel, isGuest, onEditHome = null, onEditName }) {
+export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, pickTheme = null, onFindPeople = null, contrast, toggleContrast, serifFont, toggleSerifFont, onLogout, onDebugTimeChange, shareToken, onGenerateShareToken, onRevokeShareToken, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, token, isAdmin, seasonLabel, isGuest, onEditHome = null, onEditName }) {
   const toast = useToast();
   const displayName = useDisplayName();
   const [debugInput, setDebugInput] = useState(getDebugNow());
@@ -109,9 +110,6 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
               </button>
             </div>
           </div>
-          <button className="settings-row-btn danger" onClick={onLogout}>
-            <span>Sign out</span>
-          </button>
         </div>
       </div>
 
@@ -138,15 +136,21 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
               </div>
             ) : (
               <button className="btn btn-ghost btn-sm settings-btn settings-btn--start settings-btn--w14" onClick={onGenerateShareToken}>
-                <Icon.link /><span>Generate Share Link</span>
+                <Icon.link /><span>Create share link</span>
               </button>
             )}
           </div>
           <div className="settings-row settings-row--stack">
             <span className="settings-row-label">Connections</span>
             <p className="settings-help">
-              Find people in Social. Once they accept, you both see each other's schedules.
+              Once someone accepts, you both see each other's schedules.
             </p>
+            {/* Its way in (UX pick 110): the next step is a press, not a place to find. */}
+            {onFindPeople && (
+              <button className="btn btn-ghost btn-sm settings-btn settings-btn--start settings-btn--w14" onClick={onFindPeople}>
+                <Icon.people /><span>Find people</span>
+              </button>
+            )}
             {pendingOutgoing && pendingOutgoing.length > 0 && (
               <div className="settings-people">
                 <span className="settings-people-hd">Pending</span>
@@ -182,6 +186,23 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
       <div className="settings-section">
         <div className="settings-section-label">Appearance</div>
         <div className="settings-card">
+          {pickTheme ? (
+            /* The themes shown and picked (UX pick 108): the row named the current theme and each press
+               stepped on, Cloudy three presses from Dark. Two by two, as the font tiles under it. */
+            <div className="settings-row settings-row--stack">
+              <span className="settings-row-label">Theme</span>
+              <div className="theme-pick" role="radiogroup" aria-label="Theme">
+                {themeOrder(isAdmin).map(t => (
+                  <button key={t} type="button" role="radio" aria-checked={theme === t}
+                    className={'theme-tile' + (theme === t ? ' is-on' : '')} onClick={() => pickTheme(t)}>
+                    <span className="theme-tile-face" data-theme={t}>
+                      <span className="theme-tile-name">{THEME_LABEL[t]}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
           <div className="settings-row">
             <span className="settings-row-label">Theme</span>
             <button className="btn btn-ghost btn-sm settings-btn settings-btn--icon" onClick={toggleTheme}>
@@ -189,6 +210,7 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
               <span>{THEME_LABEL[theme]}</span>
             </button>
           </div>
+          )}
           <div className="settings-row">
             <span className="settings-row-label">High contrast</span>
             <button
@@ -226,7 +248,7 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
             <div className="settings-row settings-namemode settings-home">
               <div className="settings-namemode-text">
                 <span className="settings-row-label">Home</span>
-                <p className="settings-help">Choose what the Dashboard shows, and in what order</p>
+                <p className="settings-help">Choose what Home shows, and in what order</p>
               </div>
               <button type="button" className="btn btn-ghost btn-sm settings-btn" aria-label="Edit home: choose and order its sections"
                 onClick={(e) => onEditHome(e.currentTarget)}><span>Edit</span></button>
@@ -261,6 +283,16 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
       </div>
       )}
 
+      {/* Sign out at the foot, in the text colour (UX pick 103): it was the Account card's third row, in
+          the same red as Delete account. Red is for the one thing that cannot be undone. */}
+      <div className="settings-section">
+        <div className="settings-card">
+          <button className="settings-row-btn is-plain" onClick={onLogout}>
+            <span>Sign out</span>
+          </button>
+        </div>
+      </div>
+
       {!isGuest && username && (
       <div className="settings-section">
         <div className="settings-section-label">Delete account</div>
@@ -278,10 +310,10 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
               </p>
               <p className="settings-help">Type <b>{username}</b> to confirm.</p>
               <input
-                className="settings-debug-input"
                 value={deleteTyped}
                 onChange={e => setDeleteTyped(e.target.value)}
-                placeholder={username}
+                placeholder="Your username"
+                className="settings-debug-input is-hinted"
                 aria-label="Type your username to confirm"
                 autoComplete="off"
                 autoCapitalize="off"

@@ -88,11 +88,15 @@ function Overview({ a, money }) {
         <Stat label="Sample" value={count(t.entries, 'entry', 'entries')}
           note={`${count(t.events, 'event')} · avg ${money(v.avgBuyin)} buy-in`} />
       </div>
+      {/* The method folds behind one line (UX pick 90): the figures first, the caveats a tap away. */}
+      <details className="an-how">
+        <summary className="an-how-sum">How these are worked out \u203A</summary>
       <p className="an-p">
         ROI interval: percentile bootstrap over your events, {(ci ? ci.resamples : 2000).toLocaleString()} resamples. It cannot
         see a tail your results have not reached yet, so with no big score in the sample the upper end reads low.
         Downswings are peak-to-trough on cumulative P&amp;L, in event order.
       </p>
+      </details>
     </section>
   );
 }
@@ -101,10 +105,18 @@ function Edge({ a }) {
   return (
     <section className="an-section" aria-labelledby="an-edge">
       <h3 className="an-cell an-sec" id="an-edge">Where your edge is</h3>
-      <p className="an-p">
-        Groups with at least <strong>{a.edge.minEntries} entries</strong>, ranked by ROI. One is called out only when its
-        whole 95% interval sits above break-even.
-      </p>
+      <details className="an-how">
+        <summary className="an-how-sum">How these are worked out \u203A</summary>
+        <p className="an-p">
+          Groups with at least <strong>{a.edge.minEntries} entries</strong>, ranked by ROI. One is called out only when its
+          whole 95% interval sits above break-even.
+        </p>
+        {a.edge.dimensions.filter((d) => d.tooSmall.length > 0).map((d) => (
+          <p key={d.key} className="an-p">
+            By {d.label.toLowerCase()}, under {a.edge.minEntries} entries, no estimate: {d.tooSmall.map(g => `${g.label} (${g.entries})`).join(', ')}.
+          </p>
+        ))}
+      </details>
       {a.edge.dimensions.map((d) => (
         <div key={d.key} className="an-sub">
           <div className="an-cell an-lbl an-lbl-3">By {d.label.toLowerCase()}</div>
@@ -128,11 +140,6 @@ function Edge({ a }) {
                 </div>
               ))}
             </div>
-          )}
-          {d.tooSmall.length > 0 && (
-            <p className="an-p">
-              Under {a.edge.minEntries} entries, no estimate: {d.tooSmall.map(g => `${g.label} (${g.entries})`).join(', ')}.
-            </p>
           )}
         </div>
       ))}

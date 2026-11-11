@@ -229,7 +229,7 @@ const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot', '.vm-map-canvas'];
 // clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
 const NOT_CONTROLS = [
   '.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.dash-event-card', '.settings-row-btn',
-  '.bk-row', '.tx-row', '.tx-trip-row', '.bs-row',
+  '.bk-row', '.tx-row', '.tx-trip-row', '.bs-row', '.bk-ledger-row', '.cb-row',
   // Pick-list rows that seat their label on an r line by design: the Hands game picker's radio
   // rows ("4r row, label baseline one r above the bottom") and New Group's buddy rows ("the
   // name on +3r").
@@ -1484,8 +1484,9 @@ function finalize(c) {
     }
   };
   const want = (v) => (!only || only.split(',').some(o => v.startsWith(o.trim()))) && !(skipViews && skipViews.split(',').some(o => v.startsWith(o.trim())));
-  const nav = async (name) => {
-    // Phone: the bottom nav. Desktop: the rail.
+  const nav = async (name0) => {
+    // Phone: the bottom nav. Desktop: the rail. Dashboard is called Home since UX pick 98.
+    const name = name0 === 'Dashboard' ? 'Home' : name0;
     const sel = desktop ? `.dk-rail-item:has-text("${name}")` : `.bottom-nav .nav-tab:has-text("${name}")`;
     await p.locator(sel).first().click({ timeout: 8000, force: overlay });
     await p.waitForTimeout(1800);
@@ -1517,7 +1518,8 @@ function finalize(c) {
   step('schedule', () => nav('Schedule'), 2);
   step('filters', async () => { await nav('Schedule'); await click('.filter-chip-square', 800); });
   step('card', async () => { await nav('Schedule'); await click('.cal-event-row:not(.open):not(.past) .cal-event-bar', 900); }, 1);
-  step('myschedule', () => desktop ? nav('Schedule') : menu('My Schedule', 'Schedule'), 1);
+  // My schedule is the Schedule tab's third view (UX picks 20, 95), not an avatar-menu row.
+  step('myschedule', async () => { await nav('Schedule'); if (!desktop) await p.locator('.tab-panel[data-tab="tournaments"] .sched-switch-seg', { hasText: 'My schedule' }).first().click({ timeout: 8000 }); await p.waitForTimeout(1500); }, 1);
   // The home scrolls (2026-10-12): its main column, and on desktop its second pane (the NUMBERS,
   // .dk-home-right), each paged to its foot. Then the Playing card's Scan sheet, opened as the
   // card's Scan button does it — a screenshot handed to the hidden picker — so the sheet's head and
@@ -1803,10 +1805,10 @@ function finalize(c) {
   // The New Hand variant picker's palette (VariantPicker.jsx), open; then with a search typed.
   step('hands-palette', async () => { await nav('Hands'); await tap('.vp-launcher', 800); }, 1);
   step('hands-palette-search', async () => { await nav('Hands'); await tap('.vp-launcher', 800); await p.locator('.vp-search input').fill('o8'); await p.waitForTimeout(400); }, 1);
-  step('calendar', async () => { await nav('Schedule'); await click('.filter-chip-square[title="Calendar view"]', 1500); }, 1);
+  step('calendar', async () => { await nav('Schedule'); await click('.sched-switch-seg:has-text("Calendar")', 1500); }, 1);
   step('calendar-filters', async () => {
     await nav('Schedule');
-    await click('.filter-chip-square[title="Calendar view"]', 1500);
+    await click('.sched-switch-seg:has-text("Calendar")', 1500);
     await click('.filter-chip-square:not([title]):visible', 800);
   });
   step('bankrolls', async () => { await nav('Bankroll'); await click('.bk-bar .bk-act:has-text("Manage")', 800); });
@@ -2108,6 +2110,8 @@ function finalize(c) {
   step('cash-bar', async () => { await cashHalf(); await openSection(p, 'MTT'); await p.waitForTimeout(600); });
   const toExpenses = async () => {
     await nav('Bankroll');
+    // Expenses & income sits on the Overview (UX pick 77).
+    if (!(await p.locator('.tx-sec').count())) { await openSection(p, 'Overview'); await p.waitForTimeout(900); }
     await p.locator('.tx-sec').first().waitFor({ timeout: 8000 });
     // Scroll the content area only (scrollIntoView would nudge the window off the .top-bar origin).
     await p.evaluate(() => {
@@ -2209,7 +2213,7 @@ function finalize(c) {
   // Calendar with a filter set: its pill (and clear ✕) in the bar, panel open and closed.
   step('calendar-filter-pill', async () => {
     await nav('Schedule');
-    await tap('.filter-chip-square[title="Calendar view"]', 1500);
+    await tap('.sched-switch-seg:has-text("Calendar")', 1500);
     await tap('.filter-chip-square:not([title])', 800);
     await tap('.cal-fp-chips button', 900);
     await also('panel');
@@ -2225,7 +2229,7 @@ function finalize(c) {
   // Calendar: another day, and a card open in it.
   step('calendar-day', async () => {
     await nav('Schedule');
-    await tap('.filter-chip-square[title="Calendar view"]', 1500);
+    await tap('.sched-switch-seg:has-text("Calendar")', 1500);
     await vis('.cal-date-btn').nth(3).click({ timeout: 8000 });
     await p.waitForTimeout(900);
     await also('day');
@@ -2321,7 +2325,7 @@ function finalize(c) {
   step('social-buddy-remove', async () => {
     await menu('Social', 'Social');
     await tap('.social-buddy-card', 1200);
-    await tap('.social-action-btn:has-text("Remove Connection")', 800);
+    await tap('.social-remove-quiet', 800);
   }, 1);
   step('social-search-connect', async () => { await menu('Social', 'Social'); await vis('.social-search-input').first().fill('fresh'); await p.waitForTimeout(1500); }, 1);
   // Hands: every game family's picker, hand entry step by step, the replayer on a saved hand
@@ -2334,7 +2338,7 @@ function finalize(c) {
     await tap('button:has-text("Create No Limit")', 1500);
     await also('step 1');
     for (let i = 2; i <= 6; i++) {
-      const next = vis('.replayer-entry-view button:has-text("Next"), .replayer-entry-view button:has-text("Continue")').first();
+      const next = vis('.gto-sticky-footer button:has-text("Next"), .gto-sticky-footer button:has-text("Continue"), .replayer-entry-view button:has-text("Next"), .replayer-entry-view button:has-text("Continue")').first();
       if (!(await next.count())) break;
       await next.click({ timeout: 3000 }).catch(() => {});
       await p.waitForTimeout(900);
@@ -2346,7 +2350,7 @@ function finalize(c) {
     await nav('Hands');
     await tap('button:has-text("Create No Limit")', 1500);
     for (let i = 0; i < 4 && !(await exists('.gto-action-btn')); i++) {
-      const next = vis('.replayer-entry-view button:has-text("Next"), .replayer-entry-view button:has-text("Continue")').first();
+      const next = vis('.gto-sticky-footer button:has-text("Next"), .gto-sticky-footer button:has-text("Continue"), .replayer-entry-view button:has-text("Next"), .replayer-entry-view button:has-text("Continue")').first();
       if (!(await next.count())) break;
       await next.click({ timeout: 3000 }).catch(() => {});
       await p.waitForTimeout(900);
@@ -2386,7 +2390,8 @@ function finalize(c) {
     for (const t of ['Forward', 'Forward', 'End']) { if (await exists(`button[title="${t}"]`)) await tap(`button[title="${t}"]`, 500, true); }
     await also('advanced');
   }, 1);
-  step('replayer-settings', async () => { await openHand(); await tap('button[title="Replayer Settings"]', 900, true); }, 2);
+  // The sheet opens from the table panel's last row (UX pick 65: the gear went).
+  step('replayer-settings', async () => { await openHand(); await tap('[aria-label="Table settings"]', 700, true); await tap('.replayer-quick-settings .rs-all', 900, true); }, 2);
   step('replayer-table-settings', async () => { await openHand(); await tap('[aria-label="Table settings"]', 900, true); }, 1);
   step('replayer-share', async () => {
     await openHand();
@@ -2450,7 +2455,7 @@ function finalize(c) {
   step('settings-share', async () => {
     await menu('Settings', 'Settings');
     if (await exists('.settings-share-input')) return;
-    await tap('button:has-text("Generate Share Link")', 1200);
+    await tap('button:has-text("Create share link")', 1200);
     if (!(await exists('.settings-share-input'))) throw new Error('no share link was made');
   }, 1);
   // The public page a share link opens (/shared/<token>): its own top bar, date breaks and cards.
@@ -2570,6 +2575,8 @@ function finalize(c) {
   }, 2);
   step('staking-standing-link', async () => {
     await standing();
+    // New link and Delivery are under More (UX pick 85).
+    await tap(`${standingCard('Demo Standing Sam')} button:has-text("More")`, 500);
     await tap(`${standingCard('Demo Standing Sam')} button:has-text("New link")`, 500);
     await tap(`${standingCard('Demo Standing Sam')} button:has-text("Delivery")`, 500);
   }, 1);

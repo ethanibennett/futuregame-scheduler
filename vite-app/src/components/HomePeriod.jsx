@@ -106,6 +106,9 @@ export default function HomePeriod({ admin, bk, results, schedule, updates, plan
         {/* Not twice in a row: the bankroll line's header above may already say it. */}
         {model.scope !== scopeAbove && <span className="hm-cell hm-f-2xs hm-period-scope">{model.scope}</span>}
       </div>
+      {/* The caveat lives with its figure (UX pick 45): the card and the signal-or-noise line share one
+          region, the line its last row. */}
+      <div className={'hm-period-region' + (admin && showNoise ? ' has-noise' : '')}>
       <button type="button" className="hm-period-card" onClick={open}
         aria-label={`${model.title}: ${net}${model.sample ? `, ${model.sample}` : ''}. Open ${where}`}>
         <span className="hm-period-lead">
@@ -128,6 +131,7 @@ export default function HomePeriod({ admin, bk, results, schedule, updates, plan
         ))}
       </button>
       {admin && showNoise && <HomeNoiseLine model={model} results={results} currency={currency} bk={bk} onOpen={onOpenNoise} />}
+      </div>
       {showGoals && goalRows.length > 0 && (
         <button type="button" className="hm-goals" onClick={onOpenGoals}
           aria-label={`Goals: ${goalRows.map((g) => `${g.label}, ${g.value}, ${g.note}`).join('; ')}. Open them in the bankroll dashboard`}>

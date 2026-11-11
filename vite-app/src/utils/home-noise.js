@@ -178,7 +178,7 @@ export function noiseLine({ stats, analytics, cash, money, min = MIN_SAMPLE }) {
   if (game === 'cash') {
     if (cash == null) return null;
     const n = cash.sessions;
-    if (n < min) return finish('progress', 'cash', [em(`${n} of ${min}`), ' sessions before this can separate skill from luck.']);
+    if (n < min) return { ...finish('progress', 'cash', [em(`${n} of ${min}`), ' sessions before this can separate skill from luck.']), ratio: Math.min(1, n / min) };
     const odds = cashWindowOdds(cash, stats.cash.profit, stats.cash.hours);
     const ci = cashInterval(cash);
     if (!odds || !ci) return null;
@@ -193,7 +193,7 @@ export function noiseLine({ stats, analytics, cash, money, min = MIN_SAMPLE }) {
   if (!analytics) return null;
   const entries = analytics.totals ? Number(analytics.totals.entries) || 0 : 0;
   if (!entries) return null;
-  const progress = () => finish('progress', 'mtt', [em(`${entries} of ${min}`), ' entries before this can separate skill from luck.']);
+  const progress = () => ({ ...finish('progress', 'mtt', [em(`${entries} of ${min}`), ' entries before this can separate skill from luck.']), ratio: Math.min(1, entries / min) });
   if (entries < min) return progress();
   const ciObj = analytics.variance && analytics.variance.roiCI;
   const ciSegs = ciObj

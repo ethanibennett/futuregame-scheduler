@@ -413,3 +413,18 @@
 .bp-total:has(.bp-total-rows):not(:has(.bp-settle)) { height: calc(var(--subrow) * 21); }
 .bp-total:has(.bp-settle):has(.bp-total-rows) { height: calc(var(--subrow) * 32); }
 .bp-total:has(.bp-settled-row):has(.bp-total-rows) { height: calc(var(--subrow) * 38); }
+/* The settlement bar fills (UX pick 81): the week gone in the brand colour, seven day segments cut by
+   0.25g gaps in the card's surface. Scoped to the page (.is-filling): the Schedule's late-reg bar is
+   unchanged. */
+.bp-settle.is-filling .late-reg-bar-bg { position: relative; overflow: hidden; }
+.bp-settle.is-filling .late-reg-bar-fill { background: var(--brand); }
+.bp-settle.is-filling .late-reg-bar-bg::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: repeating-linear-gradient(to right, transparent 0 calc(100% / 7 - var(--gu) * 0.25), var(--surface) calc(100% / 7 - var(--gu) * 0.25) calc(100% / 7));
+}
+/* The handshake in the card (UX picks 74, 79; SettleInline.jsx): the card grows with what is open, in
+   whole r, 2r under its last row. */
+.bp-settled-row.is-inline { display: block; height: auto; }
+.bp-total:has(.bp-settled-row.is-inline),
+.bp-total:has(.bp-settled-row.is-inline):has(.bp-total-rows) { height: auto; padding-bottom: calc(var(--subrow) * 2); }
+.bp-settled-row.is-inline .bp-settled-btn > span { line-height: 1; padding: 0.3em 0; margin: -0.3em 0; }

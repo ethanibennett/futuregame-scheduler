@@ -4,11 +4,13 @@ import { haptic } from '../utils/utils.js';
 
 export default function BottomNav({ current, onChange, isAdmin }) {
   const tabs = [
+    // The screen the app opens on is first, and called Home (UX pick 98): it was the third tab, called
+    // Dashboard in the nav and Home in Settings.
+    { id: 'dashboard', label: 'Home', icon: Icon.home },
     { id: 'tournaments', label: 'Schedule', icon: Icon.calendar },
     // Bankroll took Social's slot (owner, 2026-10-14): it opens Results & Tracking, the bankroll
     // tracker's home. Social moved to the username menu.
     { id: 'tracking', label: 'Bankroll', icon: Icon.tracking },
-    { id: 'dashboard', label: 'Dashboard', icon: Icon.home },
     // Hands, for everyone since 2026-11-05 (owner): the replayer. Its Study and Scanner tools stay with admins.
     { id: 'hands', label: 'Hands', icon: Icon.cards },
     // Cash watcher replaced Staking in this slot — admin-only for now.

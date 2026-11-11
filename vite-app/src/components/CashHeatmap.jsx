@@ -189,7 +189,12 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
 
   // Fill the height CashView hands us (heatmap mode is a flex-fill column) so the
   // 24 hour-rows scale to fit the screen instead of overflowing into a scroll.
-  const wrap = { maxWidth: 'calc(var(--subrow) * 85)', margin: '0 auto', padding: 'var(--space-md, calc(var(--subrow) * 2))', width: '100%', flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' };
+  const wrap = { maxWidth: 'calc(var(--subrow) * 85)', margin: '0 auto', padding: 'var(--subrow) 0', width: '100%', flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' };
+  /* The hour you are in (UX pick 101): today's column and this hour's row marked, its cell ringed, and
+     the readout at rest says it, with the week's busiest hour. The grid's days and hours are the
+     device's own (the tz goes to the API). */
+  const nowAt = new Date();
+  const nowDow = nowAt.getDay(), nowHour = nowAt.getHours();
   const selectStyle = { background: 'var(--surface, #1a1a1a)', color: 'var(--text, #fff)', border: 'var(--bw-hair) solid var(--border, #333)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-sm) var(--space-md)', fontSize: 'calc(var(--gu) * 1.178)', maxWidth: '100%' };
 
   if (status === 'error') {
@@ -209,9 +214,15 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
           Switching rooms to {pending}. The list updates within about ten minutes.
         </div>
       )}
-      {/* Pickers */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-ml)' }}>
-        <select value={sel.venue} style={{ ...selectStyle, flex: '1 1 calc(var(--subrow) * 20)' }}
+      {/* Room and Game as the app's own fields (UX pick 102): two 17g x 5r tiles, a caption over the
+          value and a caret, the native select laid over each at no opacity, so the tap still opens the
+          system's own list. They were native selects 17.32g and 15.55g wide, on no line. */}
+      <div className="cash-picks">
+        <label className="cash-pick">
+          <span className="cash-pick-cap">Room</span>
+          <span className="cash-pick-val">{catalog.vNames[sel.venue] || sel.venue}</span>
+          <span className="cash-pick-caret" aria-hidden="true">{'\u2304'}</span>
+        <select value={sel.venue} className="cash-pick-select" aria-label="Room"
           onChange={(e) => {
             const venue = e.target.value;
             const list = catalog.byVenue[venue] || [];
@@ -220,23 +231,22 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
           }}>
           {venueSlugs.map(s => <option key={s} value={s}>{catalog.vNames[s] || s}</option>)}
         </select>
-        <select value={`${sel.gameType}|${sel.stakes}`} style={{ ...selectStyle, flex: '1 1 calc(var(--subrow) * 17.5)' }}
+        </label>
+        <label className="cash-pick">
+          <span className="cash-pick-cap">Game</span>
+          <span className="cash-pick-val">{(() => { const g = gamesForVenue.find(x => x.gameType === sel.gameType && x.stakes === sel.stakes); return g ? gLabel(g) : sel.stakes + ' ' + sel.gameType; })()}</span>
+          <span className="cash-pick-caret" aria-hidden="true">{'\u2304'}</span>
+        <select value={`${sel.gameType}|${sel.stakes}`} className="cash-pick-select" aria-label="Game"
           onChange={(e) => { const [gameType, stakes] = e.target.value.split('|'); persistSel({ venue: sel.venue, gameType, stakes }); }}>
-          {gamesForVenue.map(g => <option key={gLabel(g)} value={`${g.gameType}|${g.stakes}`}>{gLabel(g)} · {g.samples}</option>)}
+          {gamesForVenue.map(g => <option key={gLabel(g)} value={`${g.gameType}|${g.stakes}`}>{gLabel(g)}</option>)}
         </select>
+        </label>
       </div>
 
-      {/* Metric toggle */}
-      <div style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'calc(var(--subrow) * 1.75)' }}>
+      {/* The metric as the app's segmented strip (UX pick 102): 35g x 3r, 2r above the grid. */}
+      <div className="live-update-tabs cash-metric" role="group" aria-label="Show">
         {[['tables', 'Avg tables'], ['reliability', 'Reliability']].map(([m, lbl]) => (
-          <button key={m} onClick={() => persistMetric(m)}
-            style={{
-              fontFamily: UNIVERS, fontSize: 'calc(var(--gu) * 1.031)', textTransform: 'uppercase', letterSpacing: '0.04em',
-              padding: 'var(--space-xs) var(--space-ml)', borderRadius: 999, cursor: 'pointer',
-              border: 'var(--bw-hair) solid ' + (metric === m ? 'var(--text-muted,#999)' : 'var(--border,#333)'),
-              background: metric === m ? 'var(--text-muted,#999)' : 'transparent',
-              color: metric === m ? 'var(--bg,#111)' : 'var(--text-muted,#777)',
-            }}>{lbl}</button>
+          <button key={m} type="button" className={metric === m ? 'active' : ''} aria-pressed={metric === m} onClick={() => persistMetric(m)}>{lbl}</button>
         ))}
       </div>
 
@@ -257,12 +267,12 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
             <div style={{ display: 'grid', gridTemplateColumns: HEAT_COLS, gridAutoRows: HEAT_ROW_H, columnGap: HEAT_COL_GAP, rowGap: 0, flexShrink: 0 }}>
               <div />
               {DOW.map((day, d) => (
-                <div key={d} style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted,#999)', textAlign: 'center', fontFamily: UNIVERS, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{day}</div>
+                <div key={d} style={{ fontSize: 'calc(var(--gu) * 0.884)', color: d === nowDow ? 'var(--brand)' : 'var(--text-muted,#999)', fontWeight: d === nowDow ? 'var(--fw-bold)' : undefined, textAlign: 'center', fontFamily: UNIVERS, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{day}</div>
               ))}
             </div>
             {Array.from({ length: 24 }, (_, h) => (
               <div key={h} style={{ display: 'grid', gridTemplateColumns: HEAT_COLS, gridAutoRows: HEAT_ROW_H, columnGap: HEAT_COL_GAP, rowGap: 0, flex: 'none' }}>
-                <div style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted,#999)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 'var(--gu)', fontFamily: UNIVERS, fontVariantNumeric: 'tabular-nums' }}>{hourLabel(h)}</div>
+                <div style={{ fontSize: 'calc(var(--gu) * 0.884)', color: h === nowHour ? 'var(--brand)' : 'var(--text-muted,#999)', fontWeight: h === nowHour ? 'var(--fw-bold)' : undefined, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 'var(--gu)', fontFamily: UNIVERS, fontVariantNumeric: 'tabular-nums' }}>{hourLabel(h)}</div>
                 {DOW.map((day, d) => {
                   const c = cellMap.get(`${d}-${h}`);
                   const hasData = !!(c && c.samples > 0);
@@ -283,7 +293,9 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
                         /* Exactly the 4g x 2r track: no border (the pick ring and the
                            separating hairline are inset shadows), so nothing adds size. */
                         boxSizing: 'border-box', width: '100%', height: '100%', minHeight: 0, border: 0, margin: 0,
-                        boxShadow: active ? 'inset 0 0 0 calc(var(--bw-hair) * 2) var(--text,#fff)' : 'inset 0 0 0 var(--bw-hair) var(--bg,#111)',
+                        boxShadow: active ? 'inset 0 0 0 calc(var(--bw-hair) * 2) var(--text,#fff)'
+                          : d === nowDow && h === nowHour ? 'inset 0 0 0 calc(var(--bw-hair) * 3) var(--brand)'
+                          : 'inset 0 0 0 var(--bw-hair) var(--bg,#111)',
                         borderRadius: 'calc(var(--subrow) * 0.25)', background: cellColor(intensity, hasData), cursor: hasData ? 'pointer' : 'default', padding: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 'calc(var(--gu) * 0.736)', lineHeight: 1, fontVariantNumeric: 'tabular-nums',
@@ -305,7 +317,13 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
             <div style={{ fontSize: 'calc(var(--gu) * 0.972)', color: 'var(--text-muted,#aaa)', fontVariantNumeric: 'tabular-nums' }}>
               {pick
                 ? `${DOW[pick.dow]} ${hourLabel(pick.hour)} — ${(pick.meanTables || 0).toFixed(1)} tables avg · ran ${Math.round((pick.ranFraction || 0) * 100)}%`
-                : 'Tap a cell for detail'}
+                : (() => {
+                  const c = cellMap.get(`${nowDow}-${nowHour}`);
+                  const nowTxt = `Now, ${DOW[nowDow]} ${hourLabel(nowHour)}: ${c && c.samples > 0 ? fmtTables(c.meanTables) + ' tables' : 'no data'}`;
+                  let best = null;
+                  for (const x of cells) if (x.samples > 0 && (!best || (x.meanTables || 0) > (best.meanTables || 0))) best = x;
+                  return best ? `${nowTxt} \u00b7 busiest ${DOW[best.dow]} ${hourLabel(best.hour)}, ${fmtTables(best.meanTables)}` : nowTxt;
+                })()}
             </div>
           </div>
           {basis && (

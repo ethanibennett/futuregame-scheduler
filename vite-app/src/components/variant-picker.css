@@ -238,3 +238,5 @@
 }
 .gto-runs-btn.is-on { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-fine) var(--brand); color: var(--brand-ink, var(--brand)); }
 .gto-board-slots .gto-runs-btn { flex-basis: calc(var(--gu) * 8); }
+/* A family's fold (UX pick 63): "+ 8 more Omaha games" in the brand colour, opening in place. */
+.vp-more .vp-row-check, .vp-more .vp-row-name { color: var(--brand); }

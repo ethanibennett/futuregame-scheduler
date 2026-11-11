@@ -78,3 +78,7 @@
 .bb-settle .bb-settle-status { text-align: left; }
 .bb-settle .bb-settle-btn.is-primary { border-color: var(--brand); background: var(--brand); color: var(--on-brand); }
 .bb-settle .bb-settle-btn:disabled { opacity: 0.6; }
+/* The handshake in the card (SettleInline.jsx): the actions row's anatomy, 1r over and under, its lines
+   and rows 1r apart. */
+.bb-settle.is-inline { display: block; }
+.bb-settle.is-inline .bb-settle-btn > span { line-height: 1; padding: 0.3em 0; margin: -0.3em 0; }

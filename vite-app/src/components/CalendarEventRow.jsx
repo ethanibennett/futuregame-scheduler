@@ -19,6 +19,7 @@ import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { hasVenueMap, venueRoomName } from '../utils/venue-place.js';
 import { openVenueMap } from '../utils/venue-map/open.js';
+import { initialName } from '../utils/names.js';
 
 // ── Format event name: the stage of a multi-flight event goes underneath ──
 // splitEventStage is shared with CalendarEventRow and mirrors the server's
@@ -269,7 +270,8 @@ function BuddyAvatarRow({ buddies, onBuddyClick }) {
       style={{ display: 'flex', gap: 'var(--gu)', flexWrap: 'wrap', alignItems: 'center' }}
     >
       {buddies.map((b, i) => {
-        const name = b.username || b.real_name || '?';
+        // "J. Buddy", as Social names people, and a swap mark that says what a tap does (UX pick 48).
+        const name = initialName(b.real_name, b.username) || '?';
         return (
           <span
             key={b.id ?? i}
@@ -296,10 +298,11 @@ function BuddyAvatarRow({ buddies, onBuddyClick }) {
               userSelect: 'none',
             }}
             onClick={() => onBuddyClick && onBuddyClick(b)}
-            title={name}
+            title={onBuddyClick ? `Offer ${name} a swap` : name}
           >
-            <Avatar src={b.avatar} username={name} size={0} style={{ width: 'calc(var(--subrow) * 2)', height: 'calc(var(--subrow) * 2)', fontSize: 'var(--fs-2xs)' }} />
+            <Avatar src={b.avatar} username={b.username || name} size={0} style={{ width: 'calc(var(--subrow) * 2)', height: 'calc(var(--subrow) * 2)', fontSize: 'var(--fs-2xs)' }} />
             <span className="buddy-chip-name">{name}</span>
+            {onBuddyClick && <span className="buddy-chip-swap" aria-hidden="true">{'\u21C4'}</span>}
           </span>
         );
       })}
@@ -704,8 +707,10 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
               {tournament.venue === 'Personal' ? (
                 <>
                   {tournament.event_name === 'Travel Day' && !readOnly && onUpdatePersonalEvent ? (
-                    <div style={{marginBottom:'calc(var(--subrow) * 1.5)'}}>
-                      <label style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', display:'block', marginBottom:'calc(var(--subrow) * 0.5)'}}>Travel details</label>
+                    /* On the grid: a 2r label, 1r, a 4r field, then 1r, so every card under an open Travel
+                       Day stays on its lines (it was 1.5r + 0.5r + a padded field, a quarter r off). */
+                    <div style={{marginBottom:'var(--subrow)'}}>
+                      <label style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', display:'block', lineHeight:'calc(var(--subrow) * 2)', marginBottom:'var(--subrow)'}}>Travel details</label>
                       <div style={{display:'flex', gap:'calc(var(--subrow) * 0.75)', alignItems:'center'}}>
                         <input className="focus-inset"
                           type="text"
@@ -715,7 +720,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
                           onKeyDown={e => { if (e.key === 'Enter') { e.target.blur(); }}}
                           placeholder="e.g. 6h flight LAX \u2192 LAS"
                           style={{
-                            flex:1, padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1.25)', fontSize:'calc(var(--gu) * 1.222)',
+                            flex:1, height:'calc(var(--subrow) * 4)', boxSizing:'border-box', margin:0, padding:'0 calc(var(--subrow) * 1.25)', fontSize:'calc(var(--gu) * 1.222)',
                             borderRadius:'calc(var(--subrow) * 0.75)', border:'var(--bw-hair) solid var(--border)',
                             background:'var(--surface)', color:'var(--text)'
                           }}

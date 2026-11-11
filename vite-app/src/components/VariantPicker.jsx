@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FAMILIES, rowStrip, search, recentRows } from '../utils/variant-catalog.js';
+import { FAMILIES, rowStrip, search, recentRows, historyFromHands, playCounts, familyRows } from '../utils/variant-catalog.js';
 import { getVenueInfo } from '../utils/utils.js';
 import './variant-picker.css';
 
@@ -30,7 +30,7 @@ function Tag({ row }) {
 
 const isDesktopNow = () => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(min-width: 1024px)').matches : false);
 
-export function Palette({ rows, mixes, history, current, onPick, onClose }) {
+export function Palette({ rows, mixes, history, current, onPick, onClose, hands = null }) {
   const [q, setQ] = useState('');
   const [openMix, setOpenMix] = useState(null);
   const [hi, setHi] = useState(0);
@@ -50,17 +50,27 @@ export function Palette({ rows, mixes, history, current, onPick, onClose }) {
     return found.mixes.filter((m) => !found.byGame.has(m.key));
   }, [found, mixesOpen]);
   const foldedMixes = found.mixes.length - shownMixes.length;
-  const recent = useMemo(() => recentRows(rows, history), [rows, history]);
+  /* Recent is this device's picks; with none, the saved hands' games ("From your saved hands"). Each
+     family shows its 3 most-played rows and folds the rest under "+ N more" (UX pick 63): the palette
+     opened on 64 rows. Search ignores the fold. */
+  const seeded = !(history && history.length) && !!(hands && hands.length);
+  const recent = useMemo(() => recentRows(rows, seeded ? historyFromHands(rows, hands) : history), [rows, history, hands, seeded]);
+  const counts = useMemo(() => playCounts(rows, history, hands), [rows, history, hands]);
+  const [openFams, setOpenFams] = useState(() => new Set());
+  const famView = useMemo(() => Object.fromEntries(FAMILIES.filter((f) => f.id !== 'mixed').map((f) => {
+    const all = rows.filter((r) => r.family === f.id && !r.rare);
+    return [f.id, openFams.has(f.id) ? { shown: all, hidden: 0 } : familyRows(all, counts, current)];
+  })), [rows, counts, current, openFams]);
   // The flat list of what can be picked, in display order (for ↑↓ and ↵).
   const items = useMemo(() => {
     if (q.trim()) return [...found.rows.map((r) => ({ row: r })), ...shownMixes.flatMap((m) => m.games.map((g) => ({ row: g, mix: m.mix })))];
     const out = recent.map((x) => ({ row: x.row, mix: x.mix }));
     for (const f of FAMILIES) {
       if (f.id === 'mixed') { if (openMix) { const m = mixes.find((x) => x.mix === openMix); if (m) out.push(...m.games.map((g) => ({ row: g, mix: m.mix }))); } continue; }
-      out.push(...rows.filter((r) => r.family === f.id && !r.rare).map((r) => ({ row: r })));
+      out.push(...famView[f.id].shown.map((r) => ({ row: r })));
     }
     return out;
-  }, [q, found, shownMixes, recent, rows, mixes, openMix]);
+  }, [q, found, shownMixes, recent, rows, mixes, openMix, famView]);
 
   const onKey = (e) => {
     if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
@@ -118,7 +128,7 @@ export function Palette({ rows, mixes, history, current, onPick, onClose }) {
     </>
   ) : (
     <>
-      {recent.length > 0 && <div className="vp-sec"><span>Recent</span></div>}
+      {recent.length > 0 && <div className="vp-sec"><span>{seeded ? 'From your saved hands' : 'Recent'}</span></div>}
       {recent.map((x) => rowEl(x.row, x.mix, '|recent'))}
       {FAMILIES.map((f) => (
         <React.Fragment key={f.id}>
@@ -135,7 +145,18 @@ export function Palette({ rows, mixes, history, current, onPick, onClose }) {
                 {openMix === m.mix && m.games.map((g) => rowEl(g, m.mix))}
               </div>
             ))
-            : rows.filter((r) => r.family === f.id && !r.rare).map((r) => rowEl(r))}
+            : <>
+              {famView[f.id].shown.map((r) => rowEl(r))}
+              {famView[f.id].hidden > 0 && (
+                <button type="button" className="vp-row vp-mixrow vp-more" aria-expanded={false}
+                  onClick={() => setOpenFams((s) => new Set(s).add(f.id))}>
+                  <span className="vp-row-check" aria-hidden="true">+</span>
+                  <span className="vp-row-name">{famView[f.id].hidden} more {f.label} {famView[f.id].hidden === 1 ? 'game' : 'games'}</span>
+                  {/* The row's right column, as a rotation's "N games": its count, so the row reads across. */}
+                  <span className="vp-row-count">Show all</span>
+                </button>
+              )}
+            </>}
         </React.Fragment>
       ))}
     </>

@@ -100,6 +100,8 @@ export default function HomeNoiseLine({ model, results, currency = 'USD', bk, on
           : <span key={i} className="hm-noise-em">{s.em}</span>))}
         <span className="hm-noise-go" aria-hidden="true">{' ›'}</span>
       </span>
+      {/* How far the sample has come (UX pick 45): a 0.5r bar across the row. */}
+      {line.ratio != null && <span className="hm-noise-bar" aria-hidden="true"><span style={{ width: `${Math.round(line.ratio * 100)}%` }} /></span>}
     </button>
   );
 }

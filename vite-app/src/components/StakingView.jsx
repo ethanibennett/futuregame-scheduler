@@ -6,6 +6,8 @@ import StandingView from './StandingView.jsx';
 import { API_URL } from '../utils/api.js';
 import { formatBuyin, parseTournamentTime } from '../utils/utils.js';
 import { BACKER_TYPE_LABELS, fmtSettle, canMarkPaid, showFinalize, typeLine, owedLine, settlementLines, inputsBody, missingPartner, paidLine, totalsLine, isMutual } from '../utils/staking-settlement.js';
+import MoneyField from './MoneyField.jsx';
+import { parseMoney } from '../utils/money.js';
 
 // ── Staking Platform ────────────────────────────────────────
 
@@ -626,14 +628,18 @@ function BackerSummaryView({ token, onBack, onManage }) {
                 {b.phone && <div style={{fontSize:'calc(var(--subrow) * 1.5)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>{b.phone}</div>}
               </div>
               <div style={{textAlign:'right',flexShrink:0,marginLeft:'var(--space-lg)'}}>
-                <div style={{fontSize:'calc(var(--subrow) * 1.625)',lineHeight:'calc(var(--subrow) * 2)',fontWeight:700,color: b.net_pl >= 0 ? '#22c55e' : '#ef4444'}}>
-                  {b.net_pl >= 0 ? '+' : ''}{formatBuyin(b.net_pl)}
+                {/* $0 is not a gain (UX pick 88): no sign and muted at zero; the tokens, not literals. */}
+                <div style={{fontSize:'calc(var(--subrow) * 1.625)',lineHeight:'calc(var(--subrow) * 2)',fontWeight:700,color: !Number(b.net_pl) ? 'var(--text-muted)' : b.net_pl > 0 ? 'var(--pos)' : 'var(--neg)'}}>
+                  {Number(b.net_pl) > 0 ? '+' : ''}{formatBuyin(b.net_pl)}
                 </div>
                 <div style={{fontSize:'calc(var(--subrow) * 1.375)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>net P&amp;L</div>
               </div>
             </div>
 
-            {/* Stats row */}
+            {/* Stats row; a backer with nothing staked takes one line instead (UX pick 88). */}
+            {!Number(b.total_invested) && !Number(b.total_returned) && !Number(b.ytd_winnings) ? (
+              <div style={{marginTop:'var(--space-md)',fontSize:'calc(var(--subrow) * 1.375)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>Nothing staked yet</div>
+            ) : (
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'var(--gu)',marginTop:'var(--space-md)',paddingTop:'var(--space-md)',boxShadow:'inset 0 calc(var(--subrow) * 0.125) 0 0 var(--border)'}}>
               <div style={{textAlign:'center'}}>
                 <div style={{fontSize:'calc(var(--subrow) * 1.5)',lineHeight:'calc(var(--subrow) * 2)',fontWeight: 'var(--fw-bold)'}}>{formatBuyin(b.total_invested)}</div>
@@ -650,6 +656,7 @@ function BackerSummaryView({ token, onBack, onManage }) {
                 <div style={{fontSize:'calc(var(--subrow) * 1.25)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>YTD</div>
               </div>
             </div>
+            )}
 
             {/* Expanded: active agreements */}
             {isExpanded && b.agreements && b.agreements.length > 0 && (
@@ -854,6 +861,7 @@ function AgreementsList({ agreements, token, fetchAgreements, onAdd }) {
               )}
             </div>
             <div style={{display:'flex',gap:'var(--space-xs)',alignItems:'center'}}>
+              <span className={'staking-switch-label' + (ag.is_active ? ' is-on' : '')}>{ag.is_active ? 'Active' : 'Inactive'}</span>
               <label className="toggle-switch" title={ag.is_active ? 'Active' : 'Inactive'}>
                 <input type="checkbox" checked={!!ag.is_active} onChange={() => toggleActive(ag)} />
                 <span className="toggle-slider" />
@@ -965,10 +973,10 @@ function AgreementForm({ token, seriesId, backers, onClose, onSaved, tournaments
 
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'var(--space-md)'}}>
             <label className="staking-field"><span>Min Buyin</span>
-              <input type="number" value={buyinMin} onChange={e => setBuyinMin(e.target.value)} placeholder="Optional" />
+              <MoneyField value={buyinMin} onChange={e => setBuyinMin(e.target.value)} placeholder="Optional" />
             </label>
             <label className="staking-field"><span>Max Buyin</span>
-              <input type="number" value={buyinMax} onChange={e => setBuyinMax(e.target.value)} placeholder="Optional" />
+              <MoneyField value={buyinMax} onChange={e => setBuyinMax(e.target.value)} placeholder="Optional" />
             </label>
           </div>
 
@@ -1133,13 +1141,13 @@ function StakingEventTracking({ agreements, eventStatuses, tournaments, mySchedu
                       <input type="number" value={bullets} onChange={e => setBullets(e.target.value)} min="1" />
                     </label>
                     <label className="staking-field" style={{marginBottom:0}}><span style={{fontSize:'calc(var(--subrow) * 1.25)'}}>Buyin</span>
-                      <input type="number" value={buyinAmt} onChange={e => setBuyinAmt(e.target.value)} />
+                      <MoneyField value={buyinAmt} onChange={e => setBuyinAmt(e.target.value)} />
                     </label>
                     <label className="staking-field" style={{marginBottom:0}}><span style={{fontSize:'calc(var(--subrow) * 1.25)'}}>Cash</span>
-                      <input type="number" value={cashAmt} onChange={e => setCashAmt(e.target.value)} />
+                      <MoneyField value={cashAmt} onChange={e => setCashAmt(e.target.value)} />
                     </label>
                     <label className="staking-field" style={{marginBottom:0}}><span style={{fontSize:'calc(var(--subrow) * 1.25)'}}>Tip</span>
-                      <input type="number" value={tipAmt} onChange={e => setTipAmt(e.target.value)} />
+                      <MoneyField value={tipAmt} onChange={e => setTipAmt(e.target.value)} />
                     </label>
                     <div style={{gridColumn:'span 4',display:'flex',gap:'var(--space-sm)'}}>
                       <button className="create-group-submit" style={{fontSize:'calc(var(--subrow) * 1.375)',padding:'var(--space-sm) var(--space-lg)',flex:1}} onClick={handleLog} disabled={saving}>
@@ -1297,6 +1305,10 @@ function StakingSettlementView({ seriesId, settlementData, token, fetchSettlemen
                 <div style={{...small,color:'var(--text-muted)'}}>{typeLine(s)}</div>
               </div>
               {canMarkPaid(s) && (
+                /* The switch says what it is (UX pick 84): a bare toggle had to be guessed on touch. */
+                <span className={'staking-switch-label' + (s.isPaid ? ' is-on' : '')}>{s.isPaid ? 'Paid' : 'Not paid'}</span>
+              )}
+              {canMarkPaid(s) && (
                 <label className="toggle-switch" title={s.isPaid ? 'Paid' : 'Unpaid'}>
                   <input type="checkbox" checked={!!s.isPaid} onChange={() => handleMarkPaid(s)} aria-label={s.isPaid ? 'Mark unpaid' : 'Mark paid'} />
                   <span className="toggle-slider" />
@@ -1339,7 +1351,7 @@ function StakingSettlementView({ seriesId, settlementData, token, fetchSettlemen
                   <input type="text" inputMode="decimal" value={amountDraft} onChange={e => setAmountDraft(e.target.value)} />
                 </label>
                 <button className="create-group-submit" style={{fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 5)',marginBottom:'var(--space-md)'}}
-                  onClick={() => { const n = Number(String(amountDraft).replace(/[,\s]/g, '')); if (Number.isFinite(n) && n >= 0) handleMarkPaid(s, n); else setError('Amounts must be numbers'); }}>
+                  onClick={() => { const r = parseMoney(amountDraft); if (!r.error && r.value >= 0) handleMarkPaid(s, r.value); else setError(r.error || 'Amounts must be numbers'); }}>
                   Mark paid
                 </button>
               </div>
@@ -1348,7 +1360,21 @@ function StakingSettlementView({ seriesId, settlementData, token, fetchSettlemen
         );
       })}
 
-      <div style={{...small,fontWeight:700,marginTop:'var(--space-md)'}}>{totalsLine(data)}</div>
+      {/* The series ends on one figure (UX pick 84, Peak-End): what changes hands, net, over the two halves. */}
+      {(() => {
+        const t = (data && data.totals) || {};
+        const net = Math.round(((Number(t.toBackers) || 0) - (Number(t.toPlayer) || 0)) * 100) / 100;
+        const cur = data.currency || 'USD';
+        return (
+          <div className="staking-series-net">
+            <div className="ssn-lbl">Series net</div>
+            <div className={'ssn-fig' + (net > 0 ? ' is-out' : net < 0 ? ' is-in' : '')}>
+              {net > 0 ? 'You pay ' + fmtSettle(net, cur) : net < 0 ? 'Backers pay you ' + fmtSettle(-net, cur) : 'Nothing changes hands'}
+            </div>
+            <div className="ssn-note">{totalsLine(data)}</div>
+          </div>
+        );
+      })()}
       {error && <div style={{...small,color:'#ef4444'}}>{error}</div>}
       {showFinalize(data) && (
         <button
@@ -1390,7 +1416,7 @@ function StakingSettlementView({ seriesId, settlementData, token, fetchSettlemen
                   <div style={{color:'var(--text-muted)',marginTop:'var(--space-2xs)'}}>
                     This settlement: <strong>{fmtSettle(row.thisSettlement, currency)}</strong>
                     {' · '}YTD: <strong style={{color: ytd >= 600 ? '#ef4444' : ytd >= 400 ? '#f59e0b' : 'inherit'}}>
-                      {formatBuyin(ytd)}
+                      {fmtSettle(ytd, currency)}
                     </strong>
                   </div>
                 </div>

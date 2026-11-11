@@ -77,3 +77,29 @@ test('best guess: live first, then soon, then earlier today; a mix carries its r
   assert.equal(g3.reason, 'Today');
   assert.equal(V.bestGuess({ rows, schedule: [], now, today: '2026-10-20' }), null);
 });
+
+// UX pick 63: Recent from the saved hands, and each family folded to its 3 most-played rows.
+test('the saved hands seed Recent, most played first', () => {
+  const hands = [{ gameType: 'PLO' }, { gameType: 'NLH' }, { gameType: 'PLO' }, { handData: { gameType: '2-7 TD' } }, { gameType: 'nonsense' }];
+  const h = V.historyFromHands(rows, hands);
+  const names = V.recentRows(rows, h).map((x) => x.row.gameType);
+  assert.deepEqual(names.slice(0, 3), ['PLO', 'NLH', '2-7 TD']);
+  assert.deepEqual(V.historyFromHands(rows, []), []);
+});
+
+test('a family shows its 3 most played, the current pick, and folds the rest', () => {
+  const omaha = rows.filter((r) => r.family === 'omaha' && !r.rare);
+  assert.ok(omaha.length > 4, 'omaha has enough rows to fold');
+  const none = V.familyRows(omaha, new Map());
+  assert.deepEqual(none.shown.map((r) => r.key), omaha.slice(0, 3).map((r) => r.key), 'catalog order with no plays');
+  assert.equal(none.hidden, omaha.length - 3);
+  const last = omaha[omaha.length - 1];
+  const counts = V.playCounts(rows, [{ game: last.game, structure: last.structure }], []);
+  const played = V.familyRows(omaha, counts);
+  assert.ok(played.shown.some((r) => r.key === last.key), 'the played row is shown');
+  assert.equal(played.shown.length, 3);
+  const cur = V.familyRows(omaha, new Map(), omaha[5]);
+  assert.ok(cur.shown.some((r) => r.key === omaha[5].key), 'the current pick is never folded');
+  const small = rows.filter((r) => r.family === 'holdem' && !r.rare).slice(0, 4);
+  assert.equal(V.familyRows(small, new Map()).hidden, 0, 'four rows are not folded');
+});

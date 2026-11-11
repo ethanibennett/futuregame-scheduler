@@ -191,9 +191,17 @@ export function parseIsoDate(v) {
 }
 
 // The tax year a report defaults to: the calendar year before `todayIso`.
-export function defaultTaxYear(todayIso) {
+// UX pick 83: last year only in filing season (January 1 to April 15), else this year; and, given the
+// results, the newest year that has any when that year has none. In November it opened on a year of
+// zeros with every result one tap away.
+export function defaultTaxYear(todayIso, entries = null) {
   const t = parseIsoDate(todayIso);
-  return t ? t.y - 1 : null;
+  if (!t) return null;
+  const season = t.m < 4 || (t.m === 4 && t.d <= 15);
+  const pick = season ? t.y - 1 : t.y;
+  const years = new Set((entries || []).map((e) => (parseIsoDate(e && e.date) || {}).y).filter(Boolean));
+  if (!years.size || years.has(pick)) return pick;
+  return [...years].sort((a, b) => b - a)[0];
 }
 
 // Years with at least one logged result, newest first, always including the default year.

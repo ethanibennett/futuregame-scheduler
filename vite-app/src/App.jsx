@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense, startTransition } from 'react';
 import useWordmarkFit from './hooks/useWordmarkFit.js';
 import { balancesFromSummary } from './utils/bankrolls.js';
 import AlternatingSubtitle from './components/AlternatingSubtitle.jsx';
@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { API_URL } from './utils/api.js';
 import { parseDeepLink } from './utils/deep-links.js';
 import { resetPath } from './utils/reset-results.js';
+import { initialName } from './utils/names.js';
 import { haptic, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, formatSeasonLabel, registerRowTimezones, registerRowCurrencies, registerVenueCoords, getDebugNow, setDebugNow, normaliseDate } from './utils/utils.js';
 import { DNP_TYPE, withoutDnpMarkers } from './utils/didnt-play.js';
 import { decodeHand } from './utils/hand-shorthand.js';
@@ -240,6 +241,9 @@ function App() {
   const [authBusy, setAuthBusy] = useState(false);       // Sign In / Create Account answered at once (UX pick 8)
   const [forgotEmail, setForgotEmail] = useState('');    // Sign In's address, carried to Forgot (UX pick 14)
   const [currentView, _setCurrentView] = useState('dashboard');
+  // The tab tapped, lit before its view renders (UX pick 46); cleared once the view is there.
+  const [navPending, setNavPending] = useState(null);
+  useEffect(() => { setNavPending(null); }, [currentView]);
   // Set when the dashboard's Up Next card is tapped; ScheduleView consumes it
   // to expand and scroll to that row, then clears it so a later visit to the
   // schedule does not re-focus the same event.
@@ -437,7 +441,7 @@ function App() {
 
   // Theme
   // The Swiss themes are admin-only (utils/theme.js); the signed token's name says who is one.
-  const { theme, toggleTheme, nextThemeLabel } = useThemeChoice({ admin: APP_ADMIN_USERNAMES.includes(authUsername) });
+  const { theme, toggleTheme, setTheme: pickTheme, nextThemeLabel } = useThemeChoice({ admin: APP_ADMIN_USERNAMES.includes(authUsername) });
   const [contrast, setContrast] = useState(localStorage.getItem('contrast') || 'normal');
   const [cardSplay] = useState(localStorage.getItem('cardSplay') !== 'off');
   // Admin-only layout-grid overlay for checking alignment (GridOverlay.jsx).
@@ -1728,6 +1732,34 @@ function App() {
   // phone layout, unchanged. dk.desktop is false on every phone.
   const dk = useDesktopLayout();
   const isDesktop = dk.desktop;
+  /* The parser eval's progress on the Admin row while it runs (UX pick 111): the Admin screen says when
+     a run is going (an 'fg:eval' event); from then the app asks every 15 s until it ends. */
+  const [evalPct, setEvalPct] = useState(null);
+  useEffect(() => {
+    const on = (e) => setEvalPct(e.detail && e.detail.running ? e.detail.pct : null);
+    window.addEventListener('fg:eval', on);
+    return () => window.removeEventListener('fg:eval', on);
+  }, []);
+  useEffect(() => {
+    if (evalPct == null || !token) return undefined;
+    const id = setInterval(() => {
+      fetch(`${API_URL}/admin/quick-add-eval`, { headers: { Authorization: 'Bearer ' + token } })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (!d || !d.running) setEvalPct(null); else if (d.progress && d.progress.total) setEvalPct(Math.round((d.progress.done / d.progress.total) * 100)); })
+        .catch(() => {});
+    }, 15000);
+    return () => clearInterval(id);
+  }, [evalPct != null, token]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* Sheets portalled to <body> are centred 46g dialogs on the desktop (UX pick 71): the root carries
+     the shell's width in g and the dialog's whole-g offset in it, so a dialog lands on the shell's
+     g lines as the game palette does. */
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!isDesktop) { root.classList.remove('dk-on'); return; }
+    root.classList.add('dk-on');
+    root.style.setProperty('--dk-shell-n', String(dk.shellG));
+    root.style.setProperty('--dk-sheet-x', String(Math.max(0, Math.round((dk.shellG - 46) / 2))));
+  }, [isDesktop, dk.shellG]);
   // (Declared above the running head, which reads isDesktop.)
   // The Swiss theme's running head: the section, then its scope (catalogue item 7).
   const swissRunningHead = useMemo(() => {
@@ -2185,6 +2217,8 @@ function App() {
                 onAvatarRemove={handleAvatarRemove}
                 theme={theme}
                 toggleTheme={toggleTheme}
+                pickTheme={pickTheme}
+                onFindPeople={() => setCurrentView('social')}
                 contrast={contrast}
                 toggleContrast={toggleContrast}
                 serifFont={serifFont}
@@ -2253,6 +2287,9 @@ function App() {
             <div className={'tab-panel' + (currentView === 'social' ? ' tab-active' : '')} data-tab="social" style={{display: currentView === 'social' ? undefined : 'none', height: currentView === 'social' ? '100%' : undefined}}>
             {visitedTabs.has('social') && (
               <SocialView
+                pendingIncoming={pendingIncoming}
+                onAcceptRequest={handleAcceptRequest}
+                onRejectRequest={handleRejectRequest}
                 shareBuddies={shareBuddies}
                 buddyLiveUpdates={buddyLiveUpdates}
                 displayName={displayName}
@@ -2395,9 +2432,12 @@ function App() {
   // Choosing Schedule while already on it scrolls the list back to today (landListOnToday); this
   // used to live only in BottomNav's onChange, and the rail did nothing. Today is looked up in the
   // list's own panel: on desktop My Schedule (the right pane) carries a [data-today-scroll] too.
+  /* A tab answers the tap in its first frame (UX pick 46): the bar lights at once and the view, whose
+     render is the slow part, follows as a transition. */
   const onNavChange = (v) => {
     if (v === currentView && v === 'tournaments') { landListOnToday(); return; }
-    setCurrentView(v);
+    setNavPending(v);
+    startTransition(() => setCurrentView(v));
   };
   return (
     <DisplayNameProvider value={displayName}>
@@ -2412,7 +2452,7 @@ function App() {
               season's date range. The h2 inside CashView is dropped in favour of this. */}
           {currentView === 'cash' ? <small>{cashMode === 'heatmap' ? 'cash game history' : 'live cash games'}</small>
             : currentView === 'hands' ? <small>{handsTool === 'study' ? 'study' : handsTool === 'scanner' ? 'table scanner' : 'hands archive'}</small>
-            : currentView === 'dashboard' ? <small>dashboard</small>
+            : currentView === 'dashboard' ? <small>home</small>
             : currentView === 'tracking' ? <small>bankroll</small>
             : currentView === 'social' ? <small>social</small>
             : currentView === 'staking' ? <small>staking</small>
@@ -2465,48 +2505,43 @@ function App() {
                   ring is an inset shadow, not a border, so the 5r rows inside start on the box's
                   own lines. */}
               <div style={{position:'fixed',top:'calc(var(--sa-t) + var(--subrow) * 7)',right:`calc(50% - var(--gu) * ${isDesktop ? dk.shellG : 37} / 2 + var(--gu))`,zIndex:9999,background:'var(--surface)',borderRadius:'calc(var(--subrow) * 1)',padding:0,width:'calc(var(--gu) * 16)',boxSizing:'border-box',boxShadow:'inset 0 0 0 var(--bw-hair) var(--border), 0 calc(var(--subrow) * 1) calc(var(--subrow) * 3) rgba(0,0,0,0.4)',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
-                {/* Social moved here from the bottom nav (owner, 2026-10-14); its slot there is Bankroll,
-                    which opens Results & Tracking. */}
-                <button onClick={() => { setShowUserMenu(false); setCurrentView('social'); }}
-                  style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
-                  Social
-                </button>
-                {/* Staking (series, agreements, backers, settlement) lost its way in when Cash took its
-                    footer slot; admins reach it here until the bankroll merge gives backers a home under
-                    Bankroll (docs/bankroll-merge.md, Phase 8). */}
-                {isAdmin && (
-                  <button onClick={() => { setShowUserMenu(false); setCurrentView('staking'); }}
-                    style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
-                    Staking
-                  </button>
-                )}
-                {handReplayerAccess && !isAdmin && (
-                  <button onClick={() => { setShowUserMenu(false); setCurrentView('hands'); }}
-                    style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
-                    Hand Replayer
-                  </button>
-                )}
-                <button onClick={() => { setShowUserMenu(false); setCurrentView('settings'); }}
-                  style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
-                  Settings
-                </button>
-                {isAdmin && (
-                  <button onClick={() => { setShowUserMenu(false); setCurrentView('admin'); }}
-                    style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
-                    Admin
-                  </button>
-                )}
-                {isAdmin && (
-                  <button onClick={() => { setShowUserMenu(false); openBatch(null); }}
-                    style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
-                    New Events
-                  </button>
-                )}
-                {/* The divider: a 1r row with the hairline drawn across its middle. */}
-                <div style={{height:'var(--subrow)',background:'linear-gradient(var(--border), var(--border)) center / 100% calc(var(--subrow) * 0.125) no-repeat'}} />
-                <button onClick={() => { setShowUserMenu(false); handleLogout(); }}
-                  style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
-                  Sign Out
+                {/* Who is signed in (UX pick 49): a 7r head, the avatar beside "E. Bennett" over @username. */}
+                <div className="um-head">
+                  <Avatar src={avatar} username={authUsername || username} size={0} style={{ width: 'calc(var(--subrow) * 4)', height: 'calc(var(--subrow) * 4)', fontSize: 'var(--fs-xs)' }} />
+                  <span className="um-who">
+                    <span className="um-name">{initialName(realName, authUsername || username)}</span>
+                    <span className="um-handle">@{authUsername || username} · Signed in</span>
+                  </span>
+                </div>
+                {/* Yours first, the admin tools under their own caption, Sign out last (UX picks 49, 99); each
+                    row with the rail's icon. On desktop the rail has the rest: Settings and Sign out only. */}
+                {(() => {
+                  const go = (v) => () => { setShowUserMenu(false); v === 'batches' ? openBatch(null) : setCurrentView(v); };
+                  const row = (id, label, Glyph, onClick) => (
+                    <button key={id} type="button" className="um-row" onClick={onClick}>
+                      <span className="um-icon" aria-hidden="true"><Glyph /></span><span className="um-label">{label}</span>
+                    </button>
+                  );
+                  const mine = [
+                    !isDesktop && row('social', 'Social', Icon.people, go('social')),
+                    !isDesktop && handReplayerAccess && !isAdmin && row('hands', 'Hand Replayer', Icon.cards, go('hands')),
+                    row('settings', 'Settings', Icon.gear, go('settings')),
+                  ].filter(Boolean);
+                  const admin = isAdmin && !isDesktop ? [
+                    row('staking', 'Staking', Icon.handshake, go('staking')),
+                    row('admin', evalPct != null ? `Admin \u00b7 eval ${evalPct}%` : 'Admin', Icon.lock, go('admin')),
+                    row('batches', 'New Events', Icon.bell, go('batches')),
+                  ] : [];
+                  return (
+                    <>
+                      {mine}
+                      {admin.length > 0 && <><div className="um-rule" /><div className="um-caption">Admin</div>{admin}</>}
+                    </>
+                  );
+                })()}
+                <div className="um-rule" />
+                <button type="button" className="um-row um-signout" onClick={() => { setShowUserMenu(false); handleLogout(); }}>
+                  <span className="um-label">Sign out</span>
                 </button>
               </div>
             </>,
@@ -2574,7 +2609,8 @@ function App() {
           {isDesktop && (
             <DesktopRail
               isAdmin={isAdmin}
-              current={currentView === 'schedule' || currentView === 'calendar' ? 'tournaments' : currentView}
+              evalPct={evalPct}
+              current={(navPending || currentView) === 'schedule' || (navPending || currentView) === 'calendar' ? 'tournaments' : (navPending || currentView)}
               onChange={v => (v === 'batches' ? openBatch(null) : onNavChange(v))}
             />
           )}
@@ -2621,10 +2657,11 @@ function App() {
         <BottomNav
           isAdmin={isAdmin}
           current={(() => {
-            if (currentView === 'hands' && isAdmin) return 'hands';
-            if (currentView === 'calendar' || currentView === 'schedule') return 'tournaments';
-            if (['social', 'settings', 'hands', 'admin', 'batches'].includes(currentView)) return null;
-            return currentView;
+            const cv = navPending || currentView;
+            if (cv === 'hands' && isAdmin) return 'hands';
+            if (cv === 'calendar' || cv === 'schedule') return 'tournaments';
+            if (['social', 'settings', 'hands', 'admin', 'batches'].includes(cv)) return null;
+            return cv;
           })()}
           onChange={onNavChange}
         />

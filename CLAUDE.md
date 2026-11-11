@@ -654,6 +654,27 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   no theme redefines: Swiss redefines the weights, the radii (`--radius-circle` is 0)
   and the font roles. The checklist at the doc's foot tracks what is left (status
   colours, off-scale z-indexes, `!important`).
+- **The Laws of UX audit, built** (owner, 2026-11-10: every pick but 4, 6 and 31; gallery numbers map to
+  `docs/ux-audit/*/proposals.md` through `docs/ux-audit/README.md`). What a later change has to keep:
+  - **Home is the first tab and is called Home** (BottomNav, DesktopRail; the view id stays `dashboard`). The guards'
+    `nav('Dashboard')` / `openTab('Dashboard')` map to Home. My schedule is the Schedule tab's third view
+    (`ScheduleSwitch.jsx`), not an avatar-menu row.
+  - **Every money field reads through `utils/money.js` `parseMoney`** ("$1,200", "1.2k", "12,50"; refused, never half
+    read): `MoneyField.jsx` is the drop-in for an amount input, `parseAmount` and `partCents` call it. A count or a
+    percentage stays a number field.
+  - **The replayer's raise box takes the TOTAL ("raise to")**; `addAction` still stores what was added, so saved hands
+    are unchanged, and the entry oracle types totals. Every entry step's buttons are portalled into the one fixed
+    footer (`footBar`, `.gto-sticky-footer .gto-foot-row.is-step`), so a script finds Next / Continue there, not
+    inside `.replayer-entry-view`. Double board is set in the hand's setup; Play a hand is in Study only.
+  - Saved rows show the hero's net from the export's own settlement (`utils/hand-net.js`), a blank title is built from
+    the hand (`utils/hand-title.js`), Delete is a swipe or the Delete key with a 5 s Undo.
+  - The Settled handshake and partial payments are asked in the card on both sides (`SettleInline.jsx`), never
+    `window.prompt` / `window.confirm`; the backer page says who pays whom in words, the figure unsigned.
+  - On the desktop every `.share-menu-panel` is a centred 46g dialog (`:root.dk-on`, `--dk-sheet-x` set by App).
+  - `/live` gets its own small stylesheet, `src/live.generated.css`, made from `styles.css` by
+    `vite-app/scripts/make-live-css.mjs` on every vite start (gitignored, like `live.html`).
+  - Not built, needing a decision or a session of their own: 68 (desktop Hands list beside the replay), 97's windowed
+    Schedule list and profiling (its press-first half is in), 107 (every desktop tab to the shell's right edge).
 - **What we tout at launch:** `docs/launch-features.md`, with the plan's guardrails and what is open to everyone today.
 - Update this file when architecture or suite topology changes — it is the handoff.
 - **Session state** lives in `docs/session-handoff.md` — what shipped recently,

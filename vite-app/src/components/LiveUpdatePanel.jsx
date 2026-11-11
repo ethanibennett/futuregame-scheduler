@@ -82,6 +82,10 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
   const [updateType, setUpdateType] = useState('update');
   const externalTabRef = useRef(null);
   const externalBagRef = useRef(null);
+  // The event a card opened the panel for (UX pick 34): it wins over any guess, for that opening.
+  const externalIdRef = useRef(null);
+  const openedRef = useRef(false);
+  const [stackWas, setStackWas] = useState(null);
 
   // Listen for external requests to open to a specific tab + tournament
   useEffect(() => {
@@ -89,7 +93,7 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
       const { tab, tournamentId, bag } = e.detail || {};
       if (tab) externalTabRef.current = tab;
       if (bag) externalBagRef.current = bag;
-      if (tournamentId) setSelectedTournamentId(tournamentId);
+      if (tournamentId) { externalIdRef.current = tournamentId; setSelectedTournamentId(tournamentId); }
       if (tab) setUpdateType(tab);
       if (bag) { setIsBagged(true); setBagDay(String(bag)); }
       setOpen(true);
@@ -154,8 +158,11 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
     return now >= closeTime;
   };
 
-  const resetFields = (prefill, tournamentId) => {
-    setStack(prefill?.stack || '');
+  // fromCard: the stack is new information each time, so it starts empty with the last one as its
+  // hint; the blinds, entries and reg state carry over from the event's own last update.
+  const resetFields = (prefill, tournamentId, { fromCard = false } = {}) => {
+    setStack(fromCard ? '' : (prefill?.stack || ''));
+    setStackWas(fromCard && prefill?.stack ? prefill.stack : null);
     setSb(prefill?.sb || '');
     setBb(prefill?.bb || '');
     setBbAnte(prefill?.bb_ante || '');
@@ -199,7 +206,18 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
   };
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) { openedRef.current = false; return; }
+    const ext = externalIdRef.current;
+    if (ext != null) {
+      externalIdRef.current = null;
+      openedRef.current = true;
+      setSelectedTournamentId(ext);
+      resetFields(activeUpdateMap[ext] || null, ext, { fromCard: true });
+      return;
+    }
+    // Chosen once per opening: a refreshed list must not move the panel to another event.
+    if (openedRef.current && selectedTournamentId != null) return;
+    openedRef.current = true;
     const mostRecent = (myActiveUpdates || [])[0];
     if (mostRecent && allOptions.find(o => o.id === mostRecent.tournament_id)) {
       setSelectedTournamentId(mostRecent.tournament_id);
@@ -548,7 +566,7 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
                 <>
                   <div className={`live-update-field${isBagged ? ' bag-highlight' : ''}`}>
                     <label>Stack</label>
-                    <input type="text" inputMode="decimal" placeholder="275k" value={stack} onChange={e => setStack(e.target.value)} onBlur={e => { const v = parseShorthand(e.target.value); if (v !== e.target.value) setStack(v); }} autoFocus />
+                    <input type="text" inputMode="decimal" placeholder={stackWas ? `was ${Number(stackWas).toLocaleString()}` : '275k'} value={stack} onChange={e => setStack(e.target.value)} onBlur={e => { const v = parseShorthand(e.target.value); if (v !== e.target.value) setStack(v); }} autoFocus />
                   </div>
 
                   <div className="live-update-row">

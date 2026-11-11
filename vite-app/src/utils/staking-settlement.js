@@ -9,6 +9,7 @@
 // Sign: an entry's amountOwed is from the player's side: + the player pays the backer
 // (direction 'to_backer'), − the backer pays the player ('to_player').
 import { CURRENCY_CONFIG, MINUS } from './utils.js';
+import { parseMoney } from './money.js';
 
 export const BACKER_TYPE_LABELS = {
   pay_per_play: 'Pay Per Play',
@@ -99,12 +100,13 @@ export function settlementLines(e, currency = 'USD') {
   return out;
 }
 
+// As every money field reads (utils/money.js, UX pick 73), a minus allowed: blank is null, unreadable NaN.
 const parseAmount = (raw) => {
   if (raw === null || raw === undefined) return null;
-  const s = String(raw).replace(/[,\s$€£]/g, '').replace('−', '-');
-  if (s === '' || s === '-') return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : NaN;
+  const s = String(raw).trim();
+  if (s === '' || s === '-' || s === '\u2212') return null;
+  const r = parseMoney(s, { allowNegative: true });
+  return r.error ? NaN : r.value;
 };
 
 /**

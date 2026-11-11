@@ -73,7 +73,6 @@
 .lp-ev-name {
   --h: 3; --p: 1.6978;
   font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text);
-  overflow: hidden; text-overflow: ellipsis;
 }
 .lp-ev-buy { margin-top: calc(var(--subrow) * 3); text-align: right; }
 

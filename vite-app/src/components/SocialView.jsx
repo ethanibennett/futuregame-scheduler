@@ -153,8 +153,18 @@ function GroupDetailView({
 
   // Scroll feed to bottom when new messages arrive
   useEffect(() => {
-    if (segment === 'feed' && feedEndRef.current) {
-      feedEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    /* Only the messages' own scroller moves (UX pick 35): scrollIntoView also scrolled .app-shell, which
+       took the top bar, the group's name and its tabs off the screen. */
+    const end = feedEndRef.current;
+    if (segment !== 'feed' || !end) return;
+    let el = end.parentElement;
+    while (el && !el.classList.contains('app-shell')) {
+      const oy = getComputedStyle(el).overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        return;
+      }
+      el = el.parentElement;
     }
   }, [groupFeed, segment]);
 
@@ -304,9 +314,8 @@ function GroupDetailView({
           <div className="social-buddy-name">{group.name}</div>
           <div className="social-buddy-status">{group.member_count} member{group.member_count !== 1 ? 's' : ''}{group.owner_name ? ` · Owner: ${group.owner_name}` : ''}</div>
         </div>
-        {isOwner ? (
-          <button className="group-header-btn" onClick={handleDeleteGroup}><span>Delete</span></button>
-        ) : (
+        {/* Delete lives at the foot of the Members tab, owner only (UX pick 47). */}
+        {!isOwner && (
           <button className="group-header-btn" onClick={handleLeaveGroup}><span>Leave</span></button>
         )}
       </div>
@@ -562,7 +571,9 @@ function GroupDetailView({
 export default function SocialView({
   shareBuddies, buddyLiveUpdates, displayName, myGroups, activeGroupId, setActiveGroupId,
   groupFeed, groupSchedule, fetchGroupFeed, fetchGroupSchedule, fetchMyGroups,
-  token, onRemoveBuddy, fetchShareBuddies
+  token, onRemoveBuddy, fetchShareBuddies,
+  // Requests waiting for an answer, and the answers (UX pick 42).
+  pendingIncoming = [], onAcceptRequest, onRejectRequest,
 }) {
   const [expandedId, setExpandedId] = useState(null);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -575,14 +586,19 @@ export default function SocialView({
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchMsg, setSearchMsg] = useState('');
+  const [searchSlow, setSearchSlow] = useState(false);
   const searchTimerRef = useRef(null);
+  const slowTimerRef = useRef(null);
 
   const handleSearchChange = (val) => {
     setSearchQuery(val);
     setSearchMsg('');
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    if (val.trim().length < 2) { setSearchResults([]); return; }
+    if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
+    setSearchSlow(false);
+    if (val.trim().length < 2) { setSearchResults([]); setSearchLoading(false); return; }
     setSearchLoading(true);
+    slowTimerRef.current = setTimeout(() => setSearchSlow(true), 100);
     searchTimerRef.current = setTimeout(async () => {
       try {
         const res = await fetch(`${API_URL}/users/search?q=${encodeURIComponent(val.trim())}`, {
@@ -592,7 +608,9 @@ export default function SocialView({
         else setSearchResults([]);
       } catch { setSearchResults([]); }
       setSearchLoading(false);
-    }, 300);
+      if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
+      setSearchSlow(false);
+    }, 150);
   };
 
   const handleSendRequest = async (username) => {
@@ -675,6 +693,15 @@ export default function SocialView({
   const hasBuddies = shareBuddies && shareBuddies.length > 0;
   const hasGroups = myGroups && myGroups.length > 0;
 
+  /* The search always answers (UX pick 43): your own connections are filtered as you type, everyone
+     else comes back under its own label, an empty list says so, one letter asks for a second, and a
+     person with a request waiting is named, not dropped. */
+  const q = searchQuery.trim();
+  const qLow = q.toLowerCase();
+  const nameOf = (b) => (typeof displayName === 'function' ? displayName(b) : (b.real_name || b.username)) || '';
+  const visibleBuddies = qLow
+    ? (shareBuddies || []).filter(b => nameOf(b).toLowerCase().includes(qLow) || String(b.username || '').toLowerCase().includes(qLow))
+    : (shareBuddies || []);
   const searchBar = (
     <div className="social-search">
       <input
@@ -687,10 +714,15 @@ export default function SocialView({
       {searchMsg && (
         <div className="social-search-msg">{searchMsg}</div>
       )}
-      {(searchResults.length > 0 || searchLoading) && searchQuery.trim().length >= 2 && (
+      {q.length === 1 && <div className="social-search-note">Type 2 letters to search everyone</div>}
+      {q && (shareBuddies || []).length > 0 && visibleBuddies.length === 0 && (
+        <div className="social-search-note">None of your connections match \u201c{q}\u201d</div>
+      )}
+      {q.length >= 2 && (
         <div className="social-search-results">
-          {searchLoading && !searchResults.length && (
-            <div className="social-search-note">Searching...</div>
+          <div className="social-search-label">Everyone else</div>
+          {searchLoading && searchSlow && !searchResults.length && (
+            <div className="social-search-note">Searching\u2026</div>
           )}
           {searchResults.map(u => (
             <div key={u.id} className="social-search-row">
@@ -703,23 +735,67 @@ export default function SocialView({
                   <div className="social-buddy-status">@{u.username}</div>
                 )}
               </div>
-              <button className="social-connect-btn" onClick={() => handleSendRequest(u.username)}>
-                <span>Connect</span>
-              </button>
+              {u.pending === 'incoming' ? (
+                <span className="social-search-pending">Wants to connect · in Requests</span>
+              ) : u.pending === 'outgoing' ? (
+                <span className="social-search-pending">Request sent</span>
+              ) : (
+                <button className="social-connect-btn" onClick={() => handleSendRequest(u.username)}>
+                  <span>Connect</span>
+                </button>
+              )}
             </div>
           ))}
-          {!searchLoading && searchResults.length === 0 && searchQuery.trim().length >= 2 && (
-            <div className="social-search-note">No users found</div>
+          {!searchLoading && searchResults.length === 0 && (
+            <div className="social-search-note">None match \u201c{q}\u201d</div>
           )}
         </div>
       )}
     </div>
   );
 
+  const timeAgo = (ts) => {
+    if (!ts) return '';
+    const diff = (Date.now() - new Date(ts).getTime()) / 1000;
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    return Math.floor(diff / 86400) + 'd ago';
+  };
+  const requests = (pendingIncoming || []).length > 0 && (
+    <>
+      <div className="dashboard-section-header">
+        <div className="dashboard-section-title">Requests</div>
+        <span className="dashboard-section-badge">{pendingIncoming.length}</span>
+      </div>
+      {pendingIncoming.map(req => {
+        const who = nameOf(req) || 'Someone';
+        return (
+          <div key={req.id} className="social-buddy-card social-request-card">
+            <div className="social-buddy-row">
+              <div className="social-avatar-cell">
+                <Avatar src={req.from_avatar || req.avatar} username={req.from_username || req.username || who} size={AVATAR_5R} style={(req.from_avatar || req.avatar) ? undefined : SEATED_INITIAL_5R} />
+              </div>
+              <div className="social-buddy-info">
+                <div className="social-buddy-name">{who}</div>
+                <div className="social-buddy-status">wants to connect{req.created_at ? ` \u00b7 ${timeAgo(req.created_at)}` : ''}</div>
+              </div>
+            </div>
+            <div className="social-request-actions">
+              <button type="button" className="social-request-btn is-accept" onClick={() => onAcceptRequest && onAcceptRequest(req.id)}><span>Accept</span></button>
+              <button type="button" className="social-request-btn" onClick={() => onRejectRequest && onRejectRequest(req.id)}><span>Decline</span></button>
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+
   if (!hasBuddies && !hasGroups) {
     return (
       <div className="social-view">
-        <div className="dashboard-section-header">
+        {requests}
+        <div className={'dashboard-section-header' + (requests ? ' social-section-gap' : '')}>
           <div className="dashboard-section-title">Connections</div>
         </div>
         {searchBar}
@@ -730,14 +806,6 @@ export default function SocialView({
     );
   }
 
-  const timeAgo = (ts) => {
-    if (!ts) return '';
-    const diff = (Date.now() - new Date(ts).getTime()) / 1000;
-    if (diff < 60) return 'just now';
-    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-    return Math.floor(diff / 86400) + 'd ago';
-  };
 
   return (
     <div className="social-view">
@@ -783,6 +851,8 @@ export default function SocialView({
         </div>
       )}
 
+      {requests && <div className="social-section-gap" />}
+      {requests}
       {/* Connections section */}
       <div className="dashboard-section-header social-section-gap">
         <div className="dashboard-section-title">Connections</div>
@@ -791,7 +861,7 @@ export default function SocialView({
       {searchBar}
       {hasBuddies && (
         <React.Fragment>
-          {shareBuddies.map(buddy => {
+          {visibleBuddies.map(buddy => {
             const lu = buddyLiveUpdates?.[buddy.id];
             const isLive = lu && !lu.isBusted;
             const isExpanded = expandedId === buddy.id;
@@ -972,9 +1042,9 @@ export default function SocialView({
                       </div>
                     ) : (
                       <button
-                        className="social-action-btn is-danger"
+                        className="social-remove-quiet"
                         onClick={(e) => { e.stopPropagation(); setConfirmRemoveId(buddy.id); }}
-                      ><span>Remove Connection</span></button>
+                      ><span>Remove connection\u2026</span></button>
                     )}
                   </div>
                 )}

@@ -44,8 +44,15 @@ test('ISO dates are read by hand, never through Date', () => {
   assert.equal(parseIsoDate('Jan 1, 2025'), null);
   assert.equal(parseIsoDate('2025-13-01'), null);
   assert.equal(parseIsoDate(null), null);
-  assert.equal(defaultTaxYear('2026-10-10'), 2025);
+  // Last year only in filing season (UX pick 83); this year after April 15.
+  assert.equal(defaultTaxYear('2026-10-10'), 2026);
   assert.equal(defaultTaxYear('2026-01-01'), 2025);
+  assert.equal(defaultTaxYear('2026-04-15'), 2025);
+  assert.equal(defaultTaxYear('2026-04-16'), 2026);
+  // The newest year with results, when the season's year has none.
+  assert.equal(defaultTaxYear('2026-11-10', [{ date: '2024-05-01' }, { date: '2025-03-02' }]), 2025);
+  assert.equal(defaultTaxYear('2026-02-10', [{ date: '2026-01-05' }]), 2026);
+  assert.equal(defaultTaxYear('2026-02-10', [{ date: '2025-12-05' }, { date: '2026-01-05' }]), 2025);
 });
 
 test('year boundaries: Jan 1 and Dec 31 land in their own year, whatever the local zone', () => {
@@ -70,8 +77,8 @@ test('year boundaries: Jan 1 and Dec 31 land in their own year, whatever the loc
 
 test('availableYears: newest first, always offers the default year', () => {
   const entries = [row({ date: '2023-05-01' }), row({ date: '2025-02-02' }), row({ date: 'garbage' })];
-  assert.deepEqual(availableYears(entries, '2026-10-10'), [2025, 2023]);
-  assert.deepEqual(availableYears([], '2026-10-10'), [2025]);
+  assert.deepEqual(availableYears(entries, '2026-10-10'), [2026, 2025, 2023]);
+  assert.deepEqual(availableYears([], '2026-10-10'), [2026]);
 });
 
 test('totals, per-month subtotals and the per-session view', () => {

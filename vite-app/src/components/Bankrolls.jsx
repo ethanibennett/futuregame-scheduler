@@ -13,6 +13,8 @@ import { createPortal } from 'react-dom';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { CURRENCY_CONFIG, formatCurrencyAmount, getToday } from '../utils/utils.js';
 import { BANKROLL_ALL, BANKROLL_MAIN, entryBankrollKey } from '../utils/bankrolls.js';
+import MoneyField from './MoneyField.jsx';
+import { shortDay } from '../utils/transactions.js';
 
 const money = (v, cur) => formatCurrencyAmount(Math.round(v || 0), cur || 'USD');
 const signed = (v, cur) => (v > 0 ? '+' : '') + money(v, cur);
@@ -106,7 +108,7 @@ function BankrollEditor({ b, bal, bk, onDone, toast }) {
         <>
           <div className="bk-fields">
             <Field label="Name" wide><input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} /></Field>
-            <Field label="Starting balance"><input type="number" inputMode="numeric" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
+            <Field label="Starting balance"><MoneyField value={start} allowNegative onChange={(e) => setStart(e.target.value)} /></Field>
             <Field label="Currency">
               <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
                 {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -119,7 +121,7 @@ function BankrollEditor({ b, bal, bk, onDone, toast }) {
                 <option value="fund">The WSOP fund</option>
               </select>
             </Field>
-            {isFund && <Field label="Target"><input type="number" inputMode="numeric" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="65000" /></Field>}
+            {isFund && <Field label="Target"><MoneyField value={target} onChange={(e) => setTarget(e.target.value)} placeholder="65000" /></Field>}
             {isFund && <Field label="By"><input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} /></Field>}
           </div>
           <div className="bk-actions">
@@ -150,7 +152,7 @@ function NewBankroll({ bk, toast }) {
       <h3 className="bk-section-title">New bankroll</h3>
       <div className="bk-fields">
         <Field label="Name" wide><input value={name} maxLength={40} placeholder="e.g. Staked" onChange={(e) => setName(e.target.value)} /></Field>
-        <Field label="Starting balance"><input type="number" inputMode="numeric" value={start} placeholder="0" onChange={(e) => setStart(e.target.value)} /></Field>
+        <Field label="Starting balance"><MoneyField value={start} allowNegative placeholder="0" onChange={(e) => setStart(e.target.value)} /></Field>
         <Field label="Currency">
           <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
             {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -209,12 +211,12 @@ function MoveMoney({ bk, toast, onMoved }) {
           <Field label="Bankroll" wide>{select(target, setTarget)}</Field>
         )}
         <Field label={`Amount (${kind === 'transfer' ? cur(from) : cur(target)})`}>
-          <input type="number" inputMode="numeric" min="1" value={amount} placeholder="0" onChange={(e) => setAmount(e.target.value)} />
+          <MoneyField value={amount} placeholder="0" onChange={(e) => setAmount(e.target.value)} />
         </Field>
         <Field label="Date"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
         {cross && (
           <Field label={`Received (${cur(to)})`}>
-            <input type="number" inputMode="numeric" min="1" value={toAmount} placeholder="0" onChange={(e) => setToAmount(e.target.value)} />
+            <MoneyField value={toAmount} placeholder="0" onChange={(e) => setToAmount(e.target.value)} />
           </Field>
         )}
         <Field label="Note" wide><input value={note} maxLength={200} placeholder="Optional" onChange={(e) => setNote(e.target.value)} /></Field>
@@ -232,21 +234,35 @@ const KIND_LABEL = {
 };
 
 function Ledger({ bk, rows, toast, onChanged }) {
+  /* No one-tap delete (UX pick 78): every row ended in a 3g x that deleted at once, a $10,000 opening
+     deposit or both sides of a transfer, with no question. A tap opens the row, as an expense row opens,
+     and Delete is there, in the danger colour. */
+  const [openId, setOpenId] = useState(null);
   const nameOf = (id) => (bk.bankrolls.find((b) => b.id === entryBankrollKey({ bankroll_id: id })) || { name: '?' }).name;
   const curOf = (id) => (bk.bankrolls.find((b) => b.id === entryBankrollKey({ bankroll_id: id })) || { currency: 'USD' }).currency;
   return (
     <section className="bk-section">
       <h3 className="bk-section-title">History</h3>
       {rows.length === 0 ? <p className="bk-line bk-muted">No deposits, withdrawals or transfers yet.</p> : rows.map((a) => (
-        <div key={a.id} className="bk-ledger-row">
-          <span className="bk-ledger-date">{a.occurred_on}</span>
-          <span className="bk-ledger-what">{nameOf(a.bankroll_id)} · {KIND_LABEL[a.kind] || a.kind}{a.note ? ` · ${a.note}` : ''}</span>
-          <span className={'bk-ledger-amt' + tone(a.amount)}>{signed(a.amount, curOf(a.bankroll_id))}</span>
-          <button type="button" className="bk-ledger-x" aria-label={a.transfer_id ? 'Delete this transfer (both sides)' : 'Delete'}
-            onClick={async () => { try { await bk.removeAdjustment(a.id); onChanged(); } catch (e) { toast.error(e.message); } }}>
-            <Icon.x />
-          </button>
-        </div>
+        <React.Fragment key={a.id}>
+          <div className={'bk-ledger-row' + (openId === a.id ? ' is-open' : '')} role="button" tabIndex={0} aria-expanded={openId === a.id}
+            onClick={() => setOpenId(openId === a.id ? null : a.id)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(openId === a.id ? null : a.id); } }}>
+            <span className="bk-ledger-date">{shortDay(a.occurred_on) || a.occurred_on}</span>
+            <span className="bk-ledger-what">{nameOf(a.bankroll_id)} · {KIND_LABEL[a.kind] || a.kind}{a.note ? ` · ${a.note}` : ''}</span>
+            <span className={'bk-ledger-amt' + tone(a.amount)}>{signed(a.amount, curOf(a.bankroll_id))}</span>
+            <span className="bk-ledger-chev" aria-hidden="true">{openId === a.id ? '\u2304' : '\u203A'}</span>
+          </div>
+          {openId === a.id && (
+            <div className="bk-ledger-open">
+              <button type="button" className="bk-btn" onClick={() => setOpenId(null)}><span>Keep</span></button>
+              <button type="button" className="bk-btn bk-danger"
+                onClick={async () => { try { await bk.removeAdjustment(a.id); setOpenId(null); onChanged(); toast.success(a.transfer_id ? 'Transfer deleted, both sides' : 'Deleted'); } catch (e) { toast.error(e.message); } }}>
+                <span>{a.transfer_id ? 'Delete transfer (both sides)' : 'Delete'}</span>
+              </button>
+            </div>
+          )}
+        </React.Fragment>
       ))}
     </section>
   );
@@ -278,7 +294,7 @@ function SetBalance({ b, bal, bk, toast, onDone }) {
   };
   return (
     <div className="bk-fields bk-setbal">
-      <Field label="Set balance to"><input type="number" inputMode="decimal" value={value} placeholder={String(Math.round(Number(bal.balance) || 0))} onChange={(e) => setValue(e.target.value)} /></Field>
+      <Field label="Set balance to"><MoneyField value={value} allowNegative placeholder={String(Math.round(Number(bal.balance) || 0))} onChange={(e) => setValue(e.target.value)} /></Field>
       <div className="bk-actions"><Btn kind="brand" w={11} disabled={busy || value === ''} onClick={go}>Set balance</Btn></div>
     </div>
   );

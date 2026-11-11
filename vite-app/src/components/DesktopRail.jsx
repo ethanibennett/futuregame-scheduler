@@ -17,23 +17,26 @@ import Icon from './Icon.jsx';
  * The admin dev keys (#, D, i) are not here: they float over the main column's
  * foot as on the phone (App.jsx devToggles).
  */
-export default function DesktopRail({ current, onChange, isAdmin }) {
+export default function DesktopRail({ current, onChange, isAdmin, evalPct = null }) {
   const primary = [
+    { id: 'dashboard', label: 'Home', icon: Icon.home },
     { id: 'tournaments', label: 'Schedule', icon: Icon.calendar },
     { id: 'tracking', label: 'Bankroll', icon: Icon.tracking },
-    { id: 'dashboard', label: 'Dashboard', icon: Icon.home },
     { id: 'hands', label: 'Hands', icon: Icon.cards },
     ...(isAdmin ? [{ id: 'cash', label: 'Cash', icon: Icon.dollarSign }] : []),
   ];
+  // Yours, then the admin tools under their own caption (UX pick 106, as the avatar menu, pick 49).
   const secondary = [
     { id: 'social', label: 'Social', icon: Icon.people },
-    // Staking had no way in once Cash took its primary slot (App.jsx's username menu has it too).
-    ...(isAdmin ? [{ id: 'staking', label: 'Staking', icon: Icon.handshake }] : []),
     { id: 'settings', label: 'Settings', icon: Icon.gear },
-    ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: Icon.lock }] : []),
-    // The admin alerts' "what this batch added" lists (AdminBatchesView); App opens the newest.
-    ...(isAdmin ? [{ id: 'batches', label: 'New Events', icon: Icon.bell }] : []),
   ];
+  const adminTools = isAdmin ? [
+    // Staking had no way in once Cash took its primary slot (App.jsx's username menu has it too).
+    { id: 'staking', label: 'Staking', icon: Icon.handshake },
+    { id: 'admin', label: 'Admin', icon: Icon.lock },
+    // The admin alerts' "what this batch added" lists (AdminBatchesView); App opens the newest.
+    { id: 'batches', label: 'New Events', icon: Icon.bell },
+  ] : [];
   const item = (tab) => (
     <button
       key={tab.id}
@@ -44,12 +47,19 @@ export default function DesktopRail({ current, onChange, isAdmin }) {
     >
       <span className="dk-rail-icon"><tab.icon /></span>
       <span className="dk-rail-label">{tab.label}</span>
+      {tab.id === 'admin' && evalPct != null && <span className="dk-rail-eval" aria-label={`Parser eval ${evalPct}%`}>{'eval ' + evalPct + '%'}</span>}
     </button>
   );
   return (
     <nav className="dk-rail" aria-label="Main">
       <div className="dk-rail-group">{primary.map(item)}</div>
       <div className="dk-rail-group dk-rail-secondary">{secondary.map(item)}</div>
+      {adminTools.length > 0 && (
+        <div className="dk-rail-group dk-rail-admin">
+          <div className="dk-rail-caption">Admin</div>
+          {adminTools.map(item)}
+        </div>
+      )}
     </nav>
   );
 }

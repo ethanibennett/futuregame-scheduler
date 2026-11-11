@@ -190,3 +190,17 @@
 .rk-menu-item + .rk-menu-item { box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
 @media (hover: hover) and (pointer: fine) { .rk-menu-item:hover { color: var(--text); background: var(--hover-overlay); } }
 .rk-menu-item:focus-visible { outline: var(--focus-ring); outline-offset: calc(var(--bw-2) * -1); }
+/* The Bankroll section strip and the log form's Result | Didn't play (UX pick 76, Fitts): chips and
+   carets 5r tall, as the app's other 5r buttons. At 2r (15 pt) they were the smallest controls on the
+   page and its main navigation. Widths unchanged; what is under them moves down 3r, on the r lines. */
+.kind-toggles.results-kind-tabs .kind-toggle,
+.kind-toggles.results-kind-tabs .kind-toggle-split,
+.kind-toggles.results-kind-tabs .kind-toggle-caret,
+.kind-toggles.tr-add-kind .kind-toggle,
+.kind-toggles.tr-add-kind .kind-toggle-split,
+.kind-toggles.tr-add-kind .kind-toggle-caret { height: calc(var(--subrow) * 5); }
+.kind-toggles.results-kind-tabs .kind-toggle::after, .kind-toggles.results-kind-tabs .kind-toggle-caret::after,
+.kind-toggles.tr-add-kind .kind-toggle::after, .kind-toggles.tr-add-kind .kind-toggle-caret::after { inset: 0; }
+.kind-toggles.results-kind-tabs .kind-toggle-caret svg { width: calc(var(--subrow) * 1.5); height: calc(var(--subrow) * 1.5); }
+/* "Search all events" under the log form's event list (UX pick 80): the field's 5r, 1r under it. */
+.tr-search-all { display: block; width: 100%; box-sizing: border-box; margin-top: var(--subrow); }

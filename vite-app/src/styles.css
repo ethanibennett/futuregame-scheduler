@@ -3173,8 +3173,8 @@
     .replayer-view.is-list .replayer-hand-strip { width: calc(var(--gu) * 2); }
     .replayer-view.is-list .replayer-hand-card-content {
       display:grid;
-      /* 3..10g cards | 2g | 12..27g text | 1g | 28..34g action | 2g right margin */
-      grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 2) minmax(0, 1fr) var(--gu) calc(var(--gu) * 6);
+      /* 3..10g cards | 2g | 12..26g text | 1g | 27..34g net (UX pick 55) | 2g right margin */
+      grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 2) minmax(0, 1fr) var(--gu) calc(var(--gu) * 7);
       /* 8r in four 2r rows: title cell r2-r4, meta cell r4-r6, baselines 4r and 6r below the
          card top. The text block (title cap-top ~2.8r to meta baseline 6r) centres on 4.4r,
          the nearest whole-r seating to the card's 4r middle; the 4r cards and the 4r Delete
@@ -4150,25 +4150,27 @@
       line-height: 1; padding-top: calc(var(--subrow) * 2 - 1cap);
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
-    /* 13 ranks, each a button whose box is on the g lines (owner rule, 2026-10-10): columns of
-       the widest whole g the block allows, from its left edge — 2g in a phone's 29g or 31g
-       block (x 5..34 or 3..34; 3g or 5g spare at the right), 3g on desktop. They divided the
-       block evenly before, 2.23g each. Whole-r rows. The art is object-fit into each cell. The
-       1fr line is the fallback where round() is unsupported (iOS < 15.4). */
+    /* Each suit on two lines, A K Q J T 9 8 over 7 6 5 4 3 2 (UX pick 53, Fitts): cells 4g x 5r, twice
+       the 2g a rank had in one 13-wide row, where a mis-tap took the neighbouring rank and nothing
+       caught it, since that card was usually legal too. 7 x 4g = 28g, inside a phone's 29g or 31g
+       block, from its left edge. Each suit's ace starts a new line; the rows alternate 6r and 5r, the
+       first line's cell sitting at the foot of its 6r, so the suits are 1r apart. The art keeps its
+       old size, centred in the cell. Short Deck: nine ranks, A K Q J T over 9 8 7 6. */
     .replayer-entry-view .card-picker-grid {
-      grid-template-columns: repeat(13, minmax(0, 1fr));
-      grid-template-columns: repeat(13, round(down, 100% / 13, var(--gu)));
-      grid-auto-rows: calc(var(--subrow) * 5);
-      gap: 0; margin-top: var(--subrow);
+      grid-template-columns: repeat(7, calc(var(--gu) * 4));
+      grid-auto-rows: calc(var(--subrow) * 6) calc(var(--subrow) * 5);
+      gap: 0; margin-top: 0;
     }
-    .replayer-entry-view .card-picker-btn { aspect-ratio: auto; height: 100%; padding: 0 calc(var(--gu) * 0.1); }
-    /* Short Deck: nine ranks to a suit (the twos to fives are out of the deck), so each suit is
-       still one row. Columns of the widest whole g the block allows, as above: 3g in a phone's 29g
-       or 31g block. */
-    .replayer-entry-view .card-picker-grid.is-short-deck {
-      grid-template-columns: repeat(9, minmax(0, 1fr));
-      grid-template-columns: repeat(9, round(down, 100% / 9, var(--gu)));
+    .replayer-entry-view .card-picker-btn {
+      aspect-ratio: auto; height: calc(var(--subrow) * 5); align-self: end; padding: 0;
+      border-radius: var(--radius-xs);
     }
+    .replayer-entry-view .card-picker-grid > .card-picker-btn:nth-child(13n + 1) { grid-column-start: 1; }
+    .replayer-entry-view .card-picker-btn img { width: calc(var(--gu) * 1.8); height: 100%; }
+    .replayer-entry-view .card-picker-btn.selected { box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); background: var(--brand-quiet); }
+    .replayer-entry-view .card-picker-grid.is-short-deck { grid-template-columns: repeat(5, calc(var(--gu) * 4)); }
+    .replayer-entry-view .card-picker-grid.is-short-deck > .card-picker-btn:nth-child(13n + 1) { grid-column-start: auto; }
+    .replayer-entry-view .card-picker-grid.is-short-deck > .card-picker-btn:nth-child(9n + 1) { grid-column-start: 1; }
 
     /* Action pad: 7r buttons; the icon over its label, the pair centred in the box as one group
        (owner rule, 2026-10-10: no baseline seat inside a control) — as .cal-action-btn. Each
@@ -4209,11 +4211,16 @@
     .replayer-entry-view .gto-sizing-row:has(> :nth-child(6)) {
       grid-template-columns: calc(var(--gu) * 6) calc(var(--gu) * 5) calc(var(--gu) * 5) calc(var(--gu) * 6) calc(var(--gu) * 5) minmax(0, 1fr);
     }
+    /* Each segment 6r: the fraction over the total it raises to (UX pick 52), the pair centred. */
     .replayer-entry-view .gto-sizing-pill {
-      box-sizing: border-box; height: calc(var(--subrow) * 5); min-width: 0; border: 0; border-radius: 0;
-      display: flex; align-items: center; justify-content: center;
+      box-sizing: border-box; height: calc(var(--subrow) * 6); min-width: 0; border: 0; border-radius: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; row-gap: calc(var(--subrow) * 0.5);
       padding: 0; line-height: 1; white-space: nowrap;
     }
+    .replayer-entry-view .gto-sz-frac, .replayer-entry-view .gto-sz-to { display: block; line-height: 1; }
+    .replayer-entry-view .gto-sz-to { font-weight: var(--fw-regular); color: var(--text); font-variant-numeric: var(--num-tabular); }
+    /* The readback: what the box read, in the ok colour. */
+    .replayer-entry-view .replayer-field-hint.is-read { color: var(--ok); }
     .replayer-entry-view .gto-sizing-pill + .gto-sizing-pill { box-shadow: inset var(--bw-hair) 0 0 var(--border); }
     .replayer-entry-view .gto-sizing-pill:active { box-shadow: inset 0 0 0 var(--bw-hair) var(--accent); }
     /* Slider: 5r row, 1r track at +2..+3r, 5..34. */
@@ -6765,10 +6772,10 @@
        tall so they start 1r down; play fills the capsule's 6r. */
     .replayer-fullbleed .replayer-controls {
       display: grid;
-      grid-template-columns: calc(var(--gu) * 4) calc(var(--gu) * 4) calc(var(--gu) * 5) calc(var(--gu) * 4) calc(var(--gu) * 4) calc(var(--gu) * 4);
+      grid-template-columns: calc(var(--gu) * 4) calc(var(--gu) * 5) calc(var(--gu) * 5) calc(var(--gu) * 5) calc(var(--gu) * 4) calc(var(--gu) * 4);
       grid-template-rows: calc(var(--subrow) * 6);
       align-items: center; justify-items: center;
-      width: calc(var(--gu) * 27); height: calc(var(--subrow) * 6);
+      width: calc(var(--gu) * 29); height: calc(var(--subrow) * 6);
       box-sizing: border-box;
       padding: 0 var(--gu); gap: 0; margin: 0 auto;
     }
@@ -6786,9 +6793,16 @@
     :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >button,
     :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >button:hover,
     :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >button:disabled:hover {
-      justify-self: stretch; width: auto; height: calc(var(--subrow) * 4);
+      justify-self: stretch; width: auto; height: calc(var(--subrow) * 6);
       border: 0; border-radius: 0; background: none; box-shadow: none;
       padding: 0; isolation: isolate;
+    }
+    /* UX pick 64 (Fitts): every transport button's box is the capsule's full 6r, and Back and Forward,
+       pressed once per action, are 5g like Play; Start, End and the speed stay 4g. The discs keep their
+       4r size (the ::before); only the hit areas grow. The 27g capsule became 29g, x 4..33. */
+    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >button:nth-child(2) svg,
+    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >button:nth-child(4) svg {
+      width: calc(var(--gu) * 1.6); height: calc(var(--gu) * 1.6);
     }
     :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >.replayer-play-btn,
     :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >.replayer-play-btn:hover { height: calc(var(--subrow) * 6); background: none; color: var(--brand-on-dark); }
@@ -6829,10 +6843,10 @@
        on it (HandReplayerView) sets the centred capsule on the window's g and r lines. */
     .app-shell.is-desktop .replayer-landscape .replayer-controls {
       display: grid;
-      grid-template-columns: calc(var(--gu) * 4) calc(var(--gu) * 4) calc(var(--gu) * 5) calc(var(--gu) * 4) calc(var(--gu) * 4) calc(var(--gu) * 4);
+      grid-template-columns: calc(var(--gu) * 4) calc(var(--gu) * 5) calc(var(--gu) * 5) calc(var(--gu) * 5) calc(var(--gu) * 4) calc(var(--gu) * 4);
       grid-template-rows: calc(var(--subrow) * 6);
       align-items: center; justify-items: center;
-      width: calc(var(--gu) * 27); height: calc(var(--subrow) * 6); max-width: none;
+      width: calc(var(--gu) * 29); height: calc(var(--subrow) * 6); max-width: none;
       box-sizing: border-box; flex: none;
       padding: 0 var(--gu); gap: 0; margin: 0;
     }
@@ -6858,14 +6872,17 @@
       height: calc(var(--subrow) * 4); min-width: 0; min-height: 0;
       box-sizing: border-box; margin: 0;
     }
-    .replayer-fullbleed .replayer-actions-bar .rab-back  { grid-column: 1 / 9; }
-    .replayer-fullbleed .replayer-actions-bar .rab-edit  { grid-column: 10 / 18; }
-    .replayer-fullbleed .replayer-actions-bar .rab-share { grid-column: 19 / 27; }
+    /* UX pick 65: no gear (the sliders' panel is the one way to settings), so Back, Edit and Share
+       are 11g each (11+1+11+1+11 = 35); with Solve or Study, Back 6g, Edit 6g, it 13g, Share 7g. */
+    .replayer-fullbleed .replayer-actions-bar .rab-back  { grid-column: 1 / 12; }
+    .replayer-fullbleed .replayer-actions-bar .rab-edit  { grid-column: 13 / 24; }
+    .replayer-fullbleed .replayer-actions-bar .rab-share { grid-column: 25 / 36; }
     .replayer-fullbleed .replayer-actions-bar .rab-gear  { grid-column: 28 / 36; }
-    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-back  { grid-column: 1 / 6; }
-    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-edit  { grid-column: 7 / 11; }
-    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-solve { grid-column: 12 / 24; }
-    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-share { grid-column: 25 / 31; }
+    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-back  { grid-column: 1 / 7; }
+    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-edit  { grid-column: 8 / 14; }
+    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-solve { grid-column: 15 / 28; }
+    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-share { grid-column: 29 / 36; }
+    .replayer-fullbleed .replayer-actions-bar.is-linked .rab-solve { grid-column: 12 / 25; }
     .replayer-fullbleed .replayer-actions-bar.has-solve .rab-gear,
     .replayer-fullbleed .replayer-actions-bar.is-linked .rab-gear  { grid-column: 32 / 36; }
     /* Text centred both ways: the label is trimmed to cap-top..baseline with
@@ -7050,6 +7067,16 @@
     .replayer-quick-settings .replayer-settings-row .rs-t { padding-top: calc(var(--subrow) * 3 - 1cap); }
     .replayer-quick-settings .replayer-settings-toggle { margin-top: var(--subrow); }
     .replayer-quick-settings .rs-note { margin-top: 0; }
+    /* "All settings ›" (UX pick 65): the panel's last row, 5r, the whole 15g a button, its words
+       centred in the height, the chevron at the right. A hairline above sets it apart. */
+    .replayer-quick-settings .rs-all {
+      display: flex; align-items: center; justify-content: space-between; box-sizing: border-box;
+      width: 100%; height: calc(var(--subrow) * 5); margin: var(--subrow) 0 0; padding: 0;
+      border: 0; background: none; cursor: pointer; color: var(--brand);
+      box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+      font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold);
+    }
+    .replayer-quick-settings .rs-all > span { line-height: 1; }
     /* Splay amount row, 4r: 12g slider + 3g figure = 15g. The track is 1r at
        2..3r — centred on the figure's caps (1.95..3r). */
     .rs-splay {
@@ -15363,14 +15390,15 @@
       height: calc(var(--subrow) * 4); min-width: 0; min-height: 0;
       box-sizing: border-box; margin: 0;
     }
-    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar .rab-back  { grid-column: 1 / 9; }
-    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar .rab-edit  { grid-column: 10 / 18; }
-    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar .rab-share { grid-column: 19 / 27; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar .rab-back  { grid-column: 1 / 12; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar .rab-edit  { grid-column: 13 / 24; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar .rab-share { grid-column: 25 / 36; }
     .app-shell.is-desktop .replayer-landscape .replayer-actions-bar .rab-gear  { grid-column: 28 / 36; }
-    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.has-solve .rab-back  { grid-column: 1 / 6; }
-    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.has-solve .rab-edit  { grid-column: 7 / 11; }
-    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.has-solve .rab-solve { grid-column: 12 / 24; }
-    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.has-solve .rab-share { grid-column: 25 / 31; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.has-solve .rab-back  { grid-column: 1 / 7; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.has-solve .rab-edit  { grid-column: 8 / 14; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.has-solve .rab-solve { grid-column: 15 / 28; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.has-solve .rab-share { grid-column: 29 / 36; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.is-linked .rab-solve { grid-column: 12 / 25; }
     .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.has-solve .rab-gear,
     .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.is-linked .rab-gear  { grid-column: 32 / 36; }
     /* The notes sit to the right of the bar, out of the row: in it, a note appearing on the last street
@@ -16749,7 +16777,9 @@
     .cal-event-row.has-quick-add .mini-late-reg-track { margin-right: calc(var(--gu) * 5); }
     .cal-event-row.has-quick-add .cal-bar-row2 { padding-right: calc(var(--gu) * 5); }
     .cal-quick-add {
-      position: absolute; right: var(--gu); bottom: var(--subrow);
+      /* Its left edge on the g line 5g in from the content's right, rounded down: a desktop card's content is
+         not always a whole number of g wide, and "right: 1g" left it half a g off. */
+      position: absolute; left: round(down, calc(100% - var(--gu) * 5), var(--gu)); bottom: var(--subrow);
       width: calc(var(--gu) * 4); height: calc(var(--subrow) * 4); box-sizing: border-box; padding: 0; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       background: var(--surface); color: var(--text-muted); border: 0;
@@ -16811,3 +16841,461 @@
       font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text-muted);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    /* The Update panel's hints read as hints, not as entered values (UX pick 34). */
+    .live-update-panel input::placeholder { color: var(--text-muted); font-style: italic; opacity: 1; }
+    /* One glyph, one meaning (UX pick 41): a badge's Undo in words, the badge's caps, a whole-g box; the
+       card's corner a 3g x 3r More whose 16g menu holds Open in My Schedule and the confirmed Remove. */
+    .dash-event-card :is(.dash-undo-x, .dash-unbag-x).is-word {
+      width: auto; min-width: calc(var(--gu) * 4); padding: 0 var(--gu); border-radius: var(--radius-xs); opacity: 1;
+      font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      text-transform: uppercase; letter-spacing: var(--track-caps); text-indent: var(--track-caps);
+    }
+    .dash-event-card .dash-undo-x.dash-more-btn { width: calc(var(--gu) * 3); min-width: calc(var(--gu) * 3); border-radius: var(--radius-xs); display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+    .dash-more-dots { width: calc(var(--gu) * 1.5); height: calc(var(--gu) * 1.5); fill: currentColor; display: block; }
+    /* The Finished badge's Undo: 5g at the badge's right edge, 1g in, so its box is on the g lines
+       whatever the word beside it measures; the word stays centred. */
+    .dash-finished-badge { position: relative; }
+    .dash-finished-badge > .is-word { position: absolute; right: var(--gu); width: calc(var(--gu) * 5); min-width: 0; padding: 0; }
+    .dash-more-menu {
+      position: fixed; z-index: var(--z-panel); width: calc(var(--gu) * 16); box-sizing: border-box; overflow: hidden;
+      background: var(--surface); border-radius: var(--radius-sm); box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-2);
+    }
+    .dash-more-item {
+      display: flex; align-items: center; width: 100%; height: calc(var(--subrow) * 5); box-sizing: border-box;
+      padding: 0 var(--gu); background: none; border: 0; cursor: pointer; text-align: left;
+      color: var(--text); font-family: var(--font-condensed); font-size: var(--fs-sm);
+    }
+    .dash-more-item + .dash-more-item { box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
+    .dash-more-item.is-danger { color: var(--danger); }
+    /* The Bust menu (UX pick 40): Cancel a quiet 6g text control, Re-enter 13g, Out for good 10g (31g with 1g gaps). */
+    .dash-status-row.is-bust-menu:has(> :nth-child(3)) { grid-template-columns: calc(var(--gu) * 6) calc(var(--gu) * 13) calc(var(--gu) * 10); column-gap: var(--gu); }
+    .dash-status-row > .dash-cancel-quiet { background: none; border: 0; box-shadow: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; font-family: var(--font-condensed); font-size: var(--fs-xs); }
+    /* One emphasised action (UX pick 39): Update, used every level, is the card's filled control; Bag and
+       Bust, used once, are neutral hairlines that keep their colour in the label; the colours are tokens. */
+    .dash-update-btn { background: var(--brand); box-shadow: none; color: var(--on-brand); }
+    .dash-bag-btn { background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border-strong); color: var(--ok); }
+    .dash-bust-btn { background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border-strong); color: var(--danger); }
+    .dash-status-row.is-bust-menu > .dash-rebuy-btn { background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--info); color: var(--info); }
+    /* Social (UX picks 42, 43, 47): a request's Accept and Decline 7g x 4r under its card's row; the
+       search's own label; a pending person said in words; Remove connection a quiet 3r text control at
+       the right, 3r under Add to Group. */
+    .social-request-actions { display: flex; justify-content: flex-end; gap: var(--gu); padding: 0 var(--gu) var(--subrow); }
+    .social-request-btn {
+      width: calc(var(--gu) * 7); height: calc(var(--subrow) * 4); box-sizing: border-box; padding: 0; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-xs);
+      background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 var(--bw-hair) var(--border-strong);
+      font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
+      text-transform: uppercase; letter-spacing: var(--track-caps); text-indent: var(--track-caps);
+    }
+    .social-request-btn.is-accept { background: var(--brand); color: var(--on-brand); box-shadow: none; }
+    .social-search-label {
+      height: calc(var(--subrow) * 3); line-height: calc(var(--subrow) * 3);
+      font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-muted);
+    }
+    .social-search-pending { flex: 0 0 auto; color: var(--text-muted); font-family: var(--font-condensed); font-size: var(--fs-xs); }
+    .social-remove-quiet {
+      display: flex; align-items: center; justify-content: flex-end; width: fit-content; margin: calc(var(--subrow) * 3) 0 0 auto;
+      height: calc(var(--subrow) * 3); padding: 0; border: 0; background: none; cursor: pointer;
+      color: var(--text-muted); font-family: var(--font-condensed); font-size: var(--fs-xs);
+    }
+    /* A buddy's chip offers a swap (UX pick 48): the brand mark after the name; the sheet's presets are
+       4r pills, four to a field. */
+    .buddy-chip-swap { color: var(--brand); font-size: var(--fs-xs); line-height: 1; }
+    .swap-presets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: calc(var(--gu) * 0.5); margin-top: var(--subrow); }
+    .swap-preset {
+      height: calc(var(--subrow) * 4); padding: 0; cursor: pointer; border: 0; border-radius: var(--radius-pill);
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface2); color: var(--text); box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
+    }
+    .swap-preset.is-on { background: var(--brand); color: var(--on-brand); box-shadow: none; }
+    /* The avatar menu (UX picks 49, 99): a 7r head that says who is signed in, then 5r rows with the
+       rail's icon in a 2g x 2r cell 1g before the label, an ADMIN caption 3r over the admin tools, 1r
+       rules between the groups, Sign out last and quiet. */
+    .um-head {
+      display: flex; align-items: center; gap: var(--gu); height: calc(var(--subrow) * 7); box-sizing: border-box;
+      padding: 0 var(--gu); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
+    }
+    .um-who { display: flex; flex-direction: column; min-width: 0; }
+    .um-name, .um-handle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: calc(var(--subrow) * 2); }
+    .um-name { font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text); }
+    .um-handle { font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text-muted); }
+    .um-row {
+      display: flex; align-items: center; gap: var(--gu); width: 100%; height: calc(var(--subrow) * 5); box-sizing: border-box;
+      padding: 0 var(--gu); background: none; border: 0; cursor: pointer; text-align: left; line-height: 1;
+      color: var(--text); font-family: var(--font-condensed); font-size: var(--fs-sm);
+    }
+    .um-icon { flex: 0 0 auto; width: calc(var(--gu) * 2); height: calc(var(--subrow) * 2); display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+    .um-icon svg { width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }
+    .um-rule { height: var(--subrow); background: linear-gradient(var(--border), var(--border)) center / 100% calc(var(--subrow) * 0.125) no-repeat; }
+    .um-caption {
+      height: calc(var(--subrow) * 3); line-height: calc(var(--subrow) * 3); padding: 0 var(--gu);
+      font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-muted);
+    }
+    .um-signout { color: var(--text-muted); }
+    @media (hover: hover) and (pointer: fine) { .um-row:hover { background: var(--hover-overlay); } }
+    /* Notifications (UX pick 50): Accept and Decline 6g x 4r; the push offer a quiet 5r hairline row at the foot. */
+    .notif-panel .notif-item-actions .btn-xs { height: calc(var(--subrow) * 4); }
+    .notif-push-row {
+      display: flex; align-items: center; justify-content: center; width: 100%; height: calc(var(--subrow) * 5); box-sizing: border-box;
+      padding: 0; border: 0; background: none; cursor: pointer; box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+      color: var(--brand); font-family: var(--font-condensed); font-size: var(--fs-sm);
+    }
+    /* Thumb-sized targets on the home (UX pick 38). The pager's steps are visible 4g x 4r boxes with a
+       hairline and a 2r chevron, the counter row 4r. Every other small control keeps its drawn box and
+       answers a tap over at least 4g x 6r, centred on it; the move arrows, which sit side by side, grow
+       only up and down. */
+    .dash-upnext-counter { grid-template-columns: calc(var(--gu) * 4) minmax(calc(var(--gu) * 5), 1fr) calc(var(--gu) * 4); height: calc(var(--subrow) * 4); padding: 0; align-items: center; }
+    .dash-upnext-step {
+      height: calc(var(--subrow) * 4); border-radius: var(--radius-xs); box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      --icon-size: calc(var(--subrow) * 2);
+    }
+    .hm-head-pill, .social-new-btn, .he-switch, .he-move { position: relative; }
+    .dash-undo-x::after, .dash-unbag-x::after, .hm-head-pill::after, .social-new-btn::after, .he-switch::after {
+      content: ''; position: absolute; inset: auto; top: 50%; left: 50%;
+      width: max(100%, calc(var(--gu) * 4)); height: max(100%, calc(var(--subrow) * 6)); transform: translate(-50%, -50%);
+    }
+    .he-move::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max(100%, calc(var(--subrow) * 6)); transform: translateY(-50%); }
+    /* The Add face's icon and label centre as one group: the label's trailing letter-space is cancelled
+       (it sat inside the group but outside the ink, half a space left of centre on the desktop's row). */
+    .cal-add-face { text-indent: 0; }
+    .cal-add-face > span { margin-right: calc(var(--track-caps) * -1); }
+    /* The replay's result line (UX pick 54): 6r, the hero's net on the right. The eyebrow's baseline on
+       line 2, the sentence's and the net's on line 5, 1r under them; each trimmed to its ink and seated
+       by padding (p = N r - 1cap). */
+    .replayer-result-strip {
+      flex: none; box-sizing: border-box; height: calc(var(--subrow) * 6);
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: calc(var(--subrow) * 2) calc(var(--subrow) * 3);
+      column-gap: var(--gu); padding: 0 var(--gu);
+      border-radius: var(--radius-xs); background: var(--surface);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      font-family: var(--font-condensed); color: var(--text);
+    }
+    .replayer-result-strip > span {
+      display: block; min-width: 0; line-height: 1; white-space: nowrap; overflow: visible;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-result-strip .rrs-eyebrow {
+      grid-column: 1; grid-row: 1; padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-2xs); font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-muted);
+    }
+    .replayer-result-strip .rrs-line {
+      grid-column: 1; grid-row: 2; padding-top: calc(var(--subrow) * 3 - 1cap);
+      font-size: var(--fs-sm); font-weight: var(--fw-bold);
+      /* Truncates: the descenders get their painted room from padding cancelled by a negative margin. */
+      overflow: hidden; text-overflow: ellipsis; padding-bottom: 0.3em; margin-bottom: -0.3em;
+    }
+    .replayer-result-strip .rrs-net {
+      grid-column: 2; grid-row: 1 / 3; padding-top: calc(var(--subrow) * 5 - 1cap); text-align: right;
+      font-family: var(--font-display); font-size: var(--fs-lg); font-variant-numeric: var(--num-tabular);
+    }
+    .replayer-result-strip.is-won .rrs-net { color: var(--ok); }
+    .replayer-result-strip.is-lost .rrs-net { color: var(--danger); }
+    .replayer-result-strip.is-even .rrs-net { color: var(--text-muted); }
+    [data-capturing] .replayer-result-strip { display: none; }
+    /* The saved row's net (UX pick 55): the figure on the title's line (baseline 4r), the word on the
+       meta's (6r), right-aligned in the 7g column, seated as the title and meta are. */
+    .replayer-view.is-list .replayer-hand-card-net {
+      grid-column: 5; grid-row: 2 / 4; align-self: stretch; min-width: 0;
+      display: grid; grid-template-rows: calc(var(--subrow) * 2) calc(var(--subrow) * 2); align-items: end; justify-items: end;
+    }
+    .replayer-view.is-list .replayer-hand-card-net > span {
+      display: block; max-width: 100%; white-space: nowrap; line-height: calc(var(--subrow) * 2);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-view.is-list .rhc-net-fig {
+      font-family: var(--font-condensed); font-size: var(--fs-md); font-weight: var(--fw-bold); font-variant-numeric: var(--num-tabular);
+    }
+    .replayer-view.is-list .rhc-net-word {
+      font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-muted);
+    }
+    .replayer-view.is-list .replayer-hand-card-net.is-won .rhc-net-fig { color: var(--ok); }
+    .replayer-view.is-list .replayer-hand-card-net.is-lost .rhc-net-fig { color: var(--danger); }
+    .replayer-view.is-list .replayer-hand-card-net.is-split .rhc-net-fig,
+    .replayer-view.is-list .replayer-hand-card-net.is-even .rhc-net-fig { color: var(--text-muted); }
+    /* The swipe (UX pick 55): the strip and the content slide together over a 6g x 8r Delete at the
+       row's right edge. pan-y leaves vertical scrolling to the page. */
+    .replayer-hand-card.is-swipe { touch-action: pan-y; }
+    .replayer-hand-card.is-swipe > .replayer-swipe-slide {
+      position: relative; z-index: 1; flex: 1; min-width: 0; display: flex; align-items: stretch;
+      background: var(--surface); transition: transform var(--dur-fast) var(--ease-out, ease-out);
+    }
+    .replayer-hand-card.is-swipe.is-dragging > .replayer-swipe-slide { transition: none; }
+    .replayer-swipe-delete {
+      position: absolute; top: 0; right: 0; bottom: 0; width: calc(var(--gu) * 6); z-index: 0;
+      display: flex; align-items: center; justify-content: center;
+      border: 0; border-radius: 0; padding: 0; cursor: pointer;
+      background: var(--danger); color: var(--on-brand, #fff);
+      font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
+      text-transform: uppercase; letter-spacing: var(--track-caps);
+    }
+    .replayer-hand-card.is-swipe:not(.is-swiped):not(.is-dragging) .replayer-swipe-delete { visibility: hidden; }
+    /* A tap answers within a frame (UX pick 61): pressed, then "Opening…" with a brand bar along the
+       foot while the replay mounts. */
+    .replayer-view.is-list .replayer-hand-card.is-row:active .replayer-hand-card-content,
+    .replayer-view.is-list .replayer-hand-card.is-opening .replayer-hand-card-content {
+      background: var(--brand-quiet);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line);
+    }
+    .replayer-view.is-list .replayer-hand-card.is-opening::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--subrow) * 0.5); z-index: 2;
+      background: var(--brand);
+    }
+    .replayer-view.is-list .replayer-hand-card.is-opening .replayer-hand-card-meta:not(.is-opening-line) { display: none; }
+    /* Every entry step's bar (UX pick 58): Back or Undo 3..10g, a second ghost 11..18g, the primary
+       21..34g at the right edge; 5r buttons, as the action steps' footer. The page keeps the bar's
+       height free under the last control. The Hands tool row stays out of the way while a hand is
+       being entered: one tap there left the hand. */
+    .gto-sticky-footer .gto-foot-row.is-step {
+      grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 7) minmax(0, 1fr) calc(var(--gu) * 14);
+      column-gap: var(--gu);
+    }
+    .gto-sticky-footer .gto-foot-row.is-step > * { grid-row: 1; width: 100%; justify-self: stretch; }
+    .gto-sticky-footer .gto-foot-row.is-step > :first-child { grid-column: 1; }
+    .gto-sticky-footer .gto-foot-row.is-step > :nth-child(2):not(.btn-primary) { grid-column: 2; }
+    .gto-sticky-footer .gto-foot-row.is-step > .btn-primary { grid-column: 4; }
+    .replayer-entry-view { padding-bottom: calc(var(--subrow) * 10); scroll-padding-bottom: calc(var(--subrow) * 10); }
+    .app-shell:has(.replayer-entry-view) .hands-tool-row { display: none; }
+    /* The entry's summary line (UX pick 57): 5r, the text seated on its 3r line, Edit 5g x 3r at the
+       right, centred on the text's line. Then the step track: 3r cells of 4g, 1g apart, from the
+       left; a step's label centred in its cell (a control-like cell). */
+    .replayer-entry-view .entry-summary {
+      display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 5); column-gap: var(--gu);
+      align-items: center; height: calc(var(--subrow) * 5);
+    }
+    .replayer-entry-view .entry-summary-text {
+      display: block; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text);
+      line-height: calc(var(--subrow) * 2); padding-block: 0.3em; margin-block: -0.3em;
+    }
+    .replayer-entry-view .entry-summary-edit { height: calc(var(--subrow) * 3); width: calc(var(--gu) * 5); padding: 0; }
+    .replayer-entry-view .entry-steps {
+      list-style: none; margin: 0 0 var(--subrow); padding: 0;
+      display: grid; grid-template-columns: repeat(var(--steps, 6), calc(var(--gu) * 4)); column-gap: var(--gu);
+      height: calc(var(--subrow) * 3);
+    }
+    .replayer-entry-view .entry-step {
+      display: flex; align-items: center; justify-content: center; min-width: 0;
+      border-radius: var(--radius-xs); background: var(--surface2); color: var(--text-muted);
+      font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+    }
+    .replayer-entry-view .entry-step > span { line-height: 1; white-space: nowrap; }
+    .replayer-entry-view .entry-step.is-done { background: var(--brand-quiet); color: var(--text); }
+    .replayer-entry-view .entry-step.is-now { background: var(--brand); color: var(--on-brand); }
+    /* The empty list's sample (UX pick 70): a 19g x 5r ghost button with the brand line, centred under
+       the empty card (8g in from the content's left, so on the g lines). */
+    .replayer-view.is-list .replayer-sample-row { display: flex; justify-content: center; }
+    .replayer-view.is-list .replayer-sample-btn {
+      width: calc(var(--gu) * 19); height: calc(var(--subrow) * 5); box-sizing: border-box; padding: 0; border: 0;
+      box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); color: var(--brand);
+    }
+    /* The share sheet's groups (UX pick 66). The main pair keeps the 17g tiles, in the brand line. A
+       group's caption: caps, baseline 3r under its top, 1r over the tiles. Video: 8g x 9r tiles, four
+       to a row (8+1+8+1+8+1+8 = 35), a 4g preview centred (2g in) over the label, the note in the
+       title. Hand history: one 35g x 6r row, the 4g preview at the left, the label and its reason. */
+    .replayer-share-sheet .share-menu-grid.is-main .share-menu-item { box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); }
+    .replayer-share-sheet .rss-sec {
+      margin: var(--subrow) 0; line-height: 1; padding-top: calc(var(--subrow) * 3 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-muted);
+    }
+    .replayer-share-sheet .share-menu-grid.rss-video { grid-template-columns: repeat(4, calc(var(--gu) * 8)); }
+    .replayer-share-sheet .rss-video .share-menu-item { padding: calc(var(--subrow) * 2) 0 var(--subrow); }
+    .replayer-share-sheet .rss-video .export-preview { width: calc(var(--gu) * 4); }
+    .replayer-share-sheet .rss-video .share-desc { display: none; }
+    .replayer-share-sheet .share-menu-grid.rss-hh { grid-template-columns: calc(var(--gu) * 35); }
+    .replayer-share-sheet .rss-hh .share-menu-item {
+      display: grid; grid-template-columns: calc(var(--gu) * 4) minmax(0, 1fr); column-gap: var(--gu);
+      grid-template-rows: calc(var(--subrow) * 2) calc(var(--subrow) * 2); align-content: center;
+      height: calc(var(--subrow) * 6); box-sizing: border-box; padding: 0 var(--gu); text-align: left;
+    }
+    .replayer-share-sheet .rss-hh .export-preview { grid-row: 1 / 3; width: calc(var(--gu) * 4); margin: 0; align-self: center; }
+    .replayer-share-sheet .rss-hh .share-label, .replayer-share-sheet .rss-hh .share-desc { grid-column: 2; }
+    /* The street track (UX pick 67): n cells of --track-cw g, 1g apart, 4r: a 1r bar over a 3r label
+       button, its word centred. The bar fills left to right with the street's actions played. In the
+       phone's bar, over the transport; landscape keeps its own row and does without. */
+    .replayer-street-track {
+      display: grid; grid-template-columns: repeat(var(--track-n), calc(var(--gu) * var(--track-cw)));
+      column-gap: var(--gu); grid-template-rows: calc(var(--subrow) * 4);
+      width: calc(var(--gu) * (var(--track-n) * (var(--track-cw) + 1) - 1));
+      margin: 0 auto var(--subrow); flex: none;
+    }
+    .replayer-street-track .rst-cell { display: grid; grid-template-rows: var(--subrow) calc(var(--subrow) * 3); min-width: 0; }
+    .replayer-street-track .rst-bar { display: block; position: relative; overflow: hidden; border-radius: var(--radius-xs); background: var(--surface2); }
+    .replayer-street-track .rst-fill {
+      position: absolute; inset: 0; transform-origin: left center; background: var(--brand-line);
+      transition: transform var(--dur-fast) var(--ease-out, ease-out);
+    }
+    .replayer-street-track .is-now .rst-fill { background: var(--brand); }
+    .replayer-street-track .rst-label {
+      display: flex; align-items: center; justify-content: center; min-width: 0; height: calc(var(--subrow) * 3);
+      margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
+      font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-regular); line-height: 1;
+      color: var(--text-muted); white-space: nowrap;
+    }
+    .replayer-street-track .is-now .rst-label { color: var(--brand); font-weight: var(--fw-bold); }
+    .replayer-street-track .rst-label:focus-visible { outline: var(--focus-ring); outline-offset: calc(var(--subrow) * -0.25); }
+    /* As specific as the landscape bar's "> div { display: flex }", which otherwise wins and lays the
+       track into the desktop's one centred row (transport + actions bar), off its g lines. */
+    .replayer-landscape .replayer-bottom-fixed > .replayer-street-track { display: none; }
+    [data-capturing] .replayer-street-track { display: none; }
+    /* Desktop sheets (UX pick 71): a centred 46g dialog 12r under the top, on the shell's g lines
+       (--dk-sheet-x from App), --radius-lg and --elev-3, whole-r tall at most; the phone unchanged. */
+    :root.dk-on .share-menu-panel {
+      left: calc(50% - var(--gu) * var(--dk-shell-n) / 2 + var(--gu) * var(--dk-sheet-x)); right: auto;
+      width: calc(var(--gu) * 46); box-sizing: border-box;
+      top: calc(var(--subrow) * 12); bottom: auto;
+      max-height: round(down, 100dvh - var(--subrow) * 24, var(--subrow));
+      border-radius: var(--radius-lg); box-shadow: var(--elev-3);
+    }
+    /* The hero's draw on the Draw Round (UX pick 60): the hand's cards as discard toggles (the Card
+       details step's), "Draw N" in the brand colour, and the new-card picker under the hand. */
+    .replayer-entry-view .gto-draw-marks { display: grid; row-gap: var(--subrow); }
+    .replayer-entry-view .gto-draw-btn.is-marked { background: var(--brand); color: var(--on-brand); box-shadow: none; }
+    .replayer-entry-view .gto-draw-new { display: grid; row-gap: var(--subrow); margin-top: var(--subrow); }
+    /* A money field (MoneyField.jsx, UX pick 73): the input fills its wrapper; what it read sits muted
+       1g in from the right edge, centred in the field's height, in the danger colour when it cannot. */
+    .money-field { position: relative; display: block; flex: 1 1 auto; min-width: 0; }
+    .money-field > input { width: 100%; box-sizing: border-box; }
+    .money-echo {
+      position: absolute; right: var(--gu); top: 50%; transform: translateY(-50%); pointer-events: none;
+      font-family: var(--font-condensed); font-size: var(--fs-xs); line-height: 1; color: var(--text-muted); white-space: nowrap;
+    }
+    .money-echo.is-bad { color: var(--danger); }
+    /* A label sits with its own field (UX pick 82): the bankroll editor's field groups 2r apart. */
+    .bk-fields { row-gap: calc(var(--subrow) * 2); }
+    /* Desktop (UX pick 86): the Bankroll and Staking pages on the 35g column every one of their screens
+       is drawn for. At 62g a label sat 40g from its figure and a backer's name 50g from their total. */
+    .app-shell.is-desktop .tab-panel[data-tab="tracking"] > *,
+    .app-shell.is-desktop .tab-panel[data-tab="staking"] > * { max-width: calc(var(--gu) * 35); }
+    /* A switch says what it is (UX pick 84): a 2r word 1g left of it, the positive colour when on. */
+    .staking-switch-label {
+      flex: none; margin-right: var(--gu); line-height: calc(var(--subrow) * 2);
+      font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--text-muted);
+    }
+    .staking-switch-label.is-on { color: var(--pos); }
+    /* The series' last word (UX pick 84): 3r label, 4r figure, 3r note, on the settlement card's surface. */
+    .staking-series-net {
+      margin-top: var(--subrow); padding: var(--subrow) var(--gu); border-radius: var(--radius-sm);
+      background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+    }
+    .staking-series-net .ssn-lbl {
+      height: calc(var(--subrow) * 3); box-sizing: border-box; padding-top: calc(var(--subrow) * 2 - 1cap); line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-muted);
+    }
+    .staking-series-net .ssn-fig {
+      height: calc(var(--subrow) * 4); box-sizing: border-box; padding-top: calc(var(--subrow) * 3 - 1cap); line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      font-family: var(--font-display); font-size: var(--fs-lg); color: var(--text); font-variant-numeric: var(--num-tabular);
+    }
+    .staking-series-net .ssn-fig.is-out { color: var(--neg); }
+    .staking-series-net .ssn-fig.is-in { color: var(--pos); }
+    .staking-series-net .ssn-note {
+      min-height: calc(var(--subrow) * 3); box-sizing: border-box; padding-top: calc(var(--subrow) * 2 - 1cap); line-height: calc(var(--subrow) * 2);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text-muted);
+    }
+    /* A history row opens before it deletes (UX pick 78): the row a button-like row (its text seated),
+       a chevron where the x was; open, a 5r row of Keep 11g and Delete 17g in the danger colour, 1r
+       under it. */
+    .bk-ledger-row { cursor: pointer; }
+    .bk-ledger-row.is-open { background: var(--hover-overlay); }
+    .bk-ledger-row > .bk-ledger-chev { text-align: center; color: var(--text-muted); }
+    .bk-ledger-open { display: flex; column-gap: var(--gu); padding: var(--subrow) 0; box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border); }
+    .bk-ledger-open > .bk-btn { width: calc(var(--gu) * 11); height: calc(var(--subrow) * 5); }
+    .bk-ledger-open > .bk-btn.bk-danger { width: calc(var(--gu) * 17); color: var(--danger); box-shadow: inset 0 0 0 var(--bw-1) var(--danger); }
+    /* Money in and out on the Overview (UX pick 77): 2r under the tables. */
+    .tr-money-inout { margin-top: calc(var(--subrow) * 2); }
+    /* The shared schedule's last card (UX pick 94): 3r under the last event, 2r x 1g pads, the title on a
+       3r line, the sentence on 3r lines, a 17g x 5r brand button, 4r above the foot. */
+    .shared-end {
+      margin: calc(var(--subrow) * 3) 0 calc(var(--subrow) * 4); padding: calc(var(--subrow) * 2) var(--gu);
+      border-radius: var(--radius); background: var(--surface); box-shadow: var(--elev-1);
+    }
+    .shared-end-title {
+      margin: 0; height: calc(var(--subrow) * 3); box-sizing: border-box; padding-top: calc(var(--subrow) * 3 - 1cap); line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      font-family: var(--font-condensed); font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--text);
+    }
+    .shared-end-text {
+      margin: var(--subrow) 0 0; line-height: calc(var(--subrow) * 3); padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text-muted);
+    }
+    .shared-end-btn {
+      display: flex; align-items: center; justify-content: center; width: calc(var(--gu) * 17); height: calc(var(--subrow) * 5);
+      margin-top: calc(var(--subrow) * 2); border-radius: var(--radius-sm); background: var(--brand); color: var(--on-brand);
+      font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); text-decoration: none;
+    }
+    /* Settings' theme tiles (UX pick 108): 16g x 6r, two by two, 1g and 1r apart. Each tile IS its theme:
+       the face carries data-theme, so that theme's own tokens paint its ground, its name (centred both
+       ways, as every control's label) and a 0.5r bar of its brand at the foot. Dark is the :root default
+       and Swiss is scoped to :root, so their faces carry their values here. The chosen tile is ringed in
+       the PAGE's brand (--pick-ring resolves on .theme-pick, outside every face). */
+    .theme-pick {
+      display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 16)); column-gap: var(--gu); row-gap: var(--subrow);
+      --pick-ring: var(--brand);
+    }
+    .theme-tile {
+      display: grid; height: calc(var(--subrow) * 6); box-sizing: border-box; margin: 0; padding: 0; border: 0; cursor: pointer;
+      border-radius: var(--radius-sm); overflow: hidden; background: none;
+    }
+    .theme-tile.is-on { outline: var(--bw-fine) solid var(--pick-ring); outline-offset: calc(var(--bw-fine) * -1); }
+    .theme-tile-face {
+      display: flex; align-items: center; justify-content: center; min-width: 0;
+      background: var(--bg); color: var(--text); border-radius: inherit;
+      box-shadow: inset 0 calc(var(--subrow) * -0.5) 0 var(--brand), inset 0 0 0 var(--bw-1) var(--border);
+    }
+    .theme-tile-face[data-theme="dark"] { --bg: #111111; --text: #e8e8e8; --brand: #3cc8e0; --border: #2a2a2a; }
+    .theme-tile-face[data-theme="swiss-light"] { --bg: #ffffff; --text: #000000; --brand: #000000; --border: #000000; }
+    .theme-tile-face[data-theme="swiss-dark"] { --bg: #000000; --text: #ffffff; --brand: #ffffff; --border: #ffffff; }
+    .theme-tile-name { font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: inherit; line-height: 1; white-space: nowrap; }
+    /* Sign out at the foot, plain (UX pick 103): the danger red is Delete account's alone. */
+    .settings-row-btn.is-plain { color: var(--text); }
+    .settings-help--italic::placeholder, .settings-debug-input.is-hinted::placeholder { font-style: italic; }
+    /* The tab bar answers the whole bar (UX pick 93, Fitts): each tab's hit box runs from the bar's top
+       edge to the screen's foot (its 1r of space above, the snap and the home-indicator inset below),
+       with nothing drawn moving. The header's buttons answer its whole 8r. */
+    .nav-tab::after { content: ''; position: absolute; left: 0; right: 0; top: calc(var(--subrow) * -1); bottom: calc((var(--sa-b) + var(--nav-snap)) * -1); }
+    .top-bar-actions .btn-icon::after { inset: calc(var(--subrow) * -2) 0; }
+    .top-bar .username-chip { position: relative; }
+    .top-bar .username-chip::after { content: ''; position: absolute; inset: calc(var(--subrow) * -2) 0; }
+    /* The rail's admin tools under their caption (UX pick 106): a 4r caps line, muted. */
+    .dk-rail-caption {
+      height: calc(var(--subrow) * 4); box-sizing: border-box; padding: calc(var(--subrow) * 3 - 1cap) var(--gu) 0; line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold); text-transform: uppercase;
+      letter-spacing: var(--track-caps); color: var(--text-muted);
+    }
+    .dk-rail-eval { margin-left: auto; padding-right: var(--gu); font-family: var(--font-condensed); font-size: var(--fs-2xs); color: var(--brand); white-space: nowrap; }
+    /* The parser eval's bar (UX pick 111): 35g x 1r, the brand fill on the sunken track. */
+    .parser-eval-bar { height: var(--subrow); margin-top: var(--subrow); border-radius: var(--radius-xs); overflow: hidden; background: var(--surface2); }
+    .parser-eval-fill { height: 100%; background: var(--brand); }
+    /* Admin's users first (UX pick 104). */
+    .admin-users-head { margin-bottom: var(--subrow); }
+    /* The heatmap's Room and Game (UX pick 102): 17g x 5r tiles 1g apart, the caption's caps over the
+       value, a caret at the right; the native select over each, invisible, takes the tap. */
+    .cash-picks { display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 17)); column-gap: var(--gu); }
+    .cash-pick {
+      position: relative; display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 2); grid-template-rows: calc(var(--subrow) * 2) calc(var(--subrow) * 3);
+      height: calc(var(--subrow) * 5); box-sizing: border-box; padding: 0 0 0 var(--gu); border-radius: var(--radius-sm);
+      background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border); cursor: pointer;
+    }
+    .cash-pick-cap {
+      grid-column: 1; grid-row: 1; padding-top: calc(var(--subrow) * 2 - 1cap); line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-muted);
+    }
+    .cash-pick-val {
+      grid-column: 1; grid-row: 2; min-width: 0; padding-top: calc(var(--subrow) * 2 - 1cap); line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-bottom: 0.3em; margin-bottom: -0.3em;
+      font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text);
+    }
+    .cash-pick-caret { grid-column: 2; grid-row: 1 / 3; display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+    .cash-pick-select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; appearance: none; -webkit-appearance: none; border: 0; }
+    .live-update-tabs.cash-metric { margin: var(--subrow) 0 calc(var(--subrow) * 2); height: calc(var(--subrow) * 3); box-sizing: border-box; }
+    .live-update-tabs.cash-metric button { padding: 0; height: 100%; }

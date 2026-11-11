@@ -208,6 +208,45 @@ export function rowForGameType(rows, gameType) {
   return hits.find((r) => r.structure === DEFAULT_STRUCTURE[r.game] && !r.rare) || hits.find((r) => !r.rare) || hits[0] || null;
 }
 
+/** The saved hands' games as pick history (UX pick 63): most played first, then the most recent, so
+ *  a new device, or a player who adds hands by typing them, still gets a Recent. */
+export function historyFromHands(rows, hands, n = 5) {
+  const counts = new Map(), first = new Map();
+  (hands || []).forEach((h, i) => {
+    const t = h && (h.gameType || (h.handData || {}).gameType);
+    const r = t ? rowForGameType(rows, t) : null;
+    if (!r) return;
+    counts.set(r.key, (counts.get(r.key) || 0) + 1);
+    if (!first.has(r.key)) first.set(r.key, { i, r });
+  });
+  return [...first.values()]
+    .sort((a, b) => (counts.get(b.r.key) - counts.get(a.r.key)) || a.i - b.i)
+    .slice(0, n).map(({ r }) => ({ game: r.game, structure: r.structure, mix: null }));
+}
+
+/** How often each row has been played: this device's picks and the saved hands together, by row key. */
+export function playCounts(rows, history, hands) {
+  const counts = new Map();
+  const add = (r) => { if (r) counts.set(r.key, (counts.get(r.key) || 0) + 1); };
+  for (const h of history || []) add(rows.find((x) => x.game === h.game && x.structure === h.structure));
+  for (const h of hands || []) { const t = h && (h.gameType || (h.handData || {}).gameType); if (t) add(rowForGameType(rows, t)); }
+  return counts;
+}
+
+/** A family's rows as the palette first shows them (UX pick 63): the 3 most played (in catalog order;
+ *  the first 3 when nothing has been played), plus the current pick wherever it is; all of them when
+ *  the family has 4 or fewer. Returns { shown, hidden } (hidden: how many are folded away). */
+export function familyRows(all, counts, current = null, top = 3) {
+  if (all.length <= top + 1) return { shown: all, hidden: 0 };
+  const played = all.filter((r) => (counts.get(r.key) || 0) > 0)
+    .sort((a, b) => counts.get(b.key) - counts.get(a.key) || all.indexOf(a) - all.indexOf(b));
+  const pick = new Set((played.length ? played : all).slice(0, top).map((r) => r.key));
+  if (played.length && played.length < top) all.forEach((r) => { if (pick.size < top) pick.add(r.key); });
+  if (current && all.some((r) => r.key === current.key)) pick.add(current.key);
+  const shown = all.filter((r) => pick.has(r.key));
+  return { shown, hidden: all.length - shown.length };
+}
+
 /** The rotations, from the schedule's MULTI_GAME_MAP: { key, mix, games: rows } (unknown types left out). */
 export function buildMixes(rows) {
   return Object.entries(MULTI_GAME_MAP).map(([mix, types]) => ({

@@ -410,3 +410,6 @@
    The desktop list pane runs this same rule: it keeps the nav band under the bar and is the
    button's containing block, its foot the window's (styles.css, .dk-pane-list::after). */
 .app-shell:has(.cs-bar) .back-to-today-fab { bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * 7); }
+/* A label sits with its own field (UX pick 82): 2r between field groups. They were 0.57r from the field
+   above and 0.61r from their own. */
+.cs-fields { row-gap: calc(var(--subrow) * 2); }

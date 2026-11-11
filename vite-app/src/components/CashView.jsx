@@ -194,6 +194,9 @@ function CashLocationPicker({ token, onSaved, trailing = null }) {
 
 export default function CashView({ token, onModeChange }) {
   const [data, setData] = useState(null);
+  // The games whose per-table rows are open (UX pick 96), by room and game.
+  const [openGames, setOpenGames] = useState(() => new Set());
+  const toggleGame = (k) => setOpenGames((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   // Bumped each time the cash location is saved, so the heatmap re-reads which rooms are near it.
   const [locationVersion, setLocationVersion] = useState(0);
   const bumpLocation = useCallback(() => setLocationVersion(v => v + 1), []);
@@ -350,7 +353,9 @@ export default function CashView({ token, onModeChange }) {
       {/* The variant filter: one chip per variant on the board, spread margin to margin with 1g between
           (owner, 2026-10-17); cash-board.css. */}
       {availableVariants.length > 0 && (
-        <div className="cb-variants" style={{ '--n': Math.min(availableVariants.length, 6) }}>
+        /* Whole-g chips (UX pick 100): the widest whole g that fits n across 35g with 1g between, from the
+           left margin; they were (35g - gaps) / n, 6.2g for five. */
+        <div className="cb-variants" style={{ '--n': Math.min(availableVariants.length, 6), '--cw': Math.floor((35 - (Math.min(availableVariants.length, 6) - 1)) / Math.min(availableVariants.length, 6)) }}>
           {availableVariants.map(vt => {
             const on = !hidden.has(vt);
             return (
@@ -408,24 +413,40 @@ export default function CashView({ token, onModeChange }) {
                   ) : (
                     <div className="cb-games">
                       {running.map((g, gi) => {
-                        // One row PER TABLE, each with its own open duration; the stakes and the game
-                        // only on the group's first row.
-                        const starts = runStarts.get(gameKey(v.slug, g.gameType, g.stakes)) || [];
+                        /* One row per game (UX pick 96, Chunking): its stakes, the game, how many tables
+                           and how long the longest has been open, the waiting list. A room's nine 1-3
+                           tables were nine rows. A tap opens the per-table rows, each with its own time. */
+                        const key = gameKey(v.slug, g.gameType, g.stakes);
+                        const starts = runStarts.get(key) || [];
                         const n = Math.max(g.tablesRunning || 0, starts.length) || 1;
-                        return Array.from({ length: n }, (_, ti) => {
-                          const isTop = ti === 0;
-                          const open = openLabel(starts[ti], snapMs, windowStartMs);
-                          return (
-                            <div key={gi + '-' + ti} className={'cb-row' + (isTop ? ' is-top' : '')}>
-                              <span className="cb-stakes">{isTop ? g.stakes : ''}</span>
-                              <span className="cb-game">{isTop ? listedGame(g) : ''}</span>
-                              <span className="cb-open">{open || ''}</span>
+                        const at = (x) => (typeof x === 'number' ? x : Date.parse(x) || Infinity);
+                        const earliest = starts.length ? starts.slice().sort((a, b) => at(a) - at(b))[0] : undefined;
+                        const longest = openLabel(earliest, snapMs, windowStartMs);
+                        const isOpen = n > 1 && openGames.has(key);
+                        const sum = n > 1 ? `${n} tables${longest ? ' \u00b7 ' + longest : ''}` : (longest || '');
+                        return (
+                          <React.Fragment key={gi}>
+                            <div className={'cb-row is-top' + (n > 1 ? ' is-game' : '') + (isOpen ? ' is-open' : '')}
+                              {...(n > 1 ? { role: 'button', tabIndex: 0, 'aria-expanded': isOpen, onClick: () => toggleGame(key),
+                                onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleGame(key); } } } : {})}>
+                              <span className="cb-stakes">{g.stakes}</span>
+                              <span className="cb-game">{listedGame(g)}</span>
+                              <span className="cb-open">{sum}</span>
                               <span className="cb-wl-cell">
-                                {isTop && (g.waitlistLen || 0) > 0 && <span className="cb-wl">WL {g.waitlistLen}</span>}
+                                {(g.waitlistLen || 0) > 0 && <span className="cb-wl">WL {g.waitlistLen}</span>}
+                                {n > 1 && <span className="cb-chev" aria-hidden="true">{isOpen ? '\u2304' : '\u203A'}</span>}
                               </span>
                             </div>
-                          );
-                        });
+                            {isOpen && Array.from({ length: n }, (_, ti) => (
+                              <div key={gi + '-' + ti} className="cb-row">
+                                <span className="cb-stakes" />
+                                <span className="cb-game">{'Table ' + (ti + 1) + (ti === 0 && starts.length > 1 ? ' (the longest open)' : '')}</span>
+                                <span className="cb-open">{openLabel(starts.slice().sort((a, b) => at(a) - at(b))[ti], snapMs, windowStartMs) || ''}</span>
+                                <span className="cb-wl-cell" />
+                              </div>
+                            ))}
+                          </React.Fragment>
+                        );
                       })}
                       {interest.length > 0 && (
                         <div className="cb-interest">

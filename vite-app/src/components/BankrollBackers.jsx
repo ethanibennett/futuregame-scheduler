@@ -11,6 +11,7 @@ import { settleView, partCents, paymentView } from '../utils/backer-settle.js';
 import './analytics.css';
 import './bankroll-locations.css';
 import './bankroll-backers.css';
+import SettleInline from './SettleInline.jsx';
 
 /**
  * The bankroll dashboard's Backers tab — BETA, app admins; READ-ONLY.
@@ -63,14 +64,22 @@ function BackerCard({ b, open, onToggle, thisYear, onCopy, onSettle, settling, o
   const delivery = deliveryText(b.delivery);
   const more = moreLine(b);
   const settle = settleView({ settlement: b.settlement, totalCents: b.dueCents, runningCents: b.cumulativeCents, side: 'owner', backer: b.name || 'your backer' });
+  /* The owner's terms (UX pick 75): the meta line leads with who pays whom, and the figure is unsigned in
+     the owner's colours (red when he pays). The signs were the backer's side: "+$60" in green meant the
+     owner owed $60. */
+  const first = (b.name || 'Your backer').split(' ')[0];
+  const cum = Math.round(Number(b.cumulativeCents) || 0);
+  const dir = cum > 0 ? `You pay ${first}` : cum < 0 ? `${first} pays you` : '';
+  const meta = dir ? dir + ' \u00b7 ' + stakesLine(b) : stakesLine(b);
+  const bare = fmtSignedCents(Math.abs(cum)).replace(/^\+/, '');
   return (
     <li className={'bl-item bb-item' + (open ? ' is-open' : '')}>
       <button type="button" className={'bl-card' + (bbs.length ? ' has-bb' : '')} aria-expanded={open} aria-controls={open ? id : undefined} onClick={onToggle}>
         <span className="bl-head">
           <span className={'an-cell bl-name an-clip' + (b.name ? '' : ' is-none')} title={name}>{name}</span>
-          <span className="an-cell bl-meta an-clip" title={stakesLine(b)}>{stakesLine(b)}</span>
-          <span className={'an-cell bl-total snap-g' + toneClass(b.cumulativeCents)} aria-label={`Running total ${fmtSignedCents(b.cumulativeCents)}`}>
-            {fmtSignedCents(b.cumulativeCents)}
+          <span className="an-cell bl-meta an-clip" title={meta}>{meta}</span>
+          <span className={'an-cell bl-total snap-g' + toneClass(-cum)} aria-label={dir ? `${dir} ${bare}` : `Running total ${bare}`}>
+            {bare}
           </span>
         </span>
         <span className="an-cell bl-stats an-clip">
@@ -104,16 +113,13 @@ function BackerCard({ b, open, onToggle, thisYear, onCopy, onSettle, settling, o
       {settle && (
         /* Settled (owner, 2026-10-19): the player's half of the handshake; the backer presses it on
            their page. Both pressed = the balance goes to $0 on both. */
-        <div className="bl-pager bb-actions bb-settle">
-          {settle.button && (
-            <button type="button" className={'bk-btn bl-more bb-settle-btn' + (settle.button.primary ? ' is-primary' : '')}
-              disabled={settling} onClick={() => onSettle(b, settle)}><span>{settle.button.label}</span></button>
-          )}
-          {settle.part && (
-            <button type="button" className="bk-btn bl-more bb-settle-btn bb-settle-part" title="Record a payment for part of the balance"
-              disabled={settling} onClick={() => onSettle(b, settle, true)}><span>{settle.part.label}</span></button>
-          )}
-          <span className="an-cell bl-count bb-settle-status an-clip" title={settle.status}>{settle.status}</span>
+        /* In the card (UX pick 79): Settled asks there, Partial payment opens a field there. One filled
+           button at most (UX pick 75): Confirm, when the backer has pressed first; eight cyan Settled
+           buttons made none of them stand out. */
+        <div className="bl-pager bb-actions bb-settle is-inline">
+          <SettleInline view={settle} busy={settling} btnClass="bk-btn bl-more bb-settle-btn"
+            primary={(v) => !!(v.button && v.button.label === 'Confirm')}
+            onSend={({ part, settleCents }) => onSettle(b, settle, part, settleCents)} />
         </div>
       )}
       {open && (
@@ -195,16 +201,12 @@ export default function BankrollBackers({ bk }) {
 
   // A Settled press: sends the balance this card shows, then reloads the list (the figures come from
   // the server, so the card reads exactly what the backer's page does).
-  const settle = useCallback(async (b, v, part = false) => {
-    // A partial payment (owner, 2026-10-24: either side, any time): dollars up to the running total; the
-    // backer confirms it. Settled: what earlier weeks owe. amountCents is the balance the press was shown.
-    let settleCents = null;
-    if (part) {
-      const answer = window.prompt(v.part.prompt);
-      if (answer == null) return;
-      settleCents = partCents(answer, v.part.maxCents);
-      if (settleCents == null) { toast.error(`Enter a dollar amount up to $${Math.round(Math.abs(v.part.maxCents) / 100).toLocaleString('en-US')}.`); return; }
-    } else if (v.confirm && !window.confirm(v.confirm)) return;
+  const settle = useCallback(async (b, v, part = false, partSettleCents = null) => {
+    // A partial payment (owner, 2026-10-24: either side, any time): dollars up to the running total, read
+    // in the card (SettleInline, UX pick 79); the backer confirms it. Settled: what earlier weeks owe,
+    // asked in the card. amountCents is the balance the press was shown.
+    const settleCents = part ? partSettleCents : null;
+    if (part && settleCents == null) return;
     setSettling(true);
     try {
       const res = await fetch(`${API_URL}/staking/standing/backers/${encodeURIComponent(b.id)}/settle`, {

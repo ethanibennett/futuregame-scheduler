@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import Icon from './Icon.jsx';
 import { FirstRun } from './EmptyState.jsx';
 import Avatar from './Avatar.jsx';
+import ThemeButton from './ThemeButton.jsx';
+import useThemeChoice from '../hooks/useThemeChoice.js';
 import CalendarEventRow from './CalendarEventRow.jsx';
 import DateBreak from './DateBreak.jsx';
 import { API_URL } from '../utils/api.js';
 import { withoutDnpMarkers } from '../utils/didnt-play.js';
 import {
   normaliseDate, getToday, parseTournamentTime, extractConditions,
-  THEME_ORDER, THEME_LABEL, THEME_ICON, getStoredSeasonLabel,
+  getStoredSeasonLabel,
   registerRowTimezones, registerRowCurrencies,
 } from '../utils/utils.js';
 
@@ -16,11 +18,10 @@ export default function SharedScheduleView({ shareToken }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
+  /* The app's own theme button and rule (UX pick 91), as the backer page: it follows the visitor's light
+     or dark until pressed, then steps through the four themes. Its own copy cycled six, the admins'
+     Swiss two among them, and opened in Dark whatever the device. */
+  const theme = useThemeChoice({ followDevice: true });
 
   useEffect(() => {
     fetch(`${API_URL}/shared/${shareToken}`)
@@ -64,19 +65,14 @@ export default function SharedScheduleView({ shareToken }) {
   return (
     <div className="app-shell">
       <header className="top-bar">
+        {/* The owner is named once, in the heading (UX pick 94): the top bar says what the page is,
+            and carries only the theme button. */}
         <div className="top-bar-title">
           <h1>futurega.me</h1>
-          <small>{(data.real_name || data.username)}'s schedule</small>
+          <small>shared schedule</small>
         </div>
         <div className="top-bar-actions">
-          {/* The app bar's own pattern: 3g x 4r cells 1g apart (an odd 7g, so the centred group
-              starts on a g line), the theme toggle the app's .btn-icon. */}
-          <span style={{display:'flex',alignItems:'center',justifyContent:'center',width:'calc(var(--gu) * 3)',height:'calc(var(--subrow) * 4)'}}>
-            <Avatar src={data.avatar} username={data.username} size={22} />
-          </span>
-          <button className="btn btn-ghost btn-icon" onClick={() => setTheme(t => { const n = THEME_ORDER[(THEME_ORDER.indexOf(t)+1)%THEME_ORDER.length]; localStorage.setItem('theme', n); return n; })} title={`Switch to ${THEME_LABEL[THEME_ORDER[(THEME_ORDER.indexOf(theme)+1)%THEME_ORDER.length]]} mode`}>
-            {React.createElement(Icon[THEME_ICON[theme]] || Icon.moon)}
-          </button>
+          <ThemeButton theme={theme.theme} nextThemeLabel={theme.nextThemeLabel} onToggle={theme.toggleTheme} />
         </div>
       </header>
       <main className="content-area">
@@ -122,6 +118,12 @@ export default function SharedScheduleView({ shareToken }) {
           ))
         )}
         </div>
+        {/* The page ends on a next step (UX pick 94, Peak-End): a visitor who liked it gets a way in. */}
+        <section className="shared-end" aria-label="Plan your own">
+          <h3 className="shared-end-title">Plan your own series</h3>
+          <p className="shared-end-text">Every live and online event in one schedule, with the clocks, your results and your bankroll beside it.</p>
+          <a className="shared-end-btn ctl" href="/live">Open futurega.me</a>
+        </section>
       </main>
     </div>
   );

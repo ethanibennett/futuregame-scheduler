@@ -103,8 +103,9 @@ export default function HomeCashCard({ session, stacks, skew = 0, token, onOpen,
           </form>
         ) : (
           <div className="dash-status-row hm-cash-actions">
-            <button type="button" className="hm-cash-btn" onClick={() => { haptic(); setEntry(true); }}><span className="dash-t">Update stack</span></button>
-            <button type="button" className="hm-cash-btn hm-cash-btn--brand" onClick={() => { haptic(); if (onCashOut) onCashOut(); }}><span className="dash-t">Cash out</span></button>
+            {/* Update stack, about hourly, is the filled control; Cash out, once a session, a hairline (UX pick 39). */}
+            <button type="button" className="hm-cash-btn hm-cash-btn--brand" onClick={() => { haptic(); setEntry(true); }}><span className="dash-t">Update stack</span></button>
+            <button type="button" className="hm-cash-btn" onClick={() => { haptic(); if (onCashOut) onCashOut(); }}><span className="dash-t">Cash out</span></button>
           </div>
         )}
       </div>

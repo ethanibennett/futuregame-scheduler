@@ -249,3 +249,5 @@
 }
 /* A note followed by rows gets 1r of air (its last baseline is its box bottom). */
 .taxr-block .taxr-p:not(:last-child) { margin-bottom: var(--subrow); }
+/* An empty year's way out (UX pick 83): a 17g x 4r brand button, 1r under the note. */
+.taxr-empty .taxr-jump { width: calc(var(--gu) * 17); height: calc(var(--subrow) * 4); margin-top: var(--subrow); }

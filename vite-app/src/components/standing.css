@@ -101,3 +101,7 @@
 .sd-ev-share { --h: 4; --b: 3; grid-column: 3; text-align: right; font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: var(--fs-sm); font-variant-numeric: var(--num-tabular); color: var(--text); }
 .sd-ev-detail { --h: 3; --b: 2; grid-column: 1 / -1; font-variant-numeric: var(--num-tabular); }
 .sd-ev-act { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--gu); row-gap: var(--subrow); padding-top: var(--subrow); }
+/* UX pick 85: each card's running total on the name's row. ".sd-card > .sd-t { grid-column: 1 / -1 }"
+   out-ranked the two cells' own columns and dropped the total onto a row of its own. */
+.sd-card > .sd-name { grid-column: 1; grid-row: 1; }
+.sd-card > .sd-running { grid-column: 2; grid-row: 1; }

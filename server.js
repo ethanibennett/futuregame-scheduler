@@ -5323,19 +5323,26 @@ app.get('/api/users/search', authenticateToken, requireRegistered, (req, res) =>
     const q = (req.query.q || '').trim();
     if (q.length < 2) return res.json([]);
     const pattern = q + '%';
+    // A connection is left out (the page filters those itself); someone with a request waiting is
+    // returned flagged, 'incoming' or 'outgoing', so the page can say so instead of nothing (UX pick 43).
     const stmt = db.prepare(`
-      SELECT u.id, u.username, u.real_name, u.avatar
+      SELECT u.id, u.username, u.real_name, u.avatar,
+        (SELECT CASE WHEN sr.from_user_id = ? THEN 'outgoing' ELSE 'incoming' END FROM share_requests sr
+          WHERE sr.status = 'pending'
+            AND ((sr.from_user_id = ? AND sr.to_user_id = u.id) OR (sr.to_user_id = ? AND sr.from_user_id = u.id))
+          LIMIT 1) AS pending
       FROM users u
       WHERE (u.username LIKE ? OR u.real_name LIKE ?) AND u.id != ?
         AND u.id NOT IN (
           SELECT CASE WHEN from_user_id = ? THEN to_user_id ELSE from_user_id END
           FROM share_requests
           WHERE (from_user_id = ? OR to_user_id = ?)
-            AND status IN ('pending', 'accepted')
+            AND status = 'accepted'
         )
       LIMIT 10
     `);
-    stmt.bind([pattern, pattern, req.user.id, req.user.id, req.user.id, req.user.id]);
+    const me = req.user.id;
+    stmt.bind([me, me, me, pattern, pattern, me, me, me, me]);
     const results = [];
     while (stmt.step()) results.push(stmt.getAsObject());
     stmt.free();

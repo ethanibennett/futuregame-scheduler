@@ -77,7 +77,10 @@ export async function stageDrill(p, stage, { force = false } = {}) {
   await routeDrill(p);
   const click = (loc) => loc.first().click({ timeout: 8000, force });
   const live = () => p.waitForFunction(() => [...document.querySelectorAll('.rd-bar button')].some((b) => !b.disabled), null, { timeout: 15000 });
-  await click(p.getByRole('button', { name: 'Play a hand', exact: true }));
+  // Study > Practice > Play a hand (UX pick 62 took it off the Hands list).
+  await click(p.locator('.hands-tool-row button:text-is("Study")'));
+  await p.waitForTimeout(600);
+  await click(p.locator('.study-row:has-text("Play a hand")'));
   await p.waitForTimeout(600);
   if (stage === 'setup') return;
   await click(p.locator('.rd-setup').getByRole('button', { name: '2-7 TD', exact: true }));

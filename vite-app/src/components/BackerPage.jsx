@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import SettleInline from './SettleInline.jsx';
 import useWordmarkFit from '../hooks/useWordmarkFit.js';
 import Icon from './Icon.jsx';
 import GridOverlay from './GridOverlay.jsx';
@@ -338,19 +339,22 @@ function PaymentCard({ p }) {
 /** The time until settlement (owner, 2026-10-15: "we settle on Sundays at noon"), at the foot of the
  *  running total card: the Schedule's late-reg bar (styles.css .late-reg-*), its label and countdown on
  *  one 2r row and the bar under it, draining from a full week to empty at Sunday noon, Eastern. */
-function SettlementBar() {
+function SettlementBar({ waiting = false }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(id); }, []);
   const c = settlementCountdown(now);
+  /* UX pick 81 (Goal-Gradient, Parkinson): the bar fills with the week gone, in seven day segments,
+     toward a deadline it names; it drained before, grey, labelled only "Settle". While one side has
+     pressed Settled it says the handshake is half done, so the open task stays in view. */
   return (
-    <div className="late-reg-wrap bp-settle" aria-label={`Settlement in ${c.text}, Sunday at noon Eastern`}>
+    <div className="late-reg-wrap bp-settle is-filling" aria-label={`Settlement in ${c.text}, Sunday at noon Eastern`}>
       <div className="late-reg-label-row">
-        <span className="late-reg-label open">Settle</span>
+        <span className="late-reg-label open">Settles Sun 12 PM ET</span>
         <span className="late-reg-sep" />
-        <span className="late-reg-time open">{c.text}</span>
+        <span className="late-reg-time open">{waiting ? '1 of 2 confirmed' : c.text + ' left'}</span>
       </div>
       <div className="late-reg-bar-bg">
-        <div className="late-reg-bar-fill open" style={{ width: `${c.pct}%` }} />
+        <div className="late-reg-bar-fill open" style={{ width: `${Math.max(0, Math.min(100, 100 - c.pct))}%` }} />
       </div>
     </div>
   );
@@ -364,18 +368,23 @@ function TotalFigures({ feed, total }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(id); }, []);
   const w = weekRunning(feed, now);
+  /* Who pays whom, in words (UX pick 74): the sign was the owner's convention ("+" = Ethan pays you),
+     and a red "-$573" read as "you lost $573". The label carries the direction; the figure loses its
+     sign and keeps the reader's colour, green for money coming to them. */
+  const who = (c) => (c > 0 ? 'Ethan pays you' : c < 0 ? 'You pay Ethan' : '');
+  const bare = (c) => fmtSignedCents(Math.abs(Math.round(Number(c) || 0))).replace(/^\+/, '');
   if (!w.show) {
     return (
       <>
-        <div className="an-cell an-lbl an-lbl-3">Running total</div>
-        <div className={'an-cell bp-total-val ' + tone(total)}>{fmtSignedCents(total)}</div>
+        <div className="an-cell an-lbl an-lbl-3">{who(total) || 'Running total'}</div>
+        <div className={'an-cell bp-total-val ' + tone(total)}>{bare(total)}</div>
       </>
     );
   }
   return (
     <div className="bp-total-rows">
-      <div className="an-cell an-lbl an-lbl-3">To be settled from last week</div>
-      <div className={'an-cell bp-total-val ' + tone(w.carriedCents)}>{fmtSignedCents(w.carriedCents)}</div>
+      <div className="an-cell an-lbl an-lbl-3">{who(w.carriedCents) ? who(w.carriedCents) + ' \u00b7 from last week' : 'To be settled from last week'}</div>
+      <div className={'an-cell bp-total-val ' + tone(w.carriedCents)}>{bare(w.carriedCents)}</div>
       <div className="an-cell an-lbl an-lbl-3 bp-total-row2">This week</div>
       <div className={'an-cell bp-total-val ' + tone(w.weekCents)}>{fmtSignedCents(w.weekCents)}</div>
     </div>
@@ -413,32 +422,11 @@ function SettleRow({ token, feed, onChange }) {
     } catch { if (toast) toast.error('That did not go through. Check your connection.'); }
     finally { setBusy(false); }
   };
-  const press = () => {
-    if (!v.button || busy) return;
-    if (v.confirm && !window.confirm(v.confirm)) return;
-    send(v.button.action, v.sendCents);
-  };
-  const pressPart = () => {
-    if (!v.part || busy) return;
-    const answer = window.prompt(v.part.prompt);
-    if (answer == null) return;
-    const cents = partCents(answer, v.part.maxCents);
-    if (cents == null) { if (toast) toast.error(`Enter a dollar amount up to ${usd(v.part.maxCents)}.`); return; }
-    send('confirm', running, cents);
-  };
+  // The handshake in the card (UX pick 79): Settled asks there, Partial payment opens a field there.
   return (
-    <div className="bp-settled-row">
-      {v.button && (
-        <button type="button" className={'bp-settled-btn' + (v.button.primary ? ' is-primary' : '')} onClick={press} disabled={busy}>
-          {v.button.label}
-        </button>
-      )}
-      {v.part && (
-        <button type="button" className="bp-settled-btn bp-settled-part" onClick={pressPart} disabled={busy} title="Record a payment for part of the balance">
-          {v.part.label}
-        </button>
-      )}
-      <span className="an-cell bp-settled-status an-clip" title={v.status}>{v.status}</span>
+    <div className="bp-settled-row is-inline">
+      <SettleInline view={v} busy={busy} btnClass="bp-settled-btn"
+        onSend={({ part, settleCents }) => (part ? send('confirm', running, settleCents) : send(v.button.action, v.sendCents))} />
     </div>
   );
 }
@@ -599,7 +587,7 @@ export default function BackerPage({ token }) {
                 </>
               ) : `Opening balance · no sessions yet`}
             </div>
-            <SettlementBar />
+            <SettlementBar waiting={!!(feed.settlement && feed.settlement.open && (feed.settlement.open.ownerAt || feed.settlement.open.backerAt) && !(feed.settlement.open.ownerAt && feed.settlement.open.backerAt))} />
             <SettleRow token={token} feed={feed} onChange={reload} />
           </section>
         )}

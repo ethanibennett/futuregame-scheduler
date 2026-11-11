@@ -95,16 +95,21 @@ export default function BankrollChart({
     return undefined;
   });
 
+  /* The options in one style and one row (UX pick 89): the mode, the line's shape and Fill, drawn three
+     ways before (a 4r segment, a 3r pill, and a chip among the lines). Fill is not a line, so it left the
+     legend; the note has a line of its own, where it was cut to "…incom…". */
   const head = (
-    <div className="bd-chart-head">
-      <span className="an-cell an-note bd-note-4 an-clip" title={note || undefined}>{note}</span>
-      <button type="button" className="bp-style bd-style ctl" onClick={cycleLineStyle}
-        aria-label={`Line: ${lineStyleLabel(lineStyle)}. Change the line`} title="Steps, lines or curves">{lineStyleLabel(lineStyle)}</button>
+    <div className="bd-chart-head is-options">
       {control}
+      <button type="button" className="bd-opt bd-style ctl" onClick={cycleLineStyle}
+        aria-label={`Line: ${lineStyleLabel(lineStyle)}. Change the line`} title="Steps, lines or curves">{lineStyleLabel(lineStyle)}</button>
+      <button type="button" className={'bd-opt bd-fill-opt ctl' + (fill ? ' is-on' : '')} aria-pressed={fill}
+        aria-label="Fill under the lines" onClick={onFill}>{fill ? 'Fill on' : 'Fill off'}</button>
     </div>
   );
+  const noteLine = note ? <span className="an-cell an-note bd-note-3 bd-chart-note">{note}</span> : null;
   const legend = (
-    <div className="bd-series" role="group" aria-label="Lines on the graph">
+    <div className="bd-series is-lines" role="group" aria-label="Lines on the graph">
       {lines.map((l) => {
         const locked = l.on && shown.length === 1;
         return (
@@ -117,11 +122,6 @@ export default function BankrollChart({
           </button>
         );
       })}
-      <button type="button" className={'bd-fill-btn' + (fill ? ' is-on' : '')} aria-pressed={fill}
-        aria-label="Fill under the lines" onClick={onFill}>
-        <span className="bd-sp-name"><span>Fill</span></span>
-        <span className="bd-sp-val">{fill ? 'On' : 'Off'}</span>
-      </button>
     </div>
   );
   const foot = (mid) => (
@@ -142,6 +142,7 @@ export default function BankrollChart({
       <div className={'bd-chart-block' + (busy ? ' is-busy' : '')} aria-busy={busy ? 'true' : undefined}>
         {head}
         {legend}
+        {noteLine}
         <div className="bd-chart is-empty"><span className="an-cell an-note bd-chart-msg">{msg}</span></div>
         {foot('')}
       </div>
@@ -206,6 +207,7 @@ export default function BankrollChart({
     <div className={'bd-chart-block' + (busy ? ' is-busy' : '')} aria-busy={busy ? 'true' : undefined}>
       {head}
       {legend}
+      {noteLine}
       <div className="bd-chart" ref={plotRef}>
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={aria}
           data-lo={ax.lo} data-hi={ax.hi} data-step={ax.step} data-x0={X0} data-start={start}

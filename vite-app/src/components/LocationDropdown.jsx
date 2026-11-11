@@ -125,8 +125,20 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
         )}
       </div>
       <div style={DIVIDER} />
+      {/* Cash (pointOnly; UX pick 92): the first row names the point that is set and carries the tick.
+          The tick sat on "Current Location", meaning "some point is set". */}
+      {pointOnly && filters.userLocation && (
+        <>
+          <div style={{ ...ROW, gap: 'calc(var(--subrow) * 1)', padding: '0 var(--space-xl)', color: 'var(--accent)', fontWeight: 700, fontSize: 'calc(var(--gu) * 1.252)' }}>
+            <span style={{width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)',flexShrink:0}}><Icon.mapPin /></span>
+            {(filters.locationLabel && filters.locationLabel !== 'Current Location' ? filters.locationLabel : 'Your location') + (filters.maxDistance ? ` \u00b7 ${filters.maxDistance} mi` : '')}
+            <span style={{marginLeft:'auto',fontSize:'calc(var(--gu) * 1.104)'}}>{'\u2713'}</span>
+          </div>
+          <div style={DIVIDER} />
+        </>
+      )}
       <button onClick={() => {
-        if (filters.userLocation && !filters.locationRegion) {
+        if (!pointOnly && filters.userLocation && !filters.locationRegion) {
           setFilters(f => ({...f, userLocation: null, maxDistance: '', locationRegion: null, locationLabel: null}));
           onClose();
         } else {
@@ -160,13 +172,13 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
       }} style={{
         ...ROW,gap:'calc(var(--subrow) * 1)',
         padding:'0 var(--space-xl)',background:'none',border:'none',
-        color: (filters.userLocation && !filters.locationRegion) ? 'var(--accent)' : 'var(--text)',
-        fontWeight: (filters.userLocation && !filters.locationRegion) ? 700 : 400,
+        color: (!pointOnly && filters.userLocation && !filters.locationRegion) ? 'var(--accent)' : 'var(--text)',
+        fontWeight: (!pointOnly && filters.userLocation && !filters.locationRegion) ? 700 : 400,
         fontSize:'calc(var(--gu) * 1.252)',cursor:'pointer',textAlign:'left',
       }}>
         <span style={{width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)',flexShrink:0}}><Icon.mapPin /></span>
-        Current Location
-        {(filters.userLocation && !filters.locationRegion) && <span style={{marginLeft:'auto',fontSize:'calc(var(--gu) * 1.104)'}}>{'✓'}</span>}
+        {pointOnly ? 'Use my current location' : 'Current Location'}
+        {(!pointOnly && filters.userLocation && !filters.locationRegion) && <span style={{marginLeft:'auto',fontSize:'calc(var(--gu) * 1.104)'}}>{'✓'}</span>}
       </button>
       <div style={DIVIDER} />
       {!pointOnly && Object.entries(LOCATION_REGIONS).map(([key, { label }]) => (
@@ -230,7 +242,9 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
         </div>
       </div>
       </>)}
-      {(filters.locationRegion || filters.userLocation) && (
+      {/* No Clear on Cash (UX pick 92): a cleared point could not be saved there, so the screen said "no
+          location" while the watcher kept polling the old one. */}
+      {!pointOnly && (filters.locationRegion || filters.userLocation) && (
         <>
           <div style={DIVIDER} />
           <button onClick={() => {

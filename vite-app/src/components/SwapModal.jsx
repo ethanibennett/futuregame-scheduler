@@ -68,18 +68,24 @@ export default function SwapModal({ buddy, tournament, token, onClose }) {
             <div style={{flex:1}}>
               <label style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'0.05em',display:'block',lineHeight:'calc(var(--subrow) * 2)',marginBottom:'var(--space-xs)'}}>You give</label>
               <div style={{display:'flex',alignItems:'center',gap:'var(--space-xs)'}}>
-                <input type="number" min="1" max="100" value={myPct} onChange={e => setMyPct(e.target.value)}
+                <input type="text" inputMode="numeric" value={myPct} onChange={e => setMyPct(e.target.value.replace(/[^0-9.]/g, ''))}
                   style={{width:'100%',height:'calc(var(--subrow) * 4.5)',boxSizing:'border-box',padding:'0 var(--space-md)',background:'var(--surface2)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius-sm)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.473)',textAlign:'center'}} />
                 <span style={{color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>%</span>
               </div>
+              <div className="swap-presets">{[5, 10, 15, 20].map(n => (
+                <button key={n} type="button" className={'swap-preset' + (String(n) === String(myPct) ? ' is-on' : '')} onClick={() => setMyPct(String(n))}>{n}%</button>
+              ))}</div>
             </div>
             <div style={{flex:1}}>
               <label style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'0.05em',display:'block',lineHeight:'calc(var(--subrow) * 2)',marginBottom:'var(--space-xs)'}}>They give</label>
               <div style={{display:'flex',alignItems:'center',gap:'var(--space-xs)'}}>
-                <input type="number" min="1" max="100" value={theirPct} onChange={e => setTheirPct(e.target.value)}
+                <input type="text" inputMode="numeric" value={theirPct} onChange={e => setTheirPct(e.target.value.replace(/[^0-9.]/g, ''))}
                   style={{width:'100%',height:'calc(var(--subrow) * 4.5)',boxSizing:'border-box',padding:'0 var(--space-md)',background:'var(--surface2)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius-sm)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.473)',textAlign:'center'}} />
                 <span style={{color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>%</span>
               </div>
+              <div className="swap-presets">{[5, 10, 15, 20].map(n => (
+                <button key={n} type="button" className={'swap-preset' + (String(n) === String(theirPct) ? ' is-on' : '')} onClick={() => setTheirPct(String(n))}>{n}%</button>
+              ))}</div>
             </div>
           </div>
         ) : (
@@ -87,15 +93,18 @@ export default function SwapModal({ buddy, tournament, token, onClose }) {
             <div style={{flex:1}}>
               <label style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'0.05em',display:'block',lineHeight:'calc(var(--subrow) * 2)',marginBottom:'var(--space-xs)'}}>Percentage</label>
               <div style={{display:'flex',alignItems:'center',gap:'var(--space-xs)'}}>
-                <input type="number" min="1" max="100" value={cbPct} onChange={e => setCbPct(e.target.value)}
+                <input type="text" inputMode="numeric" value={cbPct} onChange={e => setCbPct(e.target.value.replace(/[^0-9.]/g, ''))}
                   style={{width:'100%',height:'calc(var(--subrow) * 4.5)',boxSizing:'border-box',padding:'0 var(--space-md)',background:'var(--surface2)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius-sm)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.473)',textAlign:'center'}} />
                 <span style={{color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>%</span>
               </div>
+              <div className="swap-presets">{[5, 10, 15, 20].map(n => (
+                <button key={n} type="button" className={'swap-preset' + (String(n) === String(cbPct) ? ' is-on' : '')} onClick={() => setCbPct(String(n))}>{n}%</button>
+              ))}</div>
             </div>
             <div style={{flex:1}}>
               <label style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'0.05em',display:'block',lineHeight:'calc(var(--subrow) * 2)',marginBottom:'var(--space-xs)'}}>Cap (optional)</label>
               <div style={{display:'flex',alignItems:'center',gap:'var(--space-xs)'}}>
-                <input type="number" min="0" value={cbCap} onChange={e => setCbCap(e.target.value)} placeholder={'\u2014'}
+                <input type="text" inputMode="decimal" value={cbCap} onChange={e => setCbCap(e.target.value.replace(/[^0-9.,]/g, ''))} placeholder={'\u2014'}
                   style={{width:'100%',height:'calc(var(--subrow) * 4.5)',boxSizing:'border-box',padding:'0 var(--space-md)',background:'var(--surface2)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius-sm)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.473)',textAlign:'center'}} />
                 <span style={{color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>{currencySymbol(tournament.venue, tournament.currency)}</span>
               </div>
@@ -107,7 +116,7 @@ export default function SwapModal({ buddy, tournament, token, onClose }) {
         <button onClick={handleSend} disabled={sending} style={{
           display:'flex',alignItems:'center',justifyContent:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,
           padding:0,borderRadius:'calc(var(--subrow) * 1.25)',border:'none',
-          background:'var(--accent)',color:'var(--bg)',fontWeight:700,fontSize:'calc(var(--gu) * 1.325)',
+          background:'var(--brand)',color:'var(--on-brand)',fontWeight:700,fontSize:'calc(var(--gu) * 1.325)',
           fontFamily:'Univers Condensed, Univers, sans-serif',cursor: sending ? 'wait' : 'pointer',opacity: sending ? 0.6 : 1
         }}>
           {sending ? 'Sending...' : `Send ${type === 'swap' ? 'Swap' : 'Crossbook'} Offer`}

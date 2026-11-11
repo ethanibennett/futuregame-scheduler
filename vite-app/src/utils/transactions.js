@@ -6,6 +6,7 @@
 // A transaction's `amount` is always positive; `kind` gives the sign (expense = out, income = in).
 // Results (tracking entries) are in each venue's native currency and transactions in their own,
 // so every total here takes a `convert(amount, from, to)` and a target currency.
+import { parseMoney } from './money.js';
 import { csvCell } from './tax-report.js';
 
 // Keys must match lib/bankroll-transactions.js CATEGORIES (the server test checks it).
@@ -190,13 +191,10 @@ export function transactionsToCsv(rows, { bankrollName } = {}) {
 // ── Quick-add ───────────────────────────────────────────────────────────────
 /** Reads a typed amount: '12', '12.5', '$1,250.75', '12,50' (a lone comma as decimal). */
 export function parseAmount(raw) {
+  // One reading for every money field (utils/money.js, UX pick 73); a positive amount or null.
   if (raw == null) return null;
-  let s = String(raw).trim().replace(/[\s$€£¥]/g, '');
-  if (/^\d+,\d{1,2}$/.test(s)) s = s.replace(',', '.');
-  s = s.replace(/,/g, '');
-  if (!/^\d*\.?\d*$/.test(s) || s === '' || s === '.') return null;
-  const n = Math.round(Number(s) * 100) / 100;
-  return n > 0 && Number.isFinite(n) ? n : null;
+  const r = parseMoney(raw);
+  return !r.error && r.value > 0 ? r.value : null;
 }
 
 /** 'YYYY-MM-DD' -> 'Jun 4' (by hand, no Date). With `year`, 'Jun 4, 2026'. */

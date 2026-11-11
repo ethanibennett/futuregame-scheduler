@@ -3,6 +3,7 @@
 // same state. The server keeps the state (lib/staking/backer-settle.js); a balance goes to $0 once both
 // sides have pressed. Signs are the page's: totalCents > 0 = the player owes the backer.
 import { fmtSignedCents } from './backer-page.js';
+import { parseMoney } from './money.js';
 
 // In whole dollars, the way the page's figure reads (utils/backer-page.js fmtSignedCents), unsigned.
 export const usd = (cents) => fmtSignedCents(Math.abs(Math.round(Number(cents) || 0))).replace(/^\+/, '');
@@ -89,9 +90,11 @@ export function settleView({ settlement, totalCents, runningCents, side, player 
  *  or null when it is not a number, is $0, or is more than the running total. */
 export function partCents(answer, maxCents) {
   const max = Math.round(Number(maxCents) || 0);
-  const n = Number(String(answer == null ? '' : answer).replace(/[^0-9.]/g, ''));
-  if (!max || !Number.isFinite(n) || n <= 0) return null;
-  const cents = Math.round(n * 100) * (max < 0 ? -1 : 1);
+  // Read as every money field reads (utils/money.js, UX pick 73): "1.2k" is $1,200 and "12,50" $12.50,
+  // where every non-digit used to be dropped ("1.2k" was $1.20); "500 dollars" is refused.
+  const r = parseMoney(answer);
+  if (!max || r.error || !(r.value > 0)) return null;
+  const cents = r.cents * (max < 0 ? -1 : 1);
   if (Math.abs(cents) > Math.abs(max)) return null;
   return cents;
 }

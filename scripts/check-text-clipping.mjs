@@ -215,7 +215,8 @@ function scan(rootSel) {
   // has no scan key, so it lands on the scanner's idle state and its error line), then Hands'
   // Scanner tool.
   const isDesktop = () => p.evaluate(() => !!document.querySelector('.app-shell.is-desktop'));
-  const openTab = async (name) => {
+  const openTab = async (name0) => {
+    const name = name0 === 'Dashboard' ? 'Home' : name0;   // UX pick 98
     await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
     await p.waitForTimeout(3500);
     await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000 }).catch(() => {});
@@ -864,6 +865,8 @@ function scan(rootSel) {
   // with an ellipsis. Skipped quietly where the section is absent (a non-admin token).
   if (on('expenses')) try {
     await openResults();
+    // Expenses & income sits on the Overview (UX pick 77).
+    if (!(await p.locator('.tx-sec').count())) { await openSection(p, 'Overview'); await p.waitForTimeout(900); }
     await p.locator('.tx-sec').first().waitFor({ timeout: 4000 });
     await p.evaluate(() => document.querySelector('.tx-sec').scrollIntoView({ block: 'center' }));
     await p.waitForTimeout(500);
@@ -1099,6 +1102,7 @@ function scan(rootSel) {
     await reachStaking();
     await p.locator(`${card} button:has-text("Shares")`).first().click({ timeout: 4000 });
     await p.locator('.sd-event').first().waitFor({ timeout: 8000 });
+    await p.locator(`${card} button:has-text("More")`).first().click({ timeout: 4000 });   // UX pick 85
     await p.locator(`${card} button:has-text("New link")`).first().click({ timeout: 4000 });
     await p.waitForTimeout(500);
     await scan(`${label}, shares and link`);

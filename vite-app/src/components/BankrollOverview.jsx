@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { MoneyParts } from './SwissParts.jsx';
 import { API_URL } from '../utils/api.js';
-import { normaliseHomes } from '../utils/money-homes.js';
+import { normaliseHomes, fundView } from '../utils/money-homes.js';
 import { CURRENCY_CONFIG, formatCurrencyAmount } from '../utils/utils.js';
 import {
   RANGES, RANGE_NOUN, rangeWindow, within, balanceSeries, chartSpan,
@@ -153,6 +153,30 @@ export default function BankrollOverview({ d, risk, bk, bkKey, currency: asked, 
           </div>
         </div>
       </div>
+
+      {/* The WSOP fund as a goal you can see (UX pick 87): its bar, with a tick at the share of the time
+          gone, at the top of the Overview, where it was three rows of text in a folded table. */}
+      {(() => {
+        const f = homes && homes.fund && homes.fund.target > 0 ? homes.fund : null;
+        if (!f) return null;
+        const usdM = (x) => formatCurrencyAmount(Math.round(x || 0), 'USD');
+        const v = fundView(f, usdM, fmtDate);
+        const p = f.pace || {};
+        const months = p.perMonthSoFar > 0 ? f.saved / p.perMonthSoFar : null;
+        const gone = months != null && p.monthsLeft != null && months + p.monthsLeft > 0 ? months / (months + p.monthsLeft) : null;
+        const pct = v.pct || 0;
+        return (
+          <section className="bd-fund" aria-label={v.label}>
+            <div className="an-cell an-lbl an-lbl-3 an-clip">{[v.label, v.pace && v.pace.text !== '\u2014' ? v.pace.text : null, f.targetDate ? 'by ' + fmtDate(f.targetDate) : null].filter(Boolean).join(' \u00b7 ')}</div>
+            <div className="an-cell an-td an-num bd-fund-fig an-clip">{v.text + (v.pct != null ? ' \u00b7 ' + v.pct + '%' : '')}</div>
+            <div className="bd-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+              <div className={'bd-bar-fill' + (pct >= 100 ? ' is-done' : '')} style={{ width: pct + '%' }} />
+              {gone != null && gone < 1 && <div className="bd-bar-pace" style={{ left: (gone * 100).toFixed(2) + '%' }} />}
+            </div>
+            {v.pace && <div className="an-cell an-note bd-note-3 an-clip">{v.pace.note.charAt(0).toUpperCase() + v.pace.note.slice(1)}</div>}
+          </section>
+        );
+      })()}
 
       <BankrollChart lines={chartLines} onToggle={mode === 'profit' ? toggleSeries : null} fill={fill} onFill={toggleFill}
         start={view.start} end={view.end} money={mode === 'profit' ? signed : money} tick={tick} fmtDate={fmtDate}

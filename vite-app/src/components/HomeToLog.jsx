@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { getVenueInfo, getVenueBrandColor, formatBuyin, parseTournamentTime, getNow } from '../utils/utils.js';
+import { getVenueInfo, getVenueBrandColor, formatBuyin, parseTournamentTime, getNow, getStripAbbr } from '../utils/utils.js';
 import { awaitingResults, eventNo, dayName } from '../utils/home.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 
@@ -42,7 +42,8 @@ const plural = (n) => `${n} bullet${n === 1 ? '' : 's'}`;
 function rowText(item) {
   const e = item.event;
   const price = formatBuyin(e.buyin, e.venue);
-  const cost = item.bullets > 1 ? `${item.bullets} × ${price}` : price;
+  const named = String(e.event_name || '').trim().startsWith(price);
+  const cost = item.bullets > 1 ? `${item.bullets} × ${price}` : (named ? '' : price);
   return [eventNo(e.event_number), cost, e.event_name].filter(Boolean).join(' ');
 }
 
@@ -51,9 +52,10 @@ function rowText(item) {
 function Strip({ event, today }) {
   const v = getVenueInfo(event.venue, event.property);
   const day = dayName(event.date, today);
+  const short = getStripAbbr(v.abbr) || v.abbr || '';
   return (
     <div className="hm-tolog-strip" style={{ background: getVenueBrandColor(v.abbr) }}>
-      <span className="hm-tolog-strip-t">{v.longName || v.abbr}</span>
+      <span className="hm-tolog-strip-t">{short.length >= 4 ? short : (v.longName || v.abbr)}</span>
       {day && <span className="hm-tolog-strip-d">{` · ${day}`}</span>}
     </div>
   );
@@ -165,9 +167,29 @@ export default function HomeToLog({ schedule, results, updates, plans = null, to
   const rows = items.filter((x) => !heldIds.has(x.id));
   // Whether the section takes any room (Edit home: the period block drops its scope only when the
   // bankroll line is the section directly above it, and a section that renders nothing is not one).
-  const shownNow = canLog && (rows.length > 0 || held.length > 0);
+  /* The chore ends on a finish, not on nothing (UX pick 51): with nothing waiting and a result logged
+     today, the section stays for the rest of the day as one 5r bar. */
+  const loggedDay = (r) => String((r && r.created_at) || '').slice(0, 10);
+  const doneToday = (results || []).filter((r) => loggedDay(r) === today).length;
+  const weekStart = (() => { const d = new Date(today + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - 6); return d.toISOString().slice(0, 10); })();
+  const doneWeek = (results || []).filter((r) => { const d = loggedDay(r); return d && d >= weekStart && d <= today; }).length;
+  const caughtUp = canLog && rows.length === 0 && held.length === 0 && doneToday > 0;
+  const shownNow = canLog && (rows.length > 0 || held.length > 0 || caughtUp);
   useLayoutEffect(() => { if (onShown) onShown(shownNow); }, [onShown, shownNow]);
   if (!shownNow) return null;
+  if (caughtUp) {
+    return (
+      <section className="dashboard-section hm-tolog" aria-label="To log">
+        <div className="hm-caughtup" role="status">
+          <span className="hm-caughtup-l">
+            <span className="hm-cell hm-f-2xs hm-caughtup-key">All caught up</span>
+            <span className="hm-cell hm-f-sm hm-caughtup-line"><span className="hm-clip">{doneToday} result{doneToday === 1 ? '' : 's'} logged today{doneWeek > doneToday ? ` \u00b7 ${doneWeek} this week` : ''}</span></span>
+          </span>
+          <span className="hm-caughtup-pill">{'Done \u2713'}</span>
+        </div>
+      </section>
+    );
+  }
   // The rows on show, with every held row back at the place it had, so nothing moves under a tap.
   // A held row takes one of the SHOWN places: the section stays its height through the hold, and
   // the next event comes in when the hold ends (it used to come in at once, and everything below
@@ -181,7 +203,7 @@ export default function HomeToLog({ schedule, results, updates, plans = null, to
   return (
     <section className="dashboard-section hm-tolog" aria-label="To log">
       <div className="dashboard-section-header">
-        <div className="dashboard-section-title">To log</div>
+        <div className="dashboard-section-title">To log <span className="hm-title-count">{`\u00b7 ${rows.length + held.length}`}</span></div>
         {(all ? folds : more > 0) && (
           <button type="button" className="hm-head-pill hm-head-pill--wide" onClick={() => setAll((a) => !a)}
             aria-expanded={all} aria-controls={listId}

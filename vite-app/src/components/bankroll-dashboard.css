@@ -293,3 +293,19 @@
 /* The line-shape switch in the Overview graph's head (styled as .bp-style, backer-chart.css). */
 .bd-chart-head:has(.bd-style) { grid-template-columns: calc(var(--gu) * 15) calc(var(--gu) * 6) calc(var(--gu) * 12); }
 .bd-style { width: calc(var(--gu) * 6); height: calc(var(--subrow) * 3); box-sizing: border-box; margin: 0; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; box-shadow: inset 0 0 0 var(--bw-hair) var(--border); color: var(--text-muted); font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold); cursor: pointer; }
+/* The WSOP fund (UX pick 87): 3r label, 4r figure, the 1r bar with its pace tick, a 3r note; 2r above. */
+.bd-fund { margin-top: calc(var(--subrow) * 2); }
+.bd-fund .bd-fund-fig { text-align: left; }
+/* The graph's options in one style and one row (UX pick 89): Profit | Balance 13g, the line shape 10g,
+   Fill 10g, 1g apart, 4r. The legend holds only the lines, 11g each; the note has its own 3r line. */
+.bd-chart-head.is-options { grid-template-columns: calc(var(--gu) * 13) calc(var(--gu) * 10) calc(var(--gu) * 10); height: calc(var(--subrow) * 4); }
+.bd-chart-head.is-options > .bd-seg.bd-mode { width: calc(var(--gu) * 13); grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 6); }
+.bd-chart-head.is-options .bd-opt {
+  display: flex; align-items: center; justify-content: center;
+  width: calc(var(--gu) * 10); height: calc(var(--subrow) * 4); box-sizing: border-box; margin: 0; padding: 0; border: 0;
+  border-radius: var(--radius); background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text-muted); font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); cursor: pointer;
+}
+.bd-chart-head.is-options .bd-opt.is-on { color: var(--text); box-shadow: inset 0 0 0 var(--bw-fine) var(--text-muted); }
+.bd-series.is-lines { grid-template-columns: repeat(3, calc(var(--gu) * 11)); }
+.bd-chart-note { margin-top: var(--subrow); display: block; }

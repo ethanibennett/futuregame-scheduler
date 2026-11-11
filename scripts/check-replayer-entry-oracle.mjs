@@ -698,8 +698,10 @@ async function worker(w) {
             if (!same(o.pot, want)) await find('offer', 'the pot-limit figure is not the pot', at,
               `${who(ev.player)}: a pot-sized ${ev.oweFull === 0 ? 'bet is ' + show(want) : 'raise is to ' + show(want)} (pot ${show(ev.pot)}, ${show(ev.oweFull)} to call, ${show(ev.stackBefore)} behind); the screen says "Pot ${o.pot}"`);
           }
-          // the smallest raise, read off the amount box (opened only where it tells something)
+          // the smallest raise, read off the amount box (opened only where it tells something). The box
+          // takes the total the seat is in for on the street, "raise to" (UX pick 52, 2026-11-10).
           const minInc = Math.min(ev.minTo - ev.contribBefore, ev.stackBefore);
+          const minToBox = ev.contribBefore + minInc;
           const readMin = async () => {
             await tap(btn(/^(Bet|Raise)$/), 'Bet / Raise');
             const box = p.locator('.gto-seat.active .gto-raise-input-row input').first();
@@ -709,8 +711,8 @@ async function worker(w) {
             const raw = (await box.inputValue()) || (await box.getAttribute('placeholder')) || '';
             const v = Number(raw || NaN);
             if (/\.\d{3,}/.test(raw)) await find('offer', 'the amount box shows a figure with a long tail of decimals', at, `${who(ev.player)}: the box opens on "${raw}"`);
-            if (!(Math.abs(v - minInc / U) <= 0.005)) await find('offer', 'the smallest raise shown is not the minimum', at,
-              `${who(ev.player)}: the smallest ${ev.oweFull === 0 ? 'bet' : 'raise'} puts in ${show(minInc)} (to ${show(ev.minTo)}); the amount box opens on ${v}`);
+            if (!(Math.abs(v - minToBox / U) <= 0.005)) await find('offer', 'the smallest raise shown is not the minimum', at,
+              `${who(ev.player)}: the smallest ${ev.oweFull === 0 ? 'bet' : 'raise'} puts in ${show(minInc)} (to ${show(minToBox)}); the amount box opens on ${v}`);
             return box;
           };
           const typed = /^(bet|raise)$/.test(ev.kind) && betting !== 'fl';
@@ -765,11 +767,12 @@ async function worker(w) {
             // a click that cannot land in time (a busy machine: seen once in 500 hands) falls back to the focus
             await box.click({ timeout: 2500 }).catch(() => box.focus());
             if ((await box.inputValue()) !== '') await box.press('ControlOrMeta+a');
-            await box.pressSequentially(show(ev.amount));
+            const typeTo = ev.contribBefore + ev.amount;   // the total, as the box takes it
+            await box.pressSequentially(show(typeTo));
             const got = await box.inputValue();
-            if (Math.abs(Number(got) - ev.amount / U) > 1e-9) {
-              await find('cannot', 'a bet with cents cannot be typed', at, `${need}: typed "${show(ev.amount)}", the amount box reads "${got}"`);
-              await box.fill(show(ev.amount));
+            if (Math.abs(Number(got) - typeTo / U) > 1e-9) {
+              await find('cannot', 'a bet with cents cannot be typed', at, `${need}: typed "${show(typeTo)}", the amount box reads "${got}"`);
+              await box.fill(show(typeTo));
             }
             await tap(p.locator('.gto-seat.active .gto-raise-input-row button.btn-primary').filter({ hasText: 'Confirm' }).first(), 'Confirm');
           }

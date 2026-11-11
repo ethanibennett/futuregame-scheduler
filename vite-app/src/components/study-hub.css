@@ -47,3 +47,12 @@
 .ds-list { margin: var(--subrow) 0 0; padding-left: calc(var(--gu) * 2); }
 /* The phone's table holds what a choice needs: the spread is one disclosure too many at 33g. */
 @media (max-width: 1023px) { .ds-table .ds-sd { display: none; } }
+/* A row's game tags (UX pick 72): on the name's line, right-aligned 1g in, 2r tall from 1r down (so
+   their foot is the name's baseline), 0.5g apart; each word centred in its tag, white on the strip. */
+.study-row { position: relative; }
+.study-tags { position: absolute; top: var(--subrow); right: var(--gu); display: flex; column-gap: calc(var(--gu) * 0.5); pointer-events: none; }
+.study-tag {
+  display: flex; align-items: center; justify-content: center; height: calc(var(--subrow) * 2); padding: 0 calc(var(--gu) * 0.5);
+  border-radius: var(--radius-xs); color: #fff; white-space: nowrap; line-height: 1;
+  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: var(--track-caps);
+}

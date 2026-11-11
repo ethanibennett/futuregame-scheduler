@@ -1064,3 +1064,54 @@ button.hm-receipt:focus-visible { outline: var(--focus-ring); outline-offset: va
 .hm-friends-list { display: grid; row-gap: var(--subrow); }
 .hm-friends .hm-bank-col { flex: 1 1 auto; }
 .hm-friends .hm-bank-pill { margin-left: var(--gu); }
+/* Then (UX pick 36): a 35g card 1r under the pager, the period card's 4r rows (21g | 14g) as buttons. */
+.hm-then {
+  margin-top: var(--subrow); border-radius: var(--radius); overflow: hidden;
+  background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1);
+}
+.hm-then-row { width: 100%; border: 0; padding: 0; margin: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+/* A row here is a button, so its words are centred in the 4r box, not seated (the owner's rule for a
+   control's label): each cell a flex box, its line trimmed to the caps, the padding room for the
+   descenders cancelled as .hm-clip does. */
+.hm-then-row > .hm-cell { display: flex; align-items: center; padding-top: 0; line-height: normal; }
+.hm-then-row > .hm-prow-v { justify-content: flex-end; }
+.hm-then-row > .hm-cell > .hm-clip { line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; }
+.hm-then-row:first-child { box-shadow: none; }
+.hm-then .hm-prow-l.is-muted { color: var(--text-muted); }
+@media (hover: hover) and (pointer: fine) {
+  .hm-then-row:hover { background-image: linear-gradient(var(--hover-overlay), var(--hover-overlay)); }
+}
+/* To log's count beside its title, muted regular (UX pick 44). */
+.hm-title-count { color: var(--text-muted); font-weight: var(--fw-regular); }
+/* All caught up (UX pick 51): one 5r bar in the bankroll line's surface, the key over the line on the
+   left (2r + 3r), a 7g x 3r Done pill at the right. */
+.hm-caughtup {
+  display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 7); column-gap: var(--gu); align-items: center;
+  height: calc(var(--subrow) * 5); box-sizing: border-box; padding: 0 var(--gu);
+  border-radius: var(--radius); background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1);
+}
+.hm-caughtup-l { display: block; min-width: 0; }
+.hm-caughtup-key { --h: 2; --k: 2; color: var(--text-muted); text-transform: uppercase; letter-spacing: var(--track-caps); }
+.hm-caughtup-line { --h: 3; --k: 2; color: var(--text); }
+.hm-caughtup-pill {
+  height: calc(var(--subrow) * 3); display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-pill); background: var(--brand-quiet); color: var(--brand);
+  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  text-transform: uppercase; letter-spacing: var(--track-caps); text-indent: var(--track-caps);
+}
+/* The period card and its caveat as one region (UX pick 45): the region carries the card's surface,
+   the line is its last row under a hairline, 1g in, and a progress bar 0.5r tall closes it. */
+.hm-period-region.has-noise {
+  border-radius: var(--radius); overflow: hidden;
+  background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1);
+}
+.hm-period-region.has-noise > .hm-period-card { box-shadow: none; border-radius: 0; background: none; }
+.hm-period-region.has-noise > .hm-noise {
+  margin: 0; border-radius: 0; padding-left: var(--gu); padding-right: var(--gu);
+  box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+}
+.hm-noise-bar {
+  display: block; height: calc(var(--subrow) * 0.5); margin: 0 0 calc(var(--subrow) * 0.5);
+  border-radius: var(--radius-pill); background: var(--border); overflow: hidden;
+}
+.hm-noise-bar > span { display: block; height: 100%; background: var(--brand); }

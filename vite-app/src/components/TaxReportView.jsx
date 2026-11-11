@@ -90,7 +90,10 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
   const [error, setError] = useState(null);
   const [rates, setRates] = useState(null);
   const [taxPct, setTaxPct] = useState(30);
-  const [year, setYear] = useState(() => defaultTaxYear(getToday()));
+  const [year, setYearRaw] = useState(() => defaultTaxYear(getToday()));
+  // The results pick the opening year once they load (UX pick 83), unless a year was chosen already.
+  const yearChosen = useRef(false);
+  const setYear = (y) => { yearChosen.current = true; setYearRaw(y); };
   const [basis, setBasis] = useState('gross');
   const [busy, setBusy] = useState('');
   // Logged expenses and income (Results → Expenses & income). Optional: a failure leaves the report
@@ -115,6 +118,13 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
 
   const withCurrency = useMemo(() => (entries || []).map((e) => ({ ...e, currency: nativeCurrency(e.venue) })), [entries]);
   const years = useMemo(() => availableYears(withCurrency, getToday()), [withCurrency]);
+  useEffect(() => { if (entries && !yearChosen.current) setYearRaw(defaultTaxYear(getToday(), withCurrency)); }, [entries, withCurrency]);
+  // A year with nothing logged is one block, not seven totals of $0 (UX pick 83): the way to the newest
+  // year that has results.
+  const yearOf = (e) => Number(String((e && e.date) || '').slice(0, 4)) || null;
+  const emptyYear = !!entries && !withCurrency.some((e) => yearOf(e) === year);
+  const jumpYear = emptyYear ? years.find((y) => y !== year && withCurrency.some((e) => yearOf(e) === y)) : null;
+  const jumpCount = jumpYear ? withCurrency.filter((e) => yearOf(e) === jumpYear).length : 0;
   const report = useMemo(() => buildTaxReport(withCurrency, {
     year,
     bankrollId,
@@ -169,7 +179,18 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
       {error && <div className="taxr-t taxr-t3 taxr-msg">{error}</div>}
       {!error && !entries && <div className="taxr-t taxr-t3 taxr-msg">Loading…</div>}
 
-      {entries && (
+      {emptyYear && (
+        <WholeRows className="taxr-block taxr-empty">
+          <Header title={`Nothing logged in ${year}`} />
+          <Para muted>{jumpYear ? 'No result is dated this year. Your results are in another year.' : 'No result is dated this year yet.'}</Para>
+          {jumpYear && (
+            <button type="button" className="taxr-btn is-brand taxr-jump" onClick={() => setYear(jumpYear)}>
+              <span className="taxr-t">{`Show ${jumpYear} \u00b7 ${jumpCount} result${jumpCount === 1 ? '' : 's'}`}</span>
+            </button>
+          )}
+        </WholeRows>
+      )}
+      {entries && !emptyYear && (
         <>
           <WholeRows className="taxr-block">
             <Header title={`Totals ${year}`} />
