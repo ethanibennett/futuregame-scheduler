@@ -104,7 +104,7 @@ sessions opened here own scheduler work.
   Amounts in the entry go through `parseAmount`/`AmountField` (cents in cash, whole chips in a tournament, "1,500", "25k").
 - **Hands > Study** (owner, 2026-11-04: one training experience; `components/StudyHub.jsx`, `StudyHead.jsx`, `study-hub.css`):
   the Hands row is Replayer, Study, Scanner, and Study is one list of the solver tools: Practice (Play a hand, Hand trainer,
-  Quick spots, Three-way Razz), Look up (Watch the solver, Solve a spot, Price a draw). Each opens under the same header and
+  Quick spots, Three-way Razz), Look up (Watch the solver, Solve a spot, Price a draw, Pre-draw ranges). Each opens under the same header and
   game pills, in player-facing wording (no blueprint, CFR, oracle or infoset on screen; a player's figures sit behind a
   disclosure). `GET /api/solver/availability` says which blueprints are on disk, by file alone, and Study hides the rest:
   a5td, stud8 and razz3 here and on Render.
@@ -116,6 +116,29 @@ sessions opened here own scheduler work.
   price other cards: unrecorded draws, more than two players with chips in, and **a hero who broke a made hand** (td27: any
   8-low or better), which the engine can only stand pat. At a made hand's own draw it prices breaking it, and only the pat
   can be taken. Tests in `npm run test:replayer-drill`.
+- **Pre-draw ranges** (Study > Look up, app admins; added 2026-11-06; `components/RangesView.jsx`,
+  `GET /api/solver/ranges/:gameId`): the four 6-max 2-7 triple draw pre-draw ranges — opening, over a limp,
+  facing an open, facing a 3-bet — as the positional ladder and as the concrete holdings the solve can tell
+  apart, with the 90/50/10 thresholds drawn where the rows cross them and a search box over the holdings.
+  td27 only; any other game is a 404, deliberately not an empty 200.
+  🎯 **THE DESIGN DECISION WORTH KEEPING: the route serves FILES, and nothing in this repo types those
+  numbers.** They are written by the solver's own tools — `solver/multiway/entry-hand-table.js` for the 250
+  hand rows and `solver/multiway/range-doc-gate.js` for the 36 ladder/limped/3-bet/4-bet/group figures — and
+  the second of those **only writes at all on a PASS**, because it is the gate that holds
+  `docs/LJ-OPENING-RANGE.md` to an independent re-derivation from the MCCFR snapshots. A drifted, unresolved,
+  null-arm, inject-arm or basis-diff run emits nothing. So the screen, the research document and the
+  snapshots cannot silently disagree — which is the exact drift that let a stud8 sidecar steer six weeks of
+  priorities. The route re-checks `verified.drifted` on read and 503s, since that is the last place a
+  hand-edited file would surface.
+  ⚠ A re-solve was deliberately NOT built: this is a lookup whose answer is fixed at the rung the document
+  declares, and re-deriving it would mean a pass over six ~95 MB snapshots to answer it.
+  ⚠ `RANGES_DIR` overrides the directory. It exists because the refusal branches have to be demonstrated by
+  a test, and the only other way is to perturb the shipped data file — which is exactly what the first
+  version of the test did, and it corrupted that file when a `| head` closed the pipe and killed node before
+  its restore ran. Tests in `npm run test:solver-ranges` (17 assertions: the 401, the 403 from the
+  `/api/solver` admin gate, the 404, a payload-equals-the-file IDENTITY arm, both 503 refusals fired on
+  fixtures, a can-it-still-pass control on an unperturbed fixture, and a sha check that the shipped files
+  were never written).
 
 ## Runs 24/7 on this box (don't duplicate)
 pm2 app **futuregame-scheduler** serves this checkout on **port 3001**, restarting

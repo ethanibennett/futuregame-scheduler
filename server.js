@@ -9385,6 +9385,73 @@ app.get('/api/solver/availability', (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json(out);
 });
+// --- PRE-DRAW RANGES ---------------------------------------------------------
+// Served straight from two JSON files in the solver clone. Those files are not
+// hand-written and they are not a transcription of the research document: each
+// is written by the tool that OWNS its numbers, and the ladder file can only be
+// produced by a PASSING run of `solver/multiway/range-doc-gate.js` -- the gate
+// that holds `docs/LJ-OPENING-RANGE.md` to an independent re-derivation from the
+// MCCFR snapshots. A drifted, unresolved or null-arm run writes nothing. So the
+// numbers this route serves, the numbers in the document, and the numbers in the
+// snapshots cannot silently disagree.
+//   nodes: 36 gate-verified figures (the positional ladder, limped pots, 3-bet,
+//          4-bet, and the 9 pooled hand groups at LJ and BTN)
+//   hands: 250 rows -- the range as the concrete holdings the solve can tell
+//          apart, at all four betting nodes
+// WHY THE FILES AND NOT A SOLVE: this is a lookup, not a computation. Re-deriving
+// it would mean a pass over 6 snapshots (a few minutes and hundreds of MB) to
+// answer a question whose answer is fixed at the rung the document declares.
+const RANGE_FILES = {
+  td27: { nodes: 'td27-predraw-nodes.json', hands: 'td27-predraw-hands.json' },
+};
+const _rangeCache = {};
+app.get('/api/solver/ranges/:gameId', authenticateToken, (req, res) => {
+  const id = String(req.params.gameId || '');
+  const files = RANGE_FILES[id];
+  // A game with no range file is a 404, not an empty 200: an empty payload would
+  // render as a page with no rows, which reads as "the solver plays nothing here".
+  if (!files) {
+    return res.status(404).json({ error: `no pre-draw ranges for '${id}' — td27 only` });
+  }
+  if (_rangeCache[id]) return res.json(_rangeCache[id]);
+  const fsSync = require('fs'); // top-level fs is the promises API
+  // RANGES_DIR overrides where the files are read from. It exists because this
+  // project's solver is reached through a junction whose location is already
+  // environment-dependent (the two-clone discipline), and because the refusal
+  // branches below have to be DEMONSTRATED by a test -- and the only other way
+  // to demonstrate them is to perturb the shipped data file, which a test killed
+  // mid-run then leaves perturbed. That happened once, to this very file, from a
+  // `| head` closing the pipe. It changes WHERE the data is read, never whether
+  // the checks run, so a run under it is still a real exercise of this handler.
+  const dir = process.env.RANGES_DIR || path.join(__dirname, 'solver', 'draw-trainer', 'ranges');
+  try {
+    const nodes = JSON.parse(fsSync.readFileSync(path.join(dir, files.nodes), 'utf8'));
+    const hands = JSON.parse(fsSync.readFileSync(path.join(dir, files.hands), 'utf8'));
+    // REFUSE A FILE THAT PARSED BUT CARRIES NOTHING. An empty rows array is valid
+    // JSON and would serve a 200 with a blank table -- the shape this project
+    // keeps paying for, where an absent answer is indistinguishable from a real
+    // one. Say it is unavailable instead.
+    if (!nodes.rows || !nodes.rows.length || !hands.lines || !hands.lines.length) {
+      console.warn(`[ranges] ${id}: a range file parsed but is empty`);
+      return res.status(503).json({ error: 'The pre-draw ranges are not available on this build.' });
+    }
+    // The gate writes `verified` and only writes at all on a pass; check it here
+    // too, because this route is where a stale hand-edited file would surface.
+    if (nodes.verified && (nodes.verified.drifted || nodes.verified.unresolved)) {
+      console.warn(`[ranges] ${id}: nodes file reports drifted/unresolved figures`);
+      return res.status(503).json({ error: 'The pre-draw ranges did not pass their gate.' });
+    }
+    const out = { game: id, nodes, hands };
+    _rangeCache[id] = out;
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.json(out);
+  } catch (e) {
+    // Same failure mode as requireSolverOptional above: the solver clone this
+    // build fetched can be behind the repo that has these files. Log once, 503.
+    console.warn(`[ranges] ${id} unavailable in this build's solver: ${e.message}`);
+    res.status(503).json({ error: 'The pre-draw ranges are not available on this build.' });
+  }
+});
 app.post('/api/solver/trainer/:game/deal', authenticateToken, (req, res) => {
   const game = resolveTrainerGame(req, res); if (!game) return;
   if (!requireTrainerBp(game, res)) return;

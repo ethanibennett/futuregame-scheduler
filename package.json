@@ -92,6 +92,8 @@
     "test:growth": "node test/growth.test.js && node test/attribution.test.js && cd vite-app && node --test src/utils/__tests__/growth-report.test.mjs",
     "test:apple-billing": "node test/apple-billing.test.js && node test/billing-features.test.js",
     "test:admin-eval": "node test/admin-eval.test.js",
+    "check:ranges-render": "node vite-app/scripts/check-ranges-render.mjs",
+    "test:solver-ranges": "node test/solver-ranges.test.js",
     "test:replayer-drill": "node test/replayer-drill.test.js && node vite-app/src/utils/__tests__/replayer-drill.test.mjs && node vite-app/src/utils/__tests__/draw-study-spot.test.mjs",
     "test:backer-live": "node test/backer-live.test.js",
     "test:hidden-games": "node --test vite-app/src/utils/__tests__/hidden-games.test.mjs"
