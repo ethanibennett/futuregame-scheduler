@@ -6525,6 +6525,18 @@
     .replayer-gain.is-under { transform: translateX(-50%); }
     /* A pot-sized bet's figure, on its way from the pot to the wager (36). */
     .replayer-pot-copy { position: absolute; white-space: nowrap; pointer-events: none; z-index: 3; }
+    /* The seats' words (Replayer animations 55, 58, 63, 66, 71). */
+    .replayer-action-badge-outer.is-stale { opacity: 0.4; }
+    .replayer-out-mark { font: inherit; letter-spacing: inherit; color: var(--text-muted); }
+    .replayer-seat.is-out .replayer-seat-info { scale: 0.93; opacity: 0.5; }
+    .replayer-seat-hand-name.is-trailing { opacity: 0.55; }
+    .replayer-seat-hand-name.is-note { color: var(--brand-on-dark); }
+    /* A ring on its way between plaques (51) or closing onto one (57); the plaque's own ring waits for it. */
+    .replayer-turn-ring { position: absolute; pointer-events: none; box-sizing: border-box; z-index: 4; border: var(--bw-1) solid var(--brand-on-dark);
+      box-shadow: var(--ring-1) rgba(60,200,224,0.55), var(--ring-2) rgba(60,200,224,0.40); }
+    .replayer-turn-ring.is-allin { border-color: var(--act-allin); box-shadow: var(--ring-1) rgba(168,85,247,0.42); }
+    .replayer-seat.ring-wait .replayer-seat-info { border-color: rgba(255,255,255,0.22); box-shadow: none; transition: none; }
+    .replayer-seat.ring-wait .replayer-seat-info::before { animation: none; }
     /* 48: the pot's figure at a result whose pot has been shipped. */
     .replayer-pot-display.is-emptied { opacity: 0; }
 

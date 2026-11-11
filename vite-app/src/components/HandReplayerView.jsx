@@ -6533,6 +6533,16 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const toggleStackUnit = (e) => {
     if (!stackUnitAvailable) return;
     e.stopPropagation();
+    // 59: the figures roll to the other unit outward from the seat tapped.
+    try {
+      const seatEl = e.currentTarget && e.currentTarget.closest('.replayer-seat');
+      const t = tableRef.current;
+      if (seatEl && t) {
+        const texts = new Map();
+        t.querySelectorAll('.replayer-seat[data-seat] .replayer-seat-stack').forEach(el => texts.set(Number(el.closest('.replayer-seat').dataset.seat), el.textContent));
+        motionRef.current.unitRoll = { seat: Number(seatEl.dataset.seat), texts };
+      }
+    } catch (err) { /* never break the tap */ }
     rSetters.stacksInBB(!rSettings.stacksInBB);
   };
 
@@ -7632,6 +7642,29 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      feature than a bar. */
   const [exportPreview, setExportPreview] = useState(null);
   const [inspecting, setInspecting] = useState(null);
+  /* 62: a seat's history unrolls from its plaque on tap: the panel drops 0.75r, its rows fade in top to bottom. */
+  useLayoutEffect(() => {
+    if (inspecting == null || !springOn) return;
+    const t = tableRef.current;
+    const panel = t && t.querySelector('.replayer-seat[data-seat="' + inspecting + '"] .replayer-seat-line');
+    if (!panel) return;
+    const m = motionRef.current;
+    const ySp = tierSpring(springSet, 'yield');
+    const S0 = SPRING_SETS[springSet].stage;
+    const pr = document.createElement('div');
+    pr.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)';
+    t.appendChild(pr);
+    const r = pr.getBoundingClientRect().height / 100 || 8;
+    t.removeChild(pr);
+    m.run(panel, { key: { el: panel, kind: 'panel' }, property: 'individual', size: { w: panel.offsetWidth, h: panel.offsetHeight }, channels: [
+      { prop: 'y', spring: ySp, from: -0.75 * r, to: 0 },
+      { prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: S0.arrivalFade } },
+    ] });
+    [...panel.querySelectorAll('.replayer-seat-line-row')].forEach((row, k) => m.run(row, { key: { el: row, kind: 'row' }, property: 'individual', size: { w: row.offsetWidth, h: row.offsetHeight }, channels: [
+      { prop: 'opacity', ramp: { from: 0, to: 1, delay: 40 + k * 25, duration: 60 } },
+    ] }));
+  }, [inspecting]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [showExportMenu, setShowExportMenu] = useState(false);
   // Features 26, 27, 29, 31 (2026-11-11).
   const [noteEditing, setNoteEditing] = useState(false);
@@ -9044,6 +9077,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const cardElsNow = new Set();
       const posedNow = [];
       const boardNow = { rowY: null, extraRows: 0, mainLen: 0, xk: new Map() };
+      const seatsNow = { turn: null, labels: [], runNames: new Map() };
       const deadNow = new Map();
       if (table && springOn) {
         table.querySelectorAll('[data-seat-cards] > .card-row > *').forEach(el => {
@@ -9057,6 +9091,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           cardElsNow.add(el);
         });
         table.querySelectorAll('.card-row > [data-pose]').forEach(el => posedNow.push(el));
+        // The seats (51-71): the plaque with the turn, every action label, every name under a plaque.
+        const turnInfo = turnIdx != null && turnIdx >= 0 ? table.querySelector('.replayer-seat[data-seat="' + turnIdx + '"] .replayer-seat-info') : null;
+        seatsNow.turn = turnInfo ? { seat: turnIdx, rect: turnInfo.getBoundingClientRect() } : null;
+        table.querySelectorAll('.replayer-action-badge-outer[data-act-seat]').forEach(el => {
+          const r = el.getBoundingClientRect();
+          if (r.width > 0) seatsNow.labels.push({ node: el, seat: Number(el.dataset.actSeat), cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: el.offsetWidth || r.width, h: el.offsetHeight || r.height, angle: 0 });
+        });
+        table.querySelectorAll('[data-run-name]').forEach(el => seatsNow.runNames.set(Number(el.dataset.nameSeat), { text: el.dataset.runName, lead: !el.classList.contains('is-trailing') }));
         // The Dead cards strip (7), under the table in portrait, in the board's slot in landscape.
         const deadRoot = table.closest('.replayer-replay') || table.parentElement;
         if (deadRoot) deadRoot.querySelectorAll('.replayer-dead-strip-cards > img, .replayer-dead-row > img').forEach(el => {
@@ -9093,6 +9135,11 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           motion.prevSeatCards = seatCardsNow;
           motion.prevCardEls = cardElsNow;
           motion.prevBoard = boardNow;
+          motion.prevSeats = seatsNow;
+          motion.prevAtRisk = new Set(atRiskSeats);
+          motion.prevStaleEls = new Set(table ? table.querySelectorAll('.replayer-action-badge-outer.is-stale') : []);
+          motion.prevNameEls = new Set(table ? table.querySelectorAll('[data-name-seat]') : []);
+          motion.prevBadges = new Set(table ? table.querySelectorAll('.replayer-seat-draw-badge') : []);
           motion.prevDead = deadNow;
           // Each stack's figure as drawn (31, 33): what a countdown starts from.
           motion.prevStackVals = new Map(hand.players.map((_, pi) => [pi, stackFigure(pi)]));
@@ -9185,8 +9232,27 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             const posted = computePlayerContrib(hand, 0, currentActions, -1, p.seat);
             return { ...p, ox: dx / len * push, oy: dy / len * push, delay: (anteJobs.length ? anteEnd + st0.beat / rate0 : t0) + (k * st0.beat) / rate0, tn, from: stackFigure(p.seat) + posted, to: stackFigure(p.seat), r: p.el.getBoundingClientRect() };
           });
-          if (anteJobs.length || pillJobs.length) {
+          const btnEl = table.querySelector('.replayer-dealer-btn');
+          const btnSeatIdx = btnEl ? Number(btnEl.closest('.replayer-seat').dataset.seat) : -1;
+          const btnJob = (() => {
+            if (!btnEl || btnSeatIdx < 0 || hand.players.length < 3) return null;
+            const prev = (btnSeatIdx - 1 + hand.players.length) % hand.players.length;
+            const a = table.querySelector('.replayer-seat[data-seat="' + btnSeatIdx + '"] .replayer-seat-info');
+            const b = table.querySelector('.replayer-seat[data-seat="' + prev + '"] .replayer-seat-info');
+            if (!a || !b) return null;
+            const ar = a.getBoundingClientRect(), br = b.getBoundingClientRect();
+            return { dx: (br.left + br.width / 2) - (ar.left + ar.width / 2), dy: (br.top + br.height / 2) - (ar.top + ar.height / 2), size: { w: btnEl.offsetWidth, h: btnEl.offsetHeight } };
+          })();
+          if (anteJobs.length || pillJobs.length || btnJob) {
             if (dealEnds < 0) { motion.finishAll(); motion.beginMoment('open'); }
+            if (btnJob) {
+              const armB = tierSpring(springSet, 'arm');
+              motion.run(btnEl, { key: { el: btnEl, kind: 'arrive' }, property: 'individual', size: btnJob.size, channels: [
+                { prop: 'x', spring: armB, from: btnJob.dx, to: 0, delay: 60 / rate0, timeScale: rate0 },
+                { prop: 'y', spring: armB, from: btnJob.dy, to: 0, delay: 60 / rate0, timeScale: rate0 },
+                { prop: 'rotate', spring: armB, from: -120, to: 0, delay: 60 / rate0, timeScale: rate0 },
+              ] });
+            }
             motion.momentKey = 'open';
             const full = shownPot;
             let landed = full - anteJobs.length * ante;
@@ -9224,6 +9290,44 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               }
             });
           }
+        }
+      }
+      if (motion.unitRoll && table && springOn) {
+        const roll = motion.unitRoll;
+        motion.unitRoll = null;
+        const n = hand.players.length;
+        const S0 = SPRING_SETS[springSet].stage;
+        const ySp = tierSpring(springSet, 'yield');
+        const jobs = [];
+        table.querySelectorAll('.replayer-seat[data-seat] .replayer-seat-stack').forEach(el => {
+          const pi = Number(el.closest('.replayer-seat').dataset.seat);
+          const was = roll.texts.get(pi);
+          if (was == null || was === el.textContent) return;
+          const ring = Math.min((pi - roll.seat + n) % n, (roll.seat - pi + n) % n);
+          jobs.push({ el, pi, was, delay: ring * S0.sweepStagger, w: el.offsetWidth, h: el.offsetHeight });
+        });
+        if (jobs.length) {
+          const r = (() => { const pr = document.createElement('div'); pr.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)'; table.appendChild(pr); const v = pr.getBoundingClientRect().height / 100 || 8; table.removeChild(pr); return v; })();
+          motion.finishAll();
+          motion.beginMoment('unit');
+          jobs.forEach(j => {
+            const plaque = j.el.parentElement;
+            if (!plaque) return;
+            if (getComputedStyle(plaque).position === 'static') plaque.style.position = 'relative';
+            const ghost = document.createElement('span');
+            ghost.className = 'replayer-stack-roll';
+            ghost.textContent = j.was;
+            Object.assign(ghost.style, { left: j.el.offsetLeft + 'px', top: j.el.offsetTop + 'px', width: j.w + 'px', height: j.h + 'px', right: 'auto', bottom: 'auto' });
+            plaque.appendChild(ghost);
+            motion.run(ghost, { transient: true, property: 'individual', size: { w: j.w, h: j.h }, channels: [
+              { prop: 'y', spring: ySp, from: 0, to: -0.75 * r, delay: j.delay, timeScale: 1 },
+              { prop: 'opacity', ramp: { from: 1, to: 0, delay: j.delay, duration: 60 } },
+            ] });
+            motion.run(j.el, { key: { el: j.el, kind: 'roll' }, property: 'individual', size: { w: j.w, h: j.h }, channels: [
+              { prop: 'y', spring: ySp, from: 0.75 * r, to: 0, delay: j.delay, timeScale: 1 },
+              { prop: 'opacity', ramp: { from: 0, to: 1, delay: j.delay, duration: 60 } },
+            ] });
+          });
         }
       }
       if (!motionKind || !table) { resyncDigits(); record(); return; }
@@ -10116,7 +10220,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               mk.textContent = 'ALL-IN';
               ghost.appendChild(mk);
               plaque.appendChild(ghost);
-              const tn = el.firstChild && el.firstChild.nodeType === 3 ? el.firstChild : null;
+              const tn = (el.firstChild && el.firstChild.nodeType === 3) || el.querySelector('.replayer-out-mark') ? el.firstChild : null;
               motion.run(ghost, { transient: true, property: 'individual', size: { w: el.offsetWidth, h: el.offsetHeight }, channels: [
                 { prop: 'y', spring: flickSp, from: 0, to: -r1, delay: tLand, timeScale: rate },
                 { prop: 'opacity', ramp: { from: 1, to: 0, delay: tLand, duration: S2.labelFade / rate } },
@@ -10130,6 +10234,207 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               }
             });
           });
+        }
+      }
+
+      /* (8) The seats (Replayer animations 51, 53-55, 57, 58, 60, 61, 63, 66, 67, 71). */
+      {
+        const S4 = SPRING_SETS[set].stage;
+        const ySp = tierSpring(set, 'yield'), armSp = tierSpring(set, 'arm'), inertiaSp = tierSpring(set, 'inertia');
+        const r4 = (() => { const pr = document.createElement('div'); pr.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)'; table.appendChild(pr); const v = pr.getBoundingClientRect().height / 100 || 8; table.removeChild(pr); return v; })();
+        const prevS = motion.prevSeats || { turn: null, labels: [], runNames: new Map() };
+        const seatOf = (pi) => table.querySelector('.replayer-seat[data-seat="' + pi + '"]');
+        const act4 = motionKind === 'action' ? currentActions[actionIdx] : null;
+        const drop = (el, delay, from = -0.75 * r4, fade = S4.arrivalFade) => {
+          el.getAnimations().forEach(a => { if (a instanceof CSSAnimation) a.cancel(); });
+          return motion.run(el, { key: { el, kind: 'drop' }, property: 'individual', size: { w: el.offsetWidth, h: el.offsetHeight }, channels: [
+            { prop: 'y', spring: ySp, from, to: 0, delay, timeScale: rate },
+            { prop: 'opacity', ramp: { from: 0, to: 1, delay, duration: fade / rate } },
+          ] });
+        };
+        // 51: the turn ring travels from the plaque that acted to the next one to act, on the arm spring.
+        const toSeat = turnIdx != null && turnIdx >= 0 ? seatOf(turnIdx) : null;
+        if ((motionKind === 'action' || motionKind === 'street') && prevS.turn && toSeat && prevS.turn.seat !== turnIdx && layer && L) {
+          const info = toSeat.querySelector('.replayer-seat-info');
+          const tr = info.getBoundingClientRect(), fr = prevS.turn.rect;
+          const radius = getComputedStyle(info).borderRadius;
+          writes.push(() => {
+            const ring = document.createElement('div');
+            ring.className = 'replayer-turn-ring';
+            Object.assign(ring.style, { left: (fr.left - L.left) + 'px', top: (fr.top - L.top) + 'px', width: fr.width + 'px', height: fr.height + 'px', borderRadius: radius, transformOrigin: '0 0' });
+            layer.appendChild(ring);
+            toSeat.classList.add('ring-wait');
+            const land = timeTo(armSp, 0.98) / rate;
+            const entry = motion.run(ring, { transient: true, size: { w: fr.width, h: fr.height }, end: land + S4.arrivalFade / rate, channels: [
+              { prop: 'x', spring: armSp, from: 0, to: tr.left - fr.left, timeScale: rate },
+              { prop: 'y', spring: armSp, from: 0, to: tr.top - fr.top, timeScale: rate },
+              { prop: 'scaleX', spring: armSp, from: 1, to: tr.width / Math.max(1, fr.width), timeScale: rate },
+              { prop: 'scaleY', spring: armSp, from: 1, to: tr.height / Math.max(1, fr.height), timeScale: rate },
+              { prop: 'opacity', ramp: { from: 1, to: 0, delay: land, duration: S4.arrivalFade / rate } },
+            ] });
+            const take = () => toSeat.classList.remove('ring-wait');
+            if (entry) motion.tick(land, take, entry); else take();
+          });
+        }
+        // 53: the action label rises out of its plaque and settles.
+        if (act4) {
+          const lab = table.querySelector('.replayer-action-badge-outer[data-act-seat="' + act4.player + '"]');
+          if (lab) writes.push(() => {
+            lab.getAnimations().forEach(a => { if (a instanceof CSSAnimation) a.cancel(); });
+            motion.run(lab, { key: { el: lab, kind: 'rise' }, property: 'individual', size: { w: lab.offsetWidth, h: lab.offsetHeight }, channels: [
+              { prop: 'y', spring: ySp, from: r4, to: 0, timeScale: rate },
+              { prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: 60 / rate } },
+            ] });
+          });
+        }
+        // 54: at a new street the last street's labels sink into their plaques round the table from the small blind.
+        if (motionKind === 'street' && prevS.labels.length && layer && L) {
+          const order = (pi) => dealOrder.indexOf(pi);
+          const gone = prevS.labels.filter(l => !l.node.isConnected).sort((a, b) => order(a.seat) - order(b.seat));
+          if (gone.length) {
+            const stagger = gone.length > 1 ? Math.min(S4.sweepStagger, S4.sweepCap / (gone.length - 1)) : 0;
+            writes.push(() => gone.forEach((l, k) => ghostsAway(motion, { set, rate, layer, layerRect: L, cards: [l], tx: 0, ty: l.h, turn: 0, scaleTo: 1, tier: 'yield', delay: (k * stagger) / rate })));
+          }
+        }
+        // 55: a bet makes the earlier answers stale: they dim in acting order.
+        const staleNew = [...table.querySelectorAll('.replayer-action-badge-outer.is-stale')].filter(el => !(motion.prevStaleEls || new Set()).has(el));
+        if (staleNew.length && act4 && ['bet', 'raise', 'all-in'].includes(act4.action)) {
+          const ordered = staleNew.sort((a, b) => ((Number(a.dataset.actSeat) - act4.player + 99) % hand.players.length) - ((Number(b.dataset.actSeat) - act4.player + 99) % hand.players.length));
+          writes.push(() => ordered.forEach((el, k) => motion.run(el, { key: { el, kind: 'stale' }, property: 'individual', size: { w: el.offsetWidth, h: el.offsetHeight }, channels: [
+            { prop: 'opacity', ramp: { from: 1, to: 0.4, delay: (60 + k * 25) / rate, duration: S4.beat / rate } },
+          ] })));
+        }
+        // 57: an all-in's ring closes onto its plaque from 1.35 times its size.
+        if (act4 && act4.action === 'all-in' && layer && L) {
+          const seat = seatOf(act4.player);
+          const info = seat && seat.querySelector('.replayer-seat-info');
+          if (info) {
+            const ir = info.getBoundingClientRect();
+            const radius = getComputedStyle(info).borderRadius;
+            writes.push(() => {
+              const ring = document.createElement('div');
+              ring.className = 'replayer-turn-ring is-allin';
+              Object.assign(ring.style, { left: (ir.left - L.left) + 'px', top: (ir.top - L.top) + 'px', width: ir.width + 'px', height: ir.height + 'px', borderRadius: radius, transformOrigin: '50% 50%' });
+              layer.appendChild(ring);
+              seat.classList.add('ring-wait');
+              const land = timeTo(armSp, 0.98) / rate;
+              const entry = motion.run(ring, { transient: true, size: { w: ir.width, h: ir.height }, end: land + S4.arrivalFade / rate, channels: [
+                { prop: 'scale', spring: armSp, from: 1.35, to: 1, timeScale: rate },
+                { prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: S4.arrivalFade / rate } },
+                { prop: 'opacity', ramp: { from: 1, to: 0, delay: land, duration: S4.arrivalFade / rate } },
+              ] });
+              const take = () => seat.classList.remove('ring-wait');
+              if (entry) motion.tick(land, take, entry); else take();
+            });
+          }
+        }
+        // 58: ALL-IN rolls to AT RISK at each covered seat, a beat apart in seat order.
+        const riskNew = [...atRiskSeats].filter(pi => !(motion.prevAtRisk || new Set()).has(pi)).sort((a, b) => a - b);
+        if (riskNew.length) writes.push(() => riskNew.forEach((pi, k) => {
+          const st = seatOf(pi) && seatOf(pi).querySelector('.replayer-seat-stack');
+          const mark = st && st.querySelector('.replayer-allin-mark');
+          const plaque = st && st.parentElement;
+          if (!mark || !plaque) return;
+          const d = (k * S4.beat) / rate;
+          if (getComputedStyle(plaque).position === 'static') plaque.style.position = 'relative';
+          const ghost = document.createElement('span');
+          ghost.className = 'replayer-stack-roll';
+          ghost.textContent = 'ALL-IN';
+          Object.assign(ghost.style, { left: st.offsetLeft + 'px', top: st.offsetTop + 'px', width: st.offsetWidth + 'px', height: st.offsetHeight + 'px', right: 'auto', bottom: 'auto' });
+          plaque.appendChild(ghost);
+          motion.run(ghost, { transient: true, property: 'individual', size: { w: st.offsetWidth, h: st.offsetHeight }, channels: [
+            { prop: 'y', spring: ySp, from: 0, to: -0.75 * r4, delay: d, timeScale: rate },
+            { prop: 'opacity', ramp: { from: 1, to: 0, delay: d, duration: 60 / rate } },
+          ] });
+          motion.run(mark, { key: { el: mark, kind: 'roll' }, property: 'individual', size: { w: mark.offsetWidth, h: mark.offsetHeight }, channels: [
+            { prop: 'y', spring: ySp, from: 0.75 * r4, to: 0, delay: d, timeScale: rate },
+            { prop: 'opacity', ramp: { from: 0, to: 1, delay: d, duration: 60 / rate } },
+          ] });
+        }));
+        // 60 / 61: at the showdown the names arrive weakest first and the winner's last; a split's low half 420ms
+        // after its high.
+        if (motionKind === 'result') {
+          const names = [...table.querySelectorAll('[data-name-seat]')].filter(el => !(motion.prevNameEls || new Set()).has(el));
+          if (names.length) {
+            const cfg = gameEvalFor(hand.gameType, hand);
+            const board = feltBoard ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
+            const kind = halvesOf(cfg)[0] || 'high';
+            const strength = (pi) => {
+              const raw = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
+              const r = cfg && raw && raw !== 'MUCK' ? bestFive(cfg, parseCardNotation(raw).filter(c => c.suit !== 'x'), board, kind) : null;
+              if (!r) return 0;
+              return kind === 'high' ? r.ev.score : -r.ev.score;
+            };
+            const won = (pi) => (potAwards && potAwards[pi] > 0 ? 1 : 0);
+            const loHalf = (pi) => !!(hiLoHalves && hiLoHalves.lo.has(pi) && !hiLoHalves.hi.has(pi));
+            const list = names.map(el => ({ el, pi: Number(el.dataset.nameSeat) }))
+              .sort((a, b) => won(a.pi) - won(b.pi) || loHalf(a.pi) - loHalf(b.pi) || strength(a.pi) - strength(b.pi));
+            const step = list.length > 1 ? 800 / (list.length - 1) : 0;
+            const base = Math.max(0, (motion.shipArriveMs || 0) - 800);
+            writes.push(() => list.forEach((x, k) => drop(x.el, (base + k * step) / rate + (loHalf(x.pi) && won(x.pi) ? 3 * S4.beat / rate : 0))));
+          }
+        }
+        // 63: a tournament seat that lost everything reads OUT; a beat later its plaque eases down.
+        if (motionKind === 'result' && hand.gameMode !== 'cash' && potAwards && shipPlan && shipPlan.length) {
+          const tLand0 = shipStartAfterSweep(set, rate, sweepPlan ? sweepPlan.length : 0) + uncalledDelay + shipFirstArrival(set, rate) + (motion.shipWaveEnd || 0);
+          const outs = hand.players.map((_, pi) => pi).filter(pi => bustedAtResult(pi));
+          if (outs.length) writes.push(() => outs.forEach(pi => {
+            const info = seatOf(pi) && seatOf(pi).querySelector('.replayer-seat-info');
+            if (!info) return;
+            motion.run(info, { key: { el: info, kind: 'out' }, property: 'individual', size: { w: info.offsetWidth, h: info.offsetHeight }, channels: [
+              { prop: 'scale', spring: inertiaSp, from: 1, to: 0.93, delay: tLand0 + S4.beat / rate, timeScale: rate },
+              { prop: 'opacity', spring: inertiaSp, from: 1, to: 0.5, delay: tLand0 + S4.beat / rate, timeScale: rate },
+            ] });
+          }));
+        }
+        // 66: the stud note drops in under the first seat to act, after its cards.
+        const note = table.querySelector('.replayer-seat-hand-name.is-note');
+        if (note && motionKind === 'street' && !(motion.prevNameEls || new Set()).has(note)) writes.push(() => drop(note, (200 + S4.place * hand.players.length) / rate));
+        // 67: the draw declarations land in drawing order, a beat apart (all begun inside 420ms).
+        const badgesNew = [...table.querySelectorAll('.replayer-seat-draw-badge')].filter(el => !(motion.prevBadges || new Set()).has(el));
+        if (badgesNew.length) {
+          const draws = hand.streets[streetIdx]?.draws || [];
+          const pos = (el) => { const pi = Number(el.closest('.replayer-seat').dataset.seat); const k = draws.findIndex(d => d.player === pi); return k < 0 ? 99 : k; };
+          const ordered = badgesNew.sort((a, b) => pos(a) - pos(b));
+          const step = ordered.length > 1 ? Math.min(S4.beat, 420 / (ordered.length - 1)) : 0;
+          writes.push(() => ordered.forEach((el, k) => drop(el, (k * step) / rate)));
+        }
+        // 71: a tabled run-out's names roll when a card changes them; a change of lead crosses their strengths.
+        if (motionKind === 'street') {
+          const prevRN = prevS.runNames || new Map();
+          const jobs = [];
+          table.querySelectorAll('[data-run-name]').forEach(el => {
+            const pi = Number(el.dataset.nameSeat);
+            const was = prevRN.get(pi);
+            if (!was) return;
+            jobs.push({ el, was, now: { text: el.dataset.runName, lead: !el.classList.contains('is-trailing') } });
+          });
+          if (jobs.length) writes.push(() => jobs.forEach(j => {
+            const d = 300 / rate;
+            if (j.was.text !== j.now.text) {
+              const host = j.el.parentElement;
+              if (host) {
+                const ghost = j.el.cloneNode(true);
+                ghost.removeAttribute('data-name-seat');
+                ghost.removeAttribute('data-run-name');
+                ghost.textContent = j.was.text;
+                ghost.classList.toggle('is-trailing', !j.was.lead);
+                host.appendChild(ghost);
+                motion.run(ghost, { transient: true, property: 'individual', size: { w: j.el.offsetWidth, h: j.el.offsetHeight }, channels: [
+                  { prop: 'y', spring: ySp, from: 0, to: -0.75 * r4, delay: d, timeScale: rate },
+                  { prop: 'opacity', ramp: { from: j.was.lead ? 1 : 0.55, to: 0, delay: d, duration: 60 / rate } },
+                ] });
+              }
+              motion.run(j.el, { key: { el: j.el, kind: 'roll' }, property: 'individual', size: { w: j.el.offsetWidth, h: j.el.offsetHeight }, channels: [
+                { prop: 'y', spring: ySp, from: 0.75 * r4, to: 0, delay: d, timeScale: rate },
+                { prop: 'opacity', ramp: { from: 0, to: j.now.lead ? 1 : 0.55, delay: d, duration: 60 / rate } },
+              ] });
+            } else if (j.was.lead !== j.now.lead) {
+              motion.run(j.el, { key: { el: j.el, kind: 'lead' }, property: 'individual', size: { w: j.el.offsetWidth, h: j.el.offsetHeight }, channels: [
+                { prop: 'opacity', ramp: { from: j.was.lead ? 1 : 0.55, to: j.now.lead ? 1 : 0.55, delay: d, duration: S4.beat / rate } },
+              ] });
+            }
+          }));
         }
       }
 
@@ -10215,6 +10520,74 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     // picker lands on, light or dark, rather than flipping to black on a pale
     // felt (Ethan). The shadow is what carries the contrast on a light cloth.
     return { '--pot-text': '#ffffff', '--pot-shadow': '0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.9), 0 0 calc(var(--subrow) * 0.625) rgba(0,0,0,0.55)' };
+  })();
+
+  /* ── The seats' words (Replayer animations 55, 58, 63, 66, 71) ── */
+  // 58: an all-in that another live player covers reads AT RISK once the call has closed the action (tournaments).
+  const atRiskSeats = (() => {
+    const out = new Set();
+    if (!springSet || hand.gameMode === 'cash' || showResult || !decidedNow || actionIdx < currentActions.length - 1 || !laterEmpty(streetIdx)) return out;
+    const live = hand.players.map((_, i) => i).filter(i => !folded.has(i));
+    const start = (i) => Number(hand.players[i]?.startingStack) || 0;
+    live.forEach(i => { if (allIn.has(i) && stacks[i] <= 0 && live.some(j => j !== i && start(j) >= start(i))) out.add(i); });
+    return out;
+  })();
+  // 63: a tournament seat that lost everything reads OUT once the pot has gone (cash: 0).
+  const bustedAtResult = (pi) => springSet && showResult && potAwards && allIn.has(pi) && shownStacks[pi] <= 0 && !(potAwards[pi] > 0);
+  // 55: a Check (or any answer) made before the street's latest bet or raise is stale until the seat acts again.
+  const lastAggIdx = (() => { let k = -1; for (let ai = 0; ai <= actionIdx && ai < currentActions.length; ai++) if (['bet', 'raise', 'all-in'].includes(currentActions[ai].action)) k = ai; return k; })();
+  // 66: in stud the seat that acts first on a street says why, until it acts.
+  const studFirstNote = (() => {
+    if (!springSet || !gameCfg.isStud || showResult || actionIdx >= 0) return null;
+    const first = currentActions[0];
+    if (!first) return null;
+    const pi = first.player;
+    const ups = (() => {
+      if (pi === replayHeroIdx) return parseCardNotation(heroCards).slice(2, 6).filter(c => c.suit !== 'x');
+      const oppSlot = pi > replayHeroIdx ? pi - 1 : pi;
+      const out = [];
+      for (let si = 0; si <= Math.min(streetIdx, 3); si++) {
+        const cs = parseCardNotation((hand.streets[si]?.cards.opponents || [])[oppSlot] || '').filter(c => c.suit !== 'x');
+        if (cs.length) out.push(si === 0 ? cs[cs.length - 1] : cs[0]);
+      }
+      return out;
+    })();
+    if (!ups.length) return null;
+    if (streetIdx === 0 || first.action === 'bring-in') return { seat: pi, text: ups[0].rank + ups[0].suit + ' brings it in' };
+    const counts = {};
+    ups.forEach(c => { counts[c.rank] = (counts[c.rank] || 0) + 1; });
+    const RW = { A: 'Aces', K: 'Kings', Q: 'Queens', J: 'Jacks', T: 'Tens', 9: '9s', 8: '8s', 7: '7s', 6: '6s', 5: '5s', 4: '4s', 3: '3s', 2: '2s' };
+    const HW = { A: 'Ace', K: 'King', Q: 'Queen', J: 'Jack', T: 'Ten' };
+    const order = 'AKQJT98765432';
+    const groups = Object.entries(counts).sort((a, b) => b[1] - a[1] || order.indexOf(a[0]) - order.indexOf(b[0]));
+    let what;
+    if (groups[0][1] >= 3) what = 'Three ' + RW[groups[0][0]];
+    else if (groups[0][1] === 2 && groups[1] && groups[1][1] === 2) what = 'Two Pair';
+    else if (groups[0][1] === 2) what = 'Pair of ' + RW[groups[0][0]];
+    else { const hi = ups.map(c => c.rank).sort((a, b) => order.indexOf(a) - order.indexOf(b))[0]; what = (HW[hi] || hi) + '-high'; }
+    return { seat: pi, text: what + ' acts first' };
+  })();
+  // 71: a tabled run-out names every live hand as it stands; the hand in front at full strength, the rest quieter.
+  const runoutNames = (() => {
+    if (!springSet || !exposeAllIn || showResult || category !== 'community' || boardCount(hand) > 1) return null;
+    const cfg = gameEvalFor(hand.gameType, hand);
+    if (!cfg || cfg.type !== 'high') return null;
+    const board = parseCardNotation(boardCards).filter(c => c.suit !== 'x');
+    const live = hand.players.map((_, i) => i).filter(i => !folded.has(i));
+    const hands = live.map(pi => ({ seat: pi, cards: parseCardNotation(pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '')).filter(c => c.suit !== 'x') }));
+    if (hands.some(h => h.cards.length < 2)) return null;
+    const lead = leaderOf(cfg, hands, board);
+    const RW = { A: 'Aces', K: 'Kings', Q: 'Queens', J: 'Jacks', T: 'Tens', 9: '9s', 8: '8s', 7: '7s', 6: '6s', 5: '5s', 4: '4s', 3: '3s', 2: '2s' };
+    const out = new Map();
+    hands.forEach(h => {
+      let text;
+      const r = bestFive(cfg, h.cards, board, 'high');
+      if (r) text = r.ev.shortName || r.ev.name;
+      else if (h.cards.length >= 2 && h.cards[0].rank === h.cards[1].rank) text = 'Pair of ' + RW[h.cards[0].rank];
+      else { const order = 'AKQJT98765432'; const hi = h.cards.map(c => c.rank).sort((a, b) => order.indexOf(a) - order.indexOf(b)); text = hi[0] + '-' + hi[1] + ' high'; }
+      out.set(h.seat, { text, lead: h.seat === lead });
+    });
+    return out;
   })();
 
   // A street's draw lands AFTER its betting — the same instant the d1/d2/pat
@@ -10832,6 +11205,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             <div key={pi} data-seat={pi} className={`replayer-seat ${seatClass}${isMucked ? ' mucked' : ''}${foldAnimClass}`
               + (pi === replayHeroIdx ? ' is-hero' : '') + (allIn.has(pi) ? ' is-allin' : '')
               + (pi === turnIdx ? ' active-turn' : '')
+              + (bustedAtResult(pi) && hand.gameMode !== 'cash' ? ' is-out' : '')
               + (!isLandscape && pos[0] === gx(CL) ? ' seat-edge-left' : '')
               + (!isLandscape && pos[0] === gx(CR) ? ' seat-edge-right' : '')
               + (springOn && motion.shipHit && (seatClass === 'winner' || seatClass === 'split') ? ' ship-hit' : '')}
@@ -10955,8 +11329,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                     },
                   } : {})}>
                   {allIn.has(pi) && shownStacks[pi] <= 0 && !(springSet && showResult && potAwards)
-                    ? <span className="replayer-allin-mark">ALL-IN</span>
-                    : fmtChips(stackFigure(pi))}
+                    ? <span className="replayer-allin-mark">{atRiskSeats.has(pi) ? 'AT RISK' : 'ALL-IN'}</span>
+                    : bustedAtResult(pi) && hand.gameMode !== 'cash'
+                      ? <span className="replayer-out-mark">OUT</span>
+                      : fmtChips(stackFigure(pi))}
                 </div>
                 {/* 43: estimateRange returns a label AND a CSS class per
                     opponent, four styled tiers exist and the setting was
@@ -10976,9 +11352,11 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                     right of the name it belongs to. The plaque is already
                     position:relative, so in here 50% is the middle of the
                     name and `bottom: 100%` is the fan above it. */}
-                {lastAct && !handName && (() => {
+                {lastAct && !handName && !(runoutNames && runoutNames.has(pi)) && (() => {
                   const actText = lastAct.action;
                   if (!actText) return null;
+                  const stale = springSet && !folded.has(pi) && !allIn.has(pi) && lastAct._ai != null && lastAggIdx > lastAct._ai
+                    && currentActions[lastAggIdx] && currentActions[lastAggIdx].player !== pi;
                   let label = actText;
                   if (lastAct.amount) {
                     /* Names the seat's TOTAL wager for the street, the same
@@ -10990,7 +11368,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   }
                   // 58: re-keying is what makes the entrance replay when the
                   // same player acts twice in one street.
-                  return <div key={streetIdx + '-' + actionIdx} className={'replayer-action-badge-outer action-' + actText}>{label}</div>;
+                  return <div key={streetIdx + '-' + actionIdx} data-act-seat={pi} className={'replayer-action-badge-outer action-' + actText + (stale ? ' is-stale' : '')}>{label}</div>;
                 })()}
                 {/* On a corner of the name box rather than at a percentage
                     offset from the seat point — the plaque is sized by its
@@ -11074,7 +11452,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   result. So "CALL 12k" landed on top of "Two Pair, A & K".
                   The name is the newer and more important fact; the badge
                   stands down for it. */}
-              {handName && <div className={'replayer-seat-hand-name' + (boardCount(hand) > 1 && category === 'community' ? ' is-boards' : '')}>{handName}</div>}
+              {handName && <div data-name-seat={pi} className={'replayer-seat-hand-name' + (boardCount(hand) > 1 && category === 'community' ? ' is-boards' : '')}>{handName}</div>}
+              {!handName && runoutNames && runoutNames.has(pi) && (
+                <div data-name-seat={pi} data-run-name={runoutNames.get(pi).text} className={'replayer-seat-hand-name is-run' + (runoutNames.get(pi).lead ? '' : ' is-trailing')}>{runoutNames.get(pi).text}</div>
+              )}
+              {!handName && studFirstNote && studFirstNote.seat === pi && (
+                <div data-name-seat={pi} className="replayer-seat-hand-name is-note">{studFirstNote.text}</div>
+              )}
             </div>
           );
         })}
