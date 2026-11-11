@@ -11,6 +11,8 @@ import {
   isSideEvent, isOnline, passesSiteRule, matchesLocation, matchesGames,
 } from '../utils/utils.js';
 import { useSharedFilters, clearedFilters } from '../utils/shared-filters.js';
+import { searchTokens, matchesSearch as matchesSearchText } from '../utils/search.js';
+import ScheduleSwitch from './ScheduleSwitch.jsx';
 import { isSiteAvailable } from '../utils/online-sites.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
   fetchServerLocation, sameLocation } from '../utils/location-prefs.js';
@@ -492,17 +494,15 @@ function Filters({ filters, setFilters, tournaments, search, setSearch }) {
   );
 }
 
-export default function CalendarView({ token, allTournaments, mySchedule, onToggle, onSetCondition, onRemoveCondition, onToggleAnchor, onSetPlannedEntries, buddyEvents, onOpenScheduleView, initialSearch, onSearchConsumed }) {
+export default function CalendarView({ token, allTournaments, mySchedule, onToggle, onSetCondition, onRemoveCondition, onToggleAnchor, onSetPlannedEntries, buddyEvents, onOpenScheduleView, initialSearch, onSearchConsumed, onSwitchView, mineCount = 0, desktop = false, onSelectEvent, selectedEventId }) {
   // Search: owned here (not in the Filters sheet) because it drives what the calendar SHOWS —
   // the per-day density counts and the day's event list — not just a sheet control. Matches the
-  // event name, the venue strip, the series name (which rides in notes), and the game.
+  // event name, number, game, series, room and strip, and a buy-in, forgivingly (utils/search.js;
+  // UX pick 16): the same matcher as the list.
   const [search, setSearch] = useState('');
-  const searchNeedle = search.trim().toLowerCase();
-  const matchesSearch = useCallback((t) => {
-    if (!searchNeedle) return true;
-    return [t.event_name, t.venue, t.notes, t.game_variant]
-      .some(f => f && String(f).toLowerCase().includes(searchNeedle));
-  }, [searchNeedle]);
+  const searchToks = useMemo(() => searchTokens(search), [search]);
+  const searchNeedle = searchToks.length ? search : '';
+  const matchesSearch = useCallback((t) => matchesSearchText(t, searchToks, getVenueInfo), [searchToks]);
   const searchedTournaments = useMemo(
     () => (searchNeedle ? (allTournaments || []).filter(matchesSearch) : allTournaments),
     [allTournaments, searchNeedle, matchesSearch]
@@ -891,6 +891,8 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
       onSetPlannedEntries={onSetPlannedEntries}
       buddyEvents={buddyEvents}
       scheduleIds={scheduleIds}
+      onSelect={onSelectEvent}
+      selected={onSelectEvent ? selectedEventId === t.id : undefined}
     />
   );
 
@@ -903,6 +905,7 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
   return (
     <div>
       <div className="sticky-filters">
+        {onSwitchView && <ScheduleSwitch view="calendar" mineCount={mineCount} onChange={onSwitchView} desktop={desktop} />}
         {/* Month row: calendar-icon date picker on the left, then three
             month buttons — previous (muted), current (full name),
             next. Clicking prev/next jumps to the first available date
@@ -950,7 +953,7 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
                 title="Pick a date"
                 style={{position: 'relative'}}
               >
-                <Icon.pointer />
+                <Icon.calendar />
                 <input
                   type="date"
                   value={selectedDate}
@@ -1002,14 +1005,16 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
               </div>
               {/* Far right of the month row: jump to the Schedule tab's list view
                   (swapped with the date-picker, now on the left). */}
-              <button
-                type="button"
-                className="cal-month-icon-btn"
-                title="Switch to schedule list"
-                onClick={() => onOpenScheduleView && onOpenScheduleView()}
-              >
-                <Icon.list />
-              </button>
+              {onSwitchView ? <span aria-hidden="true" /> : (
+                <button
+                  type="button"
+                  className="cal-month-icon-btn"
+                  title="Switch to schedule list"
+                  onClick={() => onOpenScheduleView && onOpenScheduleView()}
+                >
+                  <Icon.list />
+                </button>
+              )}
             </div>
           );
         })()}
@@ -1068,12 +1073,12 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
             return (
               <button
                 type="button"
-                className="cal-month-icon-btn cal-month-today-btn"
+                className="cal-month-today-btn cal-today-label"
                 title={allDates.includes(todayISO) ? 'Jump to today' : 'Jump to next event'}
                 disabled={onTarget}
                 onClick={() => target && setSelectedDate(target)}
               >
-                <Icon.calendarCheck />
+                Today
               </button>
             );
           })()}

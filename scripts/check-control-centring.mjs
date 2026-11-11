@@ -2186,7 +2186,9 @@ function finalize(c) {
   // My Schedule: an expanded card, its "if I bag / bust" panel, export, travel.
   const mySched = async () => {
     if (desktop) { await nav('Schedule'); return '.dk-pane:not(.dk-pane-list) '; }
-    await menu('My Schedule', 'Schedule');
+    // My schedule is the Schedule tab's third view (UX picks 20, 95), not an avatar-menu row.
+    await nav('Schedule');
+    await tap('.tab-panel[data-tab="tournaments"] .sched-switch-seg:has-text("My schedule")', 1800);
     return '.tab-panel[data-tab="schedule"] ';
   };
   step('myschedule-card', async () => { const s = await mySched(); await tap(s + '.cal-event-row:not(.open):not(.past) .cal-event-bar', 900); }, 1);

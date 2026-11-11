@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom';
 import { API_URL } from './utils/api.js';
 import { parseDeepLink } from './utils/deep-links.js';
 import { resetPath } from './utils/reset-results.js';
-import { haptic, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, formatSeasonLabel, registerRowTimezones, registerRowCurrencies, registerVenueCoords, getDebugNow, setDebugNow } from './utils/utils.js';
+import { haptic, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, formatSeasonLabel, registerRowTimezones, registerRowCurrencies, registerVenueCoords, getDebugNow, setDebugNow, normaliseDate } from './utils/utils.js';
 import { DNP_TYPE, withoutDnpMarkers } from './utils/didnt-play.js';
 import { decodeHand } from './utils/hand-shorthand.js';
 import { detectMilestones } from './utils/milestones.js';
@@ -649,6 +649,12 @@ function App() {
   // The schedule every screen but Results shows: the no-venue Didn't play markers stay off the
   // Schedule, the Calendar, the home, staking and the exports (utils/didnt-play.js).
   const scheduleShown = useMemo(() => withoutDnpMarkers(mySchedule), [mySchedule]);
+  // The view switch's "My schedule · N" (UX picks 20, 95): events, not travel days or restarts.
+  const mineCount = useMemo(() => scheduleShown.filter(t => t.venue !== 'Personal' && !t.is_restart).length, [scheduleShown]);
+  const switchScheduleView = useCallback((v) => {
+    setCurrentView(v);
+    if (v === 'schedule') requestAnimationFrame(() => landMySchedule());
+  }, []);
   const fetchMySchedule = async () => {
     if (isGuest) return;
     try {
@@ -1185,6 +1191,32 @@ function App() {
     });
   }, [toast]);
 
+  /* Undo after a remove (UX pick 22): the event goes back with its plan (conditions, priority, planned
+     entries), or a travel day is made again on its date. */
+  const restoreRemoved = useCallback(async (t) => {
+    const auth = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+    try {
+      if (t.venue === 'Personal') {
+        const r = await fetch(`${API_URL}/personal-event`, { method: 'POST', headers: auth, body: JSON.stringify({ date: normaliseDate(t.date), type: t.event_name, notes: t.notes || '' }) });
+        if (!r.ok) throw new Error(String(r.status));
+      } else {
+        const r = await fetch(`${API_URL}/schedule`, { method: 'POST', headers: auth, body: JSON.stringify({ tournamentId: t.id }) });
+        if (!r.ok) throw new Error(String(r.status));
+        const rest = [];
+        let conds = null;
+        try { conds = t.conditions_json ? JSON.parse(t.conditions_json) : null; } catch { conds = null; }
+        if (Array.isArray(conds) && conds.length) rest.push(fetch(`${API_URL}/schedule/${t.id}/condition`, { method: 'PUT', headers: auth, body: JSON.stringify({ conditions: conds, isPublic: t.condition_is_public !== 0 }) }));
+        if (t.is_anchor) rest.push(fetch(`${API_URL}/schedule/${t.id}/anchor`, { method: 'PUT', headers: auth, body: JSON.stringify({ isAnchor: true }) }));
+        if (Number(t.planned_entries) > 1) rest.push(fetch(`${API_URL}/schedule/${t.id}/entries`, { method: 'PUT', headers: auth, body: JSON.stringify({ plannedEntries: Number(t.planned_entries) }) }));
+        await Promise.all(rest);
+      }
+      fetchMySchedule();
+    } catch {
+      toast.error('Could not put it back. Add it again from the Schedule.');
+      fetchMySchedule();
+    }
+  }, [token, toast]);
+
   const toggleTournament = useCallback(async (tournamentId) => {
     haptic();
     if (isGuest) {
@@ -1226,12 +1258,13 @@ function App() {
       }
       if (!res.ok) throw new Error(String(res.status));
       if (firstSave) confirmFirstSave();
+      if (isIn) toast.success(`Removed ${existing.event_name}`, { duration: 5000, action: { label: 'Undo', onClick: () => restoreRemoved(existing) } });
       fetchMySchedule();
     } catch {
       setMySchedule(before);
       toast.error(isIn ? 'Could not remove it. Try again.' : 'Could not add it. Try again.');
     }
-  }, [token, mySchedule, isGuest, guestPicks, tournaments, toast, confirmFirstSave]);
+  }, [token, mySchedule, isGuest, guestPicks, tournaments, toast, confirmFirstSave, restoreRemoved]);
 
   const addPersonalEvent = useCallback(async (date, type, notes) => {
     try {
@@ -1800,7 +1833,8 @@ function App() {
   const dkDetailRef = useRef(null);
   const [dkClosing, setDkClosing] = useState(null); // { id } while the details collapse
   const [dkPrevSelected, setDkPrevSelected] = useState(null);
-  const dkPaneShown = isDesktop && currentView === 'tournaments';
+  // The Calendar keeps the desktop's two panes too (UX pick 29): it is the Schedule tab's other view.
+  const dkPaneShown = isDesktop && (currentView === 'tournaments' || currentView === 'calendar');
   if (dkSelectedId !== dkPrevSelected) {
     setDkPrevSelected(dkSelectedId);
     if (dkSelectedId == null && dkPrevSelected != null && dkDetailRef.current && dkPaneShown && !prefersReducedMotion()) {
@@ -2031,6 +2065,8 @@ function App() {
                 onClearOverrides={canEditEvents ? clearTournamentOverrides : undefined}
                 token={token}
                 onOpenCalendarView={() => setCurrentView('calendar')}
+                onSwitchView={switchScheduleView}
+                mineCount={mineCount}
                 onSelectEvent={isDesktop ? selectEvent : undefined}
                 selectedEventId={isDesktop ? dkSelectedId : undefined}
               />
@@ -2042,6 +2078,8 @@ function App() {
               <ScheduleView
                 key={debugTimeKey}
                 onNavigate={(v) => setCurrentView(v)}
+                onSwitchView={isDesktop ? undefined : switchScheduleView}
+                mineCount={mineCount}
                 focusTournamentId={scheduleFocusId}
                 onFocusConsumed={clearScheduleFocus}
                 mySchedule={scheduleShown}
@@ -2079,6 +2117,11 @@ function App() {
                 onSetPlannedEntries={setPlannedEntries}
                 buddyEvents={buddyEvents}
                 onOpenScheduleView={() => setCurrentView('tournaments')}
+                onSwitchView={switchScheduleView}
+                mineCount={mineCount}
+                desktop={isDesktop}
+                onSelectEvent={isDesktop ? selectEvent : undefined}
+                selectedEventId={isDesktop ? dkSelectedId : undefined}
                 deepLink={isAdmin ? deepLink : null}
                 initialSearch={calendarFind}
                 onSearchConsumed={clearCalendarFind}
@@ -2422,17 +2465,6 @@ function App() {
                   ring is an inset shadow, not a border, so the 5r rows inside start on the box's
                   own lines. */}
               <div style={{position:'fixed',top:'calc(var(--sa-t) + var(--subrow) * 7)',right:`calc(50% - var(--gu) * ${isDesktop ? dk.shellG : 37} / 2 + var(--gu))`,zIndex:9999,background:'var(--surface)',borderRadius:'calc(var(--subrow) * 1)',padding:0,width:'calc(var(--gu) * 16)',boxSizing:'border-box',boxShadow:'inset 0 0 0 var(--bw-hair) var(--border), 0 calc(var(--subrow) * 1) calc(var(--subrow) * 3) rgba(0,0,0,0.4)',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
-                <button onClick={() => {
-                  setShowUserMenu(false);
-                  setCurrentView('schedule');
-                  // Also when My Schedule is already showing (no tab change, so setCurrentView
-                  // lands nothing). The same landing as the tab change's, in My Schedule's own
-                  // scroller: on desktop the right pane's, never the Schedule list's.
-                  requestAnimationFrame(landMySchedule);
-                }}
-                  style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
-                  My Schedule
-                </button>
                 {/* Social moved here from the bottom nav (owner, 2026-10-14); its slot there is Bankroll,
                     which opens Results & Tracking. */}
                 <button onClick={() => { setShowUserMenu(false); setCurrentView('social'); }}
@@ -2542,11 +2574,11 @@ function App() {
           {isDesktop && (
             <DesktopRail
               isAdmin={isAdmin}
-              current={currentView === 'schedule' ? 'tournaments' : currentView}
+              current={currentView === 'schedule' || currentView === 'calendar' ? 'tournaments' : currentView}
               onChange={v => (v === 'batches' ? openBatch(null) : onNavChange(v))}
             />
           )}
-          <div className={!isDesktop ? 'layout-contents' : 'dk-pane dk-pane-main ' + (currentView === 'tournaments' ? 'dk-pane-list dk-fab-scope' : currentView === 'dashboard' ? 'dk-pane-home' : 'dk-pane-wide')}>
+          <div className={!isDesktop ? 'layout-contents' : 'dk-pane dk-pane-main ' + (currentView === 'tournaments' || currentView === 'calendar' ? 'dk-pane-list dk-fab-scope' : currentView === 'dashboard' ? 'dk-pane-home' : 'dk-pane-wide')}>
             {primaryColumn}
             {devToggles}
             {/* The Results tab's floating +: a direct child of the main pane, so on desktop it sits
@@ -2568,7 +2600,7 @@ function App() {
           {/* One right pane, two blocks (owner, 2026-10-10: My Schedule goes UNDER the event details,
               not in a third column): the selected event on top, My Schedule below it in the same
               scroll. With nothing selected, My Schedule is the whole pane. */}
-          {isDesktop && currentView === 'tournaments' && (
+          {dkPaneShown && (
             <div className="dk-pane dk-pane-detail dk-fab-scope">
               {/* Two scrollers, not one: My Schedule lands on the next event by scrolling ITS
                   scroller (ScheduleView resolves the nearest .dk-scroll), which must not drag the
@@ -2579,7 +2611,8 @@ function App() {
                   className={'dk-scroll dk-detail-block' + (dkPhase === 'closing' ? ' is-closing' : '')}
                 >{dkDetail}</div>
               )}
-              <div className="dk-scroll dk-mine-block">{dkMine}</div>
+              {/* Two columns of cards where the pane is 64g or wider (UX pick 26). */}
+              <div className={'dk-scroll dk-mine-block' + (dk.detailCols >= 7 ? ' is-two-col' : '')}>{dkMine}</div>
             </div>
           )}
       </div>
@@ -2589,7 +2622,8 @@ function App() {
           isAdmin={isAdmin}
           current={(() => {
             if (currentView === 'hands' && isAdmin) return 'hands';
-            if (['social', 'calendar', 'settings', 'schedule', 'hands', 'admin', 'batches'].includes(currentView)) return null;
+            if (currentView === 'calendar' || currentView === 'schedule') return 'tournaments';
+            if (['social', 'settings', 'hands', 'admin', 'batches'].includes(currentView)) return null;
             return currentView;
           })()}
           onChange={onNavChange}

@@ -7,21 +7,26 @@ import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
 // The export sheet loads when it is opened (2026-10-15), not with the Schedule.
 const ScheduleExportModal = lazy(() => import('./ScheduleExportModal.jsx'));
 import { FirstRun } from './EmptyState.jsx';
-import { normaliseDate, getToday, parseTournamentTime, detectConflicts } from '../utils/utils.js';
+import ScheduleSwitch from './ScheduleSwitch.jsx';
+import { normaliseDate, getToday, parseTournamentTime, detectConflicts, parseLateRegEnd, extractConditions, getVenueInfo, getVenueCoords } from '../utils/utils.js';
+import { suggestTravelDay } from '../utils/travel-suggest.js';
+import { detectOverlaps } from '../utils/overlaps.js';
 import { clockAskable } from '../utils/live-clocks.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 // ── Travel Day Picker ──
-function TravelDayPicker({ onSave, onCancel }) {
-  const [date, setDate] = useState('');
-  const [depHour, setDepHour] = useState(8);
-  const [depMinute, setDepMinute] = useState(0);
-  const [depAmPm, setDepAmPm] = useState('AM');
-  const [arrHour, setArrHour] = useState(2);
-  const [arrMinute, setArrMinute] = useState(0);
-  const [arrAmPm, setArrAmPm] = useState('PM');
+// suggestion: the move the schedule implies (utils/travel-suggest.js; UX pick 33), so Save is ready.
+function TravelDayPicker({ onSave, onCancel, suggestion = null }) {
+  const sg = suggestion;
+  const [date, setDate] = useState(sg ? sg.date : '');
+  const [depHour, setDepHour] = useState(sg ? sg.depart.hour : 8);
+  const [depMinute, setDepMinute] = useState(sg ? sg.depart.minute : 0);
+  const [depAmPm, setDepAmPm] = useState(sg ? sg.depart.amPm : 'AM');
+  const [arrHour, setArrHour] = useState(sg ? sg.arrive.hour : 2);
+  const [arrMinute, setArrMinute] = useState(sg ? sg.arrive.minute : 0);
+  const [arrAmPm, setArrAmPm] = useState(sg ? sg.arrive.amPm : 'PM');
   const dateRef = useRef(null);
 
   const hours = [1,2,3,4,5,6,7,8,9,10,11,12];
@@ -77,6 +82,7 @@ function TravelDayPicker({ onSave, onCancel }) {
         <span style={{fontSize:'calc(var(--gu) * 1.473)'}}>&#9992;&#65039;</span>
         <span style={{fontWeight:700, fontSize:'calc(var(--gu) * 1.296)', color:'var(--text)'}}>Add Travel Day</span>
       </div>
+      {sg && sg.date === date && <div className="travel-suggest-note">{sg.note}</div>}
       <div style={{marginBottom:'calc(var(--subrow) * 2)'}}>
         <div style={labelStyle}>Date</div>
         <input ref={dateRef} type="date" className="focus-inset" value={date} onChange={e => setDate(e.target.value)}
@@ -126,6 +132,8 @@ export default function ScheduleView({
   onAddPersonalEvent, onUpdatePersonalEvent,
   buddyEvents, onBuddySwap, isAdmin, onAdminEdit, onClearOverrides,
   onNavigate, focusTournamentId, onFocusConsumed,
+  // The Schedule tab's view switch, on the phone (UX picks 20, 95).
+  onSwitchView, mineCount = 0,
   // Desktop only (docs/desktop-layout.md): rows select into the detail pane.
   onSelectEvent, selectedEventId
 }) {
@@ -136,6 +144,12 @@ export default function ScheduleView({
   const scroller = () => (rootRef.current && rootRef.current.closest('.content-area, .dk-scroll')) || document.querySelector('.content-area');
   const displayName = useDisplayName();
   const { conflicts, expectedConflicts } = useMemo(() => detectConflicts(mySchedule), [mySchedule]);
+  // Events that start while an earlier one of yours is still in late reg (utils/overlaps.js; UX pick 21).
+  const overlaps = useMemo(() => detectOverlaps(mySchedule, {
+    startOf: parseTournamentTime,
+    regCloseOf: (t) => parseLateRegEnd(t.late_reg_end, t.date),
+    hasConditions: (t) => extractConditions(t).length > 0,
+  }), [mySchedule]);
   const scheduleIds = useMemo(() => new Set(mySchedule.map(t => t.id)), [mySchedule]);
   const todayRef = useRef(null);
   const hasScrolled = useRef(false);
@@ -197,6 +211,14 @@ export default function ScheduleView({
     withTs.sort((a, b) => a.ts - b.ts);
     return withTs.map(x => x.t);
   }, [mySchedule]);
+
+  // The travel day the schedule implies, offered when Travel opens (UX pick 33).
+  const travelSuggestion = useMemo(() => suggestTravelDay(sorted, {
+    todayIso: getToday(),
+    dateOf: (t) => normaliseDate(t.date),
+    placeOf: (t) => { const v = getVenueInfo(t.venue, t.property); return (v && v.longName) || t.property || t.venue; },
+    coordsOf: (t) => getVenueCoords(t.venue, t.property),
+  }), [sorted]);
 
   // Grow visibleCount by 10 per frame until we've mounted every event.
   // Lives here (not next to setVisibleCount above) because the dep array
@@ -352,6 +374,9 @@ export default function ScheduleView({
         </div>
       )}
 
+      {sorted.length === 0 && onSwitchView && (
+        <div className="sticky-filters"><ScheduleSwitch view="schedule" mineCount={mineCount} onChange={onSwitchView} /></div>
+      )}
       {sorted.length === 0 ? (
         /* Named after the real tab, and saying how adding works (UX picks 5 and 10). In the desktop pane
            the list is already open beside it, so there is no button. */
@@ -367,6 +392,7 @@ export default function ScheduleView({
       ) : (
       <div>
       <div className="schedule-sticky-header" ref={schedHeaderRef}>
+        {onSwitchView && <ScheduleSwitch view="schedule" mineCount={mineCount} onChange={onSwitchView} />}
         <div className="section-header" style={{display:'flex',alignItems:'center',gap:'var(--gu)',marginBottom:0}}>
           <h2 style={{marginRight:'auto',display:'flex',alignItems:'baseline',gap:'calc(var(--subrow) * 0.75)'}}>
             My Schedule
@@ -420,6 +446,7 @@ export default function ScheduleView({
         >
           <div style={{width:'100%', maxWidth:'calc(var(--gu) * 37)'}}>
             <TravelDayPicker
+              suggestion={travelSuggestion}
               onSave={(date, notes) => {
                 onAddPersonalEvent(date, 'Travel Day', notes);
                 setShowTravelPicker(false);
@@ -433,6 +460,11 @@ export default function ScheduleView({
       {conflicts.size > 0 && (
         <div className="alert alert-error" style={{marginBottom:'var(--subrow)'}}>
           <Icon.warn /> {conflicts.size} event{conflicts.size !== 1 ? 's have' : ' has'} a time conflict
+        </div>
+      )}
+      {overlaps.size > 0 && (
+        <div className="overlap-summary" role="status">
+          <Icon.warn /> {overlaps.size} event{overlaps.size === 1 ? ' starts' : 's start'} while one of yours is still in late reg
         </div>
       )}
       <div style={{minHeight:'100vh', paddingBottom:'100vh'}}>
@@ -470,6 +502,7 @@ export default function ScheduleView({
                         isInSchedule={true}
                         onToggle={onToggle}
                         isPast={past}
+                        overlap={past ? undefined : overlaps.get(t.id)}
                         showMiniLateReg={isGroupToday}
                         focusEventId={focusEventId}
                         conditionsJson={t.conditions_json}
@@ -493,9 +526,12 @@ export default function ScheduleView({
                       />
                     ) : (
                       <CalendarEventRowLite
+                        onToggle={onToggle}
                         tournament={t}
                         isInSchedule={true}
                         isPast={past}
+                        overlap={past ? undefined : overlaps.get(t.id)}
+                        onSetCondition={onSetCondition}
                         isAnchor={!!t.is_anchor}
                         conditionsJson={t.conditions_json}
                         onExpand={() => activateRow(t.id)}

@@ -118,6 +118,38 @@ function landRow(el) {
   });
 }
 
+/* An event that starts while an earlier one of the player's is still in late reg (UX pick 21): an amber
+   line after the name, and the plan that answers it in one tap ("Only if I bust Flight C"). */
+function OverlapLine({ overlap, id, onSetCondition }) {
+  const p = overlap.parent;
+  const { base, stage } = splitEventStage(p.event_name || '');
+  const short = stage || base || p.event_name;
+  const planLabel = stage && stage.length <= 9 ? `Only if I bust ${stage}` : 'Only if I bust it';
+  return (
+    <div className="cal-overlap">
+      <span className="cal-overlap-text"><Icon.warn /> Starts while {short} ({p.time}) runs</span>
+      {onSetCondition && (
+        <button type="button" className="cal-overlap-plan snap-g"
+          onClick={(e) => { e.stopPropagation(); onSetCondition(id, [{ type: 'IF_BUST', dependsOnId: p.id }], true); }}>
+          {planLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* Add from the closed card (UX pick 19): a 4g x 4r toggle at the right of the countdown row, 1r above
+   the card's foot: "+" in a hairline to add, a filled check once saved. It does not open the card. */
+function QuickAdd({ saved, onToggle, id }) {
+  return (
+    <button type="button" className={'cal-quick-add' + (saved ? ' is-saved' : '')} aria-pressed={saved}
+      aria-label={saved ? 'In My Schedule. Remove it' : 'Add to My Schedule'}
+      onClick={(e) => { e.stopPropagation(); onToggle(id); }}>
+      {saved ? <Icon.check /> : <Icon.plus />}
+    </button>
+  );
+}
+
 // ── Mini Late Reg Bar (collapsed view) ──
 function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, completed }) {
   const [now, setNow] = useState(getNow());
@@ -156,7 +188,8 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, co
       const brandColor = getVenueBrandColor(venueAbbr);
       return (
         <div className="mini-late-reg">
-          <span className="mini-late-reg-time" style={{opacity:0.5}}>starts in {label}</span>
+          {/* Full --text-muted, the brand inside the last hour (UX pick 23: it was 2.06:1 at half opacity). */}
+          <span className={'mini-late-reg-time' + (diffMs < 3600000 ? ' is-soon' : '')}>starts in {label}</span>
           <div className="mini-late-reg-track">
             <div className="mini-late-reg-fill" style={{ width: `${pct}%`, background: brandColor }} />
           </div>
@@ -351,7 +384,14 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
   const renderPick = (t, selected, onPick, lead) => (
     <div key={t.id} className={`condition-sat-item ${selected ? 'selected' : ''}`} onClick={onPick}>
       <span className="cp-item-lead">{lead}</span>
-      <span className="cp-item-name">{t.event_name}</span>
+      <span className="cp-item-name">{(() => {
+        /* What tells the rows apart first (UX pick 24): the stage ("Flight C") or the part after a colon,
+           in bold; the name every flight shares after it, muted. */
+        let { base, stage } = splitEventStage(t.event_name || '');
+        const colon = (t.event_name || '').lastIndexOf(':');
+        if (!stage && colon > 0) { stage = t.event_name.slice(colon + 1).trim(); base = t.event_name.slice(0, colon).trim(); }
+        return stage ? <><b className="cp-item-stage">{stage}</b> <span className="cp-item-base">{base}</span></> : t.event_name;
+      })()}</span>
       <span className="cp-item-price">{currencySymbol(t.venue, t.currency)}{Number(t.buyin).toLocaleString()}</span>
     </div>
   );
@@ -448,7 +488,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
   );
 }
 
-function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMiniLateReg, focusEventId, readOnly, conditions: conditionsProp, conditionsJson, onSetCondition, onRemoveCondition, allTournaments, isAnchor, onToggleAnchor, plannedEntries, onSetPlannedEntries, onUpdatePersonalEvent, buddyEvents, onBuddySwap, scheduleIds, isAdmin, onAdminEdit, onClearOverrides, initialOpen, onSelect, selected, detail }) {
+function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap, showMiniLateReg, focusEventId, readOnly, conditions: conditionsProp, conditionsJson, onSetCondition, onRemoveCondition, allTournaments, isAnchor, onToggleAnchor, plannedEntries, onSetPlannedEntries, onUpdatePersonalEvent, buddyEvents, onBuddySwap, scheduleIds, isAdmin, onAdminEdit, onClearOverrides, initialOpen, onSelect, selected, detail }) {
   // Support both conditions array (legacy) and conditionsJson string (memo-friendly)
   const conditions = conditionsProp || React.useMemo(() => {
     if (!conditionsJson) return [];
@@ -570,8 +610,10 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   const isRestart = !!tournament.is_restart;
   const ringEvent = isRingEvent(tournament);
 
+  const quickAdd = !open && !isPast && !completed && !readOnly && !!onToggle && tournament.venue !== 'Personal';
   const rowClasses = [
     'cal-event-row',
+    quickAdd ? 'has-quick-add' : '',
     tournament.venue === 'Personal' ? 'is-personal' : '',
     open ? 'open' : '',
     detail ? 'is-detail' : '',
@@ -637,6 +679,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   </span>
                 )}
               </div>
+              {overlap && !open && !readOnly && <OverlapLine overlap={overlap} id={tournament.id} onSetCondition={onSetCondition} />}
               {showMiniLateReg && !open && <MiniLateRegBar completed={completed} lateRegEnd={(live && clockRegEnd(tournament, live)) || tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />}
               {live && !open && <ClockRow live={live} tournament={tournament} />}
             </>
@@ -647,6 +690,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
             <polyline points="6 9 12 15 18 9"/>
           </svg>
         </div>
+        {quickAdd && <QuickAdd saved={!!isInSchedule} onToggle={onToggle} id={tournament.id} />}
 
         {/* Expanded detail panel -- animated */}
         <div className={`cal-event-detail-wrap ${open ? 'open' : ''}`} onClick={e => {
@@ -1055,13 +1099,8 @@ The feed's own values return at the next hourly sync — your edits stay visible
 
                   {/* Action row */}
                   {!readOnly && (
-                    <div className="cal-action-row">
-                      {isInSchedule ? (
-                        <button className="cal-action-btn remove" onClick={() => onToggle(tournament.id)}>
-                          <span className="cal-action-icon"><Icon.x /></span>
-                          <span className="cal-action-label">Remove</span>
-                        </button>
-                      ) : (
+                    <div className={'cal-action-row' + (isInSchedule ? ' is-saved-row' : '')}>
+                      {!isInSchedule && (
                         /* Saving an event is the step the app is for (UX pick 5): while it is not saved,
                            Add is the card's one filled control, inset 1g and 1r in its 6r row. */
                         <button className="cal-action-btn add-cta" onClick={() => onToggle(tournament.id)}>
@@ -1071,24 +1110,6 @@ The feed's own values return at the next hourly sync — your edits stay visible
                           </span>
                         </button>
                       )}
-                      {isInSchedule && onToggleAnchor && (
-                        <button
-                          className={`cal-action-btn anchor-btn ${isAnchor ? 'locked' : ''}`}
-                          onClick={() => onToggleAnchor(tournament.id, !isAnchor)}
-                        >
-                          <span className="cal-action-icon"><Icon.lock /></span>
-                          <span className="cal-action-label">Priority</span>
-                        </button>
-                      )}
-                      {isAdmin && onAdminEdit && !editing && (
-                        <button
-                          className="cal-action-btn"
-                          onClick={() => setEditing(true)}
-                        >
-                          <span className="cal-action-icon"><Icon.pencil /></span>
-                          <span className="cal-action-label">Edit</span>
-                        </button>
-                      )}
                       {isInSchedule && onSetCondition && (
                         <button
                           className="cal-action-btn condition-btn"
@@ -1096,6 +1117,15 @@ The feed's own values return at the next hourly sync — your edits stay visible
                         >
                           <span className="cal-action-icon"><Icon.condition /></span>
                           <span className="cal-action-label">Condition</span>
+                        </button>
+                      )}
+                      {isInSchedule && onToggleAnchor && (
+                        <button
+                          className={`cal-action-btn anchor-btn ${isAnchor ? 'locked' : ''}`}
+                          onClick={() => onToggleAnchor(tournament.id, !isAnchor)}
+                        >
+                          <span className="cal-action-icon"><Icon.lock /></span>
+                          <span className="cal-action-label">Priority</span>
                         </button>
                       )}
                       {isInSchedule && onSetPlannedEntries && tournament.reentry && tournament.reentry !== 'N/A' && (() => {
@@ -1126,6 +1156,22 @@ The feed's own values return at the next hourly sync — your edits stay visible
                           </div>
                         );
                       })()}
+                      {isAdmin && onAdminEdit && !editing && (
+                        <button
+                          className="cal-action-btn"
+                          onClick={() => setEditing(true)}
+                        >
+                          <span className="cal-action-icon"><Icon.pencil /></span>
+                          <span className="cal-action-label">Edit</span>
+                        </button>
+                      )}
+                      {/* Remove last and quiet, red only while pressed; App's toast offers Undo (UX pick 22). */}
+                      {isInSchedule && (
+                        <button className="cal-action-btn remove" onClick={() => onToggle(tournament.id)}>
+                          <span className="cal-action-icon"><Icon.x /></span>
+                          <span className="cal-action-label">Remove</span>
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -1154,7 +1200,7 @@ The feed's own values return at the next hourly sync — your edits stay visible
 // Zero hooks, zero context. ScheduleView renders this for rows that
 // haven't been expanded yet, swapping in the full CalendarEventRow on
 // first tap. Eliminates ~15 hook calls per row on initial mount.
-function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, conditionsJson, conditions, onExpand, onSelect, selected }) {
+function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, conditionsJson, conditions, onExpand, onSelect, selected, onToggle, overlap, onSetCondition }) {
   // The full row's toggle, for a row not yet swapped in: on the phone (no onSelect) a tap asks the
   // view to swap in the full row, which mounts open and lands; on desktop it selects the row into
   // the right pane and lands the same way from the click (landRow), or, already selected, closes
@@ -1185,8 +1231,10 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
   } else if (conditionsJson) {
     try { const c = JSON.parse(conditionsJson); hasConditions = Array.isArray(c) && c.length > 0; } catch {}
   }
+  const quickAdd = !isPast && !tournament.clock_ended_at && !!onToggle && tournament.venue !== 'Personal';
   const rowClasses = [
     'cal-event-row',
+    quickAdd ? 'has-quick-add' : '',
     isInSchedule ? 'saved' : '',
     isInSchedule && normaliseDate(tournament.date) === getToday() ? 'is-today' : '',
     tournament.venue === 'Personal' ? 'is-personal' : '',
@@ -1240,6 +1288,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
                   </span>
                 )}
               </div>
+              {overlap && <OverlapLine overlap={overlap} id={tournament.id} onSetCondition={onSetCondition} />}
             </>
           )}
         </div>
@@ -1248,6 +1297,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
             <polyline points="6 9 12 15 18 9"/>
           </svg>
         </div>
+        {quickAdd && <QuickAdd saved={!!isInSchedule} onToggle={onToggle} id={tournament.id} />}
       </div>
     </div>
   );
@@ -1259,6 +1309,7 @@ const CalendarEventRow = React.memo(CalendarEventRow_, (prev, next) => {
   if (prev.tournament !== next.tournament) return false;
   if (prev.isInSchedule !== next.isInSchedule) return false;
   if (prev.isPast !== next.isPast) return false;
+  if (prev.overlap !== next.overlap) return false;
   if (prev.isAnchor !== next.isAnchor) return false;
   if (prev.plannedEntries !== next.plannedEntries) return false;
   if (prev.conditionsJson !== next.conditionsJson) return false;

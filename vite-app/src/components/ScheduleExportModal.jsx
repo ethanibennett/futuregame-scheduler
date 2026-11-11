@@ -4,12 +4,15 @@ import Icon from './Icon.jsx';
 import { getVenueInfo, normaliseDate, getToday, parseTournamentTime, VENUE_COORDS, LOCATION_REGIONS } from '../utils/utils.js';
 import { generateSchedulePDF, generateScheduleImages, shareOrDownloadCanvas } from '../utils/export.js';
 
+// Contiguous, so grouping by buy-in never leaves an event out (UX pick 15: $3,001-4,999 and
+// $10,001-24,999 used to fall between the ranges and vanish from the export).
 const DEFAULT_BUYIN_RANGES = [
   { label: 'Up to $1,500', min: 0, max: 1500 },
-  { label: 'Up to $3,000', min: 1501, max: 3000 },
-  { label: '$5,000 \u2013 $10,000', min: 5000, max: 10000 },
-  { label: '$25,000+', min: 25000, max: Infinity },
+  { label: '$1,501 \u2013 $5,000', min: 1501, max: 5000 },
+  { label: '$5,001 \u2013 $25,000', min: 5001, max: 25000 },
+  { label: '$25,001+', min: 25001, max: Infinity },
 ];
+const inRange = (b, r) => b >= r.min && b <= (r.max === Infinity ? 1e12 : r.max);
 
 export default function ScheduleExportModal({ events, onClose }) {
   const [mode, setMode] = useState('menu'); // menu | preview
@@ -35,19 +38,8 @@ export default function ScheduleExportModal({ events, onClose }) {
     return decorated.map(x => x.t);
   }, [events]);
 
-  const venueList = useMemo(() => {
-    const seen = new Map();
-    upcomingEvents.forEach(e => {
-      const v = getVenueInfo(e.venue, e.property);
-      if (!seen.has(v.abbr)) seen.set(v.abbr, { longName: v.longName || v.abbr, color: v.color || '#808080' });
-    });
-    return [...seen.entries()];
-  }, [upcomingEvents]);
-
-  // Default venue selection: only Vegas venues. Computed from each
-  // upcoming event's raw venue name + VENUE_COORDS, tested against the
-  // shared LOCATION_REGIONS.lasvegas predicate (~30mi from the strip).
-  // Out-of-state series start unchecked but the user can toggle them on.
+  // Las Vegas rooms first (computed from each upcoming event's raw venue name + VENUE_COORDS, tested
+  // against the shared LOCATION_REGIONS.lasvegas predicate, ~30mi from the strip), then the rest.
   const vegasVenueAbbrs = useMemo(() => {
     const isVegas = LOCATION_REGIONS.lasvegas?.test;
     const out = new Set();
@@ -58,15 +50,26 @@ export default function ScheduleExportModal({ events, onClose }) {
     });
     return out;
   }, [upcomingEvents]);
+  const venueList = useMemo(() => {
+    const seen = new Map();
+    upcomingEvents.forEach(e => {
+      const v = getVenueInfo(e.venue, e.property);
+      if (!seen.has(v.abbr)) seen.set(v.abbr, { longName: v.longName || v.abbr, color: v.color || '#808080' });
+    });
+    const list = [...seen.entries()];
+    return [...list.filter(([a]) => vegasVenueAbbrs.has(a)), ...list.filter(([a]) => !vegasVenueAbbrs.has(a))];
+  }, [upcomingEvents, vegasVenueAbbrs]);
 
-  const [selectedVenues, setSelectedVenues] = useState(() => new Set(vegasVenueAbbrs));
-  // If the venue list re-computes (e.g., events fetched after mount),
-  // and the user hasn't touched the selection yet, sync to Vegas-only.
+  // Every series is in until the player takes one out (UX pick 15: an Atlantic City schedule opened
+  // with every series unticked, 0 events and both downloads disabled).
+  const [selectedVenues, setSelectedVenues] = useState(() => new Set(venueList.map(([a]) => a)));
+  // If the venue list re-computes (e.g., events fetched after mount) and the user hasn't touched the
+  // selection yet, every series stays in.
   const userTouchedSelectionRef = useRef(false);
   useEffect(() => {
     if (userTouchedSelectionRef.current) return;
-    setSelectedVenues(new Set(vegasVenueAbbrs));
-  }, [vegasVenueAbbrs]);
+    setSelectedVenues(new Set(venueList.map(([a]) => a)));
+  }, [venueList]);
   const [excludeSatellites, setExcludeSatellites] = useState(false);
   const [lightMode, setLightMode] = useState(true);
   const [groupByBuyin, setGroupByBuyin] = useState(true);
@@ -87,18 +90,30 @@ export default function ScheduleExportModal({ events, onClose }) {
     });
   };
 
-  const filteredEvents = useMemo(() =>
+  const chosenEvents = useMemo(() =>
     upcomingEvents.filter(e => {
       if (!selectedVenues.has(getVenueInfo(e.venue, e.property).abbr)) return false;
       if (excludeSatellites && e.is_satellite) return false;
-      if (groupByBuyin && buyinRanges.length > 0) {
-        const b = Number(e.buyin) || 0;
-        if (!buyinRanges.some(r => b >= r.min && b <= (r.max === Infinity ? 1e12 : r.max))) return false;
-      }
       return true;
     }),
-    [upcomingEvents, selectedVenues, excludeSatellites, groupByBuyin, buyinRanges]
+    [upcomingEvents, selectedVenues, excludeSatellites]
   );
+  // The chosen events no buy-in range holds: said out loud, never dropped quietly.
+  const outsideRanges = useMemo(() => (groupByBuyin && buyinRanges.length > 0)
+    ? chosenEvents.filter(e => !buyinRanges.some(r => inRange(Number(e.buyin) || 0, r)))
+    : [], [chosenEvents, groupByBuyin, buyinRanges]);
+  const filteredEvents = useMemo(() => {
+    if (!outsideRanges.length) return chosenEvents;
+    const out = new Set(outsideRanges);
+    return chosenEvents.filter(e => !out.has(e));
+  }, [chosenEvents, outsideRanges]);
+  const nEvents = (n) => `${n.toLocaleString()} event${n === 1 ? '' : 's'}`;
+  // One range around the events the ranges miss.
+  const addRangeForOutside = () => {
+    const bs = outsideRanges.map(e => Number(e.buyin) || 0);
+    const lo = Math.min(...bs), hi = Math.max(...bs);
+    setBuyinRanges(prev => [...prev, { label: lo === hi ? `$${lo.toLocaleString()}` : `$${lo.toLocaleString()} \u2013 $${hi.toLocaleString()}`, min: lo, max: hi }]);
+  };
 
   const handlePDF = async () => {
     if (!filteredEvents.length) return;
@@ -205,9 +220,17 @@ export default function ScheduleExportModal({ events, onClose }) {
                   </label>
                 ))}
               </div>
+              <div className="export-count" role="status">
+                <span>{nEvents(filteredEvents.length)} selected{outsideRanges.length ? '' : ' \u00b7 none outside your ranges'}</span>
+                {outsideRanges.length > 0 && (
+                  <button type="button" className="export-count-fix" onClick={addRangeForOutside}>
+                    {nEvents(outsideRanges.length)} outside your ranges: add a range
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Exclude satellites + event count */}
+            {/* Exclude satellites */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 'calc(var(--subrow) * 2)', marginBottom: 'calc(var(--subrow) * 2)' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--subrow) * 1)', fontSize: 'calc(var(--gu) * 1.208)', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontWeight: 'var(--fw-regular)', color: 'var(--text)', cursor: 'pointer' }}>
                 <input
@@ -218,9 +241,6 @@ export default function ScheduleExportModal({ events, onClose }) {
                 />
                 Exclude Satellites
               </label>
-              <span style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)' }}>
-                {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''}
-              </span>
             </div>
 
             {/* Light mode toggle */}
@@ -278,7 +298,7 @@ export default function ScheduleExportModal({ events, onClose }) {
                           setBuyinRanges(next);
                         }}
                         placeholder="Min"
-                        style={{ width: 'calc(var(--subrow) * 6.875)', padding: 'calc(var(--subrow) * 0.5) calc(var(--subrow) * 0.75)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontSize: 'calc(var(--gu) * 1.149)', textAlign: 'right' }}
+                        className="export-range-amount" style={{ width: 'calc(var(--gu) * 5)', padding: 'calc(var(--subrow) * 0.5) calc(var(--subrow) * 0.75)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontSize: 'calc(var(--gu) * 1.149)', textAlign: 'right' }}
                       />
                       <span style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)' }}>{'\u2013'}</span>
                       <input
@@ -291,7 +311,7 @@ export default function ScheduleExportModal({ events, onClose }) {
                           setBuyinRanges(next);
                         }}
                         placeholder={'\u221E'}
-                        style={{ width: 'calc(var(--subrow) * 6.875)', padding: 'calc(var(--subrow) * 0.5) calc(var(--subrow) * 0.75)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontSize: 'calc(var(--gu) * 1.149)', textAlign: 'right' }}
+                        className="export-range-amount" style={{ width: 'calc(var(--gu) * 5)', padding: 'calc(var(--subrow) * 0.5) calc(var(--subrow) * 0.75)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontSize: 'calc(var(--gu) * 1.149)', textAlign: 'right' }}
                       />
                       {buyinRanges.length > 1 && (
                         <button
@@ -325,14 +345,14 @@ export default function ScheduleExportModal({ events, onClose }) {
               <button className="export-option-btn" onClick={handlePDF} disabled={!filteredEvents.length}>
                 <span className="export-option-icon">{'\uD83D\uDCC4'}</span>
                 <div>
-                  <div className="export-option-label">Download PDF</div>
+                  <div className="export-option-label">Download PDF{filteredEvents.length ? ` \u00b7 ${nEvents(filteredEvents.length)}` : ''}</div>
                   <div className="export-option-desc">Table layout, great for printing</div>
                 </div>
               </button>
               <button className="export-option-btn" onClick={handleImages} disabled={generating || !filteredEvents.length}>
                 <span className="export-option-icon">{generating ? '\u23F3' : '\uD83D\uDDBC\uFE0F'}</span>
                 <div>
-                  <div className="export-option-label">{generating ? 'Generating...' : 'Download Images'}</div>
+                  <div className="export-option-label">{generating ? 'Generating...' : `Download Images${filteredEvents.length ? ` \u00b7 ${nEvents(filteredEvents.length)}` : ''}`}</div>
                   <div className="export-option-desc">Story-sized, perfect for sharing</div>
                 </div>
               </button>

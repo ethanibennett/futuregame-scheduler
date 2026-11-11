@@ -19,7 +19,11 @@ import {
   matchesGames,
   matchesBuyin,
   siteRuleIsEmpty,
+  getVenueInfo,
 } from '../utils/utils.js';
+import { searchTokens, matchesSearch as matchesSearchText } from '../utils/search.js';
+import { activeFilterChips, sectionValues } from '../utils/filter-chips.js';
+import ScheduleSwitch from './ScheduleSwitch.jsx';
 import { clockAskable } from '../utils/live-clocks.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
   fetchServerLocation, sameLocation, writeLocalFilters } from '../utils/location-prefs.js';
@@ -86,8 +90,16 @@ function OnlineRoomRules({ sites, siteRules, setFilters, disabled }) {
 }
 
 // ── Inline Filters (portal-based, matching original) ──
-function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpen, toggleRef, search, setSearch }) {
+function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpen, toggleRef, shownCount, chipCount }) {
   const panelRef = useRef(null);
+  /* The sheet answers the tap at once (UX pick 30): its frame and first rows paint on the tap and the
+     sections mount a frame later. */
+  const [sectionsReady, setSectionsReady] = useState(false);
+  useEffect(() => {
+    if (!open) { setSectionsReady(false); return undefined; }
+    const id = requestAnimationFrame(() => setSectionsReady(true));
+    return () => cancelAnimationFrame(id);
+  }, [open]);
   // The Swiss theme's index of filters shows each one's upcoming count as a superior figure
   // (catalogue item 27; .kt-count is hidden in every other theme).
   const [swissBoard, toggleSwissBoard] = useSwissBoard();
@@ -224,17 +236,19 @@ function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpe
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const hasActive = filters.minBuyin || filters.maxBuyin || (filters.buyinRanges && filters.buyinRanges.length > 0) || (filters.rakeRanges && filters.rakeRanges.length > 0) ||
-    filters.selectedGames.length > 0 || (filters.hiddenVenues && filters.hiddenVenues.length > 0) || filters.bountyOnly || filters.mysteryBountyOnly || filters.headsUpOnly || filters.tagTeamOnly || filters.employeesOnly || !filters.hideSatellites || !filters.hideRestarts || filters.hideSideEvents || filters.ladiesOnly || filters.seniorsOnly || filters.mixedOnly || filters.dateFrom || filters.dateTo ||
-    filters.showOnline === false || filters.onlyAvailableOnline === true ||
-    Object.keys(filters.siteRules || {}).length > 0;
+  // What each section holds, shown beside its name (UX pick 28).
+  const values = sectionValues(filters, { venueCount: availableVenues.length, onlineRoomCount: onlineSitesInPool.length, siteRuleCount: activeSiteRuleCount });
+  const sectionHead = (name, value, isOpen, onToggle) => (
+    <button type="button" className={'fs-head' + (isOpen ? ' is-open' : '')} aria-expanded={isOpen} onClick={onToggle}>
+      <span className="fs-name">{name}</span>
+      <span className="fs-value">{value}</span>
+      <span className="fs-caret" aria-hidden="true">{'\u203A'}</span>
+    </button>
+  );
 
-  return (
-    <>
-      {/* All event-kind + online switches on one line below the buttons.
-          setFiltersRaw (not the scroll-wrapped setter) so toggling doesn't jump
-          the list back to today. */}
-      <div className="filter-row" style={{gap:'0',marginTop:'calc(var(--subrow) * 2)',marginBottom:'0',width:'100%',alignItems:'center',flexWrap:'nowrap'}}>
+  // The four kind toggles, the sheet's first row (UX picks 18 and 28: search took their place on the list).
+  const kindRow = (
+      <div className="filter-row fs-kinds" style={{gap:'0',marginBottom:'calc(var(--subrow) * 2)',width:'100%',alignItems:'center',flexWrap:'nowrap'}}>
         {/* Satellites / Restarts / Side Events / Online as four toggle BUTTONS, one per primary
             column: each exactly 8g x 2r, with the 1g gutters between them, so the four fill the
             35g between the margins (4 x 8g + 3 x 1g) and each button IS a column. aria-pressed
@@ -273,6 +287,10 @@ function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpe
           <button type="button" className="sw-board-toggle" aria-pressed={swissBoard} onClick={toggleSwissBoard}>{swissBoard ? 'Cards' : 'Board'}</button>
         </div>
       </div>
+  );
+
+  return (
+    <>
 
       {onlineMenu && createPortal(
         <>
@@ -335,6 +353,7 @@ function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpe
           }
           return { top: `calc(${r.bottom}px + var(--subrow))`, left: 'var(--gu)', right: 'var(--gu)', maxHeight: `calc(${vh - r.bottom}px - var(--subrow) * 3)` };
         })()}>
+          {kindRow}
           {/* Quick filter pills */}
           {(() => {
             const quickFilters = [
@@ -372,19 +391,8 @@ function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpe
             );
           })()}
 
-          {/* Search — desktop pairs with Date Range via .filter-row layout */}
-          <div className="filter-group filter-row filter-search-cell" style={{marginBottom:'var(--subrow)'}}>
-            <div className="search-bar" style={{marginBottom:0,height:'calc(var(--subrow) * 4)'}}>
-              <Icon.search />
-              <input type="text" placeholder={"Search events, games\u2026"} value={search} onChange={e => setSearch(e.target.value)} style={{padding:'calc(var(--subrow) * 0.5) 0'}} />
-              {search && (
-                <button onClick={() => setSearch('')} style={{background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.473)',padding:'0 calc(var(--subrow) * 0.25)'}}>&#10005;</button>
-              )}
-            </div>
-          </div>
-
           {/* Date Range Slider */}
-          {dateBounds.totalDays > 0 && (() => {
+          {sectionsReady && dateBounds.totalDays > 0 && (() => {
             const { minDate, maxDate, totalDays } = dateBounds;
             const fromIdx = filters.dateFrom ? Math.max(0, daysBetween(minDate, filters.dateFrom)) : 0;
             const toIdx = filters.dateTo ? Math.min(totalDays, daysBetween(minDate, filters.dateTo)) : totalDays;
@@ -443,17 +451,9 @@ function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpe
               Only rendered when online events are actually in the pool and
               showing: a control for rooms that are not on screen is noise, and
               one that cannot change anything reads as broken. */}
-          {filters.showOnline !== false && onlineSitesInPool.length > 0 && (
+          {sectionsReady && filters.showOnline !== false && onlineSitesInPool.length > 0 && (
           <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setOnlineOpen(o => !o)}>
-              Online rooms
-              {activeSiteRuleCount > 0 && (
-                <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--accent)',textTransform:'none',letterSpacing:0}}>
-                  {activeSiteRuleCount} set
-                </span>
-              )}
-              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: onlineOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'▼'}</span>
-            </label>
+            {sectionHead('Online rooms', values.online, onlineOpen, () => setOnlineOpen(o => !o))}
             {onlineOpen && (<div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 1)'}}>
               <div style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',textTransform:'none',letterSpacing:0,lineHeight:1.4}}>
                 One buy-in floor cannot fit every room — these run from $1 to $25,500.
@@ -491,11 +491,9 @@ function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpe
           )}
 
           {/* Series */}
+          {sectionsReady && (<>
           <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setWhereOpen(w => !w)}>
-              Series
-              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: whereOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
-            </label>
+            {sectionHead('Series', values.series, whereOpen, () => setWhereOpen(w => !w))}
             {whereOpen && (<div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.75)'}}>
               <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                 <input type="checkbox"
@@ -527,10 +525,7 @@ function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpe
 
           {/* Buy-in / Rake */}
           <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setHowMuchOpen(h => !h)}>
-              Buy-in / Rake
-              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: howMuchOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
-            </label>
+            {sectionHead('Buy-in / Rake', values.buyin, howMuchOpen, () => setHowMuchOpen(h => !h))}
             {howMuchOpen && (() => {
               /* Only bands that exist here — see poolFacts. */
               const buyinOpts = [
@@ -591,10 +586,7 @@ function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpe
 
           {/* Variant */}
           <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setWhichOpen(w => !w)}>
-              Variant
-              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: whichOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
-            </label>
+            {sectionHead('Variant', values.variant, whichOpen, () => setWhichOpen(w => !w))}
             {whichOpen && (() => {
               const allSelected = filters.selectedGames.length === 0;
               const toggleVariant = (v, checked) => {
@@ -661,15 +653,10 @@ function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpe
 
           {/* Special */}
           <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setSpecialOpen(s => !s)}>
-              Special
-              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: specialOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
-            </label>
+            {sectionHead('Special', values.special, specialOpen, () => setSpecialOpen(s => !s))}
             {specialOpen && (
               <div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.5)',marginTop:'calc(var(--subrow) * 0.5)'}}>
                 {[
-                  ['ladiesOnly', 'Ladies'],
-                  ['seniorsOnly', 'Seniors'],
                   ['bountyOnly', 'Bounty'],
                   ['mysteryBountyOnly', 'Mystery Bounty'],
                   ['headsUpOnly', 'Heads Up'],
@@ -687,13 +674,15 @@ function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpe
             )}
           </div>
 
-          <div className="filter-group filter-actions" style={{gridColumn:'1 / -1',display:'flex',flexDirection:'row',gap:'var(--gu)',justifyContent:'flex-end',alignItems:'center',marginTop:'var(--subrow)'}}>
-            {hasActive && (
-              <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 10)',padding:0}} onClick={() =>
-                setFilters(f => ({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:false,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',/* Location survives a clear: it is a standing choice about where the user IS, not a filter they set for one look at the list. It changes only when they change it. */maxDistance:f.maxDistance,userLocation:f.userLocation,locationRegion:f.locationRegion,locationLabel:f.locationLabel,jurisdiction:f.jurisdiction,jurisdictionManual:f.jurisdictionManual,showOnline:true,onlyAvailableOnline:false,siteRules:{}}))
-              }>Clear all filters</button>
-            )}
-            <button className="btn btn-primary btn-sm" style={{width:'calc(var(--gu) * 9)',padding:0}} onClick={() => setOpen(false)}>Save &amp; Close</button>
+          </>)}
+
+          <div className="filter-group filter-actions fs-actions">
+            {/* Clear all keeps the standing choices (the location, the state, the online answers):
+                shared-filters.js clearedFilters. Muted while nothing is on. */}
+            <button className="btn btn-ghost btn-sm fs-clear" disabled={!chipCount} onClick={() => setFilters(clearedFilters)}>Clear all</button>
+            <button className="btn btn-primary btn-sm fs-show" onClick={() => setOpen(false)}>
+              {shownCount ? `Show ${shownCount.toLocaleString()} event${shownCount === 1 ? '' : 's'}` : 'Show events'}
+            </button>
           </div>
         </div>,
         document.body
@@ -738,6 +727,8 @@ export default function TournamentsView({
   onSetCondition, onRemoveCondition, onToggleAnchor, onSetPlannedEntries,
   buddyEvents, onBuddySwap, isAdmin, onAdminEdit, onClearOverrides,
   token, onOpenCalendarView,
+  // The view switch (UX picks 20 and 95): All events | Calendar | My schedule.
+  onSwitchView, mineCount = 0,
   // Desktop only (docs/desktop-layout.md): a row click selects the event into
   // the detail pane instead of expanding inline. Absent on the phone.
   onSelectEvent, selectedEventId
@@ -747,6 +738,12 @@ export default function TournamentsView({
   const deferredSearch = React.useDeferredValue ? React.useDeferredValue(search) : search;
   // Shared with the Calendar tab (utils/shared-filters.js): one set of filters for both.
   const [filters, setFilters] = useSharedFilters();
+  // The list re-filters a beat after a pill flips (UX pick 30): the pill answers at once.
+  const deferredFilters = React.useDeferredValue ? React.useDeferredValue(filters) : filters;
+  // The forgiving search (utils/search.js; UX pick 16), parsed once per query.
+  const searchToks = useMemo(() => searchTokens(deferredSearch), [deferredSearch]);
+  // The filters that are on, as chips under the sticky rows (UX pick 17).
+  const chips = useMemo(() => activeFilterChips(filters), [filters]);
   // Offered as the way out of the filtered-empty state. Clears the search box
   // and every filter back to defaults, including the saved location — a
   // distance radius is usually the thing hiding everything, and leaving it set
@@ -1106,15 +1103,11 @@ export default function TournamentsView({
   }, [tournaments]);
 
   const filtered = useMemo(() => {
+    const filters = deferredFilters;
     const passed = tournaments
       .filter(t => {
         if (endedVenues.has(t.venue)) return false;
-        if (deferredSearch) {
-          const q = deferredSearch.toLowerCase();
-          if (!t.event_name?.toLowerCase().includes(q) &&
-              !String(t.event_number).includes(q) &&
-              !t.game_variant?.toLowerCase().includes(q)) return false;
-        }
+        if (searchToks.length && !matchesSearchText(t, searchToks, getVenueInfo)) return false;
         // Shared with first-run setup's live count (utils/onboarding.js), so the two agree.
         if (!matchesBuyin(t, filters)) return false;
         if (filters.rakeRanges && filters.rakeRanges.length > 0) {
@@ -1175,7 +1168,23 @@ export default function TournamentsView({
     });
     decorated.sort((a, b) => (a.ts - b.ts) || (a.num - b.num));
     return decorated.map(x => x.t);
-  }, [tournaments, deferredSearch, filters, endedVenues]);
+  }, [tournaments, searchToks, deferredFilters, endedVenues]);
+
+  /* "Showing 140 of 1,892": the upcoming events the list shows, of those its location and online
+     choices leave with no filter on (the default kinds: no satellites, no restarts). */
+  const { shownCount, baseCount } = useMemo(() => {
+    const today = getToday();
+    const upcoming = (t) => t.venue !== 'Personal' && normaliseDate(t.date) >= today;
+    let shown = 0, base = 0;
+    for (const t of filtered) if (upcoming(t)) shown += 1;
+    for (const t of tournaments) {
+      if (!upcoming(t) || endedVenues.has(t.venue)) continue;
+      if ((DEFAULT_FILTERS.hideSatellites && t.is_satellite) || (DEFAULT_FILTERS.hideRestarts && t.is_restart)) continue;
+      if (!matchesLocation(t, deferredFilters) || !matchesOnline(t, deferredFilters)) continue;
+      base += 1;
+    }
+    return { shownCount: shown, baseCount: base };
+  }, [filtered, tournaments, deferredFilters, endedVenues]);
 
   // The list's day groups, built once per filtered list rather than on every render. Some
   // tournament rows have legacy non-ISO date strings ("May 4, 2026"). Sort by the NORMALISED ISO
@@ -1306,9 +1315,7 @@ export default function TournamentsView({
   return (
     <div>
       <div className="sticky-filters" ref={stickyFiltersRef}>
-        {/* wrap + rowGap: on a narrow phone the event-kind switches drop to their
-            own line below the icon buttons instead of overflowing and clipping
-            "Side Events" off the right edge. */}
+        {onSwitchView && <ScheduleSwitch view="tournaments" mineCount={mineCount} onChange={onSwitchView} desktop={!!onSelectEvent} />}
         <div style={{display:'flex',gap:'var(--gu)',alignItems:'center',flexWrap:'wrap',rowGap:'calc(var(--subrow) * 1)'}}>
           {/* Location | filter | calendar, on the column grid: location spans three
               primary columns (26g, 1-27g), then the 1g gutter, a 4g filter button
@@ -1317,7 +1324,7 @@ export default function TournamentsView({
             ref={locationBtnRef}
             className={`filter-chip loc-tile ${filters.locationRegion || filters.userLocation ? 'active' : ''}`}
             onClick={() => setLocationDropdownOpen(o => !o)}
-            style={{flex:'0 0 auto',width:'calc(var(--col) * 3 + var(--gu) * 2)',minWidth:0,height:'calc(var(--subrow) * 4)',boxSizing:'border-box',display:'flex',alignItems:'center',justifyContent:'center',gap:'calc(var(--subrow) * 1)',padding:'0 var(--gu)'}}
+            style={{flex:'0 0 auto',width: onSwitchView ? 'calc(var(--gu) * 30)' : 'calc(var(--col) * 3 + var(--gu) * 2)',minWidth:0,height:'calc(var(--subrow) * 4)',boxSizing:'border-box',display:'flex',alignItems:'center',justifyContent:'center',gap:'calc(var(--subrow) * 1)',padding:'0 var(--gu)'}}
             title={filters.locationRegion && LOCATION_REGIONS[filters.locationRegion]
               ? LOCATION_REGIONS[filters.locationRegion].label
               : filters.userLocation && filters.maxDistance
@@ -1337,11 +1344,13 @@ export default function TournamentsView({
           </button>
           <button
             ref={filterToggleRef}
-            className={`filter-chip filter-chip-square ${filterPanelOpen ? 'active' : ''}`}
+            className={`filter-chip filter-chip-square ${filterPanelOpen || chips.length ? 'active' : ''}${chips.length ? ' has-filters' : ''}`}
             onClick={() => setFilterPanelOpen(o => !o)}
             style={{flexShrink:0,width:'calc(var(--gu) * 4)'}}
+            aria-label={chips.length ? `Filters, ${chips.length} on` : 'Filters'}
           >
             <Icon.filter />
+            {chips.length > 0 && <span className="filter-count" aria-hidden="true">{chips.length}</span>}
           </button>
           {/* Calendar chip: tap → switch to Calendar view. Long-press
               (≥500ms) → open a native date picker scoped to today and
@@ -1354,18 +1363,48 @@ export default function TournamentsView({
               specific dates from Calendar view's calendar icon, which
               opens the same native picker but from a deliberate single
               tap that doesn't run into the same gesture-capture state. */}
-          <button
-            type="button"
-            className="filter-chip filter-chip-square"
-            style={{flexShrink:0}}
-            title="Calendar view"
-            onClick={() => onOpenCalendarView && onOpenCalendarView()}
-          >
-            <Icon.calendar />
-          </button>
+          {!onSwitchView && (
+            <button
+              type="button"
+              className="filter-chip filter-chip-square"
+              style={{flexShrink:0}}
+              title="Calendar view"
+              onClick={() => onOpenCalendarView && onOpenCalendarView()}
+            >
+              <Icon.calendar />
+            </button>
+          )}
         </div>
 
-        <Filters filters={filters} setFilters={setFiltersWithScroll} setFiltersRaw={setFilters} tournaments={tournaments} open={filterPanelOpen} setOpen={setFilterPanelOpen} toggleRef={filterToggleRef} search={search} setSearch={setSearch} />
+        {/* Search on the list, not in the sheet (UX pick 18): 35g x 4r, 1r under Location. */}
+        <div className="list-search">
+          <Icon.search />
+          <input type="search" enterKeyHint="search" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder={'Search events, rooms, series, buy-ins\u2026'} aria-label="Search events" />
+          {search && <span className="list-search-count" aria-live="polite">{shownCount.toLocaleString()}</span>}
+          {search && <button type="button" className="list-search-x" aria-label="Clear search" onClick={() => setSearch('')}><Icon.x /></button>}
+        </div>
+
+        {/* The filters that are on, each removable (UX pick 17); absent when none is. */}
+        {chips.length > 0 && (
+          <div className="filter-chips-row" role="group" aria-label="Filters on">
+            {chips.slice(0, 2).map(c => (
+              <button key={c.key} type="button" className="filter-chip-on snap-g" aria-label={`Remove ${c.label}`}
+                onClick={() => setFiltersWithScroll(c.remove)}>
+                <span className="filter-chip-on-label">{c.label}</span><Icon.x />
+              </button>
+            ))}
+            {chips.length > 2 && (
+              <button type="button" className="filter-chip-on filter-chip-more snap-g" onClick={() => setFilterPanelOpen(true)}>
+                +{chips.length - 2} more
+              </button>
+            )}
+            <button type="button" className="filter-chips-clear" onClick={() => setFiltersWithScroll(clearedFilters)}>Clear all</button>
+            <span className="filter-chips-count">{shownCount.toLocaleString()} of {baseCount.toLocaleString()}</span>
+          </div>
+        )}
+
+        <Filters filters={filters} setFilters={setFiltersWithScroll} setFiltersRaw={setFilters} tournaments={tournaments} open={filterPanelOpen} setOpen={setFilterPanelOpen} toggleRef={filterToggleRef} shownCount={shownCount} chipCount={chips.length} />
 
         {locationDropdownOpen && createPortal(
           /* var(--z-scrim), not 998. The PANEL was moved off a 999 literal onto
@@ -1475,6 +1514,7 @@ export default function TournamentsView({
                         />
                       ) : (
                         <CalendarEventRowLite
+                        onToggle={onToggle}
                           tournament={t}
                           isInSchedule={scheduleIds.has(t.id)}
                           isPast={past}
