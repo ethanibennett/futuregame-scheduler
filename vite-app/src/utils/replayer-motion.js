@@ -186,13 +186,21 @@ export class MotionRegistry {
    */
   run(el, spec) {
     const { channels, size, prefix = '', axis = null, tolPx = 0.25, end, transient = false, onDone = null, extras = [] } = spec;
+    /* `key`: what the registry knows this motion by (the element, unless one element carries two
+       motions at once: a card turning over on `transform` while it lifts on `translate`).
+       `property`: 'individual' plays the same channels on the separate translate / rotate / scale
+       properties, which apply in the parent's frame, before the element's own transform (a fanned
+       card's rotation), so a lift is straight up whatever the card's tilt. */
+    const key = spec.key || el;
+    const individual = spec.property === 'individual';
     let kf = null;
     // One channel (or one spring shared by x and y): CSS linear() where supported.
     const single = axis == null && linearForm(channels, prefix, end);
     if (single && supportsLinearEasing()) kf = single;
     if (!kf) kf = keyframesCached(channels, { size, prefix, axis, tolPx, end });
     if (!kf) return null;
-    this.stop(el);
+    if (individual) kf = toIndividual(kf);
+    this.stop(key);
     let anim;
     try {
       anim = el.animate(kf.keyframes, {
@@ -208,14 +216,14 @@ export class MotionRegistry {
     // starts at that arrival.
     const t0 = this.capture ? this.captureNow : 0;
     const entry = {
-      el, anim, channels, size, prefix, end: kf.end, rest, t0, transient, onDone,
+      el, key, anim, channels, size, prefix, end: kf.end, rest, t0, transient, onDone,
       extras: [], ticks: [], done: false, started: false, timer: 0,
     };
     for (const x of extras) {
       try { entry.extras.push(x.el.animate(x.frames, x.options)); } catch (e) { /* no WAAPI on it */ }
     }
     anim.onfinish = () => this._done(entry);
-    this.entries.set(el, entry);
+    this.entries.set(key, entry);
     if (this.capture) {
       for (const a of [anim, ...entry.extras]) { try { a.pause(); a.currentTime = 0; } catch (e) { /* ignore */ } }
       return entry;
@@ -305,7 +313,8 @@ export class MotionRegistry {
     if (entry.done) return;
     entry.done = true;
     clearTimeout(entry.timer);
-    if (this.entries.get(entry.el) === entry) this.entries.delete(entry.el);
+    const key = entry.key || entry.el;
+    if (this.entries.get(key) === entry) this.entries.delete(key);
     // The element's own style is the end state, so the animation simply ends; a ghost or a
     // shipped chip leaves the felt.
     for (const a of [entry.anim, ...entry.extras]) { try { a.onfinish = null; a.cancel(); } catch (e) { /* gone */ } }
@@ -492,6 +501,26 @@ function linearForm(channels, prefix, end) {
     keyframes: [{ offset: 0, transform: at(0), easing: L.easing }, { offset: 1, transform: at(1) }],
     delay: a.delay || 0, duration, end: (a.delay || 0) + duration,
   };
+}
+
+/* The same keyframes on the separate translate / rotate / scale properties (no prefix: they apply in
+   the parent's frame, before the element's own transform). Pure. */
+const TF_RE = /translate\(([-\d.e]+)px, ([-\d.e]+)px\)(?: rotate\(([-\d.e]+)deg\))?(?: scale\(([-\d.e]+), ([-\d.e]+)\))?/;
+export function toIndividual(kf) {
+  if (!kf) return kf;
+  const keyframes = kf.keyframes.map((f) => {
+    const m = TF_RE.exec(f.transform || '');
+    const out = { offset: f.offset };
+    if (f.easing) out.easing = f.easing;
+    if (m) {
+      out.translate = m[1] + 'px ' + m[2] + 'px';
+      if (m[3] != null) out.rotate = m[3] + 'deg';
+      if (m[4] != null) out.scale = m[4] + ' ' + m[5];
+    }
+    if (f.opacity != null) out.opacity = f.opacity;
+    return out;
+  });
+  return { ...kf, keyframes };
 }
 
 /* ── The pot's figure while chips are in flight (pure) ─────────────────────────────────────── */

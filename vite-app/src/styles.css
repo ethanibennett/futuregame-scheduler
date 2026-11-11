@@ -5470,6 +5470,8 @@
        row only); a card already there keeps its element, so only the new one moves. */
     .replayer-board-extra > * { animation: turnRiverSlide var(--dur-base) var(--ease-object) both; }
     @media (prefers-reduced-motion: reduce) { .replayer-board-extra > * { animation: none; } }
+    /* Under springs the second board is dealt like the first, a beat later (Replayer animations 12). */
+    .replayer-board-area.is-sprung .replayer-board-extra > * { animation: none; }
     /* Dead cards take the board's slot in stud and draw games. A stud hand can
        fold a lot of up cards (7 seats x 4), so they are smaller than board cards
        (about 2/3) and wrap inside 64% of the table instead of running into the
@@ -6501,6 +6503,20 @@
     }
     .replayer-hilo-low.animate { transform: translateY(calc(var(--subrow) * 1)); }
 
+    /* A card's standing pose on the felt (Replayer animations 16-18, 20-23): on the translate property, which
+       applies in the row's frame before the card's own fan transform, so raised is straight up at any tilt. The
+       moments effect springs a card into its pose; this is where it rests. */
+    .replayer-table .card-row > [data-pose="up"] { translate: 0 calc(var(--subrow) * -1); }
+    .replayer-table .card-row > [data-pose="up-half"] { translate: 0 calc(var(--subrow) * -0.5); }
+    .replayer-table .card-row > [data-pose="down"] { translate: 0 var(--subrow); }
+    .replayer-table .card-row > [data-pose="down-half"] { translate: 0 calc(var(--subrow) * 0.5); }
+    .replayer-table .card-row > [data-pose="dead"] { translate: 0 calc(var(--subrow) * 0.5); opacity: 0.45; }
+    /* The ghosts of a folded hand, in the flight layer (25, 7). */
+    .replayer-ghost-row { position: absolute; inset: 0; display: block; pointer-events: none; height: auto; min-width: 0; }
+    .replayer-ghost-row > * { position: absolute; }
+    /* A stud fold's up cards on their way to the Dead cards strip, which can lie outside the table (7). */
+    .card-row.replayer-ghost-fixed { position: fixed; inset: 0; display: block; height: auto; min-width: 0; pointer-events: none; z-index: 60; }
+    .replayer-ghost-fixed > * { position: absolute; }
 
 
     /* ── Replayer Settings Panel ── */

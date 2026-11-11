@@ -26,6 +26,8 @@ import {
   collectAtResult, potShown,
 } from '../utils/replayer-motion.js';
 import { SPRING_SETS } from '../utils/spring.js';
+import { bestFive, halvesOf, counterfeitedNow, leaderOf, lowDecider, indexOfLowRank, streetChange } from '../utils/replayer-reading.js';
+import { turnOver, dealIn, liftOnce, poseTo, rap, ghostsAway, angleOf, cardTimes, slideRow, runOutBoard, runOutTimes, poseSequence, drawIn, ghostsTo, appearAt, makeRoom } from '../utils/replayer-card-moments.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
 import { exportReplayGif } from '../utils/replay-gif-export.js';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -1870,7 +1872,7 @@ function DealerGlyph() {
 const FAN_SLIDE_MS = 460;
 const FAN_SLIDE_SAMPLES = 16;
 
-function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, reverseZ, discardIdx, onCardTap }) {
+function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, reverseZ, discardIdx, onCardTap, poseOf, holdSort = 0 }) {
   /* Draw-game re-sort. A card keeps its DOM element for as long as it stays in
      the hand (keyed by identity, below), so when a draw puts a new card among
      them this can see where each surviving card was and where it is now, and
@@ -1924,9 +1926,10 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
         m.el.animate([
           { transform: ('translateX(' + ((m.from - m.to) * step).toFixed(2) + 'px) ' + base).trim() },
           { transform: base || 'none' },
-        ], { duration: FAN_SLIDE_MS, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' });
+        ], { duration: FAN_SLIDE_MS, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)', delay: holdSort, fill: 'backwards' });
       }
-      for (const el of arrivals) {
+      // Held (Replayer animations 10): the new cards are dealt into the gaps by the moments effect.
+      if (!holdSort) for (const el of arrivals) {
         el.animate([{ opacity: 0 }, { opacity: 0, offset: 0.35 }, { opacity: 1 }],
           { duration: FAN_SLIDE_MS, easing: 'ease-out' });
       }
@@ -1938,9 +1941,9 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
         const f = m.from + (m.to - m.from) * (s / FAN_SLIDE_SAMPLES);
         frames.push({ transform: getSplayStyle(f, now.total, now.splay, m.y, now.reverseZ, now.max, now.splayScale).transform });
       }
-      m.el.animate(frames, { duration: FAN_SLIDE_MS, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' });
+      m.el.animate(frames, { duration: FAN_SLIDE_MS, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)', delay: holdSort, fill: 'backwards' });
     }
-    for (const el of arrivals) {
+    if (!holdSort) for (const el of arrivals) {
       el.animate([{ opacity: 0 }, { opacity: 0, offset: 0.35 }, { opacity: 1 }],
         { duration: FAN_SLIDE_MS, easing: 'ease-out' });
     }
@@ -2014,9 +2017,11 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
         if (c.suit === 'x' || (isDown && c.suit === 'x')) {
           return <div key={k} data-ck={k} className="card-unknown" style={splayStyle} />;
         }
+        // A standing pose (Replayer animations 16-18, 20-23): raised, sunk or dead, on the translate property.
+        const pose = poseOf ? poseOf.get(id) : undefined;
         return <img key={k} data-ck={k} className={'card-img' + tapClass}
           src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'}
-          alt={c.rank+c.suit} loading="eager"
+          alt={c.rank+c.suit} loading="eager" data-pose={pose || undefined}
           style={splayStyle} {...tap} />;
       })}
     </div>
@@ -7195,6 +7200,109 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     (showResult && potAwards) ? stacks.map((v, i) => v + (potAwards[i] || 0) + (settled.uncalled[i] || 0)) : stacks
   ), [showResult, potAwards, stacks, settled]);
 
+  /* ── The cards' standing poses (Replayer animations, 2026-11-11) ──
+     Which cards play, shown in the cards: a tabled run-out's leader sits raised (16); the hero's counterfeited
+     hole cards sink and dim (18); at the result the winner's five lift and its other cards sink and dim (20), a
+     hi-lo pot's cards move to the half they play for (21), a badugi's dead card sinks (22), and the card two lows
+     part on lifts in both hands (23). A pose is a state: the card's own style (data-pose, the translate property),
+     so it holds at rest, in an export and under reduced motion; the moments effect springs a card into it on a
+     step forward. Springs only (flag '0' keeps today's table), one board only. */
+  const cardPoses = useMemo(() => {
+    if (!springSet) return null;
+    const cfg = gameEvalFor(hand.gameType, hand);
+    if (!cfg || boardCount(hand) > 1) return null;
+    const board = feltBoard ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
+    const cardsOf = (pi) => {
+      const raw = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
+      if (!raw || raw === 'MUCK') return [];
+      return parseCardNotation(raw).filter(c => c.suit !== 'x');
+    };
+    const seatsP = new Map(), boardP = new Map();
+    const put = (pi, c, pose) => { let m = seatsP.get(pi); if (!m) seatsP.set(pi, m = new Map()); m.set(c.rank + c.suit, pose); };
+    const live = hand.players.map((_, pi) => pi).filter(pi => !folded.has(pi));
+    const halves = halvesOf(cfg);
+    // 18: the hero's hole cards counterfeited on this board (hold'em-style high games), until the hero wins.
+    const heroWon = showResult && potAwards && (potAwards[replayHeroIdx] || 0) > 0;
+    if (category === 'community' && board.length >= 4 && !folded.has(replayHeroIdx) && !heroWon) {
+      const hole = cardsOf(replayHeroIdx);
+      counterfeitedNow(cfg, hole, board, board.length).forEach(i => put(replayHeroIdx, hole[i], 'dead'));
+    }
+    if (!showResult) {
+      // 16: the tabled hand in front sits raised.
+      if (exposeAllIn && cfg.type === 'high') {
+        const hands = live.map(pi => ({ seat: pi, cards: cardsOf(pi) })).filter(h => h.cards.length >= 2);
+        if (hands.length === live.length) {
+          const lead = leaderOf(cfg, hands, board);
+          if (lead >= 0) hands.find(h => h.seat === lead).cards.forEach(c => put(lead, c, 'up'));
+        }
+      }
+      return seatsP.size || boardP.size ? { seats: seatsP, board: boardP } : null;
+    }
+    if (!potAwards) return seatsP.size ? { seats: seatsP, board: boardP } : null;
+    const winners = live.filter(pi => (potAwards[pi] || 0) > 0 && cardsOf(pi).length >= 2);
+    if (cfg.type === 'hilo' && hiLoHalves) {
+      // 21: up for the high, down for the low; a card playing both ways stays.
+      const hiB = new Set(), loB = new Set();
+      winners.forEach(pi => {
+        const hole = cardsOf(pi);
+        const hi = hiLoHalves.hi.has(pi) ? bestFive(cfg, hole, board, 'high') : null;
+        const lo = hiLoHalves.lo.has(pi) ? bestFive(cfg, hole, board, halves[1]) : null;
+        const hiH = new Set(hi ? hi.hole : []), loH = new Set(lo ? lo.hole : []);
+        hole.forEach((c, i) => {
+          if (hiH.has(i) && !loH.has(i)) put(pi, c, 'up');
+          else if (loH.has(i) && !hiH.has(i)) put(pi, c, 'down');
+        });
+        (hi ? hi.board : []).forEach(i => hiB.add(i));
+        (lo ? lo.board : []).forEach(i => loB.add(i));
+      });
+      board.forEach((c, i) => {
+        if (hiB.has(i) && !loB.has(i)) boardP.set(c.rank + c.suit, 'up-half');
+        else if (loB.has(i) && !hiB.has(i)) boardP.set(c.rank + c.suit, 'down-half');
+      });
+    } else if (cfg.type === 'badugi') {
+      // 22: every shown hand's card that cannot count.
+      live.forEach(pi => {
+        const hole = cardsOf(pi);
+        if (hole.length < 2) return;
+        const r = bestFive(cfg, hole, [], 'badugi');
+        if (!r || r.hole.length >= hole.length) return;
+        const keep = new Set(r.hole);
+        hole.forEach((c, i) => { if (!keep.has(i)) put(pi, c, 'dead'); });
+      });
+    } else if (cfg.type === 'high' || cfg.type === 'low') {
+      const kind = halves[0];
+      const reads = new Map();
+      live.forEach(pi => { const hole = cardsOf(pi); if (hole.length >= 2) reads.set(pi, { hole, r: bestFive(cfg, hole, board, kind) }); });
+      const more = (pi) => cardsOf(pi).length + board.length > 5;
+      // 20: the winner's five lift, its other cards sink and dim (more than five cards between hand and board).
+      winners.forEach(pi => {
+        const rd = reads.get(pi);
+        if (!rd || !rd.r || !more(pi)) return;
+        const play = new Set(rd.r.hole);
+        rd.hole.forEach((c, i) => put(pi, c, play.has(i) ? 'up' : 'dead'));
+        rd.r.board.forEach(i => boardP.set(board[i].rank + board[i].suit, 'up'));
+      });
+      // 23: two lows of five: the rank they part on lifts in both hands.
+      if (cfg.type === 'low' && winners.length === 1 && !more(winners[0])) {
+        const w = winners[0];
+        const others = [...reads.entries()].filter(([pi, x]) => pi !== w && x.r)
+          .sort((a, b) => (kind === 'low27' ? a[1].r.ev.score - b[1].r.ev.score : a[1].r.ev.score - b[1].r.ev.score));
+        const W = reads.get(w);
+        if (W && W.r && others.length) {
+          const [lp, L] = others[0];
+          const five = (x) => x.r.hole.map(i => x.hole[i]);
+          const d = lowDecider(kind, { ev: W.r.ev, cards: five(W) }, { ev: L.r.ev, cards: five(L) });
+          if (d) {
+            const wi = indexOfLowRank(kind, W.hole, W.r.hole, d.a), li = indexOfLowRank(kind, L.hole, L.r.hole, d.b);
+            if (wi >= 0) put(w, W.hole[wi], 'up');
+            if (li >= 0) put(lp, L.hole[li], 'up');
+          }
+        }
+      }
+    }
+    return seatsP.size || boardP.size ? { seats: seatsP, board: boardP } : null;
+  }, [springSet, hand, feltBoard, boardCards, replayHeroIdx, heroCards, opponentCards, folded, showResult, potAwards, hiLoHalves, exposeAllIn, category]);
+
   /* ── Spring moments: what this render is ──
      A moment plays only on a single step FORWARD from the step the last commit showed (Forward,
      autoplay, an export's step); a jump, a step back or a hand change finishes whatever is running
@@ -7203,11 +7311,22 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      a winner's stack shows what it had before the pot arrives. Each arrival then writes the digits
      straight into the DOM (no re-render mid-moment), and one render after the last puts React's
      value back in step. */
+  /* 14: all in with nothing left to decide. Every live player but at most one is all in and no later street
+     records an action, so one press runs the board out to the river (Back still steps a street at a time). One
+     board, springs on, the board's animation on. */
+  const laterEmpty = (s) => { for (let si = s + 1; si < totalStreets; si++) if ((hand.streets[si]?.actions || []).length) return false; return true; };
+  const liveSeats = hand.players.map((_, i) => i).filter(i => !folded.has(i));
+  const decidedNow = liveSeats.length >= 2 && liveSeats.some(i => allIn.has(i)) && liveSeats.filter(i => !allIn.has(i)).length <= 1;
+  const runOutTo = (p) => ((springOn && rSettings.animateBoard && feltBoard && boardCount(hand) <= 1 && decidedNow && p && !p.r
+    && p.a === (hand.streets[p.s]?.actions || []).length - 1 && p.s < totalStreets - 2 && laterEmpty(p.s)) ? totalStreets - 1 : -1);
+
   const stepNow = { s: streetIdx, a: actionIdx, r: showResult };
   const stepPrev = committedStepRef.current;
   const stepChanged = !stepPrev || stepPrev.s !== stepNow.s || stepPrev.a !== stepNow.a || stepPrev.r !== stepNow.r;
   const stepAfter = (p) => {
     if (!p || p.r) return null;
+    const ro = runOutTo(p);
+    if (ro >= 0) return { s: ro, a: -1, r: false };
     const n = (hand.streets[p.s]?.actions || []).length;
     if (p.a < n - 1) return { s: p.s, a: p.a + 1, r: false };
     if (p.s < totalStreets - 1) return { s: p.s + 1, a: -1, r: false };
@@ -7217,6 +7336,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const motionKind = (springOn && stepNext && stepNext.s === stepNow.s && stepNext.a === stepNow.a && stepNext.r === stepNow.r)
     ? (stepNow.r ? 'result' : stepNow.a < 0 ? 'street' : 'action') : null;
   const motionJumped = stepChanged && !motionKind;
+  /* 10: the step that deals the hero's draw: the new cards land in the gaps the thrown cards left and sit there two
+     beats before the hand sorts, so the row's own re-sort waits that long. */
+  const heroDrawHold = (() => {
+    if (motionKind !== 'street' || !isDrawGame || !rSettings.animateDeal || streetIdx < 1) return 0;
+    const d = (hand.streets[streetIdx - 1]?.draws || []).find(x => x.player === replayHeroIdx);
+    if (!d || !(d.discarded > 0)) return 0;
+    const r = motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1);
+    return Math.round((cardTimes(springSet).handArrive + 2 * SPRING_SETS[springSet].stage.beat) / r);
+  })();
   /* The showdown's reveal of the other hands, on the spring path: decided by the render that steps
      forward into the result and kept while the result stays (revealRef, from the commit). Set from
      an effect, as flag '0' does, it was a second render of the whole replayer inside the result's
@@ -7370,12 +7498,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   canGoForwardRef.current = canGoForward;
 
   const stepForward = useCallback(() => {
+    const to = runOutTo({ s: streetIdx, a: actionIdx, r: showResult });
+    if (to >= 0) { setStreetIdx(to); setActionIdx(-1); return; }
     if (actionIdx < currentActions.length - 1) setActionIdx(a => a + 1);
     else if (streetIdx < totalStreets - 1) { setStreetIdx(s => s + 1); setActionIdx(-1); }
     else if (atDrillEdge) setPlaying(false);
     else if (!showResult) { setShowResult(true); if (isHiLo) setTimeout(() => setHiloAnimate(true), 100); }
     else setPlaying(false);
-  }, [actionIdx, currentActions.length, streetIdx, totalStreets, showResult, isHiLo, atDrillEdge]);
+  }, [actionIdx, currentActions.length, streetIdx, totalStreets, showResult, isHiLo, atDrillEdge, decidedNow, springOn, rSettings.animateBoard]); // eslint-disable-line react-hooks/exhaustive-deps
   // Update inline so the export loop always gets the latest closure
   stepForwardRef.current = stepForward;
 
@@ -7425,8 +7555,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      branch pauses, so pressing play set playing true, ticked once, and paused
      again — a flicker and a no-op, under a glyph still showing a play
      triangle. From the end, play means replay. */
+  /* 1: a hand started under Play is dealt: from its first step, or replayed from the end. Opening, stepping and
+     the scrubber keep the table already dealt (the owner removed the deal from every opening). */
+  const pendingDealRef = useRef(false);
   const handlePlayPause = () => {
-    if (!playing && !canGoForward) { goToStart(); setPlaying(true); return; }
+    if (!playing && !canGoForward) { pendingDealRef.current = true; goToStart(); setPlaying(true); return; }
+    if (!playing && streetIdx === 0 && actionIdx < 0 && !showResult) { pendingDealRef.current = true; setMotionRender(n => n + 1); }
     setPlaying(p => !p);
   };
 
@@ -8858,7 +8992,68 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           });
         });
       }
+      /* Every seat's cards as this commit draws them (the next press may fold them away, turn them over or deal
+         beside them: by then they are gone or changed), and every card standing in a pose. */
+      const seatCardsNow = new Map();
+      const cardElsNow = new Set();
+      const posedNow = [];
+      const boardNow = { rowY: null, extraRows: 0, mainLen: 0, xk: new Map() };
+      const deadNow = new Map();
+      if (table && springOn) {
+        table.querySelectorAll('[data-seat-cards] > .card-row > *').forEach(el => {
+          const seat = Number(el.parentElement.parentElement.dataset.seatCards);
+          const r = el.getBoundingClientRect();
+          if (!(r.width > 0)) return;
+          const m = /rotate\(([-\d.]+)deg\)/.exec(el.style.transform || '');
+          let list = seatCardsNow.get(seat);
+          if (!list) seatCardsNow.set(seat, list = []);
+          list.push({ node: el, cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: el.offsetWidth || r.width, h: el.offsetHeight || r.height, angle: m ? Number(m[1]) : 0, back: el.tagName !== 'IMG' });
+          cardElsNow.add(el);
+        });
+        table.querySelectorAll('.card-row > [data-pose]').forEach(el => posedNow.push(el));
+        // The Dead cards strip (7), under the table in portrait, in the board's slot in landscape.
+        const deadRoot = table.closest('.replayer-replay') || table.parentElement;
+        if (deadRoot) deadRoot.querySelectorAll('.replayer-dead-strip-cards > img, .replayer-dead-row > img').forEach(el => {
+          const r = el.getBoundingClientRect();
+          if (r.width > 0) deadNow.set(el.getAttribute('alt'), r.left + r.width / 2);
+        });
+        // The board's rows (12, 13): where the first row sits, how many rows follow it, where their cards are.
+        const area = table.querySelector('.replayer-board-area:not(.replayer-dead-area)');
+        const main = area && area.querySelector(':scope > .card-row:not(.replayer-board-extra)');
+        if (main) {
+          const mr = main.getBoundingClientRect();
+          boardNow.rowY = mr.top + mr.height / 2;
+          boardNow.mainLen = main.querySelectorAll(':scope > [data-slot]').length;
+          const extras = [...area.querySelectorAll(':scope > .replayer-board-extra')];
+          boardNow.extraRows = extras.length;
+          extras.forEach(row => row.querySelectorAll(':scope > [data-xk]').forEach(el => {
+            const r = el.getBoundingClientRect();
+            boardNow.xk.set(el.dataset.xk, r.left + r.width / 2);
+          }));
+        }
+        // A card's back, as this theme paints it: a card turned over is drawn as one until its half turn.
+        const themeKey = table.className;
+        if (!motion.backPaint || motion.backTheme !== themeKey) {
+          const b = table.querySelector('.replayer-seat-cards .card-unknown, .replayer-seat-cards .card-placeholder');
+          if (b) {
+            const cs = getComputedStyle(b);
+            motion.backPaint = { image: cs.backgroundImage, color: cs.backgroundColor, ring: cs.borderTopColor };
+            motion.backTheme = themeKey;
+          }
+        }
+      }
       const record = () => {
+        if (springOn) {
+          motion.prevSeatCards = seatCardsNow;
+          motion.prevCardEls = cardElsNow;
+          motion.prevBoard = boardNow;
+          motion.prevDead = deadNow;
+          // What pose each card was last drawn in (a card that lost its pose: none).
+          if (!motion.lastPose) motion.lastPose = new WeakMap();
+          (motion.prevPosed || []).forEach(el => motion.lastPose.set(el, ''));
+          posedNow.forEach(el => motion.lastPose.set(el, el.dataset.pose || ''));
+          motion.prevPosed = posedNow;
+        }
         revealRef.current = springReveal;
         prevWagersRef.current = nowWagers;
         committedStepRef.current = { s: streetIdx, a: actionIdx, r: showResult };
@@ -8867,6 +9062,35 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       };
       if (!springOn) { motion.finishAll(); resyncDigits(); record(); return; }
       if (motionJumped) motion.finishAll();
+      /* 1: the deal, under Play from the hand's first step: each card from the dealer spot to its seat on the hand
+         spring, a seat after another from the button's left, round by round (stud: two down, then the door). */
+      if (pendingDealRef.current && table && streetIdx === 0 && actionIdx < 0 && !showResult) {
+        pendingDealRef.current = false;
+        if (rSettings.animateDeal) {
+          const T = table.getBoundingClientRect();
+          const spot = { x: T.left + dealerSpot[0] / 100 * T.width, y: T.top + dealerSpot[1] / 100 * T.height };
+          const st0 = SPRING_SETS[springSet].stage;
+          const rate0 = playing ? rateFor(speed) : 1;
+          const per = dealOrder.map(pi => [...table.querySelectorAll('[data-seat-cards="' + pi + '"] > .card-row > *')]).filter(a => a.length);
+          const rounds = Math.max(0, ...per.map(a => a.length));
+          const total = per.reduce((n, a) => n + a.length, 0);
+          const stagger = total > 1 ? Math.min(st0.sweepStagger, 420 / (total - 1)) : 0;
+          const jobs = [];
+          let k = 0;
+          for (let r = 0; r < rounds; r++) per.forEach(arr => {
+            const el = arr[r];
+            if (!el) return;
+            const rr = el.getBoundingClientRect();
+            jobs.push({ el, dx: spot.x - (rr.left + rr.width / 2), dy: spot.y - (rr.top + rr.height / 2), delay: (k++ * stagger) / rate0, size: { w: el.offsetWidth || rr.width, h: el.offsetHeight || rr.height } });
+          });
+          if (jobs.length) {
+            motion.finishAll();
+            motion.beginMoment('deal');
+            motion.momentKey = 'deal';
+            jobs.forEach(j => { j.el.getAnimations().forEach(a => a.cancel()); dealIn(motion, { set: springSet, rate: rate0, el: j.el, dx: j.dx, dy: j.dy, delay: j.delay, size: j.size }); });
+          }
+        }
+      }
       if (!motionKind || !table) { resyncDigits(); record(); return; }
 
       const set = springSet;
@@ -8997,6 +9221,24 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           const rectOf = (el) => delta.rects.get(el);
           // late: how far the moment's clock has run when the board's springs are made.
           const startBoard = (late) => {
+            /* 14: one press ran the board out: each street placed in turn, the row making room as it goes. */
+            const jump = stepPrev ? streetIdx - stepPrev.s : 1;
+            if (jump > 1) {
+              const sizes = [];
+              for (let si = stepPrev.s + 1; si <= streetIdx; si++) sizes.push(parseCardNotation(hand.streets[si]?.cards.board || '').length);
+              const times = runOutTimes(set, sizes);
+              const groups = [];
+              let k = 0;
+              sizes.forEach((n, gi) => { groups.push({ cards: added.slice(k, k + n).map(el => ({ el, rect: rectOf(el) })), t: Math.max(0, times[gi] - late * rate) }); k += n; });
+              const r0 = rectOf(delta.cards[0]), r1 = delta.cards[1] ? rectOf(delta.cards[1]) : null;
+              runOutBoard(motion, {
+                set, rate, pitch: r1 ? r1.left - r0.left : r0.width,
+                stayed: stayed.map(el => ({ el, rect: rectOf(el), from: fromOf(el) })),
+                groups: groups.filter(g => g.cards.length),
+              });
+              motion.lastStreet.runOut = times;
+              return;
+            }
             if (!stayed.length) {
               dealBoard(motion, { set, rate, cards: added.map(el => ({ el, rect: rectOf(el) })), tPlace: Math.max(0, tBoard(S.place / rate) - late) });
             } else {
@@ -9172,6 +9414,330 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             },
           });
         };
+      }
+
+      /* (5) The cards (Replayer animations, 2026-11-11). Read here, written with the rest. */
+      {
+        const T = table.getBoundingClientRect();
+        const ptOf = (pct) => ({ x: T.left + pct[0] / 100 * T.width, y: T.top + pct[1] / 100 * T.height });
+        const CT = cardTimes(set);
+        let rPxV = 0;
+        const rPx = () => {
+          if (rPxV) return rPxV;
+          if (motion.rPx && motion.rPxFor === table.clientWidth) return (rPxV = motion.rPx);
+          const pr = document.createElement('div');
+          pr.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)';
+          table.appendChild(pr);
+          rPxV = pr.getBoundingClientRect().height / 100 || 8;
+          table.removeChild(pr);
+          motion.rPx = rPxV; motion.rPxFor = table.clientWidth;
+          return rPxV;
+        };
+        const rowEls = (pi) => [...table.querySelectorAll('[data-seat-cards="' + pi + '"] > .card-row > *')];
+        const sizeOf = (el) => ({ w: el.offsetWidth || 30, h: el.offsetHeight || 42 });
+        const act = motionKind === 'action' ? currentActions[actionIdx] : null;
+        const prevCards = motion.prevSeatCards || new Map();
+        const prevEls = motion.prevCardEls || new Set();
+        const backPaint = motion.backPaint || null;
+
+        // 25: a fold's cards leave toward the muck on the yield spring, 0.45 of the way, turning and fading.
+        if (act && act.action === 'fold' && L && rSettings.animateDeal && !gameCfg.isStud) {
+          const was = (prevCards.get(act.player) || []).filter(c => c.node);
+          if (was.length && !rowEls(act.player).length) {
+            const m = ptOf(muckTarget);
+            const cx = was.reduce((s, c) => s + c.cx, 0) / was.length, cy = was.reduce((s, c) => s + c.cy, 0) / was.length;
+            writes.push(() => ghostsAway(motion, { set, rate, layer, layerRect: L, cards: was, tx: (m.x - cx) * 0.45, ty: (m.y - cy) * 0.45 }));
+          }
+        }
+
+        /* 7: a stud fold: the up cards travel to their places in the Dead cards strip (whose cards make room), the
+           down cards leave toward the muck. */
+        if (act && act.action === 'fold' && gameCfg.isStud && rSettings.animateDeal && !rowEls(act.player).length) {
+          const was = (prevCards.get(act.player) || []).filter(c => c.node);
+          const root = table.closest('.replayer-replay') || table.parentElement;
+          const strip = root && root.querySelector('.replayer-dead-strip-cards, .replayer-dead-row');
+          if (was.length) {
+            const prevDead = motion.prevDead || new Map();
+            const stripEls = strip ? [...strip.children].filter(el => el.tagName === 'IMG') : [];
+            const byAlt = new Map(stripEls.map(el => [el.getAttribute('alt'), el]));
+            const altOf = (c) => (c.node.getAttribute && c.node.getAttribute('alt')) || '';
+            const up = was.filter(c => !c.back && byAlt.has(altOf(c)) && !prevDead.has(altOf(c)));
+            const down = was.filter(c => !up.includes(c));
+            const flights = up.map(c => {
+              const t = byAlt.get(altOf(c));
+              const r = t.getBoundingClientRect();
+              return { ...c, target: t, size: { w: r.width, h: r.height }, to: { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width } };
+            });
+            const moves = stripEls.filter(el => prevDead.has(el.getAttribute('alt'))).map(el => {
+              const r = el.getBoundingClientRect();
+              return { el, dx: prevDead.get(el.getAttribute('alt')) - (r.left + r.width / 2), size: { w: r.width, h: r.height } };
+            });
+            const m = ptOf(muckTarget);
+            const dcx = down.length ? down.reduce((a, c) => a + c.cx, 0) / down.length : 0;
+            const dcy = down.length ? down.reduce((a, c) => a + c.cy, 0) / down.length : 0;
+            writes.push(() => {
+              const lands = ghostsTo(motion, { set, rate, cards: flights });
+              flights.forEach((f, i) => appearAt(motion, { set, rate, el: f.target, at: lands[i] || 0, size: f.size }));
+              moves.forEach(mv => makeRoom(motion, { set, rate, el: mv.el, dx: mv.dx, size: mv.size }));
+              if (down.length && L) ghostsAway(motion, { set, rate, layer, layerRect: L, cards: down, tx: (m.x - dcx) * 0.45, ty: (m.y - dcy) * 0.45 });
+            });
+          }
+        }
+
+        // 4: the door card that forced the bring-in lifts once.
+        if (act && act.action === 'bring-in' && gameCfg.isStud) {
+          const door = rowEls(act.player)[2];
+          if (door) {
+            const size = sizeOf(door), dy = -rPx();
+            writes.push(() => liftOnce(motion, { set, rate, el: door, dy, size }));
+          }
+        }
+
+        // 19 / 15: hands turned face up, card by card, a seat at a time: at the showdown in the order the hands
+        // are shown (the last bettor first, else the first to act), when all in and called in deal order.
+        let turnEnd = 0;
+        {
+          const acts = (hand.streets[streetIdx] && hand.streets[streetIdx].actions) || [];
+          const seq = [];
+          acts.forEach(a => { if (!seq.includes(a.player)) seq.push(a.player); });
+          dealOrder.forEach(p => { if (!seq.includes(p)) seq.push(p); });
+          let lead = -1;
+          for (let i = acts.length - 1; i >= 0; i--) if (['bet', 'raise', 'all-in'].includes(acts[i].action)) { lead = acts[i].player; break; }
+          const k0 = lead >= 0 && seq.indexOf(lead) >= 0 ? seq.indexOf(lead) : 0;
+          const order = motionKind === 'result' ? seq.slice(k0).concat(seq.slice(0, k0)) : dealOrder;
+          const turning = [];
+          order.forEach(pi => {
+            if (pi === replayHeroIdx) return;
+            const before = prevCards.get(pi) || [];
+            const backsBefore = before.filter(c => c.back).length;
+            const els = rowEls(pi);
+            const backsNow = els.filter(el => el.tagName !== 'IMG').length;
+            if (!backsBefore || backsNow >= backsBefore) return;
+            const faces = els.filter(el => el.tagName === 'IMG' && !prevEls.has(el));
+            if (faces.length) turning.push(faces);
+          });
+          if (turning.length && rSettings.animateDeal) {
+            const seatStep = turning.length > 1 ? Math.min(S.beat, 560 / (turning.length - 1)) : 0;
+            const lift = 0.5 * rPx();
+            const jobs = [];
+            turning.forEach((faces, k) => faces.forEach((el, j) => {
+              const delay = (k * seatStep + j * S.cardLag) / rate;
+              jobs.push({ el, delay, prefix: getComputedStyle(el).transform, size: sizeOf(el) });
+              turnEnd = Math.max(turnEnd, delay + CT.turn / rate);
+            }));
+            writes.push(() => jobs.forEach(j => {
+              j.el.getAnimations().forEach(a => a.cancel());
+              turnOver(motion, { set, rate, el: j.el, prefix: j.prefix === 'none' ? '' : j.prefix, delay: j.delay, lift, size: j.size, back: backPaint });
+            }));
+          }
+        }
+
+        // 5 / 6: a stud street's new cards travel from the dealer spot, seat by seat in deal order; on seventh
+        // street they come as backs and the hero's own turns over a beat after it lands.
+        if (motionKind === 'street' && gameCfg.isStud && streetIdx >= 1 && rSettings.animateDeal) {
+          const spot = ptOf(dealerSpot);
+          const seventh = streetIdx >= 4;
+          const jobs = [];
+          let k = 0;
+          dealOrder.forEach(pi => {
+            if (folded.has(pi)) return;
+            const fresh = rowEls(pi).filter(el => !prevEls.has(el));
+            if (!fresh.length) return;
+            const el = fresh[fresh.length - 1];
+            const r = el.getBoundingClientRect();
+            const delay = (k++ * S.place) / rate;
+            jobs.push({
+              el, delay, dx: spot.x - (r.left + r.width / 2), dy: spot.y - (r.top + r.height / 2), size: sizeOf(el),
+              turn: seventh && pi === replayHeroIdx && el.tagName === 'IMG' ? { prefix: getComputedStyle(el).transform } : null,
+            });
+          });
+          if (jobs.length) {
+            const lift = 0.5 * rPx();
+            writes.push(() => jobs.forEach(j => {
+              j.el.getAnimations().forEach(a => a.cancel());
+              dealIn(motion, { set, rate, el: j.el, dx: j.dx, dy: j.dy, delay: j.delay, size: j.size });
+              if (j.turn) turnOver(motion, { set, rate, el: j.el, prefix: j.turn.prefix === 'none' ? '' : j.turn.prefix, delay: j.delay + (CT.handArrive + S.beat) / rate, lift, size: j.size, back: backPaint });
+            }));
+          }
+        }
+
+        /* 12 / 13: the boards under the first. A double board's second is dealt as the first is, a beat later; a
+           hand run twice parts into its runs at the first run-out card, each run's own card landing a beat later. */
+        if (motionKind === 'street' && rSettings.animateBoard) {
+          const area = table.querySelector('.replayer-board-area:not(.replayer-dead-area)');
+          const before = motion.prevBoard || { extraRows: 0, xk: new Map(), mainLen: 0, rowY: null };
+          const extras = area ? [...area.querySelectorAll(':scope > .replayer-board-extra')] : [];
+          if (extras.length) {
+            const parting = !hand.doubleBoard && !before.extraRows && before.rowY != null;
+            const jobs = [];
+            if (parting) {
+              const rows = [area.querySelector(':scope > .card-row:not(.replayer-board-extra)'), ...extras].filter(Boolean);
+              rows.forEach(row => {
+                const r = row.getBoundingClientRect();
+                jobs.push({ kind: 'row', el: row, dy: before.rowY - (r.top + r.height / 2), size: { w: r.width, h: r.height } });
+              });
+            }
+            extras.forEach((row, b) => {
+              const cards = [...row.querySelectorAll(':scope > [data-xk]')];
+              const rect = (el) => el.getBoundingClientRect();
+              // A run's shared cards part with their row; only its own cards are dealt.
+              const own = parting ? cards.slice(before.mainLen) : cards;
+              const added = own.filter(el => !before.xk.has(el.dataset.xk)).map(el => ({ el, rect: rect(el) }));
+              const stayed = parting ? [] : own.filter(el => before.xk.has(el.dataset.xk)).map(el => {
+                const r = rect(el);
+                return { el, rect: r, from: before.xk.get(el.dataset.xk) - (r.left + r.width / 2) };
+              });
+              if (!added.length) return;
+              const lag = ((b + 1) * S.beat) / rate;
+              jobs.push({ kind: (stayed.length || parting) ? 'yield' : 'deal', added, stayed, lag, street: cards.length >= 5 ? 'river' : 'turn' });
+            });
+            if (jobs.length) {
+              writes.push(() => jobs.forEach(j => {
+                if (j.kind === 'row') { slideRow(motion, { set, rate, el: j.el, dy: j.dy, size: j.size }); return; }
+                if (j.kind === 'deal') { dealBoard(motion, { set, rate, cards: j.added, tPlace: S.place / rate + j.lag }); return; }
+                yieldBoard(motion, { set, rate, street: j.street, tYield: S.yieldAfterSweep / rate + j.lag, added: j.added, stayed: j.stayed });
+              }));
+            }
+          }
+        }
+
+        if (isDrawGame && rSettings.animateDeal) {
+          // 11: a hand that stands pat is rapped once, toward the middle of the table, as its PAT is declared.
+          const nActs = (hand.streets[streetIdx]?.actions || []).length;
+          const declared = (motionKind === 'action' && actionIdx === nActs - 1) || (motionKind === 'street' && nActs === 0);
+          if (declared) {
+            const r = rPx();
+            const jobs = [];
+            (hand.streets[streetIdx]?.draws || []).filter(d => d && d.discarded === 0 && !folded.has(d.player)).forEach(d => {
+              const row = table.querySelector('[data-seat-cards="' + d.player + '"] > .card-row');
+              if (!row) return;
+              const rr = row.getBoundingClientRect();
+              const c = ptOf([50, 50]);
+              const vx = c.x - (rr.left + rr.width / 2), vy = c.y - (rr.top + rr.height / 2);
+              const len = Math.hypot(vx, vy) || 1;
+              jobs.push({ el: row, dx: vx / len * r, dy: vy / len * r, size: { w: rr.width, h: rr.height } });
+            });
+            if (jobs.length) writes.push(() => jobs.forEach(j => rap(motion, { set, rate, el: j.el, dx: j.dx, dy: j.dy, size: j.size })));
+          }
+          // 10: the hero's draw: the new cards come from the dealer spot into the raised gaps, then the hand sorts.
+          if (heroDrawHold) {
+            const before = prevCards.get(replayHeroIdx) || [];
+            const nowEls = rowEls(replayHeroIdx);
+            const thrown = before.filter(c => !nowEls.includes(c.node)).sort((a, b) => a.cx - b.cx);
+            const spot = ptOf(dealerSpot);
+            const fresh = nowEls.filter(el => !prevEls.has(el)).map(el => ({ el, r: el.getBoundingClientRect() })).sort((a, b) => a.r.left - b.r.left);
+            const sortAt = heroDrawHold;
+            const jobs = fresh.map(({ el, r }, i) => {
+              const fx = r.left + r.width / 2, fy = r.top + r.height / 2;
+              const g = thrown[i];
+              return { el, size: sizeOf(el), delay: (i * S.place) / rate, from: { x: spot.x - fx, y: spot.y - fy }, gap: g ? { x: g.cx - fx, y: g.cy - fy } : { x: 0, y: 0 } };
+            });
+            if (jobs.length) writes.push(() => jobs.forEach(j => {
+              j.el.getAnimations().forEach(a => a.cancel());
+              drawIn(motion, { set, rate, el: j.el, from: j.from, gap: j.gap, delay: j.delay, sortAt, size: j.size });
+            }));
+          }
+        }
+
+        // 17: the card that lifts the hero's hand into a new category: the five that now play lift together, once.
+        const landed = 320 / rate;
+        if (motionKind === 'street' && category === 'community' && !folded.has(replayHeroIdx) && boardCount(hand) <= 1) {
+          const cfg = gameEvalFor(hand.gameType, hand);
+          const board = parseCardNotation(boardCards).filter(c => c.suit !== 'x');
+          let prevBoardStr = '';
+          for (let si = 0; si < streetIdx && si < hand.streets.length; si++) prevBoardStr += hand.streets[si].cards.board || '';
+          const prevBoard = parseCardNotation(prevBoardStr).filter(c => c.suit !== 'x');
+          const hole = parseCardNotation(heroCards).filter(c => c.suit !== 'x');
+          if (cfg && board.length === prevBoard.length + 1 && hole.length) {
+            const ch = streetChange(cfg, hole, prevBoard, board);
+            if (ch.made) {
+              const heroRow = rowEls(replayHeroIdx);
+              const els = [];
+              ch.made.hole.forEach(i => { const id = hole[i].rank + hole[i].suit; const el = heroRow.find(e => (e.dataset.ck || '').startsWith(id + '#')); if (el) els.push(el); });
+              ch.made.board.forEach(i => { const el = table.querySelector('.replayer-board-area:not(.replayer-dead-area) .card-row > [data-slot="' + i + '"]'); if (el) els.push(el); });
+              const jobs = els.filter(el => !el.dataset.pose).map((el, j) => ({ el, size: sizeOf(el), delay: landed + (j * S.cardLag) / rate }));
+              const dy = -rPx();
+              if (jobs.length) writes.push(() => jobs.forEach(j => liftOnce(motion, { set, rate, el: j.el, dy, delay: j.delay, size: j.size })));
+            }
+          }
+        }
+
+        /* 16, 18, 20-23: every card whose pose changed springs into it. At the result one beat after the hands
+           have turned (the low half a beat after the high); on a street once the card has landed, the old leader
+           settling first and the new one rising a beat later. */
+        {
+          const lastPose = motion.lastPose || new WeakMap();
+          const changes = [];
+          /* 16 in a run-out of several streets (14): the raise follows each street's cards as they land, not the
+             press, so a lead that changes on the turn and back on the river is seen to. */
+          const sequenced = new Set();
+          const jumpN = motionKind === 'street' && stepPrev ? streetIdx - stepPrev.s : 1;
+          if (jumpN > 1 && exposeAllIn) {
+            const cfg = gameEvalFor(hand.gameType, hand);
+            const board = parseCardNotation(boardCards).filter(c => c.suit !== 'x');
+            const sizes = [];
+            for (let si = stepPrev.s + 1; si <= streetIdx; si++) sizes.push(parseCardNotation(hand.streets[si]?.cards.board || '').length);
+            const times = runOutTimes(set, sizes);
+            const hands = hand.players.map((_, pi) => pi).filter(pi => !folded.has(pi)).map(pi => {
+              const raw = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
+              return { seat: pi, cards: raw && raw !== 'MUCK' ? parseCardNotation(raw).filter(c => c.suit !== 'x') : [] };
+            });
+            if (cfg && cfg.type === 'high' && hands.every(h => h.cards.length >= 2)) {
+              const r = rPx();
+              let len = board.length - sizes.reduce((a, b) => a + b, 0);
+              let cur = leaderOf(cfg, hands, board.slice(0, len));
+              const steps = new Map();
+              const push = (seat, st) => { if (!steps.has(seat)) steps.set(seat, []); steps.get(seat).push(st); };
+              sizes.forEach((n, k) => {
+                len += n;
+                const next = leaderOf(cfg, hands, board.slice(0, len));
+                if (next === cur) return;
+                const t = (times[k] + CT.handArrive) / rate;
+                if (cur >= 0) push(cur, { t, toY: 0 });
+                if (next >= 0) push(next, { t: t + (cur >= 0 ? S.beat / rate : 0), toY: -r });
+                cur = next;
+              });
+              const jobs = [];
+              steps.forEach((list, seat) => rowEls(seat).forEach((el, j) => {
+                if (el.tagName !== 'IMG') return;
+                const was = lastPose.get(el) || '';
+                jobs.push({ el, size: sizeOf(el), fromY: was === 'up' ? -r : 0, steps: list.map(x => ({ t: x.t + (j * S.cardLag) / rate, toY: x.toY })) });
+                sequenced.add(el);
+              }));
+              if (jobs.length) writes.push(() => jobs.forEach(j => poseSequence(motion, { set, rate, el: j.el, fromY: j.fromY, steps: j.steps, size: j.size })));
+              // Seats whose lead did not change in the run-out keep what they have: nothing to spring.
+              hands.forEach(h => { if (!steps.has(h.seat)) rowEls(h.seat).forEach(el => sequenced.add(el)); });
+            }
+          }
+          const consider = (el) => {
+            if (!el.isConnected || sequenced.has(el)) return;
+            const was = lastPose.has(el) ? lastPose.get(el) : '';
+            const now = el.dataset.pose || '';
+            if (was !== now) changes.push({ el, was, now });
+          };
+          posedNow.forEach(consider);
+          (motion.prevPosed || []).forEach(el => { if (!posedNow.includes(el)) consider(el); });
+          if (changes.length) {
+            const r = rPx();
+            const off = { '': 0, up: -r, 'up-half': -0.5 * r, down: r, 'down-half': 0.5 * r, dead: 0.5 * r };
+            const op = (p) => (p === 'dead' ? 0.45 : 1);
+            const base = motionKind === 'result' ? Math.max(turnEnd, 0) + S.beat / rate : landed;
+            const falls = changes.some(c => off[c.now] > off[c.was]);
+            const perRow = new Map();
+            const jobs = changes.map(c => {
+              const row = c.el.parentElement;
+              const j = perRow.get(row) || 0;
+              perRow.set(row, j + 1);
+              const rising = off[c.now] < off[c.was];
+              const lowHalf = motionKind === 'result' && (c.now === 'down' || c.now === 'down-half');
+              const extra = (motionKind !== 'result' && rising && falls) || lowHalf ? S.beat / rate : 0;
+              return { ...c, size: sizeOf(c.el), delay: base + extra + (j * S.cardLag) / rate };
+            });
+            writes.push(() => jobs.forEach(j => poseTo(motion, {
+              set, rate, el: j.el, fromY: off[j.was] || 0, toY: off[j.now] || 0, fromO: op(j.was), toO: op(j.now), delay: j.delay, size: j.size,
+            })));
+          }
+        }
       }
 
       // WRITE, once per step: however many layout passes this commit gets, a moment never runs
@@ -9560,17 +10126,22 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           /* Several boards (owner, 2026-10-20): double board, or a hand run twice or three times. The
              first board is the row the deal animations play on; the others stack under it, cards a
              size smaller so the stack still clears the seats. A run repeats the shared streets. */
-          const extra = boardCount(hand) > 1 ? handBoards(hand, streetIdx).slice(1).map(b => parseCardNotation(b)).filter(b => b.length) : [];
+          /* A hand run twice is ONE board until the runs begin (Replayer animations 13): a second row that
+             repeats the first is not drawn while the board is still being dealt, and parts from it at the first
+             run-out card. A double board is two boards from the flop. */
+          const extra = boardCount(hand) > 1 ? handBoards(hand, streetIdx).slice(1).map(b => parseCardNotation(b)).filter(b => b.length)
+            .filter(b => !springSet || hand.doubleBoard || parsed.length >= 5 || b.map(c => c.rank + c.suit).join('') !== parsed.map(c => c.rank + c.suit).join('')) : [];
           const renderCard = (c, i, key, withSlot) => {
-            const slot = withSlot ? { 'data-slot': i, 'data-ck': key } : {};
+            const slot = withSlot ? { 'data-slot': i, 'data-ck': key } : { 'data-xk': key };
             if (c.suit === 'x') return <div key={key} {...slot} className="card-unknown" />;
-            return <img key={key} {...slot} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank + c.suit} loading="eager" />;
+            const pose = withSlot && cardPoses ? cardPoses.board.get(c.rank + c.suit) : undefined;
+            return <img key={key} {...slot} data-pose={pose || undefined} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank + c.suit} loading="eager" />;
           };
           const unit = hand.doubleBoard ? 'Board' : 'Run';
           const tags = extra.length ? boardWinnerTags() : null;
           const tag = (i) => (tags && tags[i] ? <span className="replayer-board-winner">{tags[i]}</span> : null);
           return (
-            <div className={'replayer-board-area' + boardAnimClass + (extra.length ? ' is-multi' + (extra.length > 1 ? ' is-multi-3' : '') : '')}>
+            <div className={'replayer-board-area' + boardAnimClass + (springOn ? ' is-sprung' : '') + (extra.length ? ' is-multi' + (extra.length > 1 ? ' is-multi-3' : '') : '')}>
               {/* 24: .replayer-street-label, its pop keyframe and three theme
                   overrides all existed, an effect set and cleared animStreetLabel
                   on a 450ms timer — and no JSX ever emitted the element, so the
@@ -9849,7 +10420,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   the 600ms animShowdown effect kept ticking for an animation
                   nothing read. The ROW wrapper carries no splay transform, so
                   fading and lifting it costs the fan nothing. */}
-              <div className={`replayer-seat-cards ${isHiLo && showResult && !folded.has(pi) ? ('replayer-hilo-' + (hiloSide[pi] || 'high')) + (hiloAnimate ? ' animate' : '') : ''}${animDealing ? ' animate-deal' : ''}${showdownOn && pi !== replayHeroIdx && !folded.has(pi) ? ' animate-showdown' : ''}`}
+              {/* Under springs the cards turn over one at a time (19) and move to the half they play for one by
+                  one (21), so the row's own fade and shift are the flag-'0' path only. */}
+              <div data-seat-cards={pi} className={`replayer-seat-cards ${isHiLo && showResult && !folded.has(pi) && !springSet ? ('replayer-hilo-' + (hiloSide[pi] || 'high')) + (hiloAnimate ? ' animate' : '') : ''}${animDealing ? ' animate-deal' : ''}${showdownOn && !springOn && pi !== replayHeroIdx && !folded.has(pi) ? ' animate-showdown' : ''}`}
                 style={(() => {
                   const st = {};
                   if (animDealing) {
@@ -9884,6 +10457,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   splayScale={(Number(rSettings.splayAmount) || 0) / 100}
                   reverseZ={pi !== replayHeroIdx}
                   discardIdx={discardIdx}
+                  poseOf={cardPoses ? cardPoses.seats.get(pi) : undefined}
+                  holdSort={pi === replayHeroIdx ? heroDrawHold : 0}
                   onCardTap={drillThrow && !drillThrow.disabled ? (id) => { haptic(); drillThrow.toggle(id); } : undefined}
                   /* The hero used to fan wider than everybody else — a bigger
                      arc and a wider allowance, on the grounds that the bottom
