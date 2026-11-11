@@ -710,6 +710,22 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   guards the Back/Forward double ship.
   Before/after video: `scripts/capture-replayer-motion.mjs` + `compare-replayer-motion.mjs`.
   See `docs/replayer-springs.md`.
+  **The Replayer animations catalogue, built** (owner picks 2026-11-11, `docs/catalogues/replayer-animations`; every pick
+  but 34, 37 and 39, with 41, 44 and 45 in part): the cards' moments are `utils/replayer-card-moments.js`, which cards
+  play is `utils/replayer-reading.js` (`npm test`), the rest is HandReplayerView's moments effect, blocks (5)-(8).
+  What a later change has to keep:
+  - **A card's pose is a state** (`data-pose` on the card: up, up-half, down, down-half, dead; the CSS `translate`
+    property, so it composes with a fan's own transform): the tabled leader, a counterfeit, the winning five, a hi-lo
+    pot's halves, a badugi's dead card, the rank two lows part on. The registry keys a motion per element AND kind
+    (`run(el, { key, property: 'individual' })`), so a card can turn over (transform) while it lifts (translate).
+  - **The pot's figure counts what is in the middle** (`potBase`): under springs the posted blinds stand on the felt as
+    wagers until the first sweep and a folded seat's wager goes in as it folds, so the figure reads 0 at the first step.
+    `displayPot` (pot odds, a pot-sized bet, the equity) is unchanged. At a result the pot's figure counts down and goes
+    (`is-emptied`); the ship goes in waves from `potAwards.parts` (non-enumerable: every reader sees seat -> amount).
+  - **One press runs a decided board out** (14, `runOutTo`): all in, nothing left to act on, one board, springs on;
+    Back still steps a street at a time. A hand opened on its first step plays its opening (antes, blinds, the dealer
+    button); Play from the first step deals the hand first. Exports skip action moments and open on their title card.
+  - Sampled figures (a stack counting down) are `MotionRegistry.sample`; under an export `seek()` places them.
 - **The Swiss theme** (owner, 2026-10-16; app admins only): `swiss-light` and `swiss-dark`, in the theme button's
   cycle only for an admin (`utils/theme.js` themeOrder/nextTheme), and shown only to one: `hooks/useThemeChoice.js` gives anyone else
   the standard theme when Swiss is stored on the device (signed out, a non-admin, a backer page), keeping the stored choice. Every style is `vite-app/src/theme-swiss.css`,

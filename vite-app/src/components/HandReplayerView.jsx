@@ -25,7 +25,7 @@ import {
   settlePile, fadePileOut, emptyPile, seatLanding, clearPush, centreOf, unionRect,
   collectAtResult, potShown,
 } from '../utils/replayer-motion.js';
-import { SPRING_SETS, spring, timeTo, tierSpring } from '../utils/spring.js';
+import { SPRING_SETS, spring, timeTo, tierSpring, keyframes as transportKeyframes } from '../utils/spring.js';
 import { bestFive, halvesOf, counterfeitedNow, leaderOf, lowDecider, indexOfLowRank, streetChange } from '../utils/replayer-reading.js';
 import { turnOver, dealIn, liftOnce, poseTo, rap, ghostsAway, angleOf, cardTimes, slideRow, runOutBoard, runOutTimes, poseSequence, drawIn, ghostsTo, appearAt, makeRoom } from '../utils/replayer-card-moments.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
@@ -7573,6 +7573,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     else if (streetIdx > 0) { const prevStreet = hand.streets[streetIdx - 1]; setStreetIdx(s => s - 1); setActionIdx((prevStreet?.actions?.length || 0) - 1); }
   }, [actionIdx, streetIdx, showResult, hand, markRewind, motion]);
 
+  // 79: a held Back runs through this (the hold's interval outlives the render that started it).
+  const stepBackRef = useRef(null);
+  stepBackRef.current = stepBack;
+
   const goToStart = () => { motion.finishAll(); setStreetIdx(0); setActionIdx(-1); setShowResult(false); setHiloAnimate(false); };
   // The street track's labels (UX pick 67): the start of that street.
   const goToStreet = (si) => { motion.finishAll(); setStreetIdx(si); setActionIdx(-1); setShowResult(false); setHiloAnimate(false); };
@@ -7743,12 +7747,109 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const allowance = (rSettings.animateDeal && streetBreak ? 650 : 0) + (resultBreak ? HELD_BEAT_MS : 0);
     // The deal and the opening's forced bets (Replayer animations 1, 26-28) finish before the first action.
     const openHold = springOn && streetIdx === 0 && actionIdx < 0 ? motion.extentMs() + 150 : 0;
-    const t = setTimeout(() => stepForwardRef.current?.(),
-      Math.max(120, speed + actBeat + allowance * scale, openHold));
+    const delayMs = Math.max(120, speed + actBeat + allowance * scale, openHold);
+    runPlayRing(delayMs);
+    const t = setTimeout(() => stepForwardRef.current?.(), delayMs);
     return () => clearTimeout(t);
   }, [playing, tabHidden, speed, streetIdx, actionIdx, showResult, currentActions.length, totalStreets, rSettings.animateDeal]);
 
   useEffect(() => { if (showResult && playing) setPlaying(false); }, [showResult, playing]);
+
+  /* ── The transport (Replayer animations 76-80) ── */
+  const glyphRef = useRef(null);
+  const glyphWas = useRef({ kind: null, html: '' });
+  const ringRef = useRef(null);
+  const speedLabelRef = useRef(null);
+  const speedWas = useRef(null);
+  const springKf = (channels, opts = {}) => { try { return transportKeyframes(channels, opts); } catch (e) { return null; } };
+  const playKind = playing ? 'pause' : (canGoForward ? 'play' : 'replay');
+  // 76 / 80: Play and Pause trade places by a quarter turn; at the end the Replay arrow winds in as the triangle goes.
+  useLayoutEffect(() => {
+    const el = glyphRef.current;
+    const was = glyphWas.current;
+    glyphWas.current = { kind: playKind, html: el ? el.innerHTML : '' };
+    if (!el || !was.kind || was.kind === playKind || !springSet) return;
+    const flick = tierSpring(springSet, 'flick'), arm = tierSpring(springSet, 'arm');
+    const toReplay = playKind === 'replay';
+    const host = el.parentElement;
+    if (host && was.html) {
+      const ghost = document.createElement('span');
+      ghost.className = 'rpb-glyph is-ghost';
+      ghost.innerHTML = was.html;
+      host.appendChild(ghost);
+      const out = springKf([
+        { prop: 'rotate', spring: flick, from: 0, to: toReplay ? 0 : 90 },
+        { prop: 'scale', spring: flick, from: 1, to: 0.4 },
+        { prop: 'opacity', ramp: { from: 1, to: 0, delay: 0, duration: 120 } },
+      ], { prefix: 'translate(-50%, -50%)' });
+      if (out) { const a = ghost.animate(out.keyframes, { duration: out.duration, easing: 'linear', fill: 'forwards' }); a.onfinish = () => ghost.remove(); }
+      else ghost.remove();
+    }
+    const sp = toReplay ? arm : flick;
+    const inn = springKf([
+      { prop: 'rotate', spring: sp, from: toReplay ? -300 : -90, to: 0 },
+      { prop: 'scale', spring: sp, from: 0.4, to: 1 },
+      { prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: 120 } },
+    ]);
+    if (inn) el.animate(inn.keyframes, { duration: inn.duration, easing: 'linear' });
+  }, [playKind]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 77: while playing, a ring closes round the Play disc over the step's own delay.
+  const runPlayRing = useCallback((ms) => {
+    const ring = ringRef.current;
+    if (!ring || springsReducedMotion()) return;
+    const halves = ring.querySelectorAll('.rpb-half > i');
+    if (halves.length < 2) return;
+    halves.forEach(h => h.getAnimations().forEach(a => a.cancel()));
+    const frames = [{ transform: 'rotate(-135deg)' }, { transform: 'rotate(45deg)' }];
+    halves[0].animate(frames, { duration: ms / 2, easing: 'linear', fill: 'both' });
+    halves[1].animate(frames, { duration: ms / 2, delay: ms / 2, easing: 'linear', fill: 'both' });
+  }, []);
+  // 78: the speed label rolls the way the speed went (up when faster, down at the wrap to 0.5x).
+  useLayoutEffect(() => {
+    const el = speedLabelRef.current;
+    const was = speedWas.current;
+    speedWas.current = { speed, text: el ? el.textContent : '' };
+    if (!el || !was || was.speed === speed || !springSet) return;
+    const slide = tierSpring(springSet, 'slide');
+    const up = speed < was.speed;
+    const h = el.offsetHeight || 10;
+    const host = el.parentElement;
+    if (host) {
+      const ghost = el.cloneNode(true);
+      ghost.classList.add('is-ghost');
+      ghost.textContent = was.text;
+      host.appendChild(ghost);
+      const out = springKf([{ prop: 'y', spring: slide, from: 0, to: up ? -h : h }, { prop: 'opacity', ramp: { from: 1, to: 0, delay: 0, duration: 120 } }], { prefix: 'translate(-50%, -50%)' });
+      if (out) { const a = ghost.animate(out.keyframes, { duration: out.duration, easing: 'linear', fill: 'forwards' }); a.onfinish = () => ghost.remove(); } else ghost.remove();
+    }
+    const inn = springKf([{ prop: 'y', spring: slide, from: up ? h : -h, to: 0 }, { prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: 120 } }]);
+    if (inn) el.animate(inn.keyframes, { duration: inn.duration, easing: 'linear' });
+  }, [speed]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 79: Forward or Back held 350ms runs the hand at the 4x interval until released.
+  const [holding, setHolding] = useState(null);
+  const holdRef = useRef({ timer: 0, iv: 0, ran: false });
+  const endHold = useCallback(() => {
+    const h = holdRef.current;
+    clearTimeout(h.timer); clearInterval(h.iv);
+    h.timer = 0; h.iv = 0;
+    setHolding(null);
+  }, []);
+  const startHold = (dir) => (e) => {
+    if (e.button != null && e.button !== 0) return;
+    const h = holdRef.current;
+    h.ran = false;
+    clearTimeout(h.timer); clearInterval(h.iv);
+    h.timer = setTimeout(() => {
+      h.ran = true;
+      setHolding(dir);
+      setPlaying(false);
+      const step = () => { if (dir === 'fwd') { if (canGoForwardRef.current) stepForwardRef.current?.(); else endHold(); } else stepBackRef.current?.(); };
+      step();
+      h.iv = setInterval(step, 250);
+    }, 350);
+  };
+  useEffect(() => () => { clearTimeout(holdRef.current.timer); clearInterval(holdRef.current.iv); }, []);
+  const holdClick = (fn) => () => { if (holdRef.current.ran) { holdRef.current.ran = false; return; } fn(); };
 
   /* The drill: every answer from the server plays forward to the new edge of the hand, and the
      player's buttons wait until it has got there. Back from the grades, the table is at the result. */
@@ -11715,8 +11816,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           <button onClick={goToStart} disabled={!canGoBack} title="Start">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="19 20 9 12 19 4"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
           </button>
-          <button onClick={stepBack} disabled={!canGoBack} title="Back">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          <button onClick={holdClick(stepBack)} disabled={!canGoBack} title="Back (hold to run back)" className={holding === 'back' ? 'is-holding' : undefined}
+            onPointerDown={startHold('back')} onPointerUp={endHold} onPointerLeave={endHold} onPointerCancel={endHold}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/><polyline className="chev-2" points="15 18 9 12 15 6"/></svg>
           </button>
           {/* 53: the play triangle was STROKED, while every media player on
               the platform draws a solid one — and during playback the only
@@ -11726,6 +11828,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             onClick={handlePlayPause}
             title={playing ? 'Pause' : (canGoForward ? 'Play' : 'Replay')}
             aria-label={playing ? 'Pause' : (canGoForward ? 'Play' : 'Replay')}>
+            <span className="rpb-glyph" ref={glyphRef}>
             {playing ? (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
             ) : canGoForward ? (
@@ -11734,9 +11837,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               /* 50: at the result the button restarts, so it says restart. */
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
             )}
+            </span>
+            {/* 77: the countdown to the next step, two half rings turned inside their clips. */}
+            <span className="rpb-ring" ref={ringRef} aria-hidden="true"><span className="rpb-half is-r"><i /></span><span className="rpb-half is-l"><i /></span></span>
           </button>
-          <button onClick={stepForward} disabled={!canGoForward} title="Forward">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <button onClick={holdClick(stepForward)} disabled={!canGoForward} title="Forward (hold to run)" className={holding === 'fwd' ? 'is-holding' : undefined}
+            onPointerDown={startHold('fwd')} onPointerUp={endHold} onPointerLeave={endHold} onPointerCancel={endHold}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/><polyline className="chev-2" points="9 18 15 12 9 6"/></svg>
           </button>
           <button onClick={goToEnd} disabled={!canGoForward} title="End">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="5 4 15 12 5 20"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
@@ -11754,7 +11861,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 onClick={() => setSpeed(SPEEDS[(idx + 1) % SPEEDS.length])}
                 title={'Playback speed: ' + label + ' (tap to change)'}
                 aria-label={'Playback speed ' + label}>
-                <span className="replayer-speed-label">{label}</span>
+                <span className="rsb-clip"><span className="replayer-speed-label" ref={speedLabelRef}>{label}</span></span>
               </button>
             );
           })()}

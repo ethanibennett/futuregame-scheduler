@@ -14,6 +14,28 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-11-11 — Replayer animations: 59 of the 62 picks built (34, 37, 39 not; 41, 44, 45 in part)
+
+- `docs/catalogues/replayer-animations`. What a later change has to keep is in CLAUDE.md (under "Replayer motion is
+  springs"); each moment was filmed frame by frame on a scratch server under the registry's capture (the strips are
+  not kept). Commits: the cards (acb6657), chips and the pot (db6df34), seats (cbb5971), the transport (after).
+- **Not built:** 34 (a short all-in call sends the uncovered part back at once: the model only settles the uncalled
+  excess at the result, so the street's sweep and the pot figure would disagree mid-hand); 37 (the main pot fills
+  first, then the side pot forms: a sweep in two waves into the pot pills) and 39 (the pots make room for a second side
+  pot). Both need the sweep cut by pot layer.
+- **Built in part:** 41 (a split's shares leave together as before: the parting in the middle is not drawn); 44 (the
+  low half ships after the high, but does not part in two first); 45 (a scoop's halves go to the seat a beat apart, as
+  chips: no "Hi" / "Lo" share pills); 40's "no 0 between" (an all-in winner still reads 0 until its pot lands); 61's
+  plaque ring per seat (the names are ordered; the gold ring still lands with the first wave); 62 opens with motion
+  but closes at once; 78's drill "Draw N" count does not roll.
+- **Changed what the table shows at rest:** the pot reads 0 on the first step (the blinds are wagers on the felt until
+  the flop's sweep); a run twice is one board until the runs begin; at a result the pot's figure is gone and a busted
+  seat reads 0 (OUT in a tournament, its plaque eased down); a covered all-in reads AT RISK once the action is closed;
+  a tabled run-out names every hand; a stale Check is dimmed.
+- **Exports:** the owner's rule that exports skip the action moments (push-outs) also skips the fold, the bring-in's
+  lift, the pat rap and the stack countdowns; the deal (1) and the opening (26-28) play under Play and when a hand
+  opens, not in an export, whose first frame is its title card.
+
 ## 2026-11-11 — The Features catalogue: 44 picks built (every one but 3, 6, 7, 24, 28, 50)
 
 - `docs/catalogues/features`. The architecture and what a later change has to keep are in CLAUDE.md ("The Features
