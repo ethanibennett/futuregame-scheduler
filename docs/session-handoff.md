@@ -44,6 +44,23 @@ wsop-console side and verified against both live services.
 - **Probes** (scratch, not in the repo): `probe-split.mjs` (every tab's panes and the header, the Hands split),
   `probe-latency.mjs` (the Schedule tab's show time, MTT feed ingested on a scratch server: `DISABLE_FEED_INGEST: ''`,
   no `SYNC_TOKEN`, so nothing is pushed), `probe-scroll.mjs` (landing, jumps, away and back, pressed again).
+- **Shipped:** `7305774`, live on futurega.me (`npm run smoke` 5 of 5, `npm test` 94 of 94). The audit is DONE: every
+  pick but 4, 6 and 31 (the owner's exclusions) is built, over `09fb1ec`, `5efbb76`, `3d47eec` and `7305774`. The last
+  guard pass (controls and clipping, phone and desktop, every touched view) found nothing; not reached, for want of
+  seed data: the "if I bag / bust" panel, the swap dialog and the replayer's share sheet (it passed in the full run
+  before).
+- **The 400 ms holds only on a quiet box.** With WSL busy (the solver grind, `vmmemWSL`), the same re-show measured
+  420-500 ms on the new build and 840-1,570 ms on the one before 97, so compare builds under the same load.
+- **TestFlight (owner, 2026-11-11: "has this all been pushed to Testflight? if not please do that"):** nothing had
+  shipped since `2a2ecb7` (2026-11-06). The nightly's runs of 11-10 (`f0d9cbf`, four) and 11-11 (`3d47eec`, two) all
+  failed because the Mac was closed: no log at all, or `curl: (56) Connection reset` fetching Capacitor's
+  xcframeworks. With the runner back online, master `7305774` was dispatched by hand (run `43062104175`).
+- **Waiting on the owner:** whether any of Settings, Admin, Social, Results or Staking should get a second desktop
+  pane (107 leaves each one pane to the edge).
+- **Left uncommitted, not this work:** another session's Pre-draw ranges (`RangesView.jsx`,
+  `test/solver-ranges.test.js`, `vite-app/scripts/check-ranges-render.mjs`, and its hunks in `CLAUDE.md`,
+  `package.json`, `server.js` and `StudyHub.jsx`), so the Study row that CLAUDE.md describes is not on master yet;
+  also the untracked `docs/catalogues/`, `docs/ux-audit/`, `docs/entry-audit/` images and `marketing/`.
 
 ## 2026-11-10 — The Laws of UX audit, built (picks 1-111 but 4, 6, 31)
 
