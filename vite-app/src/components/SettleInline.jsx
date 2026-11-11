@@ -13,7 +13,9 @@ import './settle-inline.css';
        and its reading dropped every non-digit: "1.2k" was $1.20.
    view: utils/backer-settle.js settleView. onSend({ part, settleCents }) does the press. btnClass is
    each side's own button style; primary decides which button, if any, is the filled one. */
-export default function SettleInline({ view, busy = false, onSend, btnClass, primary = (v) => !!(v.button && v.button.primary) }) {
+/* steps (Bankroll design 52): a half-confirmed settlement as two steps in press order, [{ label, done }], drawn
+   in the status line's place, the button at the row's end beside the step it completes or undoes. */
+export default function SettleInline({ view, busy = false, onSend, btnClass, primary = (v) => !!(v.button && v.button.primary), steps = null }) {
   const [mode, setMode] = useState(null);           // null | 'confirm' | 'part'
   const [text, setText] = useState('');
   if (!view) return null;
@@ -30,8 +32,18 @@ export default function SettleInline({ view, busy = false, onSend, btnClass, pri
     : view.status;
   const btn = (extra = '') => btnClass + (extra ? ' ' + extra : '');
   return (
-    <div className="si">
-      {mode === null && say && <p className="si-say">{say}</p>}
+    <div className={'si' + (steps && mode === null ? ' has-steps' : '')}>
+      {mode === null && steps && (
+        <ol className="si-steps" aria-label="Both sides confirm">
+          {steps.map((s, i) => (
+            <li key={i} className={'si-step' + (s.done ? ' is-done' : '')}>
+              <i className="si-pip" aria-hidden="true">{s.done ? '✓' : ''}</i>
+              <span className="si-step-l">{s.label}{s.done ? '' : ' to confirm'}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {mode === null && !steps && say && <p className="si-say">{say}</p>}
       {mode === 'confirm' && <p className="si-say si-ask">{view.confirm}</p>}
       {mode === 'part' && (
         <>

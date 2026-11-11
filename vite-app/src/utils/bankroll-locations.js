@@ -263,3 +263,92 @@ export function fmtDay(iso) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
   return m ? `${MONTHS[Number(m[2]) - 1]} ${Number(m[3])}, ${m[1]}` : '';
 }
+
+// ── Bankroll design upgrades, part C ─────────────────────────────────────────────────────────
+/** Under this many entries a room's rates are a handful of visits, not a record (Bankroll design 65). */
+export const SMALL_SAMPLE = 5;
+/**
+ * The stats as six labelled columns (Bankroll design 61): Entries, Hours, $/hour, ROI, Won/ITM, bb/hr, each
+ * { key, label, text, tone }; a figure the room does not have is "—" (dash: true). A small sample (65)
+ * keeps its figures but drops their colour, and Won/ITM becomes a count ("2/2": its 5g column holds no more).
+ */
+export function statCells(loc, cur) {
+  const small = loc.entries < SMALL_SAMPLE;
+  const dash = (key, label) => ({ key, label, text: '—', tone: 0, dash: true });
+  const wonCount = (loc.cash ? loc.cash.wins || 0 : 0) + (loc.tournament ? loc.tournament.cashes || 0 : 0);
+  const bb = bbFigures(loc && loc.bbhr);
+  const rate = (v) => (small ? 0 : v);
+  return [
+    { key: 'entries', label: 'Entries', text: loc.entries.toLocaleString('en-US'), tone: 0 },
+    loc.hours != null && loc.hours > 0 ? { key: 'hours', label: 'Hours', text: fmtHours(loc.hours), tone: 0 } : dash('hours', 'Hours'),
+    loc.hourly != null ? { key: 'hourly', label: '$/hour', text: compactMoney(loc.hourly, cur, { sign: true }), tone: rate(toneOf(Math.round(loc.hourly))) } : dash('hourly', '$/hour'),
+    loc.roi != null ? { key: 'roi', label: 'ROI', text: fmtSignedPct(loc.roi), tone: rate(toneOf(Math.round(loc.roi * 1000))) } : dash('roi', 'ROI'),
+    loc.won != null
+      ? { key: 'won', label: 'Won/ITM', text: small ? `${wonCount}/${loc.entries}` : fmtPct(loc.won), tone: 0 }
+      : dash('won', 'Won/ITM'),
+    bb.length ? { key: 'bb', label: bb[0].unit === 'BB' ? 'BB/hr' : 'bb/hr', text: bb[0].text, tone: rate(bb[0].tone) } : dash('bb', 'bb/hr'),
+  ];
+}
+/**
+ * One scale for the list in view (Bankroll design 63): zero at the largest loss's share of the span between
+ * the largest loss and the largest gain, so the best room's rule reaches the right end and the worst room's
+ * the left. → { zero (0..1), at(total) → { from, to } as fractions of the line }.
+ */
+export function resultScale(list) {
+  let gain = 0, loss = 0;
+  for (const l of list || []) { const t = Number(l.total) || 0; if (t > gain) gain = t; if (-t > loss) loss = -t; }
+  const span = gain + loss;
+  const zero = span > 0 ? loss / span : 0;
+  return {
+    zero,
+    at(total) {
+      const t = Number(total) || 0;
+      if (!span || !t) return { from: zero, to: zero };
+      const end = zero + t / span;
+      return { from: Math.min(zero, end), to: Math.max(zero, end) };
+    },
+  };
+}
+/** The room's running result entry by entry, oldest first (Bankroll design 64): [value, ...], starting at 0. */
+export function runningResult(loc) {
+  const out = [0];
+  let run = 0;
+  for (let i = (loc.results || []).length - 1; i >= 0; i -= 1) { run += Number(loc.results[i].profit) || 0; out.push(run); }
+  return out;
+}
+const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+/**
+ * An opened room's rows by month (Bankroll design 66): [{ key, label 'November 2026', count, net, rows }] in
+ * the rows' order. The count and the net are the WHOLE month's at the room (from `all`), not the rows a page
+ * shows, so a month the pager cut short still says how it went.
+ */
+export function monthGroups(rows, all) {
+  const totals = new Map();
+  for (const f of all || rows || []) {
+    const k = String(f.date || '').slice(0, 7);
+    const t = totals.get(k) || { count: 0, net: 0 };
+    t.count += 1; t.net += Number(f.profit) || 0;
+    totals.set(k, t);
+  }
+  const out = [];
+  for (const f of rows || []) {
+    const k = String(f.date || '').slice(0, 7);
+    let g = out[out.length - 1];
+    if (!g || g.key !== k) {
+      const [y, m] = k.split('-').map(Number);
+      const t = totals.get(k) || { count: 0, net: 0 };
+      g = { key: k, label: y && m ? `${MONTHS_LONG[m - 1]} ${y}` : 'Undated', count: t.count, net: t.net, rows: [] };
+      out.push(g);
+    }
+    g.rows.push(f);
+  }
+  return out;
+}
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/** 'YYYY-MM-DD' → 'Thu 5', a row's date under its month band (Bankroll design 66). */
+export function fmtWeekday(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+  if (!m) return '';
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  return `${WEEKDAYS[d.getUTCDay()]} ${Number(m[3])}`;
+}

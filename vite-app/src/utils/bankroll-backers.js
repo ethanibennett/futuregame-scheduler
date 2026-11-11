@@ -146,3 +146,62 @@ export function listSummary(backers) {
     totalCents: a.totalCents + b.cumulativeCents,
   }), { count: 0, sessions: 0, totalCents: 0 });
 }
+
+// ── Bankroll design upgrades, part C ─────────────────────────────────────────────────────────
+/**
+ * The list's two sides (Bankroll design 51), in the owner's terms: + cumulativeCents is what the player owes a
+ * backer. → { owedToYou, youOwe (cents, both positive), nOwed, nOwe, toConfirm (backers who pressed and wait for
+ * the player), oweBefore (what the player owes from before this week) }.
+ */
+export function ledgerSides(backers) {
+  const s = { owedToYou: 0, youOwe: 0, nOwed: 0, nOwe: 0, toConfirm: 0, oweBefore: 0 };
+  for (const b of backers || []) {
+    const c = Math.round(Number(b.cumulativeCents) || 0);
+    if (c < 0) { s.owedToYou += -c; s.nOwed += 1; } else if (c > 0) { s.youOwe += c; s.nOwe += 1; if (b.dueCents > 0) s.oweBefore += Math.round(b.dueCents); }
+    const o = b.settlement && b.settlement.open;
+    if (o && o.backerAt && !o.ownerAt) s.toConfirm += 1;
+  }
+  return s;
+}
+/** Two initials for a backer's tile (Bankroll design 56): the first and last name's, or the one name's first two. */
+export function monogram(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+/** Whether a backer's half-confirmed settlement waits on the player (Bankroll design 58). */
+export const needsYou = (b) => !!(b.settlement && b.settlement.open && b.settlement.open.backerAt && !b.settlement.open.ownerAt);
+/**
+ * A long roster by state (Bankroll design 58): who needs the player first, then the open balances by their
+ * size, then the all-square. → [{ key, label, backers, netCents? }] (empty groups left out).
+ */
+export function backerGroups(backers) {
+  const needs = [], open = [], square = [];
+  for (const b of backers || []) {
+    const c = Math.round(Number(b.cumulativeCents) || 0);
+    if (needsYou(b)) needs.push(b); else if (c !== 0 || (b.settlement && b.settlement.open)) open.push(b); else square.push(b);
+  }
+  open.sort((a, c) => Math.abs(c.cumulativeCents) - Math.abs(a.cumulativeCents));
+  return [
+    { key: 'needs', label: 'Needs you', backers: needs },
+    { key: 'open', label: 'Open', backers: open, netCents: open.reduce((t, b) => t + Math.round(Number(b.cumulativeCents) || 0), 0) },
+    { key: 'square', label: 'All square', backers: square },
+  ].filter((g) => g.backers.length);
+}
+/**
+ * An open card's rows grouped at the settlement line (Bankroll design 54): the shares dated in the week in
+ * progress (on or after `weekStart`, the last Sunday's date in New York), then the earlier weeks still owed
+ * (down to the last completed payment, which its band already marks). → [{ key, rows, sumCents }].
+ */
+export function weekGroups(rows, weekStart) {
+  const week = [], earlier = [];
+  let past = false;
+  for (const row of rows || []) {
+    if (row.type === 'payment') past = true;
+    if (!past && row.type === 'share' && row.date >= weekStart) week.push(row);
+    else if (!past) earlier.push(row);
+  }
+  const sum = (list) => list.reduce((t, r) => t + (r.type === 'share' ? Math.round(Number(r.s.shareCents) || 0) : 0), 0);
+  return { week, earlier, weekSum: sum(week), earlierSum: sum(earlier) };
+}

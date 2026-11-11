@@ -82,3 +82,119 @@
    and rows 1r apart. */
 .bb-settle.is-inline { display: block; }
 .bb-settle.is-inline .bb-settle-btn > span { line-height: 1; padding: 0.3em 0; margin: -0.3em 0; }
+
+/* ── Bankroll design upgrades, part C ─────────────────────────── */
+/* The week's clock beside the title (51): "Settles Sunday noon · 5 days", regular and quiet, at the right. */
+.bb-titlerow { display: flex; justify-content: space-between; gap: var(--gu); }
+.bb-clock { font-weight: var(--fw-regular); color: var(--text-muted); text-transform: none; letter-spacing: 0; white-space: nowrap; }
+/* A two-sided ledger (51): 35g x 10r, two 17g columns, the label over the sum (display xl, its baseline on
+   the 4r cell's line 3), one 1r bar split by the two, and a foot line per side. */
+.bb-ledgerstrip {
+  display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 17)); column-gap: var(--gu);
+  grid-template-rows: calc(var(--subrow) * 6) var(--subrow) calc(var(--subrow) * 2); row-gap: 0;
+  height: calc(var(--subrow) * 10); margin-top: var(--subrow); align-items: start;
+}
+.bb-side { display: flex; flex-direction: column; min-width: 0; }
+.an-cell.bb-side-fig { --h: 4; --p: 1.1314; font-family: var(--font-display); font-size: var(--fs-xl); color: var(--text); font-variant-numeric: var(--num-tabular); }
+.bb-split { grid-column: 1 / -1; display: flex; gap: var(--bw-2); height: var(--subrow); }
+.bb-split > i { display: block; height: 100%; border-radius: var(--radius-pill); }
+.bb-split > i.is-pos { background: var(--pos); }
+.bb-split > i.is-neg { background: var(--neg); }
+/* The monogram tile (56): 3g x 4r, 1r down the head, the initials centred as a control's label is. */
+.bb-item .bl-head.bb-head { grid-template-columns: calc(var(--gu) * 3) minmax(0, 1fr) auto; }
+.bb-head > .bl-name, .bb-head > .bl-meta { grid-column: 2; }
+.bb-head > .bl-total { grid-column: 3; }
+.bb-tile {
+  grid-column: 1; grid-row: 1 / 3; align-self: start; margin-top: var(--subrow);
+  display: flex; align-items: center; justify-content: center;
+  width: calc(var(--gu) * 3); height: calc(var(--subrow) * 4); box-sizing: border-box;
+  border-radius: var(--radius-sm); background: var(--bg); box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: var(--fs-sm); color: var(--text);
+}
+/* All square (57): $0 quiet, the settle row gone, "Settled Nov 8" after a --pos tick at the stats line's end. */
+.bl-total.is-quiet { color: var(--text-muted); }
+.bb-stats { display: flex; justify-content: space-between; gap: var(--gu); }
+.bb-stats-l { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bb-settled { flex: none; color: var(--n-7); font-size: var(--fs-xs); }
+.bb-tick { color: var(--pos); }
+.bb-item.is-square .bl-card { border-bottom-left-radius: var(--radius-sm); border-bottom-right-radius: var(--radius-sm); }
+/* The links inside the open card (55): one row of three 9g x 4r buttons 2g apart, their states on a note. */
+.bb-links { column-gap: calc(var(--gu) * 2); }
+.bb-links > .bb-link-btn { width: calc(var(--gu) * 9); }
+.an-cell.bb-states { --h: 3; --p: 0.9574; color: var(--n-7); }
+/* A half-confirmed settlement (52): the row on --brand-quiet under a --brand-line rule; two steps in press
+   order, pips 2r across joined by a dashed rule, the done one filled with a tick; the button at the end. */
+.bb-settle.is-half { background: var(--brand-quiet); box-shadow: inset 0 var(--bw-hair) 0 var(--brand-line); }
+.si.has-steps { display: flex; align-items: center; justify-content: space-between; column-gap: var(--gu); }
+.si-steps { display: flex; align-items: center; gap: var(--gu); margin: 0; padding: 0; list-style: none; width: calc(var(--gu) * 21); height: calc(var(--subrow) * 4); }
+.si-step { display: flex; align-items: center; gap: calc(var(--gu) * 0.5); min-width: 0; position: relative; }
+.si-step + .si-step::before { content: ""; width: calc(var(--gu) * 2); border-top: var(--bw-1) dashed var(--brand-line); margin-right: calc(var(--gu) * 0.5); }
+.si-pip {
+  flex: none; display: flex; align-items: center; justify-content: center;
+  width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); border-radius: var(--radius-circle, 50%);
+  box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); font-style: normal; font-size: var(--fs-2xs); color: var(--on-brand);
+}
+.si-step.is-done .si-pip { background: var(--brand); box-shadow: none; }
+.si-step-l { font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-step.is-done .si-step-l { color: var(--text); }
+/* An open card's rows at the settlement line (54): a 3r group row on --surface2 bled to the card's edges,
+   the label and its sum (the earlier weeks' is the Settled button's figure). */
+.bb-group {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--gu);
+  height: calc(var(--subrow) * 3); margin: 0 calc(var(--gu) * -1); padding: 0 var(--gu); background: var(--surface2);
+}
+.bb-group > .an-lbl { color: var(--text); }
+.bb-group-sum { font-weight: var(--fw-bold); }
+.bb-group-sum.an-pos { color: var(--pos); }
+.bb-group-sum.an-neg { color: var(--neg); }
+/* A payment is a band (53): 4r on --surface2 bled to the card's edges, one line, the amount in --text. */
+.bb-payband {
+  display: grid; grid-template-columns: calc(var(--gu) * 7) minmax(0, 1fr) calc(var(--gu) * 9); align-items: start;
+  height: calc(var(--subrow) * 4); margin: 0 calc(var(--gu) * -1); padding: 0 var(--gu); background: var(--surface2);
+}
+.bb-pay-date { color: var(--n-7); font-size: var(--fs-xs); }
+.bb-pay-arrow { color: var(--text-muted); }
+.bb-pay-kind { font-size: var(--fs-xs); color: var(--text-muted); }
+.bb-pay-amt { font-weight: var(--fw-regular); color: var(--text); }
+/* A long roster (58): a 3r head per group, then 6r rows (the head alone) inside one --surface block. */
+.bb-group-block { margin-top: calc(var(--subrow) * 2); }
+.bb-group-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; height: calc(var(--subrow) * 3); }
+.bb-compact-list { margin-top: 0; }
+.bb-item.is-compact:not(.is-open) .bl-card { height: calc(var(--subrow) * 6); }
+.bb-item.is-compact + .bb-item.is-compact { margin-top: 0; }
+.bb-item.is-compact:not(:first-child)::after { border-top-left-radius: 0; border-top-right-radius: 0; }
+.bb-needs { color: var(--brand-ink, var(--brand)); font-weight: var(--fw-bold); }
+/* The empty and the refused states (59). */
+.bb-empty { margin-top: calc(var(--subrow) * 2); }
+.bb-ghost {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: calc(var(--subrow) * 6) calc(var(--subrow) * 4);
+  height: calc(var(--subrow) * 11); box-sizing: border-box; padding: 0 var(--gu) var(--subrow);
+  border-radius: var(--radius-sm); outline: var(--bw-1) dashed var(--border-strong); outline-offset: calc(var(--bw-1) * -1);
+  color: var(--text-muted); font-family: var(--font-condensed);
+}
+.bb-ghost-l { display: flex; flex-direction: column; justify-content: center; font-size: var(--fs-sm); }
+.bb-ghost-l > :first-child { font-size: var(--fs-md); font-weight: var(--fw-bold); }
+.bb-ghost-r { align-self: center; font-family: var(--font-display); font-size: var(--fs-xl); }
+.bb-ghost-stats { grid-column: 1 / -1; align-self: center; font-size: var(--fs-sm); box-shadow: inset 0 var(--bw-hair) 0 var(--border); padding-top: var(--subrow); }
+.bb-empty-row { display: flex; align-items: center; justify-content: space-between; gap: var(--gu); margin-top: calc(var(--subrow) * 2); }
+.bb-add { display: flex; align-items: center; justify-content: center; flex: none; width: calc(var(--gu) * 11); height: calc(var(--subrow) * 4); text-decoration: none; }
+.bb-refused {
+  display: grid; grid-template-columns: calc(var(--gu) * 3) minmax(0, 1fr); column-gap: var(--gu); align-items: center;
+  height: calc(var(--subrow) * 11); box-sizing: border-box; margin-top: calc(var(--subrow) * 2); padding: 0 var(--gu);
+  border-radius: var(--radius-sm); background: var(--surface2);
+}
+.bb-lock { display: flex; align-items: center; justify-content: center; width: calc(var(--gu) * 3); height: calc(var(--subrow) * 4); border-radius: var(--radius-sm); background: var(--bg); color: var(--text-muted); --icon-size: calc(var(--subrow) * 2); }
+.an-cell.bb-refused-title { --h: 3; --p: 1.565; font-family: var(--font-condensed); font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--text); }
+.bb-refused > .an-p { grid-column: 1 / -1; }
+/* The small grey lines hold 4.5:1 on the card in every theme (60). */
+.bb-item .bl-meta, .bb-item .bl-res-date, .bb-hours, .bb-venue, .bb-of, .bb-backers .bl-count { color: var(--n-7); }
+/* Desktop (70): on a pane with the room, the backers take 62g and an open card's body is two columns: the
+   actions on the left (25g, sticky under the band), the ledger at 33g on the right, its amounts ending on the
+   total's edge. */
+.bb-backers.is-wide { width: calc(var(--gu) * 62); }
+.bb-detail.is-two { display: grid; grid-template-columns: calc(var(--gu) * 25) calc(var(--gu) * 33); column-gap: calc(var(--gu) * 2); align-items: start; }
+.bb-detail.is-two > .bb-acts { position: sticky; top: calc(var(--bk-band-h, 0px) + var(--subrow)); }
+.bb-detail.is-two .bb-links { flex-wrap: wrap; row-gap: var(--subrow); column-gap: var(--gu); padding-left: 0; padding-right: 0; box-shadow: none; }
+/* The two-sided ledger across the whole 62g: two 30g sides 2g apart. */
+.bb-backers.is-wide .bb-ledgerstrip { grid-template-columns: repeat(2, calc(var(--gu) * 30)); column-gap: calc(var(--gu) * 2); }
+.bb-detail.is-two .bb-links > .bb-link-btn { width: calc(var(--gu) * 11); }

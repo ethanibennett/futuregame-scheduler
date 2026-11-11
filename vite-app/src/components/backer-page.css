@@ -423,3 +423,50 @@
 .bp-total:has(.bp-settled-row.is-inline),
 .bp-total:has(.bp-settled-row.is-inline):has(.bp-total-rows) { height: auto; padding-bottom: calc(var(--subrow) * 2); }
 .bp-settled-row.is-inline .bp-settled-btn > span { line-height: 1; padding: 0.3em 0; margin: -0.3em 0; }
+
+/* ── Bankroll design upgrades, part C ─────────────────────────── */
+/* Playing now in the session card's form (74): the card's own markup and 10r, the room's strip, the inset
+   --pos hairline kept; the dot inline before "Playing now · Cash game" in --pos; the time at the table in
+   --text where a share would be (it is never money). */
+.bp-live.cal-event-row { height: auto; padding: 0; background: none; box-shadow: none; border-radius: 0; }
+.bp-live.cal-event-row > .cal-event-row-content { box-shadow: inset 0 0 0 var(--bw-1) var(--pos-quiet), var(--elev-1); }
+.bp-live-when { color: var(--pos); display: inline-flex; align-items: baseline; gap: calc(var(--gu) * 0.5); }
+.bp-live-when > .bp-live-dot { position: relative; right: auto; top: auto; flex: none; align-self: center; }
+.bp-live .cal-event-buyin.bp-live-run { color: var(--text); }
+/* A payment is a band (53): 35g x 4r on --surface2, 7g | the words | 9g, the amount in --text. */
+.bp-payband {
+  display: grid; grid-template-columns: calc(var(--gu) * 7) minmax(0, 1fr) calc(var(--gu) * 9); align-items: start;
+  height: calc(var(--subrow) * 4); padding: 0 var(--gu); margin-bottom: calc(var(--subrow) * 2);
+  border-radius: var(--radius-sm); background: var(--surface2);
+}
+.bp-pay-date { color: var(--text-muted); font-size: var(--fs-xs); }
+.bp-pay-arrow, .bp-pay-kind { color: var(--text-muted); }
+.bp-pay-kind { font-size: var(--fs-xs); }
+.bp-pay-amt { color: var(--text); }
+/* The one large figure (73): what is to be settled at --fs-3xl, its baseline on the 5r cell's line 4; this
+   week one 3r line under it, the label at the left and the figure (display xl) at the right. */
+.bp-total .bp-total-rows .bp-total-val.bp-total-due { --h: 5; --p: 0.3106; font-size: var(--fs-3xl); }
+.bp-week-line { display: flex; justify-content: space-between; align-items: start; gap: var(--gu); margin-top: var(--subrow); }
+.bp-week-line > .an-lbl { flex: 1 1 auto; min-width: 0; }
+.an-cell.bp-week-val { --h: 3; --p: 1.1314; font-family: var(--font-display); font-size: var(--fs-xl); color: var(--text); font-variant-numeric: var(--num-tabular); }
+.bp-week-val.is-pos { color: var(--pos); }
+.bp-week-val.is-neg { color: var(--neg); }
+.bp-total:has(.bp-total-rows):not(:has(.bp-settle)) { height: auto; padding-bottom: calc(var(--subrow) * 2); }
+.bp-total:has(.bp-settle):has(.bp-total-rows) { height: auto; padding-bottom: calc(var(--subrow) * 2); }
+/* A session opened (75): the note leads, 2r under the top, at reading size, upright, in --text on 3r lines;
+   the four figures follow in one 5r row, 8g | 8g | 7g | 8g, label over value. */
+.bp-detail > .bp-note-lead {
+  margin: calc(var(--subrow) * 2) 0 var(--subrow);
+  font-family: var(--font-sans); font-size: var(--fs-md); font-style: normal; color: var(--text);
+  line-height: calc(var(--subrow) * 3); white-space: pre-line; overflow-wrap: anywhere;
+}
+.bp-detail > .cal-detail-grid.bp-figrow { grid-template-columns: var(--col) var(--col) calc(var(--gu) * 7) var(--col); column-gap: 0; }
+/* The backer's page on desktop (72): two columns of 35g, 2g apart; the balance (the name, Playing now, the
+   total card and the graph) on the left, held in view, and the sessions on the right. */
+.app-shell.bp-shell.is-wide { max-width: calc(var(--gu) * (74 + var(--bp-sb-g, 0))); }
+.bp-shell.is-wide .content-area.bp-content {
+  display: grid; grid-template-columns: calc(var(--gu) * 35) calc(var(--gu) * 35); column-gap: calc(var(--gu) * 2);
+  align-items: start; padding-left: var(--gu); padding-right: var(--gu);
+}
+.bp-shell.is-wide .bp-left { position: sticky; top: 0; }
+.bp-shell.is-wide .bp-sessions, .bp-shell.is-wide .bp-empty { grid-column: 2; grid-row: 1; margin-top: calc(var(--subrow) * 2); }

@@ -183,7 +183,7 @@
 .bl-results { list-style: none; margin: 0; padding: 0; }
 .bl-res {
   display: grid;
-  grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 17) calc(var(--gu) * 9);
+  grid-template-columns: calc(var(--gu) * 7) minmax(0, 1fr) calc(var(--gu) * 9);   /* 30g beside the strip */
   align-items: start;
   height: calc(var(--subrow) * 4);
   box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
@@ -220,3 +220,145 @@
 @media (prefers-reduced-motion: reduce) {
   .bl-card { transition: none; }
 }
+
+/* ── Bankroll design upgrades, part C ─────────────────────────── */
+/* The room's strip (62): 3g down the card's left edge, its Schedule colour and code, set vertically as the
+   Schedule's strip is; a room with no colour of its own on --surface2. The card's text starts at 4g. */
+.bl-strip {
+  position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--gu) * 3); z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm); background: var(--surface2);
+  pointer-events: none;
+}
+.bl-strip-code {
+  writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap;
+  font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: var(--fs-2xs);
+  letter-spacing: var(--track-caps); text-transform: uppercase; color: #ffffff;
+}
+.bl-item.has-strip > .bl-card, .bl-item.has-strip > .bl-detail { padding-left: calc(var(--gu) * 4); }
+/* Every card one height (61): a 6r head, the 5r stat columns, 1r foot: 12r. */
+.bl-item.has-strip > .bl-card { height: calc(var(--subrow) * 12); }
+.bl-item.has-strip.is-open > .bl-card { height: auto; }
+/* The head with the sparkline (64): name | the 7g x 3r line | the total in 8g. */
+.bl-head.has-spark { grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 7) var(--col); }
+.bl-head.has-spark > .bl-total { grid-column: 3; }
+.bl-spark { grid-column: 2; grid-row: 1 / 3; align-self: start; position: relative; width: calc(var(--gu) * 7); height: calc(var(--subrow) * 3); margin-top: var(--subrow); }
+.bl-spark svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.bl-spark polyline { fill: none; stroke: currentColor; stroke-width: var(--bw-1); stroke-linejoin: round; }
+.bl-spark-zero { stroke: var(--border-strong); stroke-width: var(--bw-hair); }
+.bl-spark.is-pos { color: var(--pos); }
+.bl-spark.is-neg { color: var(--neg); }
+.bl-spark.is-flat { color: var(--text-muted); }
+.bl-spark-dot { position: absolute; width: calc(var(--subrow) * 0.75); height: calc(var(--subrow) * 0.75); border-radius: var(--radius-circle, 50%); background: currentColor; transform: translate(-50%, -50%); }
+/* The result on one scale (63): over the hairline, a --bw-2 rule from a 1r zero tick. */
+.bl-rule { display: block; position: relative; height: 0; }
+.bl-rule-zero { position: absolute; top: calc(var(--subrow) * -0.5); width: var(--bw-1); height: var(--subrow); background: var(--border-strong); }
+.bl-rule-bar { position: absolute; top: calc(var(--bw-2) * -0.5); height: var(--bw-2); border-radius: var(--radius-pill); background: var(--pos); }
+.bl-rule-bar.is-neg { background: var(--neg); }
+/* The stats as six labelled columns (61): 30g (the strip takes 3g of the 33g), a label over its figure, the
+   figure's baseline on its cell's line 2; a dash quiet. */
+.bl-grid {
+  display: grid; grid-template-columns: repeat(6, calc(var(--gu) * 5));
+  height: calc(var(--subrow) * 5); box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+}
+.bl-gcell { display: flex; flex-direction: column; min-width: 0; }
+.an-cell.bl-gval {
+  --h: 2; --p: 0.6978;
+  font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text); font-variant-numeric: var(--num-tabular);
+}
+.bl-gval.is-dash { color: var(--text-muted); }
+.bl-gval.an-pos { color: var(--pos); }
+.bl-gval.an-neg { color: var(--neg); }
+/* A small sample (65): the tag on the meta line, small caps, quiet. */
+.bl-small { font-size: var(--fs-2xs); letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-muted); }
+/* A room opened, by month (66): a 3r band on --surface2 bled to the card's edges, the month and its count,
+   the month's net bold at the right; the rows' dates the weekday and day. */
+.bl-month {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--gu);
+  height: calc(var(--subrow) * 3); margin: 0 calc(var(--gu) * -1); padding: 0 var(--gu);
+  background: var(--surface2);
+}
+.bl-month-name { color: var(--text); }
+.bl-month-n { font-weight: var(--fw-regular); color: var(--text-muted); }
+.bl-month-net { color: var(--text); }
+.bl-month-net.an-pos { color: var(--pos); }
+.bl-month-net.an-neg { color: var(--neg); }
+/* A room opened stays named (67): its head sticks at the top of the scroller (under the desktop band), on
+   --surface2 with --elev-1 once it is stuck, its stats folded away there (their room kept as margin, so
+   nothing under it jumps), with how much of the list has loaded as a 2r track. */
+.bl-sentinel { display: block; height: 0; }
+.bl-item.is-open > .bl-card { position: sticky; top: var(--bk-band-h, 0px); z-index: 4; background: var(--surface); }
+/* The strip and the card's edge stay over the sticky head; the code rides with the head, centred in its 12r. */
+.bl-item.is-open > .bl-strip, .bl-item.is-open::after { z-index: 5; }
+.bl-item.is-open > .bl-strip { align-items: flex-start; }
+.bl-item.is-open .bl-strip-code { position: sticky; top: var(--bk-band-h, 0px); height: calc(var(--subrow) * 12); text-align: center; }
+.bl-item.is-stuck > .bl-card { background: var(--surface2); box-shadow: var(--elev-1); margin-bottom: calc(var(--subrow) * 5); }
+.bl-item.is-stuck > .bl-card > .bl-grid, .bl-item.is-stuck > .bl-card > .bl-rule { display: none; }
+.bl-progress { display: block; position: relative; height: calc(var(--subrow) * 2); }
+.bl-progress::before, .bl-progress > i {
+  content: ""; position: absolute; left: 0; top: calc(var(--subrow) - var(--bw-2) / 2); height: var(--bw-2); border-radius: var(--radius-pill);
+}
+.bl-progress::before { right: 0; background: var(--border); }
+.bl-progress > i { background: var(--brand); }
+/* The range and the sort share one set of column edges (68): "Sort by" in 7g, the sort's four 7g buttons
+   under the range's last four, 1r under it, 4r. */
+.bl-sortrow { display: grid; grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 28); align-items: center; height: calc(var(--subrow) * 4); margin-top: var(--subrow); }
+.bl-sortrow > .bl-sort.bd-seg { width: calc(var(--gu) * 28); grid-template-columns: repeat(4, calc(var(--gu) * 7)); }
+/* The small grey lines hold 4.5:1 on the card in every theme (60). */
+.bl-meta, .bl-res-date, .bl-count, .bl-month-n { color: var(--n-7); }
+
+/* ── Desktop (69, 71) ─────────────────────────────────────────── */
+/* The Bankroll column is 35g on desktop (UX pick 08); the ranking is its exception, 62g, and with the room
+   beside it 101g, where the pane has the width (BankrollLocations measures it). */
+.bl-locations.is-wide > .bl-main { width: calc(var(--gu) * 62); }
+.bl-locations.has-pane { display: grid; grid-template-columns: calc(var(--gu) * 62) calc(var(--gu) * 37); column-gap: calc(var(--gu) * 2); align-items: start; }
+.bl-table {
+  margin-top: calc(var(--subrow) * 2); background: var(--surface); border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border); overflow: hidden;
+}
+.bl-trow {
+  display: grid; align-items: start;
+  grid-template-columns: calc(var(--gu) * 3) calc(var(--gu) * 18) calc(var(--gu) * 5) calc(var(--gu) * 5) calc(var(--gu) * 6) calc(var(--gu) * 5) calc(var(--gu) * 6) calc(var(--gu) * 6) calc(var(--gu) * 7);
+  height: calc(var(--subrow) * 4); padding-right: var(--gu); box-sizing: border-box;
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border); cursor: pointer;
+}
+.bl-trow.is-head { height: calc(var(--subrow) * 3); cursor: default; }
+.bl-trow > :first-child { padding-left: var(--gu); }
+.bl-trow.is-on { background: var(--surface2); box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); }
+.bl-trow:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+@media (hover: hover) and (pointer: fine) { .bl-trow:not(.is-head):hover { background: var(--hover-overlay); } }
+.bl-th { cursor: pointer; }
+.bl-th.is-on { color: var(--text); }
+.bl-rank { color: var(--text-muted); }
+.bl-tname.is-none { color: var(--text-muted); }
+.bl-tres { font-weight: var(--fw-bold); --p: 0.7586; }
+.bl-trow .an-pos { color: var(--pos); }
+.bl-trow .an-neg { color: var(--neg); }
+.bl-trow .is-dash { color: var(--text-muted); }
+.bl-trow-open { padding: var(--subrow) var(--gu) calc(var(--subrow) * 2); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border); }
+/* The room's pane (71): 37g on --bg beside the ranking, its content 35g; it stays in view and scrolls on its
+   own. The name at --fs-xl in the display face, the total at --fs-3xl, the running result 35g x 16r. */
+.bl-pane {
+  position: sticky; top: var(--bk-band-h, 0px); box-sizing: border-box;
+  max-height: calc(100vh - var(--subrow) * 16); overflow-y: auto; padding: 0 var(--gu) calc(var(--subrow) * 2);
+  background: var(--bg);
+}
+.bl-trow-open > .bl-pane { position: static; max-height: none; overflow: visible; padding: 0; background: none; }
+.bl-pane-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--gu); }
+.an-cell.bl-pane-name { --h: 3; --p: 1.1314; margin: 0; min-width: 0; font-family: var(--font-display); font-size: var(--fs-xl); font-weight: var(--fw-regular); color: var(--text); }
+.bl-pane-close { height: calc(var(--subrow) * 3); }
+.bl-pane-lbl { margin-top: var(--subrow); }
+.an-cell.bl-pane-total { --h: 5; --p: 0.3106; font-family: var(--font-display); font-size: var(--fs-3xl); color: var(--text); font-variant-numeric: var(--num-tabular); }
+.bl-pane-total.an-pos { color: var(--pos); }
+.bl-pane-total.an-neg { color: var(--neg); }
+.bl-pane-chart { position: relative; width: calc(var(--gu) * 35); height: calc(var(--subrow) * 16); margin-top: var(--subrow); color: var(--pos); }
+.bl-pane-chart.is-neg { color: var(--neg); }
+.bl-pane-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bl-pane-line { fill: none; stroke: currentColor; stroke-width: var(--bw-1); stroke-linejoin: round; }
+.bl-pane-area { fill: var(--pos-quiet); stroke: none; }
+.bl-pane-chart.is-neg .bl-pane-area { fill: var(--neg-quiet); }
+.bl-pane-zero { stroke: var(--border-strong); stroke-width: var(--bw-hair); }
+.bl-pane-dates { display: flex; justify-content: space-between; }
+.bl-pane .bl-grid { margin-top: var(--subrow); }
+.bl-pane-sec { margin-top: calc(var(--subrow) * 2); }
+.bl-pane .bl-month { margin: 0; }

@@ -140,14 +140,40 @@ function liveSweep(since) {
   return Math.round((min / 60) * 360) + 'deg';
 }
 
+/* Playing now in the session card's form (Bankroll design 74): the room's strip, the pulsing dot and
+   "Playing now · Cash game" where the date goes, the game as the title, and the time at the table where a
+   finished session shows the share, "since 3:51 AM" under it. Never money. A room with the neutral strip
+   keeps its name as the stage line. */
 function LiveBeacon({ live }) {
   const what = live.kind === 'cash' ? 'Cash game' : 'Tournament';
+  const strip = stripFor(live.room || '', VENUE_MAP);
+  const abbr = strip.abbr || (live.room ? getVenueInfo(live.room).abbr : null) || null;
+  const since = liveSince(live.since);
+  const [clock, run] = since ? [since.replace(/^since /, '').split(' · ')[0], since.split(' · ')[1]] : ['', ''];
   return (
-    <section className="bp-live" aria-live="polite" aria-label="Playing now">
-      <span className="bp-live-dot" aria-hidden="true" style={{ '--sweep': liveSweep(live.since) }} />
-      <div className="an-cell an-lbl an-lbl-3">Playing now · {what}</div>
-      <div className="an-cell an-val bp-live-title an-clip">{live.title}</div>
-      <div className="an-cell an-note an-clip">{[live.room, liveSince(live.since)].filter(Boolean).join(' · ')}</div>
+    <section className="cal-event-row bp-session bp-live" aria-live="polite" aria-label={`Playing now: ${live.title}${live.room ? ', ' + live.room : ''}`}>
+      <div className={'cal-venue-strip' + (abbr ? '' : ' is-neutral')} aria-hidden="true"
+        style={{ background: abbr ? getVenueBrandColor(abbr) : 'var(--border-strong)', color: '#ffffff' }}>
+        <span className="venue-strip-abbr">{abbr ? getStripAbbr(abbr) : ''}</span>
+      </div>
+      <div className="cal-event-row-content">
+        <div className="cal-event-bar">
+          <div className="cal-bar-row1">
+            <span className="cal-event-time bp-live-when">
+              <span className="bp-live-dot" aria-hidden="true" style={{ '--sweep': liveSweep(live.since) }} />Playing now · {what}
+            </span>
+            <span className="cal-event-money">
+              <span className="cal-event-buyin bp-live-run">{run}</span>
+              {clock && <span className="cal-event-gtd">since {clock}</span>}
+            </span>
+          </div>
+          <div className="cal-bar-row2">
+            <span className="cal-event-name" title={live.title}>
+              {!abbr && live.room ? (<><span className="cal-event-base">{live.title}</span><span className="cal-event-stage">{live.room}</span></>) : live.title}
+            </span>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
@@ -271,8 +297,11 @@ function SessionCard({ e }) {
         </div>
         <div className={'cal-event-detail-wrap' + (open ? ' open' : '')} onClick={() => setOpen(false)}>
           <div className="cal-event-detail-inner">
-            <div className="cal-event-detail">
-              <div className="cal-detail-grid">
+            <div className="cal-event-detail bp-detail">
+              {/* The note leads (Bankroll design 75): at reading size, upright, in --text, 2r under the top; the
+                  four figures follow in one row. */}
+              {notes && <p className="bp-note-lead">{notes}</p>}
+              <div className="cal-detail-grid bp-figrow">
                 <div className="cal-detail-item">
                   <span className="cal-detail-label">Session</span>
                   <span className={'cal-detail-value bp-amt ' + tone(result)}>{fmtSignedCents(result)}</span>
@@ -292,11 +321,7 @@ function SessionCard({ e }) {
                   </div>
                 )}
               </div>
-              {notes && (
-                <div className="cal-detail-notes-cell" ref={notesCellRef}>
-                  <p className="cal-detail-notes bp-detail-notes">{notes}</p>
-                </div>
-              )}
+
             </div>
           </div>
         </div>
@@ -309,29 +334,15 @@ function SessionCard({ e }) {
  *  like one: a neutral strip reading SENT (owner, 2026-10-25: "Sent", not "Paid"), the date where the time goes, who paid whom as the title, the
  *  amount where the share goes and what it was (Settled, Partial payment, Payout) under it. It is not a
  *  result, so it carries no tone and opens nothing. */
+/* A payment is a band across the list (Bankroll design 53), not one more session: 35g x 4r on --surface2,
+   the date, an arrow and who sent whom with what it was, the amount in --text (neither gain nor loss). */
 function PaymentCard({ p }) {
   const v = paymentView(p, { side: 'backer' });
   return (
-    <li className="cal-event-row bp-session bp-payment">
-      <div className="cal-venue-strip is-neutral" aria-hidden="true"
-        style={{ background: 'var(--border-strong)', color: '#ffffff' }}>
-        <span className="venue-strip-abbr">SENT</span>
-      </div>
-      <div className="cal-event-row-content">
-        <div className="cal-event-bar" aria-label={`${v.kind}: ${v.title} ${v.amount}`}>
-          <div className="cal-bar-row1">
-            <span className="cal-event-time">{fmtDay(p.date)}</span>
-            <SwissLines name={v.title} stage={''} time={fmtDay(p.date)} />
-            <span className="cal-event-money">
-              <span className="cal-event-buyin bp-amt">{v.amount}</span>
-              <span className="cal-event-gtd">{v.kind}</span>
-            </span>
-          </div>
-          <div className="cal-bar-row2">
-            <span className="cal-event-name" title={v.title}>{v.title}</span>
-          </div>
-        </div>
-      </div>
+    <li className="bp-payband" aria-label={`${v.kind}: ${v.title} ${v.amount}`}>
+      <span className="an-cell an-td an-clip bp-pay-date">{fmtDay(p.date)}</span>
+      <span className="an-cell an-td an-clip bp-pay-what"><span className="bp-pay-arrow" aria-hidden="true">{'\u2192'}</span> {v.title}<span className="bp-pay-kind"> · {v.kind}</span></span>
+      <span className="an-cell an-td an-num an-clip bp-pay-amt">{v.amount}</span>
     </li>
   );
 }
@@ -382,11 +393,15 @@ function TotalFigures({ feed, total }) {
     );
   }
   return (
+    /* The one figure the Settled button is about is the large one (Bankroll design 73), at --fs-3xl; this
+       week rolls on, so it reads as one line under it. */
     <div className="bp-total-rows">
       <div className="an-cell an-lbl an-lbl-3">{who(w.carriedCents) ? who(w.carriedCents) + ' \u00b7 from last week' : 'To be settled from last week'}</div>
-      <div className={'an-cell bp-total-val ' + tone(w.carriedCents)}>{bare(w.carriedCents)}</div>
-      <div className="an-cell an-lbl an-lbl-3 bp-total-row2">This week</div>
-      <div className={'an-cell bp-total-val ' + tone(w.weekCents)}>{fmtSignedCents(w.weekCents)}</div>
+      <div className={'an-cell bp-total-val bp-total-due ' + tone(w.carriedCents)}>{bare(w.carriedCents)}</div>
+      <div className="bp-week-line">
+        <span className="an-cell an-lbl an-lbl-3">This week</span>
+        <span className={'an-cell bp-week-val ' + tone(w.weekCents)}>{fmtSignedCents(w.weekCents)}</span>
+      </div>
     </div>
   );
 }
@@ -480,7 +495,23 @@ function Skeleton() {
   );
 }
 
+/* The backer's page on a desktop window (Bankroll design 72): the app's own threshold (useDesktopLayout's
+   1024 wide), as a class, so the CSS stays in g and r. */
+function useWide() {
+  const q = '(min-width: 1024px)';
+  const [wide, setWide] = useState(() => typeof window !== 'undefined' && window.matchMedia && window.matchMedia(q).matches);
+  useEffect(() => {
+    if (!window.matchMedia) return undefined;
+    const m = window.matchMedia(q);
+    const on = () => setWide(m.matches);
+    m.addEventListener ? m.addEventListener('change', on) : m.addListener(on);
+    return () => { m.removeEventListener ? m.removeEventListener('change', on) : m.removeListener(on); };
+  }, []);
+  return wide;
+}
+
 export default function BackerPage({ token }) {
+  const wide = useWide();
   useDeviceContrast();
   const theme = useThemeChoice({ followDevice: true, admin: deviceIsAppAdmin() });
   const shellRef = useRef(null);
@@ -560,6 +591,7 @@ export default function BackerPage({ token }) {
     const label = view.range === 'all' ? 'Balance' : `Balance, ${RANGE_NOUN[view.range]}`;
     body = (
       <>
+        <div className="bp-left">
         <div className="bp-hero">
           <h2 className="an-cell bp-name an-clip">{name}</h2>
           {feed.stakes ? <p className="an-cell bp-stakes an-clip">{feed.stakes}</p> : null}
@@ -592,6 +624,13 @@ export default function BackerPage({ token }) {
           </section>
         )}
 
+        {events.length > 0 && (
+          <BackerChart series={series} label={label} today={today} baseNote={baseNote}
+            control={options.length > 0 && (
+              <RangeStrip options={options} value={view.range} onChange={setRange} />
+            )} />
+        )}
+        </div>
         {events.length === 0 ? (
           <section className="bp-message bp-empty">
             <h3 className="an-cell bp-message-title">No sessions yet</h3>
@@ -599,11 +638,6 @@ export default function BackerPage({ token }) {
           </section>
         ) : (
           <>
-            <BackerChart series={series} label={label} today={today} baseNote={baseNote}
-              control={options.length > 0 && (
-                <RangeStrip options={options} value={view.range} onChange={setRange} />
-              )} />
-
             {/* No heading row: the month breaks lead straight in (owner, 2026-10-14). */}
             <section className="bp-sessions" aria-label="Sessions, newest first">
               {months.map((g) => (
@@ -624,7 +658,7 @@ export default function BackerPage({ token }) {
   }
 
   return (
-    <div className="app-shell bp-shell" ref={shellRef}>
+    <div className={'app-shell bp-shell' + (wide ? ' is-wide' : '')} ref={shellRef}>
       <TopBar push={failed ? null : push} theme={theme} />
       <main className="content-area bp-content">
         {body}

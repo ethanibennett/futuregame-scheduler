@@ -387,3 +387,30 @@ test('bb/hr: tournaments never get one; a tournament-only room has no bbhr and n
   ], { localHour }));
   assert.deepEqual(bbItems(m).map((i) => i.text), ['+25.0 bb/hr']);
 });
+
+test('part C helpers: stat cells, the result scale, the running line, month groups (Bankroll design 61-66)', async () => {
+  const m = await import('../bankroll-locations.js');
+  const usd = { symbol: '$', pos: 'pre' };
+  const big = { entries: 20, hours: 40, hourly: 25, roi: null, won: 0.6, wonKind: 'cash', bbhr: null, cash: { wins: 12 }, tournament: { cashes: 0 } };
+  const cells = m.statCells(big, usd);
+  assert.deepEqual(cells.map((c) => c.label), ['Entries', 'Hours', '$/hour', 'ROI', 'Won/ITM', 'bb/hr']);
+  assert.equal(cells[3].text, '—');
+  assert.equal(cells[2].tone, 1);
+  const small = { ...big, entries: 2, won: 1, cash: { wins: 2 } };
+  const sc = m.statCells(small, usd);
+  assert.equal(sc[2].tone, 0, 'a small sample drops the colour');
+  assert.equal(sc[4].text, '2/2');
+  const s = m.resultScale([{ total: 900 }, { total: -300 }, { total: 0 }]);
+  assert.equal(s.zero, 0.25);
+  assert.deepEqual(s.at(900), { from: 0.25, to: 1 });
+  assert.deepEqual(s.at(-300), { from: 0, to: 0.25 });
+  assert.deepEqual(m.runningResult({ results: [{ profit: 50 }, { profit: -20 }, { profit: 100 }] }), [0, 100, 80, 130]);
+  const all = [{ date: '2026-11-05', profit: 10 }, { date: '2026-11-01', profit: 5 }, { date: '2026-10-31', profit: -3 }, { date: '2026-10-02', profit: 7 }];
+  const g = m.monthGroups(all.slice(0, 3), all);
+  assert.equal(g.length, 2);
+  assert.equal(g[0].label, 'November 2026');
+  assert.equal(g[0].net, 15);
+  assert.equal(g[1].count, 2, 'the whole month, not the rows shown');
+  assert.equal(g[1].net, 4);
+  assert.equal(m.fmtWeekday('2026-11-05'), 'Thu 5');
+});
