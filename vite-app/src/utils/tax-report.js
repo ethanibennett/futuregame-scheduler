@@ -182,10 +182,22 @@ export function summarizeTransactions(transactions, opts = {}) {
 }
 
 // ── Dates ───────────────────────────────────────────────────────────────────
+// The feed's events are dated "October 20, 2026" (and older rows "Fri Oct 20 2026"), not only ISO: read by
+// hand too, with no Date (App improvements 203: every result on a schedule event was left out as "no
+// readable date", and the year arrows could not reach the year they were in).
+const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 };
 export function parseIsoDate(v) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(typeof v === 'string' ? v : '');
-  if (!m) return null;
-  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  const str = typeof v === 'string' ? v.trim() : '';
+  let y, mo, d;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(str);
+  if (m) { y = Number(m[1]); mo = Number(m[2]); d = Number(m[3]); }
+  else {
+    const w = /^(?:[A-Za-z]{3,9},?\s+)?([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})/.exec(str);
+    if (!w) return null;
+    mo = MONTHS[w[1].toLowerCase()] || MONTHS[w[1].slice(0, 3).toLowerCase()];
+    if (!mo) return null;
+    d = Number(w[2]); y = Number(w[3]);
+  }
   if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
   return { y, m: mo, d };
 }

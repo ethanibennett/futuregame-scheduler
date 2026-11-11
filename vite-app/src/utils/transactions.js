@@ -123,7 +123,7 @@ export function tripPnl(data, { currency = 'USD', convert, nativeCurrency } = {}
     : convert;
   let buy = 0, cash = 0, cashes = 0, events = 0, bullets = 0;
   for (const e of (data && data.results) || []) {
-    const from = typeof nativeCurrency === 'function' ? nativeCurrency(e.venue) : 'USD';
+    const from = typeof nativeCurrency === 'function' ? nativeCurrency(e.venue, e.currency) : 'USD';
     const units = Math.max(1, Number(e.num_entries) || 1);
     const cost = (Number(e.buyin) || 0) * units;
     buy += toC(inTarget(cost, from, currency, conv));

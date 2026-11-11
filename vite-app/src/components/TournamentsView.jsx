@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
+import useBackToClose from '../hooks/useBackToClose.js';
 import { isOnline as isOnlineEvent } from '../utils/utils.js';
 import { useSwissBoard } from './SwissParts.jsx';
 import { createPortal, flushSync } from 'react-dom';
@@ -20,6 +21,7 @@ import {
   matchesBuyin,
   siteRuleIsEmpty,
   getVenueInfo,
+  lateRegCloseOf,
 } from '../utils/utils.js';
 import { searchTokens, matchesSearch as matchesSearchText } from '../utils/search.js';
 import { activeFilterChips, sectionValues } from '../utils/filter-chips.js';
@@ -92,6 +94,20 @@ function OnlineRoomRules({ sites, siteRules, setFilters, disabled }) {
 // ── Inline Filters (portal-based, matching original) ──
 function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpen, toggleRef, shownCount, chipCount }) {
   const panelRef = useRef(null);
+  useBackToClose(open, () => setOpen(false));   // Back closes the panel (App improvements 454)
+  // Escape closes the panel as Save & Close does, before the selected event behind it hears the key
+  // (App improvements 53); focus goes back to the funnel.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault(); e.stopPropagation();
+      setOpen(false);
+      if (toggleRef && toggleRef.current) toggleRef.current.focus({ preventScroll: true });
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [open, setOpen, toggleRef]);
   /* The sheet answers the tap at once (UX pick 30): its frame and first rows paint on the tap and the
      sections mount a frame later. */
   const [sectionsReady, setSectionsReady] = useState(false);
@@ -731,7 +747,9 @@ export default function TournamentsView({
   onSwitchView, mineCount = 0,
   // Desktop only (docs/desktop-layout.md): a row click selects the event into
   // the detail pane instead of expanding inline. Absent on the phone.
-  onSelectEvent, selectedEventId
+  onSelectEvent, selectedEventId,
+  // App improvements 5: { status: 'ok' | 'failed', at } of the list's last request, and a way to ask again.
+  listLoad = null, onRetryList = null,
 }) {
   const toast = useToast();
   const [search, setSearch] = useState('');
@@ -1532,7 +1550,16 @@ export default function TournamentsView({
         </div>
       )}
 
-      {filtered.length === 0 ? (
+      {/* Three states kept apart (App improvements 5): the list failed to load, there is no schedule, or the
+          filters hide what there is. Only the last says "your filters". */}
+      {filtered.length === 0 && tournaments.length === 0 && listLoad && listLoad.status === 'failed' ? (
+        <Filtered icon="alert" title="Couldn't load the schedule"
+          hint="Nothing is wrong with your filters. Check the connection and try again."
+          actions={onRetryList ? [{ label: 'Try again', onClick: onRetryList }] : []} />
+      ) : filtered.length === 0 && tournaments.length === 0 ? (
+        <Filtered icon="calendar" title="No events listed yet"
+          hint="The schedule is empty right now. New series arrive every hour." />
+      ) : filtered.length === 0 ? (
         <Filtered
           title="No events match your filters"
           hint="Every event is still here — the current search, venue, date or location filter is hiding them."
@@ -1590,7 +1617,12 @@ export default function TournamentsView({
                   {isLive && !isCollapsed && group.events.map(t => {
                     // Yesterday's event still running past midnight needs the full row for its live
                     // clock too (clockAskable: started within 18 h, not known complete).
-                    const needsFull = isToday || activatedIds.has(t.id) || focusEventId === t.id || clockAskable(t);
+                    // Decided by time, not by the date group (App improvements 3): after the phone's midnight a card
+                    // still registering (its close ahead, or its room clock in the 18 h window) keeps its late-reg
+                    // line and full colour in yesterday's group.
+                    const openNow = past && !t.clock_ended_at && (clockAskable(t) || (() => { const c = lateRegCloseOf(t); return !isNaN(c) && c > Date.now(); })());
+                    const rowPast = past && !openNow;
+                    const needsFull = isToday || openNow || activatedIds.has(t.id) || focusEventId === t.id || clockAskable(t);
                     return (
                     /* No content-visibility: the window does that job now, and a row it skipped came
                        back 13r tall after every remount, so a live day's measured height was wrong. */
@@ -1600,8 +1632,8 @@ export default function TournamentsView({
                           tournament={t}
                           isInSchedule={scheduleIds.has(t.id)}
                           onToggle={onToggle}
-                          isPast={past}
-                          showMiniLateReg={isToday}
+                          isPast={rowPast}
+                          showMiniLateReg={isToday || openNow}
                           focusEventId={focusEventId}
                           conditions={conditionMap[t.id] || []}
                           onSetCondition={onSetCondition}
@@ -1626,7 +1658,7 @@ export default function TournamentsView({
                         onToggle={onToggle}
                           tournament={t}
                           isInSchedule={scheduleIds.has(t.id)}
-                          isPast={past}
+                          isPast={rowPast}
                           isAnchor={anchorSet.has(t.id)}
                           conditions={conditionMap[t.id]}
                           onExpand={() => activateRow(t.id)}

@@ -79,7 +79,7 @@
 .bk-bar.bk-bar--sched .bk-cell { border-radius: var(--radius-xs); }
 .bk-bar.bk-bar--sched .bk-cell.is-on { box-shadow: inset 0 0 0 var(--bw-fine) var(--accent); background: rgba(160,160,160,0.1); }
 .bk-bar.bk-bar--sched .bk-cell-name {
-  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
   letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-muted);
 }
 .bk-bar.bk-bar--sched .bk-cell.is-on .bk-cell-name { color: var(--accent); }
@@ -87,17 +87,21 @@
 /* Dashboard and Manage: tiles of the same size, a centred caps label (a control's label centres). */
 .bk-bar.bk-bar--sched .bk-act {
   align-items: center; justify-content: center; padding: 0;
-  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
   letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-muted);
 }
 .bk-bar.bk-bar--sched .bk-act-label { display: block; line-height: 1; text-indent: var(--track-caps); }
 
-/* Expenses & Income: the title in the display face (the Schedule's event-name face), the year's
-   tiles as the switcher's, + Add / Trips / All as the Schedule's caps toggles. */
-.tx-sec .tx-title { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-md); }
+/* Expenses & Income: the title is a section heading like every other on the tab (Bankroll design 93: the
+   an-sec capitals line, its baseline on line 3 of its 3r; the serif is kept for money), the year's tiles as
+   the switcher's, + Add / Trips / All as the Schedule's caps toggles. */
+.tx-sec .tx-title {
+  font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: var(--fs-xs);
+  text-transform: uppercase; letter-spacing: var(--track-caps); padding-top: calc(var(--subrow) * 3 - 1cap);
+}
 .tx-sec .tx-cell { border-radius: var(--radius-xs); }
 .tx-sec .tx-cell-label {
-  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
   letter-spacing: var(--track-caps); text-transform: uppercase;
 }
 .tx-sec .tx-cell-val { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 700; }
@@ -111,7 +115,8 @@
 .tx-sec .tx-head .bk-head-btn > span, .tx-sec .bk-actions .bk-btn > span { text-indent: var(--track-caps); }
 /* Analytics' name in the same display face as the section titles; a control's display-face label
    takes .ctl-cap, which centres Baskerville's capitals (styles.css, Pills and buttons). */
-.an-launch .an-launch-name { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 700; }
+/* The label of a row that opens something is plain sans, not the money serif (Bankroll design 93). */
+.an-launch .an-launch-name { font-family: var(--font-sans); font-size: var(--fs-sm); font-weight: var(--fw-bold); }
 /* No title row above it now (owner, 2026-10-16), so the switcher keeps the Schedule's 2r under the top bar. */
 .bk-bar.bk-bar--sched { padding-top: calc(var(--subrow) * 2); }
 
@@ -347,3 +352,64 @@
 }
 .app-shell.is-desktop .bk-bar.bk-bar--sched .bk-grid--row { grid-template-columns: calc(var(--gu) * 17) var(--col) var(--col); }
 .app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.bk-bar--sched) { --bk-band-h: calc(var(--subrow) * 7); --tr-break-top: var(--bk-band-h); }
+
+/* ── Bankroll design upgrades, part D: one hover (88) ──
+   The rest of the tab's pressables take the same recipe as the chips above: the --hover-overlay fill over
+   the control's own ground, a muted label to --text, a --border ring to --border-strong, over --dur-fast.
+   A full-width row (an expense, a session's card bar) takes the fill on its own box, whose text sits 1g in.
+   Pointer devices only. */
+.an-launch, .tracking-view .filter-chip, .tr-head-row .filter-chip, .cs-head .filter-chip, .tx-row, button.tx-row,
+.bk-btn, .bl-card, .tr-line, .cs-card, .tr-card .cal-event-bar, .bk-pick-select, .bid-support-sum, .bb-item .bl-card {
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .an-launch:hover { background-image: linear-gradient(var(--hover-overlay), var(--hover-overlay)); box-shadow: inset 0 0 0 var(--bw-hair) var(--border-strong), var(--elev-1); }
+  .an-launch:hover .an-launch-go { color: var(--text); }
+  .tr-head-row .filter-chip:not(:disabled):hover, .cs-head .filter-chip:not(:disabled):hover {
+    background-image: linear-gradient(var(--hover-overlay), var(--hover-overlay)); border-color: var(--border-strong); color: var(--text);
+  }
+  button.tx-row:hover, .tr-line:hover, .cs-card:hover, .tr-card:not(.open) .cal-event-bar:hover {
+    background-image: linear-gradient(var(--hover-overlay), var(--hover-overlay));
+  }
+  .bk-btn:not(:disabled):not([aria-disabled="true"]):not(.bk-btn--brand):not(.bk-btn--danger):hover {
+    background-image: linear-gradient(var(--hover-overlay), var(--hover-overlay)); border-color: var(--border-strong); color: var(--text);
+  }
+  .bk-btn--brand:not(:disabled):not([aria-disabled="true"]):hover { filter: brightness(1.08); }
+  .bk-pick-select:hover { border-color: var(--border-strong); }
+}
+
+/* ── One card recipe (Bankroll design 94) ──
+   A container on the tab: --radius-sm (1r), a --bw-hair --border ring, --elev-1. A control inside a card
+   stays flat with the same ring. The bankroll picker's cell is a container; Manage and Add are buttons and
+   take the button recipe (99). A selected card keeps its elevation under the 0.25r --brand ring (84). */
+.tab-panel[data-tab="tracking"] .tracking-card { border-radius: var(--radius-sm); box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1); }
+.bk-bar.bk-bar--sched .bk-cell.bk-pick { border-radius: var(--radius-sm); }
+.an-launch { box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1); }
+.cal-event-row.tr-card, .bl-item, .bid-card { box-shadow: var(--elev-1); }
+.cal-event-row.tr-card.is-selected { box-shadow: var(--elev-1), 0 0 0 calc(var(--subrow) * 0.25) var(--brand); }
+.cal-event-row.tr-card.tracking-pending { box-shadow: none; }
+
+/* ── One button (Bankroll design 99) ──
+   Two heights, 5r for a page's action and 4r inside a card; one radius, --radius (1.5r); one label, --fs-sm
+   sentence case, centred in its box. Log Result (and Cash's Start session) go 4r to 5r with their squares;
+   Expenses & Income's + Add, Trips and All go from 3r capitals to 4r. The section strip, the segmented
+   controls and the round add button are outside it. */
+.tr-head-row .tr-log-btn, .tr-head-row .filter-chip-square { height: calc(var(--subrow) * 5); border-radius: var(--radius); }
+.tr-head-row .tr-log-label { font-size: var(--fs-sm); }
+.cs-view .cs-head.tr-head-row { height: calc(var(--subrow) * 5); }
+.tx-sec .tx-head { height: calc(var(--subrow) * 4); }
+.tx-sec .tx-head .bk-head-btn, .tx-sec .bk-actions .bk-btn {
+  height: calc(var(--subrow) * 4); border-radius: var(--radius);
+  font-size: var(--fs-sm); letter-spacing: 0; text-transform: none; color: var(--text);
+}
+.tx-sec .tx-head .bk-head-btn > span, .tx-sec .bk-actions .bk-btn > span { text-indent: 0; }
+/* …except a label ending in "1" ("Trips · 1"), whose balance (styles.css .bk-ends-1) this rule outranked:
+   its ink sat 0.88px left of centre on desktop. */
+.tx-sec .bk-actions .bk-btn.bk-ends-1 > span { text-indent: 0.12em; }
+
+/* One motion (Bankroll design 98): a result card opens on the tab's spring (hooks/useOpenSpring.js), so the
+   detail's own height and fade transitions step aside; the Overview tables' fold likewise. */
+.tr-card .cal-event-detail-wrap, .tr-card .cal-event-detail-inner > .cal-event-detail,
+.tr-card .cal-event-detail-wrap.open > .cal-event-detail-inner > .cal-event-detail { transition: none; }
+.ovt .ovt-sec > .ovt-body, .ovt .ovt-sec.is-open > .ovt-body { transition: none; }

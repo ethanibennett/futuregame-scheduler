@@ -1,12 +1,11 @@
 {
-  "name": "futurega.me | Spring/Summer 2026",
+  "name": "futurega.me",
   "short_name": "futurega.me",
-  "description": "Poker tournament scheduler for WSOP 2026 and beyond",
-  "start_url": "/",
+  "description": "Your whole poker calendar: every live series near you, in each room's own time.",
+  "start_url": "/?src=pwa",
   "display": "standalone",
   "background_color": "#111111",
   "theme_color": "#111111",
-  "orientation": "portrait",
   "icons": [
     {
       "src": "/favicon.svg",

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { plainStudy } from '../utils/study-words.js';
 import { StudyHead, StudyPills, useSolverAvailability, offered, T, R } from './StudyHead.jsx';
 import { fetchApi } from '../utils/api.js';
 import { encodeDiscard } from '../utils/replayer-drill.js';
@@ -238,7 +239,7 @@ export default function RazzTrainerView({ onBack }) {
       const res = await fetchApi(`/solver/trainer/${g}/deal`, { method: 'POST', body: {} });
       let data = null; try { data = await res.json(); } catch { /* non-JSON */ }
       if (!res.ok) {
-        setError({ offline: res.status === 503, message: (data && data.error) || `server returned ${res.status}` });
+        setError({ offline: res.status === 503, message: plainStudy((data && data.error) || `server returned ${res.status}`) });
         return;
       }
       setSeed(data.seed);
@@ -273,7 +274,7 @@ export default function RazzTrainerView({ onBack }) {
       const res = await fetchApi(`/solver/trainer/${g}/step`, { method: 'POST', body });
       let data = null; try { data = await res.json(); } catch { /* non-JSON */ }
       if (!res.ok) {
-        setError({ offline: res.status === 503, message: (data && data.error) || `server returned ${res.status}` });
+        setError({ offline: res.status === 503, message: plainStudy((data && data.error) || `server returned ${res.status}`) });
         return null;
       }
       setState(data.state);
@@ -296,7 +297,16 @@ export default function RazzTrainerView({ onBack }) {
   }, [game, proMode]);
 
   // first deal on mount
-  useEffect(() => { deal(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // The first deal waits for availability and starts on a game this server can deal (App improvements 303: it
+  // dealt Razz on mount and showed "Trainer offline" where Razz is not installed).
+  const firstDealt = useRef(false);
+  useEffect(() => {
+    if (firstDealt.current || avail === null) return;
+    firstDealt.current = true;
+    const first = offered(avail, game) ? game : ((GAMES.find(([id]) => offered(avail, id)) || [game])[0]);
+    if (first !== game) setGame(first);
+    deal(first);
+  }, [avail]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // when a hand finishes, fold its grades into the per-game session ONCE, and
   // persist the graded hand to the durable DB record (fire-and-forget — never
@@ -496,7 +506,7 @@ export default function RazzTrainerView({ onBack }) {
             <div className="hs-gbadges">
               {grades.some((g) => g.gradeSource === 'oracle') && (
                 <GridBadge edge="var(--accent)" ink="var(--accent)"
-                  title={`Exact grading: ${oracleStreetLabel(game)} decisions in this hand were graded by an exact solve; other streets by the trained strategy. Each card says which.`}>
+                  title={plainStudy(`Exact grading: ${oracleStreetLabel(game)} decisions in this hand were graded by an exact solve; other streets by the trained strategy. Each card says which.`)}>
                   exact {catOf(game) === 'draw' ? 'final' : '7th'}
                 </GridBadge>
               )}
@@ -1165,16 +1175,16 @@ export function GradeCard({ g, game }) {
     isNetGrade && <GridBadge key="net" edge="var(--accent)" ink="var(--accent)"
       title={`Graded by the CERTIFIED value net (torch-free) — a neural approximator of GTO for this pre-last-draw badugi spot, NOT an exact re-solve. Certified mean grade error ~${certSB.toFixed(2)} small bets.${g.netValueGauge != null ? ` · net zero-sum residual ${Number(g.netValueGauge).toExponential(1)}` : ''}`}>certified net · ~{certSB.toFixed(2)} SB</GridBadge>,
     isOracle6thGrade && <GridBadge key="o6" edge={AMBER} ink={AMBER} dashed
-      title={`Graded by the bucketed 6th→7th re-solve — APPROXIMATE (bucket abstraction), NOT exact. SHOWN but NOT charged to your score. Estimated abstraction gap ~${oracle6thChips.toFixed(1)} chips for this game.${g.oracleIters ? ` · ${g.oracleIters} CFR+ iters` : ''}`}>6th oracle · approx ~{oracle6thChips.toFixed(1)}ch</GridBadge>,
+      title={`Graded by the bucketed 6th→7th re-solve — APPROXIMATE (bucket abstraction), NOT exact. SHOWN but NOT charged to your score. Estimated abstraction gap ~${oracle6thChips.toFixed(1)} chips for this game.${g.oracleIters ? ` · ${g.oracleIters} CFR+ iters` : ''}`}>6th solve · approx ~{oracle6thChips.toFixed(1)}ch</GridBadge>,
     isOracle5thGrade && <GridBadge key="o5" edge={AMBER} ink={AMBER} dashed
-      title={`Graded by a depth-limited 5th-street re-solve using the 6th value net as the leaf — APPROXIMATE (net leaf + public up-card sampling, and NO exact anchor below 6th street). SHOWN but NOT charged to your score. The softest tier — one street below the last exactly-referenceable street.${g.oracleIters ? ` · ${g.oracleIters} CFR+ iters` : ''}`}>5th oracle · laddered</GridBadge>,
+      title={`Graded by a depth-limited 5th-street re-solve using the 6th value net as the leaf — APPROXIMATE (net leaf + public up-card sampling, and NO exact anchor below 6th street). SHOWN but NOT charged to your score. The softest tier — one street below the last exactly-referenceable street.${g.oracleIters ? ` · ${g.oracleIters} CFR+ iters` : ''}`}>5th solve · laddered</GridBadge>,
     oracleFellBack && <GridBadge key="fb" edge={WARN} ink={WARN}
-      title={`Pro mode was on, but the ${netEligibleStreet ? 'certified value net' : 'exact re-solver'} was unavailable for this decision — this grade fell back to the blueprint bot. Treat it as an ordinary blueprint grade, not ${netEligibleStreet ? 'a certified-net grade' : 'true GTO'}.`}>
-      {netEligibleStreet ? 'net unavailable · blueprint grade' : 'oracle unavailable · blueprint grade'}</GridBadge>,
+      title={plainStudy(`Pro mode was on, but the ${netEligibleStreet ? 'certified value net' : 'exact re-solver'} was unavailable for this decision — this grade fell back to the blueprint bot. Treat it as an ordinary blueprint grade, not ${netEligibleStreet ? 'a certified-net grade' : 'true GTO'}.`)}>
+      {netEligibleStreet ? 'net unavailable · trained strategy' : 'exact solve unavailable · trained strategy'}</GridBadge>,
     gradeSource === 'blueprint' && !oracleFellBack && <GridBadge key="bp"
-      title={`Graded by the blueprint bot — the Pro-mode oracle covers only ${oracleStreetLabel(game)} decisions.`}>blueprint</GridBadge>,
+      title={plainStudy(`Graded by the trained strategy: Pro mode's exact solve covers only ${oracleStreetLabel(game)} decisions.`)}>trained strategy</GridBadge>,
     oracleUnconverged && <GridBadge key="uc" edge={WARN} ink={WARN}
-      title={`The oracle's per-action EV had not converged at ${g.oracleIters || '?'} iters — treat this grade as approximate.`}>unconverged</GridBadge>,
+      title={plainStudy(`The oracle's per-action EV had not converged at ${g.oracleIters || '?'} iters — treat this grade as approximate.`)}>unconverged</GridBadge>,
     rangeSensitive && <GridBadge key="rs" edge={AMBER} ink={AMBER} dashed
       title={`This decision's grade depends on the ASSUMED opponent range: across a spread of plausible ranges the oracle's best action flips or the EV-loss swings by more than a small bet${rsSpread ? ` (EV-loss ranged ${rsSpread[0].toFixed(1)}–${rsSpread[1].toFixed(1)} chips)` : ''}. It is shown for study but ${notCharged ? 'NOT counted' : 'still counted'} in your session score.`}>
       range-sensitive · {notCharged ? 'shown, not charged' : 'shown'}</GridBadge>,
@@ -1262,7 +1272,7 @@ export function GradeCard({ g, game }) {
               {evLoss <= 0.01 ? '0.00' : `−${evLoss.toFixed(2)}`}
             </b> chips (exact showdown)
             {g.blueprintEvLoss != null && (
-              <span> · blueprint would grade <span style={{ fontVariantNumeric: 'tabular-nums' }}>−{Math.max(0, +g.blueprintEvLoss).toFixed(2)}</span></span>
+              <span> · the trained strategy would grade <span style={{ fontVariantNumeric: 'tabular-nums' }}>−{Math.max(0, +g.blueprintEvLoss).toFixed(2)}</span></span>
             )}
             {oracleUnconverged
               ? <span style={{ color: WARN }}> · EV not fully converged — approximate</span>

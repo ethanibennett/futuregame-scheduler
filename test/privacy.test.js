@@ -113,9 +113,9 @@ const PORTS = [4740, 4749];
       const r = await call('GET', `/api/groups/${gid}/schedule`, { token: dana.token });
       assert.strictEqual(r.status, 200);
       assert.ok(!r.json.some(isDnp), 'no marker');
-      const travel = r.json.find(isTravel);
-      assert.ok(travel, 'the Travel Day is listed');
-      assert.strictEqual(travel.notes, null, 'without its note');
+      // A group's schedule lists events only, no Personal days (App improvements 358), so the note cannot leak.
+      assert.ok(!r.json.some(isTravel), 'no Travel Day at all');
+      assert.ok(!r.json.some((t) => t.venue === 'Personal'), 'no Personal day');
     });
 
     await test('a guest: no schedule on the server, writes refused, older id-0 rows never served', async () => {

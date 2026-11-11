@@ -588,7 +588,7 @@ export default function BackerPage({ token }) {
     const { events, sum, options, series, months, bbs } = view;
     const name = feed.name || 'Your action';
     const baseNote = view.range !== 'all' ? 'start' : !sum.complete ? 'carried in' : sum.opening ? 'opening' : 'start';
-    const label = view.range === 'all' ? 'Balance' : `Balance, ${RANGE_NOUN[view.range]}`;
+    const label = view.range === 'all' ? 'Balance' : `Change, ${RANGE_NOUN[view.range]}`;
     body = (
       <>
         <div className="bp-left">
@@ -625,7 +625,7 @@ export default function BackerPage({ token }) {
         )}
 
         {events.length > 0 && (
-          <BackerChart series={series} label={label} today={today} baseNote={baseNote}
+          <BackerChart series={series} label={label} today={today} baseNote={baseNote} headFigure={view.range === 'all' ? 'end' : 'change'}
             control={options.length > 0 && (
               <RangeStrip options={options} value={view.range} onChange={setRange} />
             )} />

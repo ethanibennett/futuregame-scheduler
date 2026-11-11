@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
+import useBackToClose from '../hooks/useBackToClose.js';
+import { useSolverAvailability, offered as offeredGame } from './StudyHead.jsx';
 import { createPortal, flushSync } from 'react-dom';
 import ShortDeckRuleDialog from './ShortDeckRuleDialog.jsx';
 import Icon from './Icon.jsx';
@@ -793,10 +795,61 @@ const CURRENCIES = [
   { code: 'MXN', symbol: 'MX$' },
   { code: 'CNY', symbol: '¥' },
 ];
+/** A hand's saved notes: a "Notes" chip at the felt's top left (8g x 5r), its sheet holding the text (152). */
+function NotesChip({ notes }) {
+  const [open, setOpen] = useState(false);
+  const panelRef = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    if (panelRef.current) panelRef.current.focus({ preventScroll: true });
+    const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setOpen(false); } };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [open]);
+  return (
+    <>
+      <button type="button" className="replayer-notes-chip ctl" onClick={() => setOpen(true)} aria-haspopup="dialog"><span>Notes</span></button>
+      {open && createPortal(
+        <>
+          <div className="share-menu-backdrop replayer-notes-backdrop" onClick={() => setOpen(false)} />
+          <div className="share-menu-panel grid-sheet replayer-notes-sheet" role="dialog" aria-modal="true" aria-label="Notes" tabIndex={-1} ref={panelRef}>
+            <h3>Notes</h3>
+            <p className="replayer-notes-text">{notes}</p>
+            <div className="share-menu-actions"><button type="button" className="btn btn-ghost ctl replayer-notes-close" onClick={() => setOpen(false)}><span>Close</span></button></div>
+          </div>
+        </>,
+        document.body
+      )}
+    </>
+  );
+}
+
 function currencySymbol(hand) {
   if (!hand || hand.gameMode !== 'cash') return '';
   const c = CURRENCIES.find(x => x.code === (hand.currency || 'USD'));
   return c ? c.symbol : '$';
+}
+
+/* A hand's stakes (App improvements 151): a cash hand's are money, with the currency symbol and cents
+   whenever a blind or ante has them ("$0.25/$0.50", "$0.50/$1", "$1/$2"); a tournament's whole chips.
+   The felt's stakes pill and the saved-hands row both use it. Through formatChipAmount, whose plain format
+   keeps no fraction, $0.25/$0.50 read "0/1" and $0.12/$0.25 "0/0". A fixed-limit game is quoted in its two
+   bet sizes; a straddle and the ante follow, as before. */
+function formatStakes(hand, { straddle = 0 } = {}) {
+  const b = (hand && hand.blinds) || {};
+  if (!b.bb) return '';
+  const cfg = HAND_CONFIG[hand.gameType] || HAND_CONFIG_DEFAULT;
+  const limit = cfg.betting === 'fl';
+  const cash = hand.gameMode === 'cash';
+  const sym = currencySymbol(hand);
+  const cents = cash && [b.sb, b.bb, b.ante, b.bigBet, straddle].some((v) => v && Math.round(Number(v) * 100) % 100 !== 0);
+  const f = (v) => {
+    if (!cash) return formatChipAmount(v);
+    const n = Number(v) || 0;
+    return sym + (cents && Math.round(n * 100) % 100 !== 0 ? n.toFixed(2) : n.toLocaleString('en-US', { maximumFractionDigits: 0 }));
+  };
+  const parts = limit ? [f(b.bb), f(b.bigBet || b.bb * 2)] : [f(b.sb), f(b.bb), ...(straddle ? [f(straddle)] : [])];
+  return parts.join('/') + (b.ante ? '/(' + f(b.ante) + ')' : '');
 }
 
 /* Names a split share as the fraction of the pot it is. Deciding the share is
@@ -5025,9 +5078,19 @@ function agoLabel(ms) {
    the main pane and the replay of the chosen hand opens beside it (portalled there), with a prompt in
    its place while none is open; onSplitChange says whether the split is showing (entry, quick add and
    the drill still take the main pane alone). */
-export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, onStudyDraw, linkedReplay, quickAdd, drillEnabled, drillAsk, onDrillAsked = false, schedule = null, updates = null, sidePane = null, onSplitChange = null }) {
+export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, onStudyDraw, linkedReplay, quickAdd, drillEnabled, drillAsk, onDrillAsked = false, schedule = null, updates = null, sidePane = null, onSplitChange = null, onDrillBack = null, active = true }) {
   const toast = useToast();
   const [mode, setMode] = useState(initialHand ? 'replay' : 'list');
+  // Back from a hand puts the list where it was and marks the hand for a moment (App improvements 166).
+  const listPlace = useRef(null);
+  useLayoutEffect(() => {
+    if (mode !== 'list' || !listPlace.current) return;
+    const { sc, top, id } = listPlace.current;
+    listPlace.current = null;
+    if (sc && sc.isConnected) sc.scrollTop = top;
+    const row = document.querySelector('[data-hand-id="' + id + '"]');
+    if (row) { row.classList.add('is-returned'); setTimeout(() => row.classList.remove('is-returned'), 1200); }
+  }, [mode]);
   // Hands > Study > Play a hand.
   useEffect(() => { if (drillAsk) { setMode('drill'); if (onDrillAsked) onDrillAsked(); } }, [drillAsk, onDrillAsked]);
   const [quickVoice, setQuickVoice] = useState(false);   // quick add opened by Say (listening at once)
@@ -5167,6 +5230,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   // any hold'em or Omaha game can have it from the toggle under the launcher.
   const [doubleBoard, setDoubleBoard] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  useBackToClose(paletteOpen, () => setPaletteOpen(false));   // App improvements 454
   const [pendingCreate, setPendingCreate] = useState(false);
   const catalog = useMemo(() => buildCatalog(games.map(g => g.name || g.game_name).filter(Boolean)), [games]);
   const mixes = useMemo(() => buildMixes(catalog), [catalog]);
@@ -5201,16 +5265,21 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   }, [guess, mode]); // eslint-disable-line react-hooks/exhaustive-deps
   // ⌘K / Ctrl+K or "/" opens the palette on the list (desktop keyboards).
   useEffect(() => {
-    if (mode !== 'list') return undefined;
+    // Only while Hands is the tab on show (App improvements 455: the panel stays mounted, so "/" and ⌘K opened
+    // the Hands game picker over the Schedule and started a hand on the hidden tab).
+    if (mode !== 'list' || !active) return undefined;
     const onKey = (e) => {
       const typing = e.target && (e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName));
       if (((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') || (!typing && e.key === '/')) { e.preventDefault(); setPaletteOpen(true); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [mode]);
+  }, [mode, active]);
 
   // Fetch saved hands
+  // A failed list read is told from an empty list (App improvements 157): "No saved hands yet" to an account
+  // with 36 hands was the most alarming wrong answer the screen could give.
+  const [handsLoadError, setHandsLoadError] = useState(false);
   const fetchHands = useCallback(async () => {
     if (!token) return;
     try {
@@ -5219,9 +5288,10 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         fetch(`${API_URL}/replayer/games`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       // Hands saved before 2026-10-14 call six-card PLO hi-lo "Big Easy"; the list says PLO6 8/b.
-      if (handsRes.ok) { const rows = await handsRes.json(); setHands(Array.isArray(rows) ? rows.map(canonicalHand) : rows); }
+      if (handsRes.ok) { const rows = await handsRes.json(); setHands(Array.isArray(rows) ? rows.map(canonicalHand) : rows); setHandsLoadError(false); }
+      else setHandsLoadError(true);
       if (gamesRes.ok) setGames(await gamesRes.json());
-    } catch (e) { console.error('Replayer fetch error:', e); }
+    } catch (e) { console.error('Replayer fetch error:', e); setHandsLoadError(true); }
     finally { setLoading(false); }
   }, [token]);
 
@@ -5246,7 +5316,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       });
       if (!res.ok) {
         console.error('Failed to load hand:', res.status, res.statusText);
-        toast.error(res.status === 404 ? "That hand is no longer saved." : `Couldn't open the hand (${res.status}).`);
+        toast.error(res.status === 404 ? "That hand is no longer saved." : "Couldn't open this hand.",
+          res.status === 404 ? undefined : { action: { label: 'Try again', onClick: () => loadHand(handId) } });
         if (res.status === 404) fetchHands();
         return;
       }
@@ -5272,7 +5343,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       }
     } catch (e) {
       console.error('Failed to load hand:', e);
-      toast.error("Couldn't open the hand: " + (e.message || 'network error'));
+      toast.error("Couldn't open this hand.", { action: { label: 'Try again', onClick: () => loadHand(handId) } });
     }
   };
 
@@ -5382,6 +5453,10 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   };
   const openRow = (h) => {
     if (openingId != null) return;
+    // Where the list was, to come back to it (App improvements 166: Back went to the top of a 243-hand list).
+    const row = document.querySelector('[data-hand-id="' + h.id + '"]');
+    const sc = row && row.closest('.content-area, .dk-scroll');
+    listPlace.current = sc ? { sc, top: sc.scrollTop, id: h.id } : null;
     setOpeningId(h.id);
     const go = () => {
       let hd = h.handData && !h.streets ? h.handData : h;
@@ -5498,22 +5573,20 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       <div className={'replayer-view is-replay' + (sidePane ? ' is-in-pane' : '')}>
         <div className="replayer-header">
           <h2>{title || autoTitle(currentHand) || currentHand.gameType + ' Hand'}</h2>
-          <span className="replayer-hand-card-game">{currentHand.gameType + (currentHand.blinds ? ' ' + formatChipAmount(currentHand.blinds.sb) + '/' + formatChipAmount(currentHand.blinds.bb) + (currentHand.blinds.ante ? '/' + formatChipAmount(currentHand.blinds.ante) : '') : '')}</span>
+          <span className="replayer-hand-card-game">{currentHand.gameType + (currentHand.blinds && currentHand.blinds.bb ? ' ' + formatStakes(currentHand) : '')}</span>
         </div>
         {/* 76: .replayer-notes-area — label, textarea, focus ring, all
             tokenised — had zero JSX consumers, so notes were write-only from
             the API's point of view and read back through an inline 0.7rem
             div. The isPublic flag was in the save payload with no control
             anywhere that could set it. */}
-        {notes && (
-          <div className="replayer-notes-area">
-            <label>Notes</label>
-            <div className="replayer-notes-read">{notes}</div>
-          </div>
-        )}
+        {/* Saved notes open from a chip on the felt (App improvements 152): in the page flow they sat behind
+            the fixed replay layer and could never be read. Only a hand with notes shows it. */}
+
         <ReplayErrorBoundary onBack={() => { setMode('list'); fetchHands(); }}>
           <HandReplayerReplayView
             hand={currentHand}
+            notes={notes}
             token={token}
             heroName={heroName}
             playedAt={(() => { const row = currentHandId != null && hands.find(h => h.id === currentHandId); return row ? playedAtOf(row) : null; })()}
@@ -5708,7 +5781,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       <ReplayErrorBoundary onBack={() => { setMode('list'); fetchHands(); }}>
         <Suspense fallback={null}>
           <ReplayerDrill Replay={HandReplayerReplayView} token={token} heroName={heroName} cardSplay={cardSplay}
-            onBack={() => { setMode('list'); fetchHands(); }} />
+            onBack={() => { setMode('list'); fetchHands(); if (onDrillBack) onDrillBack(); }} />
         </Suspense>
       </ReplayErrorBoundary>
     );
@@ -5851,7 +5924,24 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
            whichever one resolved, the layout moved. Same outer structure, so
           the change between them is a cross-fade rather than a reflow. */}
       {/* One Create button, the one under the launcher: the empty state used to repeat it. */}
-      {hands.length === 0 ? (
+      {hands.length === 0 && handsLoadError ? (
+        <div className="replayer-hand-list">
+          {draftRow}
+          <div className="replayer-hand-card is-row is-empty" role="alert">
+            <div className="replayer-hand-card-content">
+              <div className="replayer-hand-card-body">
+                <span className="replayer-hand-card-title">Couldn&rsquo;t load your hands</span>
+                <span className="replayer-hand-card-meta">They are safe. Check the connection.</span>
+              </div>
+            </div>
+          </div>
+          <div className="replayer-sample-row">
+            <button type="button" className="btn btn-primary btn-sm ctl replayer-sample-btn" onClick={() => { setLoading(true); fetchHands(); }}>
+              <span>Try again</span>
+            </button>
+          </div>
+        </div>
+      ) : hands.length === 0 ? (
         <div className="replayer-hand-list">
           {draftRow}
           <div className="replayer-hand-card is-row is-empty">
@@ -5937,10 +6027,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                       A fixed-limit hand is quoted in its two BET sizes, the way
                       the felt states it — a stud row read "100/40", a small
                       blind stud does not have over a small bet. */}
-                  {h.blinds?.bb ? (HAND_CONFIG[h.gameType]?.betting === 'fl'
-                      ? formatChipAmount(h.blinds.bb) + '/' + formatChipAmount(h.blinds.bigBet || h.blinds.bb * 2)
-                      : formatChipAmount(h.blinds.sb) + '/' + formatChipAmount(h.blinds.bb))
-                    + (h.blinds.ante ? '/(' + formatChipAmount(h.blinds.ante) + ')' : '') : ''}
+                  {formatStakes(h)}
                   {h.created_at ? ' \u00b7 ' + new Date(h.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(undefined, {month:'short', day:'numeric'}) : ''}
                 </span>
                 {openingId === h.id && <span className="replayer-hand-card-meta is-opening-line">Opening\u2026</span>}
@@ -6067,7 +6154,7 @@ function HandHistoryExportSheet({ rows, heroName, toast, onClose }) {
 // ══════════════════════════════════════════════════════════
 // ── Replay View Sub-component ────────────────────────────
 // ══════════════════════════════════════════════════════════
-function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, cardSplay, onSolveSpot, onStudyDraw, linkedReplay, heroName, playedAt, sharedHand, drill = null, inPane = false }) {
+function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, cardSplay, onSolveSpot, onStudyDraw, linkedReplay, heroName, playedAt, sharedHand, drill = null, inPane = false, notes = null }) {
   /* The GIF export's completion toasts referenced `toast` from inside this
      component, where it was never declared - the outer HandReplayerView owns
      the one call to useToast(). Optional chaining does not save an UNDECLARED
@@ -6720,9 +6807,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   // solver has trees for: the hero's draw at the end of the street on screen. The
   // spot says why when it cannot be priced (utils/draw-study-spot.js).
   const drawStudyGame = drawStudyGameFor(hand.gameType);
+  // A game this server cannot price says so on the button, never a deployment memo after the tap (App
+  // improvements 302).
+  const solverAvail = useSolverAvailability();
+  const drawGameOffered = !drawStudyGame || offeredGame(solverAvail, drawStudyGame);
   const drawStudySpot = useMemo(() => (onStudyDraw && drawStudyGame
-    ? buildDrawStudySpot({ hand, game: drawStudyGame, streetIdx, heroIdx: replayHeroIdx })
-    : null), [onStudyDraw, drawStudyGame, hand, streetIdx, replayHeroIdx]);
+    ? (drawGameOffered ? buildDrawStudySpot({ hand, game: drawStudyGame, streetIdx, heroIdx: replayHeroIdx })
+      : { refused: `${hand.gameType} cannot be priced on this server yet.` })
+    : null), [onStudyDraw, drawStudyGame, drawGameOffered, hand, streetIdx, replayHeroIdx]);
   const canStudyDraw = !!drawStudySpot && !drawStudySpot.refused;
   const handleStudyDraw = useCallback(() => {
     if (!canStudyDraw) return;
@@ -7390,6 +7482,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   useEffect(() => {
     const handler = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+      // Space and Enter press a focused button, switch or link as everywhere else; nothing here inside an open
+      // sheet or with a modifier held (App improvements 156: Space played the hand behind the sheet).
+      if (e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
+      const t = e.target;
+      if (t && t.closest && t.closest('[role="dialog"], .share-menu-panel, .replayer-settings-panel')) return;
+      if ((e.key === ' ' || e.key === 'Enter') && t && t.closest && t.closest('button, a[href], [role="button"], [role="switch"], [role="checkbox"], [role="link"]')) return;
       if (e.key === 'ArrowRight') { e.preventDefault(); stepForward(); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); stepBack(); }
       else if (e.key === ' ') { e.preventDefault(); setPlaying(p => !p); }
@@ -7884,6 +7982,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const handleExportVideo = useCallback(async (mode = 'transparent') => {
     if (videoExporting) return;
     if (!tableRef.current) return;
+    // A video needs MediaRecorder; without it say so before anything moves (App improvements 190).
+    if (typeof window !== 'undefined' && typeof window.MediaRecorder === 'undefined') {
+      toast?.error?.("Couldn't make the video here: this browser can't record one. Try Image or GIF, or the app.");
+      return;
+    }
+    // Where the replay was, to put it back if the export fails.
+    const was = { street: streetIdx, action: actionIdx, result: showResult };
 
     // Reset replay to start before recording
     setStreetIdx(0);
@@ -7932,9 +8037,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         setVideoExporting(false);
         setVideoProgress(0);
         setExportPreview(null);
+        // It says so, with the reason one tap away, and the replay goes back to its step (190).
+        setStreetIdx(was.street); setActionIdx(was.action); setShowResult(was.result);
+        const why = (err && (err.message || String(err))) || 'unknown';
+        toast?.error?.("Couldn't make the video here. Try Image or GIF, or the app.", { duration: 8000, action: { label: 'Details', onClick: () => toast?.info?.(why) } });
       },
     });
-  }, [videoExporting, hand, speed, feltColor, toast]);
+  }, [videoExporting, hand, speed, feltColor, toast, streetIdx, actionIdx, showResult]);
 
   const handleExportGif = useCallback(async () => {
     if (gifExporting || videoExporting) return;
@@ -9046,6 +9155,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       {/* Table settings: the felt and splay controls on the replay screen
           itself, so a change is judged against the live table. Top-right,
           over the stadium's empty corner; the gear keeps the full panel. */}
+      {notes && <NotesChip notes={notes} />}
       <button ref={quickBtnRef} className={'replayer-quick-btn' + (showQuick ? ' is-open' : '')}
         aria-label="Table settings" aria-expanded={showQuick} aria-haspopup="dialog"
         onClick={() => setShowQuick(v => !v)}>
@@ -9167,7 +9277,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                     <span className="replayer-pot-cell-label">Main</span>
                     {fmtChips(potLayers[0].amount)}
                   </div>
-                  {potLayers.slice(1, 4).map((layer, i) => (
+                  {/* Never a layer dropped (App improvements 153): with five or more pots the fourth pill
+                      carries Side 3 and every pot after it, "+ More", so the pills add up to the total. */}
+                  {(potLayers.length <= 4 ? potLayers.slice(1) : potLayers.slice(1, 3)).map((layer, i) => (
                     <div key={i} className="replayer-pot-pill" title={layer.eligible + '-way'}>
                       <span className="replayer-pot-cell-label">
                         {potLayers.length > 2 ? 'Side ' + (i + 1) : 'Side'}
@@ -9175,6 +9287,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                       {fmtChips(layer.amount)}
                     </div>
                   ))}
+                  {potLayers.length > 4 && (
+                    <div className="replayer-pot-pill" title={potLayers.slice(3).map((l, k) => `Side ${k + 3}: ${l.amount} (${l.eligible}-way)`).join(', ')}>
+                      <span className="replayer-pot-cell-label">+ More</span>
+                      {fmtChips(potLayers.slice(3).reduce((a, l) => a + (Number(l.amount) || 0), 0))}
+                    </div>
+                  )}
                 </div>
               )}
               <div className="replayer-pot-main">
@@ -9384,12 +9502,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           const bigB = b.bigBet || (b.bb || 0) * 2;
           // A straddle is a live blind and belongs in the stakes line: 10/10/20.
           const straddleAmt = getStraddles(hand.players, b).reduce((m, s) => Math.max(m, s.amount || 0), 0);
-          const sizes = b.bb
-            ? (limitGame ? formatChipAmount(b.bb) + '/' + formatChipAmount(bigB)
-                         : formatChipAmount(b.sb) + '/' + formatChipAmount(b.bb)
-                           + (straddleAmt ? '/' + formatChipAmount(straddleAmt) : ''))
-              + (b.ante ? '/(' + formatChipAmount(b.ante) + ')' : '')
-            : null;
+          const sizes = b.bb ? formatStakes(hand, { straddle: limitGame ? 0 : straddleAmt }) : null;
+          void bigB;
           // SPR moved to plain text above the pot's chip stack (2026-09-30).
           /* No street here (owner, 2026-10-15): the board itself says which street it is. */
           // A hand with several boards says so on the felt (owner, 2026-10-21).

@@ -339,13 +339,19 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       await sec().locator('.bid-commit button:has-text("Import")').first().click();
       const conf = sec().locator('.bid-confirm');
       await conf.waitFor({ timeout: 4000 });
-      const text = await conf.innerText();
-      assert.match(text, new RegExp(`creates ${plan.writes.rows.toLocaleString('en-US')} rows`));
+      // The records in the player's words, the supporting rows behind one disclosure (Bankroll design 80).
+      const SUPPORT = new Set(['tournaments', 'session_extras', 'standing_stakes', 'money_settings', 'backer_event_revisions', 'bankroll_import_keys']);
+      const records = Object.entries(plan.writes.tables.insert).filter(([t, n]) => n > 0 && !SUPPORT.has(t)).reduce((a, [, n]) => a + n, 0);
+      let text = await conf.innerText();
+      assert.match(text, new RegExp(`creates ${records.toLocaleString('en-US')} records? \\(${plan.writes.rows.toLocaleString('en-US')} rows in all\\)`));
       for (const [table, n] of Object.entries(plan.writes.tables.insert)) {
         assert.ok(n > 0, table);
       }
-      for (const label of ['Cash session', 'Personal tournament', 'Tournament result', 'Adjustment', 'Expense', 'Staking backer', 'Import key']) assert.match(text, new RegExp(label), label);
-      assert.match(text, new RegExp(`Import ${plan.writes.rows.toLocaleString('en-US')} records`));
+      assert.ok(!/Import keys/.test(text), 'the supporting rows start folded');
+      await conf.locator('.bid-support summary').click();
+      text = await conf.innerText();
+      for (const label of ['Cash sessions', 'Personal tournament', 'Tournament results', 'Adjustments', 'Expenses', 'Backers', 'Import key']) assert.match(text, new RegExp(label), label);
+      assert.match(text, new RegExp(`Import ${records.toLocaleString('en-US')} records`));
       await shotsFrom('confirm', '.bid-confirm', 2);
     });
     await test('Import writes it: the summary, and its reconciliation with $0 unexplained on the roll and the fund', async () => {

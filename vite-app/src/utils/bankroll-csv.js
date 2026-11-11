@@ -96,7 +96,7 @@ export function parseNumber(raw) {
  * → 'YYYY-MM-DD' or null. YYYY-MM-DD[ T]time, YYYY/MM/DD, DD.MM.YYYY, and N/N/YYYY which is
  * ambiguous: month-first unless dayFirst (or the first number is over 12).
  */
-export function parseDate(raw, { dayFirst = false } = {}) {
+export function parseDate(raw, { dayFirst = false, strict = false } = {}) {
   const s = String(raw || '').trim();
   let y, m, d, x;
   if ((x = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T].*)?$/.exec(s))) [y, m, d] = [x[1], x[2], x[3]].map(Number);
@@ -104,7 +104,9 @@ export function parseDate(raw, { dayFirst = false } = {}) {
   else if ((x = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})(?:\s.*)?$/.exec(s))) {
     let a = Number(x[1]), b = Number(x[2]);
     y = Number(x[3]); if (y < 100) y += 2000;
-    if (dayFirst || a > 12) [d, m] = [a, b]; else [m, d] = [a, b];
+    // strict: the file's order holds for every row; a row that cannot be read that way is an error, not
+    // quietly read the other way (App improvements 208).
+    if (dayFirst || (a > 12 && !strict)) [d, m] = [a, b]; else [m, d] = [a, b];
   } else return null;
   if (!(m >= 1 && m <= 12 && d >= 1 && d <= 31 && y >= 1970 && y <= 2100)) return null;
   const dt = new Date(Date.UTC(y, m - 1, d));
@@ -354,6 +356,20 @@ export function kindOf(v) {
 }
 
 /** First header matching each field's synonyms: { field: columnIndex | -1 }. */
+/**
+ * The first values of a column, blanks skipped (Bankroll design 81): what a column picker will read from
+ * the file, shown under the picker before Preview. `rows` is parseCsv's output, its first row the headers.
+ */
+export function columnSample(rows, col, n = 3) {
+  if (!Array.isArray(rows) || col == null || col < 0) return [];
+  const out = [];
+  for (let i = 1; i < rows.length && out.length < n; i++) {
+    const v = rows[i] && rows[i][col] != null ? String(rows[i][col]).trim() : '';
+    if (v) out.push(v);
+  }
+  return out;
+}
+
 export function guessMapping(headers) {
   const h = headers.map(norm);
   const used = new Set();
@@ -372,9 +388,33 @@ export function guessMapping(headers) {
  * 'adjustment' (one signed amount per row: + deposit, − withdrawal). opts.currency is the
  * default when no currency column is mapped. opts.dayFirst reads N/N/YYYY as day/month.
  */
-export function applyMapping(rows, mapping, { rowsAre = 'tournament', currency = 'USD', dayFirst = false, headerRow = 0 } = {}) {
+/**
+ * The order of a file's N/N/YYYY dates, from the file (App improvements 208): a first number over 12 can only
+ * be a day, a second over 12 only a month. -> { order: 'day' | 'month' | null, line, value, conflict }: the
+ * line that decided it, and conflict when the file has both. null: every date fits both (the select decides).
+ */
+export function detectDateOrder(rows, col, headerRow = 0) {
+  if (!Array.isArray(rows) || col == null || col < 0) return { order: null, line: null, value: null, conflict: false };
+  let day = null, month = null;
+  for (let i = headerRow + 1; i < rows.length; i++) {
+    const v = String((rows[i] && rows[i][col]) == null ? '' : rows[i][col]).trim();
+    const x = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})/.exec(v);
+    if (!x) continue;
+    if (Number(x[1]) > 12 && !day) day = { line: i + 1, value: v };
+    if (Number(x[2]) > 12 && !month) month = { line: i + 1, value: v };
+  }
+  if (day && !month) return { order: 'day', line: day.line, value: day.value, conflict: false };
+  if (month && !day) return { order: 'month', line: month.line, value: month.value, conflict: false };
+  if (day && month) return { order: null, line: day.line, value: day.value, conflict: true };
+  return { order: null, line: null, value: null, conflict: false };
+}
+
+export function applyMapping(rows, mapping, { rowsAre = 'tournament', currency = 'USD', dayFirst: askedDayFirst = false, headerRow = 0 } = {}) {
   const col = (row, key) => (mapping[key] >= 0 ? String(row[mapping[key]] == null ? '' : row[mapping[key]]).trim() : '');
   const out = [];
+  // One order for the whole file: the file's own when it shows one, else the select's (208).
+  const det = detectDateOrder(rows, mapping.date, headerRow);
+  const dayFirst = det.order === 'day' ? true : det.order === 'month' ? false : askedDayFirst;
   for (let i = headerRow + 1; i < rows.length; i++) {
     const r = rows[i];
     const line = i + 1;
@@ -398,8 +438,8 @@ export function applyMapping(rows, mapping, { rowsAre = 'tournament', currency =
       });
       continue;
     }
-    const date = parseDate(col(r, 'date'), { dayFirst });
-    if (!date) { out.push({ line, error: `Unreadable date "${col(r, 'date')}"` }); continue; }
+    const date = parseDate(col(r, 'date'), { dayFirst, strict: true });
+    if (!date) { out.push({ line, error: `Unreadable date "${col(r, 'date')}"${det.conflict ? ' (this file has dates in both orders)' : ''}` }); continue; }
     if (kind === 'adjustment') {
       const amt = parseNumber(col(r, 'amount'));
       if (!Number.isFinite(amt)) { out.push({ line, error: 'No amount' }); continue; }

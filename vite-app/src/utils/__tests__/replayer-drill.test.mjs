@@ -183,9 +183,9 @@ test('the drill\'s floor at 0 is called out only when it hid something', () => {
 });
 
 test('which tool answered is named', () => {
-  assert.equal(drillGradeSource({}), 'blueprint');
-  assert.equal(drillGradeSource({ gradeSource: 'blueprint' }), 'blueprint');
-  assert.equal(drillGradeSource({ gradeSource: 'oracle' }), 'exact re-solve');
+  assert.equal(drillGradeSource({}), 'trained strategy');
+  assert.equal(drillGradeSource({ gradeSource: 'blueprint' }), 'trained strategy');
+  assert.equal(drillGradeSource({ gradeSource: 'oracle' }), 'exact solve');
   assert.equal(drillGradeSource({ gradeSource: 'certified-net' }), 'certified net');
 });
 

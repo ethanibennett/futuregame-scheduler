@@ -1073,6 +1073,19 @@ function StakingEventTracking({ agreements, eventStatuses, tournaments, mySchedu
       .map(x => x.t);
   }, [mySchedule, tournaments, series]);
 
+  // Events logged for this series' agreements that are not on My Schedule (taken off it, or pruned from the
+  // feed after they ran): listed too, under their own caption, so the Settlement's figures can be checked
+  // and corrected here (App improvements 269). One card per tournament, from the statuses' own fields.
+  const loggedOnly = useMemo(() => {
+    const shown = new Set(seriesEvents.map(t => t.id));
+    const m = new Map();
+    for (const es of eventStatuses || []) {
+      if (shown.has(es.tournament_id) || m.has(es.tournament_id)) continue;
+      m.set(es.tournament_id, { id: es.tournament_id, event_name: es.event_name, buyin: es.buyin, date: es.date, venue: es.venue, time: '', _logged: true });
+    }
+    return [...m.values()].sort((a, b) => (parseTournamentTime(a) || 0) - (parseTournamentTime(b) || 0));
+  }, [seriesEvents, eventStatuses]);
+
   // Build lookup: { tournamentId_agreementId -> status }
   const statusMap = useMemo(() => {
     const m = {};
@@ -1108,16 +1121,18 @@ function StakingEventTracking({ agreements, eventStatuses, tournaments, mySchedu
     return <div style={{textAlign:'center',color:'var(--text-muted)',padding:'calc(var(--subrow) * 3.75) var(--space-2xl)',fontSize:'calc(var(--subrow) * 1.625)'}}>Add active agreements first to track events.</div>;
   }
 
-  if (seriesEvents.length === 0) {
+  if (seriesEvents.length === 0 && loggedOnly.length === 0) {
     return <div style={{textAlign:'center',color:'var(--text-muted)',padding:'calc(var(--subrow) * 3.75) var(--space-2xl)',fontSize:'calc(var(--subrow) * 1.625)'}}>No scheduled tournaments in this series date range.</div>;
   }
 
   return (
     <div style={{padding:'var(--space-md) 0'}}>
-      {seriesEvents.map(t => (
+      {[...seriesEvents, ...(loggedOnly.length ? [{ __caption: true }] : []), ...loggedOnly].map(t => t.__caption ? (
+        <div key="__logged-cap" className="staking-logged-cap">Logged · not on My Schedule ({loggedOnly.length})</div>
+      ) : (
         <div key={t.id} className="staking-event-card">
           <div style={{fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--subrow) * 1.625)'}}>{t.event_name}</div>
-          <div style={{fontSize:'calc(var(--subrow) * 1.375)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)',marginBottom:'var(--space-sm)'}}>{t.date} &middot; {t.time} &middot; {formatBuyin(t.buyin)}</div>
+          <div style={{fontSize:'calc(var(--subrow) * 1.375)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)',marginBottom:'var(--space-sm)'}}>{[t.date, t.time, formatBuyin(t.buyin)].filter(Boolean).join(' · ')}</div>
           {activeAgreements.map(ag => {
             const key = `${t.id}_${ag.id}`;
             const status = statusMap[key];
@@ -1404,15 +1419,17 @@ function StakingSettlementView({ seriesId, settlementData, token, fetchSettlemen
             fontSize:'calc(var(--subrow) * 1.5)',fontWeight:700,color:'var(--text-muted)',marginBottom:'var(--space-ml)'}}>1099 Summary</div>
           {backerReturnRows.map(row => {
             const ytd = backerYtd[row.id] || 0;
-            // After this settlement, YTD would be ytd (which already includes any settled amounts)
-            // Use ytd as the "total including this settlement" approximation
+            // An open series counts this settlement too (App improvements 268): ytd holds settled series only,
+            // so it said "Under threshold" of backers who cross $600 the moment this one is finalized. A settled
+            // series is already in ytd.
+            const total = open ? ytd + (row.thisSettlement || 0) : ytd;
             let indicator;
-            if (ytd >= 600) {
-              indicator = { icon: '⛔', label: 'Required ($600+)', color: '#ef4444' };
-            } else if (ytd >= 400) {
-              indicator = { icon: '⚠', label: 'Near threshold ($400+)', color: '#f59e0b' };
+            if (total >= 600) {
+              indicator = { label: open ? 'Required once settled' : 'Required ($600+)', color: 'var(--neg)' };
+            } else if (total >= 400) {
+              indicator = { label: 'Near ($400+)', color: 'var(--text)' };
             } else {
-              indicator = { icon: '✓', label: 'Under threshold', color: '#22c55e' };
+              indicator = { label: 'Under threshold', color: 'var(--pos)' };
             }
             return (
               <div key={row.id} style={{
@@ -1424,13 +1441,11 @@ function StakingSettlementView({ seriesId, settlementData, token, fetchSettlemen
                   <div style={{fontWeight: 'var(--fw-bold)'}}>{row.name}</div>
                   <div style={{color:'var(--text-muted)',marginTop:'var(--space-2xs)'}}>
                     This settlement: <strong>{fmtSettle(row.thisSettlement, currency)}</strong>
-                    {' · '}YTD: <strong style={{color: ytd >= 600 ? '#ef4444' : ytd >= 400 ? '#f59e0b' : 'inherit'}}>
-                      {fmtSettle(ytd, currency)}
-                    </strong>
+                    {' · '}YTD <strong>{fmtSettle(ytd, currency)}</strong>
+                    {open && <>{' → '}<strong style={{color: total >= 600 ? 'var(--neg)' : 'inherit'}}>{fmtSettle(total, currency)}</strong> once settled</>}
                   </div>
                 </div>
                 <div style={{flexShrink:0,marginLeft:'var(--space-ml)',textAlign:'right',fontSize:'calc(var(--subrow) * 1.375)',color:indicator.color,fontWeight: 'var(--fw-bold)'}}>
-                  <span style={{fontSize:'calc(var(--subrow) * 1.75)',marginRight:'var(--space-xs)'}}>{indicator.icon}</span>
                   {indicator.label}
                 </div>
               </div>

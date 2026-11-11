@@ -351,6 +351,23 @@ export function positionRules(hand, env, out) {
   // seat with the last player: is there a bigger table where everybody fits?
   const bigger = pendingN == null && (!seated || !seated.complete || seated.deduced)
     ? fittingTableSizes(hand, n + 1, mode) : [];
+  /* Every seat named and the hand seated at n by deduction alone, with no clash (App improvements 306): the
+     positions DO fit n-handed (MP the third of nine), so confirm n first instead of saying they don't fit and
+     offering only bigger tables. "Don't fit" stays for real conflicts. */
+  const dPos = seated && seated.deducedPlayer != null && players[seated.deducedPlayer] ? players[seated.deducedPlayer].position : null;
+  // Only a middle seat a full ring names loosely (MP, EP, LJ, HJ, UTG+n) is read as fitting: UTG heads-up does not.
+  if (bigger.length && seated && seated.complete && seated.deduced && !(seated.conflicts && seated.conflicts.length)
+      && n >= 7 && /^(MP\d?|EP\d?|UTG\+\d|LJ|HJ)$/i.test(String(dPos || ''))) {
+    const pos = dPos;
+    const at = pos && seated.positions ? labels.indexOf(pos) : -1;
+    const ord = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'][at] || null;
+    const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][n] || String(n);
+    out.push(tableSizeGap('table-size',
+      words.charAt(0).toUpperCase() + words.slice(1) + ' seats are named (' + named.join(', ') + '). Was it ' + n + '-handed'
+        + (pos && ord ? ', with ' + pos + ' the ' + ord + ' seat' : '') + '?',
+      [n, ...bigger], 'ambiguous'));
+    return false;
+  }
   if (bigger.length) {
     out.push(tableSizeGap('table-size',
       'The positions (' + named.join(', ') + ') don\u2019t fit a ' + n + '-handed table. How many players were dealt in?',

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import ThemeButton from './ThemeButton.jsx';
-import { THEME_ORDER, THEME_LABEL } from '../utils/utils.js';
+import { nextThemeLabel as themeNextLabel } from '../utils/theme.js';
 import { API_URL } from '../utils/api.js';
 
 export default function ResetPasswordForm({ resetToken, theme, toggleTheme }) {
-  const nextThemeLabel = THEME_LABEL[THEME_ORDER[(THEME_ORDER.indexOf(theme) + 1) % THEME_ORDER.length]];
+  // The four themes a signed-out player has, as the press goes (App improvements 417: it named a Swiss theme).
+  const nextThemeLabel = themeNextLabel(theme, false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');

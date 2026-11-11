@@ -99,7 +99,7 @@ export function computeBalances(bankrolls, entries, opts = {}) {
   for (const e of entries || []) {
     const row = out.get(entryBankrollKey(e));
     if (!row) continue;
-    const net = convert(entryNet(e), nativeCurrency(e.venue), row.currency);
+    const net = convert(entryNet(e), nativeCurrency(e.venue, e.currency), row.currency);
     row.results += net;
     row.balance += net;
     row.entries += 1;

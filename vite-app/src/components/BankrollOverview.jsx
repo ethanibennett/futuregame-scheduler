@@ -12,6 +12,7 @@ import { ledgerScope } from '../utils/bankroll-overview.js';
 import { setResultsKind } from '../hooks/useLiveCashSession.js';
 import BankrollChart from './BankrollChart.jsx';
 import BankrollOverviewTables, { OverviewTablesFrame } from './BankrollOverviewTables.jsx';
+import { SidePortal } from '../hooks/useBankrollSide.js';
 
 /**
  * The bankroll dashboard's Overview tab (beta, app admins). The layout of a serious poker tracker,
@@ -236,8 +237,13 @@ export default function BankrollOverview({ d, risk, bk, bkKey, currency: asked, 
 
       {/* The figures: collapsible Cash | Tournaments | Total tables (Summary, Sessions, Games, Rooms,
           Bankroll, By month / By year) — BankrollOverviewTables.jsx. */}
-      <BankrollOverviewTables d={d} risk={risk} range={range} today={today} bk={bk} bkKey={bkKey}
-        currency={asked} fmtDate={fmtDate} homes={homes} onSaveLocations={saveLocations} />
+      {/* On desktop the tables scroll beside the balance and the graph (Bankroll design 83). */}
+      <SidePortal>
+        <div className="bk-side-sec bd-side-tables">
+          <BankrollOverviewTables d={d} risk={risk} range={range} today={today} bk={bk} bkKey={bkKey}
+            currency={asked} fmtDate={fmtDate} homes={homes} onSaveLocations={saveLocations} />
+        </div>
+      </SidePortal>
 
       <section className="bd-section" aria-labelledby="bd-recent">
         <h3 className="an-cell an-sec" id="bd-recent">Latest sessions</h3>

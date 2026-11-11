@@ -335,7 +335,8 @@ function seed(db, ham) {
       assert.strictEqual((await O(`/api/staking/standing/${ids.agLee}/events?source=dashboard`)).json.events.length, 0, 'Lee\'s dashboard share was removed');
     });
     await test('the preview for an unsaved result: the cuts and the "Posts to backers" line', async () => {
-      const r = await O('/api/staking/standing/preview?kind=tournament&date=2026-10-20&game=NLH&online=0&resultCents=100000');
+      // A date after any stake set "from today" (2026-10-20 aged into the past and read the old stake).
+      const r = await O('/api/staking/standing/preview?kind=tournament&date=2099-01-01&game=NLH&online=0&resultCents=100000');
       assert.strictEqual(r.status, 200, r.text);
       assert.deepStrictEqual(r.json.backers.map((b) => [b.key, b.pct, b.shareCents]), [[KEY.lee, 35, 35000], [KEY.sam, 10, 10000]]);
       assert.strictEqual(r.json.line, 'Posts to backers: +$350 (35%), +$100 (10%)');

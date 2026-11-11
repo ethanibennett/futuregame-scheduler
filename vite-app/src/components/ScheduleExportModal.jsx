@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
-import { getVenueInfo, normaliseDate, getToday, parseTournamentTime, VENUE_COORDS, LOCATION_REGIONS } from '../utils/utils.js';
+import { getVenueInfo, normaliseDate, getToday, parseTournamentTime, VENUE_COORDS, LOCATION_REGIONS, nativeCurrency, formatCurrencyAmount } from '../utils/utils.js';
 import { generateSchedulePDF, generateScheduleImages, shareOrDownloadCanvas } from '../utils/export.js';
 
 // Contiguous, so grouping by buy-in never leaves an event out (UX pick 15: $3,001-4,999 and
@@ -32,7 +32,8 @@ export default function ScheduleExportModal({ events, onClose }) {
     // Decorate-sort-undecorate — parseTournamentTime is now memoized but
     // calling it O(n) instead of O(n log n) is still a meaningful win and
     // keeps the call shape consistent with TournamentsView / ScheduleView.
-    const passed = events.filter(e => !e.is_restart && normaliseDate(e.date) >= todayISO);
+    // No Personal days (a Travel Day was printed as an event, "Personal" offered as a series: App improvements 365).
+    const passed = events.filter(e => !e.is_restart && e.venue !== 'Personal' && normaliseDate(e.date) >= todayISO);
     const decorated = passed.map(t => ({ t, ts: parseTournamentTime(t) }));
     decorated.sort((a, b) => a.ts - b.ts);
     return decorated.map(x => x.t);
@@ -158,14 +159,17 @@ export default function ScheduleExportModal({ events, onClose }) {
     }
   };
 
-  const totalMax = useMemo(() => {
-    return filteredEvents.reduce((sum, e) => {
-      if (e.is_restart) return sum;
-      const buyin = Number(e.buyin) || 0;
-      const entries = e.planned_entries || 1;
-      return sum + buyin * entries;
-    }, 0);
+  // One total per currency (App improvements 367): a euro buy-in was added to the dollars under one "$".
+  const totalsByCurrency = useMemo(() => {
+    const m = new Map();
+    for (const e of filteredEvents) {
+      if (e.is_restart) continue;
+      const cur = nativeCurrency(e.venue, e.currency);
+      m.set(cur, (m.get(cur) || 0) + (Number(e.buyin) || 0) * (e.planned_entries || 1));
+    }
+    return [...m.entries()].filter(([, v]) => v > 0).sort((a, b) => (a[0] === 'USD' ? -1 : b[0] === 'USD' ? 1 : a[0].localeCompare(b[0])));
   }, [filteredEvents]);
+  const totalMax = totalsByCurrency.reduce((a, [, v]) => a + v, 0);
 
   return createPortal(
     <>
@@ -336,7 +340,7 @@ export default function ScheduleExportModal({ events, onClose }) {
             {totalMax > 0 && (
               <div style={{ marginBottom: 'calc(var(--subrow) * 2)', padding: 'var(--subrow) var(--gu)', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: 0, boxShadow: 'inset 0 0 0 var(--bw-hair) var(--border)' }}>
                 <div style={{ fontSize: 'calc(var(--gu) * 1.060)', fontWeight: 'var(--fw-bold)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 'calc(var(--subrow) * 2)', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>Total Maximum Buy-ins</div>
-                <div style={{ fontSize: 'calc(var(--gu) * 1.620)', fontWeight: 700, color: 'var(--text)', lineHeight: 'calc(var(--subrow) * 3)', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>{'$' + totalMax.toLocaleString()}</div>
+                <div style={{ fontSize: 'calc(var(--gu) * 1.620)', fontWeight: 700, color: 'var(--text)', lineHeight: 'calc(var(--subrow) * 3)', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>{totalsByCurrency.map(([cur, v]) => formatCurrencyAmount(v, cur)).join(' + ')}</div>
               </div>
             )}
 

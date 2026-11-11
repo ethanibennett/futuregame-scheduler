@@ -120,7 +120,7 @@ export default function HomeLastResult({ results, rates, isAdmin, token, canLog 
   // A milestone is claimed only when every earlier result converts into one currency.
   const milestone = useMemo(() => {
     if (!last || last.kind !== 'tournament') return null;
-    const value = (r, f) => convertMoney(resultMoney(r)[f], nativeCurrency(r.venue), 'USD', rates);
+    const value = (r, f) => convertMoney(resultMoney(r)[f], nativeCurrency(r.venue, r.currency), 'USD', rates);
     return receiptMilestone(results, last.row, value);
   }, [last, results, rates]);
 
@@ -160,7 +160,7 @@ export default function HomeLastResult({ results, rates, isAdmin, token, canLog 
     let net, cur, name, where, day, facts, open, label;
     if (last.kind === 'tournament') {
       const r = last.row;
-      cur = curOf(nativeCurrency(r.venue));
+      cur = curOf(nativeCurrency(r.venue, r.currency));
       const money = (v) => fmtMoney(v, cur);
       const rc = tournamentReceipt(r, money);
       net = rc.net;

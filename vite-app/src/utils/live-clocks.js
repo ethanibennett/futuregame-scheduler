@@ -12,7 +12,7 @@
 
 import { useEffect, useSyncExternalStore } from 'react';
 import { fetchApi } from './api.js';
-import { parseLateRegEnd, parseTournamentTime } from './utils.js';
+import { lateRegCloseOf, parseTournamentTime } from './utils.js';
 
 /** How long after its start an event is worth asking the room's clock about. A Day 1 that starts
  *  at 4 PM plays past 2 AM, so this is NOT "today's events": until 2026-10-23 a card asked only
@@ -52,7 +52,8 @@ async function pollOnce() {
     for (let i = 0; i < list.length; i += CHUNK) {
       const chunk = list.slice(i, i + CHUNK);
       const res = await fetchApi('/live-clocks', { method: 'POST', body: { events: chunk } });
-      if (!res.ok) continue; // keep what we had; the estimate covers a clock we never got
+      // Keep what we had, marked as not heard from since (App improvements 104); liveView says how stale.
+      if (!res.ok) { const at = Date.now(); for (const { id } of chunk) if (next[id]) next[id] = { ...next[id], failedAt: at }; continue; }
       const { clocks: got } = await res.json();
       const receivedAt = Date.now();
       for (const { id } of chunk) {
@@ -63,7 +64,10 @@ async function pollOnce() {
     clocks = next;
     emit();
   } catch (_) {
-    /* network blip: keep the last answers */
+    /* network blip: keep the last answers, marked as not heard from since */
+    const at = Date.now();
+    clocks = Object.fromEntries(Object.entries(clocks).map(([id, c]) => [id, { ...c, failedAt: at }]));
+    emit();
   } finally {
     inFlight = false;
     if (again) { again = false; pollOnce(); }
@@ -123,11 +127,18 @@ export function useLiveClocks(targets, key) {
 /** The clock while it is actually running (or paused) and can be timed, with `remaining` aged
  *  from when the answer arrived — only while it runs. Null for no clock, a clock that has not
  *  started, or one that reports no time; callers then keep their estimate. */
-export function liveView(c) {
+export function liveView(c, now = Date.now()) {
   if (!c || c.level == null || (c.state !== 'running' && c.state !== 'paused')) return null;
   if (c.remainingSecs == null) return null;
-  const aged = c.state === 'running' ? (Date.now() - c.receivedAt) / 1000 : 0;
-  return { ...c, remaining: Math.max(0, Math.round(c.remainingSecs - aged)) };
+  const sinceS = (now - c.receivedAt) / 1000;
+  const aged = c.state === 'running' ? sinceS : 0;
+  // A clock that stopped answering (App improvements 104): its level ran out with no fresh answer, or polls
+  // have failed for 2 minutes. Stale, it says so ("No signal", when it was last heard); older than the level
+  // it described and one more, it is dropped and the card goes back to its estimate.
+  const levelSecs = Number(c.levelSecs) || 0;
+  if (c.state === 'running' && sinceS > c.remainingSecs + Math.max(levelSecs, 600)) return null;
+  const stale = (c.state === 'running' && sinceS > c.remainingSecs + 30) || (!!c.failedAt && sinceS > 120);
+  return { ...c, remaining: Math.max(0, Math.round(c.remainingSecs - aged)), stale, heardAt: c.receivedAt };
 }
 
 /** The field on the room's clock, for the card's live row: "187 left of 412", or whichever half the
@@ -190,7 +201,7 @@ export function clockRegEnd(t, live) {
 export function lateRegOver(t, live, now = Date.now()) {
   const end = clockRegEnd(t, live) || (t && t.late_reg_end);
   if (!end) return false;
-  const ms = parseLateRegEnd(end, t.date);
+  const ms = lateRegCloseOf(t, end);
   return !Number.isNaN(ms) && now > ms;
 }
 

@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, Suspense, lazy } from 'react';
+import { createPortal } from 'react-dom';
+import { BankrollSideContext, SidePortal } from '../hooks/useBankrollSide.js';
+import useOpenSpring from '../hooks/useOpenSpring.js';
 import Icon from './Icon.jsx';
 import { FirstRun, LoadFailed } from './EmptyState.jsx';
 import { SkeletonBlocks } from './SkeletonBankroll.jsx';
@@ -47,11 +50,14 @@ const PostsToBackers = lazy(() => import('./PostsToBackers.jsx'));
    most recent that has started (today or before), the event the home's To log offers. The select was
    every tournament without a result, over a thousand on the live feed, My Schedule's oldest first. */
 const eventLabel = (t) => (t.event_number ? '#' + t.event_number + ' \u2014 ' : '') + t.event_name;
+// Log Result's events (App improvements 207): those on My Schedule that have STARTED and have no result,
+// newest first, however old: built from My Schedule itself, not the 3-day feed list, which dropped the
+// older ones and offered events not played yet (a result saved four days early, without a word).
+const hasStarted = (t) => { const ms = parseTournamentTime(t); return !isNaN(ms) && ms <= Date.now(); };
 function myLoggable(tournaments, mySchedule, existingEntryIds) {
-  const ids = new Set((mySchedule || []).map(t => t.id));
   const key = (t) => isoDay(t.date) || '';
-  return (tournaments || [])
-    .filter(t => ids.has(t.id) && (!existingEntryIds || !existingEntryIds.has(t.id)))
+  return (mySchedule || [])
+    .filter(t => t.venue !== 'Personal' && (!existingEntryIds || !existingEntryIds.has(t.id)) && hasStarted(t))
     .sort((a, b) => key(b).localeCompare(key(a)));
 }
 function justPlayed(tournaments, mySchedule, existingEntryIds) {
@@ -86,7 +92,7 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
     if (isEdit || q.length < 2) return [];
     const mine = new Set(tournamentOptions.map(t => t.id));
     return (tournaments || [])
-      .filter(t => !mine.has(t.id) && (!existingEntryIds || !existingEntryIds.has(t.id)))
+      .filter(t => !mine.has(t.id) && (!existingEntryIds || !existingEntryIds.has(t.id)) && hasStarted(t))
       .filter(t => [t.event_name, t.venue, t.event_number].some(v => String(v || '').toLowerCase().includes(q)))
       .slice(0, 60);
   }, [allQuery, tournaments, tournamentOptions, existingEntryIds, isEdit]);
@@ -98,20 +104,34 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
     return t ? isPOYEligible(t) : false;
   }, [isEdit, entryForPOY, tournamentId, tournaments]);
 
-  const handleSubmit = (e) => {
+  // Cashed with no amount is not a $0 cash (App improvements 206): the form asks for it.
+  const [cashErr, setCashErr] = useState(false);
+  // A save waits for the server (App improvements 202): busy while it runs; a failure keeps the form and what
+  // was typed, says so, and the button reads Try again. It closed at once and a failed save was lost.
+  const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState(null);
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (saving) return;
     if (!isEdit && !tournamentId) return;
-    onSubmit({
+    if (cashed && !(Number(cashAmount) > 0)) { setCashErr(true); return; }
+    setSaving(true); setSaveErr(null);
+    const r = await onSubmit({
       tournamentId: parseInt(tournamentId),
       numEntries: parseInt(numEntries) || 1,
       cashed,
       finishPlace: cashed && finishPlace ? parseInt(finishPlace) : null,
-      cashAmount: cashed && cashAmount ? Math.round(Number(cashAmount)) : 0,
+      // The cents the room paid stay (App improvements 201: a $1,234.56 cash could not be saved or edited).
+      cashAmount: cashed && cashAmount ? Math.round(Number(cashAmount) * 100) / 100 : 0,
       notes: notes || null,
       subtitle: subtitle.trim() || null,
       totalFieldSize: totalFieldSize ? parseInt(totalFieldSize) : null,
       ...(bankrolls ? { bankrollId } : {})
     }, conflict ? { replace: true } : undefined);
+    setSaving(false);
+    if (r && r.ok === false && r.status !== 409) {
+      setSaveErr(r.error ? `Not saved: ${r.error}. What you typed is still here.` : 'Not saved: the server did not answer. What you typed is still here.');
+    }
   };
 
   return (
@@ -151,10 +171,10 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
         <div className="filter-group">
           <label htmlFor="tr-buyins">Buy-ins</label>
           <div className="tr-stepper">
-            <button type="button" aria-label="One fewer buy-in" onClick={() => setNumEntries(n => String(Math.max(1, (parseInt(n, 10) || 1) - 1)))}>{'\u2212'}</button>
+            <button type="button" aria-label="One fewer buy-in" onClick={() => setNumEntries(n => String(Math.max(1, (parseInt(n, 10) || 1) - 1)))}><svg className="tr-step-glyph" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10" /></svg></button>
             <input id="tr-buyins" type="text" inputMode="numeric" value={numEntries} placeholder="1"
               onChange={e => setNumEntries(e.target.value.replace(/[^0-9]/g, '').slice(0, 2))} />
-            <button type="button" aria-label="One more buy-in" onClick={() => setNumEntries(n => String(Math.min(50, (parseInt(n, 10) || 0) + 1)))}>+</button>
+            <button type="button" aria-label="One more buy-in" onClick={() => setNumEntries(n => String(Math.min(50, (parseInt(n, 10) || 0) + 1)))}><svg className="tr-step-glyph" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M8 3v10" /></svg></button>
           </div>
         </div>
         <div className="filter-group">
@@ -181,7 +201,8 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
           <div className="filter-group">
             <label>Cash amount ($)</label>
             <MoneyField value={cashAmount}
-              onChange={e => setCashAmount(e.target.value)} placeholder="e.g. 15000" />
+              onChange={e => { setCashAmount(e.target.value); setCashErr(false); }} placeholder="e.g. 15000" />
+            {cashErr && <p className="tr-form-err" role="alert">Type what you cashed, or choose No.</p>}
           </div>
         </div>
       )}
@@ -216,8 +237,9 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
         </p>
       )}
 
+      {saveErr && <p className="tr-form-err tr-form-saveerr" role="alert">{saveErr}</p>}
       <div className="bk-actions tr-form-actions">
-        <button type="submit" className="bk-btn bk-btn--brand tr-form-submit"><span>{conflict ? 'Replace it' : isEdit && !isNew ? 'Save changes' : 'Log result'}</span></button>
+        <button type="submit" className="bk-btn bk-btn--brand tr-form-submit" disabled={saving} aria-busy={saving || undefined}><span>{saving ? 'Saving…' : saveErr ? 'Try again' : conflict ? 'Replace it' : isEdit && !isNew ? 'Save changes' : 'Log result'}</span></button>
         <button type="button" className="bk-btn bk-w8" onClick={onCancel}><span>Cancel</span></button>
       </div>
 
@@ -248,10 +270,14 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
 }
 
 // ── Tracking Entry Row ──────────────────────────────────────
-function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCancelEdit, displayCurrency, exchangeRates, bankrolls, notifyToken = null, defaultOpen = false }) {
-  const [open, setOpen] = useState(defaultOpen);
-  const toggle = () => setOpen((v) => !v);
-  const from = nativeCurrency(entry.venue);
+function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCancelEdit, displayCurrency, exchangeRates, bankrolls, notifyToken = null, defaultOpen = false, select = null }) {
+  const [openState, setOpen] = useState(defaultOpen);
+  // Desktop's master and detail (Bankroll design 84): in the list a card selects, and opens in the pane beside it.
+  const open = select ? false : openState;
+  const toggle = select ? select.pick : () => setOpen((v) => !v);
+  const rowRef = useRef(null);
+  useOpenSpring(open, rowRef, '.cal-event-detail');
+  const from = nativeCurrency(entry.venue, entry.currency);
   const to = displayCurrency === 'NATIVE' ? from : displayCurrency;
   const cv = (val) => convertAmount(val, from, to, exchangeRates);
   const fmt = (val) => formatCurrencyAmount(val, to);
@@ -297,10 +323,10 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
     : 'cost ' + fmt(cv(totalCost));
   const tone = profit > 0 ? ' is-pos' : profit < 0 ? ' is-neg' : '';
   return (
-    <div className={'cal-event-row tr-card' + (open ? ' open' : '')} data-entry={entry.id}>
+    <div ref={rowRef} className={'cal-event-row tr-card' + (open ? ' open' : '') + (select && select.on ? ' is-selected' : '')} data-entry={entry.id}>
       <CardStrip venue={entry.venue} property={entry.property} open={open} onToggle={toggle} />
       <div className="cal-event-row-content">
-        <div className="cal-event-bar" onClick={toggle} role="button" tabIndex={0} aria-expanded={open} onKeyDown={barKeys(toggle)}>
+        <div className="cal-event-bar" onClick={toggle} role="button" tabIndex={0} aria-expanded={select ? undefined : open} aria-pressed={select ? !!select.on : undefined} onKeyDown={barKeys(toggle)}>
           <div className="cal-bar-row1">
             <span className="cal-event-time">{[fmtDay(isoDay(entry.date)), entries > 1 ? entries + ' entries' : ''].filter(Boolean).join(' · ')}</span>
             <SwissLines name={entry.event_name} time={[fmtDay(isoDay(entry.date)), entries > 1 ? entries + ' entries' : ''].filter(Boolean).join(' · ')} />
@@ -316,7 +342,8 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
           </div>
         </div>
         <CardChevron open={open} onToggle={toggle} />
-        <div className={'cal-event-detail-wrap' + (open ? ' open' : '')}>
+        {/* Closed, the detail is inert: its Edit and Delete leave the tab order (App improvements 205). */}
+        <div className={'cal-event-detail-wrap' + (open ? ' open' : '')} inert={open ? undefined : ''} aria-hidden={open ? undefined : 'true'}>
           <div className="cal-event-detail-inner">
             <div className="cal-event-detail">
               <div className="cal-detail-grid">
@@ -447,7 +474,8 @@ function DidNotPlayRow({ event, onEdit, onPlayed, onDelete, busy }) {
           </div>
         </div>
         <CardChevron open={open} onToggle={toggle} />
-        <div className={'cal-event-detail-wrap' + (open ? ' open' : '')}>
+        {/* Closed, the detail is inert: its Edit and Delete leave the tab order (App improvements 205). */}
+        <div className={'cal-event-detail-wrap' + (open ? ' open' : '')} inert={open ? undefined : ''} aria-hidden={open ? undefined : 'true'}>
           <div className="cal-event-detail-inner">
             <div className="cal-event-detail">
               {note && <p className="tr-seat tr-seat-2 tr-card-notes">{note}</p>}
@@ -501,7 +529,7 @@ function DidNotPlayDayForm({ onSave, onCancel }) {
 }
 
 // ── Tracking View (main export) ─────────────────────────────
-export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone, onLog, deepLink = null, onSetPlayed = null, onAddDnp = null, onDeleteDnp = null, trackingState = 'ready', onRetryTracking = null }) {
+export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone, onLog, deepLink = null, onSetPlayed = null, onAddDnp = null, onDeleteDnp = null, trackingState = 'ready', onRetryTracking = null, sidePane = null, onSplitChange = null, isGuest = false, onGuestRegister = null }) {
   const toast = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -573,7 +601,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
     let totalBuyins = 0, totalCashes = 0, eventsCashed = 0;
     const poyScores = [];
     for (const e of trackingData) {
-      const from = nativeCurrency(e.venue);
+      const from = nativeCurrency(e.venue, e.currency);
       // Native is per row; a total of euros and dollars is in no currency, so it sums in USD
       // (which fmtStat labels it).
       const to = displayCurrency === 'NATIVE' ? 'USD' : displayCurrency;
@@ -661,7 +689,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   const chartEvents = useMemo(() => trackingData
     .map((e) => ({
       date: isoDay(e.date),
-      shareCents: Math.round(convertAmount(resultMoney(e).net, nativeCurrency(e.venue), 'USD', exchangeRates) * 100),
+      shareCents: Math.round(convertAmount(resultMoney(e).net, nativeCurrency(e.venue, e.currency), 'USD', exchangeRates) * 100),
       game: e.event_name || null,
     }))
     .filter((e) => e.date), [trackingData, exchangeRates]);
@@ -714,7 +742,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
     const e = allTrackingData.find((x) => x.tournament_id === intentForm.tournamentId);
     const n = e ? (e.num_entries || 1) : 0;
     const what = !e ? '' : ` (${e.cashed
-      ? `cashed ${formatCurrencyAmount(e.cash_amount || 0, nativeCurrency(e.venue))}${e.finish_place ? `, ${e.finish_place}${ordinalSuffix(e.finish_place)}` : ''}`
+      ? `cashed ${formatCurrencyAmount(e.cash_amount || 0, nativeCurrency(e.venue, e.currency))}${e.finish_place ? `, ${e.finish_place}${ordinalSuffix(e.finish_place)}` : ''}`
       : 'no cash'}, ${n} bullet${n === 1 ? '' : 's'})`;
     return `A result is already logged for this event${what}, from another device or a live update's Finish. Replace it with these figures, or Cancel to keep it.`;
   }, [intentForm, allTrackingData]);
@@ -799,6 +827,33 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   const dashSection = bk.enabled && resultsKind !== 'tournaments' && resultsKind !== 'cash' && resultsKind !== 'all';
   useHideBankrollFab(!isAdmin || (tournamentsHalf && (showAddForm || !!intentForm || !!pendingFormId || !!editingId)) || (showTaxReport && isAdmin));
 
+  // The second pane on desktop (Bankroll design 83-85): App's .dk-pane-side, claimed by the section that
+  // wants it (hooks/useBankrollSide.js). MTT claims it here for its list | the selected result and the totals.
+  const claimsRef = useRef(0);
+  const sideCtx = useMemo(() => (sidePane && onSplitChange ? {
+    node: sidePane,
+    claim: () => {
+      claimsRef.current += 1; onSplitChange(true);
+      let done = false;
+      return () => { if (done) return; done = true; claimsRef.current = Math.max(0, claimsRef.current - 1); if (!claimsRef.current) onSplitChange(false); };
+    },
+  } : null), [sidePane, onSplitChange]);
+  const mttSplit = !!sideCtx && !showTaxReport && !dashSection && !(isAdmin && (resultsKind === 'all' || resultsKind === 'cash'));
+  useLayoutEffect(() => (mttSplit ? sideCtx.claim() : undefined), [mttSplit, sideCtx]);
+  const [selId, setSelId] = useState(null);
+  const sel = mttSplit && selId != null ? trackingData.find((e) => e.id === selId) || null : null;
+
+  // A guest cannot keep a result (App improvements 472: the form took one and threw it away without a word).
+  if (isGuest) {
+    return (
+      <div className="tr-guest">
+        <FirstRun block icon="tracking" title="Results are kept for accounts"
+          body="An account keeps every result you log, on every device, with your profit and ROI worked out."
+          actionLabel="Create account" onAction={onGuestRegister || undefined} />
+      </div>
+    );
+  }
+
   if (showTaxReport && isAdmin) {
     return (
       <Suspense fallback={null}>
@@ -807,75 +862,8 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
     );
   }
 
-  return (
-    <div>
-      {bk.enabled && (
-        <BankrollSwitcher bk={bk} balances={bankrollBalances} onManage={() => setShowBankrolls(true)}
-          add={onLog ? <BankrollFab variant="bar" scope="page" isAdmin={isAdmin} onPick={onLog} /> : null} />
-      )}
-      {showBankrolls && (
-        <BankrollManager bk={bk} balances={bankrollBalances} onClose={() => setShowBankrolls(false)} />
-      )}
-      {/* Cash sessions (beta, admins): Tournaments | Cash. Everyone else sees no strip. */}
-      {isAdmin && <ResultsKindTabs />}
-      {dashSection ? (
-        <>
-          <Suspense fallback={null}><BankrollDashboard inline tab={resultsKind} bk={bk} onLog={onLog} /></Suspense>
-          {/* Money in and out (UX pick 77): Expenses & income on the Overview with the other tables. On
-              the MTT log it sat between the summary and the results, 20r, so no result showed on arrival. */}
-          {isAdmin && resultsKind === 'balance' && (
-            <Suspense fallback={null}>
-              <div className="tr-money-inout">
-                <ExpensesSection token={token} bankroll={bk.selected} bankrolls={bk.bankrolls} rates={exchangeRates}
-                  events={allTrackingData} onChanged={bk.refresh} intent={expenseIntent} onIntentDone={onIntentDone} />
-              </div>
-            </Suspense>
-          )}
-        </>
-      ) : isAdmin && resultsKind === 'all' ? (
-        <Suspense fallback={null}>
-          <ResultsAll token={token} bk={bk} entries={trackingData} isoDay={isoDay} exchangeRates={exchangeRates} onLog={onLog}
-            resultNet={(e) => Math.round(convertAmount(resultMoney(e).net, nativeCurrency(e.venue), 'USD', exchangeRates) * 100)}
-            resultCost={(e) => Math.round(convertAmount(resultMoney(e).cost, nativeCurrency(e.venue), 'USD', exchangeRates) * 100)}
-            renderEntry={(entry, opts = {}) => (
-              <TrackingEntryRow
-                defaultOpen={!!opts.defaultOpen}
-                entry={entry}
-                onEdit={() => setEditingId(entry.id)}
-                onDelete={() => onDelete(entry.id)}
-                isEditing={editingId === entry.id}
-                onUpdate={(data) => { onUpdate(entry.id, data); setEditingId(null); }}
-                onCancelEdit={() => setEditingId(null)}
-                displayCurrency={displayCurrency}
-                exchangeRates={exchangeRates}
-                bankrolls={formBankrolls}
-                notifyToken={isAdmin ? token : null}
-              />
-            )} />
-        </Suspense>
-      ) : isAdmin && resultsKind === 'cash' ? (
-        <Suspense fallback={null}><CashSessionsView token={token} bk={bk} intent={cashIntent} onIntentDone={onIntentDone} /></Suspense>
-      ) : (<>
-      {/* One row, as the Schedule's location | filter | calendar (owner, 2026-10-16): Log Result spans
-          three primary columns (26g), then a 4g Share square and the 3g Tax report square, 1g apart. */}
-      <div className="tr-head-row">
-        <button type="button" className={'filter-chip tr-log-btn' + (showAddForm ? ' is-cancel' : '')}
-          onClick={() => { setShowAddForm(f => !f); setEditingId(null); }}>
-          {showAddForm ? null : <Icon.plus />}
-          <span className="tr-log-label">{showAddForm ? 'Cancel' : 'Log Result'}</span>
-        </button>
-        {trackingData.length > 0 && (
-          <button type="button" className="filter-chip filter-chip-square tr-head-square" onClick={() => setShowShareMenu(true)} title="Share & Social" aria-label="Share">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-          </button>
-        )}
-        {isAdmin && (
-          <button type="button" className="filter-chip filter-chip-square" onClick={() => setShowTaxReport(true)} title="Tax report (beta)" aria-label="Tax report">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
-          </button>
-        )}
-      </div>
-
+  const totals = (
+    <>
       {trackingData.length > 0 && (
         <div className="tracking-card" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
           <div className="tracking-summary-head">
@@ -929,6 +917,107 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
 
       {/* Analytics BETA: app admins only (staged rollout); everyone else sees no change. */}
       {isAdmin && trackingData.length > 0 && <AnalyticsLauncher bankroll={bk.selected} />}
+    </>
+  );
+
+  return (
+    <BankrollSideContext.Provider value={sideCtx}>
+    <div>
+      {mttSplit && createPortal(
+        <div className="bk-side">
+          {sel && (
+            <section className="bk-side-sec" aria-labelledby="bk-side-sel">
+              <h3 className="an-cell an-sec" id="bk-side-sel">Selected result</h3>
+              <TrackingEntryRow key={sel.id} entry={sel} defaultOpen
+                onEdit={() => setEditingId(sel.id)}
+                onDelete={() => { onDelete(sel.id); setSelId(null); }}
+                isEditing={editingId === sel.id}
+                onUpdate={async (data) => { const r = await onUpdate(sel.id, data); if (!r || r.ok !== false) setEditingId(null); return r; }}
+                onCancelEdit={() => setEditingId(null)}
+                displayCurrency={displayCurrency} exchangeRates={exchangeRates} bankrolls={formBankrolls}
+                notifyToken={isAdmin ? token : null} />
+            </section>
+          )}
+          {trackingData.length > 0 && (
+            <section className="bk-side-sec" aria-labelledby="bk-side-all">
+              <h3 className="an-cell an-sec" id="bk-side-all">All tournaments</h3>
+              {totals}
+            </section>
+          )}
+        </div>,
+        sideCtx.node,
+      )}
+      {bk.enabled && (
+        <BankrollSwitcher bk={bk} balances={bankrollBalances} onManage={() => setShowBankrolls(true)}
+          add={onLog ? <BankrollFab variant="bar" scope="page" isAdmin={isAdmin} onPick={onLog} /> : null} />
+      )}
+      {showBankrolls && (
+        <BankrollManager bk={bk} balances={bankrollBalances} onClose={() => setShowBankrolls(false)} />
+      )}
+      {/* Cash sessions (beta, admins): Tournaments | Cash. Everyone else sees no strip. */}
+      {isAdmin && <ResultsKindTabs />}
+      {dashSection ? (
+        <>
+          <Suspense fallback={null}><BankrollDashboard inline tab={resultsKind} bk={bk} onLog={onLog} /></Suspense>
+          {/* Money in and out (UX pick 77): Expenses & income on the Overview with the other tables. On
+              the MTT log it sat between the summary and the results, 20r, so no result showed on arrival. */}
+          {isAdmin && resultsKind === 'balance' && (
+            <Suspense fallback={null}>
+              <SidePortal>
+                <div className="tr-money-inout">
+                  <ExpensesSection token={token} bankroll={bk.selected} bankrolls={bk.bankrolls} rates={exchangeRates}
+                    events={allTrackingData} onChanged={bk.refresh} intent={expenseIntent} onIntentDone={onIntentDone} />
+                </div>
+              </SidePortal>
+            </Suspense>
+          )}
+        </>
+      ) : isAdmin && resultsKind === 'all' ? (
+        <Suspense fallback={null}>
+          <ResultsAll token={token} bk={bk} entries={trackingData} isoDay={isoDay} exchangeRates={exchangeRates} onLog={onLog}
+            resultNet={(e) => Math.round(convertAmount(resultMoney(e).net, nativeCurrency(e.venue, e.currency), 'USD', exchangeRates) * 100)}
+            resultCost={(e) => Math.round(convertAmount(resultMoney(e).cost, nativeCurrency(e.venue, e.currency), 'USD', exchangeRates) * 100)}
+            renderEntry={(entry, opts = {}) => (
+              <TrackingEntryRow
+                defaultOpen={!!opts.defaultOpen}
+                entry={entry}
+                onEdit={() => setEditingId(entry.id)}
+                onDelete={() => onDelete(entry.id)}
+                isEditing={editingId === entry.id}
+                onUpdate={async (data) => { const r = await onUpdate(entry.id, data); if (!r || r.ok !== false) setEditingId(null); return r; }}
+                onCancelEdit={() => setEditingId(null)}
+                displayCurrency={displayCurrency}
+                exchangeRates={exchangeRates}
+                bankrolls={formBankrolls}
+                notifyToken={isAdmin ? token : null}
+              />
+            )} />
+        </Suspense>
+      ) : isAdmin && resultsKind === 'cash' ? (
+        <Suspense fallback={null}><CashSessionsView token={token} bk={bk} intent={cashIntent} onIntentDone={onIntentDone} /></Suspense>
+      ) : (<>
+      {/* One row, as the Schedule's location | filter | calendar (owner, 2026-10-16): Log Result spans
+          three primary columns (26g), then a 4g Share square and the 3g Tax report square, 1g apart. */}
+      <div className="tr-head-row">
+        <button type="button" className={'filter-chip tr-log-btn' + (showAddForm ? ' is-cancel' : '')}
+          onClick={() => { setShowAddForm(f => !f); setEditingId(null); }}>
+          {showAddForm ? null : <Icon.plus />}
+          <span className="tr-log-label">{showAddForm ? 'Cancel' : 'Log Result'}</span>
+        </button>
+        {trackingData.length > 0 && (
+          <button type="button" className="filter-chip filter-chip-square tr-head-square" onClick={() => setShowShareMenu(true)} title="Share & Social" aria-label="Share">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          </button>
+        )}
+        {isAdmin && (
+          <button type="button" className="filter-chip filter-chip-square" onClick={() => setShowTaxReport(true)} title="Tax report (beta)" aria-label="Tax report">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+          </button>
+        )}
+      </div>
+
+      {/* The totals: in the list's pane, or beside it on desktop (Bankroll design 84). */}
+      {!mttSplit && totals}
 
       {/* Expenses & income BETA: on the Overview now (UX pick 77); here only while the + menu's
           "Expense or income" has its form open. */}
@@ -986,7 +1075,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
           bankrolls={formBankrolls}
           tournamentLabel={(pendingEvent.event_number ? `#${String(pendingEvent.event_number).replace(/^[A-Za-z]+-/, '')} ` : '') + pendingEvent.event_name}
           entryForPOY={pendingEvent}
-          onSubmit={(data) => { onAdd({ ...data, tournamentId: pendingFormId }); setPendingFormId(null); }}
+          onSubmit={async (data) => { const r = await onAdd({ ...data, tournamentId: pendingFormId }); if (!r || r.ok !== false) setPendingFormId(null); return r; }}
           onCancel={() => setPendingFormId(null)}
           isEdit
         />
@@ -1038,7 +1127,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
           existingEntryIds={existingEntryIds}
           initialValues={newEntryBankroll}
           bankrolls={formBankrolls}
-          onSubmit={(data) => { onAdd(data); setShowAddForm(false); }}
+          onSubmit={async (data) => { const r = await onAdd(data); if (!r || r.ok !== false) setShowAddForm(false); return r; }}
           onCancel={() => setShowAddForm(false)}
         />
           )}
@@ -1068,14 +1157,14 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
           {months.map((g, gi) => (
             <div key={g.key} className="tr-month">
               <MonthBreak monthKey={g.key} count={g.items.length} net={g.net} fmtNet={fmtMonthNet} toDate={monthsToDate[gi]} />
-              {g.items.map(({ entry, dnp }) => (isAdmin && listView === 'lines' && entry && openLine !== entry.id) ? (() => {
+              {g.items.map(({ entry, dnp }) => (isAdmin && listView === 'lines' && entry && (mttSplit || openLine !== entry.id)) ? (() => {
                 const m = resultMoney(entry);
-                const conv = (v) => convertAmount(v, nativeCurrency(entry.venue), netCode, exchangeRates);
+                const conv = (v) => convertAmount(v, nativeCurrency(entry.venue, entry.currency), netCode, exchangeRates);
                 return (
                   <ResultLine key={'l' + entry.id} date={fmtDay(isoDay(entry.date))} venue={entry.venue} property={entry.property}
                     game={entry.event_name} tone={m.net} played={formatCurrencyAmount(Math.round(conv(m.cost)), netCode)}
                     amount={fmtMonthNet(conv(m.net))} label={`${entry.event_name}, ${fmtDay(isoDay(entry.date))}: ${fmtMonthNet(conv(m.net))}`}
-                    onOpen={() => setOpenLine(entry.id)} />
+                    onOpen={() => (mttSplit ? setSelId(entry.id) : setOpenLine(entry.id))} selected={mttSplit && selId === entry.id} />
                 );
               })() : dnp ? (
                 <div key={'dnp-' + dnp.id}>
@@ -1093,14 +1182,15 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
                     entry={entry}
                     onEdit={() => setEditingId(entry.id)}
                     onDelete={() => onDelete(entry.id)}
-                    isEditing={editingId === entry.id}
-                    onUpdate={(data) => { onUpdate(entry.id, data); setEditingId(null); }}
+                    isEditing={!mttSplit && editingId === entry.id}
+                    onUpdate={async (data) => { const r = await onUpdate(entry.id, data); if (!r || r.ok !== false) setEditingId(null); return r; }}
                     onCancelEdit={() => setEditingId(null)}
                     displayCurrency={displayCurrency}
                     exchangeRates={exchangeRates}
                     bankrolls={formBankrolls}
                     notifyToken={isAdmin ? token : null}
                     defaultOpen={openLine === entry.id}
+                    select={mttSplit ? { on: selId === entry.id, pick: () => setSelId(entry.id) } : null}
                   />
                 </div>
               ))}
@@ -1132,6 +1222,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
           myActiveUpdates={myActiveUpdates || []}
           onClose={() => setShowShareMenu(false)}
           onOpenWrapUp={() => setShowWrapUp(true)}
+          rates={exchangeRates}
         />
       )}
 
@@ -1139,10 +1230,12 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
         <WrapUpViewer
           trackingData={allTrackingData}
           tournaments={tournaments}
+          rates={exchangeRates}
           onClose={() => setShowWrapUp(false)}
         />
       )}
       </>)}
     </div>
+    </BankrollSideContext.Provider>
   );
 }

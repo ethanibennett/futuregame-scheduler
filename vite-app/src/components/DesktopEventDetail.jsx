@@ -24,6 +24,19 @@ export default function DesktopEventDetail({
     [selectedId, tournaments, mySchedule]
   );
 
+  // Closing from inside the detail puts focus back on the event's card, so a keyboard user keeps their place
+  // in the list (App improvements 58); from anywhere else focus stays where it is.
+  const closeKeepingPlace = () => {
+    const detail = document.querySelector('.dk-detail');
+    const inside = !!(detail && detail.contains(document.activeElement));
+    const id = selectedId;
+    onSelect(null);
+    if (!inside || id == null) return;
+    requestAnimationFrame(() => {
+      const bar = document.querySelector(`.dk-pane-main [data-tid="${id}"] .cal-event-bar`) || document.querySelector(`[data-tid="${id}"] .cal-event-bar`);
+      if (bar) bar.focus({ preventScroll: true });
+    });
+  };
   // Esc clears the selection — the keyboard way out of the detail pane.
   useEffect(() => {
     if (!t) return undefined;
@@ -31,7 +44,10 @@ export default function DesktopEventDetail({
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       const tag = (e.target && e.target.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-      onSelect(null);
+      // An overlay in front takes the Escape: the filter panel, Location, Travel, Export, the venue map, any
+      // modal (App improvements 53).
+      if (document.querySelector('.filter-panel, .share-menu-panel, .vm-sheet, .location-dropdown, [role="dialog"][aria-modal="true"]')) return;
+      closeKeepingPlace();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -56,7 +72,7 @@ export default function DesktopEventDetail({
     <div className="dk-detail">
       <div className="dk-pane-head">
         <h2 className="dk-pane-title">Selected event</h2>
-        <button type="button" className="dk-pane-close" onClick={() => onSelect(null)} aria-label="Close event (Esc)" title="Close (Esc)">
+        <button type="button" className="dk-pane-close" onClick={closeKeepingPlace} aria-label="Close event (Esc)" title="Close (Esc)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
         </button>
       </div>

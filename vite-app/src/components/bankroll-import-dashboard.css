@@ -152,7 +152,7 @@
   padding-left: var(--track-caps);
   border-radius: var(--radius);
   background: var(--surface2);
-  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
   text-transform: uppercase; letter-spacing: var(--track-caps); white-space: nowrap;
   color: var(--text-muted);
 }
@@ -304,3 +304,66 @@
 }
 .bid-row-edit .an-note { --h: 4; --p: 0.9574; }   /* Univers Condensed xs, baseline on line 3 of 4 */
 .bid-open { width: 100%; }
+
+/* ── Bankroll design upgrades, part D ─────────────────────────── */
+/* A pair shows what differs (77): a differing row is a --surface2 band bled to the card's edges, bold, with
+   a --warn "≠"; a matching row is quiet (its money keeps its colour). Rows stay 3r. Bold Univers Condensed
+   sm sits 0.0304r higher than regular (the Overview tables' measure), so its p rises by twice that. */
+.bid-pair-row.is-same .bid-v:not(.an-pos):not(.an-neg) { color: var(--text-muted); }
+.bid-pair-row.is-diff { margin: 0 calc(var(--gu) * -1); padding: 0 var(--gu); background: var(--surface2); }
+.bid-pair-row.is-diff .bid-v { font-weight: var(--fw-bold); }
+.bid-pair-row.is-diff .bid-v:not(.bid-v-money) { --p: 1.7586; }
+.bid-eq.is-diff { color: var(--warn); }
+/* An answered pair folds to 10r (78): its 4r head, 1r, then one 4r line: a --brand tick, the answer in
+   words, and Change (8g x 4r). */
+.bid-fold {
+  display: grid; grid-template-columns: calc(var(--gu) * 2) minmax(0, 1fr) calc(var(--gu) * 8); column-gap: var(--gu);
+  align-items: start; height: calc(var(--subrow) * 4); margin-top: var(--subrow);
+}
+.bid-fold-tick {
+  width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); margin-top: var(--subrow);
+  fill: none; stroke: var(--brand); stroke-width: var(--bw-2); stroke-linecap: round; stroke-linejoin: round;
+}
+.an-cell.bid-fold-ans { --h: 4; --p: 0.6978; font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text); }
+.bk-btn.bid-fold-change { width: calc(var(--gu) * 8); height: calc(var(--subrow) * 4); }
+/* The confirm step (80): records on 3r rows, then the supporting rows behind one 4r disclosure line. */
+.an-row.bid-row3 { height: calc(var(--subrow) * 3); min-height: 0; }
+.an-row.bid-row3 > .an-td { --h: 3; --p: 1.6978; }
+.bid-support { margin-top: 0; }
+.bid-support-sum {
+  display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 2); align-items: start;
+  height: calc(var(--subrow) * 4); cursor: pointer; list-style: none;
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
+}
+.bid-support-sum::-webkit-details-marker { display: none; }
+.bid-support-sum > .an-td { color: var(--text-muted); }
+.bid-support-sum:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.bid-support-chev {
+  justify-self: end; align-self: center; width: var(--subrow); height: var(--subrow);
+  fill: none; stroke: var(--text-muted); stroke-width: var(--bw-2); stroke-linecap: round; stroke-linejoin: round;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.bid-support[open] .bid-support-chev { transform: rotate(180deg); }
+@media (hover: hover) and (pointer: fine) { .bid-support-sum:hover > .an-td { color: var(--text); } }
+/* Left-out records and notes are marked rows (82): a 2r mark in a 2g column (a failed check a --neg circle
+   and cross, a skip a --warn square and bar, a note a muted info mark); the title bold on a 3r line, the date
+   and reason in xs on 2r lines (wrapping), the store's id quiet; the notes ruled, one each. */
+.bid-rows > li.bid-marked { grid-template-columns: calc(var(--gu) * 2) minmax(0, 1fr); column-gap: var(--gu); padding-bottom: var(--subrow); }
+.bid-marked > :not(.bid-mark) { grid-column: 2; min-width: 0; }
+.bid-mark {
+  grid-column: 1; grid-row: 1 / span 2; width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); margin-top: calc(var(--subrow) * 0.5);
+  fill: none; stroke: currentColor; stroke-width: var(--bw-2); stroke-linecap: round; stroke-linejoin: round;
+}
+.bid-mark.is-error { color: var(--neg); }
+.bid-mark.is-skip { color: var(--warn); }
+.bid-mark.is-info { color: var(--text-muted); }
+.an-cell.bid-marked-title { --h: 3; --p: 1.7586; font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text); }
+.an-cell.bid-marked-line {
+  height: auto; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere;
+  line-height: calc(var(--subrow) * 2); padding-top: calc(var(--subrow) * var(--p) / 2); padding-bottom: 0;
+  margin-bottom: calc(var(--subrow) * var(--p) / -2); color: var(--text);
+}
+.bid-marked-id { color: var(--n-7); }
+.bid-notes { margin-top: 0; }
+.bid-notes > li.bid-marked { padding-bottom: 0; }
+.bid-marked-p { grid-row: 1; }

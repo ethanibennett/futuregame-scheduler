@@ -27,7 +27,8 @@ export default function RealNamePrompt({ onSave, onDismiss, token, initialName }
   };
 
   return createPortal(
-    <div className="modal-backdrop" onClick={onDismiss}>
+    // A tap outside does not throw away a typed name (App improvements 420); Later, Cancel and Esc still dismiss.
+    <div className="modal-backdrop" onClick={() => { if (!name.trim()) onDismiss(); }}>
       {/* 33g on the grid (.modal-content.ob-name); snap-place sets the centred box on the lines.
           Its text is seated as first-run setup's (.ob-title, .ob-lead). */}
       <div className="modal-content snap-place ob ob-name" role="dialog" aria-modal="true" aria-labelledby="name-title" onClick={e => e.stopPropagation()}>

@@ -70,7 +70,7 @@ export default function HomePeriod({ admin, bk, results, schedule, updates, plan
   const cur = CURRENCY_CONFIG[currency] || CURRENCY_CONFIG.USD;
   const model = useMemo(() => {
     const money = (v, signed) => fmtMoney(v, cur, { signed: !!signed });
-    const base = { today, currency, money, results, schedule, updates, plans, rates, currencyOf: (r) => nativeCurrency(r.venue) };
+    const base = { today, currency, money, results, schedule, updates, plans, rates, currencyOf: (r) => nativeCurrency(r.venue, r.currency) };
     if (!admin || ledgerFailed) return buildPeriod({ ...base, isAdmin: false });
     // Wait for what decides the window (the trips, and the current trip's payload) and for the
     // ledger, so the block does not open on the month and jump to the trip.

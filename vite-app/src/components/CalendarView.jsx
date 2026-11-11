@@ -122,6 +122,19 @@ function Filters({ filters, setFilters, tournaments, search, setSearch }) {
   const [howMuchOpen, setHowMuchOpen] = useState(false);
   const [whichOpen, setWhichOpen] = useState(false);
   const [specialOpen, setSpecialOpen] = useState(false);
+  // Escape closes the panel as Save & Close does, before anything behind it hears the key (App improvements
+  // 53: it closed the selected event behind the panel and left the panel open). Focus goes back to the funnel.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault(); e.stopPropagation();
+      setOpen(false);
+      if (toggleRef.current) toggleRef.current.focus({ preventScroll: true });
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [open]);
   const dateBounds = useMemo(() => {
     const today = getToday();
     let earliest = null, latestDay1 = null;
@@ -795,8 +808,8 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
             if (r === '0-500') return b < 500;
             if (r === '500-1500') return b >= 500 && b < 1500;
             if (r === '1500-5000') return b >= 1500 && b < 5000;
-            if (r === '5000-10000') return b >= 5000 && b <= 10000;
-            if (r === '10000+') return b > 10000;
+            if (r === '5000-10000') return b >= 5000 && b < 10000;   // every band holds its lower edge only (App improvements 7)
+            if (r === '10000+') return b >= 10000;
             return true;
           });
           if (!matchesBuyin) return false;

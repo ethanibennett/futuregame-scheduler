@@ -8606,7 +8606,8 @@
     /* ── Toasts ── */
     .toast-container {
       position: fixed;
-      bottom: calc(var(--tab-h) + calc(var(--subrow) * 1.5));
+      /* Over the tab bar and the home indicator, as the floating + is (App improvements 457). */
+      bottom: calc(var(--tab-h) + var(--sa-b, 0px) + var(--nav-snap, 0px) + var(--subrow) * 1.5);
       left: 50%;
       transform: translateX(-50%);
       z-index: var(--z-toast);
@@ -17649,3 +17650,148 @@
     .tr-form-actions { margin-top: 0; }
     .tr-form-actions > .tr-form-submit { width: calc(var(--gu) * 11); }
     form.tracking-card.tr-form .bk-picker > label { height: calc(var(--subrow) * 3); line-height: normal; padding-top: calc(var(--subrow) * 2 - 1cap); box-sizing: border-box; font-size: var(--fs-xs); font-weight: var(--fw-regular); text-transform: none; letter-spacing: 0; color: var(--text-muted); }
+
+    /* ── Bankroll design upgrades, part D: desktop (83-86) ── */
+    /* The second pane (83, 84, 85): App's .dk-pane-side, a block scroller of its own, its first block level with
+       the main pane's first block under the 7r band (2r below it). Each block a section; 4r above a new one. */
+    .app-shell.is-desktop .dk-side-host.dk-side-bankroll { display: flex; flex-direction: column; padding-top: calc(var(--subrow) * 9); }
+    /* Its blocks keep the tab's 35g (UX pick 08) in a pane that runs to the shell's edge (UX pick 107), and
+       their order is fixed whatever mounted first: the selection, then the totals, then money in and out. */
+    .dk-side-bankroll > * { flex: none; width: calc(var(--gu) * 35); }
+    .dk-side-bankroll > .bk-side, .dk-side-bankroll > .bd-side-tables, .dk-side-bankroll > .bid-side { order: 1; }
+    .dk-side-bankroll > .tr-money-inout { order: 2; margin-top: calc(var(--subrow) * 4); }
+    .bk-side-sec + .bk-side-sec { margin-top: calc(var(--subrow) * 4); }
+    .bk-side-sec > .an-sec { margin-bottom: var(--subrow); }
+    .bk-side .cs-head { display: flex; align-items: flex-end; column-gap: var(--gu); margin-bottom: var(--subrow); }
+    .bk-side .cs-side-title { flex: 1 1 auto; margin-bottom: 0; }
+    .bk-side .tracking-card:last-child, .bk-side .bd-section:first-child { margin-top: 0; }
+    .dk-side-bankroll .bid-side > .bid-group:first-child { margin-top: 0; }
+    .dk-side-bankroll .bd-side-tables > :first-child { margin-top: 0; }
+    /* The selected card (84): a 0.25r --brand ring outside its box; a selected line on the hover fill. */
+    .cal-event-row.tr-card.is-selected { box-shadow: var(--elev-1), 0 0 0 calc(var(--subrow) * 0.25) var(--brand); }
+    .tr-line.is-selected { background: var(--surface2); box-shadow: inset var(--bw-2) 0 0 var(--brand); }
+    /* The ten sections in the rail (86): 3r rows, four groups 1r apart, labels at the rail label's x (4g into the
+       item) in its type; the open one --text and bold on --hover-overlay with the rail's inset brand bar. The
+       strip leaves the desktop page. */
+    .dk-rail-sub { display: flex; flex-direction: column; padding: 0 0 var(--subrow); }
+    .dk-rail-subgroup + .dk-rail-subgroup { margin-top: var(--subrow); }
+    .dk-rail-subitem {
+      display: flex; align-items: center;
+      width: calc(var(--gu) * 10); height: calc(var(--subrow) * 3); box-sizing: border-box;
+      margin: 0 calc(var(--gu) * -1); padding: 0 var(--gu) 0 calc(var(--gu) * 4);
+      border: 0; border-radius: 0; background: none; color: var(--text-muted);
+      font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-regular); text-align: left;
+      cursor: pointer; transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+    }
+    .dk-rail-subitem > span { display: block; line-height: 1; white-space: nowrap; }
+    .dk-rail-subitem.is-active { color: var(--text); font-weight: var(--fw-bold); background: var(--hover-overlay); box-shadow: inset var(--bw-2) 0 0 var(--brand); }
+    @media (hover: hover) and (pointer: fine) { .dk-rail-subitem:not(.is-active):hover { color: var(--text); background: var(--hover-overlay); } }
+    .dk-rail-subitem:focus-visible { outline: var(--focus-ring); outline-offset: calc(var(--bw-2) * -1); }
+    .app-shell.is-desktop .results-kind-tabs { display: none; }
+
+    /* ── Money type: six roles (Bankroll design 91) ──
+       Each a face, a size and a weight, so the same kind of figure looks the same on every section:
+       hero (the one headline of a page), total (a month's or a block's), row (a result on a card or row),
+       detail (figures inside an opened card), cell (a table's), tick (axes and captions). Where an earlier
+       pick set a figure's size on purpose it keeps it (the Overview balance at 3xl, pick 5; Latest sessions
+       and a card's amount, picks 23 and 26); the rest take their role here. */
+    :root {
+      --money-hero-font: var(--font-display);     --money-hero-size: var(--fs-2xl);   --money-hero-weight: var(--fw-regular);
+      --money-total-font: var(--font-display);    --money-total-size: var(--fs-md);   --money-total-weight: var(--fw-regular);
+      --money-row-font: var(--font-display);      --money-row-size: var(--fs-sm);     --money-row-weight: var(--fw-bold);
+      --money-detail-font: var(--font-display);   --money-detail-size: var(--fs-sm);  --money-detail-weight: var(--fw-regular);
+      --money-cell-font: var(--font-condensed);   --money-cell-size: var(--fs-sm);
+      --money-tick-font: var(--font-condensed);   --money-tick-size: var(--fs-xs);
+    }
+    .tracking-card .tr-sum-net, .cs-hero-net {
+      font-family: var(--money-hero-font); font-size: var(--money-hero-size); font-weight: var(--money-hero-weight);
+    }
+    .tr-card .cal-detail-value, .cs-detail .cal-detail-value {
+      font-family: var(--money-detail-font); font-size: var(--money-detail-size); font-weight: var(--money-detail-weight);
+    }
+
+    /* My Schedule's clashes in its sticky header (App improvements 57): one 3r line, 1r under the title, in
+       --warn on --warn-bg with a hairline --warn-line edge, condensed sm, a 5g x 2r Next at its end. */
+    .sched-clash {
+      display: flex; align-items: center; gap: var(--gu);
+      height: calc(var(--subrow) * 3); margin-top: var(--subrow); padding: 0 var(--gu); box-sizing: border-box;
+      border-radius: var(--radius-sm); background: var(--warn-bg, var(--surface2)); box-shadow: inset 0 0 0 var(--bw-hair) var(--warn-line, var(--warn));
+      color: var(--warn); font-family: var(--font-condensed); font-size: var(--fs-sm);
+    }
+    .sched-clash > svg { flex: none; width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }
+    .sched-clash-text { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-block: 0.3em; margin-block: -0.3em; }
+    .sched-clash-next.kind-toggle { flex: none; width: calc(var(--gu) * 5); height: calc(var(--subrow) * 2); }
+
+    /* A live update that did not post (App improvements 101): a 5r alert line above the buttons. */
+    .lu-post-fail {
+      display: flex; align-items: center; min-height: calc(var(--subrow) * 5); box-sizing: border-box;
+      margin-bottom: var(--subrow); padding: 0 var(--gu); border-radius: var(--radius-sm);
+      background: var(--danger-bg, var(--surface2)); box-shadow: inset 0 0 0 var(--bw-hair) var(--danger-line, var(--danger));
+      font-size: var(--fs-xs); line-height: calc(var(--subrow) * 2); color: var(--text);
+    }
+    /* The event a player is in keeps full strength when late reg closes (App improvements 107): only cards the
+       player has not entered dim. */
+    .dash-event-card.reg-closed.playing, .dash-event-card.reg-closed.bagged { opacity: 1; }
+    .dash-live-field.is-stale .dash-t { color: var(--warn); }
+    /* The room ended it: one line and Busted | Cashed (App improvements 105); registered before the room's
+       clock starts, the stack posted on a quiet line above (106). */
+    .dash-ended-ask, .dash-registered-note { margin: 0 0 var(--subrow); font-size: var(--fs-xs); line-height: calc(var(--subrow) * 2); color: var(--text-muted); }
+    .dash-ended-ask { color: var(--text); font-size: var(--fs-sm); line-height: calc(var(--subrow) * 3); }
+    .dash-ended-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gu); }
+    .dash-ended-row > button { height: calc(var(--subrow) * 4); }
+    .dash-cashed-btn { background: var(--ok-bg, var(--surface2)); color: var(--ok, var(--pos)); }
+    .dash-playing-badge.is-registered { color: var(--text-muted); }
+    .lu-sends { margin: 0 0 var(--subrow); font-size: var(--fs-xs); line-height: calc(var(--subrow) * 2); color: var(--text-muted); text-align: right; }
+    .dash-updates-failed { display: flex; align-items: center; justify-content: space-between; gap: var(--gu); min-height: calc(var(--subrow) * 5); box-sizing: border-box; padding: 0 var(--gu); border-radius: var(--radius-sm); background: var(--danger-bg, var(--surface2)); box-shadow: inset 0 0 0 var(--bw-hair) var(--danger-line, var(--danger)); font-size: var(--fs-xs); }
+    .dash-updates-failed > button { flex: none; width: calc(var(--gu) * 6); height: calc(var(--subrow) * 3); }
+
+    /* A hand link that does not open (App improvements 155): the wordmark, what happened, one way in. */
+    .hand-link-dead { display: flex; align-items: center; justify-content: center; background: var(--bg); }
+    .hand-link-dead-box { width: calc(var(--gu) * 33); text-align: center; }
+    .hand-link-dead-mark { font-family: var(--font-title); font-size: var(--fs-lg); color: var(--text); margin-bottom: calc(var(--subrow) * 4); }
+    .hand-link-dead-title { margin: 0 0 var(--subrow); font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--text); }
+    .hand-link-dead-body { margin: 0 0 calc(var(--subrow) * 3); font-size: var(--fs-sm); line-height: calc(var(--subrow) * 3); color: var(--text-muted); }
+    .hand-link-dead-btn { display: inline-flex; align-items: center; justify-content: center; width: calc(var(--gu) * 15); height: calc(var(--subrow) * 5); text-decoration: none; }
+
+    /* Saved notes on the felt (App improvements 152): a "Notes" chip at the top left, 8g x 5r, opposite the
+       table-settings button and at its height; its sheet holds the text on 3r lines. */
+    .replayer-notes-chip {
+      position: absolute; z-index: var(--z-raised);
+      top: calc(var(--rp-top, var(--sa-t)) + var(--subrow)); left: var(--gu);
+      width: calc(var(--gu) * 8); height: calc(var(--subrow) * 5); padding: 0; border: 0;
+      border-radius: var(--radius-sm); background: rgba(0,0,0,0.35); color: var(--text);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+      font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); cursor: pointer;
+    }
+    .replayer-notes-chip:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+    .replayer-notes-text { margin: 0 0 calc(var(--subrow) * 2); font-size: var(--fs-sm); line-height: calc(var(--subrow) * 3); white-space: pre-wrap; color: var(--text); }
+    .replayer-notes-close { width: calc(var(--gu) * 8); height: calc(var(--subrow) * 5); }
+    /* The hand just closed, outlined for a moment in the list (App improvements 166). */
+    .replayer-hand-card.is-returned { box-shadow: var(--elev-1), 0 0 0 var(--bw-2) var(--brand-line); transition: box-shadow var(--dur-slow) var(--ease-out); }
+    .tr-form-err { margin: var(--subrow) 0 0; font-size: var(--fs-xs); line-height: calc(var(--subrow) * 2); color: var(--danger, var(--neg)); }
+    /* A series' Events: the logged events no longer on My Schedule, under a 3r caps caption (App improvements 269). */
+    .staking-logged-cap {
+      height: calc(var(--subrow) * 3); margin-top: calc(var(--subrow) * 2); box-sizing: border-box;
+      padding-top: calc(var(--subrow) * 3 - 1cap); line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
+      text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-muted);
+    }
+    /* The stepper's − and + drawn, so they sit on the box's centre (a text glyph sat 1.8px low). */
+    .tr-step-glyph { width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); fill: none; stroke: currentColor; stroke-width: var(--bw-2); stroke-linecap: round; }
+    .group-send-fail { margin: var(--subrow) 0 0; font-size: var(--fs-xs); line-height: calc(var(--subrow) * 2); color: var(--danger, var(--neg)); }
+    /* A guest's Account card (App improvements 419): what an account adds, Create an account 14g, Sign in 9g. */
+    .settings-guest .settings-row-sub { display: block; font-size: var(--fs-xs); line-height: calc(var(--subrow) * 2); color: var(--text-muted); margin-top: var(--subrow); }
+    .settings-guest-actions { display: flex; gap: var(--gu); margin-top: calc(var(--subrow) * 2); }
+    .settings-guest-create { width: calc(var(--gu) * 14); height: calc(var(--subrow) * 4); }
+    .settings-guest-signin { width: calc(var(--gu) * 9); height: calc(var(--subrow) * 4); }
+    .parser-eval-err { font-size: var(--fs-2xs); color: var(--danger, var(--neg)); overflow-wrap: anywhere; }
+
+    /* A tab that could not be shown (App improvements 451): where its content was, the bars untouched. */
+    .tab-error { display: flex; flex-direction: column; align-items: center; text-align: center; padding: calc(var(--subrow) * 8) var(--gu); }
+    .tab-error-mark { display: flex; width: calc(var(--subrow) * 5); height: calc(var(--subrow) * 5); color: var(--warn); --icon-size: calc(var(--subrow) * 5); }
+    .tab-error-mark svg { width: 100%; height: 100%; }
+    .tab-error-title { margin: calc(var(--subrow) * 2) 0 var(--subrow); font-size: var(--fs-lg); font-weight: var(--fw-bold); line-height: calc(var(--subrow) * 3); color: var(--text); }
+    .tab-error-body { margin: 0 0 calc(var(--subrow) * 3); font-size: var(--fs-sm); line-height: calc(var(--subrow) * 3); color: var(--text-muted); }
+    .tab-error-actions { display: flex; gap: var(--gu); }
+    .tab-error-retry { width: calc(var(--gu) * 12); height: calc(var(--subrow) * 5); }
+    .tab-error-leave { width: calc(var(--gu) * 13); height: calc(var(--subrow) * 5); }

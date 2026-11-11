@@ -8,7 +8,7 @@ import {
   fmtMoney, resultWords, toneOf, fmtDay, fmtWhen, fmtHours, plural, MINUS,
   currentRuns, runLine, mergePatch, isEmptyPatch, applyPatch, fillLikely, pairOptions, pairFields,
   groupPlan, backerOptions, slateOptions, sourceLabel, optionWord, itemLine,
-  commitReadiness, reconciliationBlocks, REC_LINES, writesList, tableLabel, editedRows,
+  commitReadiness, reconciliationBlocks, REC_LINES, writesList, tableLabel, editedRows, recordSplit,
   fetchError, commitError, undoError, diffPlans, pageOf, FIRST_ROWS,
 } from '../bankroll-import-dashboard.js';
 
@@ -187,7 +187,8 @@ test('what a change or a deletion names', () => {
 // ── readiness ───────────────────────────────────────────────────────────────────────────────
 test('the import can go only with every pair answered, nothing blocking, the reconciliation balanced and no answer in flight', () => {
   const r0 = commitReadiness(plan());
-  assert.deepEqual([r0.ok, r0.reasons, r0.undecided, r0.label], [false, ['2 pairs still to answer.'], 2, 'Import 31 records']);
+  assert.deepEqual([r0.ok, r0.reasons, r0.undecided, r0.label], [false, ['2 pairs still to answer.'], 2, 'Import 6 records']);
+  assert.equal(r0.rows, 31, 'the rows stay the count Undo asks for');
   const answered = plan({ pairs: [pair('p1', { decision: 'same-keep' })] });
   assert.equal(commitReadiness(answered).ok, true);
   assert.deepEqual(commitReadiness(answered, { pending: true }), { ...commitReadiness(answered), ok: false, waiting: true });
@@ -265,4 +266,19 @@ test('the pager: ten, then fifty more a tap', () => {
   const pg = pageOf(FIRST_ROWS, 80);
   assert.equal(pg.rows, FIRST_ROWS);
   assert.ok(pg.more && pg.more.next > FIRST_ROWS);
+});
+
+test('the confirm step counts records in the player’s words; the supporting rows fold apart (Bankroll design 80)', () => {
+  const s = recordSplit({ insert: { bankroll_import_keys: 54, cash_sessions: 7, session_extras: 13, tracking_entries: 3, bankrolls: 1, odd_table: 2 }, update: {}, delete: {} });
+  assert.deepEqual(s.records.map((x) => [x.text, x.n]), [['Cash sessions', 7], ['Tournament results', 3], ['The WSOP fund', 1], ['Odd table', 2]]);
+  assert.deepEqual(s.support.map((x) => [x.text, x.n]), [['Result details', 13], ['Import keys', 54]]);
+  assert.deepEqual([s.recordCount, s.supportCount], [13, 67]);
+  assert.deepEqual(recordSplit(null), { records: [], support: [], recordCount: 0, supportCount: 0 });
+});
+test('a record left out says what it is and why, and an error is told from a skip (Bankroll design 82)', async () => {
+  const { errorLine } = await import('../bankroll-import-dashboard.js');
+  assert.deepEqual(errorLine({ store: 'sessions', id: 's-err-1', date: '2026-07-05', error: 'the result (250) is not cash-out minus buy-in (200)' }),
+    { title: 'A session failed a check', detail: 'Jul 5, 2026. The result (250) is not cash-out minus buy-in (200).', id: 'sessions · s-err-1', kind: 'error' });
+  assert.deepEqual(errorLine({ store: 'adjustments', id: 'a-zero', date: '2026-03-01', error: 'an amount of 0 moves nothing', skipped: true }).title, 'An adjustment was skipped');
+  assert.deepEqual(errorLine({ store: 'mystery', id: 'm1', error: 'odd.' }), { title: 'mystery · m1', detail: 'Odd.', id: '', kind: 'error' });
 });

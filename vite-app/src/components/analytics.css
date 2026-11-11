@@ -194,3 +194,12 @@
   font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--brand);
 }
 .an-how-sum::-webkit-details-marker { display: none; }
+
+/* A floor for small text on the Bankroll tab (Bankroll design 100): its labels move from --fs-2xs (0.92g) to
+   --fs-xs (1.06g), re-seated with that size's c (.5213): line 2 of 2 p .9574, line 3 of 3 p 1.9574, and the
+   table head's line 2 of 3 at p 0 (1.5 + .5213: 0.021r under the line, the nearest a top pad allows). Venue
+   strips, the section strip and the BETA pill keep 2xs; the Analytics sheet (portalled out) is unchanged. */
+.tab-panel[data-tab="tracking"] .an-lbl { font-size: var(--fs-xs); }
+.tab-panel[data-tab="tracking"] .an-lbl.an-lbl-2 { --p: 0.9574; }
+.tab-panel[data-tab="tracking"] .an-lbl.an-lbl-3 { --p: 1.9574; }
+.tab-panel[data-tab="tracking"] .an-lbl.an-lbl-3b { --p: 0; }

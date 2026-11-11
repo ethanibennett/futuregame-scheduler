@@ -276,7 +276,10 @@ export function commitReadiness(plan, { pending = false } = {}) {
     reasons.push('The fund does not match the dashboard’s within its rounding remainder.');
   }
   const rows = plan.writes ? Number(plan.writes.rows) || 0 : 0;
-  return { ok: reasons.length === 0 && !pending, reasons, undecided, rows, label: `Import ${plural(rows, 'record')}`, waiting: !!pending };
+  // The button counts what the player can check (Bankroll design 80): the records, not the supporting rows.
+  const split = plan.writes && plan.writes.tables ? recordSplit(plan.writes.tables) : null;
+  const records = split && split.records.length ? split.recordCount : rows;
+  return { ok: reasons.length === 0 && !pending, reasons, undecided, rows, records, label: `Import ${plural(records, 'record')}`, waiting: !!pending };
 }
 /** The reconciliation must balance: true when it does not (the blocking warning). */
 export function reconciliationBlocks(rec) {
@@ -320,6 +323,52 @@ export function writesList(tables) {
     .map(([table, n]) => ({ table, n, text: tableLabel(table, n) }));
   const insert = lines(t.insert), update = lines(t.update), del = lines(t.delete);
   return { insert, update, delete: del, created: insert.reduce((a, x) => a + x.n, 0) };
+}
+
+/**
+ * A record left out, in the player's words (Bankroll design 82): { title, detail, id, kind } where kind is
+ * 'error' (it failed a check) or 'skip' (skipped on purpose). A store with no noun keeps today's line.
+ */
+const STORE_NOUN = {
+  sessions: 'A session', adjustments: 'An adjustment', expenses: 'An expense', transactions: 'An expense',
+  backers: 'A backer', backer: 'A backer', 'wsop-staking': 'A slate deal', deal: 'A slate deal',
+  'wsop-balances': 'A money location', location: 'A money location', 'wsop-admin-taxrate': 'The tax setting', taxrate: 'The tax setting',
+};
+export function errorLine(e) {
+  const x = e || {};
+  const noun = STORE_NOUN[x.store];
+  const said = x.error ? String(x.error).replace(/^./, (c) => c.toUpperCase()) + (/[.!?]$/.test(x.error) ? '' : '.') : '';
+  const where = `${x.store || ''}${x.id ? ` · ${x.id}` : ''}`;
+  return {
+    title: noun ? `${noun} ${x.skipped ? 'was skipped' : 'failed a check'}` : where || 'A record',
+    detail: [x.date ? `${fmtDay(x.date)}.` : '', said].filter(Boolean).join(' '),
+    id: noun ? where : '',
+    kind: x.skipped ? 'skip' : 'error',
+  };
+}
+
+/**
+ * The confirm step in the player's words (Bankroll design 80): the records a player would recognise, by
+ * kind, and the rows that only support them (a result's details, a stake, the import's own keys), counted
+ * apart behind a disclosure. -> { records: [{ table, n, text }], support: [...], recordCount, supportCount }.
+ * Which tables support was judged from what they hold; an unknown table counts as a record.
+ */
+export const SUPPORTING_TABLES = ['tournaments', 'session_extras', 'standing_stakes', 'money_settings', 'backer_event_revisions', 'bankroll_import_keys'];
+const RECORD_WORDS = {
+  cash_sessions: 'Cash sessions', tracking_entries: 'Tournament results', bankroll_adjustments: 'Adjustments',
+  bankroll_transactions: 'Expenses', bankrolls: 'The WSOP fund', backers: 'Backers', standing_agreements: 'Standing agreements',
+  staking_series: 'Staking series', backer_agreements: 'Series agreements', backer_settlements: 'Series settlements',
+  money_locations: 'Money locations', backer_events: 'Recorded shares',
+};
+export function recordSplit(tables) {
+  const w = writesList(tables);
+  const sup = new Set(SUPPORTING_TABLES);
+  const word = (x) => RECORD_WORDS[x.table] || x.text.replace(/^[\d,]+ /, '').replace(/^./, (ch) => ch.toUpperCase());
+  const supWord = (x) => x.text.replace(/^[\d,]+ /, '').replace(/^./, (ch) => ch.toUpperCase());
+  const records = w.insert.filter((x) => !sup.has(x.table)).map((x) => ({ ...x, text: word(x) }));
+  const support = w.insert.filter((x) => sup.has(x.table)).map((x) => ({ ...x, text: supWord(x) }));
+  const sum = (l) => l.reduce((a, x) => a + x.n, 0);
+  return { records, support, recordCount: sum(records), supportCount: sum(support) };
 }
 
 const ROW_PLACES = {

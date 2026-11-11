@@ -89,3 +89,23 @@ test('"Both": a type column splits cash from tournaments; anything else is left 
   assert.deepEqual(out.map((o) => (o.row ? o.row.type : o.skip)), ['cash', 'tournament', 'Type "Expense" (only cash and tournament rows import)']);
   assert.deepEqual([out[1].row.name, out[1].row.note], ['Sunday Deepstack', 'Borgata']);
 });
+
+test('a column picker shows the first values the column holds, blanks skipped (Bankroll design 81)', async () => {
+  const { columnSample } = await import('../bankroll-csv.js');
+  const rows = [['Date', 'Event', 'Buy-in'], ['2026-01-02', '', '100'], ['2026-01-05', 'Daily', ''], ['2026-01-09', 'Main', '200'], ['2026-01-10', 'Mega', '50']];
+  assert.deepEqual(columnSample(rows, 1), ['Daily', 'Main', 'Mega']);
+  assert.deepEqual(columnSample(rows, 2, 2), ['100', '200']);
+  assert.deepEqual(columnSample(rows, -1), []);
+  assert.deepEqual(columnSample(null, 0), []);
+});
+
+test('a day-first file is read day first on every row (App improvements 208)', async () => {
+  const { applyMapping, detectDateOrder } = await import('../bankroll-csv.js');
+  const rows = [['Date', 'Event', 'Buy-in', 'Winnings'], ['02/03/2024', 'NLH', '100', '0'], ['09/03/2024', 'PLO Bounty', '200', '0'], ['13/04/2024', 'NLH', '100', '300']];
+  assert.deepEqual(detectDateOrder(rows, 0), { order: 'day', line: 4, value: '13/04/2024', conflict: false });
+  const items = applyMapping(rows, { date: 0, name: 1, buyin: 2, cash: 3 }, { rowsAre: 'tournament' });
+  assert.deepEqual(items.filter((i) => i.row).map((i) => i.row.date), ['2024-03-02', '2024-03-09', '2024-04-13']);
+  // Both orders in one file: the rows that disagree are errors, not read the other way.
+  const mixed = [['Date', 'Event', 'Buy-in', 'Winnings'], ['13/04/2024', 'A', '1', '0'], ['04/13/2024', 'B', '1', '0']];
+  assert.equal(detectDateOrder(mixed, 0).conflict, true);
+});

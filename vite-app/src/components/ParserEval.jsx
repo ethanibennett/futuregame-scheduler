@@ -36,7 +36,18 @@ export default function ParserEval({ token }) {
   return (
     <section className="parser-eval" aria-label="Hand parser eval">
       <h3 className="an-cell an-sec">Hand parser, live eval</h3>
-      {!s || (!s.running && !s.report) ? (
+      {/* A run that stopped without a report says so (App improvements 440): it read exactly like one never run. */}
+      {s && !s.running && !s.report && (s.exitCode || s.error) ? (() => {
+        const p = s.progress || null;
+        const when = s.finishedAt ? new Date(s.finishedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : null;
+        const lastErr = String(s.error || s.log || '').split(String.fromCharCode(10)).filter((l) => /error/i.test(l)).pop() || (s.error ? String(s.error) : '');
+        return (
+          <>
+            <p className="an-p" role="status">The last run stopped{p && p.total ? ` at ${p.done} of ${p.total} hands` : ''}{when ? `, ${when}` : ''}{s.exitCode ? ` (exit code ${s.exitCode})` : ''}. Nothing was scored.</p>
+            {lastErr && <p className="an-p parser-eval-err">{lastErr.slice(0, 300)}</p>}
+          </>
+        );
+      })() : !s || (!s.running && !s.report) ? (
         <p className="an-p">The corpus of real hands through the live model, scored. Decides whether quick add opens to everyone.</p>
       ) : null}
       {s && s.running && (() => {
@@ -70,7 +81,7 @@ export default function ParserEval({ token }) {
           <button type="button" className="parser-eval-btn ctl" onClick={() => setConfirming(false)}>Not now</button>
         </div>
       ) : (
-        <button type="button" className="parser-eval-btn ctl" onClick={() => setConfirming(true)}>Run the parser eval</button>
+        <button type="button" className="parser-eval-btn ctl" onClick={() => setConfirming(true)}>{s && !s.running && !s.report && (s.exitCode || s.error) ? 'Run it again' : 'Run the parser eval'}</button>
       ))}
     </section>
   );

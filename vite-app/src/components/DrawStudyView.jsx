@@ -24,7 +24,8 @@
 //  2. Only street-3 BETTING is exact. Everything else is Monte-Carlo and
 //     UNCERTIFIED, and `trust.level` comes from the engine's own flag. Never
 //     infer it here from a street number.
-import { useEffect, useState } from 'react';
+import { plainStudy } from '../utils/study-words.js';
+import { useEffect, useRef, useState } from 'react';
 import { fetchApi } from '../utils/api';
 import { StudyHead, StudyPills, shortGameName, useSolverAvailability, offered, T } from './StudyHead.jsx';
 
@@ -49,6 +50,23 @@ function actionName(a) {
   return { c: 'Call', k: 'Check', b: 'Bet', r: 'Raise', f: 'Fold' }[s] || s;
 }
 
+
+const GAME_EXAMPLE = {
+  td27: { hero: '7h 5c 4d 2s Kh', opp: '', hist: 'c k' },
+  a5td: { hero: 'Ah 2c 4d 7s Kh', opp: '', hist: 'c k' },
+  badugi: { hero: '7h 5c 4d 2s', opp: '', hist: 'c k' },
+};
+const HAND_SIZE = { td27: 5, a5td: 5, badugi: 4 };
+
+const GAME_WORDS = { td27: '2-7 triple draw', a5td: 'A-5 triple draw', badugi: 'Badugi' };
+/** A Price a draw failure in a player's words (App improvements 302, 305): never a 503's operator note. */
+function studyError(status, json, game) {
+  const name = GAME_WORDS[game] || 'This game';
+  if (status === 503) return `${name} cannot be priced on this server yet. Your hand is kept: price it again when it is offered.`;
+  if (status === 422) return 'This action does not fit the opponent’s cards. Check the draw counts.';
+  return plainStudy(json && json.error ? json.error : `Something went wrong (${status}).`);
+}
+
 export default function DrawStudyView({ pendingSpot, onConsumeSpot, onBack }) {
   const avail = useSolverAvailability();
   const [game, setGame] = useState('td27');
@@ -56,6 +74,7 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot, onBack }) {
   const [opp, setOpp] = useState('');
   const [seat, setSeat] = useState(0);
   const [hist, setHist] = useState('c k');
+  const perGame = useRef({});
   // The hero's real replacement cards, from the replayer; null for a hand typed in, whose draws the tool deals.
   const [drawn, setDrawn] = useState(null);
   const [shuffles, setShuffles] = useState(8);
@@ -90,6 +109,10 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot, onBack }) {
   }, [pendingSpot, onConsumeSpot]);
 
   async function run(mode, histOverride) {
+    // The card count checked here, before the server is asked (App improvements 305).
+    const n = String(hero || '').trim().split(/[\s,]+/).filter(Boolean).length;
+    const want = HAND_SIZE[game];
+    if (want && n !== want) { setErr(`${GAME_WORDS[game] || 'This game'} hands are ${want === 4 ? 'four' : 'five'} cards; this one has ${n}.`); return; }
     setBusy(mode); setErr(null);
     const body = {
       game, hero, seat, mode,
@@ -109,7 +132,9 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot, onBack }) {
         // 503 for a game whose blueprint is simply not installed read as a bare
         // failure -- indistinguishable from the solver being unable to do that
         // game at all, which is not true of a5td.
-        setErr((json.error || `HTTP ${res.status}`) + (json.detail ? ' — ' + json.detail : ''));
+        // A game not installed here says so in one sentence, never the server's operator note (App improvements
+        // 302); a 422 for an impossible action points at the draw counts, not the history (305).
+        setErr(studyError(res.status, json, game));
         setData(null);
       }
       else { setData(json); if (histOverride !== undefined) setHist(histOverride); }
@@ -147,8 +172,7 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot, onBack }) {
     try {
       const res = await fetchApi('/solver/draw-study/exact', { method: 'POST', body });
       const json = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-      if (!res.ok) setExactErr((json.error || `HTTP ${res.status}`)
-        + (json.detail ? ' — ' + json.detail : ''));
+      if (!res.ok) setExactErr(studyError(res.status, json, game));
       else setExact(json);
     } catch (e) {
       setExactErr(e.message || 'request failed');
@@ -172,7 +196,14 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot, onBack }) {
         note="Every bet and every discard at one decision, including the ones the trained strategy cannot offer you. Tap an action to take it and move on." />
 
       <StudyPills games={GAMES.filter((g) => offered(avail, g.id)).map((g) => [g.id, shortGameName(g.label)])} value={game}
-        onPick={(id) => { setGame(id); setData(null); }} />
+        onPick={(id) => {
+          // Each game keeps its own hand, opponent and action (App improvements 305): switching to Badugi kept the
+          // 2-7 hand's five cards and posted an impossible spot. A game with nothing typed starts on its example.
+          perGame.current[game] = { hero, opp, hist };
+          const was = perGame.current[id] || GAME_EXAMPLE[id] || { hero: '', opp: '', hist: 'c k' };
+          setHero(was.hero); setOpp(was.opp); setHist(was.hist); setDrawn(null);
+          setGame(id); setData(null); setErr(null);
+        }} />
 
       {/* ── inputs ───────────────────────────────────────────────────── */}
       <div className="hs-cols" style={{ '--hs-n': 2, marginTop: 'calc(var(--subrow) * 2)' }}>
@@ -235,7 +266,7 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot, onBack }) {
           </div>
           {(handoff.notes || []).length > 0 && (
             <ul className="ds-list">
-              {handoff.notes.map((n, i) => <li key={i}>{n}</li>)}
+              {handoff.notes.map((n, i) => <li key={i}>{plainStudy(n)}</li>)}
             </ul>
           )}
         </div>
@@ -420,10 +451,10 @@ export default function DrawStudyView({ pendingSpot, onConsumeSpot, onBack }) {
           {data.trust && (
             <div className={'ds-note ' + (uncertified ? 'is-warn' : 'is-good')}>
               <div className="ds-panel-title">{uncertified ? 'These numbers are estimates, not certified' : 'Certified'}</div>
-              <div>{data.trust.note}</div>
+              <div>{plainStudy(data.trust.note)}</div>
               <ul className="ds-list">
-                <li>Opponent past your decision: {data.trust.villainContinuation}.</li>
-                <li>Dead cards: {data.trust.deadCards}.</li>
+                <li>Opponent past your decision: {plainStudy(data.trust.villainContinuation)}.</li>
+                <li>Dead cards: {plainStudy(data.trust.deadCards)}.</li>
                 <li>
                   Error bar {data.trust.seCoversRangeAxis
                     ? 'covers both the deal and your opponent\'s range.'

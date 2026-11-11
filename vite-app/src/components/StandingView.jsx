@@ -9,6 +9,8 @@ import {
 } from '../utils/standing-ui.js';
 import './standing.css';
 import MoneyField from './MoneyField.jsx';
+import { parseMoney } from '../utils/money.js';
+import { fmtSignedCents } from '../utils/backer-page.js';
 
 /**
  * Standing agreements (the Staking tab › Standing; docs/bankroll-merge.md Phase 8, on Phase 7's
@@ -92,7 +94,7 @@ function AddForm({ api, backers, formats, channels, onSaved, onCancel }) {
     );
   }
   return (
-    <form className="sd-form" onSubmit={(e) => { e.preventDefault(); save(); }} aria-label="New standing agreement">
+    <form className="sd-form sd-add-form" onSubmit={(e) => { e.preventDefault(); save(); }} aria-label="New standing agreement">
       {error && <p className="sd-text sd-text--err" role="alert">{error}</p>}
       <label className="staking-field"><span>Backer</span>
         <select value={f.backerId} onChange={(e) => put({ backerId: e.target.value })}>
@@ -268,7 +270,19 @@ function Payouts({ api, a, onChanged }) {
         <label className="staking-field"><span>Day</span><input type="date" value={f.paidOn} onChange={(e) => setF({ ...f, paidOn: e.target.value })} /></label>
         <label className="staking-field"><span>Note</span><input type="text" maxLength={200} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="Venmo, cash…" /></label>
       </div>
-      <p className="sd-text">It lowers {a.backer.name}&rsquo;s running total on their page and records a settlement in Main.</p>
+      {/* The note follows the direction and the amount (App improvements 277): a payment FROM the backer raises
+          their running total; it always said "lowers". */}
+      <p className="sd-text">{(() => {
+        const pm = f.amount ? parseMoney(String(f.amount)) : null;
+        const cents = pm && !pm.error ? Math.round(pm.value * 100) : 0;
+        const from = Number(a.runningCents) || 0;
+        const to = f.direction === 'in' ? from + cents : from - cents;
+        const name = a.backer.name;
+        if (!cents) return f.direction === 'in' ? `It raises ${name}’s running total on their page and records a settlement in Main.` : `It lowers ${name}’s running total on their page and records a settlement in Main.`;
+        return f.direction === 'in'
+          ? `${name} paid you ${fmtSignedCents(cents).replace(/^\+/, '')}: their running total goes from ${fmtSignedCents(from)} to ${fmtSignedCents(to)} on their page; a settlement goes into Main.`
+          : `${name}’s running total goes from ${fmtSignedCents(from)} to ${fmtSignedCents(to)} on their page; a settlement goes into Main.`;
+      })()}</p>
       <div className="sd-actions"><Btn w={9} tone="brand" disabled={busy} onClick={add}>{busy ? 'Saving…' : 'Record'}</Btn></div>
     </div>
   );

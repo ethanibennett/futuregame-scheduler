@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense, startTransition } from 'react';
+import useBackToClose from './hooks/useBackToClose.js';
+import { tabHash, viewFromHash } from './utils/tab-address.js';
+import TabErrorBoundary from './components/TabErrorBoundary.jsx';
 import useWordmarkFit from './hooks/useWordmarkFit.js';
 import { balancesFromSummary } from './utils/bankrolls.js';
 import AlternatingSubtitle from './components/AlternatingSubtitle.jsx';
@@ -8,7 +11,7 @@ import { API_URL } from './utils/api.js';
 import { parseDeepLink } from './utils/deep-links.js';
 import { resetPath } from './utils/reset-results.js';
 import { initialName } from './utils/names.js';
-import { haptic, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, formatSeasonLabel, registerRowTimezones, registerRowCurrencies, registerVenueCoords, getDebugNow, setDebugNow, normaliseDate } from './utils/utils.js';
+import { haptic, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, formatSeasonLabel, registerRowTimezones, registerRowCurrencies, registerVenueCoords, getDebugNow, setDebugNow, normaliseDate, parseTournamentTime } from './utils/utils.js';
 import { DNP_TYPE, withoutDnpMarkers } from './utils/didnt-play.js';
 import { decodeHand } from './utils/hand-shorthand.js';
 import { detectMilestones } from './utils/milestones.js';
@@ -240,7 +243,8 @@ function App() {
   const [authView, setAuthView] = useState('login');
   const [authBusy, setAuthBusy] = useState(false);       // Sign In / Create Account answered at once (UX pick 8)
   const [forgotEmail, setForgotEmail] = useState('');    // Sign In's address, carried to Forgot (UX pick 14)
-  const [currentView, _setCurrentView] = useState('dashboard');
+  // A tab's address opens it (App improvements 453): a reload, or a Home Screen relaunch, keeps the tab.
+  const [currentView, _setCurrentView] = useState(() => viewFromHash(window.location.hash) || 'dashboard');
   // The tab tapped, lit before its view renders (UX pick 46); cleared once the view is there.
   const [navPending, setNavPending] = useState(null);
   useEffect(() => { setNavPending(null); }, [currentView]);
@@ -257,7 +261,7 @@ function App() {
   const [batchId, setBatchId] = useState(null);
   const tapListenerArmed = useRef(false); // the push effect re-runs on token changes; arm once
   const [viewKey, setViewKey] = useState(0);
-  const [visitedTabs, setVisitedTabs] = useState(new Set(['dashboard']));
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set(['dashboard', viewFromHash(window.location.hash) || 'dashboard']));
   const scrollPositions = useRef({});
   // Desktop only (docs/desktop-layout.md): there My Schedule is not a view but the right pane of
   // the Schedule tab. Set by the desktop block below to what showing it takes; null on the phone.
@@ -299,6 +303,10 @@ function App() {
               const groupAbsTop = todayEl.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop;
               c.scrollTop = Math.max(0, groupAbsTop - filtersH);
             }
+          } else if (c) {
+            // A tab opened for the first time starts at its top (App improvements 471: Bankroll opened at its foot,
+            // in the scroll the Schedule left).
+            c.scrollTop = 0;
           }
           const panel = c && c.querySelector('.tab-panel.tab-active');
           if (panel) {
@@ -340,6 +348,8 @@ function App() {
   // Hands > Study: which tool is open (null is its list), and a request to open the drill on the replayer.
   const [studyTool, setStudyTool] = useState(null);
   const [drillAsk, setDrillAsk] = useState(false);
+  // Play a hand opened from Study: Study stays lit and the drill's Back returns there (App improvements 304).
+  const [drillFromStudy, setDrillFromStudy] = useState(false);
   // Set by the replayer's "Study this draw" button and consumed by
   // DrawStudyView on mount, mirroring pendingSolverSpot.
   const [pendingDrawSpot, setPendingDrawSpot] = useState(null);
@@ -444,6 +454,10 @@ function App() {
   // Groups
   const [myGroups, setMyGroups] = useState([]);
   const [activeGroupId, setActiveGroupId] = useState(null);
+  // The open group, for the live listeners (App improvements 351, 352): an event for another group must not land
+  // in the open one's feed.
+  const activeGroupRef = useRef(null);
+  activeGroupRef.current = activeGroupId;
   const [groupFeed, setGroupFeed] = useState([]);
   const [groupSchedule, setGroupSchedule] = useState([]);
 
@@ -451,6 +465,9 @@ function App() {
   const [notifications, setNotifications] = useState({ groupInvites: [], buddyRequests: [], acceptedBuddies: [] });
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  // Back closes these first (App improvements 454).
+  useBackToClose(showNotifications, () => setShowNotifications(false));
+  useBackToClose(showUserMenu, () => setShowUserMenu(false));
 
   // Milestones
   const [activeMilestone, setActiveMilestone] = useState(null);
@@ -558,14 +575,20 @@ function App() {
   const sharedPathShown = useRef(false);
   // Resolve a /h/<id> short link: fetch the stored hand, decode, and open it.
   // (The #h/ fragment above is decoded synchronously; this one needs the server.)
+  // A link that does not open says so (App improvements 155): it read "Loading…" for ever.
+  const [sharedHandError, setSharedHandError] = useState(false);
   useEffect(() => {
     if (!PATH_HAND_ID) return;
+    const failed = () => {
+      setSharedHandError(true);
+      if (token) toast.error("This hand link doesn't open. It may have been copied wrong, or the hand is no longer shared.");
+    };
     fetch(`${API_URL}/hand-links/${PATH_HAND_ID}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => {
-        if (!d || !d.shorthand) return;
+        if (!d || !d.shorthand) { failed(); return; }
         const decoded = decodeHand(d.shorthand);
-        if (!decoded) return;
+        if (!decoded) { failed(); return; }
         setSharedHandData(decoded);
         setSharedHandArrived(true);
         setCurrentView('hands');
@@ -575,13 +598,36 @@ function App() {
         // when the shared hand is closed — the effect below.
         sharedPathShown.current = true;
       })
-      .catch(() => {});
+      .catch(failed);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (sharedHandData || !sharedPathShown.current) return;
     if (/^\/h\//.test(window.location.pathname) && window.history.replaceState) window.history.replaceState(null, '', '/');
     sharedPathShown.current = false;
   }, [sharedHandData]);
+
+  // The tab's address follows the tab (App improvements 453): a tab pressed pushes a step, any other change replaces
+  // the address; Back and Forward move between tabs. Not while a reset or hand link is being read.
+  const navPushRef = useRef(false);
+  useEffect(() => {
+    const push = navPushRef.current;
+    navPushRef.current = false;
+    if (!token || RESET_MATCH || HAND_MATCH || PATH_HAND_ID) return;
+    const want = tabHash(currentView);
+    if (!want || window.location.hash === want) return;
+    try {
+      if (push) window.history.pushState({ tab: currentView }, '', want);
+      else window.history.replaceState({ tab: currentView }, '', want);
+    } catch (_) { /* a sandboxed frame */ }
+  }, [currentView, token]);
+  useEffect(() => {
+    const onPop = () => {
+      const v = viewFromHash(window.location.hash);
+      if (v) { setVisitedTabs(prev => (prev.has(v) ? prev : new Set([...prev, v]))); _setCurrentView(v); }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   // Deep links (§11.5): the pending one waits for an admin sign-in, then opens its view once.
   const [deepLink, setDeepLink] = useState(DEEP_LINK_AT_LOAD);
@@ -615,8 +661,10 @@ function App() {
   const guardedFetch = async (url, opts) => {
     const res = await fetch(url, opts);
     if (res.status === 401 || res.status === 403) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('username');
+      // The whole session goes, as Sign out does (App improvements 401: a guest's flag survived and the next real
+      // sign-in opened in guest mode).
+      ['token', 'username', 'avatar', 'isGuest', 'realName', 'sessionOnly'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); });
+      setIsGuest(false);
       setToken(null);
       setUsername('');
       return null;
@@ -646,6 +694,9 @@ function App() {
   };
 
   // ── Data fetching ──
+  /* The list's load (App improvements 5, 6): 'ok' or 'failed', with when it last loaded, so the Schedule tells
+     a failed request from an empty schedule and from filters, and a failed refresh keeps the list on screen. */
+  const [listLoad, setListLoad] = useState({ status: 'ok', at: null });
   const fetchTournaments = async () => {
     try {
       // Venue coordinates ride alongside: the location filters run the moment the list lands,
@@ -656,14 +707,25 @@ function App() {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res) return;
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
+      if (!Array.isArray(data)) throw new Error('not a list');
       registerVenueCoords(await coordsP);
       // Before render: every start time and zone label reads the zone the row declares, and every
       // amount the currency it declares.
       registerRowTimezones(Array.isArray(data) ? data : []);
       registerRowCurrencies(Array.isArray(data) ? data : []);
-      setTournaments(Array.isArray(data) ? data : []);
-    } catch (e) { console.error('Fetch tournaments:', e); toast.error('Failed to load tournaments'); }
+      setTournaments(data);
+      setListLoad({ status: 'ok', at: Date.now() });
+    } catch (e) {
+      console.error('Fetch tournaments:', e);
+      // Whatever is on screen stays; one toast says what happened.
+      setListLoad((l) => {
+        const at = l.at ? new Date(l.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
+        toast.error(at ? `Couldn't refresh. Showing the schedule from ${at}.` : "Couldn't load the schedule. Check the connection and try again.");
+        return { status: 'failed', at: l.at };
+      });
+    }
   };
 
   // The schedule every screen but Results shows: the no-venue Didn't play markers stay off the
@@ -683,6 +745,9 @@ function App() {
       });
       if (!res) return;
       const data = await res.json();
+      // The saved rows carry their own zone and currency: registered here too, so a plan keeps its times when
+      // the event list fails to load (App improvements 51).
+      if (Array.isArray(data)) { registerRowTimezones(data); registerRowCurrencies(data); }
       setMySchedule(Array.isArray(data) ? data : []);
     } catch (e) { console.error('Fetch schedule:', e); setMySchedule([]); }
   };
@@ -731,15 +796,21 @@ function App() {
     }
   }, [token]);
 
+  // A failed read is kept as "unknown" (App improvements 111): with it the home offers no Start Event, which
+  // would post a fresh starting stack over the real one and tell buddies and backers of a new entry.
+  const [updatesFailed, setUpdatesFailed] = useState(false);
   const fetchMyLiveUpdate = async () => {
     try {
       const res = await guardedFetch(`${API_URL}/live-updates/active`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res) return;
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
-      setMyActiveUpdates(Array.isArray(data) ? data : []);
-    } catch (e) { console.error('Fetch live updates:', e); }
+      if (!Array.isArray(data)) throw new Error('not a list');
+      setMyActiveUpdates(data);
+      setUpdatesFailed(false);
+    } catch (e) { console.error('Fetch live updates:', e); setUpdatesFailed(true); }
   };
 
   const postLiveUpdate = useCallback(async (data) => {
@@ -751,12 +822,15 @@ function App() {
         body: JSON.stringify(data)
       });
       if (res.ok) fetchMyLiveUpdate();
-    } catch (e) { console.error('Post live update:', e); }
+      // The panel waits on the answer and stays open on a failure (App improvements 101).
+      return { ok: res.ok, status: res.status };
+    } catch (e) { console.error('Post live update:', e); return { ok: false, status: 0 }; }
   }, [token]);
 
-  const deleteLiveUpdate = useCallback(async (updateId) => {
+  // { all: true } is Undo start: every update of that event goes, not only the latest (App improvements 112).
+  const deleteLiveUpdate = useCallback(async (updateId, { all = false } = {}) => {
     try {
-      const res = await fetch(`${API_URL}/live-update/${updateId}`, {
+      const res = await fetch(`${API_URL}/live-update/${updateId}${all ? '?all=1' : ''}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -803,8 +877,9 @@ function App() {
         // ifAbsent and a result is already there: nothing changed. The caller says so (To log's
         // toast; the Cashed form keeps what was typed and asks before replacing it).
         if (res.status === 409 && data.ifAbsent) { fetchTracking(); return { ok: false, status: 409, entryId: err.entryId }; }
-        setError(err.error || 'Failed to add tracking entry');
-        return { ok: false, status: res.status };
+        // Said where the player is, and the form keeps what was typed (App improvements 202).
+        toast.error(`Result not saved${err.error ? `: ${err.error}` : ''}.`);
+        return { ok: false, status: res.status, error: err.error || null };
       }
       const made = await res.json().catch(() => ({}));
       if (totalFieldSize) await saveFieldSize(data.tournamentId, totalFieldSize);
@@ -814,7 +889,7 @@ function App() {
         setActiveMilestone(milestones[0]);
       }
       return { ok: true, status: res.status, id: made && made.id };
-    } catch { setError('Failed to add tracking entry'); return { ok: false, status: 0 }; }
+    } catch { toast.error('Result not saved: the server did not answer.'); return { ok: false, status: 0 }; }
   }, [token, tournaments, mySchedule, trackingData]);
 
   // The home's To log "Didn't play" (true) and its Undo (false): user_schedules.not_played, so it
@@ -844,13 +919,14 @@ function App() {
         body: JSON.stringify(trackingPayload)
       });
       if (!res.ok) {
-        const err = await res.json();
-        setError(err.error || 'Failed to update tracking entry');
-        return;
+        const err = await res.json().catch(() => ({}));
+        toast.error(`Changes not saved${err.error ? `: ${err.error}` : ''}.`);
+        return { ok: false, status: res.status, error: err.error || null };
       }
       if (totalFieldSize && tournamentId) await saveFieldSize(tournamentId, totalFieldSize);
       fetchTracking();
-    } catch { setError('Failed to update tracking entry'); }
+      return { ok: true, status: res.status };
+    } catch { toast.error('Changes not saved: the server did not answer.'); return { ok: false, status: 0 }; }
   }, [token]);
 
   // Resolves true when deleted (the home's To log Undo checks it).
@@ -861,8 +937,9 @@ function App() {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchTracking();
+      if (!res.ok) toast.error('Not deleted. Try again.');
       return res.ok;
-    } catch { setError('Failed to delete tracking entry'); return false; }
+    } catch { toast.error('Not deleted: the server did not answer. Try again.'); return false; }
   }, [token]);
 
   // ── Sharing functions ──
@@ -919,7 +996,8 @@ function App() {
       const res = await fetch(`${API_URL}/groups/${groupId}/schedule`, { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) {
         const data = await res.json();
-        setGroupSchedule(Array.isArray(data) ? withoutDnpMarkers(data) : []);
+        // In start order, each in its room's zone (App improvements 358).
+        setGroupSchedule(Array.isArray(data) ? withoutDnpMarkers(data).slice().sort((a, b) => (parseTournamentTime(a) || 0) - (parseTournamentTime(b) || 0)) : []);
       }
     } catch {}
   };
@@ -948,7 +1026,8 @@ function App() {
     } catch {}
   };
 
-  const notifCount = notifications.groupInvites.length + notifications.buddyRequests.length + notifications.acceptedBuddies.length;
+  // Swap offers count too (App improvements 361: one arriving alone showed no badge).
+  const notifCount = notifications.groupInvites.length + notifications.buddyRequests.length + notifications.acceptedBuddies.length + (notifications.swapSuggestions || []).length;
 
   const handleGenerateShareToken = async () => {
     try {
@@ -1057,6 +1136,9 @@ function App() {
 
   // A session from /api/login or /api/register.
   const completeSignIn = (data, keepSignedIn) => {
+    // A real sign-in is never a guest's (App improvements 401).
+    localStorage.removeItem('isGuest');
+    setIsGuest(false);
     const store = keepSignedIn ? localStorage : sessionStorage;
     store.setItem('token', data.token);
     store.setItem('username', data.username);
@@ -1124,23 +1206,39 @@ function App() {
     setBuddyEvents({});
   };
 
+  // Any photo fits (App improvements 422): shrunk in the browser to a 256 x 256 JPEG (about 20 KB) before it is
+  // sent, under the server's 200 KB limit every phone camera photo went over; a refusal says why.
+  const shrinkPhoto = async (file) => {
+    try {
+      const bmp = await createImageBitmap(file);
+      const side = Math.min(bmp.width, bmp.height);
+      const c = document.createElement('canvas');
+      c.width = 256; c.height = 256;
+      c.getContext('2d').drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, 256, 256);
+      const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.8));
+      return blob || file;
+    } catch { return file; }
+  };
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const fd = new FormData();
-    fd.append('avatar', file);
+    fd.append('avatar', await shrinkPhoto(file), 'avatar.jpg');
     try {
       const res = await fetch(`${API_URL}/avatar`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` },
         body: fd
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setAvatar(data.avatar);
         localStorage.setItem('avatar', data.avatar);
+        toast.success('Photo updated');
+      } else {
+        toast.error(data.error || "That photo didn't upload. Try another.");
       }
-    } catch {}
+    } catch { toast.error("That photo didn't upload: no connection."); }
     e.target.value = '';
   };
 
@@ -1283,10 +1381,15 @@ function App() {
       if (isIn) toast.success(`Removed ${existing.event_name}`, { duration: 5000, action: { label: 'Undo', onClick: () => restoreRemoved(existing) } });
       fetchMySchedule();
     } catch {
+      // Put the card back and say which event and that nothing was saved, with Retry (App improvements 4).
       setMySchedule(before);
-      toast.error(isIn ? 'Could not remove it. Try again.' : 'Could not add it. Try again.');
+      const name = (existing && existing.event_name) || ((tournaments.find(x => x.id === tournamentId) || {}).event_name) || 'it';
+      toast.error(isIn ? `Couldn't remove ${name} from My Schedule. Nothing changed.` : `Couldn't add ${name} to My Schedule. Nothing was saved.`,
+        { duration: 6000, action: { label: 'Retry', onClick: () => toggleRef.current && toggleRef.current(tournamentId) } });
     }
   }, [token, mySchedule, isGuest, guestPicks, tournaments, toast, confirmFirstSave, restoreRemoved]);
+  const toggleRef = useRef(null);
+  toggleRef.current = toggleTournament;
 
   const addPersonalEvent = useCallback(async (date, type, notes) => {
     try {
@@ -1434,9 +1537,10 @@ function App() {
       es.addEventListener('group-message', (e) => {
         try {
           const d = JSON.parse(e.data);
+          if (d.groupId != null && String(d.groupId) !== String(activeGroupRef.current)) { fetchMyGroups(); return; }
           setGroupFeed(prev => [...prev, {
             id: Date.now(), type: 'message',
-            user_id: d.userId, username: d.username, avatar: d.avatar,
+            user_id: d.userId, username: d.username, real_name: d.realName || null, avatar: d.avatar,
             content: d.message, created_at: d.createdAt
           }]);
           fetchMyGroups();
@@ -1453,16 +1557,19 @@ function App() {
       es.addEventListener('group-live-update', (e) => {
         try {
           const d = JSON.parse(e.data);
+          // Only the open group's, once per player and moment: the server sends one per group the two share.
+          if (d.groupId != null && String(d.groupId) !== String(activeGroupRef.current)) return;
           if (!d.cleared) {
-            setGroupFeed(prev => [...prev, {
+            setGroupFeed(prev => (prev.some(x => x.type === 'live-update' && x.user_id === d.userId && x.created_at === d.updatedAt) ? prev : [...prev, {
               id: Date.now(), type: 'live-update',
               user_id: d.userId, username: d.username,
               content: null, liveData: d, created_at: d.updatedAt
-            }]);
+            }]));
           }
         } catch (err) { console.error('SSE group-live-update error:', err); }
       });
       es.addEventListener('group-invite', () => fetchNotifications());
+      es.addEventListener('swap-offer', () => fetchNotifications());
       es.addEventListener('group-invite-response', () => { fetchNotifications(); fetchMyGroups(); });
 
       // Tournament data live-sync: optimistically merge single-row edits
@@ -1882,6 +1989,10 @@ function App() {
   const [dkSideHands, setDkSideHands] = useState(null);
   const [dkSideCash, setDkSideCash] = useState(null);
   const [handsSplit, setHandsSplit] = useState(true);
+  /* Bankroll's second pane (Bankroll design 83-85): Overview's tables, a result or session beside the list,
+     Import's commit and check. The section asks for it (hooks/useBankrollSide.js); off, the tab is one pane. */
+  const [dkSideBankroll, setDkSideBankroll] = useState(null);
+  const [bankrollSplit, setBankrollSplit] = useState(false);
   // Closing an event animates like opening one, in reverse (owner, 2026-10-11): the details keep
   // rendering, marked closing, until their collapse ends, so My Schedule rises into their place
   // instead of jumping. Worked out during render (React's "previous value in state" pattern) so
@@ -2012,6 +2123,18 @@ function App() {
   // still being fetched, so show the replayer (with a loading state) rather
   // than the login screen while it resolves.
   if (!token && (PATH_HAND_ID || HAND_SHORTHAND || sharedHandData)) {
+    if (sharedHandError && !sharedHandData) {
+      return (
+        <div className="app-shell hand-link-dead" style={{ height: '100%' }}>
+          <div className="hand-link-dead-box">
+            <div className="hand-link-dead-mark">futurega.me</div>
+            <h1 className="hand-link-dead-title">This hand link doesn&rsquo;t open</h1>
+            <p className="hand-link-dead-body">It may have been copied wrong, or the hand is no longer shared.</p>
+            <a className="btn btn-primary hand-link-dead-btn" href="/">Open futurega.me</a>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="app-shell" style={{ height: '100%' }}>
         {sharedHandData
@@ -2036,6 +2159,8 @@ function App() {
     }
     return <AuthScreen
       onSubmit={handleLogin}
+      // Each form opens clean (App improvements 404: Sign In's error followed onto Create Account).
+      onModeChange={() => { setError(''); setSuccess(''); }}
       error={error}
       success={success}
       theme={theme}
@@ -2061,9 +2186,12 @@ function App() {
 
             {/* Tab panels: visited tabs stay mounted, only active is visible */}
             <div className={'tab-panel' + (currentView === 'dashboard' ? ' tab-active' : '')} data-tab="dashboard" style={{display: currentView === 'dashboard' ? undefined : 'none', height: currentView === 'dashboard' ? '100%' : undefined}}>
+            <TabErrorBoundary name="Home" onSchedule={() => setCurrentView('tournaments')}>
             {visitedTabs.has('dashboard') && (!dataLoaded ? <SkeletonDashboard /> :
               <DashboardView
                 key={debugTimeKey}
+                updatesFailed={updatesFailed}
+                onRetryUpdates={fetchMyLiveUpdate}
                 demoStates={isAdmin && demoStates}
                 demoCard={isAdmin && /[?&]democard(=|&|$)/.test(window.location.search)}
                 onOpenInSchedule={(id) => { setScheduleFocusId(id); setCurrentView('schedule'); }}
@@ -2103,13 +2231,17 @@ function App() {
                 }}
               />
             )}
+            </TabErrorBoundary>
             </div>
 
             <div className={'tab-panel' + (currentView === 'tournaments' ? ' tab-active' : '')} data-tab="tournaments" style={{display: currentView === 'tournaments' ? undefined : 'none', height: currentView === 'tournaments' ? '100%' : undefined}}>
+            <TabErrorBoundary name="Schedule" onSchedule={() => setCurrentView('tournaments')}>
             {visitedTabs.has('tournaments') && (!dataLoaded ? <SkeletonSchedule /> :
               <TournamentsView
                 key={debugTimeKey}
                 tournaments={tournaments}
+                listLoad={listLoad}
+                onRetryList={fetchTournaments}
                 mySchedule={scheduleShown}
                 onToggle={toggleTournament}
                 onSetCondition={setCondition}
@@ -2129,9 +2261,11 @@ function App() {
                 selectedEventId={isDesktop ? dkSelectedId : undefined}
               />
             )}
+            </TabErrorBoundary>
             </div>
 
             <div className={'tab-panel' + (currentView === 'schedule' ? ' tab-active' : '')} data-tab="schedule" style={{display: currentView === 'schedule' ? undefined : 'none', height: currentView === 'schedule' ? '100%' : undefined}}>
+            <TabErrorBoundary name="My schedule" onSchedule={() => setCurrentView('tournaments')}>
             {visitedTabs.has('schedule') && (!dataLoaded ? <SkeletonSchedule /> :
               <ScheduleView
                 key={debugTimeKey}
@@ -2159,9 +2293,11 @@ function App() {
                 onClearOverrides={canEditEvents ? clearTournamentOverrides : undefined}
               />
             )}
+            </TabErrorBoundary>
             </div>
 
             <div className={'tab-panel' + (currentView === 'calendar' ? ' tab-active' : '')} data-tab="calendar" style={{display: currentView === 'calendar' ? undefined : 'none', height: currentView === 'calendar' ? '100%' : undefined}}>
+            <TabErrorBoundary name="Calendar" onSchedule={() => setCurrentView('tournaments')}>
             {visitedTabs.has('calendar') && (
               <CalendarView
                 key={debugTimeKey}
@@ -2185,11 +2321,17 @@ function App() {
                 onSearchConsumed={clearCalendarFind}
               />
             )}
+            </TabErrorBoundary>
             </div>
 
             <div className={'tab-panel' + (currentView === 'tracking' ? ' tab-active' : '')} data-tab="tracking" style={{display: currentView === 'tracking' ? undefined : 'none', height: currentView === 'tracking' ? '100%' : undefined}}>
+            <TabErrorBoundary name="Bankroll" onSchedule={() => setCurrentView('tournaments')}>
             {visitedTabs.has('tracking') && (
               <TrackingView
+                // #tax and #bankroll/<tab> open the page they name (App improvements 456: the prop was never passed).
+                deepLink={isAdmin ? deepLink : null}
+                isGuest={isGuest}
+                onGuestRegister={() => { handleLogout(); setAuthView('register'); }}
                 trackingData={trackingData}
                 tournaments={tournaments}
                 mySchedule={mySchedule}
@@ -2209,11 +2351,15 @@ function App() {
                 onSetPlayed={setNotPlayed}
                 onAddDnp={(date, note) => addPersonalEvent(date, DNP_TYPE, note)}
                 onDeleteDnp={toggleTournament}
+                sidePane={isDesktop ? dkSideBankroll : null}
+                onSplitChange={setBankrollSplit}
               />
             )}
+            </TabErrorBoundary>
             </div>
 
             <div className={'tab-panel' + (currentView === 'hands' ? ' tab-active' : '')} data-tab="hands" style={{display: currentView === 'hands' ? undefined : 'none', height: currentView === 'hands' ? '100%' : undefined}}>
+            <TabErrorBoundary name="Hands" onSchedule={() => setCurrentView('tournaments')}>
             {visitedTabs.has('hands') && (
                 <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
                     {/* The tool selector (Replayer / Solver / …) now lives as a second
@@ -2224,18 +2370,21 @@ function App() {
                         ? <HandsScanner />
                         : handsTool === 'study' && isAdmin
                         ? <Suspense fallback={<LazyFallback />}><StudyHub tool={studyTool} onTool={setStudyTool} fallback={<LazyFallback />}
-                            onPlayHand={() => { setDrillAsk(true); setHandsTool('replayer'); }}
+                            onPlayHand={() => { setDrillAsk(true); setDrillFromStudy(true); setHandsTool('replayer'); }}
                             pendingSolverSpot={pendingSolverSpot} onConsumeSolverSpot={() => setPendingSolverSpot(null)}
                             pendingDrawSpot={pendingDrawSpot} onConsumeDrawSpot={() => setPendingDrawSpot(null)} /></Suspense>
-                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setStudyTool('solve'); setHandsTool('study'); }) : undefined} onStudyDraw={isAdmin ? (spot => { setPendingDrawSpot(spot); setStudyTool('draw'); setHandsTool('study'); }) : undefined} quickAdd={isAdmin} drillEnabled={isAdmin} drillAsk={drillAsk} onDrillAsked={() => setDrillAsk(false)} schedule={mySchedule} updates={myActiveUpdates} sidePane={isDesktop ? dkSideHands : null} onSplitChange={setHandsSplit} /></Suspense>}
+                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setStudyTool('solve'); setHandsTool('study'); }) : undefined} onStudyDraw={isAdmin ? (spot => { setPendingDrawSpot(spot); setStudyTool('draw'); setHandsTool('study'); }) : undefined} quickAdd={isAdmin} drillEnabled={isAdmin} drillAsk={drillAsk} onDrillAsked={() => setDrillAsk(false)} onDrillBack={drillFromStudy ? (() => { setDrillFromStudy(false); setHandsTool('study'); }) : null} schedule={mySchedule} updates={myActiveUpdates} sidePane={isDesktop ? dkSideHands : null} onSplitChange={setHandsSplit} active={currentView === 'hands'} /></Suspense>}
                     </div>
                   </div>
             )}
+            </TabErrorBoundary>
             </div>
 
             <div className={'tab-panel' + (currentView === 'settings' ? ' tab-active' : '')} data-tab="settings" style={{display: currentView === 'settings' ? undefined : 'none', height: currentView === 'settings' ? '100%' : undefined}}>
+            <TabErrorBoundary name="Settings" onSchedule={() => setCurrentView('tournaments')}>
             {visitedTabs.has('settings') && (
               <SettingsView
+                onGuestExit={(view) => { handleLogout(); setAuthView(view); }}
                 username={username}
                 avatar={avatar}
                 realName={realName}
@@ -2268,15 +2417,19 @@ function App() {
                 onEditName={isGuest ? undefined : () => setEditingName(true)}
               />
             )}
+            </TabErrorBoundary>
             </div>
 
             <div className={'tab-panel' + (currentView === 'admin' ? ' tab-active' : '')} data-tab="admin" style={{display: currentView === 'admin' ? undefined : 'none', height: currentView === 'admin' ? '100%' : undefined}}>
+            <TabErrorBoundary name="Admin" onSchedule={() => setCurrentView('tournaments')}>
             {visitedTabs.has('admin') && isAdmin && (
               <Suspense fallback={<LazyFallback />}><AdminView token={token} onNavigate={(v) => setCurrentView(v)} /></Suspense>
             )}
+            </TabErrorBoundary>
             </div>
 
             <div className={'tab-panel' + (currentView === 'batches' ? ' tab-active' : '')} data-tab="batches" style={{display: currentView === 'batches' ? undefined : 'none', height: currentView === 'batches' ? '100%' : undefined}}>
+            <TabErrorBoundary name="New Events" onSchedule={() => setCurrentView('tournaments')}>
             {visitedTabs.has('batches') && isAdmin && (
               <Suspense fallback={<LazyFallback />}>
                 <AdminBatchesView
@@ -2293,15 +2446,19 @@ function App() {
                 />
               </Suspense>
             )}
+            </TabErrorBoundary>
             </div>
 
             <div className={'tab-panel' + (currentView === 'cash' ? ' tab-active' : '')} data-tab="cash" style={{display: currentView === 'cash' ? undefined : 'none', height: currentView === 'cash' ? '100%' : undefined}}>
+            <TabErrorBoundary name="Cash" onSchedule={() => setCurrentView('tournaments')}>
             {visitedTabs.has('cash') && isAdmin && (
               <Suspense fallback={<LazyFallback />}><CashView token={token} onModeChange={setCashMode} sidePane={isDesktop ? dkSideCash : null} /></Suspense>
             )}
+            </TabErrorBoundary>
             </div>
 
             <div className={'tab-panel' + (currentView === 'staking' ? ' tab-active' : '')} data-tab="staking" style={{display: currentView === 'staking' ? undefined : 'none', height: currentView === 'staking' ? '100%' : undefined}}>
+            <TabErrorBoundary name="Staking" onSchedule={() => setCurrentView('tournaments')}>
             {visitedTabs.has('staking') && (
               isAdmin
                 ? <Suspense fallback={<LazyFallback />}><StakingView token={token} tournaments={tournaments} mySchedule={scheduleShown} deepLink={isAdmin ? deepLink : null} /></Suspense>
@@ -2310,9 +2467,11 @@ function App() {
                     <p style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.325)',margin:0}}>Coming Soon</p>
                   </div>
             )}
+            </TabErrorBoundary>
             </div>
 
             <div className={'tab-panel' + (currentView === 'social' ? ' tab-active' : '')} data-tab="social" style={{display: currentView === 'social' ? undefined : 'none', height: currentView === 'social' ? '100%' : undefined}}>
+            <TabErrorBoundary name="Social" onSchedule={() => setCurrentView('tournaments')}>
             {visitedTabs.has('social') && (
               <SocialView
                 pendingIncoming={pendingIncoming}
@@ -2334,6 +2493,7 @@ function App() {
                 fetchShareBuddies={fetchShareBuddies}
               />
             )}
+            </TabErrorBoundary>
             </div>
 
             {swapModalData && (
@@ -2363,13 +2523,15 @@ function App() {
             <div className="hands-tool-row" style={{display:'flex',gap:'var(--gu)',overflowX:'auto',whiteSpace:'nowrap',background:'var(--bg)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
               {/* Each pill a whole-g box (its width in g beside its label), the label centred in it. */}
               {[['replayer','Replayer',6],['study','Study',5],['scanner','Scanner',6]].map(([id,lbl,w]) => (
-                <button key={id} className="ctl" onClick={() => { if (id === 'study') setStudyTool(null); setHandsTool(id); }}
+                (() => { const lit = (drillFromStudy && handsTool === 'replayer' ? 'study' : handsTool) === id; return (
+                <button key={id} className="ctl" aria-pressed={lit} onClick={() => { setDrillFromStudy(false); if (id === 'study') setStudyTool(null); setHandsTool(id); }}
                   style={{flex:'0 0 auto',width:`calc(var(--gu) * ${w})`,height:'calc(var(--subrow) * 3)',boxSizing:'border-box',padding:0,borderRadius:'var(--radius)',fontFamily:'inherit',fontSize:'calc(var(--gu) * 1.031)',fontWeight:'var(--fw-bold)',cursor:'pointer',
-                    border:'var(--bw-hair) solid ' + (handsTool === id ? 'var(--accent)' : 'var(--border)'),
-                    background: handsTool === id ? 'var(--accent)' : 'transparent',
-                    color: handsTool === id ? '#fff' : 'var(--text-muted)'}}>
+                    border:'var(--bw-hair) solid ' + (lit ? 'var(--accent)' : 'var(--border)'),
+                    background: lit ? 'var(--accent)' : 'transparent',
+                    color: lit ? '#fff' : 'var(--text-muted)'}}>
                   {lbl}
                 </button>
+                ); })()
               ))}
             </div>
           )}
@@ -2467,9 +2629,11 @@ function App() {
   const handsOnReplayer = !(isAdmin && (handsTool === 'scanner' || handsTool === 'study'));
   const dkSideTab = !isDesktop ? null
     : currentView === 'hands' && handsOnReplayer && handsSplit ? 'hands'
-    : currentView === 'cash' && isAdmin ? 'cash' : null;
+    : currentView === 'cash' && isAdmin ? 'cash'
+    : currentView === 'tracking' && bankrollSplit ? 'bankroll' : null;
   const onNavChange = (v) => {
     if (v === currentView && v === 'tournaments') { landListOnToday(); return; }
+    navPushRef.current = true;   // a tab pressed is a step Back can undo (453)
     setNavPending(v);
     startTransition(() => setCurrentView(v));
   };
@@ -2674,6 +2838,7 @@ function App() {
             <div className="dk-pane dk-pane-side" style={dkSideTab ? undefined : { display: 'none' }}>
               <div className="dk-side-host" ref={setDkSideHands} style={dkSideTab === 'hands' ? undefined : { display: 'none' }} />
               <div className="dk-side-host" ref={setDkSideCash} style={dkSideTab === 'cash' ? undefined : { display: 'none' }} />
+              <div className="dk-side-host dk-scroll dk-side-bankroll" ref={setDkSideBankroll} style={dkSideTab === 'bankroll' ? undefined : { display: 'none' }} />
             </div>
           )}
           {/* One right pane, two blocks (owner, 2026-10-10: My Schedule goes UNDER the event details,

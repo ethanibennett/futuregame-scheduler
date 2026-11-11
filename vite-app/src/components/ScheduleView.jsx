@@ -8,7 +8,7 @@ import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
 const ScheduleExportModal = lazy(() => import('./ScheduleExportModal.jsx'));
 import { FirstRun } from './EmptyState.jsx';
 import ScheduleSwitch from './ScheduleSwitch.jsx';
-import { normaliseDate, getToday, parseTournamentTime, detectConflicts, parseLateRegEnd, extractConditions, getVenueInfo, getVenueCoords } from '../utils/utils.js';
+import { normaliseDate, getToday, parseTournamentTime, detectConflicts, lateRegCloseOf, extractConditions, getVenueInfo, getVenueCoords } from '../utils/utils.js';
 import { suggestTravelDay } from '../utils/travel-suggest.js';
 import { detectOverlaps } from '../utils/overlaps.js';
 import { clockAskable } from '../utils/live-clocks.js';
@@ -144,10 +144,42 @@ export default function ScheduleView({
   const scroller = () => (rootRef.current && rootRef.current.closest('.content-area, .dk-scroll')) || document.querySelector('.content-area');
   const displayName = useDisplayName();
   const { conflicts, expectedConflicts } = useMemo(() => detectConflicts(mySchedule), [mySchedule]);
+  // The clash line's days ("12, 14 and 20 Nov") and the rule that colours the clashing starts (57).
+  const clashDays = useMemo(() => {
+    const days = [...new Set((mySchedule || []).filter(t => conflicts.has(t.id)).map(t => normaliseDate(t.date)).filter(Boolean))].sort();
+    if (!days.length) return '';
+    const fmt = (d) => { const x = new Date(d + 'T12:00:00'); return { day: x.getDate(), mon: x.toLocaleDateString('en-US', { month: 'short' }) }; };
+    const parts = days.slice(0, 6).map(fmt);
+    const sameMonth = parts.every(p => p.mon === parts[0].mon);
+    const list = sameMonth ? parts.map(p => String(p.day)) : parts.map(p => `${p.day} ${p.mon}`);
+    const joined = list.length > 1 ? list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1] : list[0];
+    return (sameMonth ? `${joined} ${parts[0].mon}` : joined) + (days.length > 6 ? ' …' : '');
+  }, [mySchedule, conflicts]);
+  const clashCss = useMemo(() => (conflicts.size
+    ? [...conflicts].map(id => `.schedule-clash-scope [data-tid="${String(id).replace(/"/g, '')}"] .cal-event-time`).join(',') + '{color:var(--warn)}'
+    : ''), [conflicts]);
+  // Desktop's empty My Schedule (App improvements 55): its action brings the list beside it to today and puts
+  // focus on today's first card (on the phone it opens the Schedule as before).
+  const showTodayInList = useCallback(() => {
+    const day = document.querySelector('.dk-pane-main [data-today-scroll]') || document.querySelector('[data-today-scroll]');
+    if (!day) return;
+    day.scrollIntoView({ block: 'start' });
+    const bar = day.querySelector('.cal-event-bar');
+    if (bar) bar.focus({ preventScroll: true });
+  }, []);
+  const nextClash = useCallback(() => {
+    const rows = [...document.querySelectorAll('.schedule-clash-scope [data-tid]')].filter(el => conflicts.has(Number(el.getAttribute('data-tid'))) || conflicts.has(el.getAttribute('data-tid')));
+    if (!rows.length) return;
+    const head = schedHeaderRef.current ? schedHeaderRef.current.getBoundingClientRect().bottom : 0;
+    const next = rows.find(el => el.getBoundingClientRect().top > head + 2) || rows[0];
+    next.scrollIntoView({ block: 'start' });
+    const scroller = next.closest('.dk-scroll, .content-area');
+    if (scroller && schedHeaderRef.current) scroller.scrollTop -= schedHeaderRef.current.getBoundingClientRect().height;
+  }, [conflicts]);
   // Events that start while an earlier one of yours is still in late reg (utils/overlaps.js; UX pick 21).
   const overlaps = useMemo(() => detectOverlaps(mySchedule, {
     startOf: parseTournamentTime,
-    regCloseOf: (t) => parseLateRegEnd(t.late_reg_end, t.date),
+    regCloseOf: (t) => lateRegCloseOf(t),
     hasConditions: (t) => extractConditions(t).length > 0,
   }), [mySchedule]);
   const scheduleIds = useMemo(() => new Set(mySchedule.map(t => t.id)), [mySchedule]);
@@ -175,7 +207,15 @@ export default function ScheduleView({
   // declaration — it has to, because its dep array reads `sorted.length`,
   // which would be a TDZ ReferenceError if read here.)
   const [visibleCount, setVisibleCount] = useState(3);
-  useLayoutEffect(() => { setVisibleCount(3); setActivatedIds(new Set()); }, [mySchedule]);
+  // Only a schedule arriving (empty to rows) starts the progressive render again. An add or a remove replaced
+  // the rows and reset it to 3 every time, so the pane fell to a column of date pills and grew back, the day
+  // on screen jumping for 300 ms (App improvements 56); the rows are keyed by id and update in place.
+  const hadRows = useRef(false);
+  useLayoutEffect(() => {
+    const has = mySchedule.length > 0;
+    if (has && !hadRows.current) { setVisibleCount(3); setActivatedIds(new Set()); }
+    hadRows.current = has;
+  }, [mySchedule]);
 
   useEffect(() => {
     const measure = () => {
@@ -384,13 +424,13 @@ export default function ScheduleView({
           icon="star"
           title="Build your schedule"
           body={onSelectEvent
-            ? 'Your first event goes here. Add the selected event above, or pick another from the list.'
+            ? 'Pick an event in the list on the left and press Add. Your events collect here by date, with travel days in between.'
             : 'Open any event on the Schedule tab and tap Add. Your events collect here by date, with travel days between.'}
-          actionLabel={onSelectEvent ? undefined : 'Open the Schedule'}
-          onAction={onNavigate && !onSelectEvent ? () => onNavigate('tournaments') : undefined}
+          actionLabel={onSelectEvent ? "Show today's events" : 'Open the Schedule'}
+          onAction={onSelectEvent ? showTodayInList : (onNavigate ? () => onNavigate('tournaments') : undefined)}
         />
       ) : (
-      <div>
+      <div className="schedule-clash-scope">
       <div className="schedule-sticky-header" ref={schedHeaderRef}>
         {onSwitchView && <ScheduleSwitch view="schedule" mineCount={mineCount} onChange={onSwitchView} />}
         <div className="section-header" style={{display:'flex',alignItems:'center',gap:'var(--gu)',marginBottom:0}}>
@@ -427,6 +467,15 @@ export default function ScheduleView({
             <span className="kind-toggle-label">Export</span>
           </button>
         </div>
+        {/* The clashes where they are seen (App improvements 57): in the sticky header, under the title, with
+            their days and a Next that scrolls to the next one. It sat above the past days, out of view. */}
+        {conflicts.size > 0 && (
+          <div className="sched-clash" role="status">
+            <Icon.warn />
+            <span className="sched-clash-text">{conflicts.size} event{conflicts.size !== 1 ? 's' : ''} clash · {clashDays}</span>
+            <button type="button" className="kind-toggle sched-clash-next" onClick={nextClash}><span className="kind-toggle-label">Next</span></button>
+          </div>
+        )}
       </div>
       {onAddPersonalEvent && showTravelPicker && createPortal(
         // Rendered into document.body so opening the picker doesn't grow the
@@ -457,11 +506,8 @@ export default function ScheduleView({
         </div>,
         document.body
       )}
-      {conflicts.size > 0 && (
-        <div className="alert alert-error" style={{marginBottom:'var(--subrow)'}}>
-          <Icon.warn /> {conflicts.size} event{conflicts.size !== 1 ? 's have' : ' has'} a time conflict
-        </div>
-      )}
+      {/* The clashing cards' start times in --warn (App improvements 57), by id, so the rows' memo is untouched. */}
+      {clashCss && <style>{clashCss}</style>}
       {overlaps.size > 0 && (
         <div className="overlap-summary" role="status">
           <Icon.warn /> {overlaps.size} event{overlaps.size === 1 ? ' starts' : 's start'} while one of yours is still in late reg

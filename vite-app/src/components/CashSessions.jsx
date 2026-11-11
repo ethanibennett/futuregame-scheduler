@@ -20,6 +20,8 @@
 // lib/cash-sessions.js. Styles: CashSessions.css (every box whole g x whole r, baselines on r).
 import { useLineStyle } from '../utils/line-style.js';
 import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useBankrollSide } from '../hooks/useBankrollSide.js';
 import { API_URL } from '../utils/api.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { CURRENCY_CONFIG, formatCurrencyAmount } from '../utils/utils.js';
@@ -101,10 +103,12 @@ const Notes = (props) => <textarea maxLength={500} rows={2} placeholder="Optiona
 
 // ── A line chart: the cumulative graph (x = session) and a session's swing (x = time) ────────────
 const VW = 1000, VH = 300;
-function Chart({ points, x = 't', className = '', label, empty }) {
+function Chart({ points, x = 't', className = '', label, empty, noSeries = false }) {
   const id = 'cs' + useId().replace(/[^\w-]/g, '');
   const [lineStyle] = useLineStyle();
-  const p = chartPath(points, { W: VW, H: VH, x, style: lineStyle });
+  // noSeries: nothing known yet (a live session before its first stack update, App improvements 258). A flat
+  // line read as "you are even"; the zero line and the sentence say how to get a graph.
+  const p = noSeries ? null : chartPath(points, { W: VW, H: VH, x, style: lineStyle });
   // Clip margins reach past the viewBox so round caps at the ends are not cut.
   const sides = p ? [['is-pos', -VH, p.zeroY + VH], ['is-neg', p.zeroY, VH * 2 - p.zeroY]] : [];
   return (
@@ -266,7 +270,7 @@ function LiveScreen({ session, stacks, skew, busy, onStack, onUnstack, onRebuy, 
         <div className="cs-tile"><span className="cs-t cs-tile-label">Up / down</span><span className={'cs-t cs-tile-value' + tone(sw.last ? sw.last.result : 0)}>{sw.last ? signed(sw.last.result, cur) : '—'}</span></div>
       </div>
       <Chart className="cs-chart--live" points={swingSeries(session, stacks, now)} label="Stack over the session"
-        empty={stacks.length ? null : 'Update your stack to draw the swing'} />
+        noSeries={!stacks.length} empty={stacks.length ? null : 'Update your stack to draw the swing'} />
 
       {panel === null && (
         <div className="cs-entry-block">
@@ -455,7 +459,7 @@ function SessionsGraph({ sessions }) {
 }
 
 // Exported for Bankroll › Logs › All (ResultsAll.jsx), which lists sessions among the results.
-export function SessionRow({ s, onOpen }) {
+export function SessionRow({ s, onOpen, selected = false }) {
   const cur = s.currency;
   const hourly = sessionHourly(s);
   const game = sessionGame(s) || 'Cash';
@@ -463,7 +467,7 @@ export function SessionRow({ s, onOpen }) {
   // session's own page (owner, 2026-10-17). One line, cut with an ellipsis (tracking-cards.css).
   const stage = (s.subtitle || '').trim();
   return (
-    <div className="cal-event-row tr-card cs-card" data-cash-row={s.id} role="button" tabIndex={0} onClick={onOpen}
+    <div className={'cal-event-row tr-card cs-card' + (selected ? ' is-selected' : '')} data-cash-row={s.id} role="button" tabIndex={0} onClick={onOpen} aria-pressed={selected || undefined}
       aria-label={`${game}${s.room ? ', ' + s.room : ''}, ${fmtDay(s.session_date)}: ${signed(s.net, cur)}`}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}>
       <CardStrip room={s.room || ''} open={false} onToggle={() => {}} />
@@ -488,7 +492,7 @@ export function SessionRow({ s, onOpen }) {
   );
 }
 
-function SessionList({ sessions, stats, onOpen }) {
+function SessionList({ sessions, stats, onOpen, selectedId = null }) {
   const months = groupByMonth(sessions);
   const byMonth = new Map(((stats && stats.byMonth) || []).map((m) => [m.key, m]));
   const cur = stats ? stats.currency : (sessions[0] && sessions[0].currency) || 'USD';
@@ -508,8 +512,8 @@ function SessionList({ sessions, stats, onOpen }) {
             {m.sessions.map((s) => (lines
               ? <ResultLine key={s.id} date={fmtDay(s.session_date)} room={s.room || ''} game={sessionGame(s) || 'Cash'} tone={Number(s.net) || 0}
                   played={money(s.buy_in, s.currency)} amount={signed(s.net, s.currency)}
-                  label={`${sessionGame(s) || 'Cash'}, ${fmtDay(s.session_date)}: ${signed(s.net, s.currency)}`} onOpen={() => onOpen(s.id)} />
-              : <SessionRow key={s.id} s={s} onOpen={() => onOpen(s.id)} />))}
+                  label={`${sessionGame(s) || 'Cash'}, ${fmtDay(s.session_date)}: ${signed(s.net, s.currency)}`} onOpen={() => onOpen(s.id)} selected={selectedId === s.id} />
+              : <SessionRow key={s.id} s={s} onOpen={() => onOpen(s.id)} selected={selectedId === s.id} />))}
           </div>
         );
       })}
@@ -603,6 +607,10 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
   const [busy, setBusy] = useState(false);
   const [venues, setVenues] = useState([]);
   const [endAt, setEndAt] = useState(null); // the home's Cash out: when it asked
+  // Desktop's two panes (Bankroll design 84): the sessions on the left, the chosen session and the totals on
+  // the right. On the phone, and without a pane, a session opens as its own screen as before.
+  const side = useBankrollSide(true);
+  const [selId, setSelId] = useState(null);
 
   const call = useCallback(async (method, path, body) => {
     const res = await fetch(`${API_URL}/cash-sessions${path}`, {
@@ -660,17 +668,23 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
   const detailId = shown && shown.detail ? shown.detail : null;
   const editId = shown && shown.edit ? shown.edit : null;
   const current = detailId || editId ? sessions.find((s) => s.id === (detailId || editId)) : null;
+  const paneSel = side && selId != null ? sessions.find((s) => s.id === selId && !s.live) || null : null;
+  const stacksId = detailId || (paneSel ? paneSel.id : null);
 
   // A session's stack updates, read when its detail opens.
   useEffect(() => {
-    if (!detailId) return undefined;
+    if (!stacksId) return undefined;
     let on = true;
-    call('GET', `/${detailId}`).then((r) => { if (on) setDetailStacks({ id: detailId, stacks: r.stacks || [] }); }).catch(() => {});
+    call('GET', `/${stacksId}`).then((r) => { if (on) setDetailStacks({ id: stacksId, stacks: r.stacks || [] }); }).catch(() => {});
     return () => { on = false; };
-  }, [detailId, call]);
+  }, [stacksId, call]);
   const stacksOf = (id) => (detailStacks.id === id ? detailStacks.stacks : []);
 
-  const go = (next) => { setScreen(next); setConfirmDelete(false); setEndAt(null); };
+  // With the pane, a session's page is the right pane: a detail screen asked for becomes the list and that session chosen.
+  const go = (next) => {
+    if (side && next && next.detail) { setSelId(next.detail); next = 'list'; }
+    setScreen(next); setConfirmDelete(false); setEndAt(null);
+  };
   useEffect(() => {
     if (!intent) return;
     const k = intent.kind;
@@ -723,7 +737,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
     if (id) { await call('PUT', `/${id}`, body); go({ detail: id }); }
     else { const r = await call('POST', '', body); go({ detail: r.session.id }); }
   }, id ? 'Saved' : 'Session added');
-  const remove = (id) => act(async () => { await call('DELETE', `/${id}`); go('list'); }, 'Deleted');
+  const remove = (id) => act(async () => { await call('DELETE', `/${id}`); go('list'); if (selId === id) setSelId(null); }, 'Deleted');
   const exportCsv = async () => {
     try {
       const res = await fetch(`${API_URL}/cash-sessions/export.csv${q}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -734,6 +748,18 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
   };
 
   const back = <Btn w={9} h={4} onClick={() => go('list')}>‹ Sessions</Btn>;
+  const totals = (
+    <>
+      <Summary stats={stats} />
+      <SessionsGraph sessions={ended} />
+      {stats && stats.sessions > 0 && (
+        <button type="button" className="an-cell an-launch cs-stats-launch" onClick={() => setTab('stats')}>
+          <span className="an-launch-name snap-g ctl-cap">Stats</span>
+          <span className="an-launch-go" aria-hidden="true">Stakes, games, rooms, bb/hr ›</span>
+        </button>
+      )}
+    </>
+  );
   let head, body, focus = true;
   // The floating + (BankrollFab) steps aside on the screens it leads to or would sit over: the live
   // screen, which has the tab to itself, and the add, start and edit forms.
@@ -788,14 +814,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
     );
     body = (
       <>
-        <Summary stats={stats} />
-        <SessionsGraph sessions={ended} />
-        {stats && stats.sessions > 0 && (
-          <button type="button" className="an-cell an-launch cs-stats-launch" onClick={() => setTab('stats')}>
-            <span className="an-launch-name snap-g ctl-cap">Stats</span>
-            <span className="an-launch-go" aria-hidden="true">Stakes, games, rooms, bb/hr ›</span>
-          </button>
-        )}
+        {!side && totals}
         {live && <LiveRow session={live} skew={skew} onOpen={() => go('live')} />}
         {/* Loading holds the list's shape (Bankroll design 46, 95); a failed load says so with Try again (97);
             the empty block only once the answer says there is nothing (45, 96). Start session is above, so
@@ -812,7 +831,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
           <FirstRun block icon="cards" title={`No cash sessions${bk.selected !== 'all' ? ' in this bankroll' : ''} yet`}
             body="Start the clock at the table, or add a past session with the button beside it." />
         )}
-        {ended.length > 0 && <SessionList sessions={ended} stats={stats} onOpen={(id) => go({ detail: id })} />}
+        {ended.length > 0 && <SessionList sessions={ended} stats={stats} onOpen={(id) => go({ detail: id })} selectedId={paneSel ? paneSel.id : null} />}
       </>
     );
   }
@@ -821,6 +840,28 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
     <div className={'cs-view' + (focus ? ' is-focus' : '')}>
       <div className={'cs-head' + (listHead ? ' tr-head-row' : '')}>{head}</div>
       {body}
+      {side && createPortal(
+        <div className="bk-side cs-view">
+          {paneSel && (
+            <section className="bk-side-sec" aria-labelledby="cs-side-sel">
+              <div className="cs-head">
+                <h3 className="an-cell an-sec cs-side-title" id="cs-side-sel">Selected session</h3>
+                <Btn w={6} h={4} onClick={() => go({ edit: paneSel.id })}>Edit</Btn>
+                <Btn kind="danger" w={7} h={4} onClick={() => setConfirmDelete(true)}>Delete</Btn>
+              </div>
+              <SessionDetail s={paneSel} stacks={stacksOf(paneSel.id)} bk={bk} busy={busy} confirm={confirmDelete} token={token}
+                onConfirm={setConfirmDelete} onDelete={() => remove(paneSel.id)} />
+            </section>
+          )}
+          {loaded && (
+            <section className="bk-side-sec" aria-labelledby="cs-side-all">
+              <h3 className="an-cell an-sec" id="cs-side-all">All sessions</h3>
+              {totals}
+            </section>
+          )}
+        </div>,
+        side,
+      )}
     </div>
   );
 }

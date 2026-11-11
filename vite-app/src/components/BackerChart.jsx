@@ -55,7 +55,7 @@ export function RangeStrip({ options, value, onChange, label = 'Range' }) {
 const W = 35;
 const H = 16;
 
-export default function BackerChart({ series, label, today, baseNote = 'start', control = null, hideTotal = false }) {
+export default function BackerChart({ series, label, today, baseNote = 'start', control = null, hideTotal = false, headFigure = 'change' }) {
   const thisYear = today ? Number(String(today).slice(0, 4)) : null;
   const plotRef = useRef(null);
   const [sel, setSel] = useState(null);   // the index of the session being read, or null
@@ -109,7 +109,12 @@ export default function BackerChart({ series, label, today, baseNote = 'start', 
         ) : (
           <>
             <span className="an-cell an-sec an-clip">{label}</span>
-            {!hideTotal && <span className={'an-cell an-val bp-chart-change ' + up}>{fmtSignedCents(series.change)}</span>}
+            {/* Beside "Balance" the balance itself (App improvements 286); the change since the opening, when the
+                opening was not $0, quiet beside it. A range's head is the change and says so. */}
+            {!hideTotal && headFigure === 'end' && series.start !== 0 && (
+              <span className="an-cell an-note an-num bp-chart-since">{fmtSignedCents(series.change)} since the opening</span>
+            )}
+            {!hideTotal && <span className={'an-cell an-val bp-chart-change ' + (headFigure === 'end' ? (series.end > 0 ? 'is-pos' : series.end < 0 ? 'is-neg' : '') : up)}>{fmtSignedCents(headFigure === 'end' ? series.end : series.change)}</span>}
           </>
         )}
       </div>

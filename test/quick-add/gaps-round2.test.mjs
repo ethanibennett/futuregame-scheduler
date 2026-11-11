@@ -236,3 +236,16 @@ test('a counted group that leaves a choice of seats is asked about, not guessed 
   const known = normalizeDraft({ ...draft, tableSize: 6 }).hand;
   assert.ok((known.quickAdd.questions || []).some((x) => /^group-seats:0:/.test(x.id)));
 });
+
+test('nine named seats at a nine-handed table: confirm nine first, never "don’t fit" (App improvements 306)', () => {
+  const names = ['UTG', 'UTG+1', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
+  const h = {
+    gameType: 'NLH', gameMode: 'mtt', blinds: { sb: 100, bb: 200, ante: 200 },
+    players: names.map((pos, i) => P(i === 0 ? 'Hero' : 'P' + i, pos, 20000)), heroIdx: 0,
+    streets: [St('Preflop', 'AhAd', names.slice(1).map(() => ''), '', [A(0, 'raise', 500)])],
+  };
+  const g = gap(h, 'table-size');
+  if (!g) return;   // seated outright: nothing to ask
+  assert.ok(!/don.t fit/.test(g.question), g.question);
+  assert.deepEqual(g.options[0].value, { op: 'setTableSize', n: 9 });
+});

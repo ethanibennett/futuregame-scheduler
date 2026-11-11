@@ -1,7 +1,7 @@
 // ── Schedule Export Utilities ──
 // Ported from original export.jsx for Vite ESM
 
-import { getVenueInfo, formatBuyin, currencySymbol, formatChips, ordinalSuffix, parseTournamentTime, normaliseDate, getToday } from './utils.js';
+import { getVenueInfo, formatBuyin, currencySymbol, formatChips, ordinalSuffix, parseTournamentTime, normaliseDate, getToday, nativeCurrency, convertAmount } from './utils.js';
 import { parseCardNotation } from './poker-engine.js';
 
 // Canvas does NOT trigger webfont loading and does NOT wait for it. Every
@@ -120,10 +120,12 @@ async function loadPDFFonts() {
     for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
     return btoa(bin);
   }
-  const base = 'https://cdn.jsdelivr.net/fontsource/fonts/';
+  // Every font from the app itself (App improvements 400): the two Univers Condensed TTFs did not exist (404,
+  // so every PDF fell back to Helvetica and Times) and Libre Baskerville came from a CDN at @latest. The TTFs are
+  // made from the shipped woff2 (scripts/check-font-metrics.py checks them with the rest).
   const [lbReg, lbBold, ucReg, ucBold] = await Promise.all([
-    fetchFont(base + 'libre-baskerville@latest/latin-400-normal.ttf'),
-    fetchFont(base + 'libre-baskerville@latest/latin-700-normal.ttf'),
+    fetchFont('/fonts/librebaskerville-regular.ttf'),
+    fetchFont('/fonts/librebaskerville-bold.ttf'),
     fetchFont('/fonts/univers-condensed.ttf'),
     fetchFont('/fonts/univers-bold-condensed.ttf'),
   ]);
@@ -549,12 +551,16 @@ function drawSchedulePage(ctx, w, h, pageEvents, pageNum, totalPages, title, opt
   ctx.fillStyle = cTEXT;
   ctx.fillText(title || 'MY SCHEDULE', pad, 80);
 
-  const allDates = [...new Set(pageEvents.map(e => e.date))].sort();
+  // The page's span from its first and last events, which are in start order (App improvements 364: the date
+  // text sorted put "December 1" before "November 22"); one day once; across a new year, the years.
+  const days = pageEvents.map(e => normaliseDate(e.date)).filter(Boolean);
+  const first = days[0], last = days[days.length - 1];
+  const yearsDiffer = first && last && first.slice(0, 4) !== last.slice(0, 4);
   const fmtD = (d) => {
-    const dt = new Date(d);
-    return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const dt = new Date(d + 'T12:00:00');
+    return dt.toLocaleDateString('en-US', yearsDiffer ? { month: 'short', day: 'numeric', year: 'numeric' } : { month: 'short', day: 'numeric' });
   };
-  const rangeStr = fmtD(allDates[0]) + ' \u2013 ' + fmtD(allDates[allDates.length - 1]);
+  const rangeStr = !first ? '' : first === last ? fmtD(first) : fmtD(first) + ' \u2013 ' + fmtD(last);
   ctx.font = '400 24px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = cTEXT_MUT;
   ctx.fillText(rangeStr, pad, 112);
@@ -1378,7 +1384,7 @@ export function drawCountdownStory(ctx, w, h, data) {
   if (data.buyin) {
     ctx.font = '700 ' + Math.round(h * 0.035) + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = '#22c55e';
-    ctx.fillText('$' + Number(data.buyin).toLocaleString(), w / 2, detailY);
+    ctx.fillText(formatBuyin(data.buyin, data.venue), w / 2, detailY);   // its own currency (App improvements 367)
   }
 
   ctx.font = '400 ' + Math.round(h * 0.022) + 'px Univers Condensed, Univers, sans-serif';
@@ -1732,7 +1738,7 @@ export function drawPollEventVsEvent(ctx, w, h, data) {
   ctx.fillStyle = '#22c55e';
   ctx.fillText('A', w / 2, card1Y + Math.round(cardH * 0.25));
   const e1 = data.event1 || {};
-  if (e1.buyin) { ctx.font = '400 ' + Math.round(h * 0.024) + 'px Univers Condensed, Univers, sans-serif'; ctx.fillStyle = '#ffffff'; ctx.fillText('$' + Number(e1.buyin).toLocaleString(), w / 2, card1Y + Math.round(cardH * 0.48)); }
+  if (e1.buyin) { ctx.font = '400 ' + Math.round(h * 0.024) + 'px Univers Condensed, Univers, sans-serif'; ctx.fillStyle = '#ffffff'; ctx.fillText(formatBuyin(e1.buyin, e1.venue), w / 2, card1Y + Math.round(cardH * 0.48)); }
   ctx.font = '400 ' + Math.round(h * 0.018) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
   const name1Lines = wrapText(ctx, e1.name || 'Event 1', cardW * 0.8);
@@ -1751,7 +1757,7 @@ export function drawPollEventVsEvent(ctx, w, h, data) {
   ctx.fillStyle = '#3b82f6';
   ctx.fillText('B', w / 2, card2Y + Math.round(cardH * 0.25));
   const e2 = data.event2 || {};
-  if (e2.buyin) { ctx.font = '400 ' + Math.round(h * 0.024) + 'px Univers Condensed, Univers, sans-serif'; ctx.fillStyle = '#ffffff'; ctx.fillText('$' + Number(e2.buyin).toLocaleString(), w / 2, card2Y + Math.round(cardH * 0.48)); }
+  if (e2.buyin) { ctx.font = '400 ' + Math.round(h * 0.024) + 'px Univers Condensed, Univers, sans-serif'; ctx.fillStyle = '#ffffff'; ctx.fillText(formatBuyin(e2.buyin, e2.venue), w / 2, card2Y + Math.round(cardH * 0.48)); }
   ctx.font = '400 ' + Math.round(h * 0.018) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
   const name2Lines = wrapText(ctx, e2.name || 'Event 2', cardW * 0.8);
@@ -1765,12 +1771,17 @@ export function drawPollEventVsEvent(ctx, w, h, data) {
 }
 
 // ── Compute series scorecard data from tracking entries ──
-export function computeScorecardData(trackingData, venueName, tournaments) {
+export function computeScorecardData(trackingDataIn, venueName, tournaments, { rates = null } = {}) {
+  // What a player posts matches the app (App improvements 211): every result in US dollars, converted as the
+  // MTT tab's stats are (a euro cash was added to dollars), and in date order by the day, not the date text
+  // ("April 30 - September 1" for a span from December to November).
+  const usd = (v, e) => Math.round(convertAmount(Number(v) || 0, nativeCurrency(e.venue, e.currency), 'USD', rates));
+  const trackingData = (trackingDataIn || []).map((e) => (e ? { ...e, buyin: usd(e.buyin, e), cash_amount: usd(e.cash_amount, e), _day: normaliseDate(e.date) || '' } : e));
   // Cumulative P&L, for the curve on the card. The walk below already sorts
   // chronologically for the streak, so this is one accumulator, not a pass.
   const cumulative = (() => {
     const rows = [...(trackingData || [])].filter(e => e && e.date)
-      .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+      .sort((a, b) => a._day.localeCompare(b._day));
     let run = 0;
     return rows.map(e => {
       run += (e.cash_amount || 0) - ((e.buyin || 0) * (e.num_entries || 1));
@@ -1782,10 +1793,7 @@ export function computeScorecardData(trackingData, venueName, tournaments) {
   let biggestCash = 0, biggestCashEvent = '';
   let streak = 0, streakType = null;
 
-  const sorted3 = [...trackingData].sort((a, b) => {
-    const da = a.date || ''; const db = b.date || '';
-    return da.localeCompare(db);
-  });
+  const sorted3 = [...trackingData].sort((a, b) => (a._day || '').localeCompare(b._day || ''));
 
   for (const e of sorted3) {
     totalBuyins += (e.buyin || 0) * (e.num_entries || 1);
@@ -1821,8 +1829,10 @@ export function computeScorecardData(trackingData, venueName, tournaments) {
   const cashRate = sorted3.length > 0 ? (eventsCashed / sorted3.length * 100) : 0;
 
   let dateRange = '';
-  if (sorted3.length > 0) {
-    dateRange = sorted3[0].date + ' \u2014 ' + sorted3[sorted3.length - 1].date;
+  const spanOf = (d) => { const x = new Date(d + 'T12:00:00'); return isNaN(x.getTime()) ? d : x.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }); };
+  if (sorted3.length > 0 && sorted3[0]._day) {
+    const a = spanOf(sorted3[0]._day), b = spanOf(sorted3[sorted3.length - 1]._day);
+    dateRange = a === b ? a : a + ' \u2013 ' + b;
   }
 
   const gameMap = {};
@@ -1850,7 +1860,7 @@ export function computeScorecardData(trackingData, venueName, tournaments) {
   const biggestEntry = sorted3.find(e => e.cashed && e.cash_amount === biggestCash);
 
   return {
-    venueName: venueName || 'My Series',
+    venueName: venueName || dateRange || 'My Series',
     dateRange,
     eventsPlayed: sorted3.length,
     cashCount: eventsCashed,

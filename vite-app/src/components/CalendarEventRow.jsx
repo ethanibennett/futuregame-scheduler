@@ -7,8 +7,8 @@ import useTick from '../hooks/useTick.js';
 import { wsopStructureUrlFor } from '../utils/wsop-structure-pages.js';
 import {
   getVenueInfo, getVenueClass, getVenueBrandColor, getStripAbbr, formatGuarantee, shortEventNumber, isBraceletEvent, isRingEvent,
-  normaliseDate, parseDateTime, parseDateTimeInTz, parseLateRegEnd, parseTournamentTime,
-  getMaxEntries, getVenueTzAbbr, getNow,
+  normaliseDate, parseDateTime, parseDateTimeInTz, parseLateRegEnd, parseTournamentTime, lateRegCtx, lateRegLevel, fmtCloseInRoom,
+  getMaxEntries, getVenueTzAbbr, getNow, isTbd,
   formatConditionBadge,
   getIfIBustEvents, getIfIBagEvents, describeGame,
   currencySymbol, VENUE_BRAND_VAR, splitEventStage, formatChips, getVenueCoords, getToday,
@@ -160,7 +160,7 @@ function QuickAdd({ saved, onToggle, id }) {
 }
 
 // ── Mini Late Reg Bar (collapsed view) ──
-function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, completed }) {
+function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, completed, levelMin = null, reentry = null }) {
   const [now, setNow] = useState(getNow());
   useEffect(() => {
     const id = setInterval(() => setNow(getNow()), 30000);
@@ -179,6 +179,11 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, co
     );
   }
 
+  // No start announced: no countdown to a made-up midnight, and no late-reg line until a time exists (9).
+  if (isTbd(time)) {
+    if (openOnly) return null;
+    return <div className="mini-late-reg"><span className="mini-late-reg-time">start not announced yet</span></div>;
+  }
   if (date) {
     const startMs = venue ? parseDateTimeInTz(date, time, venue) : parseDateTime(date, time || '12:00 AM');
     if (now < startMs) {
@@ -208,11 +213,13 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, co
   }
 
   if (!lateRegEnd) return null;
-  const endMs = parseLateRegEnd(lateRegEnd, date);
+  // The close in the room's zone, a level as the end of that level (App improvements 1, 2).
+  const endMs = parseLateRegEnd(lateRegEnd, date, venue, lateRegCtx({ date, time, venue, level_duration: levelMin, reentry }));
   if (isNaN(endMs)) return null;
   const diffMs = endMs - now;
   const diffMin = Math.floor(diffMs / 60000);
-  const endClock = new Date(endMs).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const level = lateRegLevel(lateRegEnd);
+  const endClock = (level != null ? `Level ${level}, ≈ ` : '') + fmtCloseInRoom(endMs, venue, date);
 
   if (diffMs <= 0) {
     if (openOnly) return null;
@@ -610,7 +617,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
   }, [open]);
 
   const tzAbbr = getVenueTzAbbr(tournament.venue, tournament.date);
-  const timeLabel = (tournament.time || '\u2014') + (tzAbbr ? ' ' + tzAbbr : '');
+  const timeLabel = /^\s*tbd\s*$/i.test(tournament.time || '') ? 'Time TBD' : (tournament.time || '\u2014') + (tzAbbr ? ' ' + tzAbbr : '');
   const bracelet = isBraceletEvent(tournament);
   // The summer bracelet PDF's page for this event, only when that PDF is actually its sheet.
   const summerSheet = bracelet ? wsopStructureUrlFor(tournament) : null;
@@ -691,7 +698,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
                 )}
               </div>
               {overlap && !open && !readOnly && <OverlapLine overlap={overlap} id={tournament.id} onSetCondition={onSetCondition} />}
-              {showMiniLateReg && !open && <MiniLateRegBar completed={completed} lateRegEnd={(live && clockRegEnd(tournament, live)) || tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />}
+              {showMiniLateReg && !open && <MiniLateRegBar completed={completed} lateRegEnd={(live && clockRegEnd(tournament, live)) || tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} levelMin={tournament.level_duration} reentry={tournament.reentry} />}
               {live && !open && <ClockRow live={live} tournament={tournament} />}
             </>
           )}
@@ -874,7 +881,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
                   {/* Same source as the collapsed card's mini bar: the room's live clock first,
                       then the stored late_reg_end. Reading only late_reg_end, an event whose
                       close came from the clock alone lost its bar the moment it was expanded. */}
-                  <LateRegBar completed={completed} lateRegEnd={(live && clockRegEnd(tournament, live)) || tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />
+                  <LateRegBar completed={completed} lateRegEnd={(live && clockRegEnd(tournament, live)) || tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} levelMin={tournament.level_duration} reentry={tournament.reentry} />
                   {live && open && <ClockRow live={live} tournament={tournament} />}
 
                   {buddyEvents && buddyEvents[tournament.id] && buddyEvents[tournament.id].length > 0 && (
@@ -1237,7 +1244,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
   const isRestart = !!tournament.is_restart;
   const ringEvent = isRingEvent(tournament);
   const tzAbbr = getVenueTzAbbr(tournament.venue, tournament.date);
-  const timeLabel = (tournament.time || '—') + (tzAbbr ? ' ' + tzAbbr : '');
+  const timeLabel = /^\s*tbd\s*$/i.test(tournament.time || '') ? 'Time TBD' : (tournament.time || '—') + (tzAbbr ? ' ' + tzAbbr : '');
   let hasConditions = false;
   if (conditions && conditions.length > 0) {
     hasConditions = true;

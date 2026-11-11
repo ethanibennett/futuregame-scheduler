@@ -1,12 +1,15 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import useJsonApi from '../hooks/useJsonApi.js';
 import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
+import { SidePortal } from '../hooks/useBankrollSide.js';
+import { LoadFailed } from './EmptyState.jsx';
+import { SkeletonBlocks } from './SkeletonBankroll.jsx';
 import { openInResults } from '../hooks/useResultsFocus.js';
 import { BANKROLL_ALL } from '../utils/bankrolls.js';
 import {
   fmtMoney, fmtDay, fmtWhen, toneOf, plural, currentRuns, runLine, mergePatch, isEmptyPatch, applyPatch, fillLikely,
   pairOptions, pairFields, groupPlan, backerOptions, slateOptions, sourceLabel, optionWord, itemLine, commitReadiness,
-  reconciliationBlocks, REC_LINES, REC_LISTS, writesList, fetchError, commitError, undoError, diffPlans, pageOf, FIRST_ROWS,
+  reconciliationBlocks, REC_LINES, REC_LISTS, writesList, recordSplit, errorLine, fetchError, commitError, undoError, diffPlans, pageOf, FIRST_ROWS,
 } from '../utils/bankroll-import-dashboard.js';
 import './analytics.css';
 import './bankroll-locations.css';
@@ -106,34 +109,77 @@ function reasonOf(p) {
   if (parts.other > 0) bits.push(p.kind === 'cash' ? 'same length' : p.kind === 'tournament' ? 'similar event' : p.kind === 'expense' ? 'same category' : '');
   return bits.filter(Boolean).join(', ');
 }
+/**
+ * An answered pair folds to its answer (Bankroll design 78), but not under the thumb: a pair answered
+ * here folds at the next scroll, so the page does not move at the moment of the tap. A pair already
+ * answered when the review opens starts folded. Change opens it again.
+ */
+function useFold(decision) {
+  const [folded, setFolded] = useState(!!decision);
+  const [pending, setPending] = useState(false);
+  const prev = useRef(decision);
+  useEffect(() => {
+    if (!decision) { setFolded(false); setPending(false); } else if (decision !== prev.current) setPending(true);
+    prev.current = decision;
+  }, [decision]);
+  useEffect(() => {
+    if (!pending) return undefined;
+    const go = () => { setFolded(true); setPending(false); };
+    window.addEventListener('scroll', go, { capture: true, passive: true, once: true });
+    return () => window.removeEventListener('scroll', go, { capture: true });
+  }, [pending]);
+  return [folded, () => { setFolded(false); setPending(false); }];
+}
 function PairCard({ p, onAnswer, changed }) {
   const [open, setOpen] = useState(false);
   const fields = pairFields(p);
   const opts = pairOptions(p);
   const take = opts.find((o) => o.value === 'same-take');
   const resultRow = (f) => f.key === 'result' || f.key === 'amount';
+  const [folded, unfold] = useFold(p.decision);
+  const chosen = opts.find((o) => o.value === p.decision);
+  const changeRef = useRef(null), segRef = useRef(null);
+  const head = (
+    <div className="bid-pair-head">
+      <span className="an-cell bid-pair-date an-clip">{fmtDay(p.dash.date)}<span className="bid-pair-kind"> · {KIND_WORD[p.kind] || p.kind}{changed ? ' · changed' : ''}</span></span>
+      <span className={'bid-pill snap-g' + (p.class === 'likely' ? ' is-likely' : '')}>{p.class === 'likely' ? 'Likely' : 'Possible'} · {p.score}</span>
+    </div>
+  );
+  if (folded && chosen) {
+    return (
+      <li className={'bid-card bid-pair is-folded' + (changed ? ' is-changed' : '')}>
+        {head}
+        <div className="bid-fold">
+          <svg className="bid-fold-tick" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8" /></svg>
+          <span className="an-cell bid-fold-ans an-clip">{chosen.top}, {chosen.sub}</span>
+          <button ref={changeRef} type="button" className="bk-btn bid-fold-change" aria-label={`Change the ${fmtDay(p.dash.date)} pair's answer`}
+            onClick={() => { unfold(); requestAnimationFrame(() => { const b = segRef.current && segRef.current.querySelector('[aria-checked="true"]'); if (b) b.focus({ preventScroll: true }); }); }}>
+            <span>Change</span>
+          </button>
+        </div>
+      </li>
+    );
+  }
   return (
     <li className={'bid-card bid-pair' + (open ? ' is-open' : '') + (changed ? ' is-changed' : '')}>
-      <div className="bid-pair-head">
-        <span className="an-cell bid-pair-date an-clip">{fmtDay(p.dash.date)}<span className="bid-pair-kind"> · {KIND_WORD[p.kind] || p.kind}{changed ? ' · changed' : ''}</span></span>
-        <span className={'bid-pill snap-g' + (p.class === 'likely' ? ' is-likely' : '')}>{p.class === 'likely' ? 'Likely' : 'Possible'} · {p.score}</span>
-      </div>
+      {head}
       <p className="an-cell an-note bid-reason an-clip" title={reasonOf(p)}>{reasonOf(p)}</p>
       <div className="bid-pair-cols" aria-hidden="true">
         <span className="an-cell an-lbl an-lbl-3">Dashboard</span>
         <span className="an-cell an-lbl an-lbl-3">futurega.me</span>
       </div>
-      {/* The fields: tap to show long values whole (the full value is in each cell's title too). */}
+      {/* The fields: tap to show long values whole (the full value is in each cell's title too). What
+          differs is the band, bold, with a ≠; what matches is quiet (Bankroll design 77). */}
       <div className="bid-pair-fields" onClick={() => setOpen((v) => !v)}>
         {fields.map((f) => (
-          <div key={f.key} className="bid-pair-row" role="group" aria-label={`${f.label}: dashboard ${f.dash}, futurega.me ${f.here}${f.same ? ', the same' : ''}`}>
+          <div key={f.key} className={'bid-pair-row' + (f.same ? ' is-same' : ' is-diff')} role="group" aria-label={`${f.label}: dashboard ${f.dash}, futurega.me ${f.here}${f.same ? ', the same' : ', different'}`}>
             <span className={'an-cell bid-v an-clip' + (resultRow(f) ? ' bid-v-money' : '') + (f.dashTone ? ' an-' + f.dashTone : '')} title={f.dash} aria-hidden="true">{f.dash}</span>
-            <span className="an-cell bid-eq" aria-hidden="true">{f.same ? '=' : ''}</span>
+            <span className={'an-cell bid-eq' + (f.same ? '' : ' is-diff')} aria-hidden="true">{f.same ? '=' : '≠'}</span>
             <span className={'an-cell bid-v an-clip' + (resultRow(f) ? ' bid-v-money' : '') + (f.hereTone ? ' an-' + f.hereTone : '')} title={f.here} aria-hidden="true">{f.here}</span>
           </div>
         ))}
       </div>
-      <Seg className="bid-pair-seg" label={`The ${fmtDay(p.dash.date)} pair`} options={opts} value={p.decision} onChange={(v) => onAnswer(p.id, v)} />
+      <div ref={segRef}><Seg className="bid-pair-seg" label={`The ${fmtDay(p.dash.date)} pair`} options={opts} value={p.decision} onChange={(v) => onAnswer(p.id, v)} /></div>
       {take.disabled && <p className="an-p bid-card-note">Take is off for this pair: {take.why}.</p>}
     </li>
   );
@@ -448,6 +494,16 @@ function Reconciliation({ rec, title = 'The reconciliation', changed, after = 'A
 }
 
 // ── errors, flags and information ───────────────────────────────────────────────────────────
+/** A row's 2g mark: a failed check a --neg cross in a circle, a skip a --warn bar in a square, a note an info mark. */
+function MarkIcon({ kind }) {
+  return (
+    <svg className={'bid-mark is-' + kind} viewBox="0 0 16 16" aria-hidden="true">
+      {kind === 'error' && <><circle cx="8" cy="8" r="6.25" /><path d="M5.75 5.75l4.5 4.5M10.25 5.75l-4.5 4.5" /></>}
+      {kind === 'skip' && <><rect x="2" y="2" width="12" height="12" rx="2" /><path d="M5 8h6" /></>}
+      {kind === 'info' && <><circle cx="8" cy="8" r="6.25" /><path d="M8 7.25v4" /><circle cx="8" cy="4.9" r="0.35" fill="currentColor" /></>}
+    </svg>
+  );
+}
 function ErrorsGroup({ errors, changed }) {
   const pager = usePager(errors.length);
   if (!errors.length) return null;
@@ -455,14 +511,19 @@ function ErrorsGroup({ errors, changed }) {
     <section className="bid-group" aria-labelledby="bid-g-err">
       <GroupHead id="bid-g-err" title={`Not imported (${errors.length})`} changed={changed} />
       <p className="an-p">Records that fail a check are skipped and listed here; nothing is written for them. Fix one in the dashboard and fetch again to bring it in.</p>
+      {/* Each a marked row (Bankroll design 82): a failed check's mark and a skip's differ in colour and shape. */}
       <ul className="bid-rows">
-        {errors.slice(0, pager.pg.rows).map((e, i) => (
-          <li key={`${e.fp || e.store}-${i}`} className="bid-row2">
-            <span className="an-cell an-td an-clip">{e.date ? fmtDay(e.date) : '—'}</span>
-            <span className="an-cell an-td bid-row2-span an-clip" title={`${e.store} ${e.id || ''}`}>{e.store}{e.id ? ` · ${e.id}` : ''}</span>
-            <span className="an-cell an-note bid-row2-full an-clip" title={e.error}>{e.skipped ? 'Skipped: ' : 'Error: '}{e.error}</span>
-          </li>
-        ))}
+        {errors.slice(0, pager.pg.rows).map((e, i) => {
+          const l = errorLine(e);
+          return (
+            <li key={`${e.fp || e.store}-${i}`} className={'bid-marked is-' + l.kind}>
+              <MarkIcon kind={l.kind} />
+              <span className="an-cell bid-marked-title an-clip">{l.title}</span>
+              {l.detail && <span className="an-cell an-note bid-marked-line" title={l.detail}>{l.detail}</span>}
+              {l.id && <span className="an-cell an-note bid-marked-id an-clip">{l.id}</span>}
+            </li>
+          );
+        })}
       </ul>
       <Pager pager={pager} label="errors" />
     </section>
@@ -486,7 +547,11 @@ function InfoGroup({ info }) {
   return (
     <section className="bid-group" aria-labelledby="bid-g-info">
       <GroupHead id="bid-g-info" title="For your information" />
-      {lines.map((t, i) => <p key={i} className="an-p">{t}</p>)}
+      {lines.length > 0 && (
+        <ul className="bid-rows bid-notes">
+          {lines.map((t, i) => <li key={i} className="bid-marked is-info"><MarkIcon kind="info" /><span className="an-p bid-marked-p">{t}</span></li>)}
+        </ul>
+      )}
       {rows.length > 0 && (
         <>
           <div className="an-cell an-lbl an-lbl-3">Notes on single records ({rows.length})</div>
@@ -525,6 +590,43 @@ function WritesTable({ tables, label }) {
   return <>{block('Creates', w.insert)}{block('Changes', w.update)}{block('Removes', w.delete)}</>;
 }
 
+/**
+ * The confirm step (Bankroll design 80): what it creates in the player's words on 3r rows, then the
+ * supporting rows in one disclosure, closed, which names their tables; then what it changes and removes.
+ */
+function ConfirmTables({ tables }) {
+  const s = recordSplit(tables);
+  const rows = (list) => list.map((x) => (
+    <div key={x.table} className="an-row is-body bid-cols-w bid-row3" role="row">
+      <span className="an-cell an-td an-clip" role="cell">{x.text}</span>
+      <span className="an-cell an-td an-num" role="cell">{x.n.toLocaleString('en-US')}</span>
+    </div>
+  ));
+  return (
+    <>
+      {s.records.length > 0 && (
+        <div className="an-table" role="table" aria-label="What the import creates">
+          <div className="an-row is-head bid-cols-w" role="row">
+            <span className="an-cell an-lbl an-lbl-3b" role="columnheader">Creates</span>
+            <span className="an-cell an-lbl an-lbl-3b an-num" role="columnheader">Records</span>
+          </div>
+          {rows(s.records)}
+        </div>
+      )}
+      {s.support.length > 0 && (
+        <details className="bid-support">
+          <summary className="bid-support-sum">
+            <span className="an-cell an-td an-clip">{plural(s.supportCount, 'supporting row')} in {plural(s.support.length, 'table')}</span>
+            <svg className="bid-support-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" /></svg>
+          </summary>
+          <div className="an-table" role="table" aria-label="The supporting rows">{rows(s.support)}</div>
+        </details>
+      )}
+      <WritesTable tables={{ insert: {}, update: tables && tables.update, delete: tables && tables.delete }} label="What the import writes" />
+    </>
+  );
+}
+
 function CommitBlock({ view, ready, pending, busy, confirm, setConfirm, onCommit, onDiscard, msg }) {
   const id = useId();
   const confirmRef = useRef(null);
@@ -547,12 +649,13 @@ function CommitBlock({ view, ready, pending, busy, confirm, setConfirm, onCommit
         <div className="bid-confirm" role="group" aria-labelledby={`${id}-c`}>
           <h5 className="an-cell an-sec" id={`${id}-c`} tabIndex={-1} ref={confirmRef}>Import these records?</h5>
           <p className="an-p">
-            One write, in one go. It creates <strong>{plural(view.writes.rows, 'row')}</strong>
+            One write, in one go. It creates <strong>{plural(ready.records, 'record')}</strong>
+            {ready.records !== view.writes.rows ? ` (${plural(view.writes.rows, 'row')} in all)` : ''}
             {view.writes.same ? `, links ${plural(view.writes.same, 'pair')} as the same night` : ''}
             {view.writes.taken ? ` (${view.writes.taken} taking the dashboard’s figures)` : ''}
             {view.writes.fundCreated ? ', and creates the WSOP fund' : ''}. Undo stays available: it removes exactly these rows and puts back what it changed.
           </p>
-          <WritesTable tables={view.writes.tables} label="What the import writes" />
+          <ConfirmTables tables={view.writes.tables} />
           <div className="bd-actions">
             <button type="button" className="bk-btn bk-btn--brand bid-w17" disabled={!!busy || !ready.ok} onClick={onCommit}><span>{busy === 'commit' ? 'Importing…' : ready.label}</span></button>
             <button type="button" className="bk-btn bk-w8" disabled={!!busy} onClick={() => setConfirm(null)}><span>Cancel</span></button>
@@ -841,8 +944,8 @@ export default function BankrollImportDashboard({ bk, onClose, onChanged }) {
         Brings in the dashboard app&rsquo;s sessions, adjustments, expenses, backers and staking slate. Nothing is written until
         you have answered the review below and pressed Import, and an import can be undone.
       </p>
-      {list.status === 'loading' && <p className="an-p">Loading…</p>}
-      {list.status === 'error' && <p className="an-p" role="alert">The import could not load. Close the dashboard and try again.</p>}
+      {list.status === 'loading' && <SkeletonBlocks label="Loading the import" blocks={[{ h: 6, bars: [[30, 1], [20, 1]] }, { h: 5, bars: [[17, 4]] }]} />}
+      {list.status === 'error' && <LoadFailed title="The import did not load" onRetry={() => { setList((l) => ({ ...l, status: 'loading' })); loadList(); }} />}
       {list.status === 'ready' && (
         <>
           <p className="an-p bid-pull">
@@ -930,11 +1033,17 @@ export default function BankrollImportDashboard({ bk, onClose, onChanged }) {
             <OpeningGroup opening={view.opening} target={view.target.name} state={stateOf('opening')} changed={highlight.has('opening')}
               onAnswer={(o) => answer({ opening: o }, 'opening')} />
           )}
-          <Reconciliation rec={view.reconciliation} changed={highlight.has('reconciliation')} />
           <ErrorsGroup errors={view.errors || []} changed={highlight.has('errors')} />
           <InfoGroup info={groups.info} />
-          <CommitBlock view={view} ready={ready} pending={pending} busy={busy} confirm={confirm} setConfirm={setConfirm}
-            onCommit={doCommit} onDiscard={doDiscard} msg={commitMsg} />
+          {/* On desktop the Import block and the check stay beside the decisions (Bankroll design 85): the button
+              is in view at every point of the review. On the phone they close the review as before. */}
+          <SidePortal>
+            <div className="bk-side-sec bid bid-side">
+              <CommitBlock view={view} ready={ready} pending={pending} busy={busy} confirm={confirm} setConfirm={setConfirm}
+                onCommit={doCommit} onDiscard={doDiscard} msg={commitMsg} />
+              <Reconciliation rec={view.reconciliation} changed={highlight.has('reconciliation')} />
+            </div>
+          </SidePortal>
         </div>
       )}
 

@@ -159,12 +159,12 @@ export function LinesHead() {
     </div>
   );
 }
-export function ResultLine({ date, room, game, played, amount, tone = 0, onOpen, label, venue, property }) {
+export function ResultLine({ date, room, game, played, amount, tone = 0, onOpen, label, venue, property, selected = false }) {
   const { abbr, name } = venue !== undefined ? stripOf(venue, property) : roomStrip(room);
   const roomName = name || room || '';
   const keys = barKeys(onOpen || (() => {}));
   return (
-    <div className="tr-line" role="button" tabIndex={0} onClick={onOpen} onKeyDown={keys} aria-label={label}>
+    <div className={'tr-line' + (selected ? ' is-selected' : '')} role="button" tabIndex={0} onClick={onOpen} onKeyDown={keys} aria-label={label} aria-pressed={selected || undefined}>
       <span className="an-cell an-td tr-line-date">{String(date || '').replace(/^[A-Z][a-z]{2}, /, '')}</span>
       <i className="tr-line-bar" aria-hidden="true" style={{ background: abbr ? getVenueBrandColor(abbr) : 'var(--border-strong)' }} />
       <span className="an-cell an-td an-clip tr-line-roomcol">{roomName}</span>

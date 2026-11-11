@@ -100,10 +100,13 @@ export default function VenueMapSheet({ event, onClose }) {
       const f = [...sheetRef.current.querySelectorAll('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')]
         .filter((el) => el.getClientRects().length > 0);
       if (!f.length) return;
-      const first = f[0], last = f[f.length - 1], at = document.activeElement;
-      if (!sheetRef.current.contains(at)) { e.preventDefault(); first.focus(); }
-      else if (e.shiftKey && at === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && at === last) { e.preventDefault(); first.focus(); }
+      // Every Tab is moved here (App improvements 54): WebKit skips links on Tab by default, so leaving the
+      // middle steps to the browser never reached the two Maps buttons and let focus out of the sheet.
+      e.preventDefault();
+      const i = f.indexOf(document.activeElement);
+      const n = f.length;
+      const next = i < 0 ? (e.shiftKey ? n - 1 : 0) : (i + (e.shiftKey ? -1 : 1) + n) % n;
+      f[next].focus();
     };
     document.addEventListener('keydown', onKey, true);
     return () => document.removeEventListener('keydown', onKey, true);

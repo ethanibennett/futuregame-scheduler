@@ -128,8 +128,10 @@
   /* Display face xl, baseline on line 5 of 5 — level with the meta line. The Overview's latest
      sessions measured this face and size (bd-recent-amt, p 1.1314 on line 3 of 3); the same c on
      line 5 of 5 is p = 2(5 - 2.5 - c) = 3.1314. */
-  --h: 5; --p: 3.1314;
-  font-family: var(--font-display); font-size: var(--fs-xl); color: var(--text);
+  /* The total role (Bankroll design 91): the display face md, regular (c .7160), on line 5 of 5:
+     p = 2(5 - 2.5 - .716) = 3.568. A room's and a backer's total read as a block's total, not a headline. */
+  --h: 5; --p: 3.568;
+  font-family: var(--money-total-font, var(--font-display)); font-size: var(--money-total-size, var(--fs-md)); font-weight: var(--money-total-weight, var(--fw-regular)); color: var(--text);
   text-align: right; font-variant-numeric: var(--num-tabular);
 }
 .bl-total.an-pos { color: var(--pos); }
@@ -270,7 +272,7 @@
 .bl-gval.an-pos { color: var(--pos); }
 .bl-gval.an-neg { color: var(--neg); }
 /* A small sample (65): the tag on the meta line, small caps, quiet. */
-.bl-small { font-size: var(--fs-2xs); letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-muted); }
+.bl-small { font-size: var(--fs-xs); letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-muted); }
 /* A room opened, by month (66): a 3r band on --surface2 bled to the card's edges, the month and its count,
    the month's net bold at the right; the rows' dates the weekday and day. */
 .bl-month {
@@ -323,6 +325,10 @@
   box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border); cursor: pointer;
 }
 .bl-trow.is-head { height: calc(var(--subrow) * 3); cursor: default; }
+/* A ranking row is a control (it opens the room), so its text is centred in the 4r row, as a button's label
+   is, not seated on the row's third line: the line box is the row, and Univers' em box (no line gap) centres
+   its figures and capitals in it. */
+.bl-trow:not(.is-head) > .an-cell { padding-top: 0; line-height: calc(var(--subrow) * 4); }
 .bl-trow > :first-child { padding-left: var(--gu); }
 .bl-trow.is-on { background: var(--surface2); box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); }
 .bl-trow:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { parseServerStamp } from '../utils/utils.js';
 import { createPortal } from 'react-dom';
 import Avatar from './Avatar.jsx';
 import Icon from './Icon.jsx';
@@ -223,18 +224,24 @@ function GroupDetailView({
     } catch {}
   };
 
+  const [sendFail, setSendFail] = useState(null);
   const handleSend = async () => {
     if (!msgText.trim() || sending) return;
     setSending(true);
+    // The box clears only once the server has the message (App improvements 366): a refused one was wiped and lost.
+    setSendFail(null);
     try {
-      await fetch(`${API_URL}/groups/${groupId}/messages`, {
+      const res = await fetch(`${API_URL}/groups/${groupId}/messages`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: msgText.trim() })
       });
-      setMsgText('');
-      fetchGroupFeed(groupId);
-    } catch {}
+      if (res.ok) { setMsgText(''); fetchGroupFeed(groupId); }
+      else {
+        const d = await res.json().catch(() => ({}));
+        setSendFail(d.error ? `Not sent: ${d.error}` : `Not sent (the server answered ${res.status}).`);
+      }
+    } catch { setSendFail('Not sent: no connection. Your message is still here.'); }
     setSending(false);
   };
 
@@ -296,7 +303,7 @@ function GroupDetailView({
 
   const timeAgo = (ts) => {
     if (!ts) return '';
-    const diff = (Date.now() - new Date(ts).getTime()) / 1000;
+    const diff = (Date.now() - parseServerStamp(ts)) / 1000;
     if (diff < 60) return 'just now';
     if (diff < 3600) return Math.floor(diff / 60) + 'm';
     if (diff < 86400) return Math.floor(diff / 3600) + 'h';
@@ -380,8 +387,9 @@ function GroupDetailView({
               maxLength={500}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
             />
-            <button onClick={handleSend} disabled={sending || !msgText.trim()}><span>Send</span></button>
+            <button onClick={handleSend} disabled={sending || !msgText.trim()}><span>{sendFail ? 'Retry' : 'Send'}</span></button>
           </div>
+          {sendFail && <p className="group-send-fail" role="alert">{sendFail}</p>}
         </div>
       )}
 
@@ -398,7 +406,8 @@ function GroupDetailView({
                 <div className="group-schedule-name">{t.event_name}</div>
                 <div className="group-schedule-venue">{getVenueInfo(t.venue, t.property).abbr}</div>
               </div>
-              <div className="group-schedule-meta">{`${t.date} · ${t.time} · $${Number(t.buyin).toLocaleString()}`}</div>
+              {/* The buy-in in the event's currency (App improvements 367). */}
+              <div className="group-schedule-meta">{`${t.date} · ${t.time} · ${formatBuyin(t.buyin, t.venue)}`}</div>
               <div className="group-schedule-members">
                 {t.members.map(m => (
                   <div key={m.id} className="group-schedule-member" title={displayName(m)}>
@@ -756,7 +765,7 @@ export default function SocialView({
 
   const timeAgo = (ts) => {
     if (!ts) return '';
-    const diff = (Date.now() - new Date(ts).getTime()) / 1000;
+    const diff = (Date.now() - parseServerStamp(ts)) / 1000;
     if (diff < 60) return 'just now';
     if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
     if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';

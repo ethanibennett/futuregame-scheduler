@@ -165,8 +165,12 @@ import { stageNotify } from './notify-states.mjs';
 import { stageDrill } from './drill-states.mjs';
 
 // The Bankroll sections are grouped (owner, 2026-10-20; CashLive.jsx ResultsKindTabs): a section is a
-// chip, or the shown label of its group's split chip, or an item in that group's caret menu.
+// chip, or the shown label of its group's split chip, or an item in that group's caret menu. On desktop the
+// strip is gone and the ten sections are rows in the rail under Bankroll (Bankroll design 86).
 async function openSection(p, name) {
+  const railName = name === 'Tournaments' ? 'MTT' : name;
+  const row = p.locator('.dk-rail-subitem', { hasText: new RegExp('^' + railName + '$', 'i') }).first();
+  if (await row.count() && await row.isVisible().catch(() => false)) { await row.click({ timeout: 4000 }); return; }
   const chip = p.locator(`.results-kind-tabs .kind-toggle:has-text("${name}")`).first();
   if (await chip.count() && await chip.isVisible().catch(() => false)) { await chip.click({ timeout: 4000 }); return; }
   await p.locator(`.results-kind-tabs .kind-toggle-caret[aria-label*="${name}"]`).first().click({ timeout: 4000 });
@@ -255,7 +259,7 @@ const NOT_CONTROLS = [
 const TILES = ['.bk-cell', '.font-pick-tile'];
 // Navigation and disclosure rows: icon or chevron beside a label, start-aligned like a list.
 // Centred vertically only. (.ovt-head: the bankroll Overview's collapsible table sections.)
-const START_ALIGNED = ['.dk-rail-item', '.cal-fp-head', '.ovt-head'];
+const START_ALIGNED = ['.dk-rail-item', '.dk-rail-subitem', '.cal-fp-head', '.ovt-head'];   // .dk-rail-subitem: Bankroll's sections in the rail (Bankroll design 86)
 // Toggles drawn as a track and a knob: the knob is at one end by design, so it is centred
 // vertically only.
 const SWITCHES = ['[role="switch"]', '.settings-toggle', '[class*="toggle-switch"]', '[class*="-switch"]'];
@@ -1827,12 +1831,12 @@ function finalize(c) {
   const sections = async (expanded) => {
     const want = expanded ? 'false' : 'true';
     for (let i = 0; i < 12; i++) {
-      const head = p.locator(`.bd-inline .ovt-head[aria-expanded="${want}"]`).first();
+      const head = p.locator(`:is(.bd-inline, .dk-side-bankroll) .ovt-head[aria-expanded="${want}"]`).first();
       if (!(await head.count())) break;
       await head.click({ timeout: 4000, force: overlay });
       await p.waitForTimeout(450);   // the body's 0fr <-> 1fr transition (--dur-base)
     }
-    if (await p.locator(`.bd-inline .ovt-head[aria-expanded="${want}"]`).count()) throw new Error('a section did not toggle');
+    if (await p.locator(`:is(.bd-inline, .dk-side-bankroll) .ovt-head[aria-expanded="${want}"]`).count()) throw new Error('a section did not toggle');
     // Then until every collapse has finished (on a slow frame the last can outlast the wait above).
     await p.waitForFunction(() => {
       const o = document.querySelector('.bd-inline .ovt');

@@ -70,7 +70,7 @@
 
 /* Desktop (Bankroll design 49 and 87): the + is a labelled Add button in the bankroll's band, so the round
    one is not drawn there and no amount is ever under it. */
-.app-shell.is-desktop .dk-pane-wide > .bk-fab--page { display: none; }
+.app-shell.is-desktop :is(.dk-pane-wide, .dk-pane-split) > .bk-fab--page { display: none; }
 /* .ctl (styles.css, loaded later) would show it: out-rank it on the phone. */
 .app-shell .bk-add-btn { display: none; }
 .app-shell.is-desktop .bk-add-btn {

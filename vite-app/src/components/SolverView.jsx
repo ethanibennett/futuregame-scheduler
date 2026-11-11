@@ -407,7 +407,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot, onBack } = {}) 
         {solving && (
           <div className="hs-t hs-sm hs-mut" style={{ ...full, ...T(3, 3) }}>
             <span style={{ display: 'inline-block', width: 'var(--icon-xs)', height: 'var(--icon-xs)', marginRight: 'var(--gu)', borderRadius: '50%', boxShadow: 'inset 0 0 0 calc(var(--subrow) * 0.25) var(--border)', borderTop: 'calc(var(--subrow) * 0.25) solid var(--accent)', boxSizing: 'border-box', animation: 'fgspin 0.8s linear infinite', verticalAlign: 'baseline' }} />
-            Solving the subgame… range-form CFR+ over the {game} tree.
+            Solving the spot…
             <style>{'@keyframes fgspin{to{transform:rotate(360deg)}}'}</style>
           </div>
         )}

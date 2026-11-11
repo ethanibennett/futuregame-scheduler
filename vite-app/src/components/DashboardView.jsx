@@ -5,7 +5,7 @@ import ScanTableSheet from './ScanTableSheet.jsx';
 import {
   getVenueInfo, getVenueBrandColor, normaliseDate, getToday, getNow,
   formatBuyin, haptic, fmtShortDate,
-  parseTournamentTime, parseDateTimeInTz, parseDateTime, parseLateRegEnd,
+  parseTournamentTime, parseDateTimeInTz, parseDateTime, parseLateRegEnd, lateRegCtx, lateRegCloseOf,
   getMaxEntries, getVenueTzAbbr, getVenueCoords,
   estimateBlindLevel, formatChips,
   CURRENCY_CONFIG, splitEventStage,
@@ -49,7 +49,7 @@ function formatEventName(name) {
 }
 
 // ── Mini Late Reg Bar ──
-function MiniLateRegBar({ lateRegEnd, date, time, openOnly, venue, startAt, completed }) {
+function MiniLateRegBar({ lateRegEnd, date, time, openOnly, venue, startAt, completed, levelMin = null, reentry = null }) {
   const [now, setNow] = useState(getNow());
   useEffect(() => {
     const id = setInterval(() => setNow(getNow()), 30000);
@@ -73,7 +73,7 @@ function MiniLateRegBar({ lateRegEnd, date, time, openOnly, venue, startAt, comp
     }
   }
   if (!lateRegEnd) return null;
-  const endMs = parseLateRegEnd(lateRegEnd, date);
+  const endMs = parseLateRegEnd(lateRegEnd, date, venue, lateRegCtx({ date, time, venue, level_duration: levelMin, reentry }));
   if (isNaN(endMs)) return null;
   const diffMs = endMs - now;
   if (diffMs <= 0) {
@@ -99,6 +99,7 @@ export default function DashboardView({
   mySchedule, myActiveUpdates, trackingData, onPost, onDeleteUpdate,
   onAddTracking, onNavigate, tournaments, onToggle,
   onOpenInSchedule, demoStates = false, demoCard = false,
+  updatesFailed = false, onRetryUpdates = null,
   homeRight = null, // desktop: the second pane's element, which the NUMBERS column portals into
   // The Friends section (an Edit home option): the people sharing with this account, their latest
   // live updates, and who is on which event (App fetches all three for Schedule and Social anyway).
@@ -504,7 +505,7 @@ export default function DashboardView({
   function isLateRegClosed(t) {
     const end = effectiveLateRegEnd(t);
     if (!end) return false;
-    const endMs = parseLateRegEnd(end, t.date);
+    const endMs = lateRegCloseOf(t, end);
     return !isNaN(endMs) && now > endMs;
   }
 
@@ -569,11 +570,12 @@ export default function DashboardView({
     const blindInfo = live
       ? { level: live.level, sb: live.sb, bb: live.bb, ante: live.ante,
           remainingMin: Math.floor(live.remaining / 60), remainingSec: live.remaining % 60,
-          live: true, onBreak: live.onBreak, paused: live.state === 'paused' }
+          live: true, onBreak: live.onBreak, paused: live.state === 'paused', stale: !!live.stale }
       : (started && levelDuration ? estimateBlindLevel(startMs, levelDuration) : null);
     const startingChips = event.starting_chips || 20000;
 
     const currentStack = (activeEventMap[event.id]?.stack) ? Number(activeEventMap[event.id].stack) : startingChips;
+    const stackUnknown = updatesFailed && !activeEventMap[event.id];
     const bbCount = blindInfo ? Math.floor(currentStack / blindInfo.bb) : null;
     const isCurrentlyPlaying = !!activeEventMap[event.id];
     const isExpanded = true;
@@ -582,6 +584,13 @@ export default function DashboardView({
     const isBustedDone = bustedUpdate && (bustedUpdate.bust_count || 1) >= getMaxEntries(event.reentry);
     // The room's clock showed it finished: dimmed like a busted-out card, "Event Completed" below.
     const completed = isCompleted(event, liveClocks[event.id]);
+    // The room's clock and the player (App improvements 105, 106): the room says it ended while the player's
+    // last word is neither a bust nor a bag, so the card asks how it went; or the player started and the
+    // room's clock has not, so the card says registered, with the stack posted, not "playing".
+    const roomClock = liveClocks[event.id] || null;
+    const lastUpd = activeEventMap[event.id];
+    const askEnded = !!roomClock && roomClock.state === 'ended' && !!lastUpd && !lastUpd.is_busted && !lastUpd.is_bagged && event._type !== 'bagged';
+    const roomNotStarted = !!roomClock && roomClock.state === 'not-started' && !!lastUpd;
 
     const venueInfo = getVenueInfo(event.venue, event.property);
     const venueColor = getVenueBrandColor(venueInfo.abbr);
@@ -594,7 +603,7 @@ export default function DashboardView({
     const cardClass = [
       'dash-event-card',
       planOff ? 'plan-off' : '',
-      isBustedDone ? 'done' : (completed ? 'completed' : ''),
+      isBustedDone ? 'done' : (completed && !askEnded ? 'completed' : ''),
       event._type === 'bagged' ? 'bagged' : '',
       event._type === 'anchor' && !isConditionalOnPlaying ? 'anchor' : '',
       isConditionalOnPlaying ? 'conditional' : '',
@@ -731,16 +740,20 @@ export default function DashboardView({
               <div className="dash-stat-label">Level {blindInfo.level}</div>
             </div>
             <div className="dash-stat-box">
-              <div className="dash-stat-value">{currentStack.toLocaleString()}</div>
-              <div className="dash-stat-label">{bbCount ? `${bbCount} BB` : 'START STACK'}</div>
+              <div className="dash-stat-value">{stackUnknown ? '—' : currentStack.toLocaleString()}</div>
+              <div className="dash-stat-label">{stackUnknown ? 'Stack' : bbCount ? `${bbCount} BB` : 'START STACK'}</div>
             </div>
             <div className="dash-stat-box">
               <div className="dash-stat-value">
-                {blindInfo.remainingMin}:{String(blindInfo.remainingSec).padStart(2, '0')}
+                {blindInfo.stale ? '—' : `${blindInfo.remainingMin}:${String(blindInfo.remainingSec).padStart(2, '0')}`}
               </div>
-              <div className="dash-stat-label">{blindInfo.live ? (blindInfo.paused ? 'Paused' : blindInfo.onBreak ? 'Break' : 'Live') : 'Clock'}</div>
+              <div className="dash-stat-label">{blindInfo.stale ? 'No signal' : blindInfo.live ? (blindInfo.paused ? 'Paused' : blindInfo.onBreak ? 'Break' : 'Live') : 'Clock'}</div>
             </div>
           </div>
+        )}
+        {/* A room clock gone quiet says when it was last heard (App improvements 104), never a frozen LIVE. */}
+        {isExpanded && live && live.stale && (
+          <div className="dash-live-field is-stale"><span className="dash-t">Room clock last heard {Math.max(1, Math.round((now - live.heardAt) / 60000))} min ago ({new Date(live.heardAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })})</span></div>
         )}
         {/* The boxes above carry the rest of the room's clock: its field, where the room publishes it. */}
         {isExpanded && live && clockFieldLabel(live, lateRegOver(event, live)) && <div className="dash-live-field"><span className="dash-t">{clockFieldLabel(live, lateRegOver(event, live))}</span></div>}
@@ -860,13 +873,32 @@ export default function DashboardView({
               );
             }
 
+            if (askEnded) {
+              const n = Number(roomClock.entries) > 0 ? ` (${Number(roomClock.entries).toLocaleString('en-US')} entries)` : '';
+              const finish = () => { haptic(25); window.dispatchEvent(new CustomEvent('openLiveUpdate', { detail: { tab: 'finish', tournamentId: event.id } })); };
+              return (
+                <div className="dash-status-stack">
+                  <p className="dash-ended-ask"><span className="dash-t">The room&rsquo;s clock says this event is over{n}. How did it go?</span></p>
+                  <div className="dash-action-row dash-ended-row">
+                    <button type="button" className="dash-bust-btn" onClick={finish}><span className="dash-t">Busted</span></button>
+                    <button type="button" className="dash-update-btn dash-cashed-btn" onClick={finish}><span className="dash-t">Cashed</span></button>
+                  </div>
+                </div>
+              );
+            }
+            const startsAt = roomNotStarted ? clockStartFrom(roomClock) : null;
             return (
               <div className="dash-status-stack">
-                <div className="dash-playing-badge">
-                  <span className="dash-playing-dot" /><span className="dash-t">Currently Playing{bulletNum > 1 ? `; Bullet ${bulletNum}` : ''}</span>
+                {roomNotStarted && (
+                  <p className="dash-registered-note"><span className="dash-t">{Number(lastUpd.stack || 0).toLocaleString('en-US')} posted{startsAt ? ` · the room’s clock starts in ${Math.max(1, Math.round((startsAt - now) / 60000))} min` : ''}</span></p>
+                )}
+                <div className={'dash-playing-badge' + (roomNotStarted ? ' is-registered' : '')}>
+                  {roomNotStarted
+                    ? <span className="dash-t">Registered{startsAt ? ` · starts ${new Date(startsAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ''}</span>
+                    : <><span className="dash-playing-dot" /><span className="dash-t">Currently Playing{bulletNum > 1 ? `; Bullet ${bulletNum}` : ''}</span></>}
                   <button className="dash-undo-x is-word snap-g" onClick={(e) => {
                     e.stopPropagation();
-                    if (activeUpd?.id && onDeleteUpdate && confirm('Undo playing status for this event?')) onDeleteUpdate(activeUpd.id);
+                    if (activeUpd?.id && onDeleteUpdate && confirm('Undo the start? Every update you posted for this event is removed.')) onDeleteUpdate(activeUpd.id, { all: true });
                   }} title="Undo start"><span className="dash-t">Undo</span></button>
                 </div>
                 <div className="dash-action-row dash-action-row--4">
@@ -911,6 +943,15 @@ export default function DashboardView({
             ? parseDateTimeInTz(event.date, event.time, event.venue)
             : parseDateTime(event.date, event.time || '12:00 AM');
           if (Number.isFinite(eventStartMs) && Date.now() < eventStartMs) return null;
+          // Your updates did not load: Start is not offered until a read succeeds (App improvements 111).
+          if (updatesFailed) {
+            return (
+              <div className="dash-updates-failed" role="alert">
+                <span className="dash-t">Couldn&rsquo;t load your updates for this event.</span>
+                {onRetryUpdates && <button type="button" className="dash-update-btn" onClick={() => onRetryUpdates()}><span className="dash-t">Retry</span></button>}
+              </div>
+            );
+          }
           return (
             <button
               className="dash-start-btn"
@@ -931,7 +972,7 @@ export default function DashboardView({
           );
         })()}
 
-        {event._type !== 'bagged' && !isBustedDone && !(isConditionalOnPlaying && regClosed) && (
+        {event._type !== 'bagged' && !isBustedDone && !askEnded && !roomNotStarted && !(isConditionalOnPlaying && regClosed) && (
           (bustedEventMap[event.id] || isConditionalOnPlaying) ? (
             <MiniLateRegBar
               completed={completed}
@@ -939,6 +980,9 @@ export default function DashboardView({
               lateRegEnd={effectiveLateRegEnd(event)}
               date={event.date}
               time={event.time}
+              venue={event.venue}
+              levelMin={event.level_duration}
+              reentry={event.reentry}
             />
           ) : (
             <LateRegBar
@@ -948,6 +992,9 @@ export default function DashboardView({
               date={event.date}
               time={event.time}
               venueAbbr={getVenueInfo(event.venue, event.property).abbr}
+              venue={event.venue}
+              levelMin={event.level_duration}
+              reentry={event.reentry}
             />
           )
         )}

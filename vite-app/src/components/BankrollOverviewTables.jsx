@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { springOpen } from '../hooks/useOpenSpring.js';
 import { CURRENCY_CONFIG } from '../utils/utils.js';
 import { RANGES } from '../utils/bankroll-ledger.js';
 import { bbFigures, bbColumn, bbBasis, unitLabel } from '../utils/bb-hr.js';
@@ -94,7 +95,20 @@ function Head3() {
 
 export default function BankrollOverviewTables({ d, risk: riskIn, range, today, bk, bkKey, currency: asked, fmtDate, homes = null, onSaveLocations = null }) {
   const [open, setOpen] = useState(readOpen);
-  const toggle = (k) => setOpen((o) => { const n = { ...o, [k]: !o[k] }; saveOpen(n); return n; });
+  // A table folds on the tab's one spring (Bankroll design 98): its new height at once, the tables under it ride.
+  const folding = useRef(null);
+  const secOf = (k) => { const h = document.getElementById(`ovt-h-${k}`); return h ? h.closest('.ovt-sec') : null; };
+  const toggle = (k) => {
+    const sec = secOf(k);
+    folding.current = sec ? { k, h: sec.getBoundingClientRect().height } : null;
+    setOpen((o) => { const n = { ...o, [k]: !o[k] }; saveOpen(n); return n; });
+  };
+  useLayoutEffect(() => {
+    const f = folding.current;
+    folding.current = null;
+    const sec = f && secOf(f.k);
+    if (sec) springOpen(sec, sec.getBoundingClientRect().height - f.h, open[f.k] ? sec.querySelector('.ovt-content') : null);
+  }, [open]);
   // The bankroll and currency of the ledger in hand, which lag the chip by one round trip.
   const sc = ledgerScope(d, { key: bkKey, currency: asked, bankrolls: bk.bankrolls });
   const currency = sc.currency;

@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { formatCurrencyAmount, CURRENCY_CONFIG } from '../utils/utils.js';
 import { BANKROLL_ALL, BANKROLL_MAIN } from '../utils/bankrolls.js';
-import { parseCsv, detectPreset, applyPreset, guessMapping, applyMapping, FIELDS, FIELDS_FOR, FIELD_LABELS } from '../utils/bankroll-csv.js';
+import { parseCsv, detectPreset, applyPreset, guessMapping, applyMapping, columnSample, detectDateOrder, FIELDS, FIELDS_FOR, FIELD_LABELS } from '../utils/bankroll-csv.js';
 import { IMPORT_GUIDES } from '../utils/import-guides.js';
 
 /**
@@ -62,6 +62,7 @@ export default function BankrollImport({ bk, toast, defaultKey, onDone }) {
   const [preset, setPreset] = useState(null);      // detectPreset() result, or null for the mapping
   const [usePreset, setUsePreset] = useState(true);
   const [mapping, setMapping] = useState({});
+  const [guessed, setGuessed] = useState({});     // what the headers matched by name, for the tick
   const [rowsAre, setRowsAre] = useState('tournament');
   const [currency, setCurrency] = useState('USD');
   const [dayFirst, setDayFirst] = useState(false);
@@ -80,7 +81,12 @@ export default function BankrollImport({ bk, toast, defaultKey, onDone }) {
     setFile({ name: f.name, rows });
     setPreset(p);
     setUsePreset(!!p);
-    setMapping(guessMapping(rows[0]));
+    const g = guessMapping(rows[0]);
+    setMapping(g);
+    setGuessed(g);
+    // The file says which way its dates run when one can only be read one way (App improvements 208).
+    const det = detectDateOrder(rows, g.date);
+    if (det.order) setDayFirst(det.order === 'day');
     setPreview(null);
   };
 
@@ -132,6 +138,27 @@ export default function BankrollImport({ bk, toast, defaultKey, onDone }) {
     <label className="bk-field" key={key}>
       <span className="bk-field-label">{label}</span>
       {control}
+    </label>
+  );
+  // A column picker with what it will read (Bankroll design 81): the chosen column's first values on a 2r
+  // line under it, a tick where the header matched by name, "not in this file" where the picker is empty.
+  const sampleOf = (key) => {
+    const col = mapping[key] ?? -1;
+    if (col < 0) return <span className="an-cell an-note bd-sample is-none an-clip">not in this file</span>;
+    const vals = columnSample(file && file.rows, col);
+    const matched = guessed[key] === col;
+    return (
+      <span className="an-cell an-note bd-sample an-clip" title={vals.join(' · ')}>
+        {matched && <svg className="bd-sample-tick" viewBox="0 0 16 16" aria-label="matched by name" role="img"><path d="M3 8.5l3.2 3.2L13 4.8" /></svg>}
+        {vals.length ? vals.join(' · ') : 'empty in the first rows'}
+      </span>
+    );
+  };
+  const fieldS = (label, control, key) => (
+    <label className="bk-field has-sample" key={key}>
+      <span className="bk-field-label">{label}</span>
+      {control}
+      {sampleOf(key)}
     </label>
   );
   const headers = file ? file.rows[0] : [];
@@ -195,7 +222,7 @@ export default function BankrollImport({ bk, toast, defaultKey, onDone }) {
             ), 'rows-are')}
           </div>
           <div className="bk-fields bd-fields bd-block">
-            {FIELDS_FOR[rowsAre].map((k) => FIELDS.find((f) => f.key === k)).filter(Boolean).map((f) => field(((FIELD_LABELS[rowsAre] || {})[f.key] || f.label) + (f.required || (rowsAre === 'mixed' && f.key === 'kind') ? ' *' : ''), (
+            {FIELDS_FOR[rowsAre].map((k) => FIELDS.find((f) => f.key === k)).filter(Boolean).map((f) => fieldS(((FIELD_LABELS[rowsAre] || {})[f.key] || f.label) + (f.required || (rowsAre === 'mixed' && f.key === 'kind') ? ' *' : ''), (
               <select value={String(mapping[f.key] ?? -1)} onChange={(e) => { setMapping({ ...mapping, [f.key]: Number(e.target.value) }); setPreview(null); }}>
                 <option value="-1">—</option>
                 {headers.map((h, i) => <option key={i} value={String(i)}>{h || `Column ${i + 1}`}</option>)}
@@ -206,12 +233,22 @@ export default function BankrollImport({ bk, toast, defaultKey, onDone }) {
                 {Object.keys(CURRENCY_CONFIG).map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             ), 'cur')}
-            {field('Dates like 03/04/2025', (
-              <select value={dayFirst ? 'd' : 'm'} onChange={(e) => { setDayFirst(e.target.value === 'd'); setPreview(null); }}>
-                <option value="m">Month first</option>
-                <option value="d">Day first</option>
-              </select>
-            ), 'df')}
+            {(() => {
+              const det = detectDateOrder(file.rows, mapping.date ?? -1);
+              const say = det.conflict ? `This file has dates both ways (line ${det.line} says ${det.value}); the rows that disagree won't import.`
+                : det.order === 'day' ? `Day first: line ${det.line} says ${det.value}, which can only be read day first.`
+                : det.order === 'month' ? `Month first: line ${det.line} says ${det.value}, which can only be read month first.` : null;
+              return (
+                <label className={'bk-field' + (say ? ' has-sample' : '')} key="df">
+                  <span className="bk-field-label">Dates like 03/04/2025</span>
+                  <select value={det.order ? (det.order === 'day' ? 'd' : 'm') : (dayFirst ? 'd' : 'm')} disabled={!!det.order} onChange={(e) => { setDayFirst(e.target.value === 'd'); setPreview(null); }}>
+                    <option value="m">Month first</option>
+                    <option value="d">Day first</option>
+                  </select>
+                  {say && <span className={'an-cell an-note bd-sample an-clip' + (det.conflict ? ' is-warn' : '')} title={say}>{say}</span>}
+                </label>
+              );
+            })()}
           </div>
           <p className="an-p">{ROWS_HINT[rowsAre]}</p>
         </section>

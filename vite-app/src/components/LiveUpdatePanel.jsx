@@ -1,11 +1,12 @@
 import { noteReviewMoment } from '../utils/review-prompt.js';
+import useBackToClose from '../hooks/useBackToClose.js';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import { CameraOverlay, RegistrationCameraFlow } from './CameraOverlay.jsx';
 import { API_URL } from '../utils/api.js';
 import {
-  getToday, normaliseDate, parseLateRegEnd,
+  getToday, normaliseDate, parseLateRegEnd, lateRegCloseOf, parseTournamentTime,
   getGamePills, haptic, HAND_CONFIG, HAND_CONFIG_DEFAULT,
   formatLiveUpdate, ordinalSuffix, parseShorthand,
 } from '../utils/utils.js';
@@ -52,6 +53,7 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
   const panelRef = useRef(null);
   const toggleRef = useRef(null);
   const [open, setOpen] = useState(false);
+  useBackToClose(open, () => setOpen(false));   // Back closes the panel (App improvements 454)
   const [selectedTournamentId, setSelectedTournamentId] = useState(null);
   const [stack, setStack] = useState('');
   const [sb, setSb] = useState('');
@@ -121,10 +123,11 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
     return map;
   }, [myActiveUpdates]);
 
+  // Today in start order (App improvements 109; it was the schedule's order).
   const todayTournaments = useMemo(() =>
     (mySchedule || []).filter(t =>
       normaliseDate(t.date) === todayISO && t.venue !== 'Personal'
-    ),
+    ).sort((a, b) => (parseTournamentTime(a) || 0) - (parseTournamentTime(b) || 0)),
     [mySchedule, todayISO]
   );
 
@@ -133,13 +136,22 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
     const bustedMap = {};
     (myActiveUpdates || []).filter(u => u.is_busted).forEach(u => { bustedMap[u.tournament_id] = u; });
     const now = Date.now();
+    // In progress (App improvements 109): an earlier event with an update of the player's, not busted out,
+    // whose last update is under 36 h old or whose next day restarts today. Every past scheduled event with no
+    // bust used to stay, at any age (a three-day-old event "In Progress", never started).
+    const latest = {};
+    (myActiveUpdates || []).forEach(u => { const at = Date.parse(u.created_at || '') || 0; if (!latest[u.tournament_id] || at > latest[u.tournament_id]) latest[u.tournament_id] = at; });
+    const restartsToday = (t) => (mySchedule || []).some(r => r.is_restart && r.parent_event && r.parent_event === t.event_number && normaliseDate(r.date) === todayISO);
     return (mySchedule || []).filter(t => {
       if (todayIds.has(t.id) || t.venue === 'Personal') return false;
       if (normaliseDate(t.date) >= todayISO) return false;
-      if (!bustedMap[t.id]) return true;
-      if (!t.reentry) return false;
-      const lateEnd = parseLateRegEnd(t.late_reg_end, t.date);
-      return !isNaN(lateEnd) && now < lateEnd;
+      if (!(t.id in latest)) return false;
+      if (bustedMap[t.id]) {
+        if (!t.reentry) return false;
+        const lateEnd = lateRegCloseOf(t);
+        return !isNaN(lateEnd) && now < lateEnd;
+      }
+      return now - latest[t.id] < 36 * 3600000 || restartsToday(t);
     });
   }, [mySchedule, todayTournaments, myActiveUpdates, todayISO]);
 
@@ -152,10 +164,8 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
   const isRegPastClose = (tournamentId) => {
     const t = todayTournaments.find(x => x.id === tournamentId);
     if (!t?.late_reg_end) return false;
-    const now = new Date();
-    const [h, m] = t.late_reg_end.split(':').map(Number);
-    const closeTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m);
-    return now >= closeTime;
+    const close = lateRegCloseOf(t);   // the room's zone, a level as a level (App improvements 1, 2)
+    return !isNaN(close) && Date.now() >= close;
   };
 
   // fromCard: the stack is new information each time, so it starts empty with the last one as its
@@ -267,13 +277,13 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
     const upcoming = (mySchedule || [])
       .filter(t => {
         if (t.id === selectedTournamentId) return false;
-        const startMs = parseLateRegEnd(t.time, t.date);
+        const startMs = parseTournamentTime(t);
         return !isNaN(startMs) && startMs > now;
       })
-      .sort((a, b) => parseLateRegEnd(a.time, a.date) - parseLateRegEnd(b.time, b.date));
+      .sort((a, b) => parseTournamentTime(a) - parseTournamentTime(b));
     if (!upcoming.length) return null;
     const t = upcoming[0];
-    const startMs = parseLateRegEnd(t.time, t.date);
+    const startMs = parseTournamentTime(t);
     const diffMs = startMs - now;
     const hours = Math.floor(diffMs / 3600000);
     const mins = Math.floor((diffMs % 3600000) / 60000);
@@ -356,7 +366,10 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
       return { ...base, updateText: JSON.stringify(handPayload) };
     }
     if (updateType === 'register') {
-      return { ...base, isRegistered: true };
+      // The buy-in sends what the tab asked for (App improvements 110): the event's starting stack and, with
+      // Join Level ticked, the joining blinds. It sent isRegistered alone.
+      const r = registerSends();
+      return { ...base, isRegistered: true, ...(r.stack ? { stack: r.stack } : {}), ...(r.sb ? { sb: r.sb, bb: r.bb, bbAnte: r.bbAnte } : {}) };
     }
     // 'update' tab
     return {
@@ -429,13 +442,32 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
     setCameraOpen(true);
   };
 
-  const handleSubmit = () => {
-    if (!selectedTournamentId) return;
+  // A post that fails keeps the panel open with every typed value, says so, and offers Try again (App
+  // improvements 101: it closed at once and the update was lost without a word).
+  const [posting, setPosting] = useState(false);
+  const [postFail, setPostFail] = useState(null);
+  useEffect(() => { if (!open) { setPostFail(null); setPosting(false); } }, [open]);
+  function registerSends() {
+    const t = (mySchedule || []).find(x => x.id === selectedTournamentId);
+    const stack = t && Number(t.starting_chips) > 0 ? Number(t.starting_chips) : null;
+    const num = (v) => { const n = Number(parseShorthand(String(v || ''))); return n > 0 ? n : null; };
+    const sb = hasJoinLevel ? num(joiningSb) : null;
+    return { stack, sb, bb: sb ? num(joiningBb) : null, bbAnte: sb ? num(joiningAnte) : null };
+  }
+  const handleSubmit = async () => {
+    if (!selectedTournamentId || posting) return;
     if (updateType === 'update' && !isBusted && !stack) return;
     if (updateType === 'hand' && !parseCardNotation(heroHand).length) return;
     haptic(25);
     const data = buildUpdateData();
-    onPost(data);
+    setPosting(true); setPostFail(null);
+    const r = await onPost(data);
+    setPosting(false);
+    if (r && r.ok === false) {
+      const kept = data.stack ? ` Your ${Number(data.stack).toLocaleString('en-US')} is still here.` : ' What you typed is still here.';
+      setPostFail(`Not posted: ${r.status ? `the server answered ${r.status}` : 'no answer from the server'}.${kept}`);
+      return;
+    }
     // A bag is a moment to ask for a rating; a bust never is (utils/review-prompt.js).
     if (data.isBusted || updateType === 'finish') noteReviewMoment('busted');
     else if (data.isBagged) noteReviewMoment('bagged');
@@ -787,6 +819,13 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
                 </>
               )}
 
+              {postFail && <div className="lu-post-fail" role="alert">{postFail}</div>}
+              {updateType === 'register' && selectedTournamentId && (() => {
+                const r = registerSends();
+                const f = (n) => Number(n).toLocaleString('en-US');
+                const bits = [r.sb ? `joined at ${[r.sb, r.bb, r.bbAnte].filter(Boolean).map(f).join('/')}` : null, r.stack ? `${f(r.stack)} start stack` : null].filter(Boolean);
+                return bits.length ? <p className="lu-sends">Sends: {bits.join(' · ')}</p> : null;
+              })()}
               {/* ── Bottom row: camera + share + post ── whole-g buttons 1g apart, set at the end (owner rule 2026-10-10) */}
               <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',gap:'var(--gu)'}}>
                 {updateType === 'hand' && parseCardNotation(heroHand).length > 0 && (
@@ -815,9 +854,10 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
                   className="btn btn-primary btn-sm snap-g"
                   style={{flexShrink:0}}
                   onClick={handleSubmit}
-                  disabled={!selectedTournamentId || (updateType === 'update' && !isBusted && !stack) || (updateType === 'hand' && !parseCardNotation(heroHand).length)}
+                  aria-busy={posting || undefined}
+                  disabled={posting || !selectedTournamentId || (updateType === 'update' && !isBusted && !stack) || (updateType === 'hand' && !parseCardNotation(heroHand).length)}
                 >
-                  {updateType === 'finish' ? 'Finish Event' : updateType === 'hand' ? 'Post Hand' : 'Post Update'}
+                  {posting ? 'Posting…' : postFail ? 'Try again' : updateType === 'finish' ? 'Finish Event' : updateType === 'hand' ? 'Post Hand' : updateType === 'register' ? 'Post buy-in' : 'Post Update'}
                 </button>
                 <button className="btn btn-ghost btn-sm snap-g" style={{flexShrink:0}} onClick={() => setOpen(false)}>Cancel</button>
               </div>

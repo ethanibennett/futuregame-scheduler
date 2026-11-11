@@ -8,7 +8,8 @@ import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
 import { goalProgress, ledgerToCsv, fmtRule } from '../utils/bankroll-ledger.js';
 import BankrollFab from './BankrollFab.jsx';
 import BankrollOverview, { OverviewFrame } from './BankrollOverview.jsx';
-import { LoadFailed } from './EmptyState.jsx';
+import { FirstRun, LoadFailed } from './EmptyState.jsx';
+import { SkeletonBlocks } from './SkeletonBankroll.jsx';
 import BankrollImport from './BankrollImport.jsx';
 import BankrollImportDashboard from './BankrollImportDashboard.jsx';
 import BankrollReports from './BankrollReports.jsx';
@@ -170,7 +171,8 @@ function Goals({ goals, entries, money, today, onSave, saving, currency }) {
   return (
     <section className="bd-section" aria-labelledby="bd-goals">
       <h3 className="an-cell an-sec" id="bd-goals">Goals</h3>
-      {list.length === 0 && <p className="an-p">No goals yet. A goal is a monthly or yearly target for profit or for volume.</p>}
+      {/* One empty state (Bankroll design 96): the block, its title and one sentence; the form under it is the action. */}
+      {list.length === 0 && <FirstRun block icon="star" title="No goals yet" body="A goal is a monthly or yearly target for profit or for volume. Set one below." />}
       {list.map((g) => {
         const p = goalProgress(g, entries, today);
         const what = `${g.period === 'month' ? 'Monthly' : 'Yearly'} ${g.metric === 'profit' ? 'profit' : 'volume'}`;
@@ -238,7 +240,7 @@ function Risk({ risk, money }) {
   return (
     <section className="bd-section" aria-labelledby="bd-risk">
       <h3 className="an-cell an-sec" id="bd-risk">Risk of ruin (tournaments)</h3>
-      {!risk && <p className="an-p">Loading…</p>}
+      {!risk && <SkeletonBlocks label="Working out the risk" blocks={[{ h: 6, bars: [[20, 1], [30, 1]] }]} />}
       {risk && risk.status === 'insufficient' && (
         <p className="an-p"><strong>Not enough data.</strong> The estimate needs {risk.minEntries} tournament entries with a
           buy-in; this bankroll has {risk.n}.</p>

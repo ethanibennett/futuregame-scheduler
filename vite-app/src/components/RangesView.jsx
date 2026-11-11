@@ -289,7 +289,7 @@ export default function RangesView({ onBack }) {
         style={{ marginTop: 'calc(var(--subrow) * 3)', '--hs-gap': 1, '--hs-bg': 'transparent' }}>
         <span className="hs-t hs-cap hs-mut" style={T(2, 2)}>Where this comes from</span>
         <span className="hs-t hs-xs hs-mut" style={T(2, 2)}>
-          A 6-seat MCCFR solve of the pre-draw betting game at{' '}
+          A 6-seat solve of the pre-draw betting game at{' '}
           {Number(data.nodes.rung).toLocaleString('en-US')} iterations, averaged over{' '}
           {data.hands.nSeeds} independent seeds. {v.claims} of its figures are re-derived from the
           snapshots by a second, independent implementation whenever the deliverable changes, and{' '}

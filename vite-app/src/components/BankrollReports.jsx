@@ -6,6 +6,8 @@ import {
 import { REPORTS, buildReport, summaryStats, barLayout, reportAvailability } from '../utils/bankroll-reports.js';
 import { bbColumn, bbFigures, bbBasis } from '../utils/bb-hr.js';
 import BankrollFilters, { Chip } from './BankrollFilters.jsx';
+import { LoadFailed } from './EmptyState.jsx';
+import { SkeletonBlocks } from './SkeletonBankroll.jsx';
 import './analytics.css';
 import './bankroll-reports.css';
 
@@ -117,6 +119,7 @@ export default function BankrollReports({ bk, bankrollKey, currency }) {
   const today = getToday();
   const stored = useRef(load());
   const [state, setState] = useState({ status: 'loading', facts: [] });
+  const [retry, setRetry] = useState(0);
   const [filters, setFilters] = useState(() => {
     if (stored.current && stored.current.filters) return normaliseFilters(stored.current.filters);
     const f = emptyFilters();
@@ -142,7 +145,7 @@ export default function BankrollReports({ bk, bankrollKey, currency }) {
       .then((d) => { if (live) setState({ status: 'ready', facts: prepareFacts(d.facts || []) }); })
       .catch(() => { if (live) setState({ status: 'error', facts: [] }); });
     return () => { live = false; };
-  }, [currency]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currency, retry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const money = useCallback((v) => formatCurrencyAmount(Math.round(v || 0), currency), [currency]);
   const signed = useCallback((v) => (v > 0 ? '+' : '') + formatCurrencyAmount(Math.round(v || 0), currency), [currency]);
@@ -199,8 +202,11 @@ export default function BankrollReports({ bk, bankrollKey, currency }) {
         ))}
       </div>
 
-      {state.status === 'error' && <p className="an-p">The reports could not load. Close the dashboard and try again.</p>}
-      {state.status === 'loading' && !facts.length && <p className="an-p">Loading…</p>}
+      {/* Loading holds the page's shape; a failed load says so with Try again (Bankroll design 95, 97). */}
+      {state.status === 'error' && <LoadFailed title="Your reports did not load" onRetry={() => setRetry((n) => n + 1)} />}
+      {state.status === 'loading' && !facts.length && (
+        <SkeletonBlocks label="Loading your reports" blocks={[{ h: 11, card: true, bars: [[8, 1], [12, 2], [8, 1]] }, { h: 30, card: true, bars: [[10, 1], [30, 1], [30, 1], [30, 1]] }]} />
+      )}
       {state.status !== 'error' && (facts.length > 0 || state.status === 'ready') && (
         <>
           <div className="an-stats br-stats">

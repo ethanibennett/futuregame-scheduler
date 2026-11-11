@@ -131,9 +131,14 @@ export function seatIndexFor(hand, i, n, mode) {
   }
   if (mode === 'app') {
     const labels = positionLabels(n);
-    if (labels[i] === pos && (hand.players || []).length === n) return i;
-    const j = labels.indexOf(pos);
-    if (j >= 0) return j;
+    // The app's own labels only when the whole hand is written in them (App improvements 306): its 9-handed
+    // first seat is "UTG+1", so a hand written the vernacular way (UTG, UTG+1, MP, ...) put UTG+1 on UTG's seat.
+    const all = (hand.players || []).every((q) => !q || !q.position || labels.includes(String(q.position).trim()));
+    if (all) {
+      if (labels[i] === pos && (hand.players || []).length === n) return i;
+      const j = labels.indexOf(pos);
+      if (j >= 0) return j;
+    }
   }
   return roleIndex(canonicalPosition(pos), n);
 }

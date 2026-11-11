@@ -41,7 +41,8 @@ test('loss deduction: 100% through 2025, 90% from 2026', () => {
 test('ISO dates are read by hand, never through Date', () => {
   assert.deepEqual(parseIsoDate('2025-01-01'), { y: 2025, m: 1, d: 1 });
   assert.deepEqual(parseIsoDate('2025-12-31T23:59:00Z'), { y: 2025, m: 12, d: 31 });
-  assert.equal(parseIsoDate('Jan 1, 2025'), null);
+  // The feed's own format is read too (App improvements 203), still by hand.
+  assert.deepEqual(parseIsoDate('Jan 1, 2025'), { y: 2025, m: 1, d: 1 });
   assert.equal(parseIsoDate('2025-13-01'), null);
   assert.equal(parseIsoDate(null), null);
   // Last year only in filing season (UX pick 83); this year after April 15.
@@ -302,4 +303,12 @@ test('report: transactions reach the professional column; the rows say so; witho
   assert.match(expenseRuleText(r), /Recreational: none of it is deductible/);
   assert.equal(r.ledger.incomeTotal, 40);
   assert.equal(r.totals.grossWinnings, 5000, 'other income is not added to winnings');
+});
+
+test('a result dated in the feed’s words counts (App improvements 203)', async () => {
+  const { parseIsoDate } = await import('../tax-report.js');
+  assert.deepEqual(parseIsoDate('October 20, 2026'), { y: 2026, m: 10, d: 20 });
+  assert.deepEqual(parseIsoDate('Fri Oct 9 2026'), { y: 2026, m: 10, d: 9 });
+  assert.deepEqual(parseIsoDate('2025-12-31'), { y: 2025, m: 12, d: 31 });
+  assert.equal(parseIsoDate('sometime'), null);
 });

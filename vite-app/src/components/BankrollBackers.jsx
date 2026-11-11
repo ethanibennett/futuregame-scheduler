@@ -1,3 +1,4 @@
+import useOpenSpring from '../hooks/useOpenSpring.js';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { API_URL } from '../utils/api.js';
 import { getToday } from '../utils/utils.js';
@@ -120,6 +121,8 @@ function ShareRows({ b, thisYear, weekStart, next }) {
 }
 
 function BackerCard({ b, open, onToggle, thisYear, onCopy, onSettle, settling, onDiscord, compact = false, wide = false, weekStart, next }) {
+  const liRef = useRef(null);
+  useOpenSpring(open, liRef, '.bb-detail');
   const id = 'bb-shares-' + b.id.replace(/[^\w-]+/g, '-');
   const name = displayName(b);
   const items = statItems(b);
@@ -157,7 +160,7 @@ function BackerCard({ b, open, onToggle, thisYear, onCopy, onSettle, settling, o
     </div>
   );
   return (
-    <li className={'bl-item bb-item' + (open ? ' is-open' : '') + (square ? ' is-square' : '') + (compact ? ' is-compact' : '')}>
+    <li ref={liRef} className={'bl-item bb-item' + (open ? ' is-open' : '') + (square ? ' is-square' : '') + (compact ? ' is-compact' : '')}>
       <button type="button" className={'bl-card' + (bbs.length && !compact ? ' has-bb' : '')} aria-expanded={open} aria-controls={open ? id : undefined} onClick={onToggle}>
         <span className="bl-head bb-head">
           {/* A face to find (Bankroll design 56): the backer's initials in one neutral tile. */}

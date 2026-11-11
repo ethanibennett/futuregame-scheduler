@@ -58,18 +58,20 @@ export default function SolverPlayView({ onBack }) {
   const [auto, setAuto] = useState(false);
   const timer = useRef(null);
 
+  // The first game is one this server can deal: it waits for availability (App improvements 303).
   useEffect(() => {
+    if (avail === null) return;
     (async () => {
       try {
         const res = await fetchApi('/solver/games');
         if (!res.ok) throw new Error('Failed to load games');
         const list = await res.json();
         setGames(list);
-        const first = list.find(g => g.trained) || list[0];
+        const first = list.find(g => g.trained && offered(avail, g.id)) || list.find(g => g.trained) || list[0];
         if (first) setGameId(first.id);
       } catch (e) { setError(e.message); }
     })();
-  }, []);
+  }, [avail]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const deal = useCallback(async (id) => {
     setLoading(true); setError(null); setAuto(false); setIdx(0);

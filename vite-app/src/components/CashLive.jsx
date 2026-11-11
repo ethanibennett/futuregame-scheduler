@@ -20,14 +20,14 @@ import useTick from '../hooks/useTick.js';
 // one row (35g with the gaps): MTT/Cash ⌄, Overview, Insights ⌄ and Manage ⌄. A group's chip shows the section last used in it (remembered on the
 // device), so one tap returns there and its caret opens the group's menu, the way the Schedule's
 // Online chip works. The chip of the group in view is lit.
-const RESULTS_GROUPS = [
+export const RESULTS_GROUPS = [
   { id: 'logs', label: 'Logs', keys: ['tournaments', 'cash', 'all'] },   // All: both together (ResultsAll.jsx)
   { id: 'overview', label: 'Overview', keys: ['balance'] },
   { id: 'insights', label: 'Insights', keys: ['reports', 'locations', 'goals'] },
   { id: 'manage', label: 'Manage', keys: ['backers', 'rules', 'data'] },
 ];
 // Tournaments reads MTT on the strip and in its menu (owner, 2026-10-20), so every chip fits its 8g.
-const SECTION_LABEL = { ...Object.fromEntries(RESULTS_SECTIONS), tournaments: 'MTT' };
+export const SECTION_LABEL = { ...Object.fromEntries(RESULTS_SECTIONS), tournaments: 'MTT' };
 const LAST_KEY = 'resultsGroupLast';
 const readLast = () => { try { return JSON.parse(localStorage.getItem(LAST_KEY)) || {}; } catch { return {}; } };
 

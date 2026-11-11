@@ -30,7 +30,7 @@ export function normaliseList(data) {
       openingCents: num(a.openingCents), openingNote: text(a.openingNote) || null,
       stakes: (Array.isArray(a.stakes) ? a.stakes : []).map((s) => ({ id: num(s.id), format: text(s.format), channel: text(s.channel) || 'any', pct: num(s.pct), validFrom: text(s.validFrom), validTo: text(s.validTo) || null, inForce: !!s.inForce })),
       inForce: text(a.inForce),
-      sharesCount: num(a.sharesCount), sharesCents: num(a.sharesCents), paidCents: num(a.paidCents), runningCents: num(a.runningCents),
+      sharesCount: num(a.sharesCount), sharesCents: num(a.sharesCents), sharesFromDashboard: num(a.sharesFromDashboard), paidCents: num(a.paidCents), runningCents: num(a.runningCents),
       delivery: { sms: !!(a.delivery && a.delivery.sms), email: !!(a.delivery && a.delivery.email) },
     })),
   };
@@ -59,7 +59,7 @@ export function agreementView(a, { thisYear, today } = {}) {
     status,
     tone: a.status === 'ended' ? 'is-muted' : '',
     stakes: current.length ? a.inForce || current.map((s) => `${fmtPct(s.pct)} ${s.format}`).join(' · ') : 'No stakes in force',
-    money: `${plural(a.sharesCount, 'share')} · ${fmtSignedCents(a.sharesCents)}` + (a.openingCents ? ` · opening ${fmtSignedCents(a.openingCents)}` : '') + (a.paidCents ? ` · paid ${fmtSignedCents(-a.paidCents)}` : ''),
+    money: `${plural(a.sharesCount, 'share')}${a.sharesFromDashboard ? (a.sharesFromDashboard === a.sharesCount ? ' (from the dashboard)' : ` (${a.sharesFromDashboard} from the dashboard)`) : ''} · ${fmtSignedCents(a.sharesCents)}` + (a.openingCents ? ` · opening ${fmtSignedCents(a.openingCents)}` : '') + (a.paidCents ? ` · paid ${fmtSignedCents(-a.paidCents)}` : ''),
     running: fmtSignedCents(a.runningCents),
     runningTone: tone(a.runningCents),
     link: a.backer.hasLink ? `Link ${a.backer.link || ''}`.trim() : 'No link yet',

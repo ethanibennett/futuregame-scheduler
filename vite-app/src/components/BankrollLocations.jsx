@@ -1,3 +1,4 @@
+import useOpenSpring from '../hooks/useOpenSpring.js';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CURRENCY_CONFIG, getToday } from '../utils/utils.js';
 import { prepareFacts } from '../utils/bankroll-filters.js';
@@ -182,6 +183,7 @@ function LocationCard({ loc, cur, open, onToggle, scale }) {
   const p = usePager(open, loc.results.length, itemRef);
   const rows = loc.results.slice(0, p.pg.rows);
   const rule = scale.at(loc.total);
+  useOpenSpring(open, itemRef, '.bl-detail');
   // Stuck (Bankroll design 67): a sentinel above the open card's head says when the head has reached the top.
   const sentRef = useRef(null);
   const [stuck, setStuck] = useState(false);

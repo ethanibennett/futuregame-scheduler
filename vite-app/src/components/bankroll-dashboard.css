@@ -191,7 +191,7 @@
 .bd-sp[aria-disabled="true"] { cursor: default; }
 .bd-sp-name {
   display: flex; align-items: center;
-  font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: var(--track-caps);
+  font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: var(--track-caps);
   line-height: calc(var(--subrow) * 2);
   /* Letter-spacing also follows the last letter; an equal pad at the row's other end (left of
      the swatch, when there is one) puts the ink on the centre line. */
@@ -367,3 +367,24 @@
 .bd-goal-head.bd-verdict-head { grid-template-columns: calc(var(--gu) * 15) calc(var(--gu) * 20); }
 .an-cell.bd-verdict-word { font-weight: var(--fw-bold); --p: 0.7586; }
 .bd-bar-over { position: absolute; top: 0; bottom: 0; background: var(--neg); }
+
+/* CSV column pickers show what they will read (Bankroll design 81): a 2r line under each picker, the chosen
+   column's first values (blanks skipped) in condensed xs, a --pos tick where the header matched by name,
+   "not in this file" where the picker is empty. Each row of pickers grows by 2r. */
+.bk-field.has-sample { grid-template-rows: calc(var(--subrow) * 3) calc(var(--subrow) * 4) calc(var(--subrow) * 2); }
+.bd-sample { color: var(--n-7, var(--text-muted)); }
+.bd-sample.is-none { font-style: italic; }
+.bd-sample-tick {
+  display: inline-block; vertical-align: baseline; width: var(--subrow); height: var(--subrow); margin-right: calc(var(--gu) * 0.25);
+  fill: none; stroke: var(--pos); stroke-width: var(--bw-2); stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* One spacing scale between blocks (Bankroll design 92): 1r between a block and its own control, 2r between
+   blocks (the strip, or the desktop band, to a section's first block included), 4r above a new section's
+   heading. A section's first block takes no margin of its own, so every section starts 2r under the strip. */
+.bd-inline > :first-child, .bd-inline > .bd-section:first-of-type, .bd-inline > .bd-hero:first-child { margin-top: 0; }
+.bd-sample.is-warn { color: var(--warn); }
+.bd-sample.is-warn { color: var(--warn); }
+/* The balance's 3xl figures paint 0.6px under their 4r cell on desktop (check:clipping): the box gains 0.5r of
+   painted room below, taken back by an equal negative margin, so nothing under it moves. */
+.an-cell.bd-hero-bal { height: calc(var(--subrow) * (var(--h) + 0.5)); margin-bottom: calc(var(--subrow) * -0.5); }

@@ -1,4 +1,6 @@
 import React from 'react';
+import { getVenueInfo, formatBuyin, normaliseDate } from '../utils/utils.js';
+import { parseServerStamp } from '../utils/utils.js';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
@@ -8,6 +10,22 @@ import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 // A whole 3r disc, so an avatar row is a whole number of r (24px was 3.1r on a phone) and every
 // item and its Accept / Decline under it stays on the grid.
 const AVATAR_3R = { width: 'calc(var(--subrow) * 3)', height: 'calc(var(--subrow) * 3)' };
+
+
+/* A swap offer in the receiver's words (App improvements 359): my_pct is what the SENDER gives. */
+function swapWords(ss) {
+  const pron = 'theirs';
+  if (ss.type === 'crossbook') {
+    const cap = Number(ss.cap) > 0 ? `, capped at ${formatBuyin(ss.cap, ss.venue)}` : '';
+    return `offers a crossbook: ${ss.my_pct}% each way${cap}`;
+  }
+  return `offers a swap: ${ss.my_pct}% of ${pron} for ${ss.their_pct}% of yours`;
+}
+function swapDay(ss) {
+  const d = normaliseDate(ss.date);
+  if (!d) return ss.date || '';
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
+}
 
 export default function NotificationsPanel({ notifications, token, onClose, fetchNotifications, fetchShareBuddies, fetchMyGroups, onEnablePush }) {
   const displayName = useDisplayName();
@@ -77,7 +95,7 @@ export default function NotificationsPanel({ notifications, token, onClose, fetc
   const timeAgo = (dateStr) => {
     if (!dateStr) return '';
     const now = new Date();
-    const d = new Date(dateStr);
+    const d = parseServerStamp(dateStr);
     const diffMs = now - d;
     const mins = Math.floor(diffMs / 60000);
     if (mins < 1) return 'just now';
@@ -189,17 +207,19 @@ export default function NotificationsPanel({ notifications, token, onClose, fetc
                       <div className="notif-item-who" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                         <Avatar src={ss.from_avatar} username={ss.from_username} size={24} style={AVATAR_3R} />
                         <div className="notif-item-text">
+                          {/* Written for the reader (App improvements 359): what the sender gives and what you give,
+                              a crossbook's cap (360), and the event with its day and room. */}
                           <strong>{ss.from_real_name || ss.from_username}</strong>
-                          {` wants a ${ss.type} \u2014 ${ss.my_pct}%/${ss.their_pct}%`}
+                          {' ' + swapWords(ss)}
                           <div style={{ fontSize: 'calc(var(--gu) * 1.031)', color: 'var(--text-muted)', marginTop: 0 }}>
-                            {ss.event_name} {'\u00B7'} {ss.date}
+                            {[ss.event_name, swapDay(ss), getVenueInfo(ss.venue).longName || ss.venue].filter(Boolean).join(' \u00B7 ')}
                           </div>
                         </div>
                       </div>
                       <div className="notif-item-time">{timeAgo(ss.created_at)}</div>
                     </div>
                     <div className="notif-item-actions">
-                      <button className="btn btn-primary btn-xs" onClick={() => handleSwapRespond(ss.id, 'accepted')}>Accept</button>
+                      <button className="btn btn-primary btn-xs" onClick={() => { if (window.confirm('Accept: ' + swapWords(ss) + '?')) handleSwapRespond(ss.id, 'accepted'); }}>Accept</button>
                       <button className="btn btn-ghost btn-xs" onClick={() => handleSwapRespond(ss.id, 'declined')}>Decline</button>
                     </div>
                   </div>

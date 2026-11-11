@@ -5,9 +5,9 @@ import {
   drawWrapSlide4, drawWrapSlide5, shareOrDownloadCanvas, ensureExportFonts,
 } from '../utils/export.js';
 
-export default function WrapUpViewer({ trackingData, tournaments, onClose }) {
+export default function WrapUpViewer({ trackingData, tournaments, onClose, rates = null }) {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const data = useMemo(() => computeScorecardData(trackingData, null, tournaments), [trackingData, tournaments]);
+  const data = useMemo(() => computeScorecardData(trackingData, null, tournaments, { rates }), [trackingData, tournaments, rates]);
 
   const slideNames = ['Overview', 'Numbers', 'Best Moment', 'Game Mix', 'Fun Facts'];
   const slideFns = [drawWrapSlide1, drawWrapSlide2, drawWrapSlide3, drawWrapSlide4, drawWrapSlide5];

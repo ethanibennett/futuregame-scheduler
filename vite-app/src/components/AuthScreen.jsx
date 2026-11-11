@@ -24,7 +24,7 @@ function campaignKnown() {
 /* Sign In and Create Account (Laws of UX picks 7, 8, 11, 14; owner, 2026-11-10): the two account
    actions are the card's two first buttons, sign-up asks for a name, an email and a password, and a
    tap is answered at once ("Signing in…", the fields locked) while the request runs. */
-export default function AuthScreen({ onSubmit, error, success, theme, toggleTheme, onForgotPassword, onGuestLogin, initialRegister, busy = false, onRegisterShown }) {
+export default function AuthScreen({ onSubmit, error, success, theme, toggleTheme, onForgotPassword, onGuestLogin, initialRegister, busy = false, onRegisterShown, onModeChange = null }) {
   const [isRegister, setIsRegister] = useState(!!initialRegister);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [email, setEmail] = useState('');
@@ -119,11 +119,11 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
         {isRegister ? (
           <p className="auth-hint" style={{textAlign:'center',marginTop:'calc(var(--subrow) * 2)'}}>
             {'Already have an account? '}
-            <button type="button" onClick={() => setIsRegister(false)} className="auth-link">Sign in</button>
+            <button type="button" onClick={() => { setIsRegister(false); if (onModeChange) onModeChange(); }} className="auth-link">Sign in</button>
           </p>
         ) : (
           <>
-            <button type="button" className="btn btn-ghost btn-full auth-create" onClick={() => setIsRegister(true)}>
+            <button type="button" className="btn btn-ghost btn-full auth-create" onClick={() => { setIsRegister(true); if (onModeChange) onModeChange(); }}>
               Create an account
             </button>
             <button type="button" className="auth-link-quiet auth-forgot" onClick={() => onForgotPassword(email)}>

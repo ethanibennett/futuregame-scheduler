@@ -14,6 +14,54 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-11-11 — App improvements: 96 picks built, 154 and 158 not
+
+- The picks from the App improvements catalogue (`docs/catalogues/app-improvements`), marked Built on the artifact
+  https://claude.ai/artifact/TAPjgLdyahG33nB8cSKBZW. **Not built:** 154 (the pot row over the seats) and 158 (the short
+  window's bar), both need a replayer pass at every table size, in the simulator first. **Built in part:** 151 (the
+  stakes line has cents; stacks and pots under a $1 big blind still round), 352 (the open group only, once per update;
+  the feed's reload and the Chat rename are not), 452 (a failed tab says so; no 10 s loading timeout).
+- **What a later change has to keep:**
+  - Late registration is read by `lateRegCloseOf(t)` / `parseLateRegEnd(end, date, venue, ctx)` (utils.js): a clock
+    time in the ROOM's zone, a bare number a level, as `clockRegEnd` reads it (closes as that level starts; "end of
+    level" in the re-entry text, one level later). Every bar passes `venue`, `levelMin` and `reentry`.
+  - Server stamps go through `parseServerStamp` (UTC with no zone). Tabs have addresses `#/home`, `#/schedule`,
+    `#/bankroll`… (`utils/tab-address.js`, the `#/` form so the admin deep links keep theirs); panels close on Back
+    through `hooks/useBackToClose.js`. Each tab is wrapped in `TabErrorBoundary`, and the root too.
+  - Study's screens go through `utils/study-words.js` `plainStudy` (no blueprint, CFR, oracle, infoset).
+  - Quick add reads the app's own position labels only when the WHOLE hand is written in them (`seatIndexFor`): its
+    9-handed first seat is "UTG+1".
+  - `DELETE /api/live-update/:id` is a 404 for nothing matched; `?all=1` is Undo start. A cash needs its amount (POST
+    and PUT /api/tracking answer 400). Swap offers are saved at once and send `swap-offer` to the receiver; a
+    crossbook keeps its `cap`. A refused sign-up (400) refunds its attempt.
+- **Found on the way:** a fresh database's `live_updates` lacks the columns its migration adds, because the
+  migration runs before the table is created (prod is fine; `test/live-update-undo.test.js` adds them to its scratch
+  DB). Worth a fix before any new environment is stood up.
+
+## 2026-11-11 — Bankroll design upgrades, picks 1-100 but 10, 76, 79 (four commits)
+
+- **Parts A-C** (ebdc74a, 16ebb5a, ad2af0b): Overview (the balance leads, one fill clipped at zero, the pointer
+  readout, the fund's own page, the young bankroll's axis), the records (the amount on the title's line, the Lines
+  view, a session as a receipt, Manage by role, the + menu), Backers (a two-sided ledger, the week's clock, the
+  half-confirmed settlement as two steps, payments as bands), Locations (the room's strip, six labelled stats, the
+  sparkline, results by month, a sticky open head; a ranking table with the room in a pane on desktop) and the
+  backer page (the live beacon as a card, notes first, two columns on desktop).
+- **Part D:** Import (a pair shows what differs; an answered pair folds to its answer at the next scroll; the
+  confirm step counts 50 records, not 129 rows, the supporting rows behind a disclosure; CSV pickers show the
+  column's first values; left-out records and notes as marked rows), desktop (Overview, MTT, Cash and the Import
+  review in two panes through `hooks/useBankrollSide.js`; the ten sections in the rail; one hover), and the system
+  (the money roles as tokens, one spacing scale with every section 2r under the strip, one heading, one card
+  recipe, skeletons and Try again where "Loading…" and "Close the dashboard" were, one spring for opening
+  (`hooks/useOpenSpring.js`), one button, labels at 1.06g).
+- **Calls I made where picks collided:** the Overview balance keeps 3xl (5) over the hero role's 2xl (91); a
+  card's amount and Latest sessions keep their sizes (23, 26); the Bankroll column stays 35g on desktop with 62g
+  exceptions for Reports, the Locations table and Backers; on desktop the side pane runs to the shell's edge (107)
+  so its content is 35g with room to its right, not the proposal's two 37g panes.
+- **Traps:** the guards open a Bankroll section from the rail on desktop (`.dk-rail-subitem`); Overview's tables
+  live in `.dk-side-bankroll` there, not `.bd-inline`. `test/money-import-review.test.js` is a phone test: on
+  desktop the commit block is portalled out of the section it searches. The Import review test runs against
+  any build with `NODE_OPTIONS=--require test/helpers/public-dir-preload.js PUBLIC_VITE_DIR=<build>`.
+
 ## 2026-11-11 — The Laws of UX audit, the rest: 68, 97, 107; the older grid flags
 
 - **107, every desktop tab ends on the shell's right edge:** the header's right group no longer moves between tabs

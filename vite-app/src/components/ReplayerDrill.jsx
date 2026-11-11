@@ -115,7 +115,7 @@ function StudyBlock({ entry, heroAction }) {
         <div className="hs-t hs-xs hs-mut rd-wrap">Level with: {v.band.join(', ')}</div>
       )}
       {warnings.map((w) => <div key={w} className="hs-t hs-xs rd-wrap rd-warn">{w}</div>)}
-      <div className="hs-t hs-xs hs-mut rd-wrap">Levels are uncertified; the tied band is about separation. The opponent plays the blueprint.</div>
+      <div className="hs-t hs-xs hs-mut rd-wrap">Levels are uncertified; the tied band is about separation. The opponent plays the trained strategy.</div>
     </div>
   );
 }

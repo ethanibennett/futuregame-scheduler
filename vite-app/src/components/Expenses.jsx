@@ -383,7 +383,7 @@ function TripDetail({ api, toast, tripId, bankrolls, rates, onAdd, onOpen, onBac
         <h3 className="bk-section-title">Results</h3>
         {data.results.length === 0 && <p className="bk-line bk-muted">No tournament results dated inside this trip.</p>}
         {data.results.map((e) => {
-          const from = nativeCurrency(e.venue);
+          const from = nativeCurrency(e.venue, e.currency);
           const net = (e.cashed ? Number(e.cash_amount) || 0 : 0) - (Number(e.buyin) || 0) * Math.max(1, Number(e.num_entries) || 1);
           return (
             <div key={e.id} className="tx-row">

@@ -9,7 +9,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <!-- Libre Baskerville is self-hosted now (see styles.css @font-face) — no Google Fonts fetch. -->
   <title>futurega.me | the poker calendar</title>
   <script>
@@ -81,8 +81,10 @@
     .app-shell {
       padding-top: env(safe-area-inset-top, 0px) !important;
     }
+    /* The floor is the iPhone Home Screen app's, where the inset is not always reported (App improvements 459): an
+       installed desktop or Android app has an inset of 0 and got an empty band over its top bar. */
     @media screen and (display-mode: standalone) {
-      .app-shell { padding-top: max(env(safe-area-inset-top, 0px), 47px) !important; }
+      [data-platform="ios-web"] .app-shell { padding-top: max(env(safe-area-inset-top, 0px), 47px) !important; }
     }
     /* The splash never moved, which reads as a frozen screenshot. One entrance,
        staggered, so the (now much shorter) dwell is earned. Honours reduced

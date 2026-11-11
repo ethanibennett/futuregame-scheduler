@@ -302,8 +302,9 @@ export function drillOptimalCaveat(grade) {
 // Which tool answered a drill grade: the Pro-mode oracle's tag, else the blueprint.
 export function drillGradeSource(grade) {
   const src = grade && grade.gradeSource;
-  if (src === 'oracle') return 'exact re-solve';
+  // In a player's words (App improvements 301).
+  if (src === 'oracle') return 'exact solve';
   if (src === 'certified-net') return 'certified net';
-  if (src === 'oracle-6th' || src === 'oracle-5th') return 'approximate re-solve';
-  return 'blueprint';
+  if (src === 'oracle-6th' || src === 'oracle-5th') return 'approximate solve';
+  return 'trained strategy';
 }

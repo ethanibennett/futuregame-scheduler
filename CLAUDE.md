@@ -18,6 +18,11 @@ sessions opened here own scheduler work.
   the third column was dropped 2026-10-10; the two panes sit 2g apart on the background, 2026-10-13) on the SAME g as the phone (g stays 430px/37; panes
   are 9N+1 g, widened by a classic scrollbar's width where one shows). Every tab's panes end on the
   shell's right edge (2026-11-11): Hands and Cash are list | second pane, the rest one pane to the edge.
+  Bankroll splits per section (Bankroll design 83-85, 2026-11-11): Overview (its tables), MTT and Cash (the selected
+  result or session and the totals) and the Import review (Import and the check) claim App's `.dk-pane-side` through
+  `hooks/useBankrollSide.js` (`useBankrollSide` / `SidePortal`); with no claim the tab is one pane. On desktop the
+  ten Bankroll sections are rows in the rail (86, `DesktopRail` `RailSections`) and the section strip is hidden,
+  so a script opens a section by `.dk-rail-subitem` there.
   Everything narrower, and
   every phone, is the phone layout, pixel-identical. Design and per-tab plan: `docs/desktop-layout.md`.
 - **Backend**: `server.js` — Express 5 + sql.js (SQLite loaded to memory, saved on write).

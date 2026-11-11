@@ -4160,6 +4160,9 @@ function sanitizeOnboardingFilters(f) {
 
 // User registration
 app.post('/api/register', registerLimit, async (req, res) => {
+  // A sign-up refused for its input created nothing, so it does not spend the address's attempts (App
+  // improvements 405: ten typos locked the next person on that Wi-Fi out for 15 minutes).
+  res.on('finish', () => { if (res.statusCode === 400 && req.authLimit) req.authLimit.refund(); });
   try {
     const { password, realName } = req.body;
     // An address is matched in any case (sign-in, reset), so it is kept in lower case.
@@ -5185,7 +5188,13 @@ const avatarUpload = multer({
   }
 });
 
-app.put('/api/avatar', authenticateToken, requireRegistered, avatarUpload.single('avatar'), async (req, res) => {
+// multer's refusals as JSON a player can read (App improvements 422), not an HTML error page.
+const avatarSingle = (req, res, next) => avatarUpload.single('avatar')(req, res, (err) => {
+  if (!err) return next();
+  if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'That photo is too large' });
+  return res.status(415).json({ error: 'Use a JPEG, PNG or WebP photo' });
+});
+app.put('/api/avatar', authenticateToken, requireRegistered, avatarSingle, async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No image provided' });
     const dataUri = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
@@ -5893,7 +5902,7 @@ app.post('/api/groups/:id/messages', authenticateToken, requireRegistered, async
     await saveDatabase();
 
     // Get avatar from DB (not in JWT)
-    const avStmt = db.prepare('SELECT avatar FROM users WHERE id = ?');
+    const avStmt = db.prepare('SELECT avatar, real_name FROM users WHERE id = ?');
     avStmt.bind([req.user.id]);
     const avRow = avStmt.step() ? avStmt.getAsObject() : {};
     avStmt.free();
@@ -5903,6 +5912,8 @@ app.post('/api/groups/:id/messages', authenticateToken, requireRegistered, async
       groupId,
       userId: req.user.id,
       username: req.user.username,
+      // The name a fetched message shows (App improvements 351).
+      realName: avRow.real_name || null,
       avatar: avRow.avatar || null,
       message: message.trim(),
       createdAt: now
@@ -5930,7 +5941,7 @@ app.get('/api/groups/:id/schedule', authenticateToken, (req, res) => {
     // Get all member schedules with tournament data
     const stmt = db.prepare(`
       SELECT t.id AS tournament_id, t.event_number, t.event_name, t.date, t.time,
-             t.buyin, t.game_variant, t.venue, t.notes,
+             t.buyin, t.game_variant, t.venue, t.notes, t.currency,
              u.id AS user_id, u.username, u.avatar, u.real_name
       FROM user_schedules us
       JOIN tournaments t ON us.tournament_id = t.id
@@ -5943,11 +5954,18 @@ app.get('/api/groups/:id/schedule', authenticateToken, (req, res) => {
     while (stmt.step()) rows.push(stmt.getAsObject());
     stmt.free();
 
-    // Group by tournament — { tournamentId -> { ...tournament, members: [{id, username, avatar}] } }
-    const byTournament = {};
+    // Group by tournament, in a Map so the order holds (App improvements 358: Object.values put them in event-id
+    // order, so 14 Nov came before 13 Nov): events from yesterday on (the client puts them in start order), no
+    // Personal days, no past days.
+    const byTournament = new Map();
+    const { normaliseDate: normDay } = require('./lib/analytics');
+    const since = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     for (const row of scheduleForOthers(rows)) {
-      if (!byTournament[row.tournament_id]) {
-        byTournament[row.tournament_id] = {
+      if (row.venue === 'Personal') continue;
+      const day = normDay(row.date);
+      if (day && day < since) continue;
+      if (!byTournament.has(row.tournament_id)) {
+        byTournament.set(row.tournament_id, {
           id: row.tournament_id,
           event_number: row.event_number,
           event_name: row.event_name,
@@ -5956,18 +5974,19 @@ app.get('/api/groups/:id/schedule', authenticateToken, (req, res) => {
           buyin: row.buyin,
           game_variant: row.game_variant,
           venue: row.venue,
+          currency: row.currency || null,
           notes: row.notes,
           members: []
-        };
+        });
       }
-      byTournament[row.tournament_id].members.push({
+      byTournament.get(row.tournament_id).members.push({
         id: row.user_id,
         username: row.username,
         avatar: row.avatar
       });
     }
 
-    res.json(Object.values(byTournament));
+    res.json([...byTournament.values()]);
   } catch (error) {
     console.error('Group schedule error:', error);
     res.status(500).json({ error: 'Something went wrong' });
@@ -6556,7 +6575,7 @@ app.get('/api/tracking', authenticateToken, (req, res) => {
     const stmt = db.prepare(`
       SELECT te.*,
              t.event_number, t.event_name, t.date, t.time, t.buyin,
-             t.game_variant, t.venue, t.property, t.is_satellite, t.total_entries, t.is_online,
+             t.game_variant, t.venue, t.property, t.is_satellite, t.total_entries, t.is_online, t.currency,
              CASE WHEN t.source_pdf = 'bankroll-import' THEN 1 ELSE 0 END AS imported
       FROM tracking_entries te
       JOIN tournaments t ON te.tournament_id = t.id
@@ -6577,6 +6596,8 @@ app.get('/api/tracking', authenticateToken, (req, res) => {
 app.post('/api/tracking', authenticateToken, requireRegistered, async (req, res) => {
   try {
     const { tournamentId, numEntries, cashed, finishPlace, cashAmount, notes, subtitle } = req.body;
+    // A cash has an amount (App improvements 206): cashed with 0 made "In the money 100%" beside "No cashes yet".
+    if (cashed && !(Number(cashAmount) > 0)) return res.status(400).json({ error: 'A cash needs the amount cashed' });
     const checkStmt = db.prepare('SELECT id FROM tournaments WHERE id = ?');
     checkStmt.bind([tournamentId]);
     const exists = checkStmt.step();
@@ -6631,6 +6652,7 @@ app.put('/api/tracking/:entryId', authenticateToken, requireRegistered, async (r
   try {
     const { entryId } = req.params;
     const { numEntries, cashed, finishPlace, cashAmount, notes, subtitle } = req.body;
+    if (cashed && !(Number(cashAmount) > 0)) return res.status(400).json({ error: 'A cash needs the amount cashed' });
     const checkStmt = db.prepare('SELECT id, bankroll_id FROM tracking_entries WHERE id = ? AND user_id = ?');
     checkStmt.bind([entryId, req.user.id]);
     const owned = checkStmt.step() ? checkStmt.getAsObject() : null;
@@ -6760,7 +6782,7 @@ app.get('/api/analytics', authenticateToken, requireAppAdmin, async (req, res) =
     }
     const stmt = db.prepare(`
       SELECT te.*, t.event_name, t.date, t.time, t.buyin, t.game_variant, t.venue,
-             t.property, t.total_entries, t.is_online, t.site
+             t.property, t.total_entries, t.is_online, t.site, t.currency
       FROM tracking_entries te
       JOIN tournaments t ON te.tournament_id = t.id
       WHERE te.user_id = ?
@@ -6955,22 +6977,42 @@ app.get('/api/live-updates/active', authenticateToken, (req, res) => {
 
 app.delete('/api/live-update/:id', authenticateToken, requireRegistered, async (req, res) => {
   try {
-    const { id } = req.params;
-    db.run('DELETE FROM live_updates WHERE id = ? AND user_id = ?', [id, req.user.id]);
+    const id = Number(req.params.id);
+    // The row, or a 404: it answered 200 "Update removed" for an id that matched nothing (App improvements 112).
+    const fStmt = db.prepare('SELECT tournament_id FROM live_updates WHERE id = ? AND user_id = ?');
+    fStmt.bind([id, req.user.id]);
+    const found = fStmt.step() ? fStmt.getAsObject() : null;
+    fStmt.free();
+    if (!found) return res.status(404).json({ error: 'No such update' });
+    // ?all=1 (Undo start): every update of that event for this player, not only the latest.
+    if (req.query.all === '1') db.run('DELETE FROM live_updates WHERE tournament_id = ? AND user_id = ?', [found.tournament_id, req.user.id]);
+    else db.run('DELETE FROM live_updates WHERE id = ? AND user_id = ?', [id, req.user.id]);
     await saveDatabase();
-    broadcastToBuddies(req.user.id, 'buddy-live-update', {
-      buddyId: req.user.id, username: req.user.username, cleared: true
-    });
+    // Buddies and groups hear "cleared" only when nothing is left of that event; else the latest that is.
+    const lStmt = db.prepare(`SELECT lu.*, t.event_name, t.venue FROM live_updates lu LEFT JOIN tournaments t ON t.id = lu.tournament_id
+      WHERE lu.tournament_id = ? AND lu.user_id = ? ORDER BY lu.created_at DESC, lu.id DESC LIMIT 1`);
+    lStmt.bind([found.tournament_id, req.user.id]);
+    const left = lStmt.step() ? lStmt.getAsObject() : null;
+    lStmt.free();
+    const n = (v) => (v == null || v === '' ? null : Math.round(Number(v)) || null);
+    const latest = left ? {
+      tournamentId: left.tournament_id, eventName: left.event_name || null, venue: left.venue || null,
+      stack: Math.round(Number(left.stack)) || 0, sb: n(left.sb), bb: n(left.bb), bbAnte: n(left.bb_ante),
+      isItm: !!left.is_itm, isRegClosed: !!left.is_reg_closed, isBusted: !!left.is_busted, isBagged: !!left.is_bagged,
+      bagDay: n(left.bag_day), totalEntries: n(left.total_entries), playStartedAt: left.play_started_at || null,
+      updatedAt: left.created_at || new Date().toISOString(),
+    } : { cleared: true, tournamentId: found.tournament_id };
+    broadcastToBuddies(req.user.id, 'buddy-live-update', { buddyId: req.user.id, username: req.user.username, ...latest });
 
     // SSE: broadcast to user's groups
     const userGroups = getUserGroupIds(req.user.id);
     for (const gid of userGroups) {
       broadcastToGroup(gid, 'group-live-update', {
-        groupId: gid, userId: req.user.id, username: req.user.username, cleared: true
+        groupId: gid, userId: req.user.id, username: req.user.username, ...latest
       }, req.user.id);
     }
 
-    res.json({ message: 'Update removed' });
+    res.json({ message: 'Update removed', left: left ? 1 : 0 });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong' });
@@ -11110,9 +11152,19 @@ app.put('/api/venue-colors/:abbr', authenticateToken, requireRegistered, require
 // ── Swap / Crossbook Suggestions ────────────────────────────
 
 // Send a swap/crossbook suggestion
-app.post('/api/swap-suggest', authenticateToken, requireRegistered, (req, res) => {
+// A crossbook's cap is kept (App improvements 360): the column, added once if missing.
+function ensureSwapCap() {
   try {
+    const cols = db.exec("PRAGMA table_info(swap_suggestions)");
+    const names = cols.length ? cols[0].values.map((r) => r[1]) : [];
+    if (names.length && !names.includes('cap')) db.run('ALTER TABLE swap_suggestions ADD COLUMN cap REAL');
+  } catch (_) { /* no table yet: its migration creates it */ }
+}
+app.post('/api/swap-suggest', authenticateToken, requireRegistered, async (req, res) => {
+  try {
+    ensureSwapCap();
     const { toUserId, tournamentId, type, myPct, theirPct } = req.body;
+    const cap = type === 'crossbook' && Number(req.body.cap) > 0 ? Math.round(Number(req.body.cap) * 100) / 100 : null;
     if (!toUserId || !tournamentId) return res.status(400).json({ error: 'Missing required fields' });
     if (!['swap', 'crossbook'].includes(type)) return res.status(400).json({ error: 'Type must be swap or crossbook' });
     const my = parseFloat(myPct) || 0;
@@ -11129,9 +11181,14 @@ app.post('/api/swap-suggest', authenticateToken, requireRegistered, (req, res) =
     chk.free();
 
     db.run(
-      `INSERT INTO swap_suggestions (from_user_id, to_user_id, tournament_id, type, my_pct, their_pct) VALUES (?, ?, ?, ?, ?, ?)`,
-      [req.user.id, toUserId, tournamentId, type, my, their]
+      `INSERT INTO swap_suggestions (from_user_id, to_user_id, tournament_id, type, my_pct, their_pct, cap) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [req.user.id, toUserId, tournamentId, type, my, their, cap]
     );
+    // On disk at once (App improvements 362: it lived in memory until another write saved the database), and the
+    // receiver hears of it (361: an offer raised no badge and sent no event).
+    await saveDatabase();
+    const clients = sseClients.get(Number(toUserId));
+    if (clients) for (const c of clients) c.write(`event: swap-offer\ndata: ${JSON.stringify({ fromUserId: req.user.id, tournamentId })}\n\n`);
     res.json({ message: 'Suggestion sent' });
   } catch (err) {
     console.error('Swap suggest error:', err);

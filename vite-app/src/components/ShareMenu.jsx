@@ -9,8 +9,8 @@ import {
 } from '../utils/utils.js';
 import { isSwissTheme, drawSwissScorecard, drawSwissCountdown } from '../utils/swiss-share.js';
 
-export default function ShareMenu({ trackingData, tournaments, mySchedule, myActiveUpdates, onClose, onOpenWrapUp }) {
-  const scorecardData = useMemo(() => computeScorecardData(trackingData, null, tournaments), [trackingData, tournaments]);
+export default function ShareMenu({ trackingData, tournaments, mySchedule, myActiveUpdates, onClose, onOpenWrapUp, rates = null }) {
+  const scorecardData = useMemo(() => computeScorecardData(trackingData, null, tournaments, { rates }), [trackingData, tournaments, rates]);
 
   const hasTrackingData = trackingData && trackingData.length > 0;
   const hasActiveUpdate = myActiveUpdates && myActiveUpdates.some(u => !u.is_busted);
@@ -49,8 +49,11 @@ export default function ShareMenu({ trackingData, tournaments, mySchedule, myAct
     // Decorate by venue-TZ aware timestamp so cross-venue events sort by
     // absolute time, not user-local date.
     const upcoming = mySchedule
-      .filter(t => t.date && new Date(t.date + 'T23:59:59') >= now)
+      // App improvements 363: "November 10, 2026T23:59:59" is no date, so no event ever passed and the poll
+      // was always off. By the real start instead; Personal days left out.
+      .filter(t => t.date && t.venue !== 'Personal')
       .map(t => ({ t, ts: t.venue ? parseDateTimeInTz(t.date, t.time, t.venue) : parseDateTime(t.date, t.time) }))
+      .filter(x => Number.isFinite(x.ts) && x.ts > now.getTime())
       .sort((a, b) => a.ts - b.ts)
       .map(x => x.t)
       .slice(0, 2);

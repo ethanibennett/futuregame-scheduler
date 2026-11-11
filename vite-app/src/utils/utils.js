@@ -1442,8 +1442,8 @@ export function matchesBuyin(t, filters) {
       if (r === '0-500') return b < 500;
       if (r === '500-1500') return b >= 500 && b < 1500;
       if (r === '1500-5000') return b >= 1500 && b < 5000;
-      if (r === '5000-10000') return b >= 5000 && b <= 10000;
-      if (r === '10000+') return b > 10000;
+      if (r === '5000-10000') return b >= 5000 && b < 10000;   // every band holds its lower edge only (App improvements 7)
+      if (r === '10000+') return b >= 10000;
       return true;
     });
     if (!matches) return false;
@@ -1718,12 +1718,94 @@ export function parseDateTime(date, time) {
   return new Date(`${date} ${t}`).getTime();
 }
 
-export function parseLateRegEnd(lateRegEnd, eventDate) {
-  if (!lateRegEnd) return NaN;
-  if (lateRegEnd.length > 10) return new Date(lateRegEnd).getTime();
+/**
+ * When late registration closes, as a timestamp (NaN when nobody can say).
+ *   an instant ("2026-11-10T22:45:00Z", a room clock's figure)  as given;
+ *   a clock time ("19:45", "7:45 PM")  in the ROOM's zone, as the start is (App improvements 1): read in the
+ *     phone's zone it closed three hours early on an East Coast phone looking at a Las Vegas room; a close
+ *     earlier than the start is the next day's;
+ *   a bare level ("12", "Level 12")  as the room-clock path reads it (live-clocks.js clockRegEnd): it closes as
+ *     level 12 starts, or as it ends when the re-entry text says "end of level" (App improvements 2, 102, 103;
+ *     read as an hour it closed at noon, or not at all). Breaks are not in the feed, so it can be early by one.
+ * `venue` gives the zone; `ctx` { startMs, levelMin, endOf } the start, the level length and that rule.
+ */
+/**
+ * A server stamp as a time (App improvements 353): SQLite's CURRENT_TIMESTAMP is UTC with no zone
+ * ("2026-11-10 16:04:48"), which a browser reads as LOCAL time: five hours ahead in New York, so every group
+ * message read "just now" for five hours. A stamp with a zone or a T is read as written.
+ */
+export function parseServerStamp(ts) {
+  if (ts == null || ts === '') return NaN;
+  if (typeof ts === 'number') return ts;
+  const s = String(ts).trim();
+  const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)$/.exec(s);
+  if (m) return Date.parse(`${m[1]}T${m[2]}Z`);
+  return Date.parse(s);
+}
+
+/** A start time that is not announced: empty or "TBD" (App improvements 9). */
+export function isTbd(time) { return !time || /^\s*tbd\s*$/i.test(String(time)); }
+
+export function parseLateRegEnd(lateRegEnd, eventDate, venue = null, ctx = null) {
+  if (lateRegEnd == null || lateRegEnd === '') return NaN;
+  const s = String(lateRegEnd).trim();
+  if (s.length > 10 && !/^level/i.test(s)) return new Date(s).getTime();
   const isoDate = normaliseDate(eventDate);
-  if (isoDate) return new Date(`${isoDate}T${lateRegEnd}:00`).getTime();
+  const hm = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+  if (hm && isoDate) {
+    let h = parseInt(hm[1], 10);
+    const ap = hm[3] ? hm[3].toUpperCase() : null;
+    if (ap === 'PM' && h !== 12) h += 12;
+    if (ap === 'AM' && h === 12) h = 0;
+    if (h > 23) return NaN;
+    let ms = NaN;
+    if (venue) {
+      const t12 = `${h % 12 === 0 ? 12 : h % 12}:${hm[2]} ${h < 12 ? 'AM' : 'PM'}`;
+      ms = parseDateTimeInTz(isoDate, t12, venue);
+    }
+    if (isNaN(ms)) ms = new Date(`${isoDate}T${String(h).padStart(2, '0')}:${hm[2]}:00`).getTime();
+    if (ctx && ctx.startMs && !isNaN(ms) && ms < ctx.startMs) ms += 86400000;
+    return ms;
+  }
+  const lv = s.match(/^(?:level\s*|lvl\s*|l)?(\d{1,2})$/i);
+  if (lv && ctx && ctx.startMs && ctx.levelMin > 0) {
+    const levels = Math.max(0, parseInt(lv[1], 10) - 1 + (ctx.endOf ? 1 : 0));
+    return ctx.startMs + levels * ctx.levelMin * 60000;
+  }
   return NaN;
+}
+
+/** A late-reg value that is a level number: the level, else null ("12", "Level 12"). */
+export function lateRegLevel(lateRegEnd) {
+  const m = String(lateRegEnd == null ? '' : lateRegEnd).trim().match(/^(?:level\s*|lvl\s*|l)?(\d{1,2})$/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/** The start and level length parseLateRegEnd needs for a level, from an event's fields. */
+export function lateRegCtx(t) {
+  if (!t) return null;
+  const startMs = parseTournamentTime(t);
+  const levelMin = parseInt(String(t.level_duration == null ? '' : t.level_duration), 10) || 0;
+  const endOf = /(end of|through)\s*level/i.test(t.reentry || '');
+  return { startMs: isNaN(startMs) ? null : startMs, levelMin, endOf };
+}
+
+/** An event's late-reg close: the real clock's figure when given, else its own (zone and level aware). */
+export function lateRegCloseOf(t, end = t && t.late_reg_end) {
+  if (!t || !end) return NaN;
+  return parseLateRegEnd(end, t.date, t.venue, lateRegCtx(t));
+}
+
+/** A close printed in the room's zone with its label ("7:45 PM PST"), as the start is printed. */
+export function fmtCloseInRoom(ms, venue, date) {
+  if (isNaN(ms)) return '';
+  let tz = null;
+  try { tz = venue ? getVenueTimezone(venue) : null; } catch (e) { tz = null; }
+  const opts = { hour: 'numeric', minute: '2-digit', ...(tz ? { timeZone: tz } : {}) };
+  let clock;
+  try { clock = new Date(ms).toLocaleTimeString('en-US', opts); } catch (e) { clock = new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
+  const abbr = venue ? getVenueTzAbbr(venue, date) : '';
+  return abbr ? `${clock} ${abbr}` : clock;
 }
 
 export function findClosestFlight(flights, satTimestamp) {

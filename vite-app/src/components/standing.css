@@ -69,7 +69,10 @@
 .sd-form, .sd-editor, .sd-confirm { display: flex; flex-direction: column; margin-top: var(--subrow); padding-top: var(--subrow); box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
 .sd-two { display: grid; grid-template-columns: calc(var(--gu) * 16) calc(var(--gu) * 16); column-gap: var(--gu); }
 .sd-stakes { display: flex; flex-direction: column; }
-.sd-stake-row { display: grid; grid-template-columns: calc(var(--gu) * 13) calc(var(--gu) * 9) calc(var(--gu) * 6) calc(var(--gu) * 4); column-gap: var(--gu); align-items: end; }
+/* The stakes row fits its card's 33g (App improvements 278): Game 9g, Where 11g (so "Live + online" shows
+   whole), % 6g, the remove 4g, 1g apart; the add form, with no card padding round it, keeps 35g with Game 11g. */
+.sd-stake-row { display: grid; grid-template-columns: calc(var(--gu) * 9) calc(var(--gu) * 11) calc(var(--gu) * 6) calc(var(--gu) * 4); column-gap: var(--gu); align-items: end; }
+.sd-add-form .sd-stake-row { grid-template-columns: calc(var(--gu) * 11) calc(var(--gu) * 11) calc(var(--gu) * 6) calc(var(--gu) * 4); }
 .sd-stake-row .sd-btn { margin-bottom: var(--space-md); }   /* the field's own bottom margin, so the ✕ sits on the input's row */
 .sd .staking-field { margin-bottom: var(--subrow); }
 

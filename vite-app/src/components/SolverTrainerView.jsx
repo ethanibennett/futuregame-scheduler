@@ -26,20 +26,22 @@ export default function SolverTrainerView({ onBack }) {
   const [picked, setPicked] = useState(null); // chosen action id (reveals answer)
   const [score, setScore] = useState({ spots: 0, best: 0, probSum: 0 });
 
+  // The first game is one this server can deal: it waits for availability (App improvements 303).
   useEffect(() => {
+    if (avail === null) return;
     (async () => {
       try {
         const res = await fetchApi('/solver/games');
         if (!res.ok) throw new Error('Failed to load games');
         const list = await res.json();
         setGames(list);
-        const firstTrained = list.find(g => g.trained) || list[0];
+        const firstTrained = list.find(g => g.trained && offered(avail, g.id)) || list.find(g => g.trained) || list[0];
         if (firstTrained) setGameId(firstTrained.id);
       } catch (e) {
         setError(e.message);
       }
     })();
-  }, []);
+  }, [avail]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dealSpot = useCallback(async (id) => {
     setLoading(true); setError(null); setPicked(null);

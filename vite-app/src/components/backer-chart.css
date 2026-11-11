@@ -131,3 +131,6 @@
 .ra-key-cash { color: var(--brand); }
 .bp-dot.ra-dot-mtt { background: var(--text); }
 .bp-dot.ra-dot-cash { background: var(--brand); }
+/* The change since the opening beside the balance (App improvements 286): a third column, quiet, xs. */
+.bp-chart-head:has(.bp-chart-since) { grid-template-columns: calc(var(--gu) * 9) calc(var(--gu) * 13) calc(var(--gu) * 11); }
+.bp-chart-since { --h: 3; --p: 1.9574; color: var(--n-7, var(--text-muted)); text-align: right; }

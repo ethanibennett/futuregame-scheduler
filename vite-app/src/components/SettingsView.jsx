@@ -19,7 +19,7 @@ const seatedInitial = (baselineR) => ({
   textBoxTrim: 'trim-both', textBoxEdge: 'cap alphabetic',
 });
 
-export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, pickTheme = null, onFindPeople = null, contrast, toggleContrast, serifFont, toggleSerifFont, onLogout, onDebugTimeChange, shareToken, onGenerateShareToken, onRevokeShareToken, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, token, isAdmin, seasonLabel, isGuest, onEditHome = null, onEditName }) {
+export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, pickTheme = null, onFindPeople = null, contrast, toggleContrast, serifFont, toggleSerifFont, onLogout, onDebugTimeChange, shareToken, onGenerateShareToken, onRevokeShareToken, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, token, isAdmin, seasonLabel, isGuest, onEditHome = null, onEditName, onGuestExit = null }) {
   const toast = useToast();
   const displayName = useDisplayName();
   const [debugInput, setDebugInput] = useState(getDebugNow());
@@ -70,6 +70,24 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
   return (
     <div className="settings-view">
 
+      {/* A guest's Settings (App improvements 419): one card instead of Account and Sharing, whose photo and share
+          link fail for a guest without a word. Appearance stays. */}
+      {isGuest && (
+        <div className="settings-section">
+          <div className="settings-section-label">Account</div>
+          <div className="settings-card settings-guest">
+            <div className="settings-row settings-row--stack">
+              <span className="settings-row-label">You are browsing as a guest</span>
+              <span className="settings-row-sub">An account keeps your schedule on every device, lets friends follow it, and logs your results.</span>
+              <div className="settings-guest-actions">
+                <button type="button" className="btn btn-primary ctl settings-guest-create" onClick={() => onGuestExit && onGuestExit('register')}><span>Create an account</span></button>
+                <button type="button" className="btn btn-ghost ctl settings-guest-signin" onClick={() => onGuestExit && onGuestExit('login')}><span>Sign in</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {!isGuest && (<>
       <div className="settings-section">
         <div className="settings-section-label">Account</div>
         <div className="settings-card">
@@ -182,6 +200,8 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
           </div>
         </div>
       </div>
+
+      </>)}
 
       <div className="settings-section">
         <div className="settings-section-label">Appearance</div>

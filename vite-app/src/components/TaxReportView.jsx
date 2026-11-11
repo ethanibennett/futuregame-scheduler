@@ -116,7 +116,7 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
     return () => { live = false; };
   }, [token]);
 
-  const withCurrency = useMemo(() => (entries || []).map((e) => ({ ...e, currency: nativeCurrency(e.venue) })), [entries]);
+  const withCurrency = useMemo(() => (entries || []).map((e) => ({ ...e, currency: nativeCurrency(e.venue, e.currency) })), [entries]);
   const years = useMemo(() => availableYears(withCurrency, getToday()), [withCurrency]);
   useEffect(() => { if (entries && !yearChosen.current) setYearRaw(defaultTaxYear(getToday(), withCurrency)); }, [entries, withCurrency]);
   // A year with nothing logged is one block, not seven totals of $0 (UX pick 83): the way to the newest
