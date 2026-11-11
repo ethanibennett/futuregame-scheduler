@@ -25,7 +25,7 @@ import {
   settlePile, fadePileOut, emptyPile, seatLanding, clearPush, centreOf, unionRect,
   collectAtResult, potShown,
 } from '../utils/replayer-motion.js';
-import { SPRING_SETS } from '../utils/spring.js';
+import { SPRING_SETS, spring, timeTo, tierSpring } from '../utils/spring.js';
 import { bestFive, halvesOf, counterfeitedNow, leaderOf, lowDecider, indexOfLowRank, streetChange } from '../utils/replayer-reading.js';
 import { turnOver, dealIn, liftOnce, poseTo, rap, ghostsAway, angleOf, cardTimes, slideRow, runOutBoard, runOutTimes, poseSequence, drawIn, ghostsTo, appearAt, makeRoom } from '../utils/replayer-card-moments.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
@@ -7180,6 +7180,24 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       { order: seatOrderFromButton(hand.players.length, btnIdx) });
     const awards = {};
     Object.keys(units).forEach(k => { awards[k] = units[k] * chipUnit / 100; });
+    /* What each pot and each half pays each seat, for the ship (Replayer animations 40-45): one part per pot
+       layer, per half, per seat, with the share every winner of that half gets (`base`) so the odd chips can go
+       last. Non-enumerable: every reader of the awards sees the same seat -> amount object as before. */
+    const parts = [];
+    const order0 = seatOrderFromButton(hand.players.length, btnIdx);
+    inCents.forEach((sh, li) => {
+      const amount = Math.max(0, Math.round((sh.amount || 0) / chipUnit));
+      const hi = sh.hiWinners || [], lo = sh.loWinners || [];
+      if (!amount || (!hi.length && !lo.length)) return;
+      const halves = !lo.length ? [['all', amount, hi, sh.hiOrder]] : !hi.length ? [['all', amount, lo, sh.loOrder]]
+        : (() => { const hiHalf = sh.oddToLo ? Math.floor(amount / 2) : amount - Math.floor(amount / 2); return [['hi', hiHalf, hi, sh.hiOrder], ['lo', amount - hiHalf, lo, sh.loOrder]]; })();
+      halves.forEach(([half, amt, ws, ord]) => {
+        const { awards: u } = computePotAwards([{ amount: amt, hiWinners: ws, ...(ord ? { hiOrder: ord } : {}) }], { order: order0 });
+        const base = Math.floor(amt / ws.length);
+        Object.keys(u).forEach(seat => parts.push({ layer: li, half, seat: Number(seat), amount: u[seat] * chipUnit / 100, base: base * chipUnit / 100, n: ws.length }));
+      });
+    });
+    Object.defineProperty(awards, 'parts', { value: parts, enumerable: false });
     return awards;
   }, [showResult, flaggedWinners, hand, allPotLayers, settled, folded, category, boardCards,
       heroCards, opponentCards, replayHeroIdx, gameCfg, streetIdx]);
@@ -7368,8 +7386,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       for (let ai = 0; ai <= stepPrev.a && ai < acts.length; ai++) {
         if (acts[ai].player === pi) { last = acts[ai]; if (first < 0) first = ai; }
       }
-      if (!last || !last.amount || !prevWagersRef.current.has(pi)) return;
-      out.push({ seat: pi, order: first, amount: computePlayerContrib(hand, stepPrev.s, acts, stepPrev.a, pi) });
+      /* A posted blind stands on the felt as a wager (Replayer animations 26), so a big blind that checked still
+         has its blind out: under springs a wager is whatever the seat has in on the street, as drawn. */
+      const amt = computePlayerContrib(hand, stepPrev.s, acts, stepPrev.a, pi);
+      if (springSet && stepPrev.s === 0) { if (!(amt > 0) || !prevWagersRef.current.has(pi)) return; }
+      else if (!last || !last.amount || !prevWagersRef.current.has(pi)) return;
+      out.push({ seat: pi, order: first, amount: amt });
     });
     /* At the result an over-call's uncalled excess goes back to its seat, not into the pot: each
        ghost carries its wager less what the showdown hands that seat back (the model's own figure,
@@ -7381,13 +7403,19 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   /* The pot shipped to each seat it pays, at the result: what that seat's stack gains (the model's
      final figure less what it showed before the press, which never reads below 0 — a shorthand can
      commit more than a stack holds, and the plaque read -7,000 at the climax). */
+  /* 35: a bet nobody called goes back to its bettor before the pot ships, from where it stood: it is not part of
+     what the pot pays that seat, and the stack takes it as it lands. */
+  const uncalledBack = (motionKind === 'result' && rSettings.animateChips)
+    ? hand.players.map((_, pi) => ((settled.uncalled[pi] || 0) > 0 && prevWagersRef.current.has(pi) ? settled.uncalled[pi] : 0)) : null;
+  const uncalledDelay = uncalledBack && uncalledBack.some(v => v > 0)
+    ? (timeTo(tierSpring(springSet, 'hand'), 0.98) + SPRING_SETS[springSet].stage.beat) / (motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1)) : 0;
   const shipPlan = (motionKind === 'result' && rSettings.animateChips && potAwards)
-    ? hand.players.map((_, pi) => ({ seat: pi, award: (potAwards[pi] || 0) > 0 ? shownStacks[pi] - Math.max(0, stacks[pi]) : 0 }))
+    ? hand.players.map((_, pi) => ({ seat: pi, award: (potAwards[pi] || 0) > 0 ? shownStacks[pi] - Math.max(0, stacks[pi]) - (uncalledBack ? uncalledBack[pi] : 0) : 0 }))
       .filter(d => d.award > 0)
     : null;
   const shipRate = motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1);
   // When the pot leaves the pile at this result press (after the river's wagers have landed).
-  if (shipPlan && shipPlan.length) motion.shipStartNow = shipStartAfterSweep(springSet, shipRate, sweepPlan ? sweepPlan.length : 0);
+  if (shipPlan && shipPlan.length) motion.shipStartNow = shipStartAfterSweep(springSet, shipRate, sweepPlan ? sweepPlan.length : 0) + uncalledDelay;
   /* The plaque takes its gold as the first shipped chip lands (after the river's wagers have been
      collected, when this press collects any). Decided once, in the render that shows the result, and
      held for as long as it shows: it was a custom property on the table root, recomputed every
@@ -7406,8 +7434,22 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     motion.shipArriveMs = null;
     motion.shipHit = false;
   }
+  /* What the pot's figure counts (Replayer animations 26, 30): under springs the posted blinds stand on the felt
+     as wagers until the first sweep, and a folded seat's wager goes into the pot as it folds. The model's pot
+     (displayPot) is unchanged: everything that reads the pot for betting (pot odds, a pot-sized bet) keeps it. */
+  const streetActs = hand.streets[streetIdx]?.actions || [];
+  const foldedOn = (pi) => { for (let ai = 0; ai <= actionIdx && ai < streetActs.length; ai++) if (streetActs[ai].player === pi && streetActs[ai].action === 'fold') return true; return false; };
+  const foldedSum = (springSet && !showResult)
+    ? hand.players.reduce((n, _, pi) => n + (foldedOn(pi) ? computePlayerContrib(hand, streetIdx, streetActs, actionIdx, pi) : 0), 0) : 0;
+  const postedBlinds = (springSet && !showResult && streetIdx === 0)
+    ? hand.players.reduce((n, _, pi) => n + Math.max(0, computePlayerContrib(hand, 0, streetActs, -1, pi) || 0), 0) : 0;
+  const potBase = Math.max(0, displayPot - postedBlinds + foldedSum);
+  // 30: the fold that sweeps its seat's wager into the pot.
+  const foldAct = motionKind === 'action' && rSettings.animateChips ? currentActions[actionIdx] : null;
+  const foldSweep = foldAct && foldAct.action === 'fold' && prevWagersRef.current.has(foldAct.player)
+    ? { seat: foldAct.player, order: 0, amount: computePlayerContrib(hand, streetIdx, streetActs, actionIdx, foldAct.player) } : null;
   const pendingPotNow = !springOn ? 0
-    : (motionJumped ? 0 : motion.pendingPot) + (sweepPlan ? sweepPlan.reduce((n, w) => n + w.amount, 0) : 0);
+    : (motionJumped ? 0 : motion.pendingPot) + (sweepPlan ? sweepPlan.reduce((n, w) => n + w.amount, 0) : 0) + (foldSweep && foldSweep.amount > 0 ? foldSweep.amount : 0);
   /* Never below what the table showed before the press (motion.potShown: the last figure drawn or
      written), while this step's chips are in flight: what the ghosts carry is the model's pot less
      the pot before the press whenever the model can say so (collectAtResult), and where it cannot
@@ -7416,7 +7458,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const potFloorNow = !springOn || motionJumped ? 0
     : motionKind ? (motion.potShown || 0)
     : (motion.pendingPot > 0 ? (motion.potFloor || 0) : 0);
-  const shownPot = potShown(displayPot, pendingPotNow, potFloorNow);
+  const shownPot = potShown(springOn ? potBase : displayPot, pendingPotNow, potFloorNow);
   /* What each stack still has in flight, AS THIS RENDER SAW IT. A snapshot, not a live read: the
      figures this render draws are put back into the DOM after the moment's writes (resyncDigits),
      and read live there they counted the award twice — the registry's, which the writes had just
@@ -7424,7 +7466,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      result was pressed while the river's chips were still landing. */
   const pendingStacksSeen = (springOn && !motionJumped) ? new Map(motion.pendingStacks) : null;
   const pendingStackNow = (pi) => (!springOn ? 0
-    : ((pendingStacksSeen && pendingStacksSeen.get(pi)) || 0) + ((shipPlan && shipPlan.find(d => d.seat === pi)?.award) || 0));
+    : ((pendingStacksSeen && pendingStacksSeen.get(pi)) || 0) + ((shipPlan && shipPlan.find(d => d.seat === pi)?.award) || 0) + (uncalledBack ? uncalledBack[pi] : 0));
   /* The least a stack can read while the pot lands on it: what it showed before the press (never
      below 0: a shorthand can commit more than a stack holds). A stack only ever counts UP to the
      award. */
@@ -7444,7 +7486,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      redrawn as it will be once that sweep is in (`ahead`: what of it is still in flight), with the
      new stacks no ghost has landed on yet unseen (`hidden`). */
   motion.writePot = (pile) => {
-    const v = potShown(displayPot, motion.pendingPot, motion.pendingPot > 0 ? motion.potFloor : 0);
+    const v = potShown(springOn && !showResult ? potBase : displayPot, motion.pendingPot, motion.pendingPot > 0 ? motion.potFloor : 0);
     const tn = potTextNode();
     if (tn) { tn.data = fmtChips(v); motion.wroteDigits = true; motion.potShown = v; }
     if (pile && motion.setPile && !potLayers.length) motion.setPile(v + (pile.ahead || 0), { hidden: pile.hidden });
@@ -7558,9 +7600,11 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   /* 1: a hand started under Play is dealt: from its first step, or replayed from the end. Opening, stepping and
      the scrubber keep the table already dealt (the owner removed the deal from every opening). */
   const pendingDealRef = useRef(false);
+  // 26-28: the opening's forced bets, when the hand opens on its first step and when Play starts it.
+  const pendingOpenRef = useRef(false);
   const handlePlayPause = () => {
-    if (!playing && !canGoForward) { pendingDealRef.current = true; goToStart(); setPlaying(true); return; }
-    if (!playing && streetIdx === 0 && actionIdx < 0 && !showResult) { pendingDealRef.current = true; setMotionRender(n => n + 1); }
+    if (!playing && !canGoForward) { pendingDealRef.current = true; pendingOpenRef.current = true; goToStart(); setPlaying(true); return; }
+    if (!playing && streetIdx === 0 && actionIdx < 0 && !showResult) { pendingDealRef.current = true; pendingOpenRef.current = true; setMotionRender(n => n + 1); }
     setPlaying(p => !p);
   };
 
@@ -7664,8 +7708,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
        replay themselves (stepForward below), so this never lengthens a video. */
     const HELD_BEAT_MS = 1200;
     const allowance = (rSettings.animateDeal && streetBreak ? 650 : 0) + (resultBreak ? HELD_BEAT_MS : 0);
+    // The deal and the opening's forced bets (Replayer animations 1, 26-28) finish before the first action.
+    const openHold = springOn && streetIdx === 0 && actionIdx < 0 ? motion.extentMs() + 150 : 0;
     const t = setTimeout(() => stepForwardRef.current?.(),
-      Math.max(120, speed + actBeat + allowance * scale));
+      Math.max(120, speed + actBeat + allowance * scale, openHold));
     return () => clearTimeout(t);
   }, [playing, tabHidden, speed, streetIdx, actionIdx, showResult, currentActions.length, totalStreets, rSettings.animateDeal]);
 
@@ -9048,6 +9094,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           motion.prevCardEls = cardElsNow;
           motion.prevBoard = boardNow;
           motion.prevDead = deadNow;
+          // Each stack's figure as drawn (31, 33): what a countdown starts from.
+          motion.prevStackVals = new Map(hand.players.map((_, pi) => [pi, stackFigure(pi)]));
           // What pose each card was last drawn in (a card that lost its pose: none).
           if (!motion.lastPose) motion.lastPose = new WeakMap();
           (motion.prevPosed || []).forEach(el => motion.lastPose.set(el, ''));
@@ -9064,6 +9112,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       if (motionJumped) motion.finishAll();
       /* 1: the deal, under Play from the hand's first step: each card from the dealer spot to its seat on the hand
          spring, a seat after another from the button's left, round by round (stud: two down, then the door). */
+      if (motion.openFor !== hand) { motion.openFor = hand; pendingOpenRef.current = true; }
+      let dealEnds = -1;
       if (pendingDealRef.current && table && streetIdx === 0 && actionIdx < 0 && !showResult) {
         pendingDealRef.current = false;
         if (rSettings.animateDeal) {
@@ -9088,6 +9138,91 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             motion.beginMoment('deal');
             motion.momentKey = 'deal';
             jobs.forEach(j => { j.el.getAnimations().forEach(a => a.cancel()); dealIn(motion, { set: springSet, rate: rate0, el: j.el, dx: j.dx, dy: j.dy, delay: j.delay, size: j.size }); });
+            dealEnds = jobs[jobs.length - 1].delay + cardTimes(springSet).handArrive / rate0;
+          }
+        }
+      }
+      /* 26-28: the opening. The antes travel into the pot (a big blind ante from the big blind, a stud ante from
+         every seat, sweepStagger apart from the dealer's left; the pot's figure ticks as each lands), then the
+         blinds and a straddle are posted from their seats a beat apart, pushed out as a bet is, each stack
+         counting down as its chips leave. After the deal when Play deals the hand. */
+      if (pendingOpenRef.current && table && streetIdx === 0 && actionIdx < 0 && !showResult && !motion.capture) {
+        pendingOpenRef.current = false;
+        if (rSettings.animateChips) {
+          const st0 = SPRING_SETS[springSet].stage;
+          const rate0 = playing ? rateFor(speed) : 1;
+          const flick0 = tierSpring(springSet, 'flick'), hand0 = tierSpring(springSet, 'hand');
+          const T = table.getBoundingClientRect();
+          const t0 = Math.max(0, dealEnds);
+          const pills = [...table.querySelectorAll('.replayer-bet-chip[data-seat]')].map(el => ({ el, seat: Number(el.dataset.seat) }));
+          const posOf = (pi) => (hand.players[pi]?.position || '');
+          const rank = (pi) => (/SB/.test(posOf(pi)) ? 0 : posOf(pi) === 'BB' ? 1 : 2);
+          pills.sort((a, b) => rank(a.seat) - rank(b.seat) || dealOrder.indexOf(a.seat) - dealOrder.indexOf(b.seat));
+          const ante = Number((hand.blinds || {}).ante) || 0;
+          const payers = ante > 0 ? (category === 'stud' ? dealOrder.filter(pi => !folded.has(pi)) : [hand.players.findIndex(p => p.position === 'BB')].filter(i => i >= 0)) : [];
+          const pileEl0 = table.querySelector('.replayer-pot-main .replayer-pot-chips') || potTotalRef.current;
+          const pileR = pileEl0 ? pileEl0.getBoundingClientRect() : null;
+          const potTn = potTextNode();
+          const probe = table.querySelector('.replayer-chip-probe.is-disc');
+          const chipD = probe ? probe.getBoundingClientRect().width || 12 : 12;
+          const layer0 = sweepLayerRef.current;
+          const L0 = layer0 ? layer0.getBoundingClientRect() : null;
+          const anteJobs = (pileR && L0 && layer0) ? payers.map((pi, k) => {
+            const info = table.querySelector('.replayer-seat[data-seat="' + pi + '"] .replayer-seat-info');
+            if (!info) return null;
+            const r = info.getBoundingClientRect();
+            const px = pileR.left + pileR.width / 2, py = pileR.top + pileR.height / 2;
+            const fx = Math.max(r.left, Math.min(r.right, px)), fy = Math.max(r.top, Math.min(r.bottom, py));
+            return { pi, fx, fy, px, py, delay: t0 + (k * st0.sweepStagger) / rate0 };
+          }).filter(Boolean) : [];
+          const anteEnd = anteJobs.length ? anteJobs[anteJobs.length - 1].delay + timeTo(hand0, 0.98) / rate0 : t0;
+          const pillJobs = pills.map((p, k) => {
+            const pos = seats[p.seat] || [50, 50];
+            const dx = (pos[0] - parseFloat(p.el.style.left)) / 100 * T.width, dy = (pos[1] - parseFloat(p.el.style.top)) / 100 * T.height;
+            const len = Math.hypot(dx, dy) || 1;
+            const push = st0.push * (motion.boardCardW || 30);
+            const tn = stackTextNode(p.seat);
+            const posted = computePlayerContrib(hand, 0, currentActions, -1, p.seat);
+            return { ...p, ox: dx / len * push, oy: dy / len * push, delay: (anteJobs.length ? anteEnd + st0.beat / rate0 : t0) + (k * st0.beat) / rate0, tn, from: stackFigure(p.seat) + posted, to: stackFigure(p.seat), r: p.el.getBoundingClientRect() };
+          });
+          if (anteJobs.length || pillJobs.length) {
+            if (dealEnds < 0) { motion.finishAll(); motion.beginMoment('open'); }
+            motion.momentKey = 'open';
+            const full = shownPot;
+            let landed = full - anteJobs.length * ante;
+            if (potTn && anteJobs.length) { potTn.data = landed > 0 ? fmtChips(landed) : ''; motion.wroteDigits = true; }
+            anteJobs.forEach(j => {
+              const chip = document.createElement('div');
+              chip.className = 'replayer-flying-chip is-spring is-disc';
+              chip.setAttribute('aria-hidden', 'true');
+              const face = document.createElement('div');
+              face.className = 'replayer-pot-chip-disc';
+              chip.appendChild(face);
+              Object.assign(chip.style, { left: (j.fx - L0.left) + 'px', top: (j.fy - L0.top) + 'px', transform: 'translate(-50%, -50%)' });
+              layer0.appendChild(chip);
+              const arrive = j.delay + timeTo(hand0, 0.98) / rate0;
+              const lift = st0.crossLift || 0.12;
+              const entry = motion.run(chip, { transient: true, prefix: 'translate(-50%, -50%)', size: { w: chipD, h: chipD }, end: arrive + st0.arrivalFade / rate0, channels: [
+                { prop: 'opacity', ramp: { from: 0, to: 1, delay: j.delay, duration: st0.appear / rate0 } },
+                { prop: 'x', spring: hand0, from: 0, to: j.px - j.fx, delay: j.delay, timeScale: rate0 },
+                { prop: 'y', spring: hand0, from: 0, to: j.py - j.fy, delay: j.delay, timeScale: rate0 },
+                { prop: 'scale', fn: (t) => { const q = t <= j.delay ? 0 : hand0.at((t - j.delay) * rate0); return 1 + lift * 4 * q * (1 - q); }, start: j.delay, end: arrive },
+                { prop: 'opacity', ramp: { from: 1, to: 0, delay: arrive, duration: st0.arrivalFade / rate0 } },
+              ] });
+              const tick = () => { landed += ante; if (potTn) { potTn.data = fmtChips(Math.min(full, landed)); motion.wroteDigits = true; } };
+              if (entry) motion.tick(arrive, tick, entry); else tick();
+            });
+            pillJobs.forEach(j => {
+              motion.run(j.el, { prefix: 'translate(-50%, -50%)', size: { w: j.r.width, h: j.r.height }, channels: [
+                { prop: 'opacity', ramp: { from: 0, to: 1, delay: j.delay, duration: st0.appear / rate0 } },
+                { prop: 'x', spring: flick0, from: j.ox, to: 0, delay: j.delay, timeScale: rate0 },
+                { prop: 'y', spring: flick0, from: j.oy, to: 0, delay: j.delay, timeScale: rate0 },
+              ] });
+              if (j.tn && j.from > j.to) {
+                const endS = j.delay + flick0.settleMs(1e-3) / rate0;
+                motion.sample((t) => { j.tn.data = fmtChips(t >= endS ? j.to : t <= j.delay ? j.from : Math.round(j.from - (j.from - j.to) * flick0.at((t - j.delay) * rate0))); motion.wroteDigits = true; }, { end: endS });
+              }
+            });
           }
         }
       }
@@ -9128,9 +9263,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const tracksPile = !!(pileRect && !potLayers.length && pileStacks.length);
       // For the pile's own landings (PotChipLive), so they never measure after a write.
       motion.pileGeom = tracksPile ? { pitch: pitchOf(), size: { w: pileStacks[0].width, h: pileStacks[0].height } } : null;
-      const planWagers = (board) => {
-        if (!sweepPlan || !sweepPlan.length || !sweepLayer) return null;
-        const wagers = sweepPlan.map(w => {
+      const planWagers = (board, list = sweepPlan) => {
+        if (!list || !list.length || !sweepLayer) return null;
+        const wagers = list.map(w => {
           const g = prevWagers.get(w.seat);
           return g ? { ...w, el: g.el, geo: g.geo, topColor: g.topColor } : null;
         }).filter(Boolean);
@@ -9266,10 +9401,17 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         });
       }
 
+      // 30: a fold sends its seat's wager into the pot at once, as the street's sweep would.
+      if (motionKind === 'action' && foldSweep && foldSweep.amount > 0) {
+        const plan = planWagers(null, [foldSweep]);
+        if (plan) writes.push(() => sweep(plan));
+      }
+
       if (motionKind === 'action' && rSettings.animateChips) {
         // (3a) The push-out: where the chips came from.
         const act = currentActions[actionIdx];
-        const w = act && act.amount && (act.action === 'bet' || act.action === 'raise' || act.action === 'call' || act.action === 'all-in')
+        // 29: the bring-in (and a completion, a posted blind or straddle recorded as an action) pushes out too.
+        const w = act && act.amount && ['bet', 'raise', 'call', 'all-in', 'bring-in', 'complete', 'post', 'straddle'].includes(act.action)
           ? nowWagers.get(act.player) : null;
         if (w) {
           const el = w.el;
@@ -9292,7 +9434,82 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             const g = w.geo;
             const box = { left: g.cx - g.w / 2, right: g.cx + g.w / 2, top: g.cy - g.h / 2, bottom: g.cy + g.h / 2 };
             const pushPx = clearPush(box, dir, want, obstacles);
-            writes.push(() => pushOut(motion, { set, rate, el, dir, pushPx, addOn, size: { w: g.w, h: g.h } }));
+            const S3 = SPRING_SETS[set].stage;
+            const tn = [...el.childNodes].find(n => n.nodeType === 3);
+            const before = computePlayerContrib(hand, streetIdx, currentActions, actionIdx - 1, act.player);
+            if (addOn && tn && layer && L) {
+              /* 32: the wager stays where it is and only the added chips come: a chip from the plaque's edge lands
+                 on top of its stack, and the figure takes the new amount as it lands. */
+              const info = seatEl && seatEl.querySelector('.replayer-seat-info');
+              const pr = info ? info.getBoundingClientRect() : null;
+              const tx = g.cx + g.chip.dx, ty = g.cy + g.chip.dy - g.chip.h / 2;
+              const fx = pr ? Math.max(pr.left, Math.min(pr.right, tx)) : g.cx + dir.x * pushPx, fy = pr ? Math.max(pr.top, Math.min(pr.bottom, ty)) : g.cy + dir.y * pushPx;
+              const probe = table.querySelector('.replayer-chip-probe.is-disc');
+              const chipD = probe ? probe.getBoundingClientRect().width || 12 : 12;
+              const flickSp3 = tierSpring(set, 'flick');
+              const land = timeTo(flickSp3, 0.98) / rate;
+              const newText = tn.data;
+              writes.push(() => {
+                tn.data = fmtChips(before);
+                const chip = document.createElement('div');
+                chip.className = 'replayer-flying-chip is-spring is-disc';
+                chip.setAttribute('aria-hidden', 'true');
+                const face = document.createElement('div');
+                face.className = 'replayer-pot-chip-disc';
+                if (w.topColor) face.style.setProperty('--chip', w.topColor);
+                chip.appendChild(face);
+                Object.assign(chip.style, { left: (fx - L.left) + 'px', top: (fy - L.top) + 'px', transform: 'translate(-50%, -50%)' });
+                layer.appendChild(chip);
+                const entry = motion.run(chip, { transient: true, prefix: 'translate(-50%, -50%)', size: { w: chipD, h: chipD }, end: land + S3.arrivalFade / rate, channels: [
+                  { prop: 'x', spring: flickSp3, from: 0, to: tx - fx, timeScale: rate },
+                  { prop: 'y', spring: flickSp3, from: 0, to: ty - fy, timeScale: rate },
+                  { prop: 'opacity', ramp: { from: 1, to: 0, delay: land, duration: S3.arrivalFade / rate } },
+                ] });
+                const onLand = () => {
+                  tn.data = newText;
+                  motion.wroteDigits = true;
+                  motion.run(el, { key: { el, kind: 'squash' }, property: 'individual', size: { w: g.w, h: g.h }, channels: [
+                    { prop: 'scaleX', spring: flickSp3, from: S3.squash[0], to: 1, timeScale: rate },
+                    { prop: 'scaleY', spring: flickSp3, from: S3.squash[1], to: 1, timeScale: rate },
+                  ] });
+                };
+                if (entry) motion.tick(land, onLand, entry); else onLand();
+              });
+            } else {
+              writes.push(() => pushOut(motion, { set, rate, el, dir, pushPx, addOn, size: { w: g.w, h: g.h } }));
+            }
+            /* 36: a pot-limit bet or raise of the most the pot allows takes its figure from the pot: a copy of the
+               pot's figure travels to the wager, which shows its own figure as the copy lands. */
+            const potEl = potTotalRef.current;
+            if (gameCfg.betting === 'pl' && (act.action === 'bet' || act.action === 'raise') && potEl && tn && layer && L) {
+              const potBefore = calcPotBeforeAction(hand, streetIdx, actionIdx);
+              const most = hand.players.reduce((m, _, q) => Math.max(m, computePlayerContrib(hand, streetIdx, currentActions, actionIdx - 1, q)), 0);
+              const call = Math.max(0, most - before);
+              const maxInc = potBefore + 2 * call;
+              if (Math.abs((act.amount || 0) - maxInc) <= Math.max(0.5, maxInc * 0.002)) {
+                const pr = potEl.getBoundingClientRect();
+                const cs = getComputedStyle(potEl);
+                const handSp3 = tierSpring(set, 'hand');
+                const land = timeTo(handSp3, 0.98) / rate;
+                const pillScale = (parseFloat(getComputedStyle(el).fontSize) || 10) / (parseFloat(cs.fontSize) || 10);
+                writes.push(() => {
+                  const copy = document.createElement('span');
+                  copy.className = 'replayer-pot-copy';
+                  copy.textContent = fmtChips(act.amount);
+                  Object.assign(copy.style, { left: (pr.left + pr.width / 2 - L.left) + 'px', top: (pr.top + pr.height / 2 - L.top) + 'px', font: cs.font, color: cs.color });
+                  layer.appendChild(copy);
+                  el.style.color = 'transparent';
+                  const entry = motion.run(copy, { transient: true, prefix: 'translate(-50%, -50%)', size: { w: pr.width, h: pr.height }, end: land + S3.arrivalFade / rate, channels: [
+                    { prop: 'x', spring: handSp3, from: 0, to: g.cx - (pr.left + pr.width / 2), timeScale: rate },
+                    { prop: 'y', spring: handSp3, from: 0, to: g.cy - (pr.top + pr.height / 2), timeScale: rate },
+                    { prop: 'scale', spring: handSp3, from: 1, to: pillScale, timeScale: rate },
+                    { prop: 'opacity', ramp: { from: 1, to: 0, delay: land, duration: S3.arrivalFade / rate } },
+                  ] });
+                  const show = () => { el.style.color = ''; };
+                  if (entry) motion.tick(land, show, entry); else show();
+                });
+              }
+            }
           }
         }
       }
@@ -9369,8 +9586,37 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           }));
           return { seatsRead, landings, discs, chipD, landD, holes: [plaques, cardBoxes, btn ? [btn] : []], layerRect: L };
         })() : null;
-        const tShip = ship ? shipStartAfterSweep(set, rate, plan ? plan.length : 0) : 0;
+        const tShip = ship ? shipStartAfterSweep(set, rate, plan ? plan.length : 0) + uncalledDelay : 0;
         motion.lastResult = null;
+        /* The ship in waves (Replayer animations 40-45): pot by pot, the last formed first; in a pot of two
+           halves the high, then the low (a scoop's two halves a beat apart, to the one seat); the odd chips of a
+           split last, one at a time. Two beats between waves. One wave, as before, when there is one pot, one
+           half and nothing odd. */
+        const armArrive = timeTo(tierSpring(set, 'arm'), 0.98);
+        const waves = (() => {
+          const parts = (potAwards && potAwards.parts) || [];
+          if (!ship || !parts.length) return null;
+          const layers = [...new Set(parts.map(p => p.layer))].sort((a, b) => a - b);
+          const out = [];
+          parts.forEach(p => {
+            const rank = layers.length - 1 - layers.indexOf(p.layer);
+            const scoop = p.half === 'lo' && parts.some(q => q.layer === p.layer && q.half === 'hi' && q.seat === p.seat);
+            const slot = p.half === 'lo' ? (scoop ? 0.5 : 1) : 0;
+            const delay = (rank * 2 + slot) * 2 * S.beat / rate;
+            const odd = p.n >= 2 ? Math.max(0, p.amount - p.base) : 0;
+            if (p.amount - odd > 0) out.push({ seat: p.seat, award: p.amount - odd, delay });
+            if (odd > 0) out.push({ seat: p.seat, award: odd, delay, odd: true });
+          });
+          const shares = out.filter(d => !d.odd);
+          const last = shares.length ? Math.max(...shares.map(d => d.delay)) : 0;
+          const order0 = dealOrder;
+          out.filter(d => d.odd).sort((a, b) => order0.indexOf(a.seat) - order0.indexOf(b.seat)).forEach((d, i) => {
+            d.delay = last + (armArrive + (i + 1) * S.beat) / rate;
+            d.per = 1;
+          });
+          return out.length > 1 || (out[0] && out[0].delay) ? out : null;
+        })();
+        motion.shipWaveEnd = waves ? Math.max(...waves.map(w => w.delay)) : 0;
         writes.push(() => {
           sweep(plan);
           if (!ship) return;
@@ -9393,8 +9639,32 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             motion.defer((late) => launch(Math.max(0, tShip - late), dests), { frames: 0 });
           });
         });
-        const launch = (tStart, dests) => {
+        const launch = (tStart, landed0) => {
+          const dests = waves ? waves.map(w => ({ ...(landed0.find(d => d.seat === w.seat) || landed0[0]), seat: w.seat, award: w.award, delay: w.delay, per: w.per })) : landed0;
+          const totalOf = new Map();
+          landed0.forEach(d => totalOf.set(d.seat, d.award));
+          const landedBy = new Map();
           motion.lastResult = { tShip: tStart, dests: dests.map(d => ({ seat: d.seat, x: d.x, y: d.y, edge: d.edge, contact: d.contact })) };
+          /* 48: the pot's figure counts down to nothing as the pot travels (each wave on its own arm), then goes. */
+          const potTn = !potLayers.length ? potTextNode() : null;
+          const potBox = potTn && potTn.parentElement && potTn.parentElement.closest('.replayer-pot-display');
+          if (potTn && potBox && potBox.classList.contains('is-emptied')) {
+            const armSp = tierSpring(set, 'arm');
+            const total = dests.reduce((n, d) => n + d.award, 0);
+            const endAt = Math.max(...dests.map(d => (d.delay || 0))) + armArrive / rate;
+            const b0 = hand.blinds || {};
+            const unit0 = hand.gameMode === 'cash' ? 0.01 : Math.max(1, Math.min(...[b0.sb, b0.ante, b0.bringIn, b0.bb].map(Number).filter(v => v > 0).concat([1e9])));
+            motion.sample((t) => {
+              const into = t - tStart;
+              let left = total;
+              dests.forEach(d => { const u = into - (d.delay || 0); if (u > 0) left -= d.award * Math.min(1, armSp.at(u * rate)); });
+              potTn.data = fmtChips(into >= endAt ? 0 : Math.max(0, Math.round(left / unit0) * unit0));
+              motion.wroteDigits = true;
+            }, { end: tStart + endAt });
+            motion.run(potBox, { key: { el: potBox, kind: 'empty' }, property: 'individual', size: { w: potBox.offsetWidth, h: potBox.offsetHeight }, channels: [
+              { prop: 'opacity', ramp: { from: 1, to: 0, delay: tStart + endAt, duration: S.labelFade / rate } },
+            ] });
+          }
           shipPot(motion, {
             set, rate, layer: sweepLayer, layerRect: ship.layerRect, origin: pileCentre,
             discs: ship.discs, dests, holes: ship.holes, chipD: ship.chipD, landD: ship.landD, cardW, tStart,
@@ -9402,14 +9672,19 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               motion.pileHeld = false;
               if (motion.setPile && !potLayers.length) motion.setPile(potShown(displayPot, motion.pendingPot, motion.pendingPot > 0 ? motion.potFloor : 0), { shipped: true });
             },
-            onArrive: (seat, k, n) => {
+            onArrive: (seat, k, n, di) => {
               /* The chips land within about 30ms of each other, a handful: the stack counts what has
                  landed at the first, the third and the last landing (each landing would be five
-                 changes of digits in two frames), and the last lands the exact figure. */
+                 changes of digits in two frames), and the last lands the exact figure. A seat paid
+                 in several waves counts each wave's share as it lands. */
+              const d = dests[di != null ? di : dests.findIndex(x => x.seat === seat)];
+              if (!d) return;
+              landedBy.set(di, k === n - 1 ? d.award : d.award * (k + 1) / n);
               if (k !== n - 1 && k % 2) return;
-              const d = dests.find(x => x.seat === seat);
-              const landed = k === n - 1 ? d.award : Math.round(d.award * (k + 1) / n);
-              motion.pendingStacks.set(seat, Math.max(0, d.award - landed));
+              let got = 0;
+              dests.forEach((x, j) => { if (x.seat === seat) got += landedBy.get(j) || 0; });
+              const total = totalOf.get(seat) || d.award;
+              motion.pendingStacks.set(seat, Math.max(0, total - Math.round(got * 100) / 100));
               if (motion.writeStack) motion.writeStack(seat);
             },
           });
@@ -9740,6 +10015,158 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         }
       }
 
+      /* (6) The figures (Replayer animations 31, 33, 46, 47): a stack counts down as its chips leave and an
+         all-in empties before it reads All-in; at the result each winner's gain rises beside its plaque as the pot
+         lands, and a busted all-in rolls from All-in to 0. */
+      if (rSettings.animateChips) {
+        const b = hand.blinds || {};
+        const unit = hand.gameMode === 'cash' ? 0.01 : Math.max(1, Math.min(...[b.sb, b.ante, b.bringIn, b.bb].map(Number).filter(v => v > 0).concat([1e9])));
+        const roundU = (v) => Math.round(v / unit) * unit;
+        const stackEl = (pi) => table.querySelector('.replayer-seat[data-seat="' + pi + '"] .replayer-seat-stack');
+        const flick = SPRING_SETS[set].tiers.flick;
+        const flickSp = spring({ ...flick });
+        const flickEnd = flickSp.settleMs(1e-3) / rate;
+        const flickArrive = timeTo(flickSp, 0.98) / rate;
+        const prevVals = motion.prevStackVals || new Map();
+        const r1 = (() => { const p = document.createElement('div'); p.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)'; table.appendChild(p); const v = p.getBoundingClientRect().height / 100 || 8; table.removeChild(p); return v; })();
+        const act = motionKind === 'action' ? currentActions[actionIdx] : null;
+        if (act && act.amount && prevVals.has(act.player)) {
+          const pi = act.player;
+          const from = prevVals.get(pi), to = stackFigure(pi);
+          const el = stackEl(pi);
+          const mark = el && el.querySelector('.replayer-allin-mark');
+          if (el && from > to) {
+            if (!mark) {
+              // 31: the figure rides the wager's flick spring down to what is left.
+              const tn = el.firstChild && el.firstChild.nodeType === 3 ? el.firstChild : null;
+              if (tn) writes.push(() => motion.sample((t) => {
+                const v = t >= flickEnd ? to : from - (from - to) * flickSp.at(t * rate);
+                tn.data = fmtChips(t >= flickEnd ? to : roundU(v));
+                motion.wroteDigits = true;
+              }, { end: flickEnd }));
+            } else {
+              // 33: down to 0 first, then the 0 rolls up out as All-in rolls in from below.
+              writes.push(() => {
+                if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+                const ghost = document.createElement('span');
+                ghost.className = 'replayer-stack-roll';
+                el.appendChild(ghost);
+                motion.sample((t) => { ghost.textContent = fmtChips(t >= flickArrive ? 0 : Math.max(0, roundU(from - from * flickSp.at(t * rate)))); }, { end: flickArrive });
+                const S2 = SPRING_SETS[set].stage;
+                motion.run(ghost, { transient: true, property: 'individual', size: { w: el.offsetWidth, h: el.offsetHeight }, channels: [
+                  { prop: 'y', spring: flickSp, from: 0, to: -r1, delay: flickArrive, timeScale: rate },
+                  { prop: 'opacity', ramp: { from: 1, to: 0, delay: flickArrive, duration: S2.labelFade / rate } },
+                ] });
+                motion.run(mark, { key: { el: mark, kind: 'roll' }, property: 'individual', size: { w: mark.offsetWidth, h: mark.offsetHeight }, channels: [
+                  { prop: 'y', spring: flickSp, from: r1, to: 0, delay: flickArrive, timeScale: rate },
+                  { prop: 'opacity', ramp: { from: 0, to: 1, delay: flickArrive, duration: S2.labelFade / rate } },
+                ] });
+              });
+            }
+          }
+        }
+        if (motionKind === 'result' && potAwards && shipPlan && shipPlan.length) {
+          const S2 = SPRING_SETS[set].stage;
+          const tLand = shipStartAfterSweep(set, rate, sweepPlan ? sweepPlan.length : 0) + uncalledDelay + shipFirstArrival(set, rate) + (motion.shipWaveEnd || 0);
+          const g1 = (() => { const p = document.createElement('div'); p.style.cssText = 'position:absolute;visibility:hidden;height:0;width:calc(var(--gu) * 100)'; table.appendChild(p); const v = p.getBoundingClientRect().width / 100 || 10; table.removeChild(p); return v; })();
+          const T = table.getBoundingClientRect();
+          const hand_ = tierSpring(set, 'hand');
+          // 46: "+106,000" rises 2r beside each winner's plaque, holds, fades.
+          const gains = shipPlan.map(d => {
+            const seatEl = table.querySelector('.replayer-seat[data-seat="' + d.seat + '"]');
+            const info = seatEl && seatEl.querySelector('.replayer-seat-info');
+            const st = stackEl(d.seat);
+            if (!info || !st || !L) return null;
+            const pr = info.getBoundingClientRect(), sr = st.getBoundingClientRect();
+            const toRight = (pr.left + pr.width / 2) <= (T.left + T.width / 2);
+            const cs = getComputedStyle(st);
+            // A seat along the top rail has neighbours either side: its gain sits under the plaque instead.
+            if (pr.top + pr.height / 2 < T.top + T.height * 0.3) {
+              return { award: d.award, y: pr.bottom + sr.height / 2 + r1 - L.top, x: pr.left + pr.width / 2 - L.left, under: true, font: cs.font, color: cs.color, h: sr.height };
+            }
+            return { award: d.award, y: sr.top + sr.height / 2 - L.top, x: toRight ? pr.right + g1 - L.left : pr.left - g1 - L.left, toRight, font: cs.font, color: cs.color, h: sr.height };
+          }).filter(Boolean);
+          // 47: a busted all-in rolls from All-in to 0 as the pot lands elsewhere.
+          const busts = hand.players.map((_, pi) => pi).filter(pi => allIn.has(pi) && shownStacks[pi] <= 0 && !(potAwards[pi] > 0))
+            .map(pi => ({ pi, el: stackEl(pi) })).filter(x => x.el);
+          writes.push(() => {
+            gains.forEach(gn => {
+              const span = document.createElement('span');
+              span.className = 'replayer-gain' + (gn.under ? ' is-under' : gn.toRight ? '' : ' is-left');
+              span.textContent = '+' + fmtChips(gn.award);
+              Object.assign(span.style, { left: gn.x + 'px', top: (gn.y - gn.h / 2) + 'px', font: gn.font, color: gn.color, height: gn.h + 'px', lineHeight: gn.h + 'px' });
+              layer.appendChild(span);
+              const hold = tLand + timeTo(hand_, 0.98) / rate + 800 / rate;
+              motion.run(span, { transient: true, property: 'individual', size: { w: 40, h: gn.h }, channels: [
+                { prop: 'y', spring: hand_, from: 2 * r1, to: 0, delay: tLand, timeScale: rate },
+                { prop: 'opacity', ramp: { from: 0, to: 1, delay: tLand, duration: S2.appear / rate } },
+                { prop: 'opacity', ramp: { from: 1, to: 0, delay: hold, duration: S2.labelFade / rate } },
+              ], end: hold + S2.labelFade / rate });
+            });
+            busts.forEach(({ el }) => {
+              // The ALL-IN that leaves is drawn over the stack line in the plaque: the line itself waits unseen.
+              const plaque = el.parentElement;
+              if (!plaque) return;
+              if (getComputedStyle(plaque).position === 'static') plaque.style.position = 'relative';
+              const ghost = document.createElement('span');
+              ghost.className = 'replayer-stack-roll';
+              Object.assign(ghost.style, { left: el.offsetLeft + 'px', top: el.offsetTop + 'px', width: el.offsetWidth + 'px', height: el.offsetHeight + 'px', right: 'auto', bottom: 'auto' });
+              const mk = document.createElement('span');
+              mk.className = 'replayer-allin-mark';
+              mk.textContent = 'ALL-IN';
+              ghost.appendChild(mk);
+              plaque.appendChild(ghost);
+              const tn = el.firstChild && el.firstChild.nodeType === 3 ? el.firstChild : null;
+              motion.run(ghost, { transient: true, property: 'individual', size: { w: el.offsetWidth, h: el.offsetHeight }, channels: [
+                { prop: 'y', spring: flickSp, from: 0, to: -r1, delay: tLand, timeScale: rate },
+                { prop: 'opacity', ramp: { from: 1, to: 0, delay: tLand, duration: S2.labelFade / rate } },
+              ] });
+              if (tn) {
+                // The figure itself waits under the mark: a span would change React's text node, so its colour fades in.
+                motion.run(el, { key: { el, kind: 'roll' }, property: 'individual', size: { w: el.offsetWidth, h: el.offsetHeight }, channels: [
+                  { prop: 'y', spring: flickSp, from: r1, to: 0, delay: tLand, timeScale: rate },
+                  { prop: 'opacity', ramp: { from: 0, to: 1, delay: tLand, duration: S2.labelFade / rate } },
+                ] });
+              }
+            });
+          });
+        }
+      }
+
+      /* 35: a bet nobody called slides from where it stood back to its bettor's plaque, and the stack takes it as it
+         lands; the pot ships a beat later (tShip waits for it). */
+      if (motionKind === 'result' && uncalledBack && layer && L) {
+        const S3 = SPRING_SETS[set].stage;
+        const handSp3 = tierSpring(set, 'hand');
+        const land = timeTo(handSp3, 0.98) / rate;
+        uncalledBack.forEach((amt, pi) => {
+          if (!(amt > 0)) return;
+          const g = prevWagers.get(pi);
+          const info = table.querySelector('.replayer-seat[data-seat="' + pi + '"] .replayer-seat-info');
+          if (!g || !info) return;
+          const pr = info.getBoundingClientRect();
+          const from = { x: g.geo.cx, y: g.geo.cy };
+          const to = { x: Math.max(pr.left, Math.min(pr.right, from.x)), y: Math.max(pr.top, Math.min(pr.bottom, from.y)) };
+          writes.push(() => {
+            motion.pendingStacks.set(pi, (motion.pendingStacks.get(pi) || 0) + amt);
+            const ghost = g.el.cloneNode(true);
+            ghost.classList.remove('animate-chips');
+            [...ghost.childNodes].forEach(n => { if (n.nodeType === 3) n.data = fmtChips(amt); });
+            ghost.querySelectorAll('.replayer-bet-sizing').forEach(x => x.remove());
+            ghost.removeAttribute('data-seat');
+            Object.assign(ghost.style, { position: 'absolute', left: (from.x - L.left) + 'px', top: (from.y - L.top) + 'px', transform: 'translate(-50%, -50%)', margin: '0' });
+            layer.appendChild(ghost);
+            const entry = motion.run(ghost, { transient: true, prefix: 'translate(-50%, -50%)', size: { w: g.geo.w, h: g.geo.h }, end: land + S3.arrivalFade / rate, channels: [
+              { prop: 'x', spring: handSp3, from: 0, to: to.x - from.x, timeScale: rate },
+              { prop: 'y', spring: handSp3, from: 0, to: to.y - from.y, timeScale: rate },
+              { prop: 'opacity', ramp: { from: 1, to: 0, delay: land, duration: S3.arrivalFade / rate } },
+            ] });
+            const home = () => { motion.pendingStacks.set(pi, Math.max(0, (motion.pendingStacks.get(pi) || 0) - amt)); if (motion.writeStack) motion.writeStack(pi); };
+            if (entry) motion.tick(land, home, entry); else home();
+          });
+        });
+      }
+
       // WRITE, once per step: however many layout passes this commit gets, a moment never runs
       // twice (an award counted into a stack twice read 0 on the plaque).
       const momentKey = motionKind + ':' + streetIdx + ':' + actionIdx + ':' + (showResult ? 1 : 0);
@@ -9752,7 +10179,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       /* Render subtracted what it expected to fly; if nothing could (no layer, no element to copy),
          one render puts the full figures back. */
       const planned = motion.pendingPot > 0 || motion.pendingStacks.size > 0;
-      if (((sweepPlan && sweepPlan.length) || (shipPlan && shipPlan.length)) && !planned) setMotionRender(n => n + 1);
+      if (((sweepPlan && sweepPlan.length) || (shipPlan && shipPlan.length) || foldSweep || (uncalledBack && uncalledBack.some(v => v > 0))) && !planned) setMotionRender(n => n + 1);
       record();
     } finally {
       motion.inCommit = false;
@@ -10113,7 +10540,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           }
           return (
             <div className={'replayer-pot-display' + (animPotCollect ? ' anim-collect' : '')
-              + (potLanding ? ' is-landing' : '') + (potLayers.length ? ' has-sides' : '')}>
+              + (potLanding ? ' is-landing' : '') + (potLayers.length ? ' has-sides' : '')
+              /* 48: at the result the pot has gone to its winners: its figure counted down and went. */
+              + (springSet && showResult && potAwards && rSettings.animateChips && !potLayers.length ? ' is-emptied' : '')}>
               {potRow}
             </div>
           );
@@ -10525,7 +10954,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                       toggleStackUnit(e);
                     },
                   } : {})}>
-                  {allIn.has(pi) && shownStacks[pi] <= 0
+                  {allIn.has(pi) && shownStacks[pi] <= 0 && !(springSet && showResult && potAwards)
                     ? <span className="replayer-allin-mark">ALL-IN</span>
                     : fmtChips(stackFigure(pi))}
                 </div>
@@ -10658,7 +11087,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
              pushes it. A seat that won nothing shows nothing: its chips are in
              the pot, and the stack above already counts them. */
           const wonHere = (showResult && potAwards) ? (potAwards[pi] || 0) : 0;
-          if (showResult ? !wonHere : (!lastAct || !lastAct.amount)) return null;
+          /* 26: under springs a posted blind or straddle is a wager on the felt from the hand's first step until
+             the flop's sweep carries it in; a seat that folds sends its wager in as it folds (30). */
+          const blindOut = !showResult && springSet && streetIdx === 0 && !folded.has(pi)
+            && computePlayerContrib(hand, 0, currentActions, actionIdx, pi) > 0;
+          if (showResult ? !wonHere : (!blindOut && (!lastAct || !lastAct.amount))) return null;
+          if (!showResult && springSet && lastAct && lastAct.action === 'fold') return null;
           /* On the spring path the pot is shipped INTO the winner's plaque (its stack counts it up
              and the plaque takes its gold), so nothing is also pushed in front of the seat: a pill
              there was the pot on the felt a second time, appearing from nowhere 130px from where it
@@ -10708,7 +11142,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   and never called, so '13k' arrived with no pot-relative
                   context — and pot-relative size is what makes a bet readable
                   as a bluff or a value bet at a glance. */}
-              {!showResult && rSettings.showBetSizing && (lastAct.action === 'bet' || lastAct.action === 'raise') && (() => {
+              {!showResult && rSettings.showBetSizing && lastAct && (lastAct.action === 'bet' || lastAct.action === 'raise') && (() => {
                 const before = calcPotBeforeAction(hand, streetIdx, lastAct._ai ?? actionIdx);
                 const sizing = getBetSizingLabel(lastAct.amount, before);
                 return sizing ? <div className="replayer-bet-sizing">{sizing}</div> : null;

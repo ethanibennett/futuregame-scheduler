@@ -325,6 +325,36 @@ export class MotionRegistry {
     this._maybeSettle();
   }
 
+  /* ── Sampled figures (Replayer animations 31, 33, 48) ──
+     A figure written as a function of the moment's clock (a stack counting down as its chips leave): live,
+     once a frame until `end`, then once at `end`; under capture, by seek(); finishing the moment writes its
+     end. `fn(ms)` gets ms from the sampler's own start on the moment's clock. */
+  sample(fn, { end }) {
+    const s = { fn, end: Math.max(0, end || 0), base: this.capture ? this.captureNow : 0, t0: nowMs(), done: false, raf: 0 };
+    if (!this.samplers) this.samplers = [];
+    this.samplers.push(s);
+    try { fn(0); } catch (e) { /* never break the replay */ }
+    if (!this.capture && typeof requestAnimationFrame === 'function') {
+      const step = () => {
+        if (s.done) return;
+        const t = nowMs() - s.t0;
+        if (t >= s.end) { this._endSampler(s); return; }
+        try { s.fn(t); } catch (e) { /* never break the replay */ }
+        s.raf = requestAnimationFrame(step);
+      };
+      s.raf = requestAnimationFrame(step);
+    }
+    return s;
+  }
+
+  _endSampler(s) {
+    if (s.done) return;
+    s.done = true;
+    try { cancelAnimationFrame(s.raf); } catch (e) { /* no rAF */ }
+    try { s.fn(s.end); } catch (e) { /* never break the replay */ }
+    if (this.samplers) this.samplers = this.samplers.filter(x => x !== s);
+  }
+
   /* ── Arrivals ──
      A tick is something that happens when a flight lands: the pot or a stack takes its chips. It
      belongs to the flight's animation: live, it is timed from that animation's real start (see
@@ -392,6 +422,7 @@ export class MotionRegistry {
       for (const entry of [...this.entries.values()]) this._done(entry);
       for (const t of [...this.ticks].sort((a, b) => (a.base + a.at) - (b.base + b.at))) this._runTick(t);
     }
+    for (const sm of [...(this.samplers || [])]) this._endSampler(sm);
     this.ticks = [];
     this.pendingPot = 0;
     this.potFloor = 0;
@@ -416,6 +447,7 @@ export class MotionRegistry {
     let m = 0;
     for (const e of this.entries.values()) m = Math.max(m, e.t0 + e.rest);
     for (const t of this.ticks) m = Math.max(m, t.base + t.at);
+    for (const sm of this.samplers || []) m = Math.max(m, sm.base + sm.end);
     return m;
   }
 
@@ -435,6 +467,10 @@ export class MotionRegistry {
       this._runTick(next);
     }
     this.captureNow = ms;
+    for (const sm of [...(this.samplers || [])]) {
+      const t = ms - sm.base;
+      if (t >= sm.end) this._endSampler(sm); else { try { sm.fn(Math.max(0, t)); } catch (e) { /* ignore */ } }
+    }
     for (const e of [...this.entries.values()]) {
       // A ghost or a shipped chip whose flight is over leaves the felt, as it does live (it is
       // transparent by then): a frame is not drawn with dead elements in it.
@@ -1189,8 +1225,12 @@ export function shipPot(reg, { set, rate = 1, layer, layerRect, origin, discs = 
   const onDone = () => { if (--alive <= 0 && clip.outer.parentNode) clip.outer.parentNode.removeChild(clip.outer); };
   const landed = new Map();
   let k = 0, firstEntry = null;
-  for (const dest of dests) {
-    for (let i = 0; i < per; i++) {
+  /* A dest can leave later than the first (`delay`, ms at rate: a side pot after the one formed after it, the low
+     half after the high, an odd chip after the shares) and carry its own number of chips (`per`); its landings are
+     counted per dest, so a seat paid twice (a scoop's two halves) counts each. */
+  dests.forEach((dest, di) => {
+    const perD = dest.per || per;
+    for (let i = 0; i < perD; i++) {
       const src = from[i % from.length] || { x: 0, y: 0 };
       const sx = src.x || 0, sy = src.y || 0;
       const chip = document.createElement('div');
@@ -1213,7 +1253,7 @@ export function shipPot(reg, { set, rate = 1, layer, layerRect, origin, discs = 
       const dx = dest.x - origin.x, dy = dest.y - origin.y;
       const cx = dx - sx, cy = dy - sy, len = Math.hypot(cx, cy) || 1;
       const arm = tierOf(set, st.shipTiers[i % st.shipTiers.length]);
-      const d = tStart + (i * st.shipStagger) / rate;
+      const d = tStart + (dest.delay || 0) + (i * st.shipStagger) / rate;
       const arrive = d + timeTo(arm, 0.98) / rate;
       // Set down a little smaller, and at the size its landing was chosen for when that is smaller.
       const lift = st.shipLift, shrink = st.shipShrink * (landD > 0 && chipD > 0 ? Math.min(1, landD / chipD) : 1);
@@ -1259,15 +1299,15 @@ export function shipPot(reg, { set, rate = 1, layer, layerRect, origin, discs = 
       out.firstArrive = Math.min(out.firstArrive, arrive);
       out.lastArrive.set(dest.seat, Math.max(out.lastArrive.get(dest.seat) || 0, arrive));
       out.end = Math.max(out.end, arrive + fade);
-      if (!entry) { chip.remove(); onDone(); onArrive(dest.seat, i, per); continue; }
+      if (!entry) { chip.remove(); onDone(); onArrive(dest.seat, i, perD, di); continue; }
       if (!firstEntry) firstEntry = entry;
       reg.tick(arrive, () => {
-        const nth = (landed.get(dest.seat) || 0) + 1;
-        landed.set(dest.seat, nth);
-        onArrive(dest.seat, nth - 1, per);
+        const nth = (landed.get(di) || 0) + 1;
+        landed.set(di, nth);
+        onArrive(dest.seat, nth - 1, perD, di);
       }, entry);
     }
-  }
+  });
   if (onDepart) {
     // On the first chip's own clock (its animation starts with the moment), so a long press frame
     // cannot empty the pile before the chips are under it.

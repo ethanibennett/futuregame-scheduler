@@ -6517,6 +6517,16 @@
     /* A stud fold's up cards on their way to the Dead cards strip, which can lie outside the table (7). */
     .card-row.replayer-ghost-fixed { position: fixed; inset: 0; display: block; height: auto; min-width: 0; pointer-events: none; z-index: 60; }
     .replayer-ghost-fixed > * { position: absolute; }
+    /* A stack line's figure while it rolls (33, 47): over the line, in its own type. */
+    .replayer-stack-roll { position: absolute; inset: 0; display: block; text-align: inherit; line-height: inherit; white-space: nowrap; pointer-events: none; }
+    /* What a winner gained, risen beside its plaque as the pot lands (46). */
+    .replayer-gain { position: absolute; white-space: nowrap; pointer-events: none; z-index: 2; font-variant-numeric: tabular-nums; }
+    .replayer-gain.is-left { transform: translateX(-100%); }
+    .replayer-gain.is-under { transform: translateX(-50%); }
+    /* A pot-sized bet's figure, on its way from the pot to the wager (36). */
+    .replayer-pot-copy { position: absolute; white-space: nowrap; pointer-events: none; z-index: 3; }
+    /* 48: the pot's figure at a result whose pot has been shipped. */
+    .replayer-pot-display.is-emptied { opacity: 0; }
 
 
     /* ── Replayer Settings Panel ── */
