@@ -16986,21 +16986,22 @@
     .cal-event-row.has-quick-add .cal-event-row-content { position: relative; }
     .cal-event-row.has-quick-add .mini-late-reg-track { margin-right: calc(var(--gu) * 5); }
     .cal-event-row.has-quick-add .cal-bar-row2 { padding-right: calc(var(--gu) * 5); }
-    /* A triangle tab in the card's bottom-right corner (owner, 2026-11-13; it was a 4g x 4r box): the whole
-       4g x 4r corner is the hit area, the triangle its lower-right half, clipped by the card's own radius
-       (anything taller reaches the overlap line's "Only if I bust" pill, 4.4r up). A quiet "+" to add, the brand with a check once saved. */
+    /* A triangle tab in the card's bottom-right corner (owner, 2026-11-13; it was a 4g x 4r box, then a 4g x 4r
+       triangle, then "even smaller"): the whole 4g x 4r corner is still the hit area, the triangle drawn in it
+       is 3g x 3r, clipped by the card's own radius. A quiet "+" to add, the brand with a check once saved. */
     .cal-quick-add {
       position: absolute; right: 0; bottom: 0;
       width: calc(var(--gu) * 4); height: calc(var(--subrow) * 4); box-sizing: border-box; cursor: pointer;
       display: flex; align-items: flex-end; justify-content: flex-end;
-      padding: 0 calc(var(--gu) * 0.4) calc(var(--subrow) * 0.5) 0;
+      padding: 0 calc(var(--gu) * 0.3) calc(var(--subrow) * 0.35) 0;
       background: none; color: var(--text-muted); border: 0;
     }
     .cal-quick-add::before {
-      content: ''; position: absolute; inset: 0; clip-path: polygon(100% 0, 100% 100%, 0 100%);
+      content: ''; position: absolute; right: 0; bottom: 0;
+      width: calc(var(--gu) * 3); height: calc(var(--subrow) * 3); clip-path: polygon(100% 0, 100% 100%, 0 100%);
       background: var(--surface2); transition: background var(--dur-fast) var(--ease-out);
     }
-    .cal-quick-add svg { position: relative; width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }
+    .cal-quick-add svg { position: relative; width: calc(var(--subrow) * 1.4); height: calc(var(--subrow) * 1.4); }
     .cal-quick-add.is-saved { color: var(--on-brand); }
     .cal-quick-add.is-saved::before { background: var(--brand); }
     /* A saved card's row (UX pick 22): Condition 7g, Priority 7g, Max Entries 8g, Edit 5g, Remove the rest
