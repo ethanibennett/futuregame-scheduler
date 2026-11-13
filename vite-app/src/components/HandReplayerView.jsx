@@ -10353,28 +10353,32 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             { prop: 'opacity', ramp: { from: 0, to: 1, delay, duration: fade / rate } },
           ] });
         };
-        // 51: the turn ring travels from the plaque that acted to the next one to act, on the arm spring.
+        /* 51: the turn passes by a crossfade (owner, 2026-11-13: "it shouldn't jump from seat to seat, it should fade
+           out and fade in"): the ring fades out on the plaque that acted as it fades in on the next one to act. */
         const toSeat = turnIdx != null && turnIdx >= 0 ? seatOf(turnIdx) : null;
         if ((motionKind === 'action' || motionKind === 'street') && prevS.turn && toSeat && prevS.turn.seat !== turnIdx && layer && L) {
           const info = toSeat.querySelector('.replayer-seat-info');
           const tr = info.getBoundingClientRect(), fr = prevS.turn.rect;
           const radius = getComputedStyle(info).borderRadius;
+          const fade = (2 * S4.beat) / rate;
           writes.push(() => {
-            const ring = document.createElement('div');
-            ring.className = 'replayer-turn-ring';
-            Object.assign(ring.style, { left: (fr.left - L.left) + 'px', top: (fr.top - L.top) + 'px', width: fr.width + 'px', height: fr.height + 'px', borderRadius: radius, transformOrigin: '0 0' });
-            layer.appendChild(ring);
+            const ringAt = (r) => {
+              const ring = document.createElement('div');
+              ring.className = 'replayer-turn-ring';
+              Object.assign(ring.style, { left: (r.left - L.left) + 'px', top: (r.top - L.top) + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: radius });
+              layer.appendChild(ring);
+              return ring;
+            };
+            const ease = (p) => p * p * (3 - 2 * p);
+            motion.run(ringAt(fr), { transient: true, size: { w: fr.width, h: fr.height }, end: fade, channels: [
+              { prop: 'opacity', ramp: { from: 1, to: 0, delay: 0, duration: fade, ease } },
+            ] });
             toSeat.classList.add('ring-wait');
-            const land = timeTo(armSp, 0.98) / rate;
-            const entry = motion.run(ring, { transient: true, size: { w: fr.width, h: fr.height }, end: land + S4.arrivalFade / rate, channels: [
-              { prop: 'x', spring: armSp, from: 0, to: tr.left - fr.left, timeScale: rate },
-              { prop: 'y', spring: armSp, from: 0, to: tr.top - fr.top, timeScale: rate },
-              { prop: 'scaleX', spring: armSp, from: 1, to: tr.width / Math.max(1, fr.width), timeScale: rate },
-              { prop: 'scaleY', spring: armSp, from: 1, to: tr.height / Math.max(1, fr.height), timeScale: rate },
-              { prop: 'opacity', ramp: { from: 1, to: 0, delay: land, duration: S4.arrivalFade / rate } },
+            const entry = motion.run(ringAt(tr), { transient: true, size: { w: tr.width, h: tr.height }, end: fade, channels: [
+              { prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: fade, ease } },
             ] });
             const take = () => toSeat.classList.remove('ring-wait');
-            if (entry) motion.tick(land, take, entry); else take();
+            if (entry) motion.tick(fade, take, entry); else take();
           });
         }
         // 53: the action label rises out of its plaque and settles.
