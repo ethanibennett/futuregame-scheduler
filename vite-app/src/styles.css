@@ -10778,9 +10778,13 @@
          box (15.4px), so clipping at the box sliced ~0.8px off line 2's descenders (g, p, y).
          The clip reaches a quarter-r below the box instead: enough for any descender, while a
          third line's glyphs (which line-clamp leaves laid out) start ~0.36r below and stay hidden.
-         scripts/check-text-clipping.mjs is the guard. */
+         scripts/check-text-clipping.mjs is the guard.
+         The box carries .cal-event-name's 0.5r padding top and bottom, so it is 5r and line 2's own
+         box ends 0.5r above its foot: measured, line 3's glyph box starts 4.4r down and a clip 0.25r
+         BELOW the foot (5.25r) showed its tops (owner, 2026-11-13: "Shootout" under a clamped title).
+         The edge is now 4.62r (inset 0.38r): line 2's descenders whole, nothing of line 3. */
       overflow: visible;
-      clip-path: inset(calc(var(--subrow) * -1) 0 calc(var(--subrow) * -0.25) 0);
+      clip-path: inset(calc(var(--subrow) * -1) 0 calc(var(--subrow) * 0.38) 0);
       /* -webkit-box switches text-box-trim off, so the baseline sits where the untrimmed 2r
          line box puts it: the 13px serif's 13/4px ascent/descent in a 15.43px (2r) line leave
          (4 - 0.786)px = 0.419r under the baseline. Measured 7.581r against r8 on every
@@ -16958,14 +16962,14 @@
     }
     .cal-today-label:disabled { color: var(--text-muted); cursor: default; }
     /* Add from the closed card (UX pick 19): a 4g x 4r toggle 1g in from the right, 1r above the card's
-       foot; the late-reg bar ends 5g earlier and the name keeps 5g clear of it. */
+       foot; the late-reg bar ends 5g earlier. The name and the accolade icons keep their places: the tab
+       is in the corner, under them (owner, 2026-11-13: the icons had moved 5g left with the old box). */
     .cal-event-row.has-quick-add .cal-event-row-content { position: relative; }
     /* The card's outline stays on top of the corner tab (owner): the same inset shadow again, painted after it. */
     .cal-event-row.has-quick-add .cal-event-row-content::after {
       content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inherit; pointer-events: none;
     }
     .cal-event-row.has-quick-add .mini-late-reg-track { margin-right: calc(var(--gu) * 5); }
-    .cal-event-row.has-quick-add .cal-bar-row2 { padding-right: calc(var(--gu) * 5); }
     /* A triangle tab in the card's bottom-right corner (owner, 2026-11-13; it was a 4g x 4r box, then a 4g x 4r
        triangle, then "even smaller"): the whole 4g x 4r corner is still the hit area, the triangle drawn in it
        is 3g x 3r, clipped by the card's own radius. A quiet "+" to add, the brand with a check once saved. */
