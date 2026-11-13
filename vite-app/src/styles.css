@@ -10646,11 +10646,13 @@
     .cal-event-time { grid-column: 1; grid-row: 1; }
     /* The room's running clock, one row at the card's foot (CalendarEventRow ClockRow; owner,
        2026-11-05). A 2r row with its baselines on the bottom line, in whole-g cells that start in the
-       same place on every card: level 4g, blinds 10g, time 20g, and the field right-aligned on the
-       card's 35g edge. Real data, so full --text rather than the muted meta colour. */
+       same place on every card. It fits the left three major columns (owner, 2026-11-13: it ran under
+       the corner tab): level 4g, blinds 8g, time 16g, the field 19g to the 27g line, left-aligned.
+       Measured: "Level 38" 3.0g, "12.5k/25k/25k" about 7g, "Paused" 2.8g, "1,234 left of 2,345" 6.4g.
+       Real data, so full --text rather than the muted meta colour. */
     .cal-live-row {
       display: grid;
-      grid-template-columns: calc(var(--gu) * 6) calc(var(--gu) * 10) calc(var(--gu) * 5) minmax(0, 1fr);
+      grid-template-columns: calc(var(--gu) * 4) calc(var(--gu) * 8) calc(var(--gu) * 3) calc(var(--gu) * 8);
       align-items: end;
       flex-shrink: 0;
       height: calc(var(--subrow) * 2);
@@ -10667,7 +10669,7 @@
       white-space: nowrap;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
-    .cal-live-field { grid-column: 4; justify-self: end; }
+    .cal-live-field { grid-column: 4; justify-self: start; }
     /* The blinds: bold, at the start time's size; the rest stays regular. */
     .cal-clock-pt.blinds { font-size: var(--fs-sm); font-weight: var(--fw-bold); }
     /* Always 2r clear of whatever else is in the card (owner, 2026-11-05). Closed, the row closes the
