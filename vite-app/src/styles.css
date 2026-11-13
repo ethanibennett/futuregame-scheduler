@@ -12355,17 +12355,30 @@
       height: calc(var(--subrow) * 1);
       border-radius: var(--radius-circle);
       background: var(--ok);
-      box-shadow: 0 0 0 0 var(--ok);
-      animation: playingPulse 1.8s var(--ease-out) infinite;
+      position: relative;
     }
-
+    /* The pulse is a ring that grows and fades on the compositor (transform, opacity), drawn by its own layer.
+       It was the dot's box-shadow, animated: paint every frame, and the repaint took the page with it, measured
+       in WebKit at 402 wide x3 with a Playing card on Home, ~200 ms a frame, 49 frames in 10 s, a tap ~0.4 s to
+       answer (owner, 2026-11-13: "The buttons on this page are super sluggish and nonresponsive"). The ring
+       reaches 0.875r past the 1r dot, as the shadow did: a scale of 2.75. */
+    .dash-playing-dot::after {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: inherit;
+      background: var(--ok-line);
+      animation: playingPulse 1.8s var(--ease-out) infinite;
+      will-change: transform, opacity;
+      pointer-events: none;
+    }
     @keyframes playingPulse {
-      from { box-shadow: 0 0 0 0 var(--ok-line); }
-      to   { box-shadow: 0 0 0 calc(var(--subrow) * 0.875) rgba(34,197,94,0); }
+      from { transform: scale(1); opacity: 1; }
+      to   { transform: scale(2.75); opacity: 0; }
     }
     /* Reduced motion keeps the ring, static, so the live signal survives. */
     @media (prefers-reduced-motion: reduce) {
       .dash-playing-dot { box-shadow: 0 0 0 calc(var(--subrow) * 0.375) var(--ok-bg); }
+      .dash-playing-dot::after { animation: none; display: none; }
     }
 
 

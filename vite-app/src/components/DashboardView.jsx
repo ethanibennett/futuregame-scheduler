@@ -117,6 +117,47 @@ function ReentryCheck({ event, blindInfo, bulletNum, now }) {
   );
 }
 
+/* The card's three stat boxes (blinds and level, stack, the level clock), on their own one-second clock
+   (owner, 2026-11-13: "The buttons on this page are super sluggish"). The level clock reads mm:ss, the only
+   figure on the home that moves by the second, and it used to re-render the WHOLE home every second, every
+   card in the carousel with it; the home itself now moves by the minute. The blinds tick here too, so a
+   level that rolls over is shown on time. */
+function blindInfoAt(raw, started, startMs, levelDuration, now) {
+  const live = started ? liveView(raw, now) : null;
+  if (live) return { level: live.level, sb: live.sb, bb: live.bb, ante: live.ante,
+    remainingMin: Math.floor(live.remaining / 60), remainingSec: live.remaining % 60,
+    live: true, onBreak: live.onBreak, paused: live.state === 'paused', stale: !!live.stale };
+  return started && levelDuration ? estimateBlindLevel(startMs, levelDuration) : null;
+}
+function DashStats({ raw, started, startMs, levelDuration, currentStack, stackUnknown }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const blindInfo = blindInfoAt(raw, started, startMs, levelDuration, getNow());
+  if (!blindInfo) return null;
+  const bbCount = Math.floor(currentStack / blindInfo.bb);
+  return (
+    <div className="dash-event-stats">
+      <div className="dash-stat-box">
+        <div className="dash-stat-value">{blindInfo.ante ? `${formatChips(blindInfo.sb)}/${formatChips(blindInfo.bb)}/${formatChips(blindInfo.ante)}` : `${formatChips(blindInfo.sb)}/${formatChips(blindInfo.bb)}`}</div>
+        <div className="dash-stat-label">Level {blindInfo.level}</div>
+      </div>
+      <div className="dash-stat-box">
+        <div className="dash-stat-value">{stackUnknown ? '—' : currentStack.toLocaleString()}</div>
+        <div className="dash-stat-label">{stackUnknown ? 'Stack' : bbCount ? `${bbCount} BB` : 'START STACK'}</div>
+      </div>
+      <div className="dash-stat-box">
+        <div className="dash-stat-value">
+          {blindInfo.stale ? '—' : `${blindInfo.remainingMin}:${String(blindInfo.remainingSec).padStart(2, '0')}`}
+        </div>
+        <div className="dash-stat-label">{blindInfo.stale ? 'No signal' : blindInfo.live ? (blindInfo.paused ? 'Paused' : blindInfo.onBreak ? 'Break' : 'Live') : 'Clock'}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardView({
   mySchedule, myActiveUpdates, trackingData, onPost, onDeleteUpdate,
   onAddTracking, onNavigate, tournaments, onToggle,
@@ -271,8 +312,13 @@ export default function DashboardView({
     });
   }, [fitTrack]);
 
+  // The home moves by the minute (everything on it reads minutes; the level clock's seconds are DashStats'
+  // own): checked each second so a minute turns on time, but the state, and so a render, changes only then.
   useEffect(() => {
-    const id = setInterval(() => setNow(getNow()), 1000);
+    const id = setInterval(() => setNow((prev) => {
+      const t = getNow();
+      return Math.floor(t / 60000) === Math.floor(prev / 60000) ? prev : t;
+    }), 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -779,22 +825,8 @@ export default function DashboardView({
           );
         })()}
         {isExpanded && blindInfo && !(event._type === 'bagged' && event._bagUpdate && Number(event._bagUpdate.stack) > 0) && (
-          <div className="dash-event-stats">
-            <div className="dash-stat-box">
-              <div className="dash-stat-value">{blindInfo.ante ? `${formatChips(blindInfo.sb)}/${formatChips(blindInfo.bb)}/${formatChips(blindInfo.ante)}` : `${formatChips(blindInfo.sb)}/${formatChips(blindInfo.bb)}`}</div>
-              <div className="dash-stat-label">Level {blindInfo.level}</div>
-            </div>
-            <div className="dash-stat-box">
-              <div className="dash-stat-value">{stackUnknown ? '—' : currentStack.toLocaleString()}</div>
-              <div className="dash-stat-label">{stackUnknown ? 'Stack' : bbCount ? `${bbCount} BB` : 'START STACK'}</div>
-            </div>
-            <div className="dash-stat-box">
-              <div className="dash-stat-value">
-                {blindInfo.stale ? '—' : `${blindInfo.remainingMin}:${String(blindInfo.remainingSec).padStart(2, '0')}`}
-              </div>
-              <div className="dash-stat-label">{blindInfo.stale ? 'No signal' : blindInfo.live ? (blindInfo.paused ? 'Paused' : blindInfo.onBreak ? 'Break' : 'Live') : 'Clock'}</div>
-            </div>
-          </div>
+          <DashStats raw={started ? liveClocks[event.id] : null} started={started} startMs={startMs} levelDuration={levelDuration}
+            currentStack={currentStack} stackUnknown={stackUnknown} />
         )}
         {/* The pay ladder (Features 13): once the player is in the money. */}
         {isExpanded && isCurrentlyPlaying && activeEventMap[event.id] && Number(activeEventMap[event.id].is_itm) === 1 && (
@@ -1129,11 +1161,14 @@ export default function DashboardView({
                       unseen Bust), and invisible once a drag or a page turn is over (home.css): the
                       neighbour, taller than the track that fits the card on show, painted a band of
                       itself and its shadow below it. */}
+                  {/* Only the card on show and its two neighbours (all a swipe can bring in) are drawn; the
+                      rest keep their slot, empty (owner, 2026-11-13: sluggish buttons; a 27-event schedule
+                      drew 27 full cards on every render). */}
                   {slides.map((evt, i) => (
                     <div className={'dash-carousel-slide' + (i === safeIdx ? '' : ' is-off')} key={evt.id}
                       inert={i === safeIdx ? undefined : ''} aria-hidden={i === safeIdx ? undefined : 'true'}
                       style={{ transform: `translateX(${(i - safeIdx) * 100}%)` }}>
-                      {evt._cash ? (
+                      {Math.abs(i - safeIdx) > 1 ? null : evt._cash ? (
                         <HomeCashCard session={cashSession} stacks={cashStacks} skew={cashSkew} token={token}
                           dragged={() => Math.abs(swipeDx.current || 0) > 10}
                           onOpen={() => onLog && onLog({ kind: 'cash-live' })}
