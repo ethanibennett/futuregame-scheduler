@@ -149,8 +149,8 @@ function OverlapLine({ overlap, id, onSetCondition }) {
   );
 }
 
-/* Add from the closed card (UX pick 19): a 4g x 4r toggle at the right of the countdown row, 1r above
-   the card's foot: "+" in a hairline to add, a filled check once saved. It does not open the card. */
+/* Add from the closed card (UX pick 19): a triangle tab in the card's bottom-right corner (owner, 2026-11-13),
+   "+" to add, a check on the brand once saved. It does not open the card. */
 function QuickAdd({ saved, onToggle, id }) {
   return (
     <button type="button" className={'cal-quick-add' + (saved ? ' is-saved' : '')} aria-pressed={saved}

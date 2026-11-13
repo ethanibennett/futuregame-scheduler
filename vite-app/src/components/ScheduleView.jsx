@@ -445,12 +445,16 @@ export default function ScheduleView({
       <div className="schedule-sticky-header" ref={schedHeaderRef}>
         {onSwitchView && <ScheduleSwitch view="schedule" mineCount={mineCount} onChange={onSwitchView} />}
         <div className="section-header" style={{display:'flex',alignItems:'center',gap:'var(--gu)',marginBottom:0}}>
+          {/* The "My Schedule · N events" title is gone (owner, 2026-11-13): the switch above names the view and
+              counts it. Where the switch is not shown (the desktop's right pane) the title stays. */}
+          {onSwitchView ? <span style={{marginRight:'auto'}} /> : (
           <h2 style={{marginRight:'auto',display:'flex',alignItems:'baseline',gap:'calc(var(--subrow) * 0.75)'}}>
             My Schedule
             <span style={{fontSize:'calc(var(--gu) * 1.060)',fontWeight:400,color:'var(--text-muted)'}}>
               · {nonRestartCount} event{nonRestartCount !== 1 ? 's' : ''}
             </span>
           </h2>
+          )}
           {onAddPersonalEvent && (
             <>
               {/* The Schedule's kind toggles' style (Satellites / Restarts): 2r tall, hairline,
