@@ -9008,12 +9008,23 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   ];
 
   const n = hand.players.length;
-  const rawSeats = isLandscape
-    ? (n === 6 ? LANDSCAPE_6 : landscapeSeats(Math.min(Math.max(n, 2), 10))).map(snapSeat)
-    : (layouts[Math.min(Math.max(n, 2), 10)] || layouts[6]);
-  const bottomIdx = Math.floor(n / 2);
-  const rotation = (bottomIdx - replayHeroIdx + n) % n;
-  const seats = rawSeats.map((_, i) => rawSeats[(i + rotation) % n]);
+  /* Fewer than six players (a final table, a short-handed game) sit in the 6-max table's seats with the rest
+     left empty (owner, 2026-11-13: "still put the players in positions that exist for a 6-max table, just
+     leave empty seats blank"). The players keep their order clockwise from the hero at the bottom, spread so
+     the table stays balanced: SIX_MAX_OF[n][k] is player k's seat, counted clockwise from the hero's. */
+  const SIX_MAX_OF = { 2: [0, 3], 3: [0, 2, 4], 4: [0, 1, 3, 5], 5: [0, 1, 2, 4, 5] };
+  let seats;
+  if (n >= 2 && n < 6) {
+    const six = isLandscape ? LANDSCAPE_6.map(snapSeat) : layouts[6];
+    seats = hand.players.map((_, i) => six[(3 + SIX_MAX_OF[n][(i - replayHeroIdx + n) % n]) % 6]);
+  } else {
+    const rawSeats = isLandscape
+      ? (n === 6 ? LANDSCAPE_6 : landscapeSeats(Math.min(Math.max(n, 2), 10))).map(snapSeat)
+      : (layouts[Math.min(Math.max(n, 2), 10)] || layouts[6]);
+    const bottomIdx = Math.floor(n / 2);
+    const rotation = (bottomIdx - replayHeroIdx + n) % n;
+    seats = rawSeats.map((_, i) => rawSeats[(i + rotation) % n]);
+  }
 
   /* The dealer stands just outside the button's seat, and the muck sits beside
      the deck. Both are pulled toward the table centre so they land on cloth
