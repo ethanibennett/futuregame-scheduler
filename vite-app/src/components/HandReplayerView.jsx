@@ -11801,12 +11801,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             const fill = showResult || si < streetIdx ? 1 : si > streetIdx ? 0 : n ? Math.max(0, actionIdx + 1) / n : 1;
             return { key: si, label: short(st.name), fill, now: !showResult && si === streetIdx, go: () => goToStreet(si) };
           });
-          cells.push({ key: 'end', label: 'End', fill: showResult ? 1 : 0, now: showResult, go: goToEnd });
+          cells.push({ key: 'end', label: 'Showdown', fill: showResult ? 1 : 0, now: showResult, go: goToEnd });
           const n = cells.length;
           const cw = Math.max(2, Math.floor(30 / n) - 1);
           return (
             <div className="replayer-street-track snap-place" role="group" aria-label="Streets"
-              style={{ '--track-n': n, '--track-cw': cw }}>
+              style={{ '--track-n': n, '--track-n1': n - 1, '--track-cw': cw, '--track-lw': Math.max(cw, 5) }}>
               {cells.map(c => (
                 <div key={c.key} className={'rst-cell' + (c.now ? ' is-now' : '')}>
                   <span className="rst-bar" aria-hidden="true"><span className="rst-fill" style={{ transform: 'scaleX(' + c.fill + ')' }} /></span>
