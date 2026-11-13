@@ -7285,8 +7285,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         (lo ? lo.board : []).forEach(i => loB.add(i));
       });
       board.forEach((c, i) => {
-        // A board card is raised or left (owner, 2026-11-13: "not in between"): the high's own cards go up a whole r.
+        // A whole r or nothing (owner, 2026-11-13: "not in between"): the high's own cards up, the low's down.
         if (hiB.has(i) && !loB.has(i)) boardP.set(c.rank + c.suit, 'up');
+        else if (loB.has(i) && !hiB.has(i)) boardP.set(c.rank + c.suit, 'down');
       });
     } else if (cfg.type === 'badugi') {
       // 22: every shown hand's card that cannot count.
@@ -10190,11 +10191,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           (motion.prevPosed || []).forEach(el => { if (!posedNow.includes(el)) consider(el); });
           if (changes.length) {
             const r = rPx();
-            // Only up moves a card (owner, 2026-11-13: "pushed up or left as they are, not in between"); dead only dims.
-            const off = { '': 0, up: -r, 'up-half': -r, down: 0, 'down-half': 0, dead: 0 };
+            /* A card moves a whole r or not at all (owner, 2026-11-13: "not in between"): up for a high, down for a low,
+               a dead card only dims. */
+            const off = { '': 0, up: -r, 'up-half': -r, down: r, 'down-half': r, dead: 0 };
             const op = (p) => (p === 'dead' ? 0.45 : 1);
             const base = motionKind === 'result' ? Math.max(turnEnd, 0) + S.beat / rate : landed;
             const falls = changes.some(c => off[c.now] > off[c.was]);
+            /* A hi-lo pot reads in two beats (owner, 2026-11-13): the high's cards rise with its "Hi:" readout lit,
+               and once they have landed the low's sink with its "Lo:" readout lit. */
+            const lowAfter = (timeTo(tierSpring(set, 'flick'), 0.98) + S.beat) / rate;
             const perRow = new Map();
             const jobs = changes.map(c => {
               const row = c.el.parentElement;
@@ -10202,12 +10207,27 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               perRow.set(row, j + 1);
               const rising = off[c.now] < off[c.was];
               const lowHalf = motionKind === 'result' && (c.now === 'down' || c.now === 'down-half');
-              const extra = (motionKind !== 'result' && rising && falls) || lowHalf ? S.beat / rate : 0;
+              const extra = lowHalf ? lowAfter : (motionKind !== 'result' && rising && falls) ? S.beat / rate : 0;
               return { ...c, size: sizeOf(c.el), delay: base + extra + (j * S.cardLag) / rate };
             });
             writes.push(() => jobs.forEach(j => poseTo(motion, {
               set, rate, el: j.el, fromY: off[j.was] || 0, toY: off[j.now] || 0, fromO: op(j.was), toO: op(j.now), delay: j.delay, size: j.size,
             })));
+            if (motionKind === 'result') {
+              const hiGo = changes.some(c => c.now === 'up'), loGo = changes.some(c => c.now === 'down');
+              const lit = (half, at) => table.querySelectorAll('.replayer-seat-hand-name [data-half="' + half + '"]').forEach(sp => writes.push(() => {
+                const hold = 700 / rate;
+                // A swell and back while it is lit: 1 -> 1.12 -> 1 over the first half, still for the rest.
+                const swell = hold / 2;
+                motion.run(sp, { key: { el: sp, kind: 'lit' }, property: 'individual', size: { w: sp.offsetWidth, h: sp.offsetHeight }, end: at + hold, channels: [
+                  { prop: 'scale', fn: (t) => (t <= at || t >= at + swell ? 1 : 1 + 0.12 * Math.sin(Math.PI * (t - at) / swell)), start: at, end: at + swell },
+                ] });
+                motion.tick(at, () => sp.classList.add('is-lit'));
+                motion.tick(at + hold, () => sp.classList.remove('is-lit'));
+              }));
+              if (hiGo) lit('hi', base);
+              if (loGo) lit('lo', base + lowAfter);
+            }
           }
         }
       }
@@ -11562,7 +11582,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   result. So "CALL 12k" landed on top of "Two Pair, A & K".
                   The name is the newer and more important fact; the badge
                   stands down for it. */}
-              {handName && <div data-name-seat={pi} className={'replayer-seat-hand-name' + (boardCount(hand) > 1 && category === 'community' ? ' is-boards' : '')}>{handName}</div>}
+              {handName && <div data-name-seat={pi} className={'replayer-seat-hand-name' + (boardCount(hand) > 1 && category === 'community' ? ' is-boards' : '')}>
+                {/* One span per line, so a hi-lo readout's "Hi:" and "Lo:" can each light as its half lands. */}
+                {String(handName).split('\n').map((ln, k) => (
+                  <React.Fragment key={k}>{k ? '\n' : ''}<span className="hn-line" data-half={/^Hi:/.test(ln) ? 'hi' : /^Lo:/.test(ln) ? 'lo' : undefined}>{ln}</span></React.Fragment>
+                ))}
+              </div>}
               {!handName && runoutNames && runoutNames.has(pi) && (
                 <div data-name-seat={pi} data-run-name={runoutNames.get(pi).text} className={'replayer-seat-hand-name is-run' + (runoutNames.get(pi).lead ? '' : ' is-trailing')}>{runoutNames.get(pi).text}</div>
               )}

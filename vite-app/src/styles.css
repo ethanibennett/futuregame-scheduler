@@ -6088,6 +6088,14 @@
     }
     .replayer-seat.loser .replayer-seat-hand-name { color:#f87171; border-color:rgba(248,113,113,0.4); }
     .replayer-seat.split .replayer-seat-hand-name { color:#facc15; border-color:rgba(250,204,21,0.4); }
+    /* Each readout line is its own span, so a hi-lo readout's halves light one after the other as their cards move
+       (owner, 2026-11-13): the high's as its cards rise, the low's as its cards sink. The swell is a motion; this is
+       the light, on while the half is being read. */
+    .replayer-seat-hand-name .hn-line {
+      display: inline-block; border-radius: var(--radius-sm); padding: 0 0.2em; margin: 0 -0.2em;
+      transition: background-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+    }
+    .replayer-seat-hand-name .hn-line.is-lit { background-color: rgba(234,179,8,0.28); color: #fde68a; box-shadow: 0 0 0 0.12em rgba(234,179,8,0.5); }
 
     /* Draw discard badge on seat */
     .replayer-seat-draw-badge {
@@ -6489,10 +6497,12 @@
     /* A card's standing pose on the felt (Replayer animations 16-18, 20-23): on the translate property, which
        applies in the row's frame before the card's own fan transform, so raised is straight up at any tilt. The
        moments effect springs a card into its pose; this is where it rests. */
-    /* A card is pushed up a whole r or left as it is (owner, 2026-11-13: "not in between like the 4h"): a low
-       half's card, a dead card and a winner's unused card no longer sink; dead still dims. */
+    /* A whole r or nothing (owner, 2026-11-13: "not in between like the 4h"): a high's card up, a low's down; a dead
+       card and a winner's unused card stay level, dead dimmed. */
     .replayer-table .card-row > [data-pose="up"],
     .replayer-table .card-row > [data-pose="up-half"] { translate: 0 calc(var(--subrow) * -1); }
+    .replayer-table .card-row > [data-pose="down"],
+    .replayer-table .card-row > [data-pose="down-half"] { translate: 0 var(--subrow); }
     .replayer-table .card-row > [data-pose="dead"] { opacity: 0.45; }
     /* The ghosts of a folded hand, in the flight layer (25, 7). */
     .replayer-ghost-row { position: absolute; inset: 0; display: block; pointer-events: none; height: auto; min-width: 0; }
