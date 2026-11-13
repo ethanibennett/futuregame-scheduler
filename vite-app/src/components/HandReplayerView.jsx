@@ -11659,8 +11659,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
              the pot is. */
           const POT_AT = [50, 40];
           const t = 0.42;
-          const chipX = pos[0] + (POT_AT[0] - pos[0]) * t;
-          const chipY = pos[1] + (POT_AT[1] - pos[1]) * t;
+          /* A side seat's wager goes straight in, level with its seat (owner, 2026-11-13: "move more directly
+             horizontal"): toward the pot, a lower side seat's chips rose into the game and stakes pill under the
+             board. Top and bottom seats keep the walk toward the pot. */
+          const sideSeat = Math.abs(pos[0] - 50) > 25;
+          // Level with the plaque it clears that plaque only from further in: 0.6 of the way (a 6-max side plaque is
+          // anchored on the table's edge and reaches ~24% in; at 0.42 the chips sat on its inner end).
+          // (Portrait only: a landscape table is wide enough that 0.42 clears its plaques, and 0.6 reached the board.)
+          const chipX = pos[0] + (POT_AT[0] - pos[0]) * (sideSeat && !isLandscape ? 0.6 : t);
+          const chipY = sideSeat ? pos[1] : pos[1] + (POT_AT[1] - pos[1]) * t;
           /* --chip-start-dx/dy used to be written here (a percentage times 3, as 'px') for a
              keyframe that is animation: none; nothing read them. The spring push-out measures
              the seat direction itself. */
