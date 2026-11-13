@@ -704,7 +704,9 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   launch ads' Remotion numbers): `vite-app/src/utils/spring.js` (pure, `npm run test:springs`)
   and `replayer-motion.js` (the registry and the moments). They play as Web Animations on
   transform/opacity, computed once per moment. `localStorage.replayerSprings` unset is Set B
-  "snappy" (the default, owner 2026-10-13); '1' Set A, '2' Set B, '0' the old code paths. Exports
+  "snappy" (the default, owner 2026-10-13); '1' Set A, '2' Set B, '0' the old code paths. On screen every
+  moment and the autoplay tempo run at `REPLAYER_PACE` (spring.js, 0.8 since 2026-11-13, owner: "very chaotic");
+  exports keep their own rate. Exports
   seek them frame by frame (the bet push-outs export settled). Work a moment builds after its press
   belongs to that moment's generation (`MotionRegistry.defer`); `scripts/check-replayer-ship-once.mjs`
   guards the Back/Forward double ship.

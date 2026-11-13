@@ -25,7 +25,7 @@ import {
   settlePile, fadePileOut, emptyPile, seatLanding, clearPush, centreOf, unionRect,
   collectAtResult, potShown,
 } from '../utils/replayer-motion.js';
-import { SPRING_SETS, spring, timeTo, tierSpring, keyframes as transportKeyframes } from '../utils/spring.js';
+import { SPRING_SETS, spring, timeTo, tierSpring, keyframes as transportKeyframes, REPLAYER_PACE } from '../utils/spring.js';
 import { bestFive, halvesOf, counterfeitedNow, leaderOf, lowDecider, indexOfLowRank, streetChange } from '../utils/replayer-reading.js';
 import { turnOver, dealIn, liftOnce, poseTo, rap, ghostsAway, angleOf, cardTimes, slideRow, runOutBoard, runOutTimes, poseSequence, drawIn, ghostsTo, appearAt, makeRoom } from '../utils/replayer-card-moments.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
@@ -7373,7 +7373,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     if (motionKind !== 'street' || !isDrawGame || !rSettings.animateDeal || streetIdx < 1) return 0;
     const d = (hand.streets[streetIdx - 1]?.draws || []).find(x => x.player === replayHeroIdx);
     if (!d || !(d.discarded > 0)) return 0;
-    const r = motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1);
+    const r = motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1) * REPLAYER_PACE;
     return Math.round((cardTimes(springSet).handArrive + 2 * SPRING_SETS[springSet].stage.beat) / r);
   })();
   /* The showdown's reveal of the other hands, on the spring path: decided by the render that steps
@@ -7421,12 +7421,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const uncalledBack = (motionKind === 'result' && rSettings.animateChips)
     ? hand.players.map((_, pi) => ((settled.uncalled[pi] || 0) > 0 && prevWagersRef.current.has(pi) ? settled.uncalled[pi] : 0)) : null;
   const uncalledDelay = uncalledBack && uncalledBack.some(v => v > 0)
-    ? (timeTo(tierSpring(springSet, 'hand'), 0.98) + SPRING_SETS[springSet].stage.beat) / (motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1)) : 0;
+    ? (timeTo(tierSpring(springSet, 'hand'), 0.98) + SPRING_SETS[springSet].stage.beat) / (motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1) * REPLAYER_PACE) : 0;
   const shipPlan = (motionKind === 'result' && rSettings.animateChips && potAwards)
     ? hand.players.map((_, pi) => ({ seat: pi, award: (potAwards[pi] || 0) > 0 ? shownStacks[pi] - Math.max(0, stacks[pi]) - (uncalledBack ? uncalledBack[pi] : 0) : 0 }))
       .filter(d => d.award > 0)
     : null;
-  const shipRate = motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1);
+  const shipRate = motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1) * REPLAYER_PACE;
   // When the pot leaves the pile at this result press (after the river's wagers have landed).
   if (shipPlan && shipPlan.length) motion.shipStartNow = shipStartAfterSweep(springSet, shipRate, sweepPlan ? sweepPlan.length : 0) + uncalledDelay;
   /* The plaque takes its gold as the first shipped chip lands (after the river's wagers have been
@@ -7750,7 +7750,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const allowance = (rSettings.animateDeal && streetBreak ? 650 : 0) + (resultBreak ? HELD_BEAT_MS : 0);
     // The deal and the opening's forced bets (Replayer animations 1, 26-28) finish before the first action.
     const openHold = springOn && streetIdx === 0 && actionIdx < 0 ? motion.extentMs() + 150 : 0;
-    const delayMs = Math.max(120, speed + actBeat + allowance * scale, openHold);
+    // The tempo slows with the motions (REPLAYER_PACE), so a slower moment is not overlapped by the next step.
+    const delayMs = Math.max(120, (speed + actBeat + allowance * scale) / REPLAYER_PACE, openHold);
     const t = setTimeout(() => stepForwardRef.current?.(), delayMs);
     return () => clearTimeout(t);
   }, [playing, tabHidden, speed, streetIdx, actionIdx, showResult, currentActions.length, totalStreets, rSettings.animateDeal]);
@@ -9259,7 +9260,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           const T = table.getBoundingClientRect();
           const spot = { x: T.left + dealerSpot[0] / 100 * T.width, y: T.top + dealerSpot[1] / 100 * T.height };
           const st0 = SPRING_SETS[springSet].stage;
-          const rate0 = playing ? rateFor(speed) : 1;
+          const rate0 = (playing ? rateFor(speed) : 1) * REPLAYER_PACE;
           const per = dealOrder.map(pi => [...table.querySelectorAll('[data-seat-cards="' + pi + '"] > .card-row > *')]).filter(a => a.length);
           const rounds = Math.max(0, ...per.map(a => a.length));
           const total = per.reduce((n, a) => n + a.length, 0);
@@ -9289,7 +9290,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         pendingOpenRef.current = false;
         if (rSettings.animateChips) {
           const st0 = SPRING_SETS[springSet].stage;
-          const rate0 = playing ? rateFor(speed) : 1;
+          const rate0 = (playing ? rateFor(speed) : 1) * REPLAYER_PACE;
           const flick0 = tierSpring(springSet, 'flick'), hand0 = tierSpring(springSet, 'hand');
           const T = table.getBoundingClientRect();
           const t0 = Math.max(0, dealEnds);
@@ -9377,10 +9378,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 { prop: 'x', spring: flick0, from: j.ox, to: 0, delay: j.delay, timeScale: rate0 },
                 { prop: 'y', spring: flick0, from: j.oy, to: 0, delay: j.delay, timeScale: rate0 },
               ] });
-              if (j.tn && j.from > j.to) {
-                const endS = j.delay + flick0.settleMs(1e-3) / rate0;
-                motion.sample((t) => { j.tn.data = fmtChips(t >= endS ? j.to : t <= j.delay ? j.from : Math.round(j.from - (j.from - j.to) * flick0.at((t - j.delay) * rate0))); motion.wroteDigits = true; }, { end: endS });
-              }
+              // No stack count-down as the blinds go in (owner, 2026-11-13: "remove the stack number animation at
+              // the start"): the plaque shows the stack after its blind from the first frame.
             });
           }
         }
@@ -9427,7 +9426,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
 
       const set = springSet;
       const S = SPRING_SETS[set].stage;
-      const rate = motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1);
+      const rate = motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1) * REPLAYER_PACE;
       motion.rate = rate;
       /* The one flight layer: the sweep's ghosts and the shipped chips fly in it (over the board,
          under the pot's figure, the wagers and the button). There used to be a second, empty one

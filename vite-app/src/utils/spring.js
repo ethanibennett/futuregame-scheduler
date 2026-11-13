@@ -588,3 +588,8 @@ export function keyframes(channels, opts = {}) {
   frames[frames.length - 1].offset = 1;
   return { keyframes: frames, delay: t0, duration, end: tEnd };
 }
+
+/* The replayer's pace on screen (owner, 2026-11-13: "slow the replayer animations down a bit, it's very
+   chaotic now"): every live moment's rate is multiplied by this, so at 0.8 each motion takes a quarter
+   longer, its springs, beats, lags and fades alike. Exports keep their own rate (replay-capture.js). */
+export const REPLAYER_PACE = 0.8;
