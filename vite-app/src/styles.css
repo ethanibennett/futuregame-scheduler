@@ -6550,15 +6550,6 @@
        button; a held Forward or Back slides out a second chevron and lights a ring; a button standing down eases. */
     .replayer-play-btn .rpb-glyph { display: flex; align-items: center; justify-content: center; }
     .replayer-play-btn .rpb-glyph.is-ghost { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; }
-    .replayer-play-btn .rpb-ring { position: absolute; inset: calc(var(--bw-1) * -1); border-radius: 50%; pointer-events: none; opacity: 0; transition: opacity var(--dur-fast); }
-    .replayer-play-btn.is-playing .rpb-ring { opacity: 1; }
-    .replayer-play-btn .rpb-half { position: absolute; top: 0; bottom: 0; width: 50%; overflow: hidden; }
-    .replayer-play-btn .rpb-half.is-r { right: 0; }
-    .replayer-play-btn .rpb-half.is-l { left: 0; }
-    .replayer-play-btn .rpb-half > i { position: absolute; top: 0; bottom: 0; width: 200%; box-sizing: border-box; border-radius: 50%;
-      border: var(--bw-1) solid transparent; transform: rotate(-135deg); }
-    .replayer-play-btn .rpb-half.is-r > i { right: 0; border-top-color: var(--brand-on-dark); border-right-color: var(--brand-on-dark); }
-    .replayer-play-btn .rpb-half.is-l > i { left: 0; border-bottom-color: var(--brand-on-dark); border-left-color: var(--brand-on-dark); }
     .replayer-speed-btn .rsb-clip { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; overflow: hidden; border-radius: inherit; }
     .replayer-speed-btn .replayer-speed-label.is-ghost { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; }
     .replayer-controls button .chev-2 { opacity: 0; transform-box: fill-box; transform: translateX(0); transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out); }

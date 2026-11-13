@@ -7748,7 +7748,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     // The deal and the opening's forced bets (Replayer animations 1, 26-28) finish before the first action.
     const openHold = springOn && streetIdx === 0 && actionIdx < 0 ? motion.extentMs() + 150 : 0;
     const delayMs = Math.max(120, speed + actBeat + allowance * scale, openHold);
-    runPlayRing(delayMs);
     const t = setTimeout(() => stepForwardRef.current?.(), delayMs);
     return () => clearTimeout(t);
   }, [playing, tabHidden, speed, streetIdx, actionIdx, showResult, currentActions.length, totalStreets, rSettings.animateDeal]);
@@ -7758,7 +7757,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   /* ── The transport (Replayer animations 76-80) ── */
   const glyphRef = useRef(null);
   const glyphWas = useRef({ kind: null, html: '' });
-  const ringRef = useRef(null);
   const speedLabelRef = useRef(null);
   const speedWas = useRef(null);
   const springKf = (channels, opts = {}) => { try { return transportKeyframes(channels, opts); } catch (e) { return null; } };
@@ -7793,17 +7791,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     ]);
     if (inn) el.animate(inn.keyframes, { duration: inn.duration, easing: 'linear' });
   }, [playKind]); // eslint-disable-line react-hooks/exhaustive-deps
-  // 77: while playing, a ring closes round the Play disc over the step's own delay.
-  const runPlayRing = useCallback((ms) => {
-    const ring = ringRef.current;
-    if (!ring || springsReducedMotion()) return;
-    const halves = ring.querySelectorAll('.rpb-half > i');
-    if (halves.length < 2) return;
-    halves.forEach(h => h.getAnimations().forEach(a => a.cancel()));
-    const frames = [{ transform: 'rotate(-135deg)' }, { transform: 'rotate(45deg)' }];
-    halves[0].animate(frames, { duration: ms / 2, easing: 'linear', fill: 'both' });
-    halves[1].animate(frames, { duration: ms / 2, delay: ms / 2, easing: 'linear', fill: 'both' });
-  }, []);
+  // 77 (the ring counting down round Play) was removed 2026-11-13, owner: "very weird and unpleasant".
   // 78: the speed label rolls the way the speed went (up when faster, down at the wrap to 0.5x).
   useLayoutEffect(() => {
     const el = speedLabelRef.current;
@@ -11842,8 +11830,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
             )}
             </span>
-            {/* 77: the countdown to the next step, two half rings turned inside their clips. */}
-            <span className="rpb-ring" ref={ringRef} aria-hidden="true"><span className="rpb-half is-r"><i /></span><span className="rpb-half is-l"><i /></span></span>
           </button>
           <button onClick={holdClick(stepForward)} disabled={!canGoForward} title="Forward (hold to run)" className={holding === 'fwd' ? 'is-holding' : undefined}
             onPointerDown={startHold('fwd')} onPointerUp={endHold} onPointerLeave={endHold} onPointerCancel={endHold}>
