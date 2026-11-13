@@ -16984,6 +16984,10 @@
     /* Add from the closed card (UX pick 19): a 4g x 4r toggle 1g in from the right, 1r above the card's
        foot; the late-reg bar ends 5g earlier and the name keeps 5g clear of it. */
     .cal-event-row.has-quick-add .cal-event-row-content { position: relative; }
+    /* The card's outline stays on top of the corner tab (owner): the same inset shadow again, painted after it. */
+    .cal-event-row.has-quick-add .cal-event-row-content::after {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inherit; pointer-events: none;
+    }
     .cal-event-row.has-quick-add .mini-late-reg-track { margin-right: calc(var(--gu) * 5); }
     .cal-event-row.has-quick-add .cal-bar-row2 { padding-right: calc(var(--gu) * 5); }
     /* A triangle tab in the card's bottom-right corner (owner, 2026-11-13; it was a 4g x 4r box, then a 4g x 4r
