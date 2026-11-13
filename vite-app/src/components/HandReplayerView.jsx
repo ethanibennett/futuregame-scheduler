@@ -7270,7 +7270,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     if (!potAwards) return seatsP.size ? { seats: seatsP, board: boardP } : null;
     const winners = live.filter(pi => (potAwards[pi] || 0) > 0 && cardsOf(pi).length >= 2);
     if (cfg.type === 'hilo' && hiLoHalves) {
-      // 21: up for the high, down for the low; a card playing both ways stays.
+      /* 21: every card that plays slides up (owner, 2026-11-13: "the relevant cards in a player's hand should always slide up,
+         high or low" and "both parts of the board sliding up"): the high's first ('up'), then the low's own ('up-lo', which
+         rests where 'up' does but moves in the second beat). A card in both hands goes up with the high. */
       const hiB = new Set(), loB = new Set();
       winners.forEach(pi => {
         const hole = cardsOf(pi);
@@ -7278,16 +7280,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         const lo = hiLoHalves.lo.has(pi) ? bestFive(cfg, hole, board, halves[1]) : null;
         const hiH = new Set(hi ? hi.hole : []), loH = new Set(lo ? lo.hole : []);
         hole.forEach((c, i) => {
-          if (hiH.has(i) && !loH.has(i)) put(pi, c, 'up');
-          else if (loH.has(i) && !hiH.has(i)) put(pi, c, 'down');
+          if (hiH.has(i)) put(pi, c, 'up');
+          else if (loH.has(i)) put(pi, c, 'up-lo');
         });
         (hi ? hi.board : []).forEach(i => hiB.add(i));
         (lo ? lo.board : []).forEach(i => loB.add(i));
       });
       board.forEach((c, i) => {
-        // A whole r or nothing (owner, 2026-11-13: "not in between"): the high's own cards up, the low's down.
-        if (hiB.has(i) && !loB.has(i)) boardP.set(c.rank + c.suit, 'up');
-        else if (loB.has(i) && !hiB.has(i)) boardP.set(c.rank + c.suit, 'down');
+        if (hiB.has(i)) boardP.set(c.rank + c.suit, 'up');
+        else if (loB.has(i)) boardP.set(c.rank + c.suit, 'up-lo');
       });
     } else if (cfg.type === 'badugi') {
       // 22: every shown hand's card that cannot count.
@@ -10173,7 +10174,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               steps.forEach((list, seat) => rowEls(seat).forEach((el, j) => {
                 if (el.tagName !== 'IMG') return;
                 const was = lastPose.get(el) || '';
-                jobs.push({ el, size: sizeOf(el), fromY: was === 'up' ? -r : 0, steps: list.map(x => ({ t: x.t + (j * S.cardLag) / rate, toY: x.toY })) });
+                jobs.push({ el, size: sizeOf(el), fromY: was === 'up' || was === 'up-lo' ? -r : 0, steps: list.map(x => ({ t: x.t + (j * S.cardLag) / rate, toY: x.toY })) });
                 sequenced.add(el);
               }));
               if (jobs.length) writes.push(() => jobs.forEach(j => poseSequence(motion, { set, rate, el: j.el, fromY: j.fromY, steps: j.steps, size: j.size })));
@@ -10193,7 +10194,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             const r = rPx();
             /* A card moves a whole r or not at all (owner, 2026-11-13: "not in between"): up for a high, down for a low,
                a dead card only dims. */
-            const off = { '': 0, up: -r, 'up-half': -r, down: r, 'down-half': r, dead: 0 };
+            const off = { '': 0, up: -r, 'up-lo': -r, 'up-half': -r, down: r, 'down-half': r, dead: 0 };
             const op = (p) => (p === 'dead' ? 0.45 : 1);
             const base = motionKind === 'result' ? Math.max(turnEnd, 0) + S.beat / rate : landed;
             const falls = changes.some(c => off[c.now] > off[c.was]);
@@ -10206,7 +10207,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               const j = perRow.get(row) || 0;
               perRow.set(row, j + 1);
               const rising = off[c.now] < off[c.was];
-              const lowHalf = motionKind === 'result' && (c.now === 'down' || c.now === 'down-half');
+              const lowHalf = motionKind === 'result' && (c.now === 'up-lo' || c.now === 'down' || c.now === 'down-half');
               const extra = lowHalf ? lowAfter : (motionKind !== 'result' && rising && falls) ? S.beat / rate : 0;
               return { ...c, size: sizeOf(c.el), delay: base + extra + (j * S.cardLag) / rate };
             });
@@ -10214,7 +10215,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               set, rate, el: j.el, fromY: off[j.was] || 0, toY: off[j.now] || 0, fromO: op(j.was), toO: op(j.now), delay: j.delay, size: j.size,
             })));
             if (motionKind === 'result') {
-              const hiGo = changes.some(c => c.now === 'up'), loGo = changes.some(c => c.now === 'down');
+              // Each half's readout lights in its beat, even when all of the low's cards already went up with the high.
+              const hiGo = changes.some(c => c.now === 'up'), loGo = hiGo || changes.some(c => c.now === 'up-lo');
               const lit = (half, at) => table.querySelectorAll('.replayer-seat-hand-name [data-half="' + half + '"]').forEach(sp => writes.push(() => {
                 const hold = 700 / rate;
                 // A swell and back while it is lit: 1 -> 1.12 -> 1 over the first half, still for the rest.

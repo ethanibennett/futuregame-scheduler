@@ -6497,9 +6497,11 @@
     /* A card's standing pose on the felt (Replayer animations 16-18, 20-23): on the translate property, which
        applies in the row's frame before the card's own fan transform, so raised is straight up at any tilt. The
        moments effect springs a card into its pose; this is where it rests. */
-    /* A whole r or nothing (owner, 2026-11-13: "not in between like the 4h"): a high's card up, a low's down; a dead
-       card and a winner's unused card stay level, dead dimmed. */
+    /* A whole r or nothing (owner, 2026-11-13: "not in between like the 4h"). Every card that plays goes up, high or
+       low (up-lo is the low's own, which moves a beat later); a dead card and a winner's unused card stay level, dead
+       dimmed. down is no longer set by the hi-lo reading and is kept for any pose that still asks for it. */
     .replayer-table .card-row > [data-pose="up"],
+    .replayer-table .card-row > [data-pose="up-lo"],
     .replayer-table .card-row > [data-pose="up-half"] { translate: 0 calc(var(--subrow) * -1); }
     .replayer-table .card-row > [data-pose="down"],
     .replayer-table .card-row > [data-pose="down-half"] { translate: 0 var(--subrow); }
