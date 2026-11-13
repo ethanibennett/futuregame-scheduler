@@ -6489,11 +6489,11 @@
     /* A card's standing pose on the felt (Replayer animations 16-18, 20-23): on the translate property, which
        applies in the row's frame before the card's own fan transform, so raised is straight up at any tilt. The
        moments effect springs a card into its pose; this is where it rests. */
-    .replayer-table .card-row > [data-pose="up"] { translate: 0 calc(var(--subrow) * -1); }
-    .replayer-table .card-row > [data-pose="up-half"] { translate: 0 calc(var(--subrow) * -0.5); }
-    .replayer-table .card-row > [data-pose="down"] { translate: 0 var(--subrow); }
-    .replayer-table .card-row > [data-pose="down-half"] { translate: 0 calc(var(--subrow) * 0.5); }
-    .replayer-table .card-row > [data-pose="dead"] { translate: 0 calc(var(--subrow) * 0.5); opacity: 0.45; }
+    /* A card is pushed up a whole r or left as it is (owner, 2026-11-13: "not in between like the 4h"): a low
+       half's card, a dead card and a winner's unused card no longer sink; dead still dims. */
+    .replayer-table .card-row > [data-pose="up"],
+    .replayer-table .card-row > [data-pose="up-half"] { translate: 0 calc(var(--subrow) * -1); }
+    .replayer-table .card-row > [data-pose="dead"] { opacity: 0.45; }
     /* The ghosts of a folded hand, in the flight layer (25, 7). */
     .replayer-ghost-row { position: absolute; inset: 0; display: block; pointer-events: none; height: auto; min-width: 0; }
     .replayer-ghost-row > * { position: absolute; }

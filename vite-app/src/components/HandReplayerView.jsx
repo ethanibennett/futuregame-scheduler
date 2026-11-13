@@ -7285,8 +7285,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         (lo ? lo.board : []).forEach(i => loB.add(i));
       });
       board.forEach((c, i) => {
-        if (hiB.has(i) && !loB.has(i)) boardP.set(c.rank + c.suit, 'up-half');
-        else if (loB.has(i) && !hiB.has(i)) boardP.set(c.rank + c.suit, 'down-half');
+        // A board card is raised or left (owner, 2026-11-13: "not in between"): the high's own cards go up a whole r.
+        if (hiB.has(i) && !loB.has(i)) boardP.set(c.rank + c.suit, 'up');
       });
     } else if (cfg.type === 'badugi') {
       // 22: every shown hand's card that cannot count.
@@ -10190,7 +10190,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           (motion.prevPosed || []).forEach(el => { if (!posedNow.includes(el)) consider(el); });
           if (changes.length) {
             const r = rPx();
-            const off = { '': 0, up: -r, 'up-half': -0.5 * r, down: r, 'down-half': 0.5 * r, dead: 0.5 * r };
+            // Only up moves a card (owner, 2026-11-13: "pushed up or left as they are, not in between"); dead only dims.
+            const off = { '': 0, up: -r, 'up-half': -r, down: 0, 'down-half': 0, dead: 0 };
             const op = (p) => (p === 'dead' ? 0.45 : 1);
             const base = motionKind === 'result' ? Math.max(turnEnd, 0) + S.beat / rate : landed;
             const falls = changes.some(c => off[c.now] > off[c.was]);
@@ -11143,10 +11144,11 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             hand.playersLeft ? hand.playersLeft + ' left' : null,
             hand.payoutNote || null,
           ].filter(Boolean).join(' \u00b7 ');
-          if (!hand.title && !level && !meta) return null;
+          /* No hand title here (owner, 2026-11-13: "We also do not need the hands in the middle of the felt"): the
+             title is the saved row's and the share sheet's, not the table's. */
+          if (!level && !meta) return null;
           return (
             <div className="replayer-table-info">
-              {hand.title && <span className="replayer-table-title-name">{hand.title}</span>}
               {level && (levelLong
                 ? <span className="replayer-level-blinds is-long">{named}<span className="replayer-level-sep">{'  ·  '}</span>{sizes}</span>
                 : <span className="replayer-level-blinds">{level}</span>)}
