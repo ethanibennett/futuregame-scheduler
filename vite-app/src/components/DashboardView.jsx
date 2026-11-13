@@ -266,7 +266,9 @@ export default function DashboardView({
     swipeAxis.current = null;
     if (!swipeSlop.current) swipeSlop.current = gridGeom().R;
     swipeDx.current = 0;
-    if (trackRef.current) trackRef.current.classList.add('swiping');
+    /* Not 'swiping' yet (owner, 2026-11-13: "I'm still having to tap these buttons several times"): that class
+       shows the neighbouring cards, and iOS reads anything becoming visible as a touch begins as a hover menu
+       opening, and swallows the tap's click. It goes on once the gesture is a sideways drag (onTouchMove). */
   }, []);
   const onTouchMove = useCallback((e) => {
     if (swipeStart.current === null) return;
@@ -280,6 +282,7 @@ export default function DashboardView({
         if (trackRef.current) trackRef.current.classList.remove('swiping');
         return;
       }
+      if (trackRef.current) trackRef.current.classList.add('swiping');
     }
     swipeDx.current = dx;
     // The neighbour coming in: the track grows to it if it is taller, so it never covers the dots.
