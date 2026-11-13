@@ -1,0 +1,442 @@
+[
+  {
+    "id": 1,
+    "title": "Casino clay: white edge inserts, an inlay on the face",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "The real tournament chip: each chip carries six white rectangular inserts round its edge, and they show on the stack as white blocks on the side and as a broken white ring on the top face, with a lighter inlay in the middle. The cylinder is lit from the left, so the side reads round instead of as a band.",
+    "why": "Today's edge marks are dark notches on a dark chip, which disappear below 12 px; white inserts are the highest-contrast detail a chip can carry and read even at 9 px as \"a casino chip\".",
+    "effort": "M",
+    "risk": "More gradient stops per disc (a pot of 25 discs is about 75 layers). Inserts on a white or yellow chip need a darker insert colour, a per-denomination exception.",
+    "image": "01-clay-edge-inserts.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 2,
+    "title": "Top view: the chip seen from above, stacks shingled",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "Drop the side view. Every chip is a full circle seen from straight above, six edge spots and a dashed inner ring, the way online rooms draw them; a stack is the same circle repeated a sixth of a chip lower each time, like chips pushed out in a short slide.",
+    "why": "A circle is the largest a chip can be in its box: at the same width the face is 38% bigger than today's ellipse, so colour and spots carry twice the area.",
+    "effort": "M",
+    "risk": "Loses the feeling of height: a stack of five looks like a smear rather than a column. Breaks the measured perspective the felt and cards were tuned to.",
+    "image": "02-top-view.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 3,
+    "title": "Ceramic: the value printed on the face",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "A ceramic chip has a printed face: a cream disc in the middle with the denomination (\"5K\", \"1K\", \"25K\") in the chip's own colour. Only the top chip of a stack shows its figure. The pot's chips grow to 14 px so the figure there is legible.",
+    "why": "Colour alone asks the viewer to know that orange is 5,000; the figure says it. Good for a shared hand whose viewer never learned the colours.",
+    "effort": "M",
+    "risk": "At 9 px the figure is a speck, so on the wagers it is decoration; the pill's number already says the amount. The cream centre makes every chip look partly white.",
+    "image": "03-ceramic-printed.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 14,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 4,
+    "title": "Minimal flat disc",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "Two flat colours per chip: the side, and a face one step lighter. No notches, no gradients, no ring. A stack is a column of clean bands.",
+    "why": "The cheapest chip to draw and to animate, and the closest to the rest of the felt's flat plaques and pills. Nothing in it can alias or shimmer during a flight.",
+    "effort": "S",
+    "risk": "Loses \"clay\"; reads as a chart token. Two adjacent chips of the same colour merge into one block because there is no groove between them.",
+    "image": "04-minimal-flat.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 5,
+    "title": "Outlined: the chip drawn in its colour as a line",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "Each chip is an outline in its denomination colour over a darkened fill, with an inner ring; the felt shows through. It matches the app's outlined pills and the action badges (CHECK).",
+    "why": "Line colour on a dark ground has more contrast than a filled dark chip (the navy 100 chip disappears today), and an outlined stack stays light on a busy felt.",
+    "effort": "S",
+    "risk": "Thin lines at 9 px are 1 device pixel and can fall between pixels on a 2x screen. On the light theme's felt the dark fill looks like a hole.",
+    "image": "05-outlined.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 6,
+    "title": "Metal: coins for small values, a plaque for the biggest",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "The colour system becomes materials: bronze 25, copper 100, silver 500, gold 1,000, rose gold 5,000, each a coin with a reeded edge, and the 25,000 is a rectangular platinum plaque, as high-roller rooms use. Value reads from the shape and the metal, not from a learned colour.",
+    "why": "The biggest denomination becomes a different shape, so a big pot is visible at a glance; metals separate by brightness, which colour-blind viewers keep.",
+    "effort": "L",
+    "risk": "A plaque does not stack with coins, so the pot needs a second layout. Metal sheen needs gradients that the GIF export quantises badly. Large effort: new pot layout, new flight sprite.",
+    "image": "06-metal-plaques.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 7,
+    "title": "Chips counted true, up to ten a stack",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "Today a wager is never more than five chips in all, so 12,000 and 30,000 can look alike. Draw the real breakdown, up to ten chips a stack, and when a stack would be taller the top chip carries a small \"+\".",
+    "why": "A bigger bet looks bigger, which is the whole point of drawing chips. 38,000 shows its three 1,000s, which the five-chip cap drops today.",
+    "effort": "S",
+    "risk": "Tall stacks collide with the cards on a phone (ten chips is 2.7 g at the wager size). A breakdown of many small chips (24,975) looks like a lot of money.",
+    "image": "07-true-count.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 8,
+    "title": "Height in big blinds, one colour",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "Chips stop encoding denominations. Every chip is the same ivory chip worth one big blind; a stack is the wager in big blinds, up to ten a stack, so stacks of two seats compare by height. The pill keeps the exact number.",
+    "why": "Players think in big blinds; a 6 bb bet is six chips at every level of every tournament, where today the same bet is a different set of colours at each level.",
+    "effort": "M",
+    "risk": "Loses colour on the felt entirely, which some will miss. Deep pots need several stacks (a 60 bb pot is six) or a cap with a figure.",
+    "image": "08-height-in-bb.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 9,
+    "title": "Casino standard colours",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "Keep today's chip and change its colours to the ones every card room uses: green 25, black 100, purple 500, yellow 1,000, red 5,000, grey 25,000, each with white edge inserts.",
+    "why": "A live player reads these without learning: black is 100, purple is 500. Today's teal 25,000 and orange 5,000 are the app's own and mean nothing at a table.",
+    "effort": "S",
+    "risk": "Black and purple chips on a dark purple felt are the worst pair for contrast, so this needs the keyline (16) or the inserts to stay legible.",
+    "image": "09-casino-standard.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 10,
+    "title": "Brand palette, value by lightness",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "The chips take the app's own colours: deep navy 25, indigo 100, violet 500, the brand cyan 1,000, ice 5,000, ivory 25,000. Value climbs with lightness, so the bigger the chip the brighter it is.",
+    "why": "The felt stops looking like a different app from the plaques and controls; and brightness is an order a viewer reads without a key, including in greyscale.",
+    "effort": "S",
+    "risk": "A one-hue ramp is harder to tell apart chip by chip than six unrelated hues. The 25 and 100 are close to the felt and need the keyline.",
+    "image": "10-brand-palette.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 11,
+    "title": "Deeper 3D: thicker chips under the lamp",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "A lower viewing angle (face 0.55 of the width, edge 0.3), cylinder shading from the left and a specular spot on the top face where the felt's lamp is. Fewer chips needed for the same height.",
+    "why": "Today's chip is so thin and so foreshortened that a stack of two reads as one chip; a thicker edge makes every chip count.",
+    "effort": "M",
+    "risk": "A steeper perspective than the cards' and the plaques' (which are flat), so the chips look like they belong to another table. Taller stacks, less room.",
+    "image": "11-deep-3d.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 12,
+    "title": "Pure side view: a stack of bars",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "No face at all: each chip is a rounded bar seen edge-on, with three white insert marks and a hairline gap between chips. A stack is a short bar chart of chips.",
+    "why": "Every chip is fully visible, so a stack of four shows four colours at any size; nothing overlaps. The most legible stack at 9 px.",
+    "effort": "S",
+    "risk": "Flat and diagrammatic; the felt's cards and lighting are drawn in perspective, these are not. A single chip is a dash and looks like nothing.",
+    "image": "12-side-bars.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 13,
+    "title": "One token per wager",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "A wager is one larger chip (14 px) in the colour of its biggest denomination beside the number; the pot is one 18 px chip. No stacks anywhere: the number carries the amount.",
+    "why": "The cleanest felt, the cheapest motion (one element flies, not five), and a chip big enough to show its edge spots on a phone.",
+    "effort": "S",
+    "risk": "Gives up showing size at all: a min-bet and a shove are the same token. The pot loses its sense of growing.",
+    "image": "13-one-token.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 14,
+      "potChipPx": 18,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 14,
+    "title": "Today's chip, set on the cloth: a contact shadow and the lamp",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "Keep the chip; add what places it: a soft elliptical shadow on the felt under each stack, and a warm highlight on the top face from the same lamp that lights the felt's centre.",
+    "why": "Today's chips float: the only shadow is a 1 px drop under each disc. A contact shadow sits the stack on the cloth and makes landings read in motion.",
+    "effort": "S",
+    "risk": "A shadow per stack, so the pot's five stacks add five blurred layers; in the GIF export a soft shadow bands.",
+    "image": "14-contact-shadow.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 15,
+    "title": "Acrylic: translucent chips that glow",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "Clear coloured acrylic, like modern tournament chips: the side is translucent, the face carries a bright rim and a white inner ring, and the colour lights up rather than shades down.",
+    "why": "Glowing colour reads on a dark felt where opaque dark chips sink; it suits the app's dark themes and the neon of the active seat.",
+    "effort": "M",
+    "risk": "Translucency shows the chips below through the stack, which muddies colours. Unlike any real chip a player handles.",
+    "image": "15-acrylic.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 16,
+    "title": "A keyline for dark felt",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "Today's chip with a hairline light outline round the silhouette of each chip, and the 100 lifted from #39406b to #5a63a3 so it is no longer darker than the felt.",
+    "why": "The navy 100 chip has less contrast with the felt than the felt's own rail; on the light theme's felt (bottom strip) it is the only chip you cannot see.",
+    "effort": "S",
+    "risk": "A white outline on every chip makes the stack look drawn rather than lit. Small change to one colour token.",
+    "image": "16-keyline.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 17,
+    "title": "Sized to the card: chips half a card wide",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "Today a wager's chip is 9 px, a quarter of a board card (35 px). Make it half a card (17 px) and the pot's 20 px, and keep everything else as it is.",
+    "why": "At 9 px nothing in the chip's careful drawing survives: the notches are under a pixel. At 17 px the edge marks, the groove and the face ring all show.",
+    "effort": "S",
+    "risk": "Bigger stacks need room the phone layout does not have: the wager pill grows by 8 px and the pot stacks reach the top seat sooner.",
+    "image": "17-card-scaled.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 17,
+      "potChipPx": 20,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 18,
+    "title": "A pushed stack, not a column",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "Each chip sits a few percent off the one below, left or right, decided by the amount (like the edge marks' rotation, so it never reshuffles). A wager looks like chips a player slid out, not a machined cylinder.",
+    "why": "Shows the chip count: offsets reveal every chip's edge, where a perfect column reads as one tall chip. Adds life to the felt at no cost.",
+    "effort": "S",
+    "risk": "An untidy felt; reads as messy beside the strict grid of plaques. The pot's stacks should stay neat or the row looks careless.",
+    "image": "18-pushed-stack.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 19,
+    "title": "Built for motion: four bold quarters that read as a spin",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "The chip's edge has four wide white quarters, not twelve fine notches, so when a chip turns in flight the rotation is visible; a stack is drawn as one element whose quarters shift by the amount.",
+    "why": "Today's fine notches shimmer and alias when a chip moves, and a spinning chip with twelve marks looks still. Four marks give the eye something to follow.",
+    "effort": "M",
+    "risk": "Bold quarters are louder at rest. The pattern repeats every 90 degrees, so a spin must be slower than a quarter-turn a frame or it strobes.",
+    "image": "19-spin-ready.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  },
+  {
+    "id": 20,
+    "title": "The pot as a pile, the wagers as stacks",
+    "area": "Chips",
+    "screen": "Hands > Replayer, replay view (wagers, pot, flights)",
+    "files": [
+      "vite-app/src/components/HandReplayerView.jsx",
+      "vite-app/src/styles.css"
+    ],
+    "observed": "Today a wager's chip is 9.1 px across on a 402 x 874 phone (a board card is 34.8 px) and the pot's 11.4 px: a cylinder (face 0.724 of the width, edge 0.236) with twelve dark notches, a radial highlight and a white ring, in the app's own six colours. At most five chips in all; a wager is one column, the pot one column per colour.",
+    "change": "Wagers stay as neat stacks in front of the seats; once swept, the pot becomes a loose pile: short stacks of different heights leaning together, with a couple of chips lying flat in front, as chips land when a dealer pulls them in.",
+    "why": "Separates the two kinds of money at a glance: what a player has put out (stacks) and what is in the middle (a pile). A growing pile is the best picture of a growing pot.",
+    "effort": "L",
+    "risk": "Needs a new pot layout and new landing positions for the sweep and ship springs; harder to keep stable as the amount changes. Large effort.",
+    "image": "20-pot-pile.jpg",
+    "viewport": "phone",
+    "sizes": {
+      "wagerChipPx": 9.1,
+      "potChipPx": 11.4,
+      "cardPx": 34.8
+    }
+  }
+]

@@ -37,6 +37,7 @@ import { heroNet } from '../utils/hand-net.js';
 import { autoTitle, displayTitle } from '../utils/hand-title.js';
 import { SAMPLE_HAND } from '../utils/sample-hand.js';
 import { exportHandHistory, playedAtOf, handOfRow, handsFileName } from '../utils/hand-history/save.js';
+import { chipInsertVars, applyChipInserts } from '../utils/chip-inserts.js';
 const ReplayerDrill = lazy(() => import('./ReplayerDrill.jsx'));
 
 /* The ranks a game deals, high to low, for its card pickers. Short Deck plays a 36-card deck, the
@@ -931,7 +932,7 @@ function ChipStack({ amount }) {
            colour, the phase and the stacking order are per-disc. */
         <div key={i} className="chip-disc" style={{
           '--chip': color,
-          '--pip-shift': pipShift(amount, i),
+          ...chipInsertVars(pipShift(amount, i)),
           zIndex: chips.length - i,
         }} />
       ))}
@@ -1441,7 +1442,7 @@ function PotChipVisual({ amount }) {
                carried this; the pot's did not, and with flat ellipses it did
                not show. With a cylinder it does. */
             <div key={j} className="replayer-pot-chip-disc"
-              style={{ '--chip': stack.color, '--pip-shift': pipShift(amount + i * 977, j),
+              style={{ '--chip': stack.color, ...chipInsertVars(pipShift(amount + i * 977, j)),
                 zIndex: Math.min(stack.count, 6) - j }} />
           ))}
         </div>
@@ -1549,7 +1550,7 @@ function PotChipLive({ amount, motion, set, shipped = false }) {
           className={'replayer-pot-chip-stack' + (hidden && hidden.includes(stack.color) ? ' is-pending' : '')}>
           {Array.from({ length: Math.min(stack.count, 6) }, (_, j) => (
             <div key={j} className="replayer-pot-chip-disc"
-              style={{ '--chip': stack.color, '--pip-shift': pipShift(amount + i * 977, j),
+              style={{ '--chip': stack.color, ...chipInsertVars(pipShift(amount + i * 977, j)),
                 zIndex: Math.min(stack.count, 6) - j }} />
           ))}
         </div>
@@ -9352,6 +9353,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               chip.setAttribute('aria-hidden', 'true');
               const face = document.createElement('div');
               face.className = 'replayer-pot-chip-disc';
+              applyChipInserts(face, 0);
               chip.appendChild(face);
               Object.assign(chip.style, { left: (j.fx - L0.left) + 'px', top: (j.fy - L0.top) + 'px', transform: 'translate(-50%, -50%)' });
               layer0.appendChild(chip);
@@ -9650,6 +9652,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 const face = document.createElement('div');
                 face.className = 'replayer-pot-chip-disc';
                 if (w.topColor) face.style.setProperty('--chip', w.topColor);
+                applyChipInserts(face, 0);
                 chip.appendChild(face);
                 Object.assign(chip.style, { left: (fx - L.left) + 'px', top: (fy - L.top) + 'px', transform: 'translate(-50%, -50%)' });
                 layer.appendChild(chip);

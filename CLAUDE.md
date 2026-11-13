@@ -726,6 +726,11 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
     Back still steps a street at a time. A hand opened on its first step plays its opening (antes, blinds, the dealer
     button); Play from the first step deals the hand first. Exports skip action moments and open on their title card.
   - Sampled figures (a stack counting down) are `MotionRegistry.sample`; under an export `seek()` places them.
+- **The chips are casino clay** (owner, 2026-11-13: pick 1 of `docs/catalogues/replayer-chips`, gallery
+  https://claude.ai/artifact/UrZPCY5D5q7TBcnwG49ZBY): `.chip-disc` / `.replayer-pot-chip-disc` in `styles.css`, six white
+  edge inserts placed per chip by `utils/chip-inserts.js` (`chipInsertVars` / `applyChipInserts` from the chip's
+  `pipShift`), at the same angles on the side and the face's rim, so each wraps over the edge as one piece. Any new
+  place that draws a chip must set them, or it draws a plain disc.
 - **The Swiss theme** (owner, 2026-10-16; app admins only): `swiss-light` and `swiss-dark`, in the theme button's
   cycle only for an admin (`utils/theme.js` themeOrder/nextTheme), and shown only to one: `hooks/useThemeChoice.js` gives anyone else
   the standard theme when Swiss is stored on the device (signed out, a non-admin, a backer page), keeping the stored choice. Every style is `vite-app/src/theme-swiss.css`,

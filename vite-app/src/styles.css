@@ -1142,10 +1142,7 @@
        The pot's disc was 2:1 on a clamped width; the seat's was 18x6 (3:1)
        with its size, radius and overlap written inline. The same object drawn
        twice, differently — which shows the moment a bet sits next to the pot
-       it is travelling into. One rule; --disc-w is the only thing that varies.
-
-       The edge spots repeat on a 52%-of-width period, which puts two on the
-       face at any phase — what you see of a real chip's six. */
+       it is travelling into. One rule; --disc-w is the only thing that varies. */
     .chip-disc,
     .replayer-pot-chip-disc {
       /* Scaled with the table. A flat 18px is a quarter of the pot pill's
@@ -1153,68 +1150,45 @@
          the pot's stack was 8.1% of the table's width in portrait. */
       --disc-w: clamp(9px, 2.4cqmin, 20px);
       --chip: currentColor;
-      /* MEASURED off the reference stack. Its top face is 144px across a 199px
-         chip, so the ellipse's minor axis is 0.724 of its major — that ratio
-         IS the viewing angle — and each chip below the top shows 47px of edge,
-         0.236 of the width.
-
-         One element, one cylinder: width W, height E + h, with a vertical
-         corner radius of E/2. That makes the top and bottom elliptical arcs
-         and leaves exactly h of straight side between them. Before this it was
-         a flat 2:1 ellipse, so a stack was a pile of crescents with no side to
-         it at all — the thing the reference has and we did not. */
-      --chip-e: calc(var(--disc-w) * 0.724);
-      --chip-h: calc(var(--disc-w) * 0.236);
+      /* Casino clay (owner, 2026-11-13: chips catalogue pick 1, docs/catalogues/replayer-chips). One element,
+         one cylinder: width W, height E + h, the corner radius E/2, so top and bottom are elliptical arcs with h of
+         straight side between. E = 0.62 W (the face's ratio, CHIP_FACE_K in utils/chip-inserts.js, which places the
+         face's inserts on it) and h = 0.22 W. The side is lit from the left so it reads round; six white inserts
+         run round the edge, placed per chip from its turn by chipInsertVars (--chip-side, --chip-rim), at the same
+         angles on the side and on the face's rim, so each one wraps over the edge as one piece. */
+      --chip-e: calc(var(--disc-w) * 0.62);
+      --chip-h: calc(var(--disc-w) * 0.22);
       width: var(--disc-w);
       height: calc(var(--chip-e) + var(--chip-h));
       border-radius: 50% / calc(var(--chip-e) / 2);
       position: relative;
       background-color: var(--chip);
       background-image:
-        /* Twelve notches around the chip is six across the face, each 7% of
-           the width — measured 14px on 199. Position is a LENGTH: a percentage
-           resolves against (box - image) and a gradient's image is the box, so
-           every percentage phase would be a zero shift and no chip would ever
-           be rotated. */
-        repeating-linear-gradient(90deg,
-          rgba(0,0,0,0.30) 0 7%,
-          transparent 7% 16.667%),
-        /* The last band is the groove where this chip meets the one below.
-           Without it the notches run uninterrupted from the face to the base
-           and the stack reads as a barber pole — in the reference they are cut
-           every 47px by exactly this line. */
-        linear-gradient(180deg,
-          rgba(255,255,255,0.16) 0%,
-          rgba(255,255,255,0.02) 45%,
-          rgba(0,0,0,0.30) 84%,
-          rgba(0,0,0,0.55) 100%);
-      background-position: calc(var(--pip-shift, 0) * var(--disc-w)) 0, 0 0;
-      background-repeat: repeat-x, no-repeat;
-      box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.35);
+        var(--chip-side, none),
+        linear-gradient(90deg,
+          rgba(255,255,255,0.18) 0%,
+          rgba(255,255,255,0) 35%,
+          rgba(0,0,0,0.42) 85%,
+          rgba(0,0,0,0.30) 100%);
+      /* The groove where this chip meets the one below follows the bottom arc as an inset shadow. */
+      box-shadow:
+        inset 0 calc(var(--disc-w) * -0.03) 0 rgba(0,0,0,0.45),
+        0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.35);
     }
-    /* The top face, inset by the notch depth so the rim marks show around it
-       as a ring — the chip's most legible feature at the size these render.
-       EVERY chip carries one and only the top chip's is visible, because the
-       chip above covers all but the h of edge below it, which is what a stack
-       physically does. (No logo: the reference carries one and we have no mark
-       asset to put there.) */
+    /* The top face: the whole ellipse. The rim carries the inserts (0.84 to 1 of the radius), inside it a lighter
+       inlay ringed in white. Every chip has one and only the top chip's shows: the chip above covers all but h. */
     .chip-disc::before,
     .replayer-pot-chip-disc::before {
       content: '';
       position: absolute;
-      left: 8%; right: 8%;
-      /* The face ends exactly at the ellipse's front edge, so what shows
-         below it is h and nothing more. Stopping at 0.89 of the ellipse left
-         0.32 of the width as bare side where the reference shows 0.24, which
-         is what made the top chip look like a drum. */
-      top: calc(var(--chip-e) * 0.06);
-      height: calc(var(--chip-e) * 0.94);
+      left: 0; right: 0; top: 0;
+      height: var(--chip-e);
       border-radius: 50%;
       background:
-        radial-gradient(ellipse at 50% 35%,
-          rgba(255,255,255,0.30), rgba(255,255,255,0.06) 60%, var(--ov-black-2) 100%),
+        radial-gradient(ellipse closest-side, rgba(255,255,255,0.12) 0 66%, rgba(244,241,234,0.8) 66% 71%, transparent 71%),
+        radial-gradient(ellipse closest-side, var(--chip) 0 84%, transparent 84%),
+        var(--chip-rim, none),
         var(--chip);
-      box-shadow: inset 0 0 0 max(calc(var(--subrow) * 0.125), calc(var(--disc-w) * 0.03)) rgba(255,255,255,0.22);
     }
     /* One chip's edge showing. The element is E + h tall, so offsetting the
        next by h means pulling it up by E. */

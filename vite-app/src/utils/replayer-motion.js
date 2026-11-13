@@ -21,6 +21,8 @@ import {
   channelEnd, cubicBezier,
 } from './spring.js';
 
+import { applyChipInserts } from './chip-inserts.js';
+
 export { springSetFor, rateFor } from './spring.js';
 export { prefersReducedMotion };
 
@@ -1246,7 +1248,7 @@ export function shipPot(reg, { set, rate = 1, layer, layerRect, origin, discs = 
         const face = document.createElement('div');
         face.className = 'replayer-pot-chip-disc';
         face.style.setProperty('--chip', src.color);
-        if (src.pip != null) face.style.setProperty('--pip-shift', String(src.pip));
+        applyChipInserts(face, src.pip ?? 0);
         chip.appendChild(face);
       }
       clip.inner.appendChild(chip);
