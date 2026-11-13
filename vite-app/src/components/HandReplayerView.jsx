@@ -10972,7 +10972,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                     its digits there directly (motion.writePot) rather than re-rendering. */}
                 <div className="replayer-pot-total" ref={potTotalRef}>
                   <span className="replayer-pot-cell-label">
-                    {isSplitResult ? (_isHiLo ? halfLabels.join('/') + ' Split' : 'Split Pot') : (potLayers.length > 1 ? 'Total' : 'Pot')}
+                    {isSplitResult ? (_isHiLo ? 'Split' : 'Split Pot') : (potLayers.length > 1 ? 'Total' : 'Pot')}
                   </span>
                   {fmtChips(shownPot)}
                 </div>
