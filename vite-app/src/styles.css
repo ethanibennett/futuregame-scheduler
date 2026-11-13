@@ -5354,7 +5354,9 @@
        iPhone's shorter table, 28px with side pots too. So it hangs from just above the board (centred at 47%,
        its own card height tall) and grows upward. Stacked boards keep their own stops further down this file. */
     .replayer-table:not(:has(.replayer-board-area.is-multi)) .replayer-split-pot {
-      top: calc(47% - clamp(18px, 10.9375cqmin, 140px) / 2 - var(--space-xs));
+      /* 1r higher than the card top (owner, 2026-11-13: "shouldn't collide with the cards"): at a hi-lo showdown the
+         cards that play rise a whole r, and they rose 4px into the shares at every phone size. */
+      top: calc(47% - clamp(18px, 10.9375cqmin, 140px) / 2 - var(--subrow) - var(--space-xs));
       transform: translate(-50%, -100%);
     }
     /* A phone on its side has no height for three rows (side pots, total, shares reached the top seat by
@@ -5372,7 +5374,9 @@
        the .slice(0, 3) was standing in for and costs nobody their share. */
     .replayer-split-shares {
       display: flex; justify-content: center; align-items: center;
-      gap: 2.1cqw; flex-wrap: wrap; max-width: 41cqw;
+      /* One row, side by side (owner, 2026-11-13: "These pills should be side by side"); it no longer wraps at
+         41cqw, which put a scoop's HI+LO 3/4 over the LO 1/4. */
+      gap: 2.1cqw; flex-wrap: nowrap;
       row-gap: var(--nudge-1);
     }
     /* The side-pot pill's cell, in the winner's gold. 2.42cqmin IS 0.39em of
