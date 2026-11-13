@@ -16881,6 +16881,8 @@
       background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border); border-radius: var(--radius-xs);
       color: var(--text-muted);
     }
+    /* In the filter sheet (2026-11-13): its first row, 2r over the kind toggles. */
+    .list-search.is-in-sheet { margin: 0 0 calc(var(--subrow) * 2); flex: none; grid-column: 1 / -1; }
     .list-search > svg { width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); flex: 0 0 auto; }
     .list-search input {
       flex: 1 1 auto; min-width: 0; height: 100%; padding: 0; margin: 0; border: 0; outline: 0; background: none;

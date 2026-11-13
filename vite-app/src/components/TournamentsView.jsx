@@ -93,7 +93,7 @@ function OnlineRoomRules({ sites, siteRules, setFilters, disabled }) {
 }
 
 // ── Inline Filters (portal-based, matching original) ──
-function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpen, toggleRef, shownCount, chipCount }) {
+function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpen, toggleRef, shownCount, chipCount, search, setSearch }) {
   const panelRef = useRef(null);
   useBackToClose(open, () => setOpen(false));   // Back closes the panel (App improvements 454)
   // Escape closes the panel as Save & Close does, before the selected event behind it hears the key
@@ -370,6 +370,14 @@ function Filters({ filters, setFilters, setFiltersRaw, tournaments, open, setOpe
           }
           return { top: `calc(${r.bottom}px + var(--subrow))`, left: 'var(--gu)', right: 'var(--gu)', maxHeight: `calc(${vh - r.bottom}px - var(--subrow) * 3)` };
         })()}>
+          {/* The search, back at the top of the sheet (owner, 2026-11-13: "move the search field back to the filter dropdown"). */}
+          <div className="list-search is-in-sheet">
+            <Icon.search />
+            <input type="search" enterKeyHint="search" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder={'Search events, rooms, series, buy-ins…'} aria-label="Search events" />
+            {search && <span className="list-search-count" aria-live="polite">{shownCount.toLocaleString()}</span>}
+            {search && <button type="button" className="list-search-x" aria-label="Clear search" onClick={() => setSearch('')}><Icon.x /></button>}
+          </div>
           {kindRow}
           {/* Quick filter pills */}
           {(() => {
@@ -1483,35 +1491,32 @@ export default function TournamentsView({
           )}
         </div>
 
-        {/* Search on the list, not in the sheet (UX pick 18): 35g x 4r, 1r under Location. */}
-        <div className="list-search">
-          <Icon.search />
-          <input type="search" enterKeyHint="search" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder={'Search events, rooms, series, buy-ins\u2026'} aria-label="Search events" />
-          {search && <span className="list-search-count" aria-live="polite">{shownCount.toLocaleString()}</span>}
-          {search && <button type="button" className="list-search-x" aria-label="Clear search" onClick={() => setSearch('')}><Icon.x /></button>}
-        </div>
-
-        {/* The filters that are on, each removable (UX pick 17); absent when none is. */}
-        {chips.length > 0 && (
+        {/* The filters that are on, each removable (UX pick 17); absent when none is. The search is back in
+            the filter sheet (owner, 2026-11-13), so a search that is on shows here as the first chip. */}
+        {(chips.length > 0 || search) && (
           <div className="filter-chips-row" role="group" aria-label="Filters on">
-            {chips.slice(0, 2).map(c => (
+            {search && (
+              <button type="button" className="filter-chip-on snap-g" aria-label={`Remove search ${search}`} onClick={() => setSearch('')}>
+                <span className="filter-chip-on-label">{'\u201c' + search + '\u201d'}</span><Icon.x />
+              </button>
+            )}
+            {chips.slice(0, search ? 1 : 2).map(c => (
               <button key={c.key} type="button" className="filter-chip-on snap-g" aria-label={`Remove ${c.label}`}
                 onClick={() => setFiltersWithScroll(c.remove)}>
                 <span className="filter-chip-on-label">{c.label}</span><Icon.x />
               </button>
             ))}
-            {chips.length > 2 && (
+            {chips.length > (search ? 1 : 2) && (
               <button type="button" className="filter-chip-on filter-chip-more snap-g" onClick={() => setFilterPanelOpen(true)}>
-                +{chips.length - 2} more
+                +{chips.length - (search ? 1 : 2)} more
               </button>
             )}
-            <button type="button" className="filter-chips-clear" onClick={() => setFiltersWithScroll(clearedFilters)}>Clear all</button>
+            <button type="button" className="filter-chips-clear" onClick={() => { setSearch(''); if (chips.length) setFiltersWithScroll(clearedFilters); }}>Clear all</button>
             <span className="filter-chips-count">{shownCount.toLocaleString()} of {baseCount.toLocaleString()}</span>
           </div>
         )}
 
-        <Filters filters={filters} setFilters={setFiltersWithScroll} setFiltersRaw={setFilters} tournaments={tournaments} open={filterPanelOpen} setOpen={setFilterPanelOpen} toggleRef={filterToggleRef} shownCount={shownCount} chipCount={chips.length} />
+        <Filters filters={filters} setFilters={setFiltersWithScroll} setFiltersRaw={setFilters} tournaments={tournaments} open={filterPanelOpen} setOpen={setFilterPanelOpen} toggleRef={filterToggleRef} shownCount={shownCount} chipCount={chips.length + (search ? 1 : 0)} search={search} setSearch={setSearch} />
 
         {locationDropdownOpen && createPortal(
           /* var(--z-scrim), not 998. The PANEL was moved off a 999 literal onto
