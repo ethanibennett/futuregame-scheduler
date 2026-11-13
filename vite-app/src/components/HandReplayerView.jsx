@@ -10361,6 +10361,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               return ring;
             };
             const ease = (p) => p * p * (3 - 2 * p);
+            // The seat that acted drops its own ring at once, under the drawn one fading out (see .ring-leave).
+            const fromSeat = seatOf(prevS.turn.seat);
+            table.querySelectorAll('.replayer-seat.ring-leave, .replayer-seat.ring-hand').forEach(s => s.classList.remove('ring-leave', 'ring-hand'));
+            if (fromSeat) fromSeat.classList.add('ring-leave');
             motion.run(ringAt(fr), { transient: true, size: { w: fr.width, h: fr.height }, end: fade, channels: [
               { prop: 'opacity', ramp: { from: 1, to: 0, delay: 0, duration: fade, ease } },
             ] });
@@ -10368,7 +10372,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             const entry = motion.run(ringAt(tr), { transient: true, size: { w: tr.width, h: tr.height }, end: fade, channels: [
               { prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: fade, ease } },
             ] });
-            const take = () => toSeat.classList.remove('ring-wait');
+            // The seat to act takes its ring at once, as the drawn one goes: no transition, no arrival pulse.
+            const take = () => {
+              if (fromSeat) fromSeat.classList.remove('ring-leave');
+              toSeat.classList.add('ring-hand');
+              toSeat.classList.remove('ring-wait');
+              const info2 = toSeat.querySelector('.replayer-seat-info');
+              if (info2 && info2.getAnimations) info2.getAnimations({ subtree: true }).forEach(a => { if (a.animationName === 'replayerTurnArrive') a.cancel(); });
+              requestAnimationFrame(() => toSeat.classList.remove('ring-hand'));
+            };
             if (entry) motion.tick(fade, take, entry); else take();
           });
         }
