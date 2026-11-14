@@ -11847,20 +11847,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       {showResult && potAwards && rSettings.showResults && !linkedReplay && (() => {
         const winners = hand.players.map((_, i) => ({ i, won: potAwards[i] || 0 })).filter(w => w.won > 0);
         if (!winners.length) return null;
+        /* Only the hero's net now (owner, 2026-11-14: "get rid of the result bar at the bottom at showdown, but
+           keep the net change number"): the sentence and the bar behind it went; the seats already say who won. */
         const start = Number((hand.players[replayHeroIdx] || {}).startingStack) || 0;
         const net = chipRound((shownStacks[replayHeroIdx] || 0) - start);
-        const nameOf = (i) => houseName((hand.players[i] || {}).name || 'Player');
-        let line;
-        if (winners.length === 1) {
-          const hn = getPlayerHandName(winners[0].i, true);
-          line = nameOf(winners[0].i) + ' wins the ' + fmtChips(displayPot) + ' pot' + (hn ? ' \u00b7 ' + String(hn).replace(/\n/g, ' / ') : '');
-        } else {
-          line = winners.map(w => nameOf(w.i) + ' ' + fmtChips(w.won)).join(' \u00b7 ');
-        }
         const tone = net > 0 ? 'is-won' : net < 0 ? 'is-lost' : 'is-even';
         return (
-          <div className={'replayer-result-strip ' + tone} role="status">
-            <span className="rrs-line">{line}</span>
+          <div className={'replayer-result-strip ' + tone} role="status" aria-label={'Your net: ' + (net > 0 ? 'plus ' : net < 0 ? 'minus ' : '') + fmtChips(Math.abs(net))}>
             <span className="rrs-net">{(net > 0 ? '+' : net < 0 ? '\u2212' : '') + fmtChips(Math.abs(net))}</span>
           </div>
         );

@@ -6208,7 +6208,9 @@
       /* Above the plaque rather than below it, which puts it over the fan —
          an action bubble hovering on the cards, and it clears the chip delta
          and the hand name that both hang off the bottom edge. */
-      bottom: calc(100% + calc(var(--subrow) * 0.25));
+      /* Sitting on the plaque's top edge (owner, 2026-11-14), so it covers only the
+         lowest 2r of the cards above it and leaves their indexes clear. */
+      bottom: 100%;
       left: 50%;
       transform: translateX(-50%);
       /* Its parent plaque already paints over the tucked-in cards; this keeps
@@ -6292,7 +6294,8 @@
        2r (border-box); flex centering keeps the text on the box's midline.
        The weight hierarchy stays (light fold/check, bold bet/raise, black
        all-in); only all-in steps up a size. */
-    /* The action pills are 3r (owner, 2026-10-15); the draw run stays 2r. */
+    /* The action pills are 2r, like the draw run (owner, 2026-11-14: "still too big on top of the cards"; 3r
+       from 2026-10-15). */
     .replayer-seat-draw-badge {
       box-sizing: border-box;
       height: calc(var(--subrow) * 2);
@@ -6308,15 +6311,15 @@
     .replayer-action-badge-outer.action-bet,
     .replayer-action-badge-outer.action-raise {
       box-sizing: border-box;
-      height: calc(var(--subrow) * 3);
+      height: calc(var(--subrow) * 2);
       padding-block: 0;
-      padding-inline: var(--space-sm);
+      padding-inline: calc(var(--gu) * 0.5);
       font-size: var(--fs-2xs);
       line-height: 1;
     }
     .replayer-action-badge-outer.action-allin {
       box-sizing: border-box;
-      height: calc(var(--subrow) * 3);
+      height: calc(var(--subrow) * 2);
       padding-block: 0;
       font-size: var(--fs-xs);
       line-height: 1;
@@ -17225,13 +17228,11 @@
     /* The replay's result line (UX pick 54): 4r, the sentence on the left and the hero's net on the right,
        both baselines on line 3. The "Result · You lost" eyebrow over it went (owner, 2026-11-13: "we don't
        need" it): the net's sign and colour already say it. Trimmed to the ink and seated by padding
-       (p = N r - 1cap). */
+       (p = N r - 1cap). Since 2026-11-14 the sentence and the bar are gone (owner): only the net, bare, at the right. */
     .replayer-result-strip {
       flex: none; box-sizing: border-box; height: calc(var(--subrow) * 4);
       display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: calc(var(--subrow) * 4);
       column-gap: var(--gu); padding: 0 var(--gu);
-      border-radius: var(--radius-xs); background: var(--surface);
-      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
       font-family: var(--font-condensed); color: var(--text);
     }
     .replayer-result-strip > span {
