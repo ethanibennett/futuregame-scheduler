@@ -2029,13 +2029,15 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
         }
         // A standing pose (Replayer animations 16-18, 20-23): raised, sunk or dead, on the translate property.
         /* Under playIds the lift above already says which cards play, so a raising or sinking pose would move them
-           a second time; only the dimming ('dead') is kept. */
+           a second time. Every card that does not play dims ('dead'), in every shown hand (owner, 2026-11-14: "Also
+           dim the cards that don't play"), not only the winner's. */
         const pose0 = poseOf ? poseOf.get(id) : undefined;
-        const pose = playIds && pose0 !== 'dead' ? undefined : pose0;
+        const pose = plays != null ? (plays ? undefined : 'dead') : pose0;
         return <img key={k} data-ck={k} className={'card-img' + tapClass}
           src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'}
           alt={c.rank+c.suit} loading="eager" data-pose={pose || undefined}
-          style={splayStyle} {...tap} />;
+          /* A fanned card carries its shadow as an inline filter, which the stylesheet's darkening cannot reach. */
+          style={pose === 'dead' && splayStyle.filter ? { ...splayStyle, filter: 'brightness(0.42) ' + splayStyle.filter } : splayStyle} {...tap} />;
       })}
     </div>
   );
@@ -9345,7 +9347,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       };
       if (!springOn) { motion.finishAll(); resyncDigits(); record(); return; }
       if (motionJumped) motion.finishAll();
-      /* 1: the deal, under Play from the hand's first step: each card from the dealer spot to its seat on the hand
+      /* 1: the deal, under Play from the hand's first step: each card from the middle of the table to its seat on the hand
          spring, a seat after another from the button's left, round by round (stud: two down, then the door). */
       if (motion.openFor !== hand) { motion.openFor = hand; pendingOpenRef.current = true; }
       let dealEnds = -1;
@@ -9353,7 +9355,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         pendingDealRef.current = false;
         if (rSettings.animateDeal) {
           const T = table.getBoundingClientRect();
-          const spot = { x: T.left + dealerSpot[0] / 100 * T.width, y: T.top + dealerSpot[1] / 100 * T.height };
+          // From the middle of the table (owner, 2026-11-14), not the dealer spot by the button.
+          const spot = { x: T.left + T.width / 2, y: T.top + T.height / 2 };
           const st0 = SPRING_SETS[springSet].stage;
           const rate0 = (playing ? rateFor(speed) : 1) * REPLAYER_PACE;
           const per = dealOrder.map(pi => [...table.querySelectorAll('[data-seat-cards="' + pi + '"] > .card-row > *')]).filter(a => a.length);
@@ -10289,7 +10292,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             /* A card moves a whole r or not at all (owner, 2026-11-13: "not in between"): up for a high, down for a low,
                a dead card only dims. */
             const off = { '': 0, up: -r, 'up-lo': -r, 'up-half': -r, down: r, 'down-half': r, dead: 0 };
-            const op = (p) => (p === 'dead' ? 0.45 : 1);
+            // A dead card darkens by its own CSS (filter, transitioned) and stays solid, so nothing under it shows through.
+            const op = () => 1;
             const base = motionKind === 'result' ? Math.max(turnEnd, 0) + S.beat / rate : landed;
             const falls = changes.some(c => off[c.now] > off[c.was]);
             /* A hi-lo pot reads in two beats (owner, 2026-11-13): the high's cards rise with its "Hi:" readout lit,
@@ -11754,7 +11758,11 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           // anchored on the table's edge and reaches ~24% in; at 0.42 the chips sat on its inner end).
           // (Portrait only: a landscape table is wide enough that 0.42 clears its plaques, and 0.6 reached the board.)
           const chipX = pos[0] + (POT_AT[0] - pos[0]) * (sideSeat && !isLandscape ? 0.6 : t);
-          const chipY = sideSeat ? pos[1] : pos[1] + (POT_AT[1] - pos[1]) * t;
+          /* Top and bottom seats nearer their plaque (owner, 2026-11-14: "a bit closer to the seat"): 0.42 left ~10r between a
+             bottom seat's cards and its chips and ~5r under a top seat's action pill; these leave ~2.3r and 2r (402 wide,
+             6 and 9-max). Portrait only. */
+          const tY = isLandscape ? t : pos[1] > POT_AT[1] ? 0.26 : 0.3;
+          const chipY = sideSeat ? pos[1] : pos[1] + (POT_AT[1] - pos[1]) * tY;
           /* --chip-start-dx/dy used to be written here (a percentage times 3, as 'px') for a
              keyframe that is animation: none; nothing read them. The spring push-out measures
              the seat direction itself. */

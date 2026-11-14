@@ -6531,7 +6531,16 @@
     .replayer-table .card-row > [data-pose="up-half"] { translate: 0 calc(var(--subrow) * -1); }
     .replayer-table .card-row > [data-pose="down"],
     .replayer-table .card-row > [data-pose="down-half"] { translate: 0 var(--subrow); }
-    .replayer-table .card-row > [data-pose="dead"] { opacity: 0.45; }
+    /* Dimmed by darkening, not by opacity (owner, 2026-11-14): at 0.45 opacity an overlapped card showed the one under it
+       through it. Each keeps its own shadow after the brightness. */
+    .replayer-table .card-row > [data-pose="dead"] { transition: filter var(--dur-slow) var(--ease-out); }
+    .replayer-seat-cards .card-row > img[data-pose="dead"] {
+      filter: brightness(0.42) drop-shadow(var(--cast-x) calc(var(--cast-y) * 0.6) calc(var(--cast-blur) * 0.6) rgba(var(--shadow-rgb, 0, 0, 0), 0.5));
+    }
+    .replayer-board-area .card-row > img[data-pose="dead"] {
+      filter: brightness(0.42) drop-shadow(0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.72))
+              drop-shadow(var(--cast-x) var(--cast-y) var(--cast-blur) rgba(var(--shadow-rgb, 0, 0, 0), 0.38));
+    }
     /* The ghosts of a folded hand, in the flight layer (25, 7). */
     .replayer-ghost-row { position: absolute; inset: 0; display: block; pointer-events: none; height: auto; min-width: 0; }
     .replayer-ghost-row > * { position: absolute; }
