@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { API_URL } from '../utils/api.js';
 import { normaliseDate, formatBuyin, getVenueInfo } from '../utils/utils.js';
 import { useToast } from '../contexts/ToastContext.jsx';
+import { tripRuns as tripRunsAt } from '../utils/trip-runs.js';
 
 /* A trip's budget before you go (Features 5, 2026-11-11): above a Travel Day that opens a run of saved
    events, what the run costs: the buy-ins at each event's planned bullets (restarts left out), and the
@@ -11,29 +12,13 @@ import { useToast } from '../contexts/ToastContext.jsx';
 const KEY = (id) => `tripBudget:${id}`;
 const read = (id) => { try { return JSON.parse(localStorage.getItem(KEY(id)) || '{}') || {}; } catch { return {}; } };
 
+// The run a Travel Day opens: the saved events at one room, ending at another room, a week's gap or
+// the next Travel Day (utils/trip-runs.js; owner, 2026-11-13).
 export function tripRuns(sorted, todayISO) {
-  const out = new Map();
-  const list = (sorted || []).filter(Boolean);
-  for (let i = 0; i < list.length; i += 1) {
-    const t = list[i];
-    if (!(t.venue === 'Personal' && /travel/i.test(t.event_name || ''))) continue;
-    const start = normaliseDate(t.date);
-    if (!start || start < todayISO) continue;
-    const events = [];
-    for (let j = i + 1; j < list.length; j += 1) {
-      const u = list[j];
-      if (u.venue === 'Personal' && /travel/i.test(u.event_name || '')) break;
-      if (u.venue === 'Personal') continue;
-      events.push(u);
-    }
-    if (!events.length) continue;
-    const end = events.map((e) => normaliseDate(e.date)).filter(Boolean).sort().pop();
-    const rooms = new Map();
-    for (const e of events) { const r = e.property || getVenueInfo(e.venue, e.property).longName || e.venue; rooms.set(r, (rooms.get(r) || 0) + 1); }
-    const room = [...rooms.entries()].sort((a, b) => b[1] - a[1])[0][0];
-    out.set(t.id, { travelDay: t, events, start, end, room });
-  }
-  return out;
+  return tripRunsAt(sorted, todayISO, {
+    dateOf: (t) => normaliseDate(t.date),
+    placeOf: (e) => e.property || getVenueInfo(e.venue, e.property).longName || e.venue,
+  });
 }
 
 export default function TripBudgetCard({ trip, token, isAdmin }) {
