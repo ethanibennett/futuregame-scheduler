@@ -6333,22 +6333,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       if (shift) { el.style.position = 'relative'; el.style.left = `calc(var(--gu) * ${(shift / gu).toFixed(3)})`; }
     });
   });
-  /* keepBadgesClear (owner, 2026-11-14): the top seat's FOLD badge sat under the Tags chip on a phone whose status
-     bar pushes the table down. A badge that would overlap the Note here / Tags row hangs under its plaque instead. */
-  useLayoutEffect(() => {
-    const table = tableRef.current;
-    if (!table) return;
-    const chips = (table.closest('.replayer-replay') || document).querySelector('.hx-chips');
-    const badges = table.querySelectorAll('.replayer-action-badge-outer');
-    badges.forEach(el => el.classList.remove('is-below'));
-    if (!chips || !badges.length) return;
-    const c = chips.getBoundingClientRect();
-    if (!c.width) return;
-    badges.forEach(el => {
-      const r = el.getBoundingClientRect();
-      if (r.left < c.right && r.right > c.left && r.top < c.bottom && r.bottom > c.top) el.classList.add('is-below');
-    });
-  });
   /* The one thing on the table that cannot be sized in cqw is the text, so
      the component has to know how wide the table came out. Measured, not
      derived from the viewport — that guess is what this whole pass was

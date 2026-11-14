@@ -5585,9 +5585,6 @@
     .replayer-table:is([data-hand-cards="7"], [data-hand-cards="6"], [data-hand-cards="5"][data-community="1"])[data-flat="1"] .replayer-seat-cards .card-row:not(.card-row-splay) > :is(.card-unknown, .card-placeholder) + * {
       margin-left: calc(var(--card-h) * 0.7143 * -0.85);
     }
-    /* A badge that would sit under the Note here / Tags row (the top seat's, on a phone with a tall status bar)
-       hangs under its plaque instead; set by keepBadgesClear in HandReplayerView. */
-    .replayer-action-badge-outer.is-below { bottom: auto; top: calc(100% + calc(var(--subrow) * 0.25)); }
 
     .replayer-seat {
       position: absolute;
@@ -6205,12 +6202,9 @@
     /* Action badges */
     .replayer-action-badge-outer {
       position: absolute;
-      /* Above the plaque rather than below it, which puts it over the fan —
-         an action bubble hovering on the cards, and it clears the chip delta
-         and the hand name that both hang off the bottom edge. */
-      /* Sitting on the plaque's top edge (owner, 2026-11-14), so it covers only the
-         lowest 2r of the cards above it and leaves their indexes clear. */
-      bottom: 100%;
+      /* Under the plaque, where the showdown readout hangs (owner, 2026-11-14: "move the action below the seat");
+         over the cards it hid them. The readout replaces it at showdown (the badge is not drawn with a hand name). */
+      top: 100%;
       left: 50%;
       transform: translateX(-50%);
       /* Its parent plaque already paints over the tucked-in cards; this keeps
