@@ -1788,54 +1788,14 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal, spanSca
    how many points of the arc it is sampled at. The sample count only has to
    make the path read as a curve at card scale; 16 chords of a <=30deg arc
    deviate from it by well under a pixel. */
-/* The D1/PAT run under a draw-game plaque. It hangs from the plaque's bottom
-   edge (overlapping it by 0.5r), and the plaques sit wherever the table's
-   geometry puts them, so the natural top is almost never on a grid line. This
-   drops the badge to the NEXT whole-r line below that: --badge-drop, in r, on
-   the seat, so the showdown hand name under the badge moves with it. The grid
-   origin is the grid overlay's: the top bar's top, else the shell's content top. */
-function DrawBadge({ history }) {
-  const ref = useRef(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    const seat = el && el.closest('.replayer-seat');
+/* How far below a draw game's top seat its wager sits, in r, to its centre: the action pill ends 7.35r down and the chips
+   start 1.25r under it (see the wager placement). */
+const DRAW_TOP_CHIP_R = 9.85;
 
-    if (!seat) return undefined;
-    const snap = () => {
-      // r from a 100r probe: WebKit keeps lengths in 1/64 px, so one r (or the
-      // badge's 2r) is truncated, and that error times ~90 rows is a visible miss.
-      const probe = document.createElement('div');
-      probe.style.cssText = 'position:absolute;height:calc(var(--subrow) * 100);width:0;visibility:hidden';
-      document.body.appendChild(probe);
-      const r = probe.getBoundingClientRect().height / 100;
-      probe.remove();
-      if (!(r > 0)) return;
-      const bar = document.querySelector('.top-bar');
-      let origin = 0;
-      if (bar) origin = bar.getBoundingClientRect().top;
-      else {
-        const shell = document.querySelector('.app-shell');
-        if (shell) origin = shell.getBoundingClientRect().top + (parseFloat(getComputedStyle(shell).paddingTop) || 0);
-      }
-      // Natural top, measured with the drop cleared. The pop-in scales about
-      // the centre, which the scale leaves in place, so centre - 1r is the top
-      // at any point of the animation.
-      seat.style.setProperty('--badge-drop', '0');
-      const b = el.getBoundingClientRect();
-      const t = ((b.top + b.bottom) / 2 - r - origin) / r;
-      const frac = t - Math.floor(t);
-      const drop = frac < 0.02 || frac > 0.98 ? 0 : 1 - frac;
-      seat.style.setProperty('--badge-drop', drop.toFixed(4));
-    };
-    snap();
-    // Again once the step's own transitions have settled: a plaque can still be
-    // moving a fraction of an r when the badge first mounts.
-    const settle = setTimeout(snap, 450);
-    window.addEventListener('resize', snap);
-    return () => { clearTimeout(settle); window.removeEventListener('resize', snap); seat.style.removeProperty('--badge-drop'); };
-  });
+/* The D1/PAT run under a draw-game plaque, the same distance below it at every seat (styles.css). */
+function DrawBadge({ history }) {
   return (
-    <div ref={ref} className="replayer-seat-draw-badge"
+    <div className="replayer-seat-draw-badge"
       title={history.map(h => h === 'PAT' ? 'stood pat' : 'drew ' + h.slice(1)).join(', then ')}>
       {history.join('/')}
     </div>
@@ -11791,13 +11751,21 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           /* Top and bottom seats nearer their plaque (owner, 2026-11-14: "a bit closer to the seat"): 0.42 left ~10r between a
              bottom seat's cards and its chips and ~5r under a top seat's action pill; these leave ~2.3r and 2r (402 wide,
              6 and 9-max). Portrait only. */
-          // A draw game's top seat hangs its action pill 2r lower (under the draw run), so its chips sit 2r further in.
-          const tY = isLandscape ? t : pos[1] > POT_AT[1] ? 0.26 : (isDrawGame ? 0.38 : 0.3);
+          const tY = isLandscape ? t : pos[1] > POT_AT[1] ? 0.26 : 0.3;
           const chipY = sideSeat ? pos[1] : pos[1] + (POT_AT[1] - pos[1]) * tY;
+          /* A draw game's top seat hangs its action pill under the draw run, 7.2r below the seat's anchor whatever the
+             table's height; a share of the way to the pot landed its chips on that pill on a shorter table (owner,
+             2026-11-14: "More collisions here"). Its chips go a fixed distance in r instead, 1.25r under the pill, and
+             2.9r nearer before the seat's first draw shows (the run's test, as the plaque's draw badge reads it). */
+          const drawTop = isDrawGame && !isLandscape && !sideSeat && pos[1] < POT_AT[1];
+          const drawRunShown = drawTop && !gameCfg.discardOnly && (() => {
+            const drawn = actionIdx >= (hand.streets[streetIdx]?.actions || []).length - 1;
+            return Object.keys(getPlayerDrawsByStreet(hand, pi)).map(Number).some(si => si < streetIdx || (si === streetIdx && drawn));
+          })();
           /* --chip-start-dx/dy used to be written here (a percentage times 3, as 'px') for a
              keyframe that is animation: none; nothing read them. The spring push-out measures
              the seat direction itself. */
-          const chipStyle = {left: chipX + '%', top: chipY + '%'};
+          const chipStyle = {left: chipX + '%', top: drawTop ? 'calc(' + pos[1] + '% + var(--subrow) * ' + (DRAW_TOP_CHIP_R - (drawRunShown ? 0 : 2.9)) + ')' : chipY + '%'};
           return (
             /* On the spring path the won pill is its own element: the river wager it replaces leaves
                the felt as itself (its ghost is a copy of it) rather than turning into the award. */

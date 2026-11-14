@@ -6125,16 +6125,16 @@
 
     /* Draw discard badge on seat */
     .replayer-seat-draw-badge {
-      /* Centred under the plaque's BOTTOM edge, overlapping it by 0.5r of its
-         2r height (translateY 75%) and hanging 1.5r below. It grows from one mark at the first
+      /* Centred under the plaque's BOTTOM edge, just below it. It grows from one mark at the first
          draw to a run like D2/D1/PAT by the third, and centring lets it grow
          evenly both ways. Clear of the dealer button, which only ever takes a
          corner. Above the plaque in the stacking order: .replayer-seat-info
          carries z-index 1, which is what hid this when it was a sibling rather
          than a child. The showdown hand name sits under it (below). */
-      /* --badge-drop (set by DrawBadge, in r) lowers it onto the next grid line. */
-      position:absolute; bottom: calc(var(--subrow) * var(--badge-drop, 0) * -1); left:50%; top:auto; right:auto;
-      transform: translate(-50%, 75%);
+      /* The same distance under every plaque (0.25r to the painted edge) (owner, 2026-11-14: a side seat's run sat higher than the others'; it was
+         snapped to the next grid line below, which moved it a different amount at each seat). */
+      position:absolute; top: calc(100% + var(--subrow) * 0.4); left:50%; bottom:auto; right:auto;
+      transform: translateX(-50%);
       z-index: 2;
       display:flex; align-items:center; justify-content:center;
       font-size: var(--fs-2xs); font-weight: var(--fw-bold); font-family: var(--font-condensed);
@@ -6149,20 +6149,20 @@
        and stays there — the same fault that moved the action badge and the
        winning hand name off centre. */
     @keyframes drawBadgePop {
-      0% { opacity:0; transform:translate(-50%, 75%) scale(0.7); }
-      100% { opacity:1; transform:translate(-50%, 75%) scale(1); }
+      0% { opacity:0; transform:translateX(-50%) scale(0.7); }
+      100% { opacity:1; transform:translateX(-50%) scale(1); }
     }
-    /* The showdown hand name goes UNDER the draw badge. The badge hangs 1.5r
-       below the plaque's bottom edge, so the name starts 2.5r below that edge:
-       1.5r to clear the badge, 1r of air. */
+    /* The showdown hand name goes UNDER the draw badge. The badge reaches 2.4r
+       below the plaque's bottom edge, so the name starts 3.4r below that edge:
+       1r of air. */
     /* The action pill goes under the draw run (owner, 2026-11-14: "put the betting decisions under the draw
-       decisions"): both hung centred under the plaque, one over the other. The run hangs 1.5r (+ its drop) below the
+       decisions"): both hung centred under the plaque, one over the other. The run reaches 2.4r below the
        plaque's edge; the pill starts 0.5r under that. */
     .replayer-seat-info:has(.replayer-seat-draw-badge) .replayer-action-badge-outer {
-      top: calc(100% + var(--subrow) * (2 + var(--badge-drop, 0)));
+      top: calc(100% + var(--subrow) * 2.9);
     }
     .replayer-seat:has(.replayer-seat-draw-badge) .replayer-seat-hand-name {
-      margin-top: calc(var(--subrow) * (2.5 + var(--badge-drop, 0)));
+      margin-top: calc(var(--subrow) * 3.4);
     }
 
     /* Felt color picker & card theme */
