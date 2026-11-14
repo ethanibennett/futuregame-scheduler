@@ -888,9 +888,15 @@ function formatShareFraction(share) {
    the positioning area, so that is 40% of zero. Every chip has been drawn at
    phase 0 for as long as the edge spots have existed. The CSS multiplies this
    by --disc-w to get a length, which shifts the tiling origin and wraps. */
+/* Each chip's turn looks random but is the same on every render (an export seeks frames, and a re-render must not
+   spin the chips). The old hash moved neighbouring chips in a stack by 1% of a turn (index * 40503 % 100 = 3), so a
+   stack's chips all sat at one angle; this mixes seed and index fully (owner, 2026-11-13: "randomize the rotation"). */
 function pipShift(seed, index) {
-  const h = Math.abs(Math.imul(seed | 0, 2654435761) + index * 40503) % 100;
-  return (h / 300).toFixed(4);
+  let h = (Math.imul(seed | 0, 2654435761) ^ Math.imul((index | 0) + 1, 0x85ebca6b)) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x7feb352d) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 0x846ca68b) >>> 0;
+  h = (h ^ (h >>> 16)) >>> 0;
+  return ((h % 1000) / 3000).toFixed(4);
 }
 
 // ── Chip visuals ──
@@ -9383,13 +9389,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             const full = shownPot;
             let landed = full - anteJobs.length * ante;
             if (potTn && anteJobs.length) { potTn.data = landed > 0 ? fmtChips(landed) : ''; motion.wroteDigits = true; }
-            anteJobs.forEach(j => {
+            anteJobs.forEach((j, ji) => {
               const chip = document.createElement('div');
               chip.className = 'replayer-flying-chip is-spring is-disc';
               chip.setAttribute('aria-hidden', 'true');
               const face = document.createElement('div');
               face.className = 'replayer-pot-chip-disc';
-              applyChipInserts(face, 0);
+              applyChipInserts(face, pipShift(full + 31, ji));
               chip.appendChild(face);
               Object.assign(chip.style, { left: (j.fx - L0.left) + 'px', top: (j.fy - L0.top) + 'px', transform: 'translate(-50%, -50%)' });
               layer0.appendChild(chip);
@@ -9686,7 +9692,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 const face = document.createElement('div');
                 face.className = 'replayer-pot-chip-disc';
                 if (w.topColor) face.style.setProperty('--chip', w.topColor);
-                applyChipInserts(face, 0);
+                applyChipInserts(face, pipShift(before + act.player * 977, actionIdx));
                 chip.appendChild(face);
                 Object.assign(chip.style, { left: (fx - L.left) + 'px', top: (fy - L.top) + 'px', transform: 'translate(-50%, -50%)' });
                 layer.appendChild(chip);

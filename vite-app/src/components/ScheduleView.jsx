@@ -361,6 +361,15 @@ export default function ScheduleView({
     // In a desktop pane this view mounts at page load, not on a tap, so the rows
     // above today are still mounting in batches; land once they all exist.
     if (onSelectEvent && visibleCount < sorted.length) return;
+    // On the phone too, not before every row ABOVE the day landed on exists: a row not yet mounted takes no
+    // height, so landing on the first render (3 rows) left the rows above today to mount afterwards and push it
+    // down out of view. With 141 saved events, a login opened on 4 Nov instead of 13 Nov (owner, 2026-11-13).
+    {
+      const nextIdx = groups.findIndex(g => g.date >= todayISO);
+      const anchor = groups[nextIdx >= 0 ? nextIdx : groups.length - 1];
+      const firstIdx = anchor && anchor.events.length ? anchor.events[0].globalIdx : 0;
+      if (visibleCount <= firstIdx) return;
+    }
     hasScrolled.current = true;
     // Re-fire over a few frames: rows use contentVisibility:auto with a
     // 72px intrinsic placeholder, so the first measured offset is short
@@ -382,7 +391,7 @@ export default function ScheduleView({
       if (remaining > 0) requestAnimationFrame(() => settle(remaining - 1));
     };
     settle(4);
-  }, [sorted, visibleCount, onSelectEvent]);
+  }, [sorted, groups, todayISO, visibleCount, onSelectEvent]);
 
   // Arriving from the dashboard's Up Next card. Null first, then the id, so
   // the row's focus effect re-fires when the same event is opened twice in a
@@ -561,7 +570,9 @@ export default function ScheduleView({
                   // A row not yet rendered stands in at a whole 13r (a 12r card and its 1r gap, as
                   // the Schedule tab's list does): at 11.75r every unrendered row above the one
                   // scrolled to put everything under it a fraction of an r off the grid.
-                  <div key={t.id} style={trips.has(t.id) ? undefined : {contentVisibility:'auto', containIntrinsicSize:'auto calc(var(--subrow) * 13)'}}>
+                  // A Travel Day or Day Off is a 4r band and its 1r gap, so it stands in at 5r: at 13r, every band
+                  // off screen above the view moved the list 8r when it came into view.
+                  <div key={t.id} style={trips.has(t.id) ? undefined : {contentVisibility:'auto', containIntrinsicSize: t.venue === 'Personal' ? 'auto calc(var(--subrow) * 5)' : 'auto calc(var(--subrow) * 13)'}}>
                     {trips.has(t.id) && <TripBudgetCard trip={trips.get(t.id)} token={token} isAdmin={isAdmin} />}
                     {needsFull ? (
                       <CalendarEventRow
