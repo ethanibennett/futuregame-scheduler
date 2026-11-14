@@ -793,7 +793,6 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
             <polyline points="6 9 12 15 18 9"/>
           </svg>
         </div>
-        {quickAdd && <QuickAdd saved={!!isInSchedule} onToggle={onToggle} id={tournament.id} color={stripColor} />}
 
         {/* Expanded detail panel -- animated */}
         <div className={`cal-event-detail-wrap ${open ? 'open' : ''}`} onClick={e => {
@@ -1298,6 +1297,8 @@ The feed's own values return at the next hourly sync — your edits stay visible
             </div>
           </div>
         </div>
+        {/* Last in the card, so the remove confirm opens inside its border at the foot (the tab itself is absolute). */}
+        {quickAdd && <QuickAdd saved={!!isInSchedule} onToggle={onToggle} id={tournament.id} color={stripColor} />}
       </div>
     </div>
   );

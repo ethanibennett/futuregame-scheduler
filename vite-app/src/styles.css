@@ -17075,13 +17075,13 @@
     /* Saved: the venue's colour, as its strip (owner, 2026-11-14), with the strip's white check. */
     .cal-quick-add.is-saved { color: #fff; }
     .cal-quick-add.is-saved::before { background: var(--qa-color, var(--brand)); }
-    /* The confirm a saved tab opens: a 3r bar over the card's foot (at 4r it cut the event name's descenders), the question,
-       then Keep 6g and Remove 7g, 2r tall with a 3r tap area. */
+    /* The confirm a saved tab opens: a 4r row the card grows downward to hold, inside its border (owner, 2026-11-14;
+       it was a bar over the card's foot), under a hairline: the question, then Keep 6g and Remove 7g, 2r tall with a
+       3r tap area, clear of the corner tab (4g) that now sits at the new foot. */
     .cal-quick-confirm {
-      position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--subrow) * 3); z-index: 3;
-      display: flex; align-items: center; gap: calc(var(--gu) * 0.5); padding: 0 calc(var(--gu) * 0.5) 0 var(--gu);
-      box-sizing: border-box; background: var(--surface2); border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-      box-shadow: 0 calc(var(--subrow) * -0.25) calc(var(--subrow) * 0.75) rgba(0,0,0,0.25);
+      position: relative; height: calc(var(--subrow) * 4); flex: none;
+      display: flex; align-items: center; gap: calc(var(--gu) * 0.5); padding: 0 calc(var(--gu) * 4) 0 var(--gu);
+      box-sizing: border-box; border-top: var(--bw-hair) solid var(--border); margin-top: calc(var(--bw-hair) * -1);
       font-family: var(--font-condensed);
     }
     .cal-quick-confirm-q { flex: 1; min-width: 0; font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0.3em 0; margin: -0.3em 0; }
