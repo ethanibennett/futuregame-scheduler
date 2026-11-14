@@ -4,6 +4,7 @@ import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
 import DateBreak from './DateBreak.jsx';
 import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
+import SwipeToRemove from './SwipeToRemove.jsx';
 // The export sheet loads when it is opened (2026-10-15), not with the Schedule.
 const ScheduleExportModal = lazy(() => import('./ScheduleExportModal.jsx'));
 import { FirstRun } from './EmptyState.jsx';
@@ -574,6 +575,7 @@ export default function ScheduleView({
                   // off screen above the view moved the list 8r when it came into view.
                   <div key={t.id} style={trips.has(t.id) ? undefined : {contentVisibility:'auto', containIntrinsicSize: t.venue === 'Personal' ? 'auto calc(var(--subrow) * 5)' : 'auto calc(var(--subrow) * 13)'}}>
                     {trips.has(t.id) && <TripBudgetCard trip={trips.get(t.id)} token={token} isAdmin={isAdmin} />}
+                    <SwipeToRemove onRemove={() => onToggle(t.id)} label={t.event_name || "this event"} disabled={!onToggle}>
                     {needsFull ? (
                       <CalendarEventRow
                         tournament={t}
@@ -617,6 +619,7 @@ export default function ScheduleView({
                         selected={onSelectEvent ? selectedEventId === t.id : undefined}
                       />
                     )}
+                    </SwipeToRemove>
                   </div>
                   );
                 })}

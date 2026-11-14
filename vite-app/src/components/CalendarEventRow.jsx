@@ -151,13 +151,36 @@ function OverlapLine({ overlap, id, onSetCondition }) {
 
 /* Add from the closed card (UX pick 19): a triangle tab in the card's bottom-right corner (owner, 2026-11-13),
    "+" to add, a check on the brand once saved. It does not open the card. */
-function QuickAdd({ saved, onToggle, id }) {
+/* Saved, it takes the venue's colour, as the strip does (owner, 2026-11-14), and taking it off asks first: a tap on a
+   saved tab opens "Remove from My Schedule?" over the card's foot, Keep or Remove; a tap anywhere else, or 6 s, keeps it. */
+function QuickAdd({ saved, onToggle, id, color }) {
+  const [asking, setAsking] = useState(false);
+  const boxRef = useRef(null);
+  useEffect(() => {
+    if (!asking) return undefined;
+    const away = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setAsking(false); };
+    const timer = setTimeout(() => setAsking(false), 6000);
+    document.addEventListener('pointerdown', away, true);
+    return () => { clearTimeout(timer); document.removeEventListener('pointerdown', away, true); };
+  }, [asking]);
+  useEffect(() => { if (!saved) setAsking(false); }, [saved]);
   return (
-    <button type="button" className={'cal-quick-add' + (saved ? ' is-saved' : '')} aria-pressed={saved}
-      aria-label={saved ? 'In My Schedule. Remove it' : 'Add to My Schedule'}
-      onClick={(e) => { e.stopPropagation(); onToggle(id); }}>
-      {saved ? <Icon.check /> : <Icon.plus />}
-    </button>
+    <>
+      <button type="button" className={'cal-quick-add' + (saved ? ' is-saved' : '')} aria-pressed={saved}
+        aria-label={saved ? 'In My Schedule. Remove it' : 'Add to My Schedule'}
+        style={saved && color ? { '--qa-color': color } : undefined}
+        onClick={(e) => { e.stopPropagation(); if (saved) setAsking(a => !a); else onToggle(id); }}>
+        {saved ? <Icon.check /> : <Icon.plus />}
+      </button>
+      {asking && (
+        <div ref={boxRef} className="cal-quick-confirm" role="alertdialog" aria-label="Remove from My Schedule?"
+          onClick={(e) => e.stopPropagation()}>
+          <span className="cal-quick-confirm-q">Remove from My Schedule?</span>
+          <button type="button" className="cal-quick-confirm-keep ctl" onClick={() => setAsking(false)}><span>Keep</span></button>
+          <button type="button" className="cal-quick-confirm-remove ctl" onClick={() => { setAsking(false); onToggle(id); }}><span>Remove</span></button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -770,7 +793,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
             <polyline points="6 9 12 15 18 9"/>
           </svg>
         </div>
-        {quickAdd && <QuickAdd saved={!!isInSchedule} onToggle={onToggle} id={tournament.id} />}
+        {quickAdd && <QuickAdd saved={!!isInSchedule} onToggle={onToggle} id={tournament.id} color={stripColor} />}
 
         {/* Expanded detail panel -- animated */}
         <div className={`cal-event-detail-wrap ${open ? 'open' : ''}`} onClick={e => {
@@ -1372,7 +1395,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
             <polyline points="6 9 12 15 18 9"/>
           </svg>
         </div>
-        {quickAdd && <QuickAdd saved={!!isInSchedule} onToggle={onToggle} id={tournament.id} />}
+        {quickAdd && <QuickAdd saved={!!isInSchedule} onToggle={onToggle} id={tournament.id} color={stripColor} />}
       </div>
     </div>
   );

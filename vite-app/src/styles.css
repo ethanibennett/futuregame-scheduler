@@ -17057,8 +17057,41 @@
       background: var(--surface2); transition: background var(--dur-fast) var(--ease-out);
     }
     .cal-quick-add svg { position: relative; width: calc(var(--subrow) * 1.4); height: calc(var(--subrow) * 1.4); }
-    .cal-quick-add.is-saved { color: var(--on-brand); }
-    .cal-quick-add.is-saved::before { background: var(--brand); }
+    /* My Schedule's swipe left to remove (SwipeToRemove.jsx): the card slides over a 6g Remove at its right edge,
+       the card's own height (its 1r gap below excluded). */
+    .swipe-remove { position: relative; touch-action: pan-y; }
+    .swipe-remove > .swipe-remove-slide { position: relative; z-index: 1; transition: transform var(--dur-fast) var(--ease-out, ease-out); }
+    .swipe-remove.is-dragging > .swipe-remove-slide { transition: none; }
+    .swipe-remove-btn {
+      position: absolute; top: 0; right: 0; bottom: var(--subrow); width: calc(var(--gu) * 7); z-index: 0;
+      display: flex; align-items: center; justify-content: flex-end; padding: 0 calc(var(--gu) * 0.5) 0 0;
+      border: 0; border-radius: var(--radius-sm); cursor: pointer;
+      background: var(--danger); color: var(--on-brand, #fff);
+      font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
+      text-transform: uppercase; letter-spacing: var(--track-caps);
+    }
+    .swipe-remove-btn > span { width: calc(var(--gu) * 5.5); text-align: center; }
+    .swipe-remove:not(.is-swiped):not(.is-dragging) .swipe-remove-btn { visibility: hidden; }
+    /* Saved: the venue's colour, as its strip (owner, 2026-11-14), with the strip's white check. */
+    .cal-quick-add.is-saved { color: #fff; }
+    .cal-quick-add.is-saved::before { background: var(--qa-color, var(--brand)); }
+    /* The confirm a saved tab opens: a 3r bar over the card's foot (at 4r it cut the event name's descenders), the question,
+       then Keep 6g and Remove 7g, 2r tall with a 3r tap area. */
+    .cal-quick-confirm {
+      position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--subrow) * 3); z-index: 3;
+      display: flex; align-items: center; gap: calc(var(--gu) * 0.5); padding: 0 calc(var(--gu) * 0.5) 0 var(--gu);
+      box-sizing: border-box; background: var(--surface2); border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+      box-shadow: 0 calc(var(--subrow) * -0.25) calc(var(--subrow) * 0.75) rgba(0,0,0,0.25);
+      font-family: var(--font-condensed);
+    }
+    .cal-quick-confirm-q { flex: 1; min-width: 0; font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0.3em 0; margin: -0.3em 0; }
+    .cal-quick-confirm > button {
+      flex: none; position: relative; height: calc(var(--subrow) * 2); border-radius: var(--radius-xs); cursor: pointer;
+      font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: var(--track-caps);
+    }
+    .cal-quick-confirm-keep { width: calc(var(--gu) * 6); background: none; color: var(--text); border: var(--bw-hair) solid var(--border); }
+    .cal-quick-confirm-remove { width: calc(var(--gu) * 7); background: var(--danger); color: #fff; border: 0; }
+    .cal-quick-confirm > button::after { content: ''; position: absolute; left: 0; right: 0; top: calc(var(--subrow) * -0.5); bottom: calc(var(--subrow) * -0.5); }
     /* A saved card's row (UX pick 22): Condition 7g, Priority 7g, Max Entries 8g, Edit 5g, Remove the rest
        (6g of the phone's 33g). Fewer buttons keep the generic columns above. */
     .cal-action-row.is-saved-row:has(> :nth-child(5):last-child) {
