@@ -15911,8 +15911,34 @@
     .cal-event-row.is-detail .cal-event-chevron { display: none; }
     .cal-event-row.is-detail .cal-event-bar,
     .cal-event-row.is-detail .cal-venue-strip { cursor: default; }
-    /* A Personal row has one line, and its strip is as tall as the row: 8r holds "PERSONAL". */
-    .cal-event-row.is-personal:not(.open) { min-height: calc(var(--subrow) * 8); }
+    /* A Personal day, closed, is a band like a payment on the backer pages (owner, 2026-11-13; .bp-payband):
+       4r on --surface2, no strip, no outline, no chevron; departure 7g | the day | arrival 9g, the payment's
+       date | who | amount. The cells seat as .an-td does (Univers Condensed sm, baseline on line 3 of 4).
+       It opens to the card, strip and all. */
+    .cal-event-row.is-personal:not(.open) {
+      grid-template-columns: minmax(0, 1fr); height: calc(var(--subrow) * 4);
+      background: var(--surface2); box-shadow: none;
+    }
+    .cal-event-row.is-personal:not(.open) > .cal-venue-strip,
+    .cal-event-row.is-personal:not(.open) .cal-event-chevron { display: none; }
+    .cal-event-row.is-personal:not(.open) .cal-event-row-content { grid-column: 1 / -1; box-shadow: none; border-radius: inherit; }
+    .cal-event-row.is-personal:not(.open) .cal-event-bar { height: calc(var(--subrow) * 4); padding: 0 var(--gu); }
+    .cal-personal-band {
+      display: grid; grid-template-columns: calc(var(--gu) * 7) minmax(0, 1fr) calc(var(--gu) * 9); align-items: start;
+    }
+    .cal-band-cell {
+      display: block; box-sizing: border-box; min-width: 0;
+      height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 0.6978);
+      line-height: calc(var(--subrow) * 3.3022);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text);
+      font-variant-numeric: var(--num-tabular);
+    }
+    .cal-band-when { color: var(--text-muted); font-size: var(--fs-xs); }
+    .cal-band-note { color: var(--text-muted); font-size: var(--fs-xs); }
+    .cal-band-end { text-align: right; }
+    /* No departure and arrival (a Day Off, a typed note): the day takes the whole band. */
+    .cal-band-what:only-child { grid-column: 1 / -1; }
     @media (hover: hover) and (pointer: fine) {
       .cal-event-row.is-detail:hover { box-shadow: none; }
       .cal-event-row.is-detail:hover .cal-event-bar { background: none; }

@@ -722,7 +722,9 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
       <div className="cal-event-row-content" style={isInSchedule ? {'--card-outline': conditions && conditions.length > 0 ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
         {/* Collapsed bar -- always visible */}
         <div className="cal-event-bar" onClick={toggle} role="button" tabIndex={0} aria-expanded={open} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}>
-          {tournament.venue === 'Personal' ? (
+          {tournament.venue === 'Personal' && !open ? (
+            <PersonalBand t={tournament} />
+          ) : tournament.venue === 'Personal' ? (
             <div className="cal-bar-row2" style={{display:'flex', alignItems:'center', gap:'calc(var(--subrow) * 1)'}}>
               <span className="cal-event-name" style={{fontSize:'calc(var(--gu) * 1.296)'}}>
                 {tournament.event_name === 'Travel Day' ? '\u2708\uFE0F ' : tournament.event_name === 'Day Off' ? '\uD83C\uDFD6\uFE0F ' : ''}{tournament.event_name}
@@ -1336,16 +1338,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
       <div className="cal-event-row-content" style={isInSchedule ? {'--card-outline': hasConditions ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
         <div className="cal-event-bar" onClick={expand} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); expand(e); } }}>
           {tournament.venue === 'Personal' ? (
-            <div className="cal-bar-row2" style={{display:'flex', alignItems:'center', gap:'calc(var(--subrow) * 1)'}}>
-              <span className="cal-event-name" style={{fontSize:'calc(var(--gu) * 1.296)'}}>
-                {tournament.event_name === 'Travel Day' ? '✈️ ' : tournament.event_name === 'Day Off' ? '🏖️ ' : ''}{tournament.event_name}
-              </span>
-              {tournament.notes && (
-                <span className="cal-personal-notes">
-                  {'—'} {tournament.notes}
-                </span>
-              )}
-            </div>
+            <PersonalBand t={tournament} />
           ) : (
             <>
               <div className="cal-bar-row1">
@@ -1410,5 +1403,22 @@ const CalendarEventRow = React.memo(CalendarEventRow_, (prev, next) => {
   // allTournaments: only used in expanded state, skip.
   return true;
 });
+/* A Personal day, closed, is a band across the list like a payment on the backer pages (owner, 2026-11-13;
+   BackerPage PaymentCard, .bp-payband): 4r on --surface2, no strip, no outline. A Travel Day saved from the
+   picker ("Depart 8:00 AM → Arrive 2:00 PM") reads departure | Travel Day | → arrival, the payment's
+   date | who | amount; any other note follows the name. Tapping it still opens the card, to edit or remove. */
+const TRAVEL_NOTES = /^Depart\s+(.+?)\s*→\s*Arrive\s+(.+)$/;
+function PersonalBand({ t }) {
+  const m = t.event_name === 'Travel Day' && TRAVEL_NOTES.exec(t.notes || '');
+  const note = m ? '' : (t.notes || '').trim();
+  return (
+    <div className="cal-personal-band">
+      {m && <span className="cal-band-cell cal-band-when">{m[1]}</span>}
+      <span className="cal-band-cell cal-band-what">{t.event_name}{note && <span className="cal-band-note"> · {note}</span>}</span>
+      {m && <span className="cal-band-cell cal-band-end">{'→ ' + m[2]}</span>}
+    </div>
+  );
+}
+
 export { CalendarEventRowLite };
 export default CalendarEventRow;
