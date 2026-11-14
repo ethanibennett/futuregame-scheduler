@@ -7267,6 +7267,24 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     return awards;
   }, [showResult, flaggedWinners, hand, allPotLayers, settled, folded, category, boardCards,
       heroCards, opponentCards, replayHeroIdx, gameCfg, streetIdx]);
+  /* Which half each seat was PAID, read from what every pot paid it (owner, 2026-11-14: "this evaluation of the
+     winning hands is very weird"). hiLoHalves reads the whole field as one pot, so with an all-in the side pot's
+     winners went unnamed: a flush taking the side pot's high read "Flush, 10-high" with no "Hi:", beside "Hi: Ks
+     full of Js" for the all-in player who took the main pot's. `side` is a seat paid only from side pots. */
+  const wonHalves = useMemo(() => {
+    const parts = potAwards && potAwards.parts;
+    if (!parts || !parts.length) return hiLoHalves;
+    const hi = new Set(), lo = new Set(), mainOf = new Set(), paid = new Set();
+    parts.forEach(p => {
+      if (!(p.amount > 0)) return;
+      (p.half === 'lo' ? lo : hi).add(p.seat);
+      paid.add(p.seat);
+      if (p.layer === 0) mainOf.add(p.seat);
+    });
+    const layers = new Set(parts.map(p => p.layer));
+    const side = new Set(layers.size > 1 ? [...paid].filter(s => !mainOf.has(s)) : []);
+    return { hi, lo, side };
+  }, [potAwards, hiLoHalves]);
 
   /* The plaque shows what a player HAS, and calcPotsAndStacks only ever
      subtracts: it takes every wager out and never puts a pot back, so at
@@ -7324,15 +7342,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     }
     if (!potAwards) return seatsP.size ? { seats: seatsP, board: boardP } : null;
     const winners = live.filter(pi => (potAwards[pi] || 0) > 0 && cardsOf(pi).length >= 2);
-    if (cfg.type === 'hilo' && hiLoHalves) {
+    if (cfg.type === 'hilo' && wonHalves) {
       /* 21: every card that plays slides up (owner, 2026-11-13: "the relevant cards in a player's hand should always slide up,
          high or low" and "both parts of the board sliding up"): the high's first ('up'), then the low's own ('up-lo', which
          rests where 'up' does but moves in the second beat). A card in both hands goes up with the high. */
       const hiB = new Set(), loB = new Set();
       winners.forEach(pi => {
         const hole = cardsOf(pi);
-        const hi = hiLoHalves.hi.has(pi) ? bestFive(cfg, hole, board, 'high') : null;
-        const lo = hiLoHalves.lo.has(pi) ? bestFive(cfg, hole, board, halves[1]) : null;
+        const hi = wonHalves.hi.has(pi) ? bestFive(cfg, hole, board, 'high') : null;
+        const lo = wonHalves.lo.has(pi) ? bestFive(cfg, hole, board, halves[1]) : null;
         const hiH = new Set(hi ? hi.hole : []), loH = new Set(lo ? lo.hole : []);
         hole.forEach((c, i) => {
           if (hiH.has(i)) put(pi, c, 'up');
@@ -7387,7 +7405,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       }
     }
     return seatsP.size || boardP.size ? { seats: seatsP, board: boardP } : null;
-  }, [springSet, hand, feltBoard, boardCards, replayHeroIdx, heroCards, opponentCards, folded, showResult, potAwards, hiLoHalves, exposeAllIn, category]);
+  }, [springSet, hand, feltBoard, boardCards, replayHeroIdx, heroCards, opponentCards, folded, showResult, potAwards, wonHalves, exposeAllIn, category]);
   /* Stud at showdown (owner, 2026-11-14: "ignore which were the up and down cards and just push up the five cards
      that play. The rest should be in normal downcard position"): per shown hand, the cards of its best five (in hi-lo,
      its high five, plus its low five where it takes the low), by card. CardRow lifts those as up cards and sits every
@@ -7408,15 +7426,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const add = (r) => { if (r) r.hole.forEach(i => ids.add(hole[i].rank + hole[i].suit)); };
       if (cfg.type === 'hilo') {
         // The half the seat took: the low alone for a low-only winner, both for a scoop, else the high.
-        const lo = !!(hiLoHalves && hiLoHalves.lo && hiLoHalves.lo.has(pi));
-        const hi = !!(hiLoHalves && hiLoHalves.hi && hiLoHalves.hi.has(pi));
+        const lo = !!(wonHalves && wonHalves.lo && wonHalves.lo.has(pi));
+        const hi = !!(wonHalves && wonHalves.hi && wonHalves.hi.has(pi));
         if (hi || !lo) add(bestFive(cfg, hole, [], 'high'));
         if (lo) add(bestFive(cfg, hole, [], halves[1]));
       } else if (halves[0]) add(bestFive(cfg, hole, [], halves[0]));
       if (ids.size) out.set(pi, ids);
     });
     return out.size ? out : null;
-  }, [gameCfg, showResult, hand, folded, replayHeroIdx, heroCards, opponentCards, hiLoHalves]);
+  }, [gameCfg, showResult, hand, folded, replayHeroIdx, heroCards, opponentCards, wonHalves]);
 
   /* ── Spring moments: what this render is ──
      A moment plays only on a single step FORWARD from the step the last commit showed (Forward,
@@ -8153,7 +8171,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     if (parsed.length < finalCards) return null;
     const board = feltBoard ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
     if (cfg.type === 'halves') {
-      return halvesHandName(cfg, scoreHalves(cfg, parsed, board), !hiLoHalves || hiLoHalves.hi.has(playerIdx), !hiLoHalves || hiLoHalves.lo.has(playerIdx), useShort);
+      return halvesHandName(cfg, scoreHalves(cfg, parsed, board), !wonHalves || wonHalves.hi.has(playerIdx), !wonHalves || wonHalves.lo.has(playerIdx), useShort);
     }
     /* Several boards (double board; run it twice or three times): the hand on each board, one line
        each ("B1: Trip 9s" / "B2: Two Pair"; R1, R2 for runs). Board 1 alone named a hand that lost
@@ -8182,11 +8200,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const loEv = bestLow8For(cfg, parsed, board);
       /* Only a half this player won gets its label: "Hi:" is a claim, and it
          belongs to whoever won the high. */
-      const wonHi = !hiLoHalves || hiLoHalves.hi.has(playerIdx);
-      const wonLo = !hiLoHalves || hiLoHalves.lo.has(playerIdx);
+      const wonHi = !wonHalves || wonHalves.hi.has(playerIdx);
+      const wonLo = !wonHalves || wonHalves.lo.has(playerIdx);
       const parts = [];
-      if (hiEv && wonHi) parts.push('Hi: ' + (useShort ? (hiEv.shortName || hiEv.name) : hiEv.name));
-      if (loEv && loEv.qualified !== false && loEv.name && wonLo) parts.push('Lo: ' + loEv.name);
+      // Paid only from a side pot: "Side hi:", so it does not read as beating the main pot's "Hi:".
+      const sideOnly = !!(wonHalves && wonHalves.side && wonHalves.side.has(playerIdx));
+      if (hiEv && wonHi) parts.push((sideOnly ? 'Side hi: ' : 'Hi: ') + (useShort ? (hiEv.shortName || hiEv.name) : hiEv.name));
+      if (loEv && loEv.qualified !== false && loEv.name && wonLo) parts.push((sideOnly ? 'Side lo: ' : 'Lo: ') + loEv.name);
       if (parts.length) return parts.join('\n');
       /* Won neither half. The hand is still worth showing at a showdown —
          it just gets named, not captioned as a winning half. */
@@ -10595,7 +10615,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               return kind === 'high' ? r.ev.score : -r.ev.score;
             };
             const won = (pi) => (potAwards && potAwards[pi] > 0 ? 1 : 0);
-            const loHalf = (pi) => !!(hiLoHalves && hiLoHalves.lo.has(pi) && !hiLoHalves.hi.has(pi));
+            const loHalf = (pi) => !!(wonHalves && wonHalves.lo.has(pi) && !wonHalves.hi.has(pi));
             const list = names.map(el => ({ el, pi: Number(el.dataset.nameSeat) }))
               .sort((a, b) => won(a.pi) - won(b.pi) || loHalf(a.pi) - loHalf(b.pi) || strength(a.pi) - strength(b.pi));
             const step = list.length > 1 ? 800 / (list.length - 1) : 0;
@@ -10991,6 +11011,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           const isSplitResult = splitters.length >= 2;
           const _isHiLo = isSplitResult && isHiLo && splitters.some(w => w.hi || w.lo);
           const halfLabels = (gameEval && gameEval.labels) || ['Hi', 'Lo'];
+          // More than one pot paid out (an all-in): its pills name the pot, not a share of the whole.
+          const sidePots = !!(potAwards && potAwards.parts && new Set(potAwards.parts.map(p => p.layer)).size > 1);
           /* The split display used to REPLACE the pot with a different object:
              its own dark lozenge carrying gold discs, no total, no side pots,
              a shape that appears nowhere else on the table — and it did that
@@ -11097,8 +11119,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               /* #94 recorded which half each winner took as flags, so the
                  tag is read rather than parsed back out of the label text. */
               let tag = '';
-              if (w.hi) tag = halfLabels[0];
-              if (w.lo) tag = tag ? halfLabels.join('+') : halfLabels[1];
+              /* The halves this seat was PAID across every pot (wonHalves), not the main pot's reading: an all-in's
+                 side pot went to a seat flagged with no half, and its pill read "9%" (owner, 2026-11-14). */
+              const hiW = wonHalves && wonHalves.hi ? wonHalves.hi.has(w.playerIdx) : w.hi;
+              const loW = wonHalves && wonHalves.lo ? wonHalves.lo.has(w.playerIdx) : w.lo;
+              const halved = halfLabels.length > 1 && (gameEval && (gameEval.type === 'hilo' || gameEval.type === 'halves'));
+              if (halved && hiW) tag = halfLabels[0];
+              if (halved && loW) tag = tag ? halfLabels.join('+') : halfLabels[1];
+              if (wonHalves && wonHalves.side && wonHalves.side.has(w.playerIdx)) tag = ('Side ' + tag).trim();
               /* potAwards is the authority on what anyone is paid: it settles
                  each pot layer among its own eligible seats, halves a hi-lo
                  layer before dividing either half, and places the odd chips.
@@ -11131,7 +11159,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                        and a three-quarter award look nothing alike here,
                        where four discs reading the same number looked
                        identical whatever anyone was actually paid. */
-                    const cap = [g.n > 1 ? g.n + '×' : '', g.tag, formatShareFraction(g.share)]
+                    /* With side pots a share of the whole is no fraction anyone says ("41%", "9%"): the half and the
+                       pot name it instead. */
+                    const cap = [g.n > 1 ? g.n + '×' : '', g.tag, sidePots ? '' : formatShareFraction(g.share)]
                       .filter(Boolean).join(' ');
                     return (
                       <div key={i} className="replayer-split-share" title={g.names.join(', ')}>
@@ -11690,7 +11720,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               {handName && <div data-name-seat={pi} className={'replayer-seat-hand-name' + (boardCount(hand) > 1 && category === 'community' ? ' is-boards' : '')}>
                 {/* One span per line, so a hi-lo readout's "Hi:" and "Lo:" can each light as its half lands. */}
                 {String(handName).split('\n').map((ln, k) => (
-                  <React.Fragment key={k}>{k ? '\n' : ''}<span className="hn-line" data-half={/^Hi:/.test(ln) ? 'hi' : /^Lo:/.test(ln) ? 'lo' : undefined}>{ln}</span></React.Fragment>
+                  <React.Fragment key={k}>{k ? '\n' : ''}<span className="hn-line" data-half={/^(Side )?[Hh]i:/.test(ln) ? 'hi' : /^(Side )?[Ll]o:/.test(ln) ? 'lo' : undefined}>{ln}</span></React.Fragment>
                 ))}
               </div>}
               {!handName && runoutNames && runoutNames.has(pi) && (
