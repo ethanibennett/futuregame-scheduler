@@ -5563,6 +5563,24 @@
        matched at 36.5px while landscape had the hero at 28.2 against 23.7,
        because the landscape rule sets a smaller size for everyone else. With no
        hero rule at all, the hero takes whatever the table is using. */
+    /* Stud with the cards lying flat (owner, 2026-11-13: "Why are the cards so small?"). Seven evenly overlapped
+       cards had to fit about one plaque, so each was 0.46 of the plaque tall, and a narrower Overlap setting ran a
+       side seat's row off the screen. An opponent's face-down cards say nothing but that they are there, so they
+       tuck under the next card (0.15 of a card shows) and the up cards keep 0.4 of a card, enough for the index:
+       the cards go back to the table's own size (0.56 of the plaque), the same deck as every other game, in a row
+       about as wide as before (1.16 plaques; 1.36 once everything is face up, as the hero's always is).
+       The Overlap setting can tighten a stud row but not open it past 0.4 of a card showing. */
+    .replayer-table[data-hand-cards="7"][data-flat="1"] .replayer-seat,
+    .replayer-table[data-hand-cards="7"][data-flat="1"] .replayer-seat.is-hero {
+      --card-h: calc(var(--plaque-w) * 0.56);
+      --card-w: calc(var(--card-h) * 0.7143);
+    }
+    .replayer-table[data-hand-cards="7"][data-flat="1"] .replayer-seat-cards .card-row:not(.card-row-splay) > *:not(:first-child) {
+      margin-left: calc(var(--card-h) * 0.7143 * -1 * max(var(--card-overlap, 0.52), 0.6));
+    }
+    .replayer-table[data-hand-cards="7"][data-flat="1"] .replayer-seat-cards .card-row:not(.card-row-splay) > .card-unknown + * {
+      margin-left: calc(var(--card-h) * 0.7143 * -0.85);
+    }
 
     .replayer-seat {
       position: absolute;

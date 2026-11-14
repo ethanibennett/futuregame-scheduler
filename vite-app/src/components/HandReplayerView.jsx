@@ -6312,6 +6312,27 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       if (shift) el.style.marginLeft = `calc(var(--gu) * ${(shift / gu).toFixed(3)})`;
     });
   });
+  /* keepCardRowsOn (owner, 2026-11-13): a seat's row of cards wider than its plaque (seven stud cards) under a
+     side seat ran off the screen (Opp 7's last card and backs were cut). The row, measured by its layout box (its
+     cards' own transforms, a deal in flight, do not count), is moved in until it is 0.5g clear of the edge, by
+     `left`, since the cards' moments own their transforms. */
+  useLayoutEffect(() => {
+    const table = tableRef.current;
+    if (!table) return;
+    const rows = table.querySelectorAll('.replayer-seat-cards > .card-row');
+    if (!rows.length) return;
+    const host = table.closest('.replayer-replay') || document.documentElement;
+    const box = host.getBoundingClientRect();
+    const gu = parseFloat(getComputedStyle(host).getPropertyValue('--gu')) || box.width / 37;
+    rows.forEach(el => { el.style.left = ''; });
+    rows.forEach(el => {
+      const r = el.getBoundingClientRect();
+      if (!r.width) return;
+      const lo = box.left + gu / 2, hi = box.right - gu / 2;
+      const shift = r.left < lo ? lo - r.left : r.right > hi ? hi - r.right : 0;
+      if (shift) { el.style.position = 'relative'; el.style.left = `calc(var(--gu) * ${(shift / gu).toFixed(3)})`; }
+    });
+  });
   /* The one thing on the table that cannot be sized in cqw is the text, so
      the component has to know how wide the table came out. Measured, not
      derived from the viewport — that guess is what this whole pass was
@@ -10862,6 +10883,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         /* Community games have the central board that sits over the wordmark;
            the export moves the wordmark clear of it only when this is set. */
         data-community={gameCfg.hasBoard && !gameCfg.isStud ? '1' : '0'}
+        /* Cards lying flat (Card splay off): a stud row lays its face-down cards tucked (styles.css). */
+        data-flat={rSettings.cardSplay ? undefined : '1'}
       data-anim-winner={rSettings.animateWinner ? '1' : '0'}
       data-felt={rSettings.feltBright ? 'bright' : 'dark'}
       data-springs={springOn ? springSet : undefined}
@@ -11763,7 +11786,11 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       {/* Dead cards under the table (portrait): the label on its own 2r line, the
           4r cards directly beneath it from the same left edge, on a 2.25g pitch
           that tightens when the list would pass the full 2g..35g (33g). */}
-      {!isLandscape && deadCards.length > 0 && (() => {
+      {/* Not while the result line shows: both sit in the free band at the table's foot, and at the end of a stud
+          hand the dead cards were drawn over "E. Bennett wins the 8,800 pot" (owner, 2026-11-13). */}
+      {!isLandscape && deadCards.length > 0
+        && !(showResult && potAwards && rSettings.showResults && !linkedReplay && hand.players.some((_, i) => (potAwards[i] || 0) > 0))
+        && (() => {
         const CARD_G = 2.0286;   // 4r at the artwork's 0.7143 ratio, in g
         const n = deadCards.length;
         const pitch = n > 1 ? Math.min(2.25, (33 - CARD_G) / (n - 1)) : 0;
