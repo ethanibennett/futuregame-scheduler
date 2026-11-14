@@ -6286,6 +6286,26 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const [feltColor, setFeltColor] = useState(() => (hand && hand.feltColor) || localStorage.getItem('replayerFeltColor') || '#6b5b8a');
   const prevStreetRef = useRef(0);
   const tableRef = useRef(null);
+  /* keepHandNamesOn (owner, 2026-11-13): every showdown readout is centred under its seat; one that would
+     run off the screen (a long "Hi: Straight, 7-high" under a side seat) is moved in until it is 0.5g clear
+     of the edge, by margin, since the reveal animation owns its transform. Measured after each render. */
+  useLayoutEffect(() => {
+    const table = tableRef.current;
+    if (!table) return;
+    const names = table.querySelectorAll('.replayer-seat-hand-name');
+    if (!names.length) return;
+    const host = table.closest('.replayer-replay') || document.documentElement;
+    const box = host.getBoundingClientRect();
+    const gu = parseFloat(getComputedStyle(host).getPropertyValue('--gu')) || box.width / 37;
+    names.forEach(el => { el.style.marginLeft = ''; });
+    names.forEach(el => {
+      const r = el.getBoundingClientRect();
+      if (!r.width) return;
+      const lo = box.left + gu / 2, hi = box.right - gu / 2;
+      const shift = r.left < lo ? lo - r.left : r.right > hi ? hi - r.right : 0;
+      if (shift) el.style.marginLeft = `calc(var(--gu) * ${(shift / gu).toFixed(3)})`;
+    });
+  });
   /* The one thing on the table that cannot be sized in cqw is the text, so
      the component has to know how wide the table came out. Measured, not
      derived from the viewport — that guess is what this whole pass was
@@ -10781,11 +10801,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       {/* Table settings: the felt and splay controls on the replay screen
           itself, so a change is judged against the live table. Top-right,
           over the stadium's empty corner; the gear keeps the full panel. */}
-      {notes && <NotesChip notes={notes} />}
-      {!drill && onSaveExtras && (
+      {(notes || (!drill && onSaveExtras)) && (
         <span className="hx-chips">
+          {notes && <NotesChip notes={notes} />}
+          {!drill && onSaveExtras && <>
           <button type="button" className="replayer-notes-chip ctl hx-chip" onClick={() => setNoteEditing(true)}><span>{noteAt(hand, streetIdx, actionIdx) ? 'Edit note' : 'Note here'}</span></button>
           <button type="button" className="replayer-notes-chip ctl hx-chip" onClick={() => setDetailsOpen(true)}><span>{(hand.tags && hand.tags.length) ? `Tags · ${hand.tags.length}` : 'Tags'}</span></button>
+          </>}
         </span>
       )}
       {!drill && <MomentNote note={noteAt(hand, streetIdx, actionIdx)} onEdit={onSaveExtras ? () => setNoteEditing(true) : null} />}
@@ -11786,12 +11808,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         } else {
           line = winners.map(w => nameOf(w.i) + ' ' + fmtChips(w.won)).join(' \u00b7 ');
         }
-        const heroShare = winners.some(w => w.i === replayHeroIdx);
-        const word = winners.length > 1 && heroShare ? 'Split' : net > 0 ? 'You won' : net < 0 ? 'You lost' : 'Even';
         const tone = net > 0 ? 'is-won' : net < 0 ? 'is-lost' : 'is-even';
         return (
           <div className={'replayer-result-strip ' + tone} role="status">
-            <span className="rrs-eyebrow">{'Result \u00b7 ' + word}</span>
             <span className="rrs-line">{line}</span>
             <span className="rrs-net">{(net > 0 ? '+' : net < 0 ? '\u2212' : '') + fmtChips(Math.abs(net))}</span>
           </div>

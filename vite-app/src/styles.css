@@ -6072,8 +6072,8 @@
     .replayer-seat-hand-name.is-boards { font-size: clamp(7px, 2.3cqmin, 18px); }
     /* A side seat's plaque is anchored by its outer edge so a longer name grows inward; its hand name does the
        same. Centred under the plaque, a name wider than the plaque ran off the screen ("Hi: Straight, 7-high"). */
-    .replayer-seat.seat-edge-left .replayer-seat-hand-name { left: 0; --hn-x: 0; }
-    .replayer-seat.seat-edge-right .replayer-seat-hand-name { left: auto; right: 0; --hn-x: 0; }
+    /* Centred under every seat (owner, 2026-11-13: "the showdown readout of the hands should be centered on the
+       seats"); only a name that would run off the screen is moved in, by HandReplayerView's keepHandNamesOn. */
     /* Who took each board (HandReplayerView boardWinnerTags): a tag just right of its row, in the hand
        name's colours and face, so the board and its winner read as one line. Out of the row's flow, so
        the row stays centred on the felt. */
@@ -17197,12 +17197,13 @@
        (it sat inside the group but outside the ink, half a space left of centre on the desktop's row). */
     .cal-add-face { text-indent: 0; }
     .cal-add-face > span { margin-right: calc(var(--track-caps) * -1); }
-    /* The replay's result line (UX pick 54): 6r, the hero's net on the right. The eyebrow's baseline on
-       line 2, the sentence's and the net's on line 5, 1r under them; each trimmed to its ink and seated
-       by padding (p = N r - 1cap). */
+    /* The replay's result line (UX pick 54): 4r, the sentence on the left and the hero's net on the right,
+       both baselines on line 3. The "Result · You lost" eyebrow over it went (owner, 2026-11-13: "we don't
+       need" it): the net's sign and colour already say it. Trimmed to the ink and seated by padding
+       (p = N r - 1cap). */
     .replayer-result-strip {
-      flex: none; box-sizing: border-box; height: calc(var(--subrow) * 6);
-      display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: calc(var(--subrow) * 2) calc(var(--subrow) * 3);
+      flex: none; box-sizing: border-box; height: calc(var(--subrow) * 4);
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: calc(var(--subrow) * 4);
       column-gap: var(--gu); padding: 0 var(--gu);
       border-radius: var(--radius-xs); background: var(--surface);
       box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
@@ -17212,18 +17213,14 @@
       display: block; min-width: 0; line-height: 1; white-space: nowrap; overflow: visible;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
-    .replayer-result-strip .rrs-eyebrow {
-      grid-column: 1; grid-row: 1; padding-top: calc(var(--subrow) * 2 - 1cap);
-      font-size: var(--fs-2xs); font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-muted);
-    }
     .replayer-result-strip .rrs-line {
-      grid-column: 1; grid-row: 2; padding-top: calc(var(--subrow) * 3 - 1cap);
+      grid-column: 1; grid-row: 1; padding-top: calc(var(--subrow) * 3 - 1cap);
       font-size: var(--fs-sm); font-weight: var(--fw-bold);
       /* Truncates: the descenders get their painted room from padding cancelled by a negative margin. */
       overflow: hidden; text-overflow: ellipsis; padding-bottom: 0.3em; margin-bottom: -0.3em;
     }
     .replayer-result-strip .rrs-net {
-      grid-column: 2; grid-row: 1 / 3; padding-top: calc(var(--subrow) * 5 - 1cap); text-align: right;
+      grid-column: 2; grid-row: 1; padding-top: calc(var(--subrow) * 3 - 1cap); text-align: right;
       font-family: var(--font-display); font-size: var(--fs-lg); font-variant-numeric: var(--num-tabular);
     }
     .replayer-result-strip.is-won .rrs-net { color: var(--ok); }
