@@ -6134,7 +6134,7 @@
          than a child. The showdown hand name sits under it (below). */
       /* --badge-drop (set by DrawBadge, in r) lowers it onto the next grid line. */
       position:absolute; bottom: calc(var(--subrow) * var(--badge-drop, 0) * -1); left:50%; top:auto; right:auto;
-      transform: translate(var(--db-x, -50%), 75%);
+      transform: translate(-50%, 75%);
       z-index: 2;
       display:flex; align-items:center; justify-content:center;
       font-size: var(--fs-2xs); font-weight: var(--fw-bold); font-family: var(--font-condensed);
@@ -6149,17 +6149,18 @@
        and stays there — the same fault that moved the action badge and the
        winning hand name off centre. */
     @keyframes drawBadgePop {
-      0% { opacity:0; transform:translate(var(--db-x, -50%), 75%) scale(0.7); }
-      100% { opacity:1; transform:translate(var(--db-x, -50%), 75%) scale(1); }
+      0% { opacity:0; transform:translate(-50%, 75%) scale(0.7); }
+      100% { opacity:1; transform:translate(-50%, 75%) scale(1); }
     }
-    /* Both under the plaque, the action pill and the draw run collided in the middle (owner, 2026-11-14: "left align
-       the action and right align the draw decisions so they don't overlap"): the action on the plaque's left edge, the
-       draw run on its right. */
-    .replayer-table[data-draw="1"] .replayer-action-badge-outer { left: 0; transform: none; }
-    .replayer-table[data-draw="1"] .replayer-seat-draw-badge { left: auto; right: 0; --db-x: 0%; }
     /* The showdown hand name goes UNDER the draw badge. The badge hangs 1.5r
        below the plaque's bottom edge, so the name starts 2.5r below that edge:
        1.5r to clear the badge, 1r of air. */
+    /* The action pill goes under the draw run (owner, 2026-11-14: "put the betting decisions under the draw
+       decisions"): both hung centred under the plaque, one over the other. The run hangs 1.5r (+ its drop) below the
+       plaque's edge; the pill starts 0.5r under that. */
+    .replayer-seat-info:has(.replayer-seat-draw-badge) .replayer-action-badge-outer {
+      top: calc(100% + var(--subrow) * (2 + var(--badge-drop, 0)));
+    }
     .replayer-seat:has(.replayer-seat-draw-badge) .replayer-seat-hand-name {
       margin-top: calc(var(--subrow) * (2.5 + var(--badge-drop, 0)));
     }

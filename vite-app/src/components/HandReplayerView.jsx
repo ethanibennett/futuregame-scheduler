@@ -1824,14 +1824,7 @@ function DrawBadge({ history }) {
       const b = el.getBoundingClientRect();
       const t = ((b.top + b.bottom) / 2 - r - origin) / r;
       const frac = t - Math.floor(t);
-      let drop = frac < 0.02 || frac > 0.98 ? 0 : 1 - frac;
-      /* The action pill sits on the plaque's left edge and this run on its right (draw games); a pill too wide to
-         share the row ("ALL-IN 2,250" beside "D2/D1") puts the run 3r lower, under it and 0.5r clear of it. */
-      const act = seat.querySelector('.replayer-action-badge-outer');
-      if (act) {
-        const a = act.getBoundingClientRect();
-        if (a.width && a.right + r / 2 > b.left) drop += 3;
-      }
+      const drop = frac < 0.02 || frac > 0.98 ? 0 : 1 - frac;
       seat.style.setProperty('--badge-drop', drop.toFixed(4));
     };
     snap();
@@ -9157,8 +9150,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const EPS = 3;                                   // "on the centre line"
     const sx = Math.abs(dx) > EPS ? (dx < 0 ? 1 : -1) : (-dy < 0 ? -1 : 1);
     const sy = Math.abs(dy) > EPS ? (dy < 0 ? 1 : -1) : (dx < 0 ? -1 : 1);
-    // A draw game's plaque bottom holds the action (left) and the draw run (right), so the button takes a top corner.
-    return (sy > 0 && !isDrawGame ? 'b' : 't') + (sx > 0 ? 'r' : 'l');
+    return (sy > 0 ? 'b' : 't') + (sx > 0 ? 'r' : 'l');
   })();
   /* Rendered: a 15% step round the rail from the button's seat put the deck
      squarely on the NEXT player's fan. There is no gap at the rail on a full
@@ -10950,7 +10942,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         /* Community games have the central board that sits over the wordmark;
            the export moves the wordmark clear of it only when this is set. */
         data-community={gameCfg.hasBoard && !gameCfg.isStud ? '1' : '0'}
-        data-draw={isDrawGame ? '1' : undefined}
         /* Cards lying flat (Card splay off): a stud row lays its face-down cards tucked (styles.css). */
         data-flat={rSettings.cardSplay ? undefined : '1'}
       data-anim-winner={rSettings.animateWinner ? '1' : '0'}
@@ -11800,7 +11791,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           /* Top and bottom seats nearer their plaque (owner, 2026-11-14: "a bit closer to the seat"): 0.42 left ~10r between a
              bottom seat's cards and its chips and ~5r under a top seat's action pill; these leave ~2.3r and 2r (402 wide,
              6 and 9-max). Portrait only. */
-          const tY = isLandscape ? t : pos[1] > POT_AT[1] ? 0.26 : 0.3;
+          // A draw game's top seat hangs its action pill 2r lower (under the draw run), so its chips sit 2r further in.
+          const tY = isLandscape ? t : pos[1] > POT_AT[1] ? 0.26 : (isDrawGame ? 0.38 : 0.3);
           const chipY = sideSeat ? pos[1] : pos[1] + (POT_AT[1] - pos[1]) * tY;
           /* --chip-start-dx/dy used to be written here (a percentage times 3, as 'px') for a
              keyframe that is animation: none; nothing read them. The spring push-out measures
