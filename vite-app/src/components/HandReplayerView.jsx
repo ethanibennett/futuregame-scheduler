@@ -1879,7 +1879,7 @@ function DealerGlyph() {
 const FAN_SLIDE_MS = 460;
 const FAN_SLIDE_SAMPLES = 16;
 
-function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, reverseZ, discardIdx, onCardTap, poseOf, holdSort = 0 }) {
+function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, reverseZ, discardIdx, onCardTap, poseOf, playIds, holdSort = 0 }) {
   /* Draw-game re-sort. A card keeps its DOM element for as long as it stays in
      the hand (keyed by identity, below), so when a draw puts a new card among
      them this can see where each surviving card was and where it is now, and
@@ -1992,7 +1992,10 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
         // does, and dims — see the seat render, which flags the thrown cards the
         // moment the d1/d2/pat badge appears.
         const isDiscard = discardIdx && discardIdx.has(i);
-        const studYOffset = isStudUp ? STUD_LIFT_UP : isDown ? STUD_LIFT_DOWN : (isDiscard ? STUD_LIFT_UP : '');
+        // Stud at showdown: the five that play are the up cards and the rest sit as down cards, wherever each was dealt.
+        const plays = playIds && c.suit !== 'x' ? playIds.has(c.rank + c.suit) : null;
+        const studYOffset = plays != null ? (plays ? STUD_LIFT_UP : STUD_LIFT_DOWN)
+          : isStudUp ? STUD_LIFT_UP : isDown ? STUD_LIFT_DOWN : (isDiscard ? STUD_LIFT_UP : '');
         // A revealed face never reverses: the rank index lives at top-left only,
         // so leftmost-on-top buries every rank but the first.
         // 63: --ci is the card's place in the hand. The per-card deal
@@ -2025,7 +2028,10 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
           return <div key={k} data-ck={k} className="card-unknown" style={splayStyle} />;
         }
         // A standing pose (Replayer animations 16-18, 20-23): raised, sunk or dead, on the translate property.
-        const pose = poseOf ? poseOf.get(id) : undefined;
+        /* Under playIds the lift above already says which cards play, so a raising or sinking pose would move them
+           a second time; only the dimming ('dead') is kept. */
+        const pose0 = poseOf ? poseOf.get(id) : undefined;
+        const pose = playIds && pose0 !== 'dead' ? undefined : pose0;
         return <img key={k} data-ck={k} className={'card-img' + tapClass}
           src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'}
           alt={c.rank+c.suit} loading="eager" data-pose={pose || undefined}
@@ -7380,6 +7386,35 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     }
     return seatsP.size || boardP.size ? { seats: seatsP, board: boardP } : null;
   }, [springSet, hand, feltBoard, boardCards, replayHeroIdx, heroCards, opponentCards, folded, showResult, potAwards, hiLoHalves, exposeAllIn, category]);
+  /* Stud at showdown (owner, 2026-11-14: "ignore which were the up and down cards and just push up the five cards
+     that play. The rest should be in normal downcard position"): per shown hand, the cards of its best five (in hi-lo,
+     its high five, plus its low five where it takes the low), by card. CardRow lifts those as up cards and sits every
+     other card where a down card sits. */
+  const studPlay = useMemo(() => {
+    if (!gameCfg.isStud || !showResult) return null;
+    const cfg = gameEvalFor(hand.gameType, hand);
+    if (!cfg) return null;
+    const halves = halvesOf(cfg);
+    const out = new Map();
+    hand.players.forEach((_, pi) => {
+      if (folded.has(pi)) return;
+      const raw = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
+      if (!raw || raw === 'MUCK') return;
+      const hole = parseCardNotation(raw).filter(c => c.suit !== 'x');
+      if (hole.length <= 5) return;
+      const ids = new Set();
+      const add = (r) => { if (r) r.hole.forEach(i => ids.add(hole[i].rank + hole[i].suit)); };
+      if (cfg.type === 'hilo') {
+        // The half the seat took: the low alone for a low-only winner, both for a scoop, else the high.
+        const lo = !!(hiLoHalves && hiLoHalves.lo && hiLoHalves.lo.has(pi));
+        const hi = !!(hiLoHalves && hiLoHalves.hi && hiLoHalves.hi.has(pi));
+        if (hi || !lo) add(bestFive(cfg, hole, [], 'high'));
+        if (lo) add(bestFive(cfg, hole, [], halves[1]));
+      } else if (halves[0]) add(bestFive(cfg, hole, [], halves[0]));
+      if (ids.size) out.set(pi, ids);
+    });
+    return out.size ? out : null;
+  }, [gameCfg, showResult, hand, folded, replayHeroIdx, heroCards, opponentCards, hiLoHalves]);
 
   /* ── Spring moments: what this render is ──
      A moment plays only on a single step FORWARD from the step the last commit showed (Forward,
@@ -11456,6 +11491,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   reverseZ={pi !== replayHeroIdx}
                   discardIdx={discardIdx}
                   poseOf={cardPoses ? cardPoses.seats.get(pi) : undefined}
+                  playIds={studPlay ? studPlay.get(pi) : undefined}
                   holdSort={pi === replayHeroIdx ? heroDrawHold : 0}
                   onCardTap={drillThrow && !drillThrow.disabled ? (id) => { haptic(); drillThrow.toggle(id); } : undefined}
                   /* The hero used to fan wider than everybody else — a bigger
