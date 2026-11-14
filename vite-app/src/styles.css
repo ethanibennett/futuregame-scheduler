@@ -5570,17 +5570,24 @@
        the cards go back to the table's own size (0.56 of the plaque), the same deck as every other game, in a row
        about as wide as before (1.16 plaques; 1.36 once everything is face up, as the hero's always is).
        The Overlap setting can tighten a stud row but not open it past 0.4 of a card showing. */
-    .replayer-table[data-hand-cards="7"][data-flat="1"] .replayer-seat,
-    .replayer-table[data-hand-cards="7"][data-flat="1"] .replayer-seat.is-hero {
+    /* The same for five and six hole cards (owner, 2026-11-14, a Big O screenshot: the "raise 16,000" pill over
+       the hero's five cards, 5.18r tall at 0.46 of the plaque). With the backs tucked and the up cards at 0.4, an
+       opponent's five backs are 0.64 of a plaque wide and the hero's five 1.04 (six: 1.2), at 6.31r. A five-card
+       DRAW hand keeps its own sizes (data-community). */
+    .replayer-table:is([data-hand-cards="7"], [data-hand-cards="6"], [data-hand-cards="5"][data-community="1"])[data-flat="1"] .replayer-seat,
+    .replayer-table:is([data-hand-cards="7"], [data-hand-cards="6"], [data-hand-cards="5"][data-community="1"])[data-flat="1"] .replayer-seat.is-hero {
       --card-h: calc(var(--plaque-w) * 0.56);
       --card-w: calc(var(--card-h) * 0.7143);
     }
-    .replayer-table[data-hand-cards="7"][data-flat="1"] .replayer-seat-cards .card-row:not(.card-row-splay) > *:not(:first-child) {
+    .replayer-table:is([data-hand-cards="7"], [data-hand-cards="6"], [data-hand-cards="5"][data-community="1"])[data-flat="1"] .replayer-seat-cards .card-row:not(.card-row-splay) > *:not(:first-child) {
       margin-left: calc(var(--card-h) * 0.7143 * -1 * max(var(--card-overlap, 0.52), 0.6));
     }
-    .replayer-table[data-hand-cards="7"][data-flat="1"] .replayer-seat-cards .card-row:not(.card-row-splay) > .card-unknown + * {
+    .replayer-table:is([data-hand-cards="7"], [data-hand-cards="6"], [data-hand-cards="5"][data-community="1"])[data-flat="1"] .replayer-seat-cards .card-row:not(.card-row-splay) > :is(.card-unknown, .card-placeholder) + * {
       margin-left: calc(var(--card-h) * 0.7143 * -0.85);
     }
+    /* A badge that would sit under the Note here / Tags row (the top seat's, on a phone with a tall status bar)
+       hangs under its plaque instead; set by keepBadgesClear in HandReplayerView. */
+    .replayer-action-badge-outer.is-below { bottom: auto; top: calc(100% + calc(var(--subrow) * 0.25)); }
 
     .replayer-seat {
       position: absolute;
