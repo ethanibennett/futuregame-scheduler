@@ -7534,6 +7534,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     : motionKind ? (motion.potShown || 0)
     : (motion.pendingPot > 0 ? (motion.potFloor || 0) : 0);
   const shownPot = potShown(springOn ? potBase : displayPot, pendingPotNow, potFloorNow);
+  /* The pot's FIGURE counts every chip put in so far, the wagers still in front of the seats included (owner,
+     2026-11-15: "the pot should not be zero at this point"): a raise to 80,000 over 20,000/40,000 blinds reads
+     140,000, where it read 0 until the first sweep (Replayer animations 26). The pile above it still draws what is
+     in the middle (shownPot), so a wager is never drawn twice, and a sweep moves chips without changing the figure.
+     At a result it is the contested pot (an uncalled excess has gone back), counting down as the pot ships. */
+  const potCommitted = useMemo(
+    () => (showResult ? displayPot : calcPotsAndStacks(hand, streetIdx, actionIdx).pot),
+    [hand, streetIdx, actionIdx, showResult, displayPot]);
   /* What each stack still has in flight, AS THIS RENDER SAW IT. A snapshot, not a live read: the
      figures this render draws are put back into the DOM after the moment's writes (resyncDigits),
      and read live there they counted the award twice — the registry's, which the writes had just
@@ -7563,7 +7571,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   motion.writePot = (pile) => {
     const v = potShown(springOn && !showResult ? potBase : displayPot, motion.pendingPot, motion.pendingPot > 0 ? motion.potFloor : 0);
     const tn = potTextNode();
-    if (tn) { tn.data = fmtChips(v); motion.wroteDigits = true; motion.potShown = v; }
+    // The digits are the whole pot (potCommitted), constant through a sweep; the pile and the floors track the middle.
+    if (tn) { tn.data = fmtChips(potCommitted); motion.wroteDigits = true; motion.potShown = v; }
     if (pile && motion.setPile && !potLayers.length) motion.setPile(v + (pile.ahead || 0), { hidden: pile.hidden });
   };
   // A winner's stack as the pot lands on it: never below what it showed before the press.
@@ -7576,7 +7585,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      changed, so after a step back (the flush lands the pot at the old step's total) the DOM kept
      the flushed figure while React's own value was already right. Every commit after a direct
      write puts the rendered figures back first. */
-  const rendered = { pot: fmtChips(shownPot), stack: (pi) => fmtChips(stackFigure(pi)) };
+  const rendered = { pot: fmtChips(potCommitted), stack: (pi) => fmtChips(stackFigure(pi)) };
   const resyncDigits = () => {
     if (!motion.wroteDigits) return;
     motion.wroteDigits = false;
@@ -9426,7 +9435,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             }
             motion.momentKey = 'open';
             const full = shownPot;
-            let landed = full - anteJobs.length * ante;
+            // The figure counts the antes up as they land, to the whole pot (potCommitted: the blinds already in it).
+            let landed = potCommitted - anteJobs.length * ante;
             if (potTn && anteJobs.length) { potTn.data = landed > 0 ? fmtChips(landed) : ''; motion.wroteDigits = true; }
             anteJobs.forEach((j, ji) => {
               const chip = document.createElement('div');
@@ -9447,7 +9457,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 { prop: 'scale', fn: (t) => { const q = t <= j.delay ? 0 : hand0.at((t - j.delay) * rate0); return 1 + lift * 4 * q * (1 - q); }, start: j.delay, end: arrive },
                 { prop: 'opacity', ramp: { from: 1, to: 0, delay: arrive, duration: st0.arrivalFade / rate0 } },
               ] });
-              const tick = () => { landed += ante; if (potTn) { potTn.data = fmtChips(Math.min(full, landed)); motion.wroteDigits = true; } };
+              const tick = () => { landed += ante; if (potTn) { potTn.data = fmtChips(Math.min(potCommitted, landed)); motion.wroteDigits = true; } };
               if (entry) motion.tick(arrive, tick, entry); else tick();
             });
             pillJobs.forEach(j => {
@@ -11046,7 +11056,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   <span className="replayer-pot-cell-label">
                     {isSplitResult ? (_isHiLo ? 'Split' : 'Split Pot') : (potLayers.length > 1 ? 'Total' : 'Pot')}
                   </span>
-                  {fmtChips(shownPot)}
+                  {fmtChips(potCommitted)}
                 </div>
               </div>
             </div>

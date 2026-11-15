@@ -99,7 +99,8 @@ const compare = (seats, rec, shared) => {
   for (const [name, want] of Object.entries(rec.expected)) {
     const s = seats.find((x) => x.name === (shared ? linkName(rec, name) : name));
     if (!s) { off.push(`${name} is not on the felt (${seats.map((x) => x.name + '=' + x.text).join(' ')})`); continue; }
-    const have = /all-?in/i.test(s.text) ? 0 : num(s.text);
+    // ALL-IN and, at a tournament's result, OUT (a busted seat, Replayer animations 2026-11-11) are 0 chips.
+    const have = /all-?in|^out$/i.test(s.text) ? 0 : num(s.text);
     if (!(Math.abs(have - want) <= 0.005)) off.push(`${name} "${s.text}" (want ${want})`);
   }
   return off;
