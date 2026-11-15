@@ -130,6 +130,18 @@ info "Building from $(git rev-parse --short HEAD) on $(git rev-parse --abbrev-re
 
 # ── Web build ───────────────────────────────────────────────────────────────
 [ -d node_modules ] || { info "Installing root deps..."; npm install; }
+# vite-app's deps: build.js installs them only when node_modules is missing (on purpose: on the Windows box
+# every worktree shares one node_modules). CI starts from a clean checkout, but a Mac clone that lives for
+# weeks keeps its old node_modules, and a dependency added since fails vite with "Rollup failed to resolve
+# import" (qrcode-generator, 2026-11-15). Reinstall when the lockfile has changed since the last install here,
+# stamped the way build.js stamps it on Render.
+VITE_LOCK_HASH=$(shasum vite-app/package-lock.json | cut -d' ' -f1)
+VITE_STAMP=vite-app/node_modules/.install-lock-hash
+if [ ! -f "$VITE_STAMP" ] || [ "$(cat "$VITE_STAMP")" != "$VITE_LOCK_HASH" ]; then
+  info "vite-app's lockfile changed since its last install: npm ci..."
+  (cd vite-app && npm ci)
+  echo "$VITE_LOCK_HASH" > "$VITE_STAMP"
+fi
 info "Building web assets (vite → public-vite/)..."
 node build.js
 
