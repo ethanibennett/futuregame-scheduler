@@ -727,10 +727,22 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
     property, so it composes with a fan's own transform): the tabled leader, a counterfeit, the winning five, a hi-lo
     pot's halves, a badugi's dead card, the rank two lows part on. The registry keys a motion per element AND kind
     (`run(el, { key, property: 'individual' })`), so a card can turn over (transform) while it lifts (translate).
-  - **The pot's figure counts what is in the middle** (`potBase`): under springs the posted blinds stand on the felt as
-    wagers until the first sweep and a folded seat's wager goes in as it folds, so the figure reads 0 at the first step.
-    `displayPot` (pot odds, a pot-sized bet, the equity) is unchanged. At a result the pot's figure counts down and goes
-    (`is-emptied`); the ship goes in waves from `potAwards.parts` (non-enumerable: every reader sees seat -> amount).
+  - **The pot's FIGURE counts every chip put in** (owner, 2026-11-15: "the pot should not be zero at this point";
+    `potCommitted`), the wagers still in front of the seats included: a raise to 80,000 over 20,000/40,000 blinds reads
+    140,000. The PILE above it draws only what is in the middle (`potBase` / `shownPot`: under springs the posted blinds
+    stand on the felt as wagers until the first sweep), so a sweep moves chips without changing the figure. Don't name
+    a component-level value `potFigure`: the moments effect has a local of that name (the pot's element), and shadowing
+    it put the replay in a temporal dead zone. `displayPot` (pot odds, a pot-sized bet, the equity) is unchanged. At a
+    result the figure is the contested pot and counts down and goes (`is-emptied`); the ship goes in waves from
+    `potAwards.parts` (non-enumerable: every reader sees seat -> amount).
+  - **Nothing on the felt may touch what it does not belong to** (owner, 2026-11-15: "We really need to figure out how
+    to prevent these collisions"): `npm run check:replayer-collisions` (ports 4890-4899) walks corpus hands, every seat
+    renamed long, step by step at 375/402/430 portrait and 1440/1728 desktop, and fails on any two pieces that overlap
+    (a seat's plaque, cards, action label, wager, readout, draw run, button; the pot, the board, the game pill), except a
+    seat's cards under its own plaque. Run it after any change to the felt. A wager is placed from its usual spot and,
+    within 1r of its own seat's pieces, moved on toward the pot until there is cloth (HandReplayerView's placement
+    effect, before the moments effect: it writes left/top percentages, the form the push-out and the ghosts read). The
+    action label hangs 0.5r under the plaque; the dealer button sits beside the plaque on the side facing the table.
   - **One press runs a decided board out** (14, `runOutTo`): all in, nothing left to act on, one board, springs on;
     Back still steps a street at a time. A hand opened on its first step plays its opening (antes, blinds, the dealer
     button); Play from the first step deals the hand first. Exports skip action moments and open on their title card.
