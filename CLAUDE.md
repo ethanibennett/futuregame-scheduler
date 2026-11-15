@@ -742,7 +742,8 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
     seat's cards under its own plaque. Run it after any change to the felt. A wager is placed from its usual spot and,
     within 1r of its own seat's pieces, moved on toward the pot until there is cloth (HandReplayerView's placement
     effect, before the moments effect: it writes left/top percentages, the form the push-out and the ghosts read). The
-    action label hangs 0.5r under the plaque; the dealer button sits beside the plaque on the side facing the table.
+    action label sits on the plaque's top edge over the cards' lower bodies, never on a face-up card's index (the
+    guard's `index`: the top half of its left 30%); the dealer button sits beside the plaque on the side facing the table.
   - **One press runs a decided board out** (14, `runOutTo`): all in, nothing left to act on, one board, springs on;
     Back still steps a street at a time. A hand opened on its first step plays its opening (antes, blinds, the dealer
     button); Play from the first step deals the hand first. Exports skip action moments and open on their title card.
