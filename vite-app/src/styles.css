@@ -4648,7 +4648,10 @@
          a layout of its own. */
       --card-h: clamp(18px, 10.5cqmin, 132px);
     }
-    .replayer-landscape .replayer-seat.is-hero { --card-h: clamp(20px, 13cqmin, 164px); --card-w: calc(var(--card-h) * 0.7143); }
+    /* Every seat's cards the hero's size (owner, 2026-11-15: "opp cards should be the same size as hero's"); they were
+       10.5cqmin against the hero's 13. The hand-size rules below (seven, six, five community) are more specific and
+       still set one size for every seat. */
+    .replayer-landscape .replayer-seat { --card-h: clamp(20px, 13cqmin, 164px); --card-w: calc(var(--card-h) * 0.7143); }
     .replayer-landscape .replayer-table-slot { align-items: center; }
     /* Measured off the reference: its pot row's centre sits at 35.6% of the
        table height (pill band y 373..411 of a table spanning 128..869).
@@ -5343,26 +5346,27 @@
       text-transform: uppercase; letter-spacing: var(--track-caps);
       margin-right: 0.6em;
     }
-    /* A split is the pot row with a second line under it, not a different
-       object: the total keeps its plaque and its label, and the shares hang
-       below in cells cut from the same pattern as the side pots. */
+    /* A split's total is the pot row, where the pot always is. Its shares were a second line in the same box: centred,
+       the box grew down into the board's cards; hung from just above the board, up into a top seat's readout (owner,
+       2026-11-15: "still colliding"). Between a top seat and the board there is room for one row. */
     .replayer-split-pot {
       display: flex; flex-direction: column; align-items: center;
       gap: var(--space-2xs);
     }
-    /* Centred on its row, the shares' extra height grew down into the cards: 1px on a desktop, more on an
-       iPhone's shorter table, 28px with side pots too. So it hangs from just above the board (centred at 47%,
-       its own card height tall) and grows upward. Stacked boards keep their own stops further down this file. */
+    /* Its one row hangs 1r above the board's cards (owner, 2026-11-13: "shouldn't collide with the cards"): at a hi-lo
+       showdown the cards that play rise a whole r. Stacked boards keep their own stops. */
     .replayer-table:not(:has(.replayer-board-area.is-multi)) .replayer-split-pot {
-      /* 1r higher than the card top (owner, 2026-11-13: "shouldn't collide with the cards"): at a hi-lo showdown the
-         cards that play rise a whole r, and they rose 4px into the shares at every phone size. */
       top: calc(47% - clamp(18px, 10.9375cqmin, 140px) / 2 - var(--subrow) - var(--space-xs));
       transform: translate(-50%, -100%);
     }
-    /* A phone on its side has no height for three rows (side pots, total, shares reached the top seat by
-       6px at 844x390), and all the width it needs: the shares go beside the total. */
-    @media (orientation: landscape) and (max-height: 500px) {
-      .replayer-landscape .replayer-split-pot { flex-direction: row; gap: 2.1cqw; }
+    /* The shares are their own row under the board (under the pot where there is no board), 0.75r below it; the
+       layout effect beside the wagers' places them (top) and moves the game pill under them when they meet. The 56%
+       holds them near there for the frame before. */
+    .replayer-split-shares.is-placed {
+      position: absolute; left: 50%; top: 56%; transform: translateX(-50%);
+      z-index: var(--z-pot);
+      /* The pot's face, which the row took from the pot's box when it hung inside it. */
+      font-family: var(--font-condensed); font-variant-numeric: var(--num-tabular); letter-spacing: 0;
     }
     /* Measured at 6-max portrait (393x852, table 373x742): the clear band
        between the innermost side furniture across the pot's own row is 162px,
@@ -6305,6 +6309,11 @@
       font-size: var(--fs-2xs);
       line-height: 1;
     }
+    /* No taller than the band it sits in (owner, 2026-11-15: over the cards, "make sure it isn't obscuring too much of
+       the cards"): a seat's cards show 0.78 of their height above the plaque and the index takes the top 0.48, so the
+       band between is 0.30 of a card; the pill takes 0.27 of a card where that is less than 2r (small cards: ten
+       seats on a desktop, five and six flat cards), its type with it. check:replayer-collisions holds it off the
+       indexes. */
     .replayer-action-badge-outer,
     .replayer-action-badge-outer.action-fold,
     .replayer-action-badge-outer.action-check,
@@ -6312,17 +6321,17 @@
     .replayer-action-badge-outer.action-bet,
     .replayer-action-badge-outer.action-raise {
       box-sizing: border-box;
-      height: calc(var(--subrow) * 2);
+      height: min(calc(var(--subrow) * 2), calc(var(--card-h) * 0.27));
       padding-block: 0;
       padding-inline: calc(var(--gu) * 0.5);
-      font-size: var(--fs-2xs);
+      font-size: min(var(--fs-2xs), calc(var(--card-h) * 0.165));
       line-height: 1;
     }
     .replayer-action-badge-outer.action-allin {
       box-sizing: border-box;
-      height: calc(var(--subrow) * 2);
+      height: min(calc(var(--subrow) * 2), calc(var(--card-h) * 0.27));
       padding-block: 0;
-      font-size: var(--fs-xs);
+      font-size: min(var(--fs-xs), calc(var(--card-h) * 0.18));
       line-height: 1;
     }
     .replayer-action-badge-outer.action-call { background: rgba(59,130,246,0.2); color: var(--act-call); }
@@ -6828,6 +6837,11 @@
     /* 35g table (1g..36g, 1g a side); was 33g at 2g..35g. No top pad: the
        table's top edge is the column's top (just under the safe-area inset). */
     .replayer-fullbleed .replayer-table-slot { padding: 0 var(--gu); }
+    /* Under the replay's own controls (Note here, Tags; .hx-chips, 1r below the column top and 4r tall), not behind
+       them: a top seat's cards stand over the rail, and from 2026-11-15 they are the hero's size, so they ran up to 5r
+       into the Tags button (owner: collisions; check:replayer-collisions measures the controls). The table starts
+       1r under the row; its height is the slot's, so it gives that up and everything on it scales with it. */
+    .replayer-replay.replayer-fullbleed:has(> .hx-chips) .replayer-table-slot { padding-top: calc(var(--subrow) * 6); }
     /* Seat plaques: 8g by default (--plaque-w also sizes the cards, 0.56 of it),
        and still content-sized above that, so a longer name or stack widens the box. */
     /* The rail is the felt's outline pushed out by --rail-w on BOTH axes, so it is one
@@ -8078,7 +8092,10 @@
        inherited the OPPONENTS' card width while drawing bigger cards — and the fan is laid out
        in --card-w units, so the hero's hand splayed (and overlapped) tighter than everyone
        else's. Same 0.7143 artwork ratio as the table's own definition. */
-    .replayer-seat.is-hero { --card-h: clamp(20px, 15.625cqmin, 200px); --card-w: calc(var(--card-h) * 0.7143); }  /* 2.5 cells */
+    /* Every seat's cards are the hero's size (owner, 2026-11-15: "opp cards should be the same size as hero's"); an
+       opponent's were 0.56 of the plaque, 13% smaller on a phone. The hand-size rules (seven, six, five community) are
+       more specific and still set one size for every seat. */
+    .replayer-seat { --card-h: clamp(20px, 15.625cqmin, 200px); --card-w: calc(var(--card-h) * 0.7143); }  /* 2.5 cells */
     .replayer-seat.is-hero .replayer-seat-info {
       min-width: min(calc(var(--subrow) * 27.5), 27cqmin);
       padding: var(--nudge-1) min(var(--space-ml), 4cqmin);

@@ -9232,11 +9232,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      moves on toward the pot until 1r of cloth shows (a side seat's straight in, level with it). It is written back
      as left/top percentages, the form the push-out and the sweep's ghosts read. */
   const subrowPxRef = useRef({ w: -1, px: 8 });
-  useLayoutEffect(() => {
-    const table = tableRef.current;
-    if (!table) return;
-    const pills = table.querySelectorAll('.replayer-bet-chip[data-seat][data-base-left]');
-    if (!pills.length) return;
+  const subrowPx = (table) => {
     if (subrowPxRef.current.w !== window.innerWidth) {
       const probe = document.createElement('div');
       probe.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 20)';
@@ -9244,7 +9240,34 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       subrowPxRef.current = { w: window.innerWidth, px: probe.offsetHeight / 20 || 8 };
       probe.remove();
     }
-    const r = subrowPxRef.current.px;
+    return subrowPxRef.current.px;
+  };
+  /* A split's shares under the board, 0.75r below its cards (under the pot where no board is dealt), and the game
+     pill moved under the shares when they meet (owner, 2026-11-15: "still colliding"; see .replayer-split-pot). */
+  useLayoutEffect(() => {
+    const table = tableRef.current;
+    const shares = table && table.querySelector('.replayer-split-shares.is-placed');
+    const info = table && table.querySelector('.replayer-table-info');
+    if (info) info.style.marginTop = '';
+    if (!shares || !shares.offsetParent) return;
+    const r = subrowPx(table);
+    const cb = shares.offsetParent;
+    const oy = cb.getBoundingClientRect().top + cb.clientTop;
+    const board = table.querySelector('.replayer-board-area:not(.replayer-dead-area)');
+    const anchor = board && board.querySelector('.card-row > *') ? board : table.querySelector('.replayer-pot-display');
+    if (!anchor) return;
+    shares.style.top = (anchor.getBoundingClientRect().bottom + r * 0.75 - oy) + 'px';
+    if (info) {
+      const S = shares.getBoundingClientRect(), I = info.getBoundingClientRect();
+      if (I.width > 0 && I.top < S.bottom + r * 0.75) info.style.marginTop = Math.ceil(S.bottom + r * 0.75 - I.top) + 'px';
+    }
+  });
+  useLayoutEffect(() => {
+    const table = tableRef.current;
+    if (!table) return;
+    const pills = table.querySelectorAll('.replayer-bet-chip[data-seat][data-base-left]');
+    if (!pills.length) return;
+    const r = subrowPx(table);
     const STEP = r / 4;
     /* Each piece at its laid-out size around its drawn centre: an action label pops in from a smaller scale, and
        measured mid-pop it left room that was not there once it had grown. */
@@ -11201,10 +11224,16 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               if (found) { found.n += 1; found.names.push(name); }
               else groups.push({ key, tag, amt, share, n: 1, names: [name] });
             });
+            /* The figure stays where the pot always is; the shares are their own row under the board (placed by
+               the layout effect beside the wagers'). Hung in the pot's box they made it two rows tall, and there is
+               room for one between a top seat and the board: centred they ran into the board's cards, hung above
+               the board into the top seat's readout (owner, 2026-11-15: "still colliding"). */
             return (
+              <>
               <div className="replayer-pot-display replayer-split-pot">
                 {potRow}
-                <div className="replayer-split-shares">
+              </div>
+                <div className="replayer-split-shares is-placed">
                   {groups.map((g, i) => {
                     /* "2x HI 1/4" — how many players, which half of a hi/lo,
                        and what fraction of the pot each one took. A quarter
@@ -11223,7 +11252,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                     );
                   })}
                 </div>
-              </div>
+              </>
             );
           }
           return (

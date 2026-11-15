@@ -96,8 +96,27 @@ const MEASURE = () => {
         add(s, 'card', c, 'card ' + (i + 1));
         // A face-up card's index, its rank and suit: the top half of its left 30% (on the 180 x 252 face the rank and
         // the corner pip end at 50 across and 120 down). The action label may cover a card's body, never this.
+        // The index is in the card's own frame, and a fan tilts its cards: the region is rotated with the card (its
+        // and its parents' rotations, up to the seat) about the card's centre, and its bounds taken.
         const b = seen(c);
-        if (b && c.tagName === 'IMG') items.push({ owner: s, kind: 'index', label: (c.getAttribute('alt') || 'card ' + (i + 1)) + ' index', x: b.x, y: b.y, w: b.w * 0.3, h: b.h * 0.5 });
+        if (b && c.tagName === 'IMG') {
+          const w = c.offsetWidth || b.w, h = c.offsetHeight || b.h;
+          let deg = 0;
+          for (let e = c; e && e !== seat; e = e.parentElement) {
+            const cs = getComputedStyle(e);
+            const m = /matrix\(([^,]+),\s*([^,]+)/.exec(cs.transform || '');
+            if (m) deg += Math.atan2(parseFloat(m[2]), parseFloat(m[1])) * 180 / Math.PI;
+            const rot = /(-?[\d.]+)deg/.exec(cs.rotate || '');
+            if (rot) deg += parseFloat(rot[1]);
+          }
+          const t = deg * Math.PI / 180, cos = Math.cos(t), sin = Math.sin(t);
+          const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+          const pts = [[-w / 2, -h / 2], [-w / 2 + 0.3 * w, -h / 2], [-w / 2, -h / 2 + 0.48 * h], [-w / 2 + 0.3 * w, -h / 2 + 0.48 * h]]
+            .map(([x, y]) => [cx + x * cos - y * sin, cy + x * sin + y * cos]);
+          const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+          const x0 = Math.min(...xs), y0 = Math.min(...ys);
+          items.push({ owner: s, kind: 'index', label: (c.getAttribute('alt') || 'card ' + (i + 1)) + ' index', x: x0, y: y0, w: Math.max(...xs) - x0, h: Math.max(...ys) - y0 });
+        }
       });
       seat.querySelectorAll('.replayer-action-badge-outer').forEach((el) => add(s, 'action', el));
       seat.querySelectorAll('.replayer-seat-hand-name').forEach((el) => add(s, 'readout', el));
@@ -110,6 +129,10 @@ const MEASURE = () => {
     table.querySelectorAll('.replayer-pot-above').forEach((el) => add('felt', 'pot', el, 'pot chips'));
     table.querySelectorAll('.replayer-table-info').forEach((el) => add('felt', 'game', el));
     table.querySelectorAll('.replayer-split-shares').forEach((el) => add('felt', 'split', el));
+    // The replay's own controls over the table: Note here, Tags and the table-settings button. A top seat's cards
+    // reach up toward them.
+    const replay = table.closest('.replayer-replay') || document;
+    replay.querySelectorAll('.hx-chips > *, .replayer-quick-btn').forEach((el) => add('felt', 'control', el));
     const t = table.getBoundingClientRect();
     return { r, items, table: { w: t.width, h: t.height } };
   };
@@ -119,7 +142,8 @@ const MEASURE = () => {
 // Keys are the two kinds sorted, joined by |. The action label sits over its own cards' lower bodies (owner,
 // 2026-11-15), so it may cover a card, but not a card's index (kind 'index', held only against the action label).
 const SELF_OK = new Set(['card|plaque', 'card|card', 'button|plaque', 'action|card']);
-const FELT_OK = new Set(['pot|pot', 'board|board', 'game|pot']);   // the pot's figure and its chips; the board's own cards
+// The pot's figure and its chips; the board's own cards; the replay's controls side by side.
+const FELT_OK = new Set(['pot|pot', 'board|board', 'game|pot', 'control|control']);
 function collisions(m, slack) {
   const out = [];
   const it = m.items;
