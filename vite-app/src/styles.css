@@ -5730,12 +5730,13 @@
        [data-serif="univers"] redefines to a sans stack. A reader who prefers
        sans body text was also changing the letterform on the dealer button.
        Nothing about a dealer button should follow a reading preference. */
-    /* Centred ON the chosen corner of the plaque it is a child of, so it needs
-       no knowledge of the table's geometry and cannot drift onto a name. */
-    .replayer-dealer-btn.corner-br { right: 0;  bottom: 0; transform: translate(50%, 50%); }
-    .replayer-dealer-btn.corner-bl { left: 0;   bottom: 0; transform: translate(-50%, 50%); }
-    .replayer-dealer-btn.corner-tr { right: 0;  top: 0;    transform: translate(50%, -50%); }
-    .replayer-dealer-btn.corner-tl { left: 0;   top: 0;    transform: translate(-50%, -50%); }
+    /* Beside the plaque it is a child of, on the side facing the table, level with its middle and 0.25r off it, so it
+       needs no knowledge of the table's geometry. Not on a corner (owner, 2026-11-15: collisions): the cards hang
+       over the plaque's top edge and the action label under its bottom edge (2026-11-14), so a top corner sat on the
+       cards (a bottom seat's) and a bottom corner on the label and the chips (a top seat's); and not ON the side,
+       where half the disc lay over a long name. */
+    .replayer-dealer-btn.corner-r { left: calc(100% + var(--subrow) * 0.25); top: 50%; transform: translateY(-50%); }
+    .replayer-dealer-btn.corner-l { right: calc(100% + var(--subrow) * 0.25); top: 50%; transform: translateY(-50%); }
 
     .replayer-dealer-btn {
       position: absolute;
@@ -6209,8 +6210,9 @@
     .replayer-action-badge-outer {
       position: absolute;
       /* Under the plaque, where the showdown readout hangs (owner, 2026-11-14: "move the action below the seat");
-         over the cards it hid them. The readout replaces it at showdown (the badge is not drawn with a hand name). */
-      top: 100%;
+         over the cards it hid them. The readout replaces it at showdown (the badge is not drawn with a hand name).
+         0.5r under it (owner, 2026-11-15: collisions): at 100% it began inside the plaque's hairline and touched it. */
+      top: calc(100% + var(--subrow) * 0.5);
       left: 50%;
       transform: translateX(-50%);
       /* Its parent plaque already paints over the tucked-in cards; this keeps

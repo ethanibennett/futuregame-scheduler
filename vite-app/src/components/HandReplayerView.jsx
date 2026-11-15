@@ -9009,7 +9009,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const atExtreme = Math.abs(c - RING.l) < 0.5 || Math.abs(c - RING.r) < 0.5;
       if (seg === 'arc') {
         x = c + (c < cxRing ? -CORNER_OUT : CORNER_OUT);
-        if (!atExtreme) y = y + (r < cy ? CORNER_IN : -CORNER_IN);
+        /* Not at 10-max: there both of a side's seats are on its arc, and the cell each took toward the centre line
+           took two from between them, so the upper one's action label sat on the lower one's cards (owner,
+           2026-11-15: collisions; check:replayer-collisions at 1440 and 1728). */
+        if (!atExtreme && count < 10) y = y + (r < cy ? CORNER_IN : -CORNER_IN);
       }
       return [+(x * 100 / LGX).toFixed(3), +(y * 100 / LGY).toFixed(3)];
     });
@@ -9118,8 +9121,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const dx = bx - 50, dy = by - 50;
     const EPS = 3;                                   // "on the centre line"
     const sx = Math.abs(dx) > EPS ? (dx < 0 ? 1 : -1) : (-dy < 0 ? -1 : 1);
-    const sy = Math.abs(dy) > EPS ? (dy < 0 ? 1 : -1) : (dx < 0 ? -1 : 1);
-    return (sy > 0 ? 'b' : 't') + (sx > 0 ? 'r' : 'l');
+    // The side facing the centre, not a corner: the cards hang over the top edge and the action label under the
+    // bottom (owner, 2026-11-15: collisions; styles.css .replayer-dealer-btn.corner-l/-r).
+    return sx > 0 ? 'r' : 'l';
   })();
   /* Rendered: a 15% step round the rail from the button's seat put the deck
      squarely on the NEXT player's fan. There is no gap at the rail on a full
@@ -9222,6 +9226,86 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      moment needs is read in one pass first, while the layout React just committed is still clean
      (the board effect above has already laid it out), and only then are ghosts and chips created
      and springs started. Nothing in the write half reads the DOM back. */
+  /* Wagers clear of their own seat (owner, 2026-11-15: "We really need to figure out how to prevent these collisions";
+     npm run check:replayer-collisions). chipStyle puts a wager a share of the way to the pot, and a share cannot know
+     how tall the seat's plaque, action label, draw run and readout are at this size, or where its button sits: on a
+     short or crowded table the chips landed on them. Here, after layout and before the moment below reads the wagers'
+     places, each wager starts at that spot (data-base-left/top) and, coming within 1r of any of its seat's pieces,
+     moves on toward the pot until 1r of cloth shows (a side seat's straight in, level with it). It is written back
+     as left/top percentages, the form the push-out and the sweep's ghosts read. */
+  const subrowPxRef = useRef({ w: -1, px: 8 });
+  useLayoutEffect(() => {
+    const table = tableRef.current;
+    if (!table) return;
+    const pills = table.querySelectorAll('.replayer-bet-chip[data-seat][data-base-left]');
+    if (!pills.length) return;
+    if (subrowPxRef.current.w !== window.innerWidth) {
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 20)';
+      table.appendChild(probe);
+      subrowPxRef.current = { w: window.innerWidth, px: probe.offsetHeight / 20 || 8 };
+      probe.remove();
+    }
+    const r = subrowPxRef.current.px;
+    const STEP = r / 4;
+    /* Each piece at its laid-out size around its drawn centre: an action label pops in from a smaller scale, and
+       measured mid-pop it left room that was not there once it had grown. */
+    const boxOf = (e) => {
+      const b = e.getBoundingClientRect();
+      const bw = Math.max(b.width, e.offsetWidth || 0), bh = Math.max(b.height, e.offsetHeight || 0);
+      const mx = b.left + b.width / 2, my = b.top + b.height / 2;
+      return { left: mx - bw / 2, right: mx + bw / 2, top: my - bh / 2, bottom: my + bh / 2, width: bw, height: bh };
+    };
+    const PIECES = '.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn, .replayer-seat-cards .card-row > *';
+    const piecesOf = (seatEl) => (seatEl ? [...seatEl.querySelectorAll(PIECES)].map(boxOf).filter(b => b.width > 0 && b.height > 0) : []);
+    // The middle of the felt: the pot (its figure and its chips), the board, the game pill.
+    const felt = [...table.querySelectorAll('.replayer-pot-display, .replayer-pot-above, .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-table-info')]
+      .map(boxOf).filter(b => b.width > 0 && b.height > 0);
+    pills.forEach(el => {
+      el.style.left = el.dataset.baseLeft;
+      el.style.top = el.dataset.baseTop;
+    });
+    const placed = [];
+    pills.forEach(el => {
+      const seatEl = table.querySelector('.replayer-seat[data-seat="' + el.dataset.seat + '"]');
+      const plaqueEl = seatEl && seatEl.querySelector('.replayer-seat-info');
+      const cb = el.offsetParent;
+      if (!plaqueEl || !cb) return;
+      const own = piecesOf(seatEl);
+      const others = [...table.querySelectorAll('.replayer-seat[data-seat]')].filter(s => s !== seatEl).flatMap(piecesOf);
+      const C = cb.getBoundingClientRect();
+      const ox = C.left + cb.clientLeft, oy = C.top + cb.clientTop, W = cb.clientWidth, H = cb.clientHeight;
+      const w = el.offsetWidth, h = el.offsetHeight;
+      let cx = ox + el.offsetLeft, cy = oy + el.offsetTop;           // the point the pill is centred on
+      const hit = (list, x, y, g) => list.some(b => x - w / 2 < b.right + g && x + w / 2 > b.left - g && y - h / 2 < b.bottom + g && y + h / 2 > b.top - g);
+      const box = (x, y) => ({ left: x - w / 2, right: x + w / 2, top: y - h / 2, bottom: y + h / 2 });
+      const clearElsewhere = (x, y) => !hit(felt, x, y, r / 4) && !hit(others, x, y, r / 4) && !hit(placed, x, y, r / 4);
+      if (hit(own, cx, cy, r)) {
+        const P = plaqueEl.getBoundingClientRect();
+        const tx = ox + W * 0.5, ty = oy + H * 0.4;                   // POT_AT
+        let ux, uy;
+        if (el.dataset.side === '1') { ux = Math.sign(tx - (P.left + P.width / 2)) || 1; uy = 0; }
+        else { const dx = tx - cx, dy = ty - cy, len = Math.hypot(dx, dy) || 1; ux = dx / len; uy = dy / len; }
+        // At most as far as the pot's centre; the felt test below keeps it off the pot itself.
+        const reach = el.dataset.side === '1' ? Math.abs(tx - cx) : Math.hypot(tx - cx, ty - cy);
+        let chosen = null, fallback = null;
+        for (const g of [r, r / 2, r / 4]) {                          // as much cloth as the table has: 1r, then less
+          let d = STEP;
+          while (d <= reach && hit(own, cx + ux * d, cy + uy * d, g)) d += STEP;
+          if (d > reach) continue;
+          const x = cx + ux * d, y = cy + uy * d;
+          if (!fallback || d < fallback.d) fallback = { x, y, d };
+          if (clearElsewhere(x, y)) { chosen = { x, y }; break; }
+        }
+        const at = chosen || fallback;                                 // off its own seat at least
+        if (at) { cx = at.x; cy = at.y; }
+      }
+      placed.push(box(cx, cy));
+      el.style.left = ((cx - ox) / W * 100).toFixed(3) + '%';
+      el.style.top = ((cy - oy) / H * 100).toFixed(3) + '%';
+    });
+  });
+
   useLayoutEffect(() => {
     const table = tableRef.current;
     if (table && table.__replayerMotion !== motion) table.__replayerMotion = motion;
@@ -11779,7 +11863,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           return (
             /* On the spring path the won pill is its own element: the river wager it replaces leaves
                the felt as itself (its ghost is a copy of it) rather than turning into the award. */
-            <div key={(showResult && springOn ? 'won-' : 'bet-') + pi} data-seat={pi} className={'replayer-bet-chip' + (rSettings.animateChips ? ' animate-chips' : '')} style={chipStyle}>
+            <div key={(showResult && springOn ? 'won-' : 'bet-') + pi} data-seat={pi} className={'replayer-bet-chip' + (rSettings.animateChips ? ' animate-chips' : '')} style={chipStyle}
+              data-base-left={chipStyle.left} data-base-top={chipStyle.top} data-side={sideSeat ? '1' : '0'}>
               <ChipStack amount={chipAmount} />
               {fmtChips(chipAmount)}
               {/* 42: a ten-step classifier from min through overbet was written

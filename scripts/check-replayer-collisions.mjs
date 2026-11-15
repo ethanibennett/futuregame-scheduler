@@ -116,16 +116,24 @@ const FELT_OK = new Set(['pot|pot', 'board|board', 'game|pot']);   // the pot's 
 function collisions(m, slack) {
   const out = [];
   const it = m.items;
+  // A seat's cards tuck under its plaque, which paints over them: an overlap wholly inside that plaque is unseen.
+  const plaques = new Map(it.filter((x) => x.kind === 'plaque').map((x) => [x.owner, x]));
+  const hidden = (card, ix, iy, iw, ih) => {
+    const p = plaques.get(card.owner);
+    return p && ix >= p.x - slack && iy >= p.y - slack && ix + iw <= p.x + p.w + slack && iy + ih <= p.y + p.h + slack;
+  };
   for (let i = 0; i < it.length; i++) {
     for (let j = i + 1; j < it.length; j++) {
       const a = it[i], b = it[j];
-      const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
-      const oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+      const ix = Math.max(a.x, b.x), iy = Math.max(a.y, b.y);
+      const ox = Math.min(a.x + a.w, b.x + b.w) - ix;
+      const oy = Math.min(a.y + a.h, b.y + b.h) - iy;
       if (ox <= slack || oy <= slack) continue;
       const pair = [a.kind, b.kind].sort().join('|');
       if (a.owner === b.owner) {
         if (a.owner === 'felt' ? FELT_OK.has(pair) : SELF_OK.has(pair)) continue;
       }
+      if ((a.kind === 'card' && hidden(a, ix, iy, ox, oy)) || (b.kind === 'card' && hidden(b, ix, iy, ox, oy))) continue;
       out.push({ a, b, ox, oy });
     }
   }
