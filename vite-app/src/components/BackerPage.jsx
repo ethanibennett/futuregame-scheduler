@@ -16,7 +16,7 @@ import { settleView, partCents, paymentView, usd } from '../utils/backer-settle.
 import { VENUE_MAP, getVenueBrandColor, getVenueInfo, getStripAbbr } from '../utils/utils.js';
 import {
   summarize, groupByMonth, withPayments, shareSeries, rangeOptions, stripFor, monthLabel, RANGE_NOUN,
-  fmtSignedCents, fmtHours, fmtDay, plural, tone, bbStats, eventBb, settlementCountdown, weekRunning,
+  fmtSignedCents, fmtHours, fmtDay, plural, tone, bbStats, eventBb, settlementCountdown, weekRunning, weekLines,
 } from '../utils/backer-page.js';
 import './backer-page.css';
 import { SwissLines } from './SwissParts.jsx';
@@ -375,20 +375,20 @@ function SettlementBar({ waiting = false }) {
   );
 }
 
-/** The card's large figure. While earlier weeks are unsettled (utils/backer-page.js weekRunning; owner,
- *  2026-10-20) it is two rows, never added together: To be settled from last week (what earlier weeks
- *  still owe), then This week (shares since Sunday noon, New York). Otherwise the one running total. Re-checked
- *  every 30 s, so Sunday noon starts a new week on an open page. */
+/** The card's large figure: the running total, and under it the weeks (and payments) that add up to it, newest
+ *  first (utils/backer-page.js weekLines; owner, 2026-11-14: "the total up top and then lines for each week that
+ *  adds up to it"); one line alone is the total, so then only the total. Re-checked every 30 s, so Sunday noon starts
+ *  a new week on an open page. */
 function TotalFigures({ feed, total }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(id); }, []);
-  const w = weekRunning(feed, now);
+  const w = weekLines(feed, now);
   /* Who pays whom, in words (UX pick 74): the sign was the owner's convention ("+" = Ethan pays you),
      and a red "-$573" read as "you lost $573". The label carries the direction; the figure loses its
      sign and keeps the reader's colour, green for money coming to them. */
   const who = (c) => (c > 0 ? 'Ethan pays you' : c < 0 ? 'You pay Ethan' : '');
   const bare = (c) => fmtSignedCents(Math.abs(Math.round(Number(c) || 0))).replace(/^\+/, '');
-  if (!w.show) {
+  if (w.lines.length < 2) {
     return (
       <>
         <div className="an-cell an-lbl an-lbl-3">{who(total) || 'Running total'}</div>
@@ -397,15 +397,17 @@ function TotalFigures({ feed, total }) {
     );
   }
   return (
-    /* The one figure the Settled button is about is the large one (Bankroll design 73), at --fs-3xl; this
-       week rolls on, so it reads as one line under it. */
+    /* The total on top, then the weeks (and payments) that make it up, newest first, adding up to it (owner,
+       2026-11-14; utils/backer-page.js weekLines). */
     <div className="bp-total-rows">
-      <div className="an-cell an-lbl an-lbl-3">{who(w.carriedCents) ? who(w.carriedCents) + ' \u00b7 from last week' : 'To be settled from last week'}</div>
-      <div className={'an-cell bp-total-val bp-total-due ' + tone(w.carriedCents)}>{bare(w.carriedCents)}</div>
-      <div className="bp-week-line">
-        <span className="an-cell an-lbl an-lbl-3">This week</span>
-        <span className={'an-cell bp-week-val ' + tone(w.weekCents)}>{fmtSignedCents(w.weekCents)}</span>
-      </div>
+      <div className="an-cell an-lbl an-lbl-3">{who(w.totalCents) || 'Running total'}</div>
+      <div className={'an-cell bp-total-val bp-total-due ' + tone(w.totalCents)}>{bare(w.totalCents)}</div>
+      {w.lines.map(l => (
+        <div key={l.key} className="bp-week-line">
+          <span className="an-cell an-lbl an-lbl-3">{l.label}</span>
+          <span className={'an-cell bp-week-val ' + tone(l.cents)}>{fmtSignedCents(l.cents)}</span>
+        </div>
+      ))}
     </div>
   );
 }

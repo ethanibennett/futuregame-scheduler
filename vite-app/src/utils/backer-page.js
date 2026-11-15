@@ -372,6 +372,60 @@ export function weekRunning(feed, nowMs) {
   return { show: whole(carriedCents) !== 0, weekCents, carriedCents, since };
 }
 
+/**
+ * The running total and the lines that add up to it (owner, 2026-11-14: "the total up top and then lines for each
+ * week that adds up to it"). The weeks since the balance last cleared, newest first: This week, Last week, then
+ * "Week of <Sunday>" (a settlement week starts Sunday noon, New York), each the shares recorded in it; every payment
+ * since, on its own line (signed as the total: + = Ethan owes the backer, so a payment from Ethan is negative); and
+ * an Earlier line for whatever is left (an opening balance, weeks before the cap). The lines sum to the total
+ * exactly, whatever the data, because Earlier is the remainder. The balance last cleared at the newest completed
+ * Settled: that paid everything before its own week began.
+ * -> { totalCents, lines: [{ key, label, cents, kind: 'week' | 'payment' | 'earlier' }] }
+ */
+export function weekLines(feed, nowMs, { maxWeeks = 8 } = {}) {
+  const f = feed || {};
+  const totalCents = Math.round(Number(f.cumulativeCents) || 0);
+  const toMs = (p) => {
+    const a = p && p.at;
+    const n = typeof a === 'number' ? a : Date.parse(a);
+    return Number.isFinite(n) ? n : Date.parse(String(p && p.date) + 'T12:00:00Z');
+  };
+  const payments = (Array.isArray(f.payments) ? f.payments : []).map((p) => ({ ...p, ms: toMs(p) })).filter((p) => Number.isFinite(p.ms));
+  const settles = payments.filter((p) => p.kind === 'settled').sort((a, b) => b.ms - a.ms);
+  const anchor = settles.length ? settles[0] : null;
+  const from = anchor ? weekStart(anchor.ms) : -Infinity;
+  const thisStart = weekStart(nowMs);
+  const WEEK = SETTLE_WEEK_MS;
+  const sums = new Map();      // week index (0 = this week, 1 = last week, ...) -> cents
+  let oldest = 0;
+  for (const e of Array.isArray(f.events) ? f.events : []) {
+    const ts = Number(e.ts);
+    if (!Number.isFinite(ts) || ts < from) continue;
+    const k = ts >= thisStart ? 0 : Math.ceil((thisStart - ts) / WEEK);
+    sums.set(k, (sums.get(k) || 0) + Math.round(Number(e.shareCents) || 0));
+    oldest = Math.max(oldest, k);
+  }
+  if (anchor) oldest = Math.max(oldest, Math.max(0, Math.ceil((thisStart - from) / WEEK)));
+  const day = (ms) => new Date(ms).toLocaleDateString('en-US', { timeZone: SETTLE_TZ, month: 'short', day: 'numeric' });
+  const lines = [];
+  for (let k = 0; k <= Math.min(oldest, maxWeeks - 1); k++) {
+    const cents = sums.get(k) || 0;
+    if (k > 1 && !whole(cents)) continue;   // an empty older week says nothing
+    lines.push({ key: 'w' + k, kind: 'week', cents,
+      label: k === 0 ? 'This week' : k === 1 ? 'Last week' : 'Week of ' + day(thisStart - k * WEEK) });
+  }
+  for (const p of payments.filter((q) => q !== anchor && q.ms >= (anchor ? anchor.ms : -Infinity)).sort((a, b) => b.ms - a.ms)) {
+    const c = -Math.round(Number(p.amountCents) || 0);
+    if (!c) continue;
+    lines.push({ key: 'p' + p.ms + p.kind, kind: 'payment', cents: c,
+      label: (c < 0 ? 'Ethan paid you' : 'You paid Ethan') + ' · ' + day(p.ms) });
+  }
+  const rest = totalCents - lines.reduce((a, l) => a + l.cents, 0);
+  if (whole(rest)) lines.push({ key: 'earlier', kind: 'earlier', cents: rest, label: 'Earlier' });
+  else if (rest && lines.length) lines[lines.length - 1].cents += rest;   // under a dollar: keep the sum exact
+  return { totalCents, lines };
+}
+
 /** { leftMs, pct (0-100, the share of the week still to run, exact to Sunday noon), days, text }.
  *  The text counts whole calendar days in New York, not hours (owner, 2026-10-15): Saturday is
  *  "1 day" at any hour, Monday "6 days", Sunday morning "Today", Sunday after noon "7 days". */

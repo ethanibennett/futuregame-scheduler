@@ -282,3 +282,25 @@ test('weekRunning: this week shows only while earlier weeks are unsettled', asyn
   const c = weekRunning({ cumulativeCents: 50000, events: [ev(start - 86400e3, 50000)] }, now);
   assert.deepEqual([c.show, c.weekCents], [true, 0]);
 });
+
+test('weekLines: the weeks since the last Settled, each payment since, and Earlier, adding up to the total', async () => {
+  const { weekLines, weekStart, SETTLE_WEEK_MS: W } = await import('../backer-page.js');
+  const now = Date.UTC(2026, 10, 14, 15, 0);                // Sat 14 Nov 2026
+  const start = weekStart(now);
+  const ev = (ts, shareCents) => ({ ts, shareCents });
+  const sum = (r) => r.lines.reduce((a, l) => a + l.cents, 0);
+  // Never settled: this week, last week, two weeks back, and a $40 opening balance as Earlier.
+  const a = weekLines({ cumulativeCents: -147500 - 138200 + 30000 + 4000,
+    events: [ev(start + 3600e3, -147500), ev(start - 86400e3, -138200), ev(start - W - 86400e3, 30000)] }, now);
+  assert.deepEqual(a.lines.map(l => [l.label, l.cents]), [['This week', -147500], ['Last week', -138200], ['Week of Oct 25', 30000], ['Earlier', 4000]]);
+  assert.equal(sum(a), a.totalCents);
+  // Settled two weeks ago (clearing all before that week) and a $500 payment from Ethan since: nothing older shows.
+  const settledAt = start - W + 86400e3;                    // in last week
+  const b = weekLines({ cumulativeCents: -20000 + 10000 - 50000,
+    events: [ev(start + 3600e3, -20000), ev(start - 3600e3, 10000), ev(start - 3 * W, 99900)],
+    payments: [{ kind: 'part', at: start + 7200e3, amountCents: 50000 }, { kind: 'settled', at: settledAt, amountCents: 99900 }] }, now);
+  assert.deepEqual(b.lines.map(l => l.label), ['This week', 'Last week', 'Ethan paid you · Nov 8']);
+  assert.equal(sum(b), b.totalCents);
+  // Only this week: one line, which the page does not repeat under the total.
+  assert.equal(weekLines({ cumulativeCents: 5000, events: [ev(start + 3600e3, 5000)] }, now).lines.length, 1);
+});
