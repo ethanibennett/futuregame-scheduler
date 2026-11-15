@@ -6156,12 +6156,8 @@
     /* The showdown hand name goes UNDER the draw badge. The badge reaches 2.4r
        below the plaque's bottom edge, so the name starts 3.4r below that edge:
        1r of air. */
-    /* The action pill goes under the draw run (owner, 2026-11-14: "put the betting decisions under the draw
-       decisions"): both hung centred under the plaque, one over the other. The run reaches 2.4r below the
-       plaque's edge; the pill starts 0.5r under that. */
-    .replayer-seat-info:has(.replayer-seat-draw-badge) .replayer-action-badge-outer {
-      top: calc(100% + var(--subrow) * 2.9);
-    }
+    /* (The action pill hung under the draw run while both hung under the plaque, 2026-11-14; it sits on the plaque's
+       top edge again since 2026-11-15, so the run has the plaque's foot to itself.) */
     .replayer-seat:has(.replayer-seat-draw-badge) .replayer-seat-hand-name {
       margin-top: calc(var(--subrow) * 3.4);
     }
@@ -6209,10 +6205,13 @@
     /* Action badges */
     .replayer-action-badge-outer {
       position: absolute;
-      /* Under the plaque, where the showdown readout hangs (owner, 2026-11-14: "move the action below the seat");
-         over the cards it hid them. The readout replaces it at showdown (the badge is not drawn with a hand name).
-         0.5r under it (owner, 2026-11-15: collisions): at 100% it began inside the plaque's hairline and touched it. */
-      top: calc(100% + var(--subrow) * 0.5);
+      /* On the plaque's top edge, over the lowest part of the cards (owner, 2026-11-15: "move the action pill back
+         above the seat box, but we need to make sure it isn't obscuring too much of the cards"). It hung under the
+         plaque from 2026-11-14 ("over the cards it hid them"), where on a top seat it met the seat's chips. It may
+         cover a card's lower body, never its index (rank and suit, the card's top half): check:replayer-collisions
+         holds every seat's label clear of its cards' indexes. Sits on the hairline's outer edge, not inside it. */
+      top: auto;
+      bottom: calc(100% + var(--bw-hair));
       left: 50%;
       transform: translateX(-50%);
       /* Its parent plaque already paints over the tucked-in cards; this keeps

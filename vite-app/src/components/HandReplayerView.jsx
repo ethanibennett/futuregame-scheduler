@@ -1789,9 +1789,6 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal, spanSca
    how many points of the arc it is sampled at. The sample count only has to
    make the path read as a curve at card scale; 16 chords of a <=30deg arc
    deviate from it by well under a pixel. */
-/* How far below a draw game's top seat its wager sits, in r, to its centre: the action pill ends 7.35r down and the chips
-   start 1.25r under it (see the wager placement). */
-const DRAW_TOP_CHIP_R = 9.85;
 
 /* The D1/PAT run under a draw-game plaque, the same distance below it at every seat (styles.css). */
 function DrawBadge({ history }) {
@@ -11848,19 +11845,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
              6 and 9-max). Portrait only. */
           const tY = isLandscape ? t : pos[1] > POT_AT[1] ? 0.26 : 0.3;
           const chipY = sideSeat ? pos[1] : pos[1] + (POT_AT[1] - pos[1]) * tY;
-          /* A draw game's top seat hangs its action pill under the draw run, 7.2r below the seat's anchor whatever the
-             table's height; a share of the way to the pot landed its chips on that pill on a shorter table (owner,
-             2026-11-14: "More collisions here"). Its chips go a fixed distance in r instead, 1.25r under the pill, and
-             2.9r nearer before the seat's first draw shows (the run's test, as the plaque's draw badge reads it). */
-          const drawTop = isDrawGame && !isLandscape && !sideSeat && pos[1] < POT_AT[1];
-          const drawRunShown = drawTop && !gameCfg.discardOnly && (() => {
-            const drawn = actionIdx >= (hand.streets[streetIdx]?.actions || []).length - 1;
-            return Object.keys(getPlayerDrawsByStreet(hand, pi)).map(Number).some(si => si < streetIdx || (si === streetIdx && drawn));
-          })();
-          /* --chip-start-dx/dy used to be written here (a percentage times 3, as 'px') for a
+          /* (A draw game's top seat put its chips a fixed 9.85r under its anchor while its action pill hung under the
+             draw run, 2026-11-14. The pill sits over the cards again, and the placement effect keeps every wager 1r
+             clear of its seat's draw run, so the draw seats take the same spot as everyone else.)
+             --chip-start-dx/dy used to be written here (a percentage times 3, as 'px') for a
              keyframe that is animation: none; nothing read them. The spring push-out measures
              the seat direction itself. */
-          const chipStyle = {left: chipX + '%', top: drawTop ? 'calc(' + pos[1] + '% + var(--subrow) * ' + (DRAW_TOP_CHIP_R - (drawRunShown ? 0 : 2.9)) + ')' : chipY + '%'};
+          const chipStyle = {left: chipX + '%', top: chipY + '%'};
           return (
             /* On the spring path the won pill is its own element: the river wager it replaces leaves
                the felt as itself (its ghost is a copy of it) rather than turning into the award. */

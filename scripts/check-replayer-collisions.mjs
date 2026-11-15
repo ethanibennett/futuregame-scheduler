@@ -11,7 +11,7 @@
 // Seats take long names (a plaque is as wide as its name), so the layout is tried at the width real tables have.
 //
 //   node scripts/check-replayer-collisions.mjs [--per-game 2] [--games "NLH,O8"] [--ids "NLH#3"]
-//        [--sizes "375x667,402x874,430x932,1440x900,1728x1117"] [--jobs 3] [--shots dir] [--slack 0.5]
+//        [--sizes "375x667,402x874,430x932,1440x900,1728x1117"] [--jobs 3] [--shots dir] [--slack 0.5] [--build dir]
 //
 // Boots its own scratch server (test/helpers/scratch-server.js, ports 4890-4899) and stops it at the end. Needs the
 // built app (vite-app: npm run build). Exit 1 on any collision.
@@ -92,7 +92,13 @@ const MEASURE = () => {
     table.querySelectorAll('.replayer-seat[data-seat]').forEach((seat) => {
       const s = Number(seat.dataset.seat);
       add(s, 'plaque', seat.querySelector('.replayer-seat-info'), text(seat.querySelector('.replayer-seat-name')));
-      seat.querySelectorAll('.replayer-seat-cards .card-row > *').forEach((c, i) => add(s, 'card', c, 'card ' + (i + 1)));
+      seat.querySelectorAll('.replayer-seat-cards .card-row > *').forEach((c, i) => {
+        add(s, 'card', c, 'card ' + (i + 1));
+        // A face-up card's index, its rank and suit: the top half of its left 30% (on the 180 x 252 face the rank and
+        // the corner pip end at 50 across and 120 down). The action label may cover a card's body, never this.
+        const b = seen(c);
+        if (b && c.tagName === 'IMG') items.push({ owner: s, kind: 'index', label: (c.getAttribute('alt') || 'card ' + (i + 1)) + ' index', x: b.x, y: b.y, w: b.w * 0.3, h: b.h * 0.5 });
+      });
       seat.querySelectorAll('.replayer-action-badge-outer').forEach((el) => add(s, 'action', el));
       seat.querySelectorAll('.replayer-seat-hand-name').forEach((el) => add(s, 'readout', el));
       seat.querySelectorAll('.replayer-seat-draw-badge').forEach((el) => add(s, 'draws', el));
@@ -110,8 +116,9 @@ const MEASURE = () => {
 };
 
 // Which pairs may touch. Everything not listed here must stay apart.
-// Keys are the two kinds sorted, joined by |.
-const SELF_OK = new Set(['card|plaque', 'card|card', 'button|plaque']);
+// Keys are the two kinds sorted, joined by |. The action label sits over its own cards' lower bodies (owner,
+// 2026-11-15), so it may cover a card, but not a card's index (kind 'index', held only against the action label).
+const SELF_OK = new Set(['card|plaque', 'card|card', 'button|plaque', 'action|card']);
 const FELT_OK = new Set(['pot|pot', 'board|board', 'game|pot']);   // the pot's figure and its chips; the board's own cards
 function collisions(m, slack) {
   const out = [];
@@ -129,6 +136,8 @@ function collisions(m, slack) {
       const ox = Math.min(a.x + a.w, b.x + b.w) - ix;
       const oy = Math.min(a.y + a.h, b.y + b.h) - iy;
       if (ox <= slack || oy <= slack) continue;
+      // An index is a part of its card, held only against an action label (the card itself stands for it otherwise).
+      if ((a.kind === 'index' || b.kind === 'index') && !((a.kind === 'index' && b.kind === 'action') || (b.kind === 'index' && a.kind === 'action'))) continue;
       const pair = [a.kind, b.kind].sort().join('|');
       if (a.owner === b.owner) {
         if (a.owner === 'felt' ? FELT_OK.has(pair) : SELF_OK.has(pair)) continue;
@@ -141,7 +150,12 @@ function collisions(m, slack) {
 }
 
 const scratch = await createScratch({ ports: [4890, 4899], prefix: 'fg-collide-' });
-const srv = await boot(scratch.dbPath, {}, { ports: [4890, 4899] });
+// --build: serve another build folder (a folder at the repo root, or an absolute path), leaving public-vite to others.
+const BUILD = opt('--build', '');
+const srv = await boot(scratch.dbPath, BUILD ? { PUBLIC_VITE_DIR: BUILD } : {}, {
+  ports: [4890, 4899],
+  preloads: BUILD ? [path.join(import.meta.dirname, '..', 'test', 'helpers', 'public-dir-preload.js')] : [],
+});
 const base = `http://127.0.0.1:${srv.port}`;
 const api = async (p, o = {}) => {
   const res = await fetch(base + p, {
