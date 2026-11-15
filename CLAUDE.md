@@ -522,7 +522,16 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   - **Feed runs** (4, 8): `features.beforeFeedRun(db)` before, `afterFeedRun(db, snap, { carried, venues })` after,
     in BOTH the local ingest and production's feed-sync. A saved event's date/time/buy-in change or its second
     missed run (`event_feed_miss`) is an `event_changes` row, a bell line and a push; a new series at a followed
-    room (`room_follows`) likewise.
+    room (`room_follows`) likewise. A same-day start moved under 15 minutes is a bell line only (Triton re-times
+    flights by minutes on the day of play), and one event's changes in one run are ONE push per player
+    (`noticesFor`: "Moved from <date>, <time> to <date>, <time>"); the bell keeps a line per change, since the
+    card's Got it marks changes one at a time. Since the watcher keeps a moved event's key (2026-11-06), a move
+    arrives here as a date/time change, not a 'gone'. `npm run test:event-changes`.
+  - **Listed twice** (`lib/feed-duplicates.js`, owner 2026-11-15): after every production feed-sync, feed rows
+    from today on with one name, buy-in, day and start at one room are counted (the reply's `duplicates`, logged
+    here as "N listed twice") and a group not seen before pages the admin once (`feed_dup_alerts`). It exists
+    for what the watcher's own check (`emit/duplicates.ts`) cannot see: a row prune KEEPS because someone
+    saved it, beside the event's current row.
   - **The backer page** (12, 21, 22, 23): `backer_page_options` per link (re-keyed on rotation via
     `TOKEN_COLUMNS`): coming-up (`feed.comingUp`, only when on, so the feed is otherwise byte for byte unchanged)
     and the sweat (`live.sweat`, chips only, only in the backer's action). `liveSession(..., { withRun })` keeps the

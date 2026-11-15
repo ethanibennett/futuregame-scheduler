@@ -579,6 +579,7 @@ app.use('/api/cash', authenticateToken, (req, res) => {
 const { checkDashboardToken, makePreviousTokenWarner } = require('./lib/dashboard-token');
 const { clockForEvent, probeProviders } = require('./lib/live-clocks');
 const { retainsPastFeedRow, RETAIN_DAYS } = require('./lib/feed-prune');
+const feedDuplicates = require('./lib/feed-duplicates');
 const bankrolls = require('./lib/bankrolls');
 const bankrollLedger = require('./lib/bankroll-ledger');
 const bankrollManagement = require('./lib/bankroll-management');
@@ -12469,7 +12470,9 @@ async function pushMttFeedToProd() {
     if (!res.ok) { console.log('[MTT feed] prod push failed:', res.status); return; }
     const result = await res.json();
     const prunedNote = result.pruned ? `, ${result.pruned} pruned` : '';
-    console.log(`[MTT feed] → prod: ${result.inserted} new, ${result.updated} updated, ${result.skipped} skipped${prunedNote}`);
+    // Production's own count of events listed twice (lib/feed-duplicates.js), so this box's log shows it.
+    const dupNote = result.duplicates != null ? `, ${result.duplicates} listed twice` : '';
+    console.log(`[MTT feed] → prod: ${result.inserted} new, ${result.updated} updated, ${result.skipped} skipped${prunedNote}${dupNote}`);
   } catch (err) {
     console.error('[MTT feed] prod push error:', err.message);
   }
@@ -14022,7 +14025,26 @@ app.post('/api/tournaments/feed-sync/:token', async (req, res) => {
       await saveDatabase();
       broadcastToAll('schedule-refetch', { source: 'bridge-supersede', removed: supersededBridge });
     }
-    res.json({ ...result, pruned, supersededBridge, total: tournaments.length });
+    // An event the Schedule now lists twice (lib/feed-duplicates.js): every group is counted in the
+    // reply, and a group not seen before pages the admin once.
+    let duplicates = 0;
+    try {
+      const groups = feedDuplicates.find(db);
+      duplicates = groups.length;
+      const fresh = feedDuplicates.fresh(db, groups);
+      if (fresh.length) {
+        await saveDatabase();
+        console.log(`[FeedSync] ${fresh.length} new duplicate group(s): ${fresh.slice(0, 5).map(feedDuplicates.describe).join(' · ')}`);
+        await sendPushToAdmin(
+          `Schedule duplicate${fresh.length === 1 ? '' : 's'}: ${fresh.length} event${fresh.length === 1 ? '' : 's'} listed twice`,
+          fresh.slice(0, 3).map(feedDuplicates.describe).join(' · ').slice(0, 220),
+          `/?find=${encodeURIComponent(fresh[0].rows[0].venue)}`,
+        );
+      }
+    } catch (err) {
+      console.error('[FeedSync] duplicate check failed:', err.message);
+    }
+    res.json({ ...result, pruned, supersededBridge, duplicates, total: tournaments.length });
   } catch (err) {
     console.error('[FeedSync] Error:', err.message);
     res.status(500).json({ error: err.message });

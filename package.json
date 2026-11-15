@@ -35,6 +35,7 @@
     "test:testflight-nightly": "node test/testflight-nightly.js",
     "test:clocks": "node test/live-clocks.test.js && node test/wsop-live-clocks.test.js && node vite-app/src/utils/__tests__/clock-field.test.mjs",
     "test:feed-prune": "node test/feed-prune.test.js",
+    "test:event-changes": "node test/event-changes.test.js",
     "test:bankroll-import": "node test/bankroll-ledger.test.js && cd vite-app && node --test src/utils/__tests__/bankroll-csv.test.mjs",
     "test:mcp": "node test/mcp.test.js",
     "test:session-bridge": "node test/session-bridge.test.js",
