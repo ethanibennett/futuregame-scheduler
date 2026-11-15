@@ -40,9 +40,11 @@ wsop-console side and verified against both live services.
 
 - `docs/catalogues/features`. The architecture and what a later change has to keep are in CLAUDE.md ("The Features
   catalogue, built"); the server's modules are listed in `lib/feature-mounts.js`.
-- **Waiting on the Mac:** the Live Activity (10) needs a Widget Extension target named FuturegameWidgets (steps at the
-  top of `ios/App/FuturegameWidgets/FuturegameWidgets.swift`). Until then `LiveActivityPlugin` reports the request
-  failed and nothing shows. The nightly TestFlight build compiles the four new plugins in `AppDelegate.swift` for the
+- **The Live Activity (10) is in** (2026-11-15): the `FuturegameWidgetsExtension` target, added on the Mac and checked
+  in the Simulator. Its first TestFlight export needs a distribution profile for the new bundle id
+  `app.futurega.me.beta.FuturegameWidgets`; cloud signing can create one only with the Admin key (`ASC_ADMIN_*`), so a
+  "Cloud signing permission error" on that run is this. The Mac clone had been stale since 09-30 (uncommitted edits
+  blocked the auto-pull; reviewed, superseded, dropped). The nightly TestFlight build compiles the four new plugins in `AppDelegate.swift` for the
   first time, and the entitlements now ask for Sign in with Apple and `applinks:futurega.me`: automatic signing with the
   Admin key has to add both capabilities to the App ID. Watch the next nightly run; a signing error there is this.
 - **Waiting on the owner:** Android app links need `ANDROID_CERT_SHA256` on Render (the release key's fingerprint).

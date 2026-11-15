@@ -533,8 +533,11 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   - **Native** (41, 43, 47, 10): `AppLockPlugin`, `AppleSignInPlugin`, `DeepLinksPlugin`, `LiveActivityPlugin`
     compiled in `AppDelegate.swift` and registered in `MainViewController`; entitlements gained Sign in with Apple
     and `applinks:futurega.me` (`/.well-known/apple-app-site-association` is served); Info.plist gained the Face ID
-    reason and `NSSupportsLiveActivities`. The Live Activity's UI is `ios/App/FuturegameWidgets/`, NOT yet a target:
-    the Mac adds the Widget Extension (steps in that file). Android links need `ANDROID_CERT_SHA256`.
+    reason and `NSSupportsLiveActivities`. The Live Activity's UI is the `FuturegameWidgetsExtension` target
+    (`ios/App/FuturegameWidgets/`, a folder Xcode syncs: a file put there joins the target; added 2026-11-15, checked in
+    the Simulator). It is embedded for iOS only (`platformFilter = ios`; the Mac app has no Live Activities), and its
+    `CURRENT_PROJECT_VERSION` must equal the app's, because `ios-testflight.sh` bumps the build by replacing the app's
+    value. Android links need `ANDROID_CERT_SHA256`.
   - Tests: `npm run test:features-social` (ports 4750-4759), and `game-rules`, `odds`, `plans-in-common` in
     `test:utils`. Catalogue figures (ICM, the PLO 8/b odds) are held by `odds.test.mjs`.
 

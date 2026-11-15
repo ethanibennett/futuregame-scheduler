@@ -443,8 +443,8 @@ public class DeepLinksPlugin: CAPPlugin, CAPBridgedPlugin {
 // A Live Activity started when a run starts on the Dashboard, updated as the room's clock moves and ended
 // at a bust, a bag or Finish. The level's end is a date, so the lock screen counts it down by itself
 // (Text(timerInterval:)) with no push per second. Its UI lives in the FuturegameWidgets extension target
-// (ios/App/FuturegameWidgets/), which carries the same PlayingAttributes; without that target the
-// request fails and the plugin says so. iPhone only: Mac Catalyst has no Live Activities.
+// (ios/App/FuturegameWidgets/), which carries the same PlayingAttributes, field for field. iPhone only:
+// Mac Catalyst has no Live Activities.
 #if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
 @available(iOS 16.2, *)
 struct PlayingAttributes: ActivityAttributes {

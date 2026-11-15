@@ -2,7 +2,7 @@
  * The event being played on the lock screen (Features 10, 2026-11-11): the native LiveActivity plugin
  * (ios/App/App/AppDelegate.swift), started when a run starts, updated when the level, blinds or stack move,
  * ended at a bust, a bag or Finish. The level's end goes as a time, so the lock screen counts it down itself.
- * Nothing happens off the iPhone app, or until the Mac adds the widget extension (the request then fails).
+ * Nothing happens off the iPhone app, or where the player has turned Live Activities off (the request then fails).
  */
 let lastKey = null;
 let running = false;
@@ -35,5 +35,5 @@ export async function syncLiveActivity(play) {
       await p.update(state);
     }
     lastKey = key;
-  } catch { /* no widget extension yet, or the player turned Live Activities off */ }
+  } catch { /* the player turned Live Activities off, or iOS is older than 16.2 */ }
 }

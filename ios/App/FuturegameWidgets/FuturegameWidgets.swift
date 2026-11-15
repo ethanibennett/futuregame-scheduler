@@ -1,10 +1,9 @@
 // The FuturegameWidgets extension (Features 10, 2026-11-11): the event being played as a Live Activity on the
-// lock screen and in the Dynamic Island. NOT YET IN THE XCODE PROJECT: on the Mac, File > New > Target >
-// Widget Extension named FuturegameWidgets (Include Live Activity on, Configuration Intent off), delete the
-// template's Swift files, add this folder's files to the new target only, set its deployment target to 16.2
-// and its bundle id to app.futurega.me.beta.FuturegameWidgets, and embed it in the App target. Signing is
-// automatic, like the app's. The App target already carries NSSupportsLiveActivities and the
-// LiveActivityPlugin (ios/App/App/AppDelegate.swift) that starts, updates and ends the activity.
+// lock screen and in the Dynamic Island. The FuturegameWidgetsExtension target (added 2026-11-15) compiles this
+// folder, which Xcode keeps in sync: any file put here joins the target. iOS 16.2, bundle id
+// app.futurega.me.beta.FuturegameWidgets, embedded in the App target for iOS only (Mac Catalyst has no Live
+// Activities). The App target carries NSSupportsLiveActivities and the LiveActivityPlugin
+// (ios/App/App/AppDelegate.swift) that starts, updates and ends the activity.
 
 import WidgetKit
 import SwiftUI
