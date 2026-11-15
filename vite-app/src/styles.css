@@ -5284,6 +5284,14 @@
     }
     /* The main/side pills sit in their own row ABOVE the primary total. */
     .replayer-pot-layers { display: flex; align-items: center; justify-content: center; gap: 2.1cqw; }
+    /* Under the board (placed by the layout effect beside the wagers'; 56% for the frame before), with the pot's own
+       type size, since its pills are 0.62em of it (owner, 2026-11-15: collisions). */
+    .replayer-pot-layers.is-placed {
+      position: absolute; left: 50%; top: 56%; transform: translateX(-50%);
+      z-index: var(--z-pot); white-space: nowrap;
+      font-size: clamp(11px, 4.4cqmin, 54px); font-weight: var(--fw-bold); color: var(--pot-text, #fff);
+      font-family: var(--font-condensed); font-variant-numeric: var(--num-tabular); letter-spacing: 0;
+    }
     .replayer-pot-main { display: inline-flex; align-items: center; justify-content: center; gap: 2.1cqw; }
     /* SPR over the chip stack: a column of [SPR, chips]. In portrait the column
        takes the out-of-flow slot the chips had above the pot row, and the chips
@@ -5739,8 +5747,10 @@
        over the plaque's top edge and the action label under its bottom edge (2026-11-14), so a top corner sat on the
        cards (a bottom seat's) and a bottom corner on the label and the chips (a top seat's); and not ON the side,
        where half the disc lay over a long name. */
-    .replayer-dealer-btn.corner-r { left: calc(100% + var(--subrow) * 0.25); top: 50%; transform: translateY(-50%); }
-    .replayer-dealer-btn.corner-l { right: calc(100% + var(--subrow) * 0.25); top: 50%; transform: translateY(-50%); }
+    /* Level with the plaque's lower edge, not its middle: a fan of four to six cards is wider than the plaque and
+       hangs over its top edge past its sides, where the button met the last card (check:replayer-collisions). */
+    .replayer-dealer-btn.corner-r { left: calc(100% + var(--subrow) * 0.25); bottom: 0; }
+    .replayer-dealer-btn.corner-l { right: calc(100% + var(--subrow) * 0.25); bottom: 0; }
 
     .replayer-dealer-btn {
       position: absolute;
@@ -6311,7 +6321,7 @@
     }
     /* No taller than the band it sits in (owner, 2026-11-15: over the cards, "make sure it isn't obscuring too much of
        the cards"): a seat's cards show 0.78 of their height above the plaque and the index takes the top 0.48, so the
-       band between is 0.30 of a card; the pill takes 0.27 of a card where that is less than 2r (small cards: ten
+       band between is 0.30 of a card; the pill takes 0.25 of a card where that is less than 2r (small cards: ten
        seats on a desktop, five and six flat cards), its type with it. check:replayer-collisions holds it off the
        indexes. */
     .replayer-action-badge-outer,
@@ -6321,17 +6331,17 @@
     .replayer-action-badge-outer.action-bet,
     .replayer-action-badge-outer.action-raise {
       box-sizing: border-box;
-      height: min(calc(var(--subrow) * 2), calc(var(--card-h) * 0.27));
+      height: min(calc(var(--subrow) * 2), calc(var(--card-h) * 0.25));
       padding-block: 0;
       padding-inline: calc(var(--gu) * 0.5);
-      font-size: min(var(--fs-2xs), calc(var(--card-h) * 0.165));
+      font-size: min(var(--fs-2xs), calc(var(--card-h) * 0.15));
       line-height: 1;
     }
     .replayer-action-badge-outer.action-allin {
       box-sizing: border-box;
-      height: min(calc(var(--subrow) * 2), calc(var(--card-h) * 0.27));
+      height: min(calc(var(--subrow) * 2), calc(var(--card-h) * 0.25));
       padding-block: 0;
-      font-size: min(var(--fs-xs), calc(var(--card-h) * 0.18));
+      font-size: min(var(--fs-xs), calc(var(--card-h) * 0.165));
       line-height: 1;
     }
     .replayer-action-badge-outer.action-call { background: rgba(59,130,246,0.2); color: var(--act-call); }
@@ -6840,8 +6850,8 @@
     /* Under the replay's own controls (Note here, Tags; .hx-chips, 1r below the column top and 4r tall), not behind
        them: a top seat's cards stand over the rail, and from 2026-11-15 they are the hero's size, so they ran up to 5r
        into the Tags button (owner: collisions; check:replayer-collisions measures the controls). The table starts
-       1r under the row; its height is the slot's, so it gives that up and everything on it scales with it. */
-    .replayer-replay.replayer-fullbleed:has(> .hx-chips) .replayer-table-slot { padding-top: calc(var(--subrow) * 6); }
+       2r under the row (1r left a 375x667 phone 0.66r short); its height is the slot's, so it gives that up and everything on it scales with it. */
+    .replayer-replay.replayer-fullbleed:has(> .hx-chips) .replayer-table-slot { padding-top: calc(var(--subrow) * 7); }
     /* Seat plaques: 8g by default (--plaque-w also sizes the cards, 0.56 of it),
        and still content-sized above that, so a longer name or stack widens the box. */
     /* The rail is the felt's outline pushed out by --rail-w on BOTH axes, so it is one
@@ -8129,9 +8139,8 @@
        below the board. Lift the block in the multi-pot case so the total clears
        the cards by ~23px, matching the gap beneath them. Portrait only; the
        landscape/export anchor (35.6%) is a different composition. */
-    .replayer-replay:not(.replayer-landscape) .replayer-pot-display.has-sides {
-      top: 38.1%;
-    }
+    /* (Portrait lifted a pot with side pots to 38.1%, for the pills row its box carried above the total; the pills are
+       their own row under the board since 2026-11-15, and the total stays where the pot is.) */
 
     /* 94 + 95: the level, and where this hand sits in the tournament. */
     .replayer-table-info .replayer-level-blinds,

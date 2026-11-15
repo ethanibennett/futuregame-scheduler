@@ -9242,24 +9242,36 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     }
     return subrowPxRef.current.px;
   };
-  /* A split's shares under the board, 0.75r below its cards (under the pot where no board is dealt), and the game
-     pill moved under the shares when they meet (owner, 2026-11-15: "still colliding"; see .replayer-split-pot). */
+  /* The rows under the board: the main and side pots, then a split's shares, 0.75r under the board's cards and 0.5r
+     apart (under the pot where no board is dealt); then the game pill, moved to the nearest spot up or down where no
+     seat's piece, the board, the pot or those rows touches it (owner, 2026-11-15: "still colliding"; see
+     .replayer-split-pot, .replayer-pot-layers). Before the wagers' placement, which then keeps them off the pill. */
   useLayoutEffect(() => {
     const table = tableRef.current;
-    const shares = table && table.querySelector('.replayer-split-shares.is-placed');
-    const info = table && table.querySelector('.replayer-table-info');
+    if (!table) return;
+    const info = table.querySelector('.replayer-table-info');
     if (info) info.style.marginTop = '';
-    if (!shares || !shares.offsetParent) return;
+    const rows = [...table.querySelectorAll('.replayer-pot-layers.is-placed, .replayer-split-shares.is-placed')];
     const r = subrowPx(table);
-    const cb = shares.offsetParent;
-    const oy = cb.getBoundingClientRect().top + cb.clientTop;
     const board = table.querySelector('.replayer-board-area:not(.replayer-dead-area)');
     const anchor = board && board.querySelector('.card-row > *') ? board : table.querySelector('.replayer-pot-display');
-    if (!anchor) return;
-    shares.style.top = (anchor.getBoundingClientRect().bottom + r * 0.75 - oy) + 'px';
-    if (info) {
-      const S = shares.getBoundingClientRect(), I = info.getBoundingClientRect();
-      if (I.width > 0 && I.top < S.bottom + r * 0.75) info.style.marginTop = Math.ceil(S.bottom + r * 0.75 - I.top) + 'px';
+    if (rows.length && anchor && rows[0].offsetParent) {
+      const cb = rows[0].offsetParent;
+      const oy = cb.getBoundingClientRect().top + cb.clientTop;
+      let y = anchor.getBoundingClientRect().bottom + r * 0.75;
+      rows.forEach(el => { el.style.top = (y - oy) + 'px'; y = el.getBoundingClientRect().bottom + r * 0.5; });
+    }
+    if (!info || !info.getBoundingClientRect().width) return;
+    const boxes = [...table.querySelectorAll('.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn, .replayer-seat-cards .card-row > *, .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-layers.is-placed, .replayer-split-shares.is-placed')]
+      .map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
+    const I = info.getBoundingClientRect();
+    const g = r / 4;
+    const clear = (dy) => !boxes.some(b => I.left < b.right + g && I.right > b.left - g && I.top + dy < b.bottom + g && I.bottom + dy > b.top - g);
+    if (clear(0)) return;
+    for (let k = 1; k <= 32; k++) {                 // 0.5r steps, down first (the cloth under the board is the free one)
+      for (const dy of [k * r / 2, -k * r / 2]) {
+        if (clear(dy)) { info.style.marginTop = dy + 'px'; return; }
+      }
     }
   });
   useLayoutEffect(() => {
@@ -9268,7 +9280,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const pills = table.querySelectorAll('.replayer-bet-chip[data-seat][data-base-left]');
     if (!pills.length) return;
     const r = subrowPx(table);
-    const STEP = r / 4;
     /* Each piece at its laid-out size around its drawn centre: an action label pops in from a smaller scale, and
        measured mid-pop it left room that was not there once it had grown. */
     const boxOf = (e) => {
@@ -9279,8 +9290,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     };
     const PIECES = '.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn, .replayer-seat-cards .card-row > *';
     const piecesOf = (seatEl) => (seatEl ? [...seatEl.querySelectorAll(PIECES)].map(boxOf).filter(b => b.width > 0 && b.height > 0) : []);
-    // The middle of the felt: the pot (its figure and its chips), the board, the game pill.
-    const felt = [...table.querySelectorAll('.replayer-pot-display, .replayer-pot-above, .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-table-info')]
+    // The middle of the felt: the pot (its figure and its chips), the board, the game pill, the rows under the board.
+    const felt = [...table.querySelectorAll('.replayer-pot-display, .replayer-pot-above, .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-table-info, .replayer-pot-layers.is-placed, .replayer-split-shares.is-placed')]
       .map(boxOf).filter(b => b.width > 0 && b.height > 0);
     pills.forEach(el => {
       el.style.left = el.dataset.baseLeft;
@@ -9301,25 +9312,32 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const hit = (list, x, y, g) => list.some(b => x - w / 2 < b.right + g && x + w / 2 > b.left - g && y - h / 2 < b.bottom + g && y + h / 2 > b.top - g);
       const box = (x, y) => ({ left: x - w / 2, right: x + w / 2, top: y - h / 2, bottom: y + h / 2 });
       const clearElsewhere = (x, y) => !hit(felt, x, y, r / 4) && !hit(others, x, y, r / 4) && !hit(placed, x, y, r / 4);
-      if (hit(own, cx, cy, r)) {
+      if (hit(own, cx, cy, r) || !clearElsewhere(cx, cy)) {
         const P = plaqueEl.getBoundingClientRect();
         const tx = ox + W * 0.5, ty = oy + H * 0.4;                   // POT_AT
         let ux, uy;
         if (el.dataset.side === '1') { ux = Math.sign(tx - (P.left + P.width / 2)) || 1; uy = 0; }
         else { const dx = tx - cx, dy = ty - cy, len = Math.hypot(dx, dy) || 1; ux = dx / len; uy = dy / len; }
-        // At most as far as the pot's centre; the felt test below keeps it off the pot itself.
+        // Along the line to the pot (back toward the seat too) as far as the pot's centre, and up to 2r to either side
+        // of it, nearest first, the line before the side; 1r of cloth from its own seat if the table has it, else less.
         const reach = el.dataset.side === '1' ? Math.abs(tx - cx) : Math.hypot(tx - cx, ty - cy);
+        const S2 = r / 2;
+        const cands = [];
+        for (let d = -reach / 2; d <= reach; d += S2) for (let p = -2 * r; p <= 2 * r + 1e-6; p += S2) cands.push({ d, p, cost: Math.abs(d) + 1.5 * Math.abs(p) });
+        cands.sort((a, b) => a.cost - b.cost);
+        const at = (c) => ({ x: cx + ux * c.d - uy * c.p, y: cy + uy * c.d + ux * c.p });
         let chosen = null, fallback = null;
-        for (const g of [r, r / 2, r / 4]) {                          // as much cloth as the table has: 1r, then less
-          let d = STEP;
-          while (d <= reach && hit(own, cx + ux * d, cy + uy * d, g)) d += STEP;
-          if (d > reach) continue;
-          const x = cx + ux * d, y = cy + uy * d;
-          if (!fallback || d < fallback.d) fallback = { x, y, d };
-          if (clearElsewhere(x, y)) { chosen = { x, y }; break; }
+        for (const g of [r, r / 2, r / 4]) {
+          for (const c of cands) {
+            const q = at(c);
+            if (hit(own, q.x, q.y, g)) continue;
+            if (!fallback) fallback = q;                               // off its own seat at least
+            if (clearElsewhere(q.x, q.y)) { chosen = q; break; }
+          }
+          if (chosen) break;
         }
-        const at = chosen || fallback;                                 // off its own seat at least
-        if (at) { cx = at.x; cy = at.y; }
+        const q = chosen || fallback;
+        if (q) { cx = q.x; cy = q.y; }
       }
       placed.push(box(cx, cy));
       el.style.left = ((cx - ox) / W * 100).toFixed(3) + '%';
@@ -11094,6 +11112,33 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
              at the one step where the pot is the whole point. The pot row is
              the pot row at every step now; a split only relabels the total
              cell and hangs the shares under it. */
+          /* Main and side pots: their own row, placed under the board by the layout effect beside the wagers', not a
+             second row in the pot's box (owner, 2026-11-15: collisions). Two rows had no room between a top seat and
+             the board: the box ran into the board's cards and into the seats beside it. The total stays the pot. */
+          const layersRow = potLayers.length > 1 ? (
+            <div className="replayer-pot-layers is-placed">
+              <div className="replayer-pot-pill">
+                <span className="replayer-pot-cell-label">Main</span>
+                {fmtChips(potLayers[0].amount)}
+              </div>
+              {/* Never a layer dropped (App improvements 153): with five or more pots the fourth pill
+                  carries Side 3 and every pot after it, "+ More", so the pills add up to the total. */}
+              {(potLayers.length <= 4 ? potLayers.slice(1) : potLayers.slice(1, 3)).map((layer, i) => (
+                <div key={i} className="replayer-pot-pill" title={layer.eligible + '-way'}>
+                  <span className="replayer-pot-cell-label">
+                    {potLayers.length > 2 ? 'Side ' + (i + 1) : 'Side'}
+                  </span>
+                  {fmtChips(layer.amount)}
+                </div>
+              ))}
+              {potLayers.length > 4 && (
+                <div className="replayer-pot-pill" title={potLayers.slice(3).map((l, k) => `Side ${k + 3}: ${l.amount} (${l.eligible}-way)`).join(', ')}>
+                  <span className="replayer-pot-cell-label">+ More</span>
+                  {fmtChips(potLayers.slice(3).reduce((a, l) => a + (Number(l.amount) || 0), 0))}
+                </div>
+              )}
+            </div>
+          ) : null;
           const potRow = (
             <div className="replayer-pot-row">
               {/* Chips lead the row rather than sitting above it. Above, they
@@ -11110,32 +11155,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   cell is the half of the pot that is a picture of what the
                   number already says, and this is the one step where the
                   number has a second line to carry. */}
-              {/* Main + side pots stack as a row ABOVE the primary total, so the
-                  layers read as the breakdown of the one big number below. */}
-              {potLayers.length > 1 && (
-                <div className="replayer-pot-layers">
-                  <div className="replayer-pot-pill">
-                    <span className="replayer-pot-cell-label">Main</span>
-                    {fmtChips(potLayers[0].amount)}
-                  </div>
-                  {/* Never a layer dropped (App improvements 153): with five or more pots the fourth pill
-                      carries Side 3 and every pot after it, "+ More", so the pills add up to the total. */}
-                  {(potLayers.length <= 4 ? potLayers.slice(1) : potLayers.slice(1, 3)).map((layer, i) => (
-                    <div key={i} className="replayer-pot-pill" title={layer.eligible + '-way'}>
-                      <span className="replayer-pot-cell-label">
-                        {potLayers.length > 2 ? 'Side ' + (i + 1) : 'Side'}
-                      </span>
-                      {fmtChips(layer.amount)}
-                    </div>
-                  ))}
-                  {potLayers.length > 4 && (
-                    <div className="replayer-pot-pill" title={potLayers.slice(3).map((l, k) => `Side ${k + 3}: ${l.amount} (${l.eligible}-way)`).join(', ')}>
-                      <span className="replayer-pot-cell-label">+ More</span>
-                      {fmtChips(potLayers.slice(3).reduce((a, l) => a + (Number(l.amount) || 0), 0))}
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* (Main and side pots: layersRow, under the board.) */}
               <div className="replayer-pot-main">
                 {/* Above the pot figure: the SPR as plain text, then the chip stack. One
                     positioned column (in portrait) so the SPR rides on top of however tall
@@ -11233,6 +11253,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               <div className="replayer-pot-display replayer-split-pot">
                 {potRow}
               </div>
+                {layersRow}
                 <div className="replayer-split-shares is-placed">
                   {groups.map((g, i) => {
                     /* "2x HI 1/4" — how many players, which half of a hi/lo,
@@ -11256,12 +11277,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             );
           }
           return (
+            <>
             <div className={'replayer-pot-display' + (animPotCollect ? ' anim-collect' : '')
               + (potLanding ? ' is-landing' : '') + (potLayers.length ? ' has-sides' : '')
               /* 48: at the result the pot has gone to its winners: its figure counted down and went. */
               + (springSet && showResult && potAwards && rSettings.animateChips && !potLayers.length ? ' is-emptied' : '')}>
               {potRow}
             </div>
+            {layersRow}
+            </>
           );
         })()}
 
