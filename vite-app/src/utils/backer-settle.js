@@ -17,7 +17,7 @@ const dayET = (iso) => {
 /**
  * What one side sees. side 'backer' | 'owner'; player = the player's first name (the page's "Ethan");
  * backer = the backer's name.
- *   totalCents    what earlier weeks owe (Settled's figure)
+ *   totalCents    what Settled clears: the whole balance (owner, 2026-11-14)
  *   runningCents  the whole running total, this week included (a partial payment's ceiling)
  * -> null (nothing to show) or
  *   { button: { label, action: 'confirm' | 'undo', primary } | null, status, confirm: string | null,
@@ -52,7 +52,7 @@ export function settleView({ settlement, totalCents, runningCents, side, player 
       : (amtCents > 0 ? `Confirm ${player} has paid you ${amt}?` : `Confirm you have paid ${player} ${amt}?`);
     const after = isPart
       ? `${amt} comes off the balance once you have both confirmed; ${usd(base - amtCents)} stays owed.`
-      : "Last week's balance clears once you have both confirmed; this week carries on.";
+      : 'The balance clears once you have both confirmed.';
     if (open[me] && !open[them]) {
       return { button: { label: 'Undo', action: 'undo', primary: false }, status: `You marked ${shown} · waiting for ${other}`, confirm: null, sendCents: base, part: null };
     }
@@ -70,7 +70,7 @@ export function settleView({ settlement, totalCents, runningCents, side, player 
       : (running > 0 ? `How much has ${player} paid you? Dollars, up to ${usd(running)}.` : `How much have you sent ${player}? Dollars, up to ${usd(running)}.`),
   } : null;
   if (total === 0) {
-    // Nothing from earlier weeks: only a partial payment against this week's running total.
+    // Nothing to settle (a total other than the running one, from an older caller): only a partial payment.
     return { button: null, status: 'This week settles Sunday', confirm: null, sendCents: running, part };
   }
   const question = side === 'owner'
@@ -81,7 +81,7 @@ export function settleView({ settlement, totalCents, runningCents, side, player 
     : (total > 0 ? `Once ${player} has paid you ${amt}` : `Once you have sent ${player} ${amt}`);
   return {
     button: { label: 'Settled', action: 'confirm', primary: true }, status: when,
-    confirm: `${question} Last week's balance clears once you have both confirmed; this week carries on.`,
+    confirm: `${question} The balance clears once you have both confirmed.`,
     sendCents: total, part,
   };
 }

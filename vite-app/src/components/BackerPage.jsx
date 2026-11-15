@@ -16,7 +16,7 @@ import { settleView, partCents, paymentView, usd } from '../utils/backer-settle.
 import { VENUE_MAP, getVenueBrandColor, getVenueInfo, getStripAbbr } from '../utils/utils.js';
 import {
   summarize, groupByMonth, withPayments, shareSeries, rangeOptions, stripFor, monthLabel, RANGE_NOUN,
-  fmtSignedCents, fmtHours, fmtDay, plural, tone, bbStats, eventBb, settlementCountdown, weekRunning, weekLines,
+  fmtSignedCents, fmtHours, fmtDay, plural, tone, bbStats, eventBb, settlementCountdown, weekLines,
 } from '../utils/backer-page.js';
 import './backer-page.css';
 import { SwissLines } from './SwissParts.jsx';
@@ -418,9 +418,9 @@ function TotalFigures({ feed, total }) {
 function SettleRow({ token, feed, onChange }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
-  // What a press settles: what earlier weeks owe, never this week's (owner, 2026-10-20). The server
+  // What a press settles: the whole balance (owner, 2026-11-14: "show the full amount owed"). The server
   // works the same figure out (lib/staking/backer-settle.js dueCents) and refuses a different one.
-  const total = weekRunning(feed, Date.now()).carriedCents;
+  const total = Math.round(Number(feed.cumulativeCents) || 0);
   const running = Math.round(Number(feed.cumulativeCents) || 0);
   const v = settleView({ settlement: feed.settlement, totalCents: total, runningCents: running, side: 'backer' });
   if (!v) return null;
@@ -437,7 +437,7 @@ function SettleRow({ token, feed, onChange }) {
       if (!r.ok) { if (toast) toast.error(d.error || 'That did not go through. Try again.'); }
       else if (d.completed && toast) {
         toast.success(d.partial ? `${usd(d.amountCents)} payment recorded. The balance is now ${fmtSignedCents(d.balanceCents)}.`
-          : 'Settled. Last week is cleared; this week carries on.');
+          : 'Settled. The balance is cleared.');
       } else if (settleCents != null && toast) toast.success(`${usd(settleCents)} payment marked. It counts once Ethan confirms.`);
       onChange();
     } catch { if (toast) toast.error('That did not go through. Check your connection.'); }

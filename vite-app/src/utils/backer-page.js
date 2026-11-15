@@ -379,9 +379,11 @@ export function weekRunning(feed, nowMs) {
  * since, on its own line (signed as the total: + = Ethan owes the backer, so a payment from Ethan is negative); and
  * an Earlier line for whatever is left (an opening balance, weeks before the cap). The lines sum to the total
  * exactly, whatever the data, because Earlier is the remainder. The balance last cleared at the newest completed
- * Settled: that paid everything before its own week began.
+ * Settled (since 2026-11-14 the whole balance; before, everything before its own week began).
  * -> { totalCents, lines: [{ key, label, cents, kind: 'week' | 'payment' | 'earlier' }] }
  */
+// When Settled began clearing the whole balance rather than the weeks before the current one.
+const FULL_SETTLE_FROM = Date.UTC(2026, 10, 14, 12);
 export function weekLines(feed, nowMs, { maxWeeks = 8 } = {}) {
   const f = feed || {};
   const totalCents = Math.round(Number(f.cumulativeCents) || 0);
@@ -393,7 +395,9 @@ export function weekLines(feed, nowMs, { maxWeeks = 8 } = {}) {
   const payments = (Array.isArray(f.payments) ? f.payments : []).map((p) => ({ ...p, ms: toMs(p) })).filter((p) => Number.isFinite(p.ms));
   const settles = payments.filter((p) => p.kind === 'settled').sort((a, b) => b.ms - a.ms);
   const anchor = settles.length ? settles[0] : null;
-  const from = anchor ? weekStart(anchor.ms) : -Infinity;
+  // A Settled clears the whole balance as it completes (owner, 2026-11-14); one from before cleared only the weeks
+  // before its own, so the shares of its week stay lines.
+  const from = !anchor ? -Infinity : anchor.ms >= FULL_SETTLE_FROM ? anchor.ms : weekStart(anchor.ms);
   const thisStart = weekStart(nowMs);
   const WEEK = SETTLE_WEEK_MS;
   const sums = new Map();      // week index (0 = this week, 1 = last week, ...) -> cents

@@ -106,14 +106,14 @@ function ShareRows({ b, thisYear, weekStart, next }) {
       </li>
     );
   };
-  // The settlement line (Bankroll design 54): this week's shares, then what earlier weeks owe (the sum the
-  // Settled button names), then everything a payment band has already squared.
+  // The settlement line (Bankroll design 54): this week's shares, then the earlier weeks' (Settled clears both, with
+  // any opening balance: owner, 2026-11-14), then everything a payment band has already squared.
   const after = rows.slice(g.week.length + g.earlier.length);
   return (
     <ul className="bb-shares" aria-label={`${displayName(b)}'s last ${plural(b.shares.length, 'share')}, newest first`}>
       {g.week.length > 0 && head('w', `This week · settles ${dayET(new Date(next).toISOString())}`, g.weekSum)}
       {g.week.map(row)}
-      {g.earlier.length > 0 && head('e', 'Earlier weeks · to settle now', Math.round(Number(b.dueCents) || 0))}
+      {g.earlier.length > 0 && head('e', 'Earlier weeks', g.earlierSum)}
       {g.earlier.map((r, i) => row(r, 'e' + i))}
       {after.map((r, i) => row(r, 'a' + i))}
     </ul>
@@ -295,7 +295,7 @@ export default function BankrollBackers({ bk }) {
       if (!res.ok) toast.error(data.error || 'That did not go through. Try again.');
       else if (data.completed) {
         toast.success(data.partial ? `${usd(data.amountCents)} payment recorded with ${b.name || 'your backer'}.`
-          : `Settled with ${b.name || 'your backer'}. Last week is cleared.`);
+          : `Settled with ${b.name || 'your backer'}. The balance is cleared.`);
       } else if (part) toast.success(`${usd(settleCents)} payment marked. It counts once ${b.name || 'your backer'} confirms.`);
       setReloadKey((k) => k + 1);
     } catch { toast.error('That did not go through. Check your connection.'); }

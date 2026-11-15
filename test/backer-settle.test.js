@@ -147,7 +147,8 @@ const BACKER_EP = 'https://push.example.test/sam-page';
       assert.strictEqual(await mainBalance(), before - 600);
       assert.strictEqual((await card()).cumulativeCents, 0);
     });
-    await test('a session recorded this week is not settled: it rolls on, and the page keeps it', async () => {
+    // Settled clears the whole balance, this week included (owner, 2026-11-14: "show the full amount owed").
+    await test('a session recorded this week is settled with the rest: the whole balance is due', async () => {
       await srv.stop();
       const d = scratch.open();
       d.run(`INSERT INTO backer_events (id, token, session_id, ts, date, game, venue, hours, session_result_cents, pct, share_cents, source)
@@ -156,10 +157,11 @@ const BACKER_EP = 'https://push.example.test/sam-page';
       srv = await boot(scratch.dbPath, { ...ENV, CONSOLE_OWNER_USER_ID: String(ham) }, { ports: PORTS, preloads: [STUB] });
       servers.push(srv);
       assert.strictEqual((await feed()).cumulativeCents, 20000, 'the page shows this week +$200');
-      const c = await card();
-      assert.strictEqual(c.dueCents, 0, 'nothing from earlier weeks is due');
+      assert.strictEqual((await card()).dueCents, 20000, 'this week is due too');
       const r = await backer('confirm', 20000);
-      assert.strictEqual(r.status, 409, 'this week cannot be settled yet');
+      assert.deepStrictEqual([r.status, r.json.completed], [200, false], r.text);
+      assert.strictEqual((await backer('undo')).status, 200);
+      assert.strictEqual((await feed()).settlement.open, null);
     });
     await test('nothing to settle at $0', async () => {
       const r = await backer('confirm', 0);
@@ -175,11 +177,11 @@ const BACKER_EP = 'https://push.example.test/sam-page';
       srv = await boot(scratch.dbPath, { ...ENV, CONSOLE_OWNER_USER_ID: String(ham) }, { ports: PORTS, preloads: [STUB] });
       servers.push(srv);
       const c = await card();
-      assert.deepStrictEqual([c.dueCents, c.cumulativeCents], [100000, 120000]);
+      assert.deepStrictEqual([c.dueCents, c.cumulativeCents], [120000, 120000]);
       assert.strictEqual((await backer('confirm', 120000, { settleCents: 150000 })).status, 400, 'over the running total');
       assert.strictEqual((await backer('confirm', 120000, { settleCents: -40000 })).status, 400, 'the wrong way');
       assert.strictEqual((await backer('confirm', 120000, { settleCents: 0 })).status, 400, 'nothing');
-      assert.strictEqual((await backer('confirm', 100000, { settleCents: 40000 })).status, 409, 'against the due, not the running total');
+      assert.strictEqual((await backer('confirm', 100000, { settleCents: 40000 })).status, 409, 'against a figure that is not the running total');
     });
     await test('the backer marks a $400 payment: open for $400 against $1,200; the player is told', async () => {
       const m0 = mark();
@@ -190,50 +192,38 @@ const BACKER_EP = 'https://push.example.test/sam-page';
       assert.deepStrictEqual(pushes(m0), [['Settled?', 'owner']]);
       const c = await card();
       assert.deepStrictEqual([c.settlement.open.amountCents, c.settlement.open.balanceCents, c.settlement.open.kind], [40000, 120000, 'part']);
-      assert.strictEqual(c.dueCents, 100000, 'nothing has cleared yet');
+      assert.strictEqual(c.dueCents, 120000, 'nothing has cleared yet');
     });
     await test('while it waits, the owner cannot press Settled over it, nor confirm a different amount', async () => {
       assert.strictEqual((await mine('confirm', 120000, owner, { settleCents: 50000 })).status, 409);
     });
-    await test('the owner confirms: $400 comes off what earlier weeks owe ($600 left), this week untouched, one payment leaves Main', async () => {
+    await test('the owner confirms: $400 comes off the balance ($800 left), one payment leaves Main', async () => {
       const before = await mainBalance();
       const m0 = mark();
       const r = await mine('confirm', 120000);
       await settle();
       assert.strictEqual(r.status, 200, r.text);
-      assert.deepStrictEqual([r.json.completed, r.json.partial, r.json.amountCents, r.json.dueCents], [true, true, 40000, 60000]);
+      assert.deepStrictEqual([r.json.completed, r.json.partial, r.json.amountCents, r.json.dueCents], [true, true, 40000, 80000]);
       assert.deepStrictEqual(pushes(m0), [['Settled', 'backer']]);
       const f = await feed();
       assert.strictEqual(f.cumulativeCents, 80000, '$1,000 + $200 this week - $400');
       assert.strictEqual(f.settlement.open, null);
-      assert.ok(!('weekPaidCents' in f.settlement), 'none of it went into this week');
       const adj = q("SELECT amount, note FROM bankroll_adjustments WHERE settlement_ref LIKE 'bks:%' ORDER BY id DESC LIMIT 1");
       assert.deepStrictEqual([adj[0].amount, adj[0].note], [-400, 'Settled (partial payment): paid Sam Settle']);
       assert.strictEqual(await mainBalance(), before - 400);
     });
-    await test('Settled clears the rest of earlier weeks ($600); this week is left', async () => {
-      assert.strictEqual((await mine('confirm', 60000)).status, 200);
-      const r = await backer('confirm', 60000);
+    await test('Settled clears the whole balance ($800), this week included', async () => {
+      assert.strictEqual((await mine('confirm', 80000)).status, 200);
+      const r = await backer('confirm', 80000);
       assert.deepStrictEqual([r.status, r.json.completed, r.json.partial], [200, true, false]);
-      const f = await feed();
-      assert.strictEqual(f.cumulativeCents, 20000);
+      assert.strictEqual((await feed()).cumulativeCents, 0);
       assert.strictEqual((await card()).dueCents, 0);
-    });
-    await test('mid-week, nothing due from earlier weeks: the owner records a $150 payment, the backer confirms; it comes off this week', async () => {
-      const r1 = await mine('confirm', 20000, owner, { settleCents: 15000 });
-      assert.strictEqual(r1.status, 200, r1.text);
-      const r2 = await backer('confirm', 20000);
-      assert.deepStrictEqual([r2.status, r2.json.completed, r2.json.partial], [200, true, true]);
-      const f = await feed();
-      assert.strictEqual(f.cumulativeCents, 5000);
-      assert.strictEqual(f.settlement.weekPaidCents, 15000, 'the whole payment went into this week');
-      assert.strictEqual((await card()).dueCents, 0, 'earlier weeks still owe nothing: no debt the other way');
     });
     await test('the session list carries every payment, newest first, with its kind', async () => {
       const f = await feed();
-      assert.deepStrictEqual(f.payments.map((p) => [p.amountCents, p.kind]), [[15000, 'part'], [60000, 'settled'], [40000, 'part'], [60000, 'settled']]);
+      assert.deepStrictEqual(f.payments.map((p) => [p.amountCents, p.kind]), [[80000, 'settled'], [40000, 'part'], [60000, 'settled']]);
       assert.ok(f.payments.every((p) => /^\d{4}-\d{2}-\d{2}$/.test(p.date)));
-      assert.deepStrictEqual((await card()).payments.map((p) => p.kind), ['part', 'settled', 'part', 'settled']);
+      assert.deepStrictEqual((await card()).payments.map((p) => p.kind), ['settled', 'part', 'settled']);
     });
     // ── The Sunday noon Discord reminder: the backer's id, set from their card (owner, 2026-10-25) ──
     await test('a backer Discord id: the owner sets it, the card shows its last four, nobody else can, bad ids are refused, empty clears', async () => {

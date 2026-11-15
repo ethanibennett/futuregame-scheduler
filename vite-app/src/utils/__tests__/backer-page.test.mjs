@@ -301,6 +301,11 @@ test('weekLines: the weeks since the last Settled, each payment since, and Earli
     payments: [{ kind: 'part', at: start + 7200e3, amountCents: 50000 }, { kind: 'settled', at: settledAt, amountCents: 99900 }] }, now);
   assert.deepEqual(b.lines.map(l => l.label), ['This week', 'Last week', 'Ethan paid you · Nov 8']);
   assert.equal(sum(b), b.totalCents);
+  // A Settled since 2026-11-14 clears the whole balance as it completes: its own week's earlier shares go too.
+  const c = weekLines({ cumulativeCents: -20000,
+    events: [ev(Date.UTC(2026, 10, 14, 14), -20000), ev(Date.UTC(2026, 10, 14, 12, 30), -5000), ev(start - 86400e3, 10000)],
+    payments: [{ kind: 'settled', at: Date.UTC(2026, 10, 14, 13), amountCents: 5000 }] }, now);
+  assert.deepEqual(c.lines.map(l => [l.label, l.cents]), [['This week', -20000]]);
   // Only this week: one line, which the page does not repeat under the total.
   assert.equal(weekLines({ cumulativeCents: 5000, events: [ev(start + 3600e3, 5000)] }, now).lines.length, 1);
 });
