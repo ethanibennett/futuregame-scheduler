@@ -4636,8 +4636,11 @@
          74px from the top and 138 from the bottom, and -6.5% evens both to
          106px. (The old -12% was set against 87cqh and a timeline strip that
          is gone.) */
+      /* -1.3% since 2026-11-15 (a phone held sideways; desktop windows lift by the measured ink below): every seat's
+         cards are the hero's size now, so the top seat's fan stands higher, and at -6.5% it ran past the top of the
+         slot; measured at 844x390, -1.3% puts about 3px of air both above the fan and under the hero. */
       height: min(96cqh, calc(96cqw / 1.75));
-      transform: translateY(-6.5%);
+      transform: translateY(-1.3%);
       width: auto;
       max-width: none;
       margin: 0;
@@ -4712,7 +4715,7 @@
        than on .app-shell.is-desktop, because a shared replay opened signed out is a bare
        .app-shell and has the same table. */
     :root[data-layout="desktop"] .replayer-landscape .replayer-table {
-      --ink-top: 0.0266;
+      --ink-top: 0.004;   /* 0.0266 until 2026-11-15, when every seat's cards became the hero's size: the top fan now starts 0.005 (1440) to 0.012 (2560) of a table height under the box's top */
       --ink-bottom: 1.0775;
       height: min(calc((100cqh - var(--subrow) * 2) / (var(--ink-bottom) - var(--ink-top))), calc(96cqw / 1.75));
       transform: translateY(calc((0.5 - (var(--ink-top) + var(--ink-bottom)) / 2) * 100%));
@@ -5747,10 +5750,11 @@
        over the plaque's top edge and the action label under its bottom edge (2026-11-14), so a top corner sat on the
        cards (a bottom seat's) and a bottom corner on the label and the chips (a top seat's); and not ON the side,
        where half the disc lay over a long name. */
-    /* Level with the plaque's lower edge, not its middle: a fan of four to six cards is wider than the plaque and
-       hangs over its top edge past its sides, where the button met the last card (check:replayer-collisions). */
-    .replayer-dealer-btn.corner-r { left: calc(100% + var(--subrow) * 0.25); bottom: 0; }
-    .replayer-dealer-btn.corner-l { right: calc(100% + var(--subrow) * 0.25); bottom: 0; }
+    /* Back on a corner (owner, 2026-11-15: "We moved the button off the corner of the seat box at some point, let's put it
+       back"), centred on it, and always a LOWER one: the cards and the action pill are on the plaque's top edge, so a top
+       corner sat on the cards. Which lower corner: the one facing the table's middle (HandReplayerView btnCorner). */
+    .replayer-dealer-btn.corner-br { right: 0; bottom: 0; transform: translate(50%, 50%); }
+    .replayer-dealer-btn.corner-bl { left: 0;  bottom: 0; transform: translate(-50%, 50%); }
 
     .replayer-dealer-btn {
       position: absolute;
@@ -6216,6 +6220,36 @@
       border: none; padding: 0; background: transparent; cursor: pointer;
     }
 
+    /* The table's own grid (owner, 2026-11-15: "At some desktop sizes some elements (action pills, game variant/stakes,
+       etc) are way too small. All of this should be proportional so that scaling doesn't matter"). Cards, plaques, stacks
+       and the pot were sized off the table (cqmin), but what was sized in g and r (the action pills, the draw run, the
+       game pill, the readouts, the gains, the spacing between pieces) was sized off the SCREEN's grid, which on a
+       desktop stops at a 430-wide phone's: on a large table those pieces stayed phone-sized beside cards three times
+       larger. Inside the table g is the table's: its shorter side over 35, which on a phone's table (35g wide, portrait)
+       is the screen's g exactly, so a phone changes nothing; everything derived from g and r follows it. Declared on the
+       table's children (the table is the size container, so cqmin there is the table), and re-derived here because a
+       custom property is resolved where it is declared. */
+    .replayer-table > * {
+      --gu: calc(100cqmin / 35);
+      --subcol: calc(var(--gu) * 2);
+      --col: calc(var(--gu) * 8);
+      --subrow: calc(var(--gu) * 0.71);
+      --fs-2xs: calc(var(--gu) * 0.9204);
+      --fs-xs:  calc(var(--gu) * 1.0585);
+      --fs-sm:  calc(var(--gu) * 1.1965);
+      --fs-md:  calc(var(--gu) * 1.3806);
+      --fs-lg:  calc(var(--gu) * 1.6107);
+      --fs-xl:  calc(var(--gu) * 1.9328);
+      --space-2xs: calc(var(--subrow) * 0.25);
+      --space-xs:  calc(var(--subrow) * 0.5);
+      --space-sm:  calc(var(--subrow) * 0.75);
+      --space-md:  calc(var(--subrow) * 1);
+      --space-ml:  calc(var(--subrow) * 1.25);
+      --space-lg:  calc(var(--subrow) * 1.5);
+      --space-xl:  calc(var(--subrow) * 2);
+      --nudge-1:   calc(var(--subrow) * 0.125);
+    }
+
     /* Action badges */
     .replayer-action-badge-outer {
       position: absolute;
@@ -6319,11 +6353,12 @@
       font-size: var(--fs-2xs);
       line-height: 1;
     }
-    /* No taller than the band it sits in (owner, 2026-11-15: over the cards, "make sure it isn't obscuring too much of
-       the cards"): a seat's cards show 0.78 of their height above the plaque and the index takes the top 0.48, so the
-       band between is 0.30 of a card; the pill takes 0.25 of a card where that is less than 2r (small cards: ten
-       seats on a desktop, five and six flat cards), its type with it. check:replayer-collisions holds it off the
-       indexes. */
+    /* 2r and readable whatever the cards (a pill sized to small cards, 0.25 of a six-card hand's, read "raise 2" at
+       about 5px). Over the cards it sits in the band between their indexes and the plaque (owner, 2026-11-15: "make
+       sure it isn't obscuring too much of the cards"): the cards show 0.78 of their height above the plaque and the
+       rank takes the top 0.32 (the suit pip under it, which repeats the card's colour, may be covered), so the band is
+       0.46 of a card. Where even that is less than the pill, it sinks into the plaque's top edge by the shortfall, and
+       check:replayer-collisions holds it off the ranks and the name under it. */
     .replayer-action-badge-outer,
     .replayer-action-badge-outer.action-fold,
     .replayer-action-badge-outer.action-check,
@@ -6331,17 +6366,18 @@
     .replayer-action-badge-outer.action-bet,
     .replayer-action-badge-outer.action-raise {
       box-sizing: border-box;
-      height: min(calc(var(--subrow) * 2), calc(var(--card-h) * 0.25));
+      height: calc(var(--subrow) * 2);
       padding-block: 0;
       padding-inline: calc(var(--gu) * 0.5);
-      font-size: min(var(--fs-2xs), calc(var(--card-h) * 0.15));
+      font-size: var(--fs-2xs);
       line-height: 1;
+      bottom: calc(100% + var(--bw-hair) - max(0px, var(--subrow) * 2 - var(--card-h) * 0.44));
     }
     .replayer-action-badge-outer.action-allin {
       box-sizing: border-box;
-      height: min(calc(var(--subrow) * 2), calc(var(--card-h) * 0.25));
+      height: calc(var(--subrow) * 2);
       padding-block: 0;
-      font-size: min(var(--fs-xs), calc(var(--card-h) * 0.165));
+      font-size: var(--fs-xs);
       line-height: 1;
     }
     .replayer-action-badge-outer.action-call { background: rgba(59,130,246,0.2); color: var(--act-call); }
@@ -6578,7 +6614,6 @@
     /* What a winner gained, risen beside its plaque as the pot lands (46). */
     .replayer-gain { position: absolute; white-space: nowrap; pointer-events: none; z-index: 2; font-variant-numeric: tabular-nums; }
     .replayer-gain.is-left { transform: translateX(-100%); }
-    .replayer-gain.is-under { transform: translateX(-50%); }
     /* A pot-sized bet's figure, on its way from the pot to the wager (36). */
     .replayer-pot-copy { position: absolute; white-space: nowrap; pointer-events: none; z-index: 3; }
     /* The seats' words (Replayer animations 55, 58, 63, 66, 71). */
@@ -8106,6 +8141,12 @@
        opponent's were 0.56 of the plaque, 13% smaller on a phone. The hand-size rules (seven, six, five community) are
        more specific and still set one size for every seat. */
     .replayer-seat { --card-h: clamp(20px, 15.625cqmin, 200px); --card-w: calc(var(--card-h) * 0.7143); }  /* 2.5 cells */
+    /* Nine or ten seats on a phone: every seat a step smaller together, the hero too (0.56 of the plaque, the
+       opponents' old size), so one size still holds. At the hero's size a fan reached the next seat's plaque and left
+       no cloth between seats for the wagers (check:replayer-collisions, 375x667 and 430x932). */
+    .replayer-fullbleed .replayer-table:is([data-seats="9"], [data-seats="10"]) .replayer-seat {
+      --card-h: calc(var(--plaque-w) * 0.56); --card-w: calc(var(--card-h) * 0.7143);
+    }
     .replayer-seat.is-hero .replayer-seat-info {
       min-width: min(calc(var(--subrow) * 27.5), 27cqmin);
       padding: var(--nudge-1) min(var(--space-ml), 4cqmin);

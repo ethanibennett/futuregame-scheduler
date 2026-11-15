@@ -1239,6 +1239,12 @@ function antesPosted(hand) {
    were cut at the wrong places and paid the wrong seats (2026-11-10: 41 of 100 cash hands with side pots,
    found by scripts/check-replayer-oracle.mjs). A millionth is far below a cent and far above the residue. */
 const chipRound = (v) => Math.round(v * 1e6) / 1e6;
+/* Cards that slide at the showdown (Replayer animations 20-23: the playing cards up, a hi-lo pot's halves, the winning
+   five). Off for now (owner, 2026-11-15); the poses before the result (a tabled leader, a counterfeit) are unchanged. */
+const SHOWDOWN_SLIDES = false;
+/* The pot's pile draws the whole pot, as its figure does (owner, 2026-11-15: "This stack of chips should change to reflect the
+   number in the pot"): wagers in front of the seats included, so a sweep moves chips into it without changing it. */
+const PILE_IS_WHOLE_POT = true;
 function calcPotsAndStacks(hand, upToStreet, upToAction) {
   const blinds = hand.blinds || { sb: 0, bb: 0, ante: 0 };
   const stacks = hand.players.map(p => p.startingStack);
@@ -7298,6 +7304,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       }
       return seatsP.size || boardP.size ? { seats: seatsP, board: boardP } : null;
     }
+    // No cards slide at the showdown for now (owner, 2026-11-15: "we can get rid of card sliding motions at showdown for
+    // now"): the result's poses below (the playing cards up, a hi-lo's halves, the winning five) wait behind this switch.
+    if (!SHOWDOWN_SLIDES) return seatsP.size ? { seats: seatsP, board: boardP } : null;
     if (!potAwards) return seatsP.size ? { seats: seatsP, board: boardP } : null;
     const winners = live.filter(pi => (potAwards[pi] || 0) > 0 && cardsOf(pi).length >= 2);
     if (cfg.type === 'hilo' && wonHalves) {
@@ -7569,9 +7578,11 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   motion.writePot = (pile) => {
     const v = potShown(springOn && !showResult ? potBase : displayPot, motion.pendingPot, motion.pendingPot > 0 ? motion.potFloor : 0);
     const tn = potTextNode();
-    // The digits are the whole pot (potCommitted), constant through a sweep; the pile and the floors track the middle.
+    // The digits are the whole pot (potCommitted), constant through a sweep; the floors track the middle. The pile is
+    // the whole pot too (owner, 2026-11-15: "This stack of chips should change to reflect the number in the pot"), so a
+    // landing redraws nothing.
     if (tn) { tn.data = fmtChips(potCommitted); motion.wroteDigits = true; motion.potShown = v; }
-    if (pile && motion.setPile && !potLayers.length) motion.setPile(v + (pile.ahead || 0), { hidden: pile.hidden });
+    void pile;
   };
   // A winner's stack as the pot lands on it: never below what it showed before the press.
   const stackFigure = (pi) => (springOn ? Math.max(stackFloor(pi), shownStacks[pi] - pendingStackNow(pi)) : shownStacks[pi] - pendingStackNow(pi));
@@ -9119,9 +9130,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const dx = bx - 50, dy = by - 50;
     const EPS = 3;                                   // "on the centre line"
     const sx = Math.abs(dx) > EPS ? (dx < 0 ? 1 : -1) : (-dy < 0 ? -1 : 1);
-    // The side facing the centre, not a corner: the cards hang over the top edge and the action label under the
-    // bottom (owner, 2026-11-15: collisions; styles.css .replayer-dealer-btn.corner-l/-r).
-    return sx > 0 ? 'r' : 'l';
+    // A lower corner, the side facing the centre (owner, 2026-11-15: back on the corner): the cards and the action pill
+    // are on the plaque's top edge (styles.css .replayer-dealer-btn.corner-bl/-br).
+    return 'b' + (sx > 0 ? 'r' : 'l');
   })();
   /* Rendered: a 15% step round the rail from the button's seat put the deck
      squarely on the NEXT player's fan. There is no gap at the rail on a full
@@ -9254,6 +9265,16 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const rows = [...table.querySelectorAll('.replayer-pot-layers.is-placed, .replayer-split-shares.is-placed')];
     const r = subrowPx(table);
     const board = table.querySelector('.replayer-board-area:not(.replayer-dead-area)');
+    /* The pot 0.5r clear above the board's cards: both sit at a share of the table's height (40.6% and 47%), and on
+       a short table the figure's foot met the cards. Lifted by the shortfall; a split's total hangs above the board
+       on its own rule (.replayer-split-pot). */
+    const potEl = table.querySelector('.replayer-pot-display:not(.replayer-split-pot)');
+    if (potEl) potEl.style.marginTop = '';
+    const boardCard = board && board.querySelector('.card-row > *');
+    if (potEl && boardCard) {
+      const short = potEl.getBoundingClientRect().bottom - (board.getBoundingClientRect().top - r / 2);
+      if (short > 0) potEl.style.marginTop = (-Math.ceil(short)) + 'px';
+    }
     const anchor = board && board.querySelector('.card-row > *') ? board : table.querySelector('.replayer-pot-display');
     if (rows.length && anchor && rows[0].offsetParent) {
       const cb = rows[0].offsetParent;
@@ -9710,7 +9731,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             if (motion.writePot) motion.writePot(tracksPile ? { ahead, hidden: [...unseen] } : null);
           },
         });
-        if (tracksPile && final.colors.length && motion.setPile && final.colors.join() !== pileColors.join()) {
+        // (The pile is the whole pot, wagers included, since 2026-11-15: a sweep moves chips into it without changing it.)
+        if (!PILE_IS_WHOLE_POT && tracksPile && final.colors.length && motion.setPile && final.colors.join() !== pileColors.join()) {
           // Measured at the press, in the read pass: nothing here forces a layout.
           const going = pileKids.filter(el => el.dataset.color && !final.colors.includes(el.dataset.color) && !el.classList.contains('is-pending'));
           const base = shownPot;
@@ -10501,20 +10523,31 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           const g1 = (() => { const p = document.createElement('div'); p.style.cssText = 'position:absolute;visibility:hidden;height:0;width:calc(var(--gu) * 100)'; table.appendChild(p); const v = p.getBoundingClientRect().width / 100 || 10; table.removeChild(p); return v; })();
           const T = table.getBoundingClientRect();
           const hand_ = tierSpring(set, 'hand');
-          // 46: "+106,000" rises 2r beside each winner's plaque, holds, fades.
+          // 46: "+106,000" rises 2r beside each winner's plaque, holds, fades. Always BESIDE it, level with the
+          // stack (owner, 2026-11-15: "should be to the side of the seat box, not on top of other information"): a
+          // top-rail seat's sat under its plaque, on the showdown readout. The side facing the middle (right for a
+          // centred seat), or the other where that side would land on another seat's plaque or cards.
+          const others = [...table.querySelectorAll('.replayer-seat[data-seat]')].map(s => ({
+            seat: Number(s.dataset.seat),
+            boxes: [...s.querySelectorAll('.replayer-seat-info, .replayer-seat-cards .card-row > *')].map(e => e.getBoundingClientRect()).filter(b => b.width > 0),
+          }));
+          const measure = document.createElement('canvas').getContext('2d');
           const gains = shipPlan.map(d => {
             const seatEl = table.querySelector('.replayer-seat[data-seat="' + d.seat + '"]');
             const info = seatEl && seatEl.querySelector('.replayer-seat-info');
             const st = stackEl(d.seat);
             if (!info || !st || !L) return null;
             const pr = info.getBoundingClientRect(), sr = st.getBoundingClientRect();
-            const toRight = (pr.left + pr.width / 2) <= (T.left + T.width / 2);
             const cs = getComputedStyle(st);
-            // A seat along the top rail has neighbours either side: its gain sits under the plaque instead.
-            if (pr.top + pr.height / 2 < T.top + T.height * 0.3) {
-              return { award: d.award, y: pr.bottom + sr.height / 2 + r1 - L.top, x: pr.left + pr.width / 2 - L.left, under: true, font: cs.font, color: cs.color, h: sr.height };
-            }
-            return { award: d.award, y: sr.top + sr.height / 2 - L.top, x: toRight ? pr.right + g1 - L.left : pr.left - g1 - L.left, toRight, font: cs.font, color: cs.color, h: sr.height };
+            const text = '+' + fmtChips(d.award);
+            let w = 0;
+            try { measure.font = cs.font; w = measure.measureText(text).width; } catch { w = text.length * sr.height * 0.55; }
+            const y = sr.top + sr.height / 2;
+            const clearAt = (left) => !others.some(o => o.seat !== d.seat && o.boxes.some(b => left < b.right && left + w > b.left && y - sr.height / 2 < b.bottom && y + sr.height / 2 > b.top));
+            const facing = (pr.left + pr.width / 2) <= (T.left + T.width / 2);
+            const rightLeft = pr.right + g1, leftLeft = pr.left - g1 - w;
+            const toRight = facing ? (clearAt(rightLeft) || !clearAt(leftLeft)) : !(clearAt(leftLeft) || !clearAt(rightLeft));
+            return { award: d.award, text, y: y - L.top, x: toRight ? pr.right + g1 - L.left : pr.left - g1 - L.left, toRight, font: cs.font, color: cs.color, h: sr.height };
           }).filter(Boolean);
           // 47: a busted all-in rolls from All-in to 0 as the pot lands elsewhere.
           const busts = hand.players.map((_, pi) => pi).filter(pi => allIn.has(pi) && shownStacks[pi] <= 0 && !(potAwards[pi] > 0))
@@ -10522,8 +10555,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           writes.push(() => {
             gains.forEach(gn => {
               const span = document.createElement('span');
-              span.className = 'replayer-gain' + (gn.under ? ' is-under' : gn.toRight ? '' : ' is-left');
-              span.textContent = '+' + fmtChips(gn.award);
+              span.className = 'replayer-gain' + (gn.toRight ? '' : ' is-left');
+              span.textContent = gn.text;
               Object.assign(span.style, { left: gn.x + 'px', top: (gn.y - gn.h / 2) + 'px', font: gn.font, color: gn.color, height: gn.h + 'px', lineHeight: gn.h + 'px' });
               layer.appendChild(span);
               const hold = tLand + timeTo(hand_, 0.98) / rate + 800 / rate;
@@ -11035,6 +11068,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         /* Community games have the central board that sits over the wordmark;
            the export moves the wordmark clear of it only when this is set. */
         data-community={gameCfg.hasBoard && !gameCfg.isStud ? '1' : '0'}
+        /* How many seats: a full table on a short phone sizes every seat's cards down together (styles.css). */
+        data-seats={hand.players.length}
         /* Cards lying flat (Card splay off): a stud row lays its face-down cards tucked (styles.css). */
         data-flat={rSettings.cardSplay ? undefined : '1'}
       data-anim-winner={rSettings.animateWinner ? '1' : '0'}
@@ -11170,8 +11205,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                       {/* shownPot: the model's pot less the swept wagers still in flight (the
                           spring path); displayPot itself everywhere else. */}
                       {chips && (springOn && !potLayers.length
-                        ? <PotChipLive amount={shownPot} motion={motion} set={springSet} shipped={pileShipped} />
-                        : <PotChipVisual amount={potLayers.length ? potLayers[0].amount : (shownPot || displayPot)} />)}
+                        ? <PotChipLive amount={PILE_IS_WHOLE_POT ? potCommitted : shownPot} motion={motion} set={springSet} shipped={pileShipped} />
+                        : <PotChipVisual amount={potLayers.length ? potLayers[0].amount : (PILE_IS_WHOLE_POT ? potCommitted : (shownPot || displayPot))} />)}
                     </div>
                   );
                 })()}

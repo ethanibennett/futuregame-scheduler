@@ -92,10 +92,18 @@ const MEASURE = () => {
     table.querySelectorAll('.replayer-seat[data-seat]').forEach((seat) => {
       const s = Number(seat.dataset.seat);
       add(s, 'plaque', seat.querySelector('.replayer-seat-info'), text(seat.querySelector('.replayer-seat-name')));
+      // The name's own ink (its text, not its box): an action pill may sink into the plaque's top edge, not onto this.
+      const nameEl = seat.querySelector('.replayer-seat-name');
+      if (nameEl && seen(nameEl)) {
+        const rg = document.createRange(); rg.selectNodeContents(nameEl);
+        const nb = rg.getBoundingClientRect();
+        if (nb.width > 0) items.push({ owner: s, kind: 'name', label: text(nameEl), x: nb.x, y: nb.y, w: nb.width, h: nb.height });
+      }
       seat.querySelectorAll('.replayer-seat-cards .card-row > *').forEach((c, i) => {
         add(s, 'card', c, 'card ' + (i + 1));
-        // A face-up card's index, its rank and suit: the top half of its left 30% (on the 180 x 252 face the rank and
-        // the corner pip end at 50 across and 120 down). The action label may cover a card's body, never this.
+        // A face-up card's rank (kind 'index'): the top third of its left 30% (on the 180 x 252 face the rank ends at 50
+        // across and about 80 down; the suit pip under it, to 120, repeats the card's colour). The action label may cover
+        // a card's body and the pip, never the rank.
         // The index is in the card's own frame, and a fan tilts its cards: the region is rotated with the card (its
         // and its parents' rotations, up to the seat) about the card's centre, and its bounds taken.
         const b = seen(c);
@@ -111,7 +119,7 @@ const MEASURE = () => {
           }
           const t = deg * Math.PI / 180, cos = Math.cos(t), sin = Math.sin(t);
           const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
-          const pts = [[-w / 2, -h / 2], [-w / 2 + 0.3 * w, -h / 2], [-w / 2, -h / 2 + 0.48 * h], [-w / 2 + 0.3 * w, -h / 2 + 0.48 * h]]
+          const pts = [[-w / 2, -h / 2], [-w / 2 + 0.3 * w, -h / 2], [-w / 2, -h / 2 + 0.32 * h], [-w / 2 + 0.3 * w, -h / 2 + 0.32 * h]]
             .map(([x, y]) => [cx + x * cos - y * sin, cy + x * sin + y * cos]);
           const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
           const x0 = Math.min(...xs), y0 = Math.min(...ys);
@@ -141,7 +149,8 @@ const MEASURE = () => {
 // Which pairs may touch. Everything not listed here must stay apart.
 // Keys are the two kinds sorted, joined by |. The action label sits over its own cards' lower bodies (owner,
 // 2026-11-15), so it may cover a card, but not a card's index (kind 'index', held only against the action label).
-const SELF_OK = new Set(['card|plaque', 'card|card', 'button|plaque', 'action|card']);
+// A small hand's pill may also sink into its plaque's top edge, held off the name's ink (kind 'name') instead.
+const SELF_OK = new Set(['card|plaque', 'card|card', 'button|plaque', 'action|card', 'action|plaque']);
 // The pot's figure and its chips; the board's own cards; the replay's controls side by side.
 const FELT_OK = new Set(['pot|pot', 'board|board', 'game|pot', 'control|control']);
 function collisions(m, slack) {
@@ -160,8 +169,10 @@ function collisions(m, slack) {
       const ox = Math.min(a.x + a.w, b.x + b.w) - ix;
       const oy = Math.min(a.y + a.h, b.y + b.h) - iy;
       if (ox <= slack || oy <= slack) continue;
-      // An index is a part of its card, held only against an action label (the card itself stands for it otherwise).
-      if ((a.kind === 'index' || b.kind === 'index') && !((a.kind === 'index' && b.kind === 'action') || (b.kind === 'index' && a.kind === 'action'))) continue;
+      // An index is a part of its card, and a name's ink a part of its plaque: each is held only against an action
+      // label (the card or the plaque stands for it otherwise).
+      const partOnly = (x, y) => (x.kind === 'index' || x.kind === 'name') && y.kind !== 'action';
+      if (partOnly(a, b) || partOnly(b, a)) continue;
       const pair = [a.kind, b.kind].sort().join('|');
       if (a.owner === b.owner) {
         if (a.owner === 'felt' ? FELT_OK.has(pair) : SELF_OK.has(pair)) continue;
