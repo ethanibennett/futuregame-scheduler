@@ -537,7 +537,11 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
     (`ios/App/FuturegameWidgets/`, a folder Xcode syncs: a file put there joins the target; added 2026-11-15, checked in
     the Simulator). It is embedded for iOS only (`platformFilter = ios`; the Mac app has no Live Activities), and its
     `CURRENT_PROJECT_VERSION` must equal the app's, because `ios-testflight.sh` bumps the build by replacing the app's
-    value. Android links need `ANDROID_CERT_SHA256`.
+    value. It is drawn in the app's design scheme (owner, 2026-11-15): Home's playing card (the venue band, the event in
+    the display face, three stat boxes) in the chosen theme's colours, which `utils/live-activity.js` resolves to hex and
+    sends at the start with the band's colour and name (`strip`, `stripLabel`, `palette` on `PlayingAttributes`, in BOTH
+    structs). The app's faces are bundled in the extension (`UIAppFonts`): a widget does not inherit its host's fonts.
+    Android links need `ANDROID_CERT_SHA256`.
   - Tests: `npm run test:features-social` (ports 4750-4759), and `game-rules`, `odds`, `plans-in-common` in
     `test:utils`. Catalogue figures (ICM, the PLO 8/b odds) are held by `odds.test.mjs`.
 

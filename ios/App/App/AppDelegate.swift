@@ -459,6 +459,10 @@ struct PlayingAttributes: ActivityAttributes {
     }
     var event: String
     var room: String
+    // The app's look (owner, 2026-11-15): the venue band's colour and name, the chosen theme's colours.
+    var strip: String?
+    var stripLabel: String?
+    var palette: [String: String]?
 }
 #endif
 
@@ -505,7 +509,14 @@ public class LiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func start(_ call: CAPPluginCall) {
         #if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
         if #available(iOS 16.2, *) {
-            let attrs = PlayingAttributes(event: call.getString("event") ?? "Tournament", room: call.getString("room") ?? "")
+            let palette = (call.getObject("palette") ?? [:]).compactMapValues { $0 as? String }
+            let attrs = PlayingAttributes(
+                event: call.getString("event") ?? "Tournament",
+                room: call.getString("room") ?? "",
+                strip: call.getString("strip"),
+                stripLabel: call.getString("stripLabel"),
+                palette: palette.isEmpty ? nil : palette
+            )
             let content = ActivityContent(state: state(call), staleDate: nil)
             Task {
                 for a in Activity<PlayingAttributes>.activities { await a.end(nil, dismissalPolicy: .immediate) }

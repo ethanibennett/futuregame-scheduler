@@ -617,8 +617,11 @@ export default function DashboardView({
     const stack = Number(u.stack) || 0;
     const end = effectiveLateRegEnd(ev);
     const close = end ? lateRegCloseOf(ev, end) : NaN;
+    // The venue band as Home's playing card draws it: the venue's colour, its long name or abbreviation.
+    const vi = getVenueInfo(ev.venue, ev.property);
     syncLiveActivity({
       id: ev.id, event: ev.event_name, room: ev.property || ev.venue,
+      strip: getVenueBrandColor(vi.abbr), stripLabel: vi.longName || vi.abbr,
       level: live ? live.level : 0,
       blinds: live ? `${formatChips(live.sb)}/${formatChips(live.bb)}${live.ante ? '/' + formatChips(live.ante) : ''}` : (u.bb ? `${formatChips(u.sb)}/${formatChips(u.bb)}` : ''),
       levelEndsAt: live && Number.isFinite(live.remaining) ? Date.now() + live.remaining * 1000 : 0,
