@@ -256,7 +256,9 @@ const NOT_CONTROLS = [
 // Tiles: a control whose face is a small layout of its own (a name over an amount, a font
 // specimen over its name), start-aligned by design. Their box is held to the grid; their text is
 // seated like any other block of text, so the centring test does not apply.
-const TILES = ['.bk-cell', '.font-pick-tile'];
+// The event card's corner tab (.cal-quick-add, owner 2026-11-13): a 4g x 4r hit area whose + or check
+// is set in the corner of the 3g x 3r triangle drawn inside it, not in the hit area's middle.
+const TILES = ['.bk-cell', '.font-pick-tile', '.cal-quick-add'];
 // Navigation and disclosure rows: icon or chevron beside a label, start-aligned like a list.
 // Centred vertically only. (.ovt-head: the bankroll Overview's collapsible table sections.)
 const START_ALIGNED = ['.dk-rail-item', '.dk-rail-subitem', '.cal-fp-head', '.ovt-head'];   // .dk-rail-subitem: Bankroll's sections in the rail (Bankroll design 86)

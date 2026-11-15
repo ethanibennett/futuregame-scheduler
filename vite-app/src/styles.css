@@ -17117,10 +17117,16 @@
       content: ''; position: absolute; inset: calc(var(--subrow) * -0.5) calc(var(--gu) * -0.5);
     }
     .kind-toggle-split > .kind-toggle::after, .kind-toggle-split > .kind-toggle-caret::after { left: 0; right: 0; }
-    /* My Schedule on a wide right pane (UX pick 26): from 64g, each day's cards in two columns 1g apart,
-       the date break across both, so a card keeps its name and buy-in near the 35g it was drawn for. */
-    .dk-mine-block.is-two-col [data-date-group] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--gu); align-items: start; }
+    /* My Schedule on a wide right pane (UX pick 26): from 64g, each day's cards in two columns, the date
+       break across both, so a card keeps its name and buy-in near the 35g it was drawn for. The pane is
+       only ever 64g here (MAX_COLS 7), so its content is 62g: 1g apart, each column was 30.5g and every
+       card edge sat half a g off the grid (owner, 2026-11-15: "weird spacing"); 2g apart, each is 30g. */
+    .dk-mine-block.is-two-col [data-date-group] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--subcol); align-items: start; }
     .dk-mine-block.is-two-col [data-date-group] > :first-child { grid-column: 1 / -1; }
+    /* A day of one card fills only the first column, so its break spans that column alone and the
+       weekday sits over the card's right edge, as on the phone; across both, it hung 32g past the card
+       over an empty column. (Swiss sets its own marginal date column.) */
+    :root:not([data-theme^="swiss"]) .dk-mine-block.is-two-col [data-date-group]:not(:has(> :nth-child(3))) > * { grid-column: 1; }
     /* Overlaps (UX pick 21): a 3r amber line under the card's name, the plan as a pill at its right (whole
        g, label centred); and one 3r summary under My Schedule's header. */
     .cal-overlap {
@@ -17873,11 +17879,13 @@
       font-family: var(--money-detail-font); font-size: var(--money-detail-size); font-weight: var(--money-detail-weight);
     }
 
-    /* My Schedule's clashes in its sticky header (App improvements 57): one 3r line, 1r under the title, in
-       --warn on --warn-bg with a hairline --warn-line edge, condensed sm, a 5g x 2r Next at its end. */
+    /* My Schedule's clashes in its sticky header (App improvements 57): one 4r line, 1r under the title, in
+       --warn on --warn-bg with a hairline --warn-line edge, condensed sm, a 5g x 2r Next at its end. 4r, not
+       the 3r it was built at: a 2r button centred in 3r has its top half an r off the grid (check:controls,
+       2026-11-15); in 4r it sits 1r in, on a line. */
     .sched-clash {
       display: flex; align-items: center; gap: var(--gu);
-      height: calc(var(--subrow) * 3); margin-top: var(--subrow); padding: 0 var(--gu); box-sizing: border-box;
+      height: calc(var(--subrow) * 4); margin-top: var(--subrow); padding: 0 var(--gu); box-sizing: border-box;
       border-radius: var(--radius-sm); background: var(--warn-bg, var(--surface2)); box-shadow: inset 0 0 0 var(--bw-hair) var(--warn-line, var(--warn));
       color: var(--warn); font-family: var(--font-condensed); font-size: var(--fs-sm);
     }
