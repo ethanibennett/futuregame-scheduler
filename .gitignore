@@ -150,6 +150,8 @@ hh-samples/
 vite-app/live.html
 # Generated from vite-app/src/styles.css when Vite starts (vite-app/scripts/make-live-css.mjs)
 vite-app/src/live.generated.css
+# Generated from vite-app/public/cards when Vite starts (vite-app/scripts/make-card-faces.mjs)
+vite-app/src/card-faces.generated.js
 
 # The session bridge's token on this PC (docs/session-bridge.md)
 .session-bridge.env

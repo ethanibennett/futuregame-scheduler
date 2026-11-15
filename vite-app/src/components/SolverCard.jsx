@@ -1,3 +1,4 @@
+import { cardFaceSrc } from '../utils/card-faces.js';
 import React from 'react';
 
 // Shared playing-card for the solver views. Renders the same card-face
@@ -15,5 +16,5 @@ export default function SolverCard({ str, faceDown, dim, size = 'md', raised }) 
 
   if (faceDown || !str) return <span className={'card-back ' + cls} />;
 
-  return <img className={'card-img ' + cls} src={`/cards/cards_gui_${str}.svg`} alt={str} loading="eager" />;
+  return <img className={'card-img ' + cls} src={cardFaceSrc(str)} alt={str} loading="eager" />;
 }

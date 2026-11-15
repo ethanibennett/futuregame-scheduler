@@ -1,3 +1,4 @@
+import { cardFaceSrc } from '../utils/card-faces.js';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { parseCardNotation } from '../utils/poker-engine.js';
 import { formatLiveUpdate, formatChips, ordinalSuffix, VENUE_TO_SERIES } from '../utils/utils.js';
@@ -345,7 +346,7 @@ export function CameraOverlay({ updateData, tournamentName, tournament, stackHis
       const oppGroups = (handData.opponents || []).map(h => h ? parseCardNotation(h) : []);
       const bCards = handData.boardCards ? parseCardNotation(handData.boardCards) : [];
       const cardImg = (c, i) => c.suit !== 'x'
-        ? React.createElement('img', { key: i, src: '/cards/cards_gui_' + c.rank + c.suit + '.svg', alt: c.rank + c.suit, style: { height: 'calc(var(--subrow) * 2.75)', borderRadius: 'calc(var(--subrow) * 0.25)' } })
+        ? React.createElement('img', { key: i, src: cardFaceSrc(c.rank + c.suit), alt: c.rank + c.suit, style: { height: 'calc(var(--subrow) * 2.75)', borderRadius: 'calc(var(--subrow) * 0.25)' } })
         : React.createElement('span', { key: i, style: { display: 'inline-block', width: 'calc(var(--subrow) * 2)', height: 'calc(var(--subrow) * 2.75)', background: 'rgba(255,255,255,0.15)', borderRadius: 'calc(var(--subrow) * 0.25)', textAlign: 'center', fontSize: 'calc(var(--gu) * 0.810)', lineHeight: 'calc(var(--subrow) * 2.75)', color: 'rgba(255,255,255,0.5)' } }, '?');
       const results = Array.isArray(handData.handResult) ? handData.handResult : [];
       return (

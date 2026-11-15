@@ -1,6 +1,7 @@
 // ── Schedule Export Utilities ──
 // Ported from original export.jsx for Vite ESM
 
+import { cardFaceSrc } from './card-faces.js';
 import { getVenueInfo, formatBuyin, currencySymbol, formatChips, ordinalSuffix, parseTournamentTime, normaliseDate, getToday, nativeCurrency, convertAmount } from './utils.js';
 import { parseCardNotation } from './poker-engine.js';
 
@@ -1889,7 +1890,7 @@ export function loadCardImages(cards) {
     promises.push((async () => {
       const domImg = document.querySelector('img[alt="' + key + '"]');
       if (domImg && domImg.complete && domImg.naturalWidth > 0) { result.set(key, domImg); return; }
-      const url = '/cards/cards_gui_' + key + '.svg';
+      const url = cardFaceSrc(key);
       try {
         const img = new Image();
         img.src = url;

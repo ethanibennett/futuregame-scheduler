@@ -1,3 +1,4 @@
+import { cardFaceSrc } from '../utils/card-faces.js';
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import useBackToClose from '../hooks/useBackToClose.js';
 import { useSolverAvailability, offered as offeredGame } from './StudyHead.jsx';
@@ -1994,7 +1995,7 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
         const pose0 = poseOf ? poseOf.get(id) : undefined;
         const pose = plays != null ? (plays ? undefined : 'dead') : pose0;
         return <img key={k} data-ck={k} className={'card-img' + tapClass}
-          src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'}
+          src={cardFaceSrc(c.rank + c.suit)}
           alt={c.rank+c.suit} loading="eager" data-pose={pose || undefined}
           /* A fanned card carries its shadow as an inline filter, which the stylesheet's darkening cannot reach. */
           style={pose === 'dead' && splayStyle.filter ? { ...splayStyle, filter: 'brightness(0.42) ' + splayStyle.filter } : splayStyle} {...tap} />;
@@ -3654,7 +3655,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                     const card = rank + suit.key;
                     const isSelected = heroCurrentSet.has(card);
                     return <button key={card} className={'card-picker-btn' + (isSelected ? ' selected' : '')} onClick={() => toggleHeroCard(card)}>
-                      <img src={'/cards/cards_gui_' + rank + suit.key + '.svg'} alt={card} loading="eager" />
+                      <img src={cardFaceSrc(rank + suit.key)} alt={card} loading="eager" />
                     </button>;
                   })}
                 </React.Fragment>
@@ -3784,7 +3785,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                     const isSelected = currentBoardSet.has(card);
                     // Disabled, not only greyed: a keyboard or an assistive tap reached a used card (entry audit 6).
                     return <button key={card} className={'card-picker-btn' + (isSelected ? ' selected' : '') + (isUsed ? ' used' : '')} disabled={isUsed && !isSelected} onClick={() => toggleCard(card)}>
-                      <img src={'/cards/cards_gui_' + rank + suit.key + '.svg'} alt={card} loading="eager" />
+                      <img src={cardFaceSrc(rank + suit.key)} alt={card} loading="eager" />
                     </button>;
                   })}
                 </React.Fragment>
@@ -3949,7 +3950,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                               const isUsedByOther = thisUsed.has(card);
                               const isSelected = oppCardSet.has(card);
                               return <button key={card} className={'card-picker-btn' + (isSelected ? ' selected' : '') + (isUsedByOther ? ' used' : '')} disabled={isUsedByOther && !isSelected} onClick={() => toggleSdCard(card)}>
-                                <img src={'/cards/cards_gui_' + rank + suit.key + '.svg'} alt={card} loading="eager" />
+                                <img src={cardFaceSrc(rank + suit.key)} alt={card} loading="eager" />
                               </button>;
                             })}
                           </React.Fragment>
@@ -4237,7 +4238,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                     const next = dcMissing.find(pi => pi !== at && pi > at) ?? dcMissing.find(pi => pi !== at);
                     if (next !== undefined) setStudDealTarget(next);
                   }}>
-                    <img src={'/cards/cards_gui_' + rank + suit.key + '.svg'} alt={card} loading="eager" />
+                    <img src={cardFaceSrc(rank + suit.key)} alt={card} loading="eager" />
                   </button>;
                 })}
               </React.Fragment>
@@ -4363,7 +4364,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                           {handCards.map((c, ci) => {
                             const isDiscarded = discardedSet.has(c.rank + c.suit);
                             const img = <img className={'card-img draw-selectable' + (isDiscarded ? ' draw-discarded' : '')}
-                              src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank + c.suit} loading="eager" />;
+                              src={cardFaceSrc(c.rank + c.suit)} alt={c.rank + c.suit} loading="eager" />;
                             // A button, so a keyboard and a screen reader reach it; a pat hand is only shown.
                             return isPat ? <React.Fragment key={ci}>{img}</React.Fragment> : (
                               <button key={ci} type="button" className="gto-discard-card" aria-pressed={isDiscarded}
@@ -4462,7 +4463,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                             return (
                               <button key={k} type="button" className="gto-discard-card" aria-pressed={on}
                                 aria-label={(on ? 'Keep ' : 'Throw ') + k} onClick={() => toggle(k)}>
-                                <img className={'card-img draw-selectable' + (on ? ' draw-discarded' : '')} src={'/cards/cards_gui_' + k + '.svg'} alt={k} loading="eager" />
+                                <img className={'card-img draw-selectable' + (on ? ' draw-discarded' : '')} src={cardFaceSrc(k)} alt={k} loading="eager" />
                               </button>
                             );
                           })}
@@ -4509,7 +4510,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                                 const on = fresh.includes(k);
                                 const out = !on && dead.has(k);
                                 return <button key={k} type="button" className={'card-picker-btn' + (on ? ' selected' : '') + (out ? ' used' : '')} disabled={out} onClick={() => toggleNew(k)}>
-                                  <img src={'/cards/cards_gui_' + k + '.svg'} alt={k} loading="eager" />
+                                  <img src={cardFaceSrc(k)} alt={k} loading="eager" />
                                 </button>;
                               })}
                             </React.Fragment>
@@ -4666,7 +4667,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                       if (nextTarget !== undefined) setStudDealTarget(nextTarget);
                     }
                   }}>
-                    <img src={'/cards/cards_gui_' + rank + suit.key + '.svg'} alt={card} loading="eager" />
+                    <img src={cardFaceSrc(rank + suit.key)} alt={card} loading="eager" />
                   </button>;
                 })}
               </React.Fragment>
@@ -4758,7 +4759,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                       const isSelected = hcSet.has(card);
                       const out = !isSelected && hcDoor.has(card);
                       return <button key={card} className={'card-picker-btn' + (isSelected ? ' selected' : '') + (out ? ' used' : '')} disabled={out} onClick={() => toggleHCard(card)}>
-                        <img src={'/cards/cards_gui_' + rank + suit.key + '.svg'} alt={card} loading="eager" />
+                        <img src={cardFaceSrc(rank + suit.key)} alt={card} loading="eager" />
                       </button>;
                     })}
                   </React.Fragment>
@@ -4815,7 +4816,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                         return (
                           <span className="gto-seat-hero-cards" style={dimStyle}>
                             <div className="card-row gto-card-run">
-                              {oppVisible.map((c, ci) => <img key={ci} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank+c.suit} loading="eager" />)}
+                              {oppVisible.map((c, ci) => <img key={ci} className="card-img" src={cardFaceSrc(c.rank + c.suit)} alt={c.rank+c.suit} loading="eager" />)}
                             </div>
                           </span>
                         );
@@ -4826,7 +4827,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                           <div className="card-row gto-card-run">
                             <div className="card-unknown" style={{marginTop:'var(--space-md)'}} />
                             <div className="card-unknown" style={{marginTop:'var(--space-md)'}} />
-                            {oppVisible.map((c, ci) => <img key={ci} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank+c.suit} loading="eager" />)}
+                            {oppVisible.map((c, ci) => <img key={ci} className="card-img" src={cardFaceSrc(c.rank + c.suit)} alt={c.rank+c.suit} loading="eager" />)}
                             {downAfter > 0 && <div className="card-unknown" style={{marginTop:'var(--space-md)'}} />}
                           </div>
                         </span>
@@ -11254,7 +11255,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             const slot = withSlot ? { 'data-slot': i, 'data-ck': key } : { 'data-xk': key };
             if (c.suit === 'x') return <div key={key} {...slot} className="card-unknown" />;
             const pose = withSlot && cardPoses ? cardPoses.board.get(c.rank + c.suit) : undefined;
-            return <img key={key} {...slot} data-pose={pose || undefined} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank + c.suit} loading="eager" />;
+            return <img key={key} {...slot} data-pose={pose || undefined} className="card-img" src={cardFaceSrc(c.rank + c.suit)} alt={c.rank + c.suit} loading="eager" />;
           };
           const unit = hand.doubleBoard ? 'Board' : 'Run';
           const tags = extra.length ? boardWinnerTags() : null;
@@ -11290,7 +11291,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             <div className="replayer-dead-label">Dead cards</div>
             <div className="card-row replayer-dead-row">
               {deadCards.map(k => (
-                <img key={k} className="card-img" src={'/cards/cards_gui_' + k + '.svg'} alt={k} loading="eager" />
+                <img key={k} className="card-img" src={cardFaceSrc(k)} alt={k} loading="eager" />
               ))}
             </div>
           </div>
@@ -11937,7 +11938,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             <span className="replayer-dead-strip-label"><span>Dead cards</span></span>
             <div className="replayer-dead-strip-cards" style={{ '--dead-ml': (pitch - CARD_G).toFixed(4) }}>
               {deadCards.map(k => (
-                <img key={k} src={'/cards/cards_gui_' + k + '.svg'} alt={k} loading="eager" />
+                <img key={k} src={cardFaceSrc(k)} alt={k} loading="eager" />
               ))}
             </div>
           </div>

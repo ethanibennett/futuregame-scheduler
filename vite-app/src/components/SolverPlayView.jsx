@@ -1,3 +1,4 @@
+import { cardFaceSrc } from '../utils/card-faces.js';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchApi } from '../utils/api.js';
 import { StudyHead, StudyPills, shortGameName, useSolverAvailability, offered, T, R } from './StudyHead.jsx';
@@ -20,7 +21,7 @@ import StrategyRibbon from './StrategyRibbon.jsx';
 // Bare card image (no inline sizing) so the replayer's seat-card CSS
 // (.replayer-seat-cards .card-row img) sizes + fans them like the replayer.
 function cardImg(c, key, dim) {
-  return <img key={key} className="card-img" src={`/cards/cards_gui_${c}.svg`} alt={c}
+  return <img key={key} className="card-img" src={cardFaceSrc(c)} alt={c}
     style={dim ? { opacity: 0.5, filter: 'grayscale(0.4)' } : undefined} />;
 }
 

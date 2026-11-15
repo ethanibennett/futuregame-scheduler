@@ -3,11 +3,14 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 import { writeLiveHtml } from './scripts/make-live-html.mjs';
 import { writeLiveCss } from './scripts/make-live-css.mjs';
+import { writeCardFaces } from './scripts/make-card-faces.mjs';
 
 // futurega.me/live's page, generated from index.html whenever Vite starts (scripts/make-live-html.mjs).
 writeLiveHtml();
 // ...and its stylesheet, the part of styles.css the page uses (scripts/make-live-css.mjs).
 writeLiveCss();
+// ...and the card faces, in the code rather than a request each (scripts/make-card-faces.mjs).
+writeCardFaces();
 
 export default defineConfig({
   plugins: [react()],
