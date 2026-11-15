@@ -175,7 +175,10 @@ const legacyJson = (db, token) => JSON.stringify(legacyFeed(db, token));
           assert.match(r.json.token, /^[A-Za-z0-9]{8}$/);
           assert.notStrictEqual(r.json.token, tk.one);
           assert.strictEqual(r.json.path, `/b/${r.json.token}`);
-          assert.deepStrictEqual(r.json.moved, { backer_public: 1, backer_events: 1, backer_push_subs: 0, backers: 1, backer_event_revisions: 0, backer_page_settlements: 0 });
+          // The tables added later (the Discord id, the page's options) hold nothing for this backer: 0 where present.
+          const { backer_public, backer_events, backer_push_subs, backers, backer_event_revisions, backer_page_settlements, ...later } = r.json.moved;
+          assert.deepStrictEqual({ backer_public, backer_events, backer_push_subs, backers, backer_event_revisions, backer_page_settlements }, { backer_public: 1, backer_events: 1, backer_push_subs: 0, backers: 1, backer_event_revisions: 0, backer_page_settlements: 0 });
+          assert.ok(Object.values(later).every((n) => n === 0), JSON.stringify(later));
           assert.strictEqual(r.json.rosterRecord, 'updated');
           const fresh = await api(srv, 'GET', `/api/backer/${r.json.token}/feed`);
           assert.strictEqual(fresh.text, expected[tk.one], 'the new link shows exactly what the old one did');

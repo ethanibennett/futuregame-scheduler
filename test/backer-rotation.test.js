@@ -8,7 +8,8 @@
 //
 // What it protects: a backer's token is the whole of their authentication AND the foreign key five
 // tables find their data by. The link must move across ALL FIVE (backer_public, backer_events,
-// backer_push_subs, backers.public_token, backer_event_revisions) or none, must refuse to merge two
+// backer_push_subs, backers.public_token, backer_event_revisions; since then every table in TOKEN_COLUMNS) or
+// none, must refuse to merge two
 // backers, and must kill the old link at once.
 //
 // Boots server.js on a scratch port (4540-4549, never 3001) against a scratch DB, with the
@@ -19,7 +20,7 @@ const surface = require('../lib/backer-surface');
 const { createScratch, one, rowsOf, runner } = require('./helpers/scratch-server');
 const fx = require('./helpers/backer-fixtures');
 
-const FIVE = ['backer_public', 'backer_events', 'backer_push_subs', 'backers', 'backer_event_revisions'];
+const FIVE = ['backer_public', 'backer_events', 'backer_push_subs', 'backers', 'backer_event_revisions', 'backer_discord', 'backer_page_options'];
 
 /** A backer holding rows in all five places. */
 function seedAll(db, token = 'k7Qm2xR9', { userId = 1, roster = true } = {}) {
@@ -30,11 +31,17 @@ function seedAll(db, token = 'k7Qm2xR9', { userId = 1, roster = true } = {}) {
   for (let i = 1; i <= 3; i++) {
     db.run(`INSERT INTO backer_event_revisions (event_id, token, at, action, share_before, share_after) VALUES (?, ?, ?, 'revise', 1, 2)`, [`${token}:s${i}`, token, 2000 + i]);
   }
+  // The two places added since (2026-10-25 the Discord id, 2026-11-11 the page's options): one row each. The
+  // Discord table is made the first time an id is saved, so make it here as that would.
+  require('../lib/discord-settle').ensureBackerTable(db);
+  require('../lib/backer-extras').migrate(db);
+  db.run('INSERT INTO backer_discord (token, user_id, updated_at) VALUES (?, ?, ?)', [token, '123456789012345678', '2026-11-01T00:00:00Z']);
+  db.run('INSERT INTO backer_page_options (token, coming_up, sweat, updated_at) VALUES (?, 1, 0, 5000)', [token]);
   if (roster) fx.addRoster(db, { id: 'rec-' + token, token, name: 'Rotation Test Backer', stakes: [{ format: 'PLO', pct: 50, channel: 'any' }], opening: 25 }, { updatedAt: 5000 });
   return backerId;
 }
 const countAt = (db, table, col, tok) => one(db, `SELECT COUNT(*) FROM ${table} WHERE ${col} = ?`, [tok]);
-const COL = { backer_public: 'token', backer_events: 'token', backer_push_subs: 'token', backers: 'public_token', backer_event_revisions: 'token' };
+const COL = { backer_public: 'token', backer_events: 'token', backer_push_subs: 'token', backers: 'public_token', backer_event_revisions: 'token', backer_discord: 'token', backer_page_options: 'token' };
 
 (async () => {
   const { test, done } = runner('backer-rotation.test.js');
@@ -47,7 +54,7 @@ const COL = { backer_public: 'token', backer_events: 'token', backer_push_subs: 
       const before = one(db, 'SELECT SUM(share_cents) FROM backer_events WHERE token = ?', ['k7Qm2xR9']);
       const res = surface.rotateBackerToken(db, 'k7Qm2xR9', 'Zx4Lm8Qt');
       assert.strictEqual(res.ok, true);
-      assert.deepStrictEqual(res.counts, { backer_public: 1, backer_events: 5, backer_push_subs: 1, backers: 1, backer_event_revisions: 3, backer_page_settlements: 0 });
+      assert.deepStrictEqual(res.counts, { backer_public: 1, backer_events: 5, backer_push_subs: 1, backers: 1, backer_event_revisions: 3, backer_page_settlements: 0, backer_discord: 1, backer_page_options: 1 });
       for (const t of FIVE) {
         assert.ok(countAt(db, t, COL[t], 'Zx4Lm8Qt') > 0, `${t} is on the new token`);
         assert.strictEqual(countAt(db, t, COL[t], 'k7Qm2xR9'), 0, `${t} has nothing left on the old token`);
@@ -83,6 +90,8 @@ const COL = { backer_public: 'token', backer_events: 'token', backer_push_subs: 
         if (target === 'backer_push_subs') fx.addSub(db, squat);
         if (target === 'backers') fx.addSqlBacker(db, { name: 'Someone Else', token: squat });
         if (target === 'backer_event_revisions') db.run(`INSERT INTO backer_event_revisions (event_id, token, at, action) VALUES ('e', ?, 1, 'post')`, [squat]);
+        if (target === 'backer_discord') db.run("INSERT INTO backer_discord (token, user_id, updated_at) VALUES (?, '999999999999999999', 'x')", [squat]);
+        if (target === 'backer_page_options') db.run('INSERT INTO backer_page_options (token) VALUES (?)', [squat]);
         const snapshot = FIVE.map((t) => countAt(db, t, COL[t], 'aaaaaa11'));
         const res = surface.rotateBackerToken(db, 'aaaaaa11', squat);
         assert.strictEqual(res.ok, false);
@@ -112,7 +121,9 @@ const COL = { backer_public: 'token', backer_events: 'token', backer_push_subs: 
       const db = scratch.open();
       const res = surface.rotateBackerToken(db, 'ccccc111', 'ddddd222');
       assert.strictEqual(res.ok, true);
-      assert.deepStrictEqual(res.counts, { backer_public: 0, backer_events: 0, backer_push_subs: 0, backers: 0, backer_event_revisions: 0, backer_page_settlements: 0 });
+      // Every place present moves nothing; the base six are always there (the Discord table only once an id is saved).
+      for (const t of ['backer_public', 'backer_events', 'backer_push_subs', 'backers', 'backer_event_revisions', 'backer_page_settlements']) assert.ok(t in res.counts, t);
+      assert.ok(Object.values(res.counts).every((n) => n === 0), JSON.stringify(res.counts));
       db.close();
     });
 
@@ -128,16 +139,16 @@ const COL = { backer_public: 'token', backer_events: 'token', backer_push_subs: 
     });
 
     console.log('rotateBackerToken: all or none');
-    await test('a failure on the LAST table puts the other four back', () => {
+    await test('a failure on the LAST table (backer_page_options) puts every other one back', () => {
       const db = scratch.open();
       seedAll(db);
-      db.run(`CREATE TRIGGER boom BEFORE UPDATE ON backer_event_revisions BEGIN SELECT RAISE(ABORT, 'forced failure'); END`);
+      db.run(`CREATE TRIGGER boom BEFORE UPDATE ON backer_page_options BEGIN SELECT RAISE(ABORT, 'forced failure'); END`);
       const snapshot = FIVE.map((t) => countAt(db, t, COL[t], 'k7Qm2xR9'));
       const res = surface.rotateBackerToken(db, 'k7Qm2xR9', 'Zx4Lm8Qt');
       assert.strictEqual(res.ok, false);
       assert.match(res.error, /forced failure/);
       assert.deepStrictEqual(FIVE.map((t) => countAt(db, t, COL[t], 'k7Qm2xR9')), snapshot, 'every table is back on the old token');
-      assert.deepStrictEqual(FIVE.map((t) => countAt(db, t, COL[t], 'Zx4Lm8Qt')), [0, 0, 0, 0, 0], 'and none is on the new one');
+      assert.deepStrictEqual(FIVE.map((t) => countAt(db, t, COL[t], 'Zx4Lm8Qt')), FIVE.map(() => 0), 'and none is on the new one');
       // The database is still usable: no savepoint left open.
       db.run('DROP TRIGGER boom');
       assert.strictEqual(surface.rotateBackerToken(db, 'k7Qm2xR9', 'Zx4Lm8Qt').ok, true);
@@ -163,7 +174,7 @@ const COL = { backer_public: 'token', backer_events: 'token', backer_push_subs: 
       assert.strictEqual(r.status, 200);
       assert.match(r.token, /^[A-Za-z0-9]{8}$/);
       assert.notStrictEqual(r.token, 'oldlink01');
-      assert.deepStrictEqual(r.counts, { backer_public: 1, backer_events: 5, backer_push_subs: 1, backers: 1, backer_event_revisions: 3, backer_page_settlements: 0 });
+      assert.deepStrictEqual(r.counts, { backer_public: 1, backer_events: 5, backer_push_subs: 1, backers: 1, backer_event_revisions: 3, backer_page_settlements: 0, backer_discord: 1, backer_page_options: 1 });
       assert.strictEqual(r.rosterRecord, 'updated');
       assert.strictEqual(one(db, 'SELECT public_token FROM backers WHERE id = ?', [id]), r.token);
       // The roster record (the fallback the page reads for a token no backers row owns) moved too,
