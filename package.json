@@ -67,7 +67,7 @@
     "test:backer-rotation": "node test/backer-rotation.test.js",
     "test:backer-parity": "node test/backer-parity.test.js",
     "test:backers-view": "node test/backers-view.test.js && cd vite-app && node --test src/utils/__tests__/bankroll-backers.test.mjs",
-    "test:backers": "node test/backer-surface.test.js && node test/backer-rotation.test.js && node test/backer-parity.test.js && node test/backers-view.test.js && node test/notify-tap.test.js && node test/backer-live.test.js && node test/backer-settle.test.js && cd vite-app && node --test src/utils/__tests__/bankroll-backers.test.mjs src/utils/__tests__/backer-notify.test.mjs src/utils/__tests__/backer-settle.test.mjs",
+    "test:backers": "node test/backer-surface.test.js && node test/backer-rotation.test.js && node test/backer-parity.test.js && node test/backers-view.test.js && node test/notify-tap.test.js && node test/backer-live.test.js && node test/backer-live-action.test.js && node test/backer-settle.test.js && cd vite-app && node --test src/utils/__tests__/bankroll-backers.test.mjs src/utils/__tests__/backer-notify.test.mjs src/utils/__tests__/backer-settle.test.mjs",
     "test:money-import": "node test/money-import.test.js && cd vite-app && node --test src/utils/__tests__/bankroll-import-dashboard.test.mjs",
     "test:staking-settlement": "node test/staking-settlement.test.js && cd vite-app && node --test src/utils/__tests__/staking-settlement.test.mjs",
     "check:replayer-games": "node scripts/check-replayer-games.mjs",
@@ -98,7 +98,7 @@
     "check:ranges-render": "node vite-app/scripts/check-ranges-render.mjs",
     "test:solver-ranges": "node test/solver-ranges.test.js",
     "test:replayer-drill": "node test/replayer-drill.test.js && node vite-app/src/utils/__tests__/replayer-drill.test.mjs && node vite-app/src/utils/__tests__/draw-study-spot.test.mjs",
-    "test:backer-live": "node test/backer-live.test.js",
+    "test:backer-live": "node test/backer-live.test.js && node test/backer-live-action.test.js",
     "test:hidden-games": "node --test vite-app/src/utils/__tests__/hidden-games.test.mjs"
   },
   "keywords": [],

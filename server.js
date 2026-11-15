@@ -693,13 +693,17 @@ app.get('/api/backer/:token/live', (req, res) => {
     if (player === undefined) return res.status(404).json({ error: 'Not found' });
     res.set('Cache-Control', 'no-store');
     const ownerOf = player == null ? HAM_OWNER_ID : player;
-    const live = require('./lib/backer-live').liveSession(db, ownerOf, Date.now(), { withRun: true });
+    let live = require('./lib/backer-live').liveSession(db, ownerOf, Date.now(), { withRun: true });
+    const extras = require('./lib/backer-extras');
+    // Only for a backer with action in what is being played (owner, 2026-11-15): a stake in its game, or a series
+    // piece of the event. Anyone else's page shows no Playing now card at all.
+    if (live && !extras.hasAction(db, ownerOf, token, live, { source: backerSurface.pageSource() })) live = null;
     if (live) {
       const runId = live.tournamentId;
       delete live.tournamentId;
+      delete live.cashSessionId;
       // Sweat a run (Features 23): chips only, only where the player turned it on for this backer, only
       // for a run inside their stakes.
-      const extras = require('./lib/backer-extras');
       if (live.kind === 'tournament' && runId && extras.optionsOf(db, token).sweat) {
         const sw = extras.sweat(db, ownerOf, token, runId, { source: backerSurface.pageSource() });
         if (sw) live.sweat = sw;

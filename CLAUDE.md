@@ -319,6 +319,9 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   a live cash session under 24h old, or a tournament whose latest live update is neither a bust nor a bag,
   under 20h old, with no result logged), polled each minute while the page is visible; the player is the
   backers row's owner, else the console owner; a token no roster knows is a 404. The feed is unchanged.
+  Only for a backer with action in it (owner, 2026-11-15): a standing stake above 0 for its game and channel on its
+  date, or a series piece of the event (`lib/backer-extras.js` `hasAction`); anyone else gets `live: null`.
+  Test: `test/backer-live-action.test.js`.
   Test: `npm run test:backer-live` (in `test:backers`).
   **Settled** (owner, 2026-10-19; `lib/staking/backer-settle.js`, wording in `utils/backer-settle.js`): a
   Settled button under the page's settlement bar and on each Bankroll › Backers card. The first press opens
