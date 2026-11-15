@@ -203,6 +203,43 @@ export default function ScheduleView({
   const [schedDateTop, setSchedDateTop] = useState(0);
   const fabContainerRef = useRef(null);
 
+  /* A date pill pressed: its day scrolled to the top, its date break flush under the sticky header, as the Schedule
+     list's pill does (owner, 2026-11-15: "clicking the date pill in my schedule should make it autoscroll to that date,
+     just like it does in the regular schedule"). In My Schedule's own scroller: the phone's .content-area or the
+     desktop's right pane (.dk-scroll). The landing is App.jsx landMySchedule's: the header's bottom once stuck (its
+     sticky top plus its height). Rows off screen stand in at an estimated height (content-visibility), so the smooth
+     scroll can stop a little off: once it is at rest the day lands again on the same formula, unless the user has
+     taken the scroll meanwhile. */
+  const scrollDayToTop = useCallback((group) => {
+    const c = group && group.closest('.dk-scroll, .content-area');
+    if (!c) return;
+    const target = () => {
+      const sticky = schedHeaderRef.current;
+      const stickyH = sticky ? Math.max(0, (parseFloat(getComputedStyle(sticky).top) || 0) + sticky.getBoundingClientRect().height) : 0;
+      return Math.max(0, group.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - stickyH);
+    };
+    const reduced = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    c.scrollTo({ top: target(), behavior: reduced ? 'auto' : 'smooth' });
+    const inputs = ['wheel', 'touchstart', 'pointerdown', 'keydown'];
+    let dropped = false;
+    const drop = () => { dropped = true; };
+    inputs.forEach(ev => c.addEventListener(ev, drop, { passive: true }));
+    let last = c.scrollTop, still = 0, moved = false, frames = 0;
+    const tick = () => {
+      const now = c.scrollTop;
+      if (now !== last) { moved = true; still = 0; } else still++;
+      last = now; frames++;
+      if (!dropped && frames < 180 && (still < 3 || (!moved && frames < 12))) { requestAnimationFrame(tick); return; }
+      inputs.forEach(ev => c.removeEventListener(ev, drop));
+      if (dropped || !group.isConnected) return;
+      c.scrollTop = target();
+      // The header is stuck by now: close what its computed top left (a fraction of a pixel on a phone) by measuring.
+      const sticky = schedHeaderRef.current;
+      if (sticky) { const d = group.getBoundingClientRect().top - sticky.getBoundingClientRect().bottom; if (Math.abs(d) >= 0.5) c.scrollTop += d; }
+    };
+    requestAnimationFrame(tick);
+  }, []);
+
   // Track which rows have been expanded — only those get the full (heavy)
   // CalendarEventRow component. All others render CalendarEventRowLite
   // (zero hooks, zero context subscriptions).
@@ -559,7 +596,8 @@ export default function ScheduleView({
             const needsRef = gi === anchorIdx;
             return (
               <div key={group.date} ref={needsRef ? todayRef : null} data-today-scroll={needsRef ? 'true' : undefined} data-date-group={group.date} style={{marginTop: gi === 0 ? 0 : 'calc(var(--subrow) * 1)'}}>
-                <DateBreak date={group.date} top={schedDateTop} isToday={isGroupToday} />
+                <DateBreak date={group.date} top={schedDateTop} isToday={isGroupToday}
+                  onPillClick={(e) => { e.stopPropagation(); scrollDayToTop(e.currentTarget.closest('[data-date-group]')); }} />
                 {group.events.map(({ t, globalIdx: gIdx }) => {
                   if (gIdx >= visibleCount) return null;
                   // Today's rows need the full component for MiniLateRegBar timers, and so does
