@@ -9256,7 +9256,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   /* The rows under the board: the main and side pots, then a split's shares, 0.75r under the board's cards and 0.5r
      apart (under the pot where no board is dealt); then the game pill, moved to the nearest spot up or down where no
      seat's piece, the board, the pot or those rows touches it (owner, 2026-11-15: "still colliding"; see
-     .replayer-split-pot, .replayer-pot-layers). Before the wagers' placement, which then keeps them off the pill. */
+     .replayer-split-pot, .replayer-pot-layers). Before the wagers' placement, which then keeps them off the pill.
+     The watermark is on that list too (owner, 2026-11-16: "Watermark/variant collision"): moved up to clear a wager,
+     the pill landed on the wordmark's lower half. */
   useLayoutEffect(() => {
     const table = tableRef.current;
     if (!table) return;
@@ -9283,9 +9285,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       rows.forEach(el => { el.style.top = (y - oy) + 'px'; y = el.getBoundingClientRect().bottom + r * 0.5; });
     }
     if (!info || !info.getBoundingClientRect().width) return;
-    const boxes = [...table.querySelectorAll('.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn, .replayer-seat-cards .card-row > *, .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-layers.is-placed, .replayer-split-shares.is-placed')]
+    const boxes = [...table.querySelectorAll('.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn, .replayer-seat-cards .card-row > *, .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-layers.is-placed, .replayer-split-shares.is-placed, .replayer-watermark')]
       .map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
-    const I = info.getBoundingClientRect();
+    /* The pill itself (and the tournament line under it), not the 46% column that centres them: that column reached
+       a side seat's cards on a small table, and the pill moved off cards it was nowhere near, onto the watermark. */
+    const kids = [...info.children].map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
+    const I = kids.length
+      ? { left: Math.min(...kids.map(b => b.left)), right: Math.max(...kids.map(b => b.right)), top: Math.min(...kids.map(b => b.top)), bottom: Math.max(...kids.map(b => b.bottom)) }
+      : info.getBoundingClientRect();
     const g = r / 4;
     const clear = (dy) => !boxes.some(b => I.left < b.right + g && I.right > b.left - g && I.top + dy < b.bottom + g && I.bottom + dy > b.top - g);
     if (clear(0)) return;
@@ -9312,7 +9319,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const PIECES = '.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn, .replayer-seat-cards .card-row > *';
     const piecesOf = (seatEl) => (seatEl ? [...seatEl.querySelectorAll(PIECES)].map(boxOf).filter(b => b.width > 0 && b.height > 0) : []);
     // The middle of the felt: the pot (its figure and its chips), the board, the game pill, the rows under the board.
-    const felt = [...table.querySelectorAll('.replayer-pot-display, .replayer-pot-above, .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-table-info, .replayer-pot-layers.is-placed, .replayer-split-shares.is-placed')]
+    const felt = [...table.querySelectorAll('.replayer-pot-display, .replayer-pot-above, .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-table-info > *, .replayer-pot-layers.is-placed, .replayer-split-shares.is-placed')]
       .map(boxOf).filter(b => b.width > 0 && b.height > 0);
     pills.forEach(el => {
       el.style.left = el.dataset.baseLeft;

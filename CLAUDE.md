@@ -759,7 +759,10 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
     to prevent these collisions"): `npm run check:replayer-collisions` (ports 4890-4899) walks corpus hands, every seat
     renamed long, step by step at 375/402/430 portrait and 1440/1728 desktop, and fails on any two pieces that overlap
     (a seat's plaque, cards, action label, wager, readout, draw run, button; the pot, the board, the game pill), except a
-    seat's cards under its own plaque. Run it after any change to the felt. A wager is placed from its usual spot and,
+    seat's cards under its own plaque; the watermark's ink is held against the game pill and the pot only (2026-11-16).
+    Run it after any change to the felt, and alone: two at once can land on one scratch server (a --build run measured the other's build). The game pill is
+    measured as itself, never its 46% column (the column reached side seats' cards and pushed the pill onto the
+    watermark). A wager is placed from its usual spot and,
     within 1r of its own seat's pieces, moved on toward the pot until there is cloth (HandReplayerView's placement
     effect, before the moments effect: it writes left/top percentages, the form the push-out and the ghosts read). The
     action label sits on the plaque's top edge over the cards' lower bodies, never on a face-up card's index (the

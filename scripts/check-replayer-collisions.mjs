@@ -8,6 +8,7 @@
 //   - within a seat, the action label, the wager, the readout and the draw run against everything else of the seat
 //     (the cards tuck under their own plaque, and the button sits on its corner, by design);
 //   - the pot, the board and the game pill against every seat's pieces and against each other.
+//   - the watermark's ink against the game pill and the pot's figure (the board and the wagers may pass over it).
 // Seats take long names (a plaque is as wide as its name), so the layout is tried at the width real tables have.
 //
 //   node scripts/check-replayer-collisions.mjs [--per-game 2] [--games "NLH,O8"] [--ids "NLH#3"]
@@ -135,7 +136,16 @@ const MEASURE = () => {
     table.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > *').forEach((c, i) => add('felt', 'board', c, 'board ' + (i + 1)));
     table.querySelectorAll('.replayer-pot-display').forEach((el) => add('felt', 'pot', el));
     table.querySelectorAll('.replayer-pot-above').forEach((el) => add('felt', 'pot', el, 'pot chips'));
-    table.querySelectorAll('.replayer-table-info').forEach((el) => add('felt', 'game', el));
+    // The game pill (and the tournament line under it): each line's own box, not the 46% column that holds them.
+    table.querySelectorAll('.replayer-table-info > *').forEach((el) => add('felt', 'game', el));
+    // The watermark's ink (kind 'mark'): decoration under everything, so a wager or the board may pass over it, but
+    // never the printed text it would garble, the game pill or the pot's figure (owner, 2026-11-16).
+    table.querySelectorAll('.replayer-watermark').forEach((el) => {
+      if (!seen(el)) return;
+      const rg = document.createRange(); rg.selectNodeContents(el);
+      const wb = rg.getBoundingClientRect();
+      if (wb.width > 0) items.push({ owner: 'felt', kind: 'mark', label: 'watermark', x: wb.x, y: wb.y, w: wb.width, h: wb.height });
+    });
     table.querySelectorAll('.replayer-split-shares').forEach((el) => add('felt', 'split', el));
     // The replay's own controls over the table: Note here, Tags and the table-settings button. A top seat's cards
     // reach up toward them.
@@ -153,6 +163,8 @@ const MEASURE = () => {
 const SELF_OK = new Set(['card|plaque', 'card|card', 'button|plaque', 'action|card', 'action|plaque']);
 // The pot's figure and its chips; the board's own cards; the replay's controls side by side.
 const FELT_OK = new Set(['pot|pot', 'board|board', 'game|pot', 'control|control']);
+// What the watermark is held against; anything else may pass over it.
+const MARK_VS = new Set(['game', 'pot']);
 function collisions(m, slack) {
   const out = [];
   const it = m.items;
@@ -173,6 +185,7 @@ function collisions(m, slack) {
       // label (the card or the plaque stands for it otherwise).
       const partOnly = (x, y) => (x.kind === 'index' || x.kind === 'name') && y.kind !== 'action';
       if (partOnly(a, b) || partOnly(b, a)) continue;
+      if ((a.kind === 'mark' && !MARK_VS.has(b.kind)) || (b.kind === 'mark' && !MARK_VS.has(a.kind))) continue;
       const pair = [a.kind, b.kind].sort().join('|');
       if (a.owner === b.owner) {
         if (a.owner === 'felt' ? FELT_OK.has(pair) : SELF_OK.has(pair)) continue;
