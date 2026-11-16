@@ -762,7 +762,9 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
     seat's cards under its own plaque; the watermark's ink is held against the game pill and the pot only (2026-11-16).
     Run it after any change to the felt, and alone: two at once can land on one scratch server (a --build run measured the other's build). The game pill is
     measured as itself, never its 46% column (the column reached side seats' cards and pushed the pill onto the
-    watermark). A wager is placed from its usual spot and,
+    watermark). `--json <file>` writes every collision (kind, hand, step, pieces) to see which games a kind comes from.
+    A showdown readout that lands on anything moves beside its plaque, toward the middle (keepHandNamesOn), measured
+    at rest and kept for the step: measured mid-animation it jumped between the two spots. A wager is placed from its usual spot and,
     within 1r of its own seat's pieces, moved on toward the pot until there is cloth (HandReplayerView's placement
     effect, before the moments effect: it writes left/top percentages, the form the push-out and the ghosts read). The
     action label sits on the plaque's top edge over the cards' lower bodies, never on a face-up card's index (the

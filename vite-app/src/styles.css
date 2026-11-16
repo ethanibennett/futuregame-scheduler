@@ -6358,7 +6358,10 @@
        sure it isn't obscuring too much of the cards"): the cards show 0.78 of their height above the plaque and the
        rank takes the top 0.32 (the suit pip under it, which repeats the card's colour, may be covered), so the band is
        0.46 of a card. Where even that is less than the pill, it sinks into the plaque's top edge by the shortfall, and
-       check:replayer-collisions holds it off the ranks and the name under it. */
+       check:replayer-collisions holds it off the ranks and the name under it. The shortfall is taken against 0.34 of a
+       card, not 0.44: a fan tilts its outer cards about 14 degrees, and a tilted card's rank box reaches 0.06 of a card
+       lower (six-card Omaha on a phone, by up to 0.26r: 2026-11-16). Stud's row sits lower still, its hole cards
+       showing 0.69 of a card over the plaque, not 0.78, so a seven-card table takes 0.28 (the rule after this one). */
     .replayer-action-badge-outer,
     .replayer-action-badge-outer.action-fold,
     .replayer-action-badge-outer.action-check,
@@ -6371,7 +6374,10 @@
       padding-inline: calc(var(--gu) * 0.5);
       font-size: var(--fs-2xs);
       line-height: 1;
-      bottom: calc(100% + var(--bw-hair) - max(0px, var(--subrow) * 2 - var(--card-h) * 0.44));
+      bottom: calc(100% + var(--bw-hair) - max(0px, var(--subrow) * 2 - var(--card-h) * 0.34));
+    }
+    .replayer-table[data-hand-cards="7"] .replayer-action-badge-outer {
+      bottom: calc(100% + var(--bw-hair) - max(0px, var(--subrow) * 2 - var(--card-h) * 0.30));
     }
     .replayer-action-badge-outer.action-allin {
       box-sizing: border-box;

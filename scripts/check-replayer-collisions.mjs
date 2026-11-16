@@ -13,6 +13,7 @@
 //
 //   node scripts/check-replayer-collisions.mjs [--per-game 2] [--games "NLH,O8"] [--ids "NLH#3"]
 //        [--sizes "375x667,402x874,430x932,1440x900,1728x1117"] [--jobs 3] [--shots dir] [--slack 0.5] [--build dir]
+//        [--json file]
 //
 // Boots its own scratch server (test/helpers/scratch-server.js, ports 4890-4899) and stops it at the end. Needs the
 // built app (vite-app: npm run build). Exit 1 on any collision.
@@ -270,7 +271,7 @@ async function worker(wi) {
             const rec = { id: job.rec.id, game: job.rec.game, n: job.rec.n, size: key, step,
               what: `${c.a.owner === 'felt' ? '' : 'seat ' + c.a.owner + ' '}${c.a.kind} "${c.a.label}" x ${c.b.owner === 'felt' ? '' : 'seat ' + c.b.owner + ' '}${c.b.kind} "${c.b.label}"`,
               overlap: `${(c.ox / m.r).toFixed(2)}r x ${(c.oy / m.r).toFixed(2)}r` };
-            found.push(rec);
+            found.push({ ...rec, sig });
             if (!signatures.has(sig)) {
               signatures.set(sig, { count: 0, first: rec });
               if (SHOTS) {
@@ -306,4 +307,8 @@ console.log(`\n${stepsMeasured} steps measured in ${secs}s; ${found.length} coll
 for (const [sig, { count, first }] of [...signatures].sort((a, b) => b[1].count - a[1].count)) {
   console.log(`  ${String(count).padStart(5)}  ${sig}\n         e.g. ${first.id} (${first.n} seats) step ${first.step}: ${first.what}, ${first.overlap}`);
 }
+// --json <file>: every collision found, one per line (kind, hand, size, step, the two pieces, the overlap), to see
+// which games and seats a kind comes from.
+const JSON_OUT = opt('--json', '');
+if (JSON_OUT) fs.writeFileSync(JSON_OUT, found.map((f) => JSON.stringify(f)).join('\n') + '\n');
 process.exit(found.length || stopped ? 1 : 0);
