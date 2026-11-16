@@ -194,7 +194,10 @@
 .vp-mixname > span { display: block; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; padding-bottom: calc(var(--subrow) * 0.5); }
 .vp-row {
   display: grid;
-  grid-template-columns: calc(var(--gu) * 3) minmax(0, 1fr) auto;
+  /* The check, the name, the rules' "i", the family tag. The "i" (Features 33) came in as a fourth child of
+     a three-column row, so every tag wrapped onto a row of its own, under the name and into the next row
+     (owner, 2026-11-16). Each piece now has its column, an "i" or a tag that is absent leaving it empty. */
+  grid-template-columns: calc(var(--gu) * 3) minmax(0, 1fr) auto auto;
   align-items: center;
   width: 100%;
   height: calc(var(--subrow) * 4);
@@ -206,7 +209,9 @@
 .vp-row-check { display: flex; justify-content: center; color: var(--brand); font-weight: var(--fw-bold); font-size: var(--fs-sm); }
 .vp-row-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-family: var(--font-condensed); font-size: var(--fs-sm); padding-block: 0.25em; margin-block: -0.25em; }
 .vp-row-mix, .vp-row-count { color: var(--text-muted); }
-.vp-row-count { font-family: var(--font-condensed); font-size: var(--fs-2xs); }
+.vp-row-count { font-family: var(--font-condensed); font-size: var(--fs-2xs); grid-column: 3 / -1; justify-self: end; }
+.vp-row > .vp-row-info { grid-row: 1; grid-column: 3; }
+.vp-row > .vp-tag { grid-row: 1; grid-column: 4; }
 .vp-row.is-on .vp-row-name { color: var(--brand-ink, var(--brand)); font-weight: var(--fw-bold); }
 .vp-row.is-hi, .vp-row:focus-visible { background: var(--brand-quiet); outline: none; }
 @media (hover: hover) and (pointer: fine) { .vp-row:hover { background: var(--hover-overlay); } .vp-row.is-hi:hover { background: var(--brand-quiet); } }
