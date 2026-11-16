@@ -320,6 +320,8 @@
 .an-cell.tr-line-amt { font-family: var(--font-title); font-weight: var(--fw-bold); --p: 0.759; padding-left: var(--gu); }
 .tr-line-amt.is-pos { color: var(--pos); }
 .tr-line-amt.is-neg { color: var(--neg); }
+/* A Didn't play line: its label where the amount goes, in the row's own condensed face, muted (owner, 2026-11-16). */
+.an-cell.tr-line-amt.is-dnp { font-family: var(--font-condensed); font-weight: var(--fw-regular); --p: 0.6978; color: var(--text-muted); }
 .tr-lines-head { display: none; }
 .tr-lines .tr-month-break { margin-bottom: 0; }
 /* Desktop (48): a table across the pane, Date 5g | Room 9g | Game | Played 6g | Net 8g, under a 3r header

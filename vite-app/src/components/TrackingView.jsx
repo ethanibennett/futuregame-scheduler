@@ -449,8 +449,8 @@ function DidNotPlayForm({ event, initialNote = '', onSave, onCancel }) {
   );
 }
 
-function DidNotPlayRow({ event, onEdit, onPlayed, onDelete, busy }) {
-  const [open, setOpen] = useState(false);
+function DidNotPlayRow({ event, onEdit, onPlayed, onDelete, busy, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
   const toggle = () => setOpen((v) => !v);
   const note = (event.not_played_note || '').trim();
   // A no-venue marker (utils/didnt-play.js): a blank strip, and Delete where Played it would be.
@@ -1170,8 +1170,15 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
                 <div key={'dnp-' + dnp.id}>
                   {dnpForm && dnpForm.fromList && dnpForm.event.id === dnp.id ? (
                     <DidNotPlayForm event={dnp} initialNote={dnpForm.note} onSave={saveDnp} onCancel={() => setDnpForm(null)} />
+                  ) : isAdmin && listView === 'lines' && openLine !== 'dnp-' + dnp.id ? (
+                    // In Lines a Didn't play day is a line too (owner, 2026-11-16), its label where the amount
+                    // goes; a tap opens its card in place, on the desktop as well (the side pane holds results).
+                    <ResultLine date={fmtDay(isoDay(dnp.date))} venue={isDnpMarker(dnp) ? undefined : dnp.venue} property={dnp.property}
+                      game={dnp.event_name} played="" quiet amount={isDnpMarker(dnp) ? 'No venue' : 'Didn’t play'}
+                      label={`${dnp.event_name}, ${fmtDay(isoDay(dnp.date))}: didn’t play`}
+                      onOpen={() => setOpenLine('dnp-' + dnp.id)} />
                   ) : (
-                    <DidNotPlayRow event={dnp} busy={dnpBusy}
+                    <DidNotPlayRow event={dnp} busy={dnpBusy} defaultOpen={openLine === 'dnp-' + dnp.id}
                       onEdit={() => setDnpForm({ event: dnp, note: dnp.not_played_note || '', fromList: true })}
                       onPlayed={() => markPlayed(dnp)} onDelete={() => deleteDnpDay(dnp)} />
                   )}

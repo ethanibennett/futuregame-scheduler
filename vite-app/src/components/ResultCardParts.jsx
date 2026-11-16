@@ -159,7 +159,7 @@ export function LinesHead() {
     </div>
   );
 }
-export function ResultLine({ date, room, game, played, amount, tone = 0, onOpen, label, venue, property, selected = false }) {
+export function ResultLine({ date, room, game, played, amount, tone = 0, onOpen, label, venue, property, selected = false, quiet = false }) {
   const { abbr, name } = venue !== undefined ? stripOf(venue, property) : roomStrip(room);
   const roomName = name || room || '';
   const keys = barKeys(onOpen || (() => {}));
@@ -170,7 +170,7 @@ export function ResultLine({ date, room, game, played, amount, tone = 0, onOpen,
       <span className="an-cell an-td an-clip tr-line-roomcol">{roomName}</span>
       <span className="an-cell an-td an-clip tr-line-game" title={game}>{game}{roomName ? <span className="tr-line-room"> {roomName}</span> : null}</span>
       <span className="an-cell an-td an-num an-clip tr-line-played">{played}</span>
-      <span className={'an-cell an-td an-num tr-line-amt' + (tone > 0 ? ' is-pos' : tone < 0 ? ' is-neg' : '')}>{amount}</span>
+      <span className={'an-cell an-td an-num tr-line-amt' + (quiet ? ' is-dnp' : tone > 0 ? ' is-pos' : tone < 0 ? ' is-neg' : '')}>{amount}</span>
     </div>
   );
 }
