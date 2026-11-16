@@ -46,7 +46,7 @@ export default function TripBudgetCard({ trip, token, isAdmin }) {
     try {
       const r = await fetch(`${API_URL}/bankrolls/trips`, {
         method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: `${trip.room} ${day(trip.start)}`, start_date: trip.start, end_date: trip.end, note }),
+        body: JSON.stringify({ name: `${trip.room} ${day(trip.start)}`, startDate: trip.start, endDate: trip.end, note }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { if (toast) toast.error(d.error || 'The trip was not saved'); return; }
