@@ -6264,120 +6264,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const [feltColor, setFeltColor] = useState(() => (hand && hand.feltColor) || localStorage.getItem('replayerFeltColor') || '#6b5b8a');
   const prevStreetRef = useRef(0);
   const tableRef = useRef(null);
-  /* keepHandNamesOn (owner, 2026-11-13): every showdown readout is centred under its seat; one that would
-     run off the screen (a long "Hi: Straight, 7-high" under a side seat) is moved in until it is 0.5g clear
-     of the edge, by margin, since the reveal animation owns its transform. Measured after each render. */
-  /* Where each readout was moved this step (seat -> its offset from rest, in g), kept until the step changes: the
-     cards and plaques animate at a showdown, so one render found the spot under a plaque clear and the next did not,
-     and the name jumped between the two (2026-11-16). Moving is decided again each render; going back is not. */
-  const nameSpotRef = useRef({ step: '', spots: new Map() });
-  useLayoutEffect(() => {
-    const table = tableRef.current;
-    if (!table) return;
-    const names = table.querySelectorAll('.replayer-seat-hand-name');
-    const stepKey = streetIdx + ':' + actionIdx;
-    if (nameSpotRef.current.step !== stepKey) nameSpotRef.current = { step: stepKey, spots: new Map() };
-    const spots = nameSpotRef.current.spots;
-    if (!names.length) return;
-    const host = table.closest('.replayer-replay') || document.documentElement;
-    const box = host.getBoundingClientRect();
-    const gu = parseFloat(getComputedStyle(host).getPropertyValue('--gu')) || box.width / 37;
-    names.forEach(el => { el.style.marginLeft = ''; el.style.marginTop = ''; });
-    /* Where a readout rests, from its layout box and its centring (--hn-x), not its drawn box: the reveal and the
-       moments animate it, and a box measured mid-flight put the margins off by the flight (2026-11-16). */
-    const restOf = (el) => {
-      const op = el.offsetParent;
-      if (!op || !el.offsetWidth) return null;
-      const o = op.getBoundingClientRect();
-      const w = el.offsetWidth, h = el.offsetHeight;
-      const hx = getComputedStyle(el).getPropertyValue('--hn-x').trim();
-      const tx = !hx ? -w / 2 : hx.endsWith('%') ? parseFloat(hx) / 100 * w : (parseFloat(hx) || 0);
-      const left = o.left + op.clientLeft + el.offsetLeft + tx, top = o.top + op.clientTop + el.offsetTop;
-      return { left, right: left + w, top, bottom: top + h, width: w, height: h };
-    };
-    const lo = box.left + gu / 2, hi = box.right - gu / 2;
-    names.forEach(el => {
-      const r = restOf(el);
-      if (!r) return;
-      const shift = r.left < lo ? lo - r.left : r.right > hi ? hi - r.right : 0;
-      if (shift) el.style.marginLeft = `calc(var(--gu) * ${(shift / gu).toFixed(3)})`;
-    });
-    /* A readout under its plaque that lands on anything else (owner, 2026-11-16: why are there collisions left; at
-       ten seats on a phone every side seat's "Pair of 7s" hung on the cards of the seat below) moves: beside its
-       plaque on the side facing the middle, level with it, then up to its height higher or lower; then under it,
-       toward the middle by up to a plaque's width. The first spot that is clear and on the screen; else it stays. */
-    const T = table.getBoundingClientRect();
-    const pad = gu / 4;
-    const hits = (b, list) => list.some(o => b.left < o.right + pad && b.right > o.left - pad && b.top < o.bottom + pad && b.bottom > o.top - pad);
-    /* Each piece at its laid-out size around its drawn centre (as the wagers' placement measures): a card turning over
-       or a label popping in is drawn narrower than it will be, and the spot under a plaque looked clear for a frame. */
-    const rectOf = (e) => {
-      const q = e.getBoundingClientRect();
-      const w = Math.max(q.width, e.offsetWidth || 0), h = Math.max(q.height, e.offsetHeight || 0);
-      const mx = q.left + q.width / 2, my = q.top + q.height / 2;
-      return { left: mx - w / 2, right: mx + w / 2, top: my - h / 2, bottom: my + h / 2, width: w, height: h };
-    };
-    const SEAT_PIECES = '.replayer-seat-cards .card-row > *, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-dealer-btn';
-    const placed = [];
-    names.forEach(el => {
-      const seat = el.closest('.replayer-seat');
-      const plaque = seat && seat.querySelector('.replayer-seat-info');
-      const r = restOf(el);
-      if (!plaque || !r) return;
-      const cs = getComputedStyle(el);
-      const ml = parseFloat(cs.marginLeft) || 0, mt = parseFloat(cs.marginTop) || 0;
-      const seatKey = (seat.dataset.seat || '') + '|' + (el.dataset.nameSeat || '') + '|' + el.className;
-      const kept = spots.get(seatKey);
-      if (kept) {
-        el.style.marginLeft = `calc(var(--gu) * ${(ml / gu + kept.dx).toFixed(3)})`;
-        el.style.marginTop = `calc(var(--gu) * ${(mt / gu + kept.dy).toFixed(3)})`;
-        placed.push({ left: r.left + kept.dx * gu, right: r.right + kept.dx * gu, top: r.top + kept.dy * gu, bottom: r.bottom + kept.dy * gu });
-        return;
-      }
-      const others = [...table.querySelectorAll('.replayer-seat[data-seat]')].filter(s => s !== seat)
-        .flatMap(s => [...s.querySelectorAll('.replayer-seat-info, ' + SEAT_PIECES)])
-        .concat([...seat.querySelectorAll(SEAT_PIECES)])
-        .concat([...table.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-table-info > *')])
-        .map(rectOf).filter(b => b.width > 0 && b.height > 0).concat(placed);
-      if (!hits(r, others)) { placed.push(r); return; }
-      const P = plaque.getBoundingClientRect();
-      const inward = (P.left + P.width / 2) < (T.left + T.width / 2) ? 1 : -1;
-      const cands = [];
-      const sideLeft = inward > 0 ? P.right + gu / 2 : P.left - gu / 2 - r.width;
-      const mid = P.top + (P.height - r.height) / 2;
-      for (let k = 0; k <= 8; k++) for (const s of k ? [-1, 1] : [1]) cands.push({ left: sideLeft, top: mid + s * k * P.height / 8 });
-      for (let k = 1; k <= 8; k++) cands.push({ left: r.left + inward * k * P.width / 8, top: r.top });
-      const ok = cands.map(c => ({ left: c.left, right: c.left + r.width, top: c.top, bottom: c.top + r.height }))
-        .find(b => b.left >= lo && b.right <= hi && !hits(b, others) && !hits(b, [P]));
-      if (!ok) { placed.push(r); return; }
-      const dx = (ok.left - r.left) / gu, dy = (ok.top - r.top) / gu;
-      spots.set(seatKey, { dx, dy });
-      el.style.marginLeft = `calc(var(--gu) * ${(ml / gu + dx).toFixed(3)})`;
-      el.style.marginTop = `calc(var(--gu) * ${(mt / gu + dy).toFixed(3)})`;
-      placed.push(ok);
-    });
-  });
-  /* keepCardRowsOn (owner, 2026-11-13): a seat's row of cards wider than its plaque (seven stud cards) under a
-     side seat ran off the screen (Opp 7's last card and backs were cut). The row, measured by its layout box (its
-     cards' own transforms, a deal in flight, do not count), is moved in until it is 0.5g clear of the edge, by
-     `left`, since the cards' moments own their transforms. */
-  useLayoutEffect(() => {
-    const table = tableRef.current;
-    if (!table) return;
-    const rows = table.querySelectorAll('.replayer-seat-cards > .card-row');
-    if (!rows.length) return;
-    const host = table.closest('.replayer-replay') || document.documentElement;
-    const box = host.getBoundingClientRect();
-    const gu = parseFloat(getComputedStyle(host).getPropertyValue('--gu')) || box.width / 37;
-    rows.forEach(el => { el.style.left = ''; });
-    rows.forEach(el => {
-      const r = el.getBoundingClientRect();
-      if (!r.width) return;
-      const lo = box.left + gu / 2, hi = box.right - gu / 2;
-      const shift = r.left < lo ? lo - r.left : r.right > hi ? hi - r.right : 0;
-      if (shift) { el.style.position = 'relative'; el.style.left = `calc(var(--gu) * ${(shift / gu).toFixed(3)})`; }
-    });
-  });
   /* The one thing on the table that cannot be sized in cqw is the text, so
      the component has to know how wide the table came out. Measured, not
      derived from the viewport — that guess is what this whole pass was
@@ -9315,28 +9201,79 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      places, each wager starts at that spot (data-base-left/top) and, coming within 1r of any of its seat's pieces,
      moves on toward the pot until 1r of cloth shows (a side seat's straight in, level with it). It is written back
      as left/top percentages, the form the push-out and the sweep's ghosts read. */
-  const subrowPxRef = useRef({ w: -1, px: 8 });
+  /* r and g in px as the felt has them: a child of the table, where they are the table's (its shorter side over 35),
+     not the screen's. A custom property reads back as its unresolved text, so it is measured; never
+     parseFloat(getPropertyValue('--gu')), which is NaN, and whose fallback (the pane's width over 37) put every margin
+     written in var(--gu) at 57% of what was measured on a desktop pane (2026-11-16). */
+  const subrowPxRef = useRef({ w: '', px: 8 });
   const subrowPx = (table) => {
-    if (subrowPxRef.current.w !== window.innerWidth) {
+    const key = window.innerWidth + ':' + table.clientWidth + 'x' + table.clientHeight;
+    if (subrowPxRef.current.w !== key) {
       const probe = document.createElement('div');
-      probe.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 20)';
+      probe.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)';
       table.appendChild(probe);
-      subrowPxRef.current = { w: window.innerWidth, px: probe.offsetHeight / 20 || 8 };
+      subrowPxRef.current = { w: key, px: probe.getBoundingClientRect().height / 100 || 8 };
       probe.remove();
     }
     return subrowPxRef.current.px;
   };
-  /* The rows under the board: the main and side pots, then a split's shares, 0.75r under the board's cards and 0.5r
-     apart (under the pot where no board is dealt); then the game pill, moved to the nearest spot up or down where no
-     seat's piece, the board, the pot or those rows touches it (owner, 2026-11-15: "still colliding"; see
-     .replayer-split-pot, .replayer-pot-layers). Before the wagers' placement, which then keeps them off the pill.
-     The watermark is on that list too (owner, 2026-11-16: "Watermark/variant collision"): moved up to clear a wager,
-     the pill landed on the wordmark's lower half. */
+  const guPx = (table) => subrowPx(table) / 0.71;
+  /* keepCardRowsOn (owner, 2026-11-13): a seat's row of cards wider than its plaque (seven stud cards) under a
+     side seat ran off the screen (Opp 7's last card and backs were cut). The row, measured by its layout box (its
+     cards' own transforms, a deal in flight, do not count), is moved in until it is 0.5g clear of the edge, by
+     `left`, since the cards' moments own their transforms. */
   useLayoutEffect(() => {
     const table = tableRef.current;
     if (!table) return;
-    const info = table.querySelector('.replayer-table-info');
-    if (info) info.style.marginTop = '';
+    const rows = table.querySelectorAll('.replayer-seat-cards > .card-row');
+    if (!rows.length) return;
+    const host = table.closest('.replayer-replay') || document.documentElement;
+    const box = host.getBoundingClientRect();
+    const gu = guPx(table);
+    rows.forEach(el => { el.style.left = ''; });
+    rows.forEach(el => {
+      const r = el.getBoundingClientRect();
+      if (!r.width) return;
+      const lo = box.left + gu / 2, hi = box.right - gu / 2;
+      const shift = r.left < lo ? lo - r.left : r.right > hi ? hi - r.right : 0;
+      if (shift) { el.style.position = 'relative'; el.style.left = `calc(var(--gu) * ${(shift / gu).toFixed(3)})`; }
+    });
+  });
+  /* The dealer button on the plaque's other lower corner when the one facing the middle touches anything that is not
+     its seat's (2026-11-16: at 430 wide a side seat's button sat on the board's first card), if that one is clear. */
+  const placeButton = (table) => {
+    const btn = table.querySelector('.replayer-dealer-btn');
+    if (!btn) return;
+    delete btn.dataset.flip;
+    const seat = btn.closest('.replayer-seat');
+    const host = table.closest('.replayer-replay') || document.documentElement;
+    const edge = host.getBoundingClientRect();
+    const others = [...table.querySelectorAll('.replayer-seat[data-seat]')].filter(x => x !== seat)
+      .flatMap(x => [...x.querySelectorAll('.replayer-seat-info, .replayer-seat-cards .card-row > *, .replayer-action-badge-outer, .replayer-seat-draw-badge')])
+      .concat([...table.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-above')])
+      .map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
+    const touches = () => {
+      const b = btn.getBoundingClientRect();
+      return b.left < edge.left || b.right > edge.right || others.some(o => Math.min(b.right, o.right) - Math.max(b.left, o.left) > 0 && Math.min(b.bottom, o.bottom) - Math.max(b.top, o.top) > 0);
+    };
+    if (!touches()) return;
+    btn.dataset.flip = '1';
+    if (touches()) delete btn.dataset.flip;
+  };
+  useLayoutEffect(() => { if (tableRef.current) placeButton(tableRef.current); });
+  /* The middle of the felt first, then what belongs to a seat, then the pill (2026-11-16):
+       0. each seat's cards on the screen (keepCardRowsOn, above), and the dealer button off what is not its seat's;
+       1. the pot clear of the board, and the rows under the board (main and side pots, a split's shares);
+       2. each seat's action label off its cards' ranks, then its showdown readout off everything (the rows included);
+       3. the wagers, off their seat and everything placed so far;
+       4. the game pill, off all of it, wagers included.
+     Placed the other way, a readout moved beside its plaque into the rows' band, the rows wrapped round it, and a wager
+     could find no cloth because the pill had taken it.
+     The rows: 0.75r under the board's cards and 0.5r apart (under the pot where no board is dealt; owner, 2026-11-15:
+     "still colliding"; see .replayer-split-pot, .replayer-pot-layers). */
+  useLayoutEffect(() => {
+    const table = tableRef.current;
+    if (!table) return;
     const rows = [...table.querySelectorAll('.replayer-pot-layers.is-placed, .replayer-split-shares.is-placed')];
     const r = subrowPx(table);
     const board = table.querySelector('.replayer-board-area:not(.replayer-dead-area)');
@@ -9354,27 +9291,268 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     if (rows.length && anchor && rows[0].offsetParent) {
       const cb = rows[0].offsetParent;
       const oy = cb.getBoundingClientRect().top + cb.clientTop;
+      const gu = guPx(table);
+      /* A row stays one row while it clears the side seats; one that would reach a seat's plaque, cards or labels at
+         its height (five shares at a ten-seat phone table ran over both side seats' cards) wraps, centred, to the
+         band between them, 0.5r clear of each. Measured again once wrapped, since a taller row meets more of them.
+         Not the readouts: they are placed after, round the rows. */
+      const seatBoxes = [...table.querySelectorAll('.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-dealer-btn, .replayer-seat-cards .card-row > *')]
+        .map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
       let y = anchor.getBoundingClientRect().bottom + r * 0.75;
-      rows.forEach(el => { el.style.top = (y - oy) + 'px'; y = el.getBoundingClientRect().bottom + r * 0.5; });
-    }
-    if (!info || !info.getBoundingClientRect().width) return;
-    const boxes = [...table.querySelectorAll('.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn, .replayer-seat-cards .card-row > *, .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-layers.is-placed, .replayer-split-shares.is-placed, .replayer-watermark')]
-      .map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
-    /* The pill itself (and the tournament line under it), not the 46% column that centres them: that column reached
-       a side seat's cards on a small table, and the pill moved off cards it was nowhere near, onto the watermark. */
-    const kids = [...info.children].map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
-    const I = kids.length
-      ? { left: Math.min(...kids.map(b => b.left)), right: Math.max(...kids.map(b => b.right)), top: Math.min(...kids.map(b => b.top)), bottom: Math.max(...kids.map(b => b.bottom)) }
-      : info.getBoundingClientRect();
-    const g = r / 4;
-    const clear = (dy) => !boxes.some(b => I.left < b.right + g && I.right > b.left - g && I.top + dy < b.bottom + g && I.bottom + dy > b.top - g);
-    if (clear(0)) return;
-    for (let k = 1; k <= 32; k++) {                 // 0.5r steps, down first (the cloth under the board is the free one)
-      for (const dy of [k * r / 2, -k * r / 2]) {
-        if (clear(dy)) { info.style.marginTop = dy + 'px'; return; }
-      }
+      rows.forEach(el => {
+        el.style.maxWidth = ''; el.style.flexWrap = '';
+        el.style.top = (y - oy) + 'px';
+        for (let pass = 0; pass < 3; pass++) {
+          const b = el.getBoundingClientRect();
+          const cx = b.left + b.width / 2;
+          let lo = -Infinity, hi = Infinity;
+          seatBoxes.forEach(s => {
+            if (s.bottom <= b.top || s.top >= b.bottom) return;
+            if (s.right < cx) lo = Math.max(lo, s.right);
+            else if (s.left > cx) hi = Math.min(hi, s.left);
+          });
+          const half = Math.min(cx - lo, hi - cx) - r / 2;
+          if (!(half < b.width / 2) || half <= 0) break;
+          el.style.flexWrap = 'wrap';
+          el.style.maxWidth = `calc(var(--gu) * ${(2 * half / gu).toFixed(3)})`;
+        }
+        y = el.getBoundingClientRect().bottom + r * 0.5;
+      });
     }
   });
+  /* keepHandNamesOn (owner, 2026-11-13): every showdown readout is centred under its seat; one that would
+     run off the screen (a long "Hi: Straight, 7-high" under a side seat) is moved in until it is 0.5g clear
+     of the edge, by margin, since the reveal animation owns its transform. Measured after each render. */
+  /* Where each readout was moved this step (seat -> its offset from rest, in g), kept until the step changes: the
+     cards and plaques animate at a showdown, so one render found the spot under a plaque clear and the next did not,
+     and the name jumped between the two (2026-11-16). Moving is decided again each render; going back is not. */
+  const nameSpotRef = useRef({ step: '', spots: new Map() });
+  /* Each face-up card's rank and suit at its corner, the part nothing may cover: the top third of its left 30%, turned
+     with the card (its and its parents' rotations, up to the seat) about the card's centre, as
+     check:replayer-collisions measures it. */
+  const rankBoxesOf = (seat) => [...seat.querySelectorAll('.replayer-seat-cards .card-row > img')].map(e => {
+    const q = e.getBoundingClientRect();
+    const w = e.offsetWidth || q.width, h = e.offsetHeight || q.height;
+    let deg = 0;
+    for (let x = e; x && x !== seat; x = x.parentElement) {
+      const st = getComputedStyle(x);
+      const m = /matrix\(([^,]+),\s*([^,]+)/.exec(st.transform || '');
+      if (m) deg += Math.atan2(parseFloat(m[2]), parseFloat(m[1])) * 180 / Math.PI;
+      const rot = /(-?[\d.]+)deg/.exec(st.rotate || '');
+      if (rot) deg += parseFloat(rot[1]);
+    }
+    const t = deg * Math.PI / 180, cos = Math.cos(t), sin = Math.sin(t);
+    const mx = q.left + q.width / 2, my = q.top + q.height / 2;
+    const pts = [[-w / 2, -h / 2], [-w / 2 + 0.3 * w, -h / 2], [-w / 2, -h / 2 + 0.32 * h], [-w / 2 + 0.3 * w, -h / 2 + 0.32 * h]]
+      .map(([x, y]) => [mx + x * cos - y * sin, my + x * sin + y * cos]);
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    return { left: Math.min(...xs), right: Math.max(...xs), top: Math.min(...ys), bottom: Math.max(...ys) };
+  });
+  /* An action label on one of its own cards' ranks sinks just far enough to clear them, if that keeps it off the
+     player's name (2026-11-16): the CSS seats it by a share of the card's height, and at the ends of a seven-card stud
+     fan, whose tilted outer cards and lower hole cards carry their ranks lower, "ALL-IN 380" still met two. With no
+     room above the name it goes beside the plaque, level with its top edge, on whichever side is clear of everything
+     (the dealer button sits on one of them). Measured at its laid-out size around its drawn centre: it pops in from a
+     smaller scale. */
+  const placeLabels = (table) => {
+    const labels = table.querySelectorAll('.replayer-action-badge-outer');
+    if (!labels.length) return;
+    const host = table.closest('.replayer-replay') || document.documentElement;
+    const gu = guPx(table);
+    labels.forEach(el => { el.style.marginBottom = ''; el.style.marginLeft = ''; });
+    const box = (e) => {
+      const q = e.getBoundingClientRect();
+      const w = Math.max(q.width, e.offsetWidth || 0), h = Math.max(q.height, e.offsetHeight || 0);
+      return { left: q.left + q.width / 2 - w / 2, right: q.left + q.width / 2 + w / 2, top: q.top + q.height / 2 - h / 2, bottom: q.top + q.height / 2 + h / 2, width: w, height: h };
+    };
+    const edge = host.getBoundingClientRect();
+    labels.forEach(el => {
+      const seat = el.closest('.replayer-seat');
+      if (!seat) return;
+      const q = el.getBoundingClientRect();
+      const w = Math.max(q.width, el.offsetWidth), h = Math.max(q.height, el.offsetHeight);
+      const L = { left: q.left + q.width / 2 - w / 2, right: q.left + q.width / 2 + w / 2, top: q.top + q.height / 2 - h / 2, bottom: q.top + q.height / 2 + h / 2 };
+      const under = rankBoxesOf(seat).filter(b => L.left < b.right && L.right > b.left && L.top < b.bottom && L.bottom > b.top);
+      if (!under.length) return;
+      const need = Math.max(...under.map(b => b.bottom - L.top)) + 1;
+      const nameEl = seat.querySelector('.replayer-seat-name');
+      let room = Infinity;
+      if (nameEl) {
+        const rg = document.createRange();
+        rg.selectNodeContents(nameEl);
+        const ink = rg.getBoundingClientRect();
+        if (ink.height) room = ink.top - 1 - L.bottom;
+      }
+      /* The label is the plaque's child, and a folded plaque is drawn at 0.88: a margin is in the plaque's own units. */
+      const plaqueEl = seat.querySelector('.replayer-seat-info');
+      const P = plaqueEl.getBoundingClientRect();
+      const sx = (plaqueEl.offsetWidth && P.width / plaqueEl.offsetWidth) || 1, sy = (plaqueEl.offsetHeight && P.height / plaqueEl.offsetHeight) || 1;
+      if (need <= room) { el.style.marginBottom = `calc(var(--gu) * ${(-need / sy / gu).toFixed(3)})`; return; }
+      const pad = gu / 4;
+      const others = [...table.querySelectorAll('.replayer-seat[data-seat]')].filter(x => x !== seat)
+        .flatMap(x => [...x.querySelectorAll('.replayer-seat-info, .replayer-seat-cards .card-row > *, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn')])
+        .concat([...seat.querySelectorAll('.replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn')])
+        .concat([...table.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-above, .replayer-pot-layers.is-placed > *, .replayer-split-shares.is-placed > *')])
+        .map(box).filter(b => b.width > 0 && b.height > 0);
+      const ranks = rankBoxesOf(seat);
+      const inward = (P.left + P.width / 2) < (edge.left + edge.width / 2) ? 1 : -1;
+      const spot = [inward, -inward].map(side => {
+        const left = side > 0 ? P.right + gu / 2 : P.left - gu / 2 - w;
+        return { left, right: left + w, top: P.top, bottom: P.top + h };
+      }).find(b => b.left >= edge.left + gu / 2 && b.right <= edge.right - gu / 2
+        && !others.some(o => b.left < o.right + pad && b.right > o.left - pad && b.top < o.bottom + pad && b.bottom > o.top - pad)
+        && !ranks.some(o => b.left < o.right && b.right > o.left && b.top < o.bottom && b.bottom > o.top));
+      if (!spot) return;
+      el.style.marginLeft = `calc(var(--gu) * ${((spot.left - L.left) / sx / gu).toFixed(3)})`;
+      el.style.marginBottom = `calc(var(--gu) * ${(-(spot.top - L.top) / sy / gu).toFixed(3)})`;
+    });
+  };
+  useLayoutEffect(() => { if (tableRef.current) placeLabels(tableRef.current); });
+  const placeNames = (table, settle) => {
+    const names = table.querySelectorAll('.replayer-seat-hand-name');
+    const stepKey = streetIdx + ':' + actionIdx;
+    if (nameSpotRef.current.step !== stepKey) nameSpotRef.current = { step: stepKey, spots: new Map() };
+    const spots = nameSpotRef.current.spots;
+    if (!names.length) return;
+    const host = table.closest('.replayer-replay') || document.documentElement;
+    const box = host.getBoundingClientRect();
+    const gu = guPx(table);
+    /* After the motion (the settle pass below): a readout whose kept spot touches something now that everything is
+       where it rests is placed again; the others stay where they are. */
+    if (settle) {
+      const live = (e) => { const q = e.getBoundingClientRect(); return q.width > 0 && q.height > 0 ? q : null; };
+      const felt = [...table.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-above, .replayer-pot-layers.is-placed > *, .replayer-split-shares.is-placed > *')].map(live).filter(Boolean);
+      names.forEach(el => {
+        const seat = el.closest('.replayer-seat');
+        if (!seat) return;
+        const key = (seat.dataset.seat || '') + '|' + (el.dataset.nameSeat || '') + '|' + el.className;
+        if (!spots.has(key)) return;
+        const b = live(el);
+        if (!b) return;
+        const own = [...seat.querySelectorAll('.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-dealer-btn' + (el.dataset.spot === 'cards' ? '' : ', .replayer-seat-cards .card-row > *'))];
+        const rest = [...table.querySelectorAll('.replayer-seat[data-seat]')].filter(x => x !== seat)
+          .flatMap(x => [...x.querySelectorAll('.replayer-seat-info, .replayer-seat-cards .card-row > *, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn')]);
+        const list = own.concat(rest).map(live).filter(Boolean).concat(felt).concat(el.dataset.spot === 'cards' ? rankBoxesOf(seat) : []);
+        if (list.some(o => Math.min(b.right, o.right) - Math.max(b.left, o.left) > 0.5 && Math.min(b.bottom, o.bottom) - Math.max(b.top, o.top) > 0.5)) spots.delete(key);
+      });
+    }
+    names.forEach(el => { el.style.marginLeft = ''; el.style.marginTop = ''; delete el.dataset.spot; });
+    /* Where a readout rests, from its layout box and its centring (--hn-x), not its drawn box: the reveal and the
+       moments animate it, and a box measured mid-flight put the margins off by the flight (2026-11-16). */
+    const restOf = (el) => {
+      const op = el.offsetParent;
+      if (!op || !el.offsetWidth) return null;
+      const o = op.getBoundingClientRect();
+      // Its size to the fraction of a pixel (offsetWidth/Height are whole), at least its laid-out size if it is scaled.
+      const q = el.getBoundingClientRect();
+      const w = Math.max(el.offsetWidth, q.width), h = Math.max(el.offsetHeight, q.height);
+      const hx = getComputedStyle(el).getPropertyValue('--hn-x').trim();
+      const tx = !hx ? -w / 2 : hx.endsWith('%') ? parseFloat(hx) / 100 * w : (parseFloat(hx) || 0);
+      const left = o.left + op.clientLeft + el.offsetLeft + tx, top = o.top + op.clientTop + el.offsetTop;
+      return { left, right: left + w, top, bottom: top + h, width: w, height: h };
+    };
+    const lo = box.left + gu / 2, hi = box.right - gu / 2;
+    names.forEach(el => {
+      const r = restOf(el);
+      if (!r) return;
+      const shift = r.left < lo ? lo - r.left : r.right > hi ? hi - r.right : 0;
+      if (shift) el.style.marginLeft = `calc(var(--gu) * ${(shift / gu).toFixed(3)})`;
+    });
+    /* A readout under its plaque that lands on anything else (owner, 2026-11-16: why are there collisions left; at
+       ten seats on a phone every side seat's "Pair of 7s" hung on the cards of the seat below) moves: beside its
+       plaque on the side facing the middle, level with it, then up to its height higher or lower; then under it,
+       toward the middle by up to a plaque's width. The first spot that is clear and on the screen; else it stays. */
+    const T = table.getBoundingClientRect();
+    const pad = gu / 4;
+    const hits = (b, list) => list.some(o => b.left < o.right + pad && b.right > o.left - pad && b.top < o.bottom + pad && b.bottom > o.top - pad);
+    /* Each piece at its laid-out size around its drawn centre (as the wagers' placement measures): a card turning over
+       or a label popping in is drawn narrower than it will be, and the spot under a plaque looked clear for a frame. */
+    const rectOf = (e) => {
+      const q = e.getBoundingClientRect();
+      const w = Math.max(q.width, e.offsetWidth || 0), h = Math.max(q.height, e.offsetHeight || 0);
+      const mx = q.left + q.width / 2, my = q.top + q.height / 2;
+      return { left: mx - w / 2, right: mx + w / 2, top: my - h / 2, bottom: my + h / 2, width: w, height: h };
+    };
+    const SEAT_PIECES = '.replayer-seat-cards .card-row > *, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-dealer-btn';
+    const placed = [];
+    names.forEach(el => {
+      const seat = el.closest('.replayer-seat');
+      const plaque = seat && seat.querySelector('.replayer-seat-info');
+      const seatKey = (seat && seat.dataset.seat || '') + '|' + (el.dataset.nameSeat || '') + '|' + el.className;
+      const kept = spots.get(seatKey);
+      if (kept && kept.spot) el.dataset.spot = kept.spot;
+      const r = restOf(el);
+      if (!plaque || !r) return;
+      const cs = getComputedStyle(el);
+      const ml = parseFloat(cs.marginLeft) || 0, mt = parseFloat(cs.marginTop) || 0;
+      if (kept) {
+        el.style.marginLeft = `calc(var(--gu) * ${(ml / gu + kept.dx).toFixed(3)})`;
+        el.style.marginTop = `calc(var(--gu) * ${(mt / gu + kept.dy).toFixed(3)})`;
+        placed.push({ left: r.left + kept.dx * gu, right: r.right + kept.dx * gu, top: r.top + kept.dy * gu, bottom: r.bottom + kept.dy * gu });
+        return;
+      }
+      const ownCards = [...seat.querySelectorAll('.replayer-seat-cards .card-row > *')];
+      const besides = [...table.querySelectorAll('.replayer-seat[data-seat]')].filter(s => s !== seat)
+        .flatMap(s => [...s.querySelectorAll('.replayer-seat-info, ' + SEAT_PIECES)])
+        .concat([...seat.querySelectorAll(SEAT_PIECES)].filter(e => !ownCards.includes(e)))
+        .concat([...table.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-above, .replayer-pot-layers.is-placed > *, .replayer-split-shares.is-placed > *')])
+        .map(rectOf).filter(b => b.width > 0 && b.height > 0).concat(placed);
+      const others = besides.concat(ownCards.map(rectOf).filter(b => b.width > 0 && b.height > 0));
+      if (!hits(r, others)) { placed.push(r); return; }
+      const P = plaque.getBoundingClientRect();
+      const inward = (P.left + P.width / 2) < (T.left + T.width / 2) ? 1 : -1;
+      /* Beside the plaque on the side facing the middle, level with it, then up to its height higher or lower; the
+         same on the outer side; under it, toward the middle by up to a plaque's width, then away from the middle (the
+         dealer button sits beside the plaque on the side facing the table, its lower half on the name under it);
+         then lower. The first spot on the screen and clear of everything, the plaque included. */
+      const spotFor = (q, from) => {
+        const cands = from ? [{ left: q.left, top: q.top }] : [];
+        const mid = P.top + (P.height - q.height) / 2;
+        for (const side of [inward, -inward]) {
+          const left = side > 0 ? P.right + gu / 2 : P.left - gu / 2 - q.width;
+          for (let k = 0; k <= 8; k++) for (const s of k ? [-1, 1] : [1]) cands.push({ left, top: mid + s * k * P.height / 8 });
+        }
+        for (const dir of [inward, -inward]) for (let k = 1; k <= 16; k++) cands.push({ left: q.left + dir * k * P.width / 16, top: q.top });
+        for (let k = 1; k <= 4; k++) cands.push({ left: q.left, top: q.top + k * gu / 2 });
+        return cands.map(c => ({ left: c.left, right: c.left + q.width, top: c.top, bottom: c.top + q.height }))
+          .find(o => o.left >= lo && o.right <= hi && !hits(o, others) && !hits(o, [P]));
+      };
+      let ok = spotFor(r, false);
+      let rest = r, spot = '';
+      /* No spot at its size (a ten-seat phone table at a showdown): the same search at the action label's size, where
+         it starts from its own place; and last, a single line on its own cards, where the action label sits: over the
+         cards' lower bodies, its foot on the plaque's top edge, never on a face-up card's rank (the top third of its
+         left 30%, turned with the card). It reads as the label of those cards. */
+      if (!ok) {
+        el.dataset.spot = 'small';
+        const c = restOf(el);
+        ok = c && spotFor(c, true);
+        if (ok) { rest = c; spot = 'small'; }
+      }
+      if (!ok && !el.querySelector('.hn-line + .hn-line')) {
+        el.dataset.spot = 'cards';
+        const c = restOf(el);
+        const ranks = rankBoxesOf(seat);
+        /* Its foot 1px over the plaque's top edge: the laid-out edge or the drawn one, whichever is higher (a plaque
+           measured mid-animation, or scaled, is drawn off its place). */
+        const pop = plaque.offsetParent, po = pop && pop.getBoundingClientRect();
+        const foot = Math.min(P.top, po ? po.top + pop.clientTop + plaque.offsetTop : P.top) - 1;
+        const o = c && { left: P.left + (P.width - c.width) / 2, top: foot - c.height };
+        if (o) { o.right = o.left + c.width; o.bottom = foot; }
+        const touches = (q, list) => list.some(x => q.left < x.right && q.right > x.left && q.top < x.bottom && q.bottom > x.top);
+        if (o && o.left >= lo && o.right <= hi && !hits(o, besides) && !touches(o, ranks)) { ok = o; rest = c; spot = 'cards'; }
+      }
+      if (!ok) { delete el.dataset.spot; placed.push(r); return; }
+      const cm = spot ? getComputedStyle(el) : null;
+      const ml2 = spot ? (parseFloat(cm.marginLeft) || 0) : ml, mt2 = spot ? (parseFloat(cm.marginTop) || 0) : mt;
+      const dx = (ok.left - rest.left) / gu, dy = (ok.top - rest.top) / gu;
+      spots.set(seatKey, { dx, dy, spot });
+      el.style.marginLeft = `calc(var(--gu) * ${(ml2 / gu + dx).toFixed(3)})`;
+      el.style.marginTop = `calc(var(--gu) * ${(mt2 / gu + dy).toFixed(3)})`;
+      placed.push(ok);
+    });
+  };
+  useLayoutEffect(() => { if (tableRef.current) placeNames(tableRef.current, false); });
   useLayoutEffect(() => {
     const table = tableRef.current;
     if (!table) return;
@@ -9391,8 +9569,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     };
     const PIECES = '.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn, .replayer-seat-cards .card-row > *';
     const piecesOf = (seatEl) => (seatEl ? [...seatEl.querySelectorAll(PIECES)].map(boxOf).filter(b => b.width > 0 && b.height > 0) : []);
-    // The middle of the felt: the pot (its figure and its chips), the board, the game pill, the rows under the board.
-    const felt = [...table.querySelectorAll('.replayer-pot-display, .replayer-pot-above, .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-table-info > *, .replayer-pot-layers.is-placed, .replayer-split-shares.is-placed')]
+    // The middle of the felt: the pot (its figure and its chips), the board, the rows under the board. Not the game
+    // pill: it is placed after the wagers, round them.
+    const felt = [...table.querySelectorAll('.replayer-pot-display, .replayer-pot-above, .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-layers.is-placed > *, .replayer-split-shares.is-placed > *')]
       .map(boxOf).filter(b => b.width > 0 && b.height > 0);
     pills.forEach(el => {
       el.style.left = el.dataset.baseLeft;
@@ -9419,13 +9598,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         let ux, uy;
         if (el.dataset.side === '1') { ux = Math.sign(tx - (P.left + P.width / 2)) || 1; uy = 0; }
         else { const dx = tx - cx, dy = ty - cy, len = Math.hypot(dx, dy) || 1; ux = dx / len; uy = dy / len; }
-        // Along the line to the pot (back toward the seat too) as far as the pot's centre, and up to 4r to either side
+        // Along the line to the pot (back toward the seat too) as far as the pot's centre, and up to 8r to either side
         // of it, nearest first, the line before the side; 1r of cloth from its own seat if the table has it, else less.
-        // (2r to a side left a nine-seat phone table's wager on the turn card, with cloth 3.5r off its line: 2026-11-16.)
+        // (2r to a side left a nine-seat phone table's wager on the turn card, with cloth 3.5r off its line; 4r left a
+        // side seat's winnings on the board's end card, with cloth above the board 6r up: 2026-11-16.)
         const reach = el.dataset.side === '1' ? Math.abs(tx - cx) : Math.hypot(tx - cx, ty - cy);
         const S2 = r / 2;
         const cands = [];
-        for (let d = -reach / 2; d <= reach; d += S2) for (let p = -4 * r; p <= 4 * r + 1e-6; p += S2) cands.push({ d, p, cost: Math.abs(d) + 1.5 * Math.abs(p) });
+        for (let d = -reach / 2; d <= reach; d += S2) for (let p = -8 * r; p <= 8 * r + 1e-6; p += S2) cands.push({ d, p, cost: Math.abs(d) + 1.5 * Math.abs(p) });
         cands.sort((a, b) => a.cost - b.cost);
         const at = (c) => ({ x: cx + ux * c.d - uy * c.p, y: cy + uy * c.d + ux * c.p });
         let chosen = null;
@@ -9458,6 +9638,71 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       el.style.left = ((cx - ox) / W * 100).toFixed(3) + '%';
       el.style.top = ((cy - oy) / H * 100).toFixed(3) + '%';
     });
+  });
+  /* The game pill, last: moved to the nearest spot up or down where no seat's piece, the board, the pot or its rows,
+     the watermark or a wager touches it (owner, 2026-11-16: "Watermark/variant collision": moved up to clear a wager,
+     it landed on the wordmark's lower half). With no such spot (a ten-seat phone table at a split showdown), it fades
+     out for the step rather than lie on something: the game and stakes are the one thing on the felt nobody is
+     waiting to read there. */
+  const placePill = (table) => {
+    const info = table.querySelector('.replayer-table-info');
+    if (info) { info.style.marginTop = ''; delete info.dataset.away; }
+    const r = subrowPx(table);
+    if (!info || !info.getBoundingClientRect().width) return;
+    const boxes = [...table.querySelectorAll('.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn, .replayer-seat-cards .card-row > *, .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-layers.is-placed > *, .replayer-split-shares.is-placed > *, .replayer-watermark, .replayer-bet-chip')]
+      .map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
+    /* The pill itself (and the tournament line under it), not the 46% column that centres them: that column reached
+       a side seat's cards on a small table, and the pill moved off cards it was nowhere near, onto the watermark. */
+    const kids = [...info.children].map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
+    const I = kids.length
+      ? { left: Math.min(...kids.map(b => b.left)), right: Math.max(...kids.map(b => b.right)), top: Math.min(...kids.map(b => b.top)), bottom: Math.max(...kids.map(b => b.bottom)) }
+      : info.getBoundingClientRect();
+    const g = r / 4;
+    const clear = (dy) => !boxes.some(b => I.left < b.right + g && I.right > b.left - g && I.top + dy < b.bottom + g && I.bottom + dy > b.top - g);
+    if (clear(0)) return;
+    const T = table.getBoundingClientRect();
+    for (let k = 1; k <= 32; k++) {                 // 0.5r steps, down first (the cloth under the board is the free one)
+      for (const dy of [k * r / 2, -k * r / 2]) {
+        if (I.top + dy < T.top || I.bottom + dy > T.bottom) continue;
+        if (clear(dy)) { info.style.marginTop = dy + 'px'; return; }
+      }
+    }
+    info.dataset.away = '1';
+  };
+  useLayoutEffect(() => { if (tableRef.current) placePill(tableRef.current); });
+  /* The settle pass (2026-11-16): each of those is decided in the commit, while the cards deal, flip and tuck, a folded
+     plaque eases to its scale and the desktop pane's seats find their places, so a label could be moved for cards
+     that were not where they came to rest, and stay moved (on the player's name, at 1440 and 1728). When the motion on
+     the table has finished, the button, the labels and the pill are placed again, and any readout that now touches
+     something.
+     The wagers are not: the next sweep reads them where this commit left them. */
+  useLayoutEffect(() => {
+    const table = tableRef.current;
+    if (!table) return undefined;
+    /* Looked for two frames on: the moments effect, after this one, starts this commit's motion, and a moment can build
+       its work the frame after its press. With none running, the pass runs once anyway. */
+    let live = true, rounds = 0;
+    const settle = () => {
+      if (!live || tableRef.current !== table) return;
+      placeButton(table);
+      placeLabels(table);
+      placeNames(table, true);
+      placePill(table);
+    };
+    const wait = () => {
+      if (!live) return;
+      const running = document.getAnimations().filter(a => {
+        const t = a.effect && a.effect.target;
+        if (a.playState !== 'running' || !t || !table.contains(t)) return false;
+        const end = a.effect.getComputedTiming ? a.effect.getComputedTiming().endTime : Infinity;
+        return Number.isFinite(end);
+      });
+      if (!running.length || rounds >= 4) { settle(); return; }
+      rounds++;
+      Promise.all(running.map(a => a.finished.catch(() => {}))).then(() => requestAnimationFrame(wait));
+    };
+    const f1 = requestAnimationFrame(() => requestAnimationFrame(wait));
+    return () => { live = false; cancelAnimationFrame(f1); };
   });
 
   useLayoutEffect(() => {

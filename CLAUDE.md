@@ -758,17 +758,40 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   - **Nothing on the felt may touch what it does not belong to** (owner, 2026-11-15: "We really need to figure out how
     to prevent these collisions"): `npm run check:replayer-collisions` (ports 4890-4899) walks corpus hands, every seat
     renamed long, step by step at 375/402/430 portrait and 1440/1728 desktop, and fails on any two pieces that overlap
-    (a seat's plaque, cards, action label, wager, readout, draw run, button; the pot, the board, the game pill), except a
-    seat's cards under its own plaque; the watermark's ink is held against the game pill and the pot only (2026-11-16).
-    Run it after any change to the felt, and alone: two at once can land on one scratch server (a --build run measured the other's build). The game pill is
-    measured as itself, never its 46% column (the column reached side seats' cards and pushed the pill onto the
-    watermark). `--json <file>` writes every collision (kind, hand, step, pieces) to see which games a kind comes from.
-    A showdown readout that lands on anything moves beside its plaque, toward the middle (keepHandNamesOn), measured
-    at rest and kept for the step: measured mid-animation it jumped between the two spots. A wager is placed from its usual spot and,
-    within 1r of its own seat's pieces, moved on toward the pot until there is cloth (HandReplayerView's placement
-    effect, before the moments effect: it writes left/top percentages, the form the push-out and the ghosts read). The
-    action label sits on the plaque's top edge over the cards' lower bodies, never on a face-up card's index (the
-    guard's `index`: the top half of its left 30%); the dealer button sits beside the plaque on the side facing the table.
+    (a seat's plaque, cards, action label, wager, readout, draw run, button; the pot, its row of main and side pots and
+    a split's shares, pill by pill; the board, the game pill), except a seat's cards under its own plaque and its action
+    label (or a readout with no cloth) on its cards' bodies, never on a face-up card's rank (the guard's `index`: the
+    top third of its left 30%, turned with the card); the watermark's ink is held against the game pill and the pot only.
+    Run it after any change to the felt, and alone: two at once can land on one scratch server (a --build run measured
+    the other's build). `--json <file>` writes every collision (kind, hand, step, pieces). It runs under Reduce Motion,
+    where the replay keeps fades and colours but no transition of a place (`.replayer-replay *` `transition-property`):
+    a 1 ms or 140 ms transition on margins or left/top let every layout effect below read a piece back where it had
+    been and move it again, a readout further off the felt each render (2026-11-16).
+    **The placement order** (HandReplayerView's layout effects, after the board's and before the moments effect, which
+    reads the wagers where they rest), the middle of the felt first, then what belongs to a seat, then the pill:
+    1. keepCardRowsOn, a seat's cards on the screen; the dealer button on its plaque's other lower corner when the one
+       facing the middle touches what is not its seat's (`data-flip`);
+    2. the pot 0.5r clear of the board, and the rows under the board 0.75r under it and 0.5r apart; a row that would
+       reach a side seat's plaque, cards or labels wraps, centred, to the band between them (never round a readout);
+    3. an action label on one of its own ranks sinks to clear it while that keeps it off the player's name, else goes
+       beside the plaque level with its top edge (a seven-card stud fan at 7th street);
+    4. keepHandNamesOn: a readout that lands on anything tries beside its plaque (the side facing the middle, then the
+       outer side), under it shifted either way, then lower; then all of those at the action label's size
+       (`data-spot="small"`); then, a single line, on its own cards (`data-spot="cards"`). Measured at rest (layout box,
+       fractional size), and kept for the step: measured mid-animation it jumped between spots;
+    5. the wagers, from their usual spot, moved off their seat until there is cloth, along the line to the pot and up
+       to 8r to either side, else the spot that covers least (left/top percentages, the form the push-out and the
+       ghosts read);
+    6. the game pill, measured as itself (never its 46% column), moved up or down to the nearest clear spot, wagers
+       included; with none it fades out for the step (`data-away`).
+    Each is decided in the commit, while cards deal and tuck and a folded plaque eases to 0.88; **the settle pass**
+    (the effect after them) waits for the table's finite motion to finish (looking two frames on, once the moments
+    effect has started it) and places the button, the labels and the pill again, and any readout that now touches
+    something; never the wagers, which the next sweep reads where the commit left them. A label is the plaque's child,
+    so its margins are divided by the plaque's scale. **g on the felt is the table's** (`.replayer-table > *`:
+    `--gu: calc(100cqmin / 35)`), measured by `subrowPx`/`guPx` (a probe on the table): never
+    `parseFloat(getPropertyValue('--gu'))`, which reads the unresolved text, NaN, and whose old fallback (the pane's
+    width / 37) wrote every desktop margin at 57% of what was measured.
   - **One press runs a decided board out** (14, `runOutTo`): all in, nothing left to act on, one board, springs on;
     Back still steps a street at a time. A hand opened on its first step plays its opening (antes, blinds, the dealer
     button); Play from the first step deals the hand first. Exports skip action moments and open on their title card.

@@ -6,8 +6,10 @@
 //   - a seat's plaque, cards, action label, wager, showdown readout, draw run and the dealer button, against every
 //     piece of every OTHER seat;
 //   - within a seat, the action label, the wager, the readout and the draw run against everything else of the seat
-//     (the cards tuck under their own plaque, and the button sits on its corner, by design);
-//   - the pot, the board and the game pill against every seat's pieces and against each other.
+//     (the cards tuck under their own plaque, and the button sits on its corner, by design; the action label, and a
+//     readout with no cloth, may sit on the cards' bodies, never on a face-up card's rank);
+//   - the pot, its row of main and side pots, a split's shares, the board and the game pill against every seat's
+//     pieces and against each other.
 //   - the watermark's ink against the game pill and the pot's figure (the board and the wagers may pass over it).
 // Seats take long names (a plaque is as wide as its name), so the layout is tried at the width real tables have.
 //
@@ -147,7 +149,10 @@ const MEASURE = () => {
       const wb = rg.getBoundingClientRect();
       if (wb.width > 0) items.push({ owner: 'felt', kind: 'mark', label: 'watermark', x: wb.x, y: wb.y, w: wb.width, h: wb.height });
     });
-    table.querySelectorAll('.replayer-split-shares').forEach((el) => add('felt', 'split', el));
+    // A split's shares and the main and side pots' row under the board (measured from 2026-11-16), pill by pill: a row
+    // wrapped to clear the side seats is as wide as the band, its short second line is not.
+    table.querySelectorAll('.replayer-split-shares > *').forEach((el) => add('felt', 'split', el));
+    table.querySelectorAll('.replayer-pot-layers.is-placed > *').forEach((el) => add('felt', 'pots', el));
     // The replay's own controls over the table: Note here, Tags and the table-settings button. A top seat's cards
     // reach up toward them.
     const replay = table.closest('.replayer-replay') || document;
@@ -161,7 +166,9 @@ const MEASURE = () => {
 // Keys are the two kinds sorted, joined by |. The action label sits over its own cards' lower bodies (owner,
 // 2026-11-15), so it may cover a card, but not a card's index (kind 'index', held only against the action label).
 // A small hand's pill may also sink into its plaque's top edge, held off the name's ink (kind 'name') instead.
-const SELF_OK = new Set(['card|plaque', 'card|card', 'button|plaque', 'action|card', 'action|plaque']);
+// A showdown readout with no cloth sits on its own cards as the action label does (2026-11-16): on their bodies, held
+// against their ranks.
+const SELF_OK = new Set(['card|plaque', 'card|card', 'button|plaque', 'action|card', 'action|plaque', 'card|readout']);
 // The pot's figure and its chips; the board's own cards; the replay's controls side by side.
 const FELT_OK = new Set(['pot|pot', 'board|board', 'game|pot', 'control|control']);
 // What the watermark is held against; anything else may pass over it.
@@ -183,8 +190,9 @@ function collisions(m, slack) {
       const oy = Math.min(a.y + a.h, b.y + b.h) - iy;
       if (ox <= slack || oy <= slack) continue;
       // An index is a part of its card, and a name's ink a part of its plaque: each is held only against an action
-      // label (the card or the plaque stands for it otherwise).
-      const partOnly = (x, y) => (x.kind === 'index' || x.kind === 'name') && y.kind !== 'action';
+      // label, and an index against its own seat's readout too (the card or the plaque stands for it otherwise).
+      const partOnly = (x, y) => (x.kind === 'index' && y.kind !== 'action' && !(y.kind === 'readout' && y.owner === x.owner))
+        || (x.kind === 'name' && y.kind !== 'action');
       if (partOnly(a, b) || partOnly(b, a)) continue;
       if ((a.kind === 'mark' && !MARK_VS.has(b.kind)) || (b.kind === 'mark' && !MARK_VS.has(a.kind))) continue;
       const pair = [a.kind, b.kind].sort().join('|');

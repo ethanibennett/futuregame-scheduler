@@ -857,6 +857,14 @@
         animation-delay: 0s !important;
         transition-duration: 140ms !important;
       }
+      /* A fade and a change of colour, never a place. With no property named, the 140ms above and the 1ms of the
+         app-wide rule took margins and left/top too, and a transition starts from the old value: the layout effects
+         that move a hand name, a wager, the pill or the rows under the board off a collision reset the piece, read it
+         back where it had been, and moved it again from there, a hand name further off the felt each render
+         (2026-11-16). */
+      .replayer-replay *, .replayer-replay *::before, .replayer-replay *::after {
+        transition-property: opacity, color, background-color, border-color, box-shadow !important;
+      }
       /* Travel is what the setting is actually about, so the two systems that
          move objects across the felt stay off entirely. */
       .replayer-replay .replayer-flying-chip,
@@ -5286,7 +5294,7 @@
       white-space: nowrap;
     }
     /* The main/side pills sit in their own row ABOVE the primary total. */
-    .replayer-pot-layers { display: flex; align-items: center; justify-content: center; gap: 2.1cqw; }
+    .replayer-pot-layers { display: flex; align-items: center; justify-content: center; gap: 2.1cqw; row-gap: var(--space-2xs); }
     /* Under the board (placed by the layout effect beside the wagers'; 56% for the frame before), with the pot's own
        type size, since its pills are 0.62em of it (owner, 2026-11-15: collisions). */
     .replayer-pot-layers.is-placed {
@@ -5392,7 +5400,8 @@
       /* One row, side by side (owner, 2026-11-13: "These pills should be side by side"); it no longer wraps at
          41cqw, which put a scoop's HI+LO 3/4 over the LO 1/4. */
       gap: 2.1cqw; flex-wrap: nowrap;
-      row-gap: var(--nudge-1);
+      /* Where the layout effect wraps it to clear the side seats (2026-11-16). */
+      row-gap: var(--space-2xs);
     }
     /* The side-pot pill's cell, in the winner's gold. 2.42cqmin IS 0.39em of
        the pot's own clamp(14px, 6.2cqmin, 76px) — the clamp only adds the two
@@ -5755,6 +5764,9 @@
        corner sat on the cards. Which lower corner: the one facing the table's middle (HandReplayerView btnCorner). */
     .replayer-dealer-btn.corner-br { right: 0; bottom: 0; transform: translate(50%, 50%); }
     .replayer-dealer-btn.corner-bl { left: 0;  bottom: 0; transform: translate(-50%, 50%); }
+    /* The other lower corner, where the one facing the middle touches something not its seat's (placeButton). */
+    .replayer-dealer-btn.corner-br[data-flip] { right: auto; left: 0; transform: translate(-50%, 50%); }
+    .replayer-dealer-btn.corner-bl[data-flip] { left: auto; right: 0; transform: translate(50%, 50%); }
 
     .replayer-dealer-btn {
       position: absolute;
@@ -6107,6 +6119,14 @@
       overflow: hidden;
       text-overflow: ellipsis;
       box-shadow: var(--elev-1);
+    }
+    /* At about the action label's size (keepHandNamesOn's last spots, 2026-11-16): where no spot clears at its own size,
+       and on its own cards, where it fits between the cards' ranks and the plaque's top edge. Placed by margins like
+       every other spot. */
+    .replayer-seat-hand-name[data-spot] {
+      font-size: clamp(5px, 2.4cqmin, 20px);
+      line-height: 1; padding: 0.25em 0.6em; margin-top: 0;
+      z-index: 2;
     }
     /* A line per board (Top / Bottom): a size smaller, so two lines stay about a plaque wide and a side
        seat's label stays on the screen. */
@@ -8091,6 +8111,8 @@
 
 
     /* 87: the title and the level, inside the captured element. */
+    /* With no clear spot on the felt for the step, it fades out (the pill's layout effect, 2026-11-16). */
+    .replayer-table-info[data-away] { opacity: 0; transition: opacity var(--dur-base) var(--ease-out); }
     /* Under the board, in the clear column between the two side rows of
        seats — the one part of the felt nothing is ever placed on. No plate:
        this is printed on the cloth, the way a table's own name is. */
