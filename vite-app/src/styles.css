@@ -7547,10 +7547,9 @@
          settle; the recovered attention goes to the aggressive actions. */
       animation:foldToMuck var(--dur-base) var(--ease-leave) forwards !important;
     }
-    .replayer-seat.anim-fold .replayer-seat-info {
-      transition:opacity var(--dur-base) var(--dur-fast);
-      opacity:0.5;
-    }
+    /* No opacity on the plaque while the fold plays (owner, 2026-11-16: "one fold state without that pulse"): a half
+       fade on top of the folded grey, lifted when the 450 ms class went, read as dim, then brighter. The plaque goes
+       straight to .folded's grey and scale on that rule's own transition. */
 
     /* No animation on the bet. The chip flew in from the seat at scale 0.4 and
        grew into place, so every action on the felt arrived with a pop — and a
