@@ -12311,6 +12311,18 @@
       white-space: nowrap;
     }
     .dash-live-field:not(:last-child) { margin-bottom: var(--subrow); }
+    /* The stack box while playing is a button (it opens the stack update): the same box, no button chrome. */
+    button.dash-stat-box.is-tap {
+      appearance: none;
+      -webkit-appearance: none;
+      border: 0;
+      margin: 0;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button.dash-stat-box.is-tap:active { background: var(--surface-raised); }
     .dash-stat-value {
       font-family: var(--font-condensed);
       font-size: var(--fs-md);

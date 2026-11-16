@@ -129,7 +129,7 @@ function blindInfoAt(raw, started, startMs, levelDuration, now) {
     live: true, onBreak: live.onBreak, paused: live.state === 'paused', stale: !!live.stale };
   return started && levelDuration ? estimateBlindLevel(startMs, levelDuration) : null;
 }
-function DashStats({ raw, started, startMs, levelDuration, currentStack, stackUnknown }) {
+function DashStats({ raw, started, startMs, levelDuration, currentStack, stackUnknown, onStack }) {
   const [, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((n) => n + 1), 1000);
@@ -144,10 +144,19 @@ function DashStats({ raw, started, startMs, levelDuration, currentStack, stackUn
         <div className="dash-stat-value">{blindInfo.ante ? `${formatChips(blindInfo.sb)}/${formatChips(blindInfo.bb)}/${formatChips(blindInfo.ante)}` : `${formatChips(blindInfo.sb)}/${formatChips(blindInfo.bb)}`}</div>
         <div className="dash-stat-label">Level {blindInfo.level}</div>
       </div>
-      <div className="dash-stat-box">
-        <div className="dash-stat-value">{stackUnknown ? '—' : currentStack.toLocaleString()}</div>
-        <div className="dash-stat-label">{stackUnknown ? 'Stack' : bbCount ? `${bbCount} BB` : 'START STACK'}</div>
-      </div>
+      {/* While playing, the stack box opens the stack update, as Update does (owner, 2026-11-16): a button,
+          so the card's own tap (open in My Schedule) leaves it alone. */}
+      {onStack ? (
+        <button type="button" className="dash-stat-box is-tap" aria-label="Update your stack" onClick={onStack}>
+          <span className="dash-stat-value">{stackUnknown ? '—' : currentStack.toLocaleString()}</span>
+          <span className="dash-stat-label">{stackUnknown ? 'Stack' : bbCount ? `${bbCount} BB` : 'START STACK'}</span>
+        </button>
+      ) : (
+        <div className="dash-stat-box">
+          <div className="dash-stat-value">{stackUnknown ? '—' : currentStack.toLocaleString()}</div>
+          <div className="dash-stat-label">{stackUnknown ? 'Stack' : bbCount ? `${bbCount} BB` : 'START STACK'}</div>
+        </div>
+      )}
       <div className="dash-stat-box">
         <div className="dash-stat-value">
           {blindInfo.stale ? '—' : `${blindInfo.remainingMin}:${String(blindInfo.remainingSec).padStart(2, '0')}`}
@@ -832,7 +841,11 @@ export default function DashboardView({
         })()}
         {isExpanded && blindInfo && !(event._type === 'bagged' && event._bagUpdate && Number(event._bagUpdate.stack) > 0) && (
           <DashStats raw={started ? liveClocks[event.id] : null} started={started} startMs={startMs} levelDuration={levelDuration}
-            currentStack={currentStack} stackUnknown={stackUnknown} />
+            currentStack={currentStack} stackUnknown={stackUnknown}
+            onStack={isCurrentlyPlaying && !bustedEventMap[event.id] ? () => {
+              haptic();
+              window.dispatchEvent(new CustomEvent('openLiveUpdate', { detail: { tab: 'update', tournamentId: event.id } }));
+            } : null} />
         )}
         {/* The pay ladder (Features 13): once the player is in the money. */}
         {isExpanded && isCurrentlyPlaying && activeEventMap[event.id] && Number(activeEventMap[event.id].is_itm) === 1 && (

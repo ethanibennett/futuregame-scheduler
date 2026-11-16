@@ -258,7 +258,9 @@ const NOT_CONTROLS = [
 // seated like any other block of text, so the centring test does not apply.
 // The event card's corner tab (.cal-quick-add, owner 2026-11-13): a 4g x 4r hit area whose + or check
 // is set in the corner of the 3g x 3r triangle drawn inside it, not in the hit area's middle.
-const TILES = ['.bk-cell', '.font-pick-tile', '.cal-quick-add'];
+// Home's stack box while playing (.dash-stat-box.is-tap, owner 2026-11-16): a button that opens the stack
+// update, its figure over its label seated like the two boxes beside it.
+const TILES = ['.bk-cell', '.font-pick-tile', '.cal-quick-add', '.dash-stat-box'];
 // Navigation and disclosure rows: icon or chevron beside a label, start-aligned like a list.
 // Centred vertically only. (.ovt-head: the bankroll Overview's collapsible table sections.)
 const START_ALIGNED = ['.dk-rail-item', '.dk-rail-subitem', '.cal-fp-head', '.ovt-head'];   // .dk-rail-subitem: Bankroll's sections in the rail (Bankroll design 86)
