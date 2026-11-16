@@ -527,11 +527,19 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
     (`noticesFor`: "Moved from <date>, <time> to <date>, <time>"); the bell keeps a line per change, since the
     card's Got it marks changes one at a time. Since the watcher keeps a moved event's key (2026-11-06), a move
     arrives here as a date/time change, not a 'gone'. `npm run test:event-changes`.
-  - **Listed twice** (`lib/feed-duplicates.js`, owner 2026-11-15): after every production feed-sync, feed rows
-    from today on with one name, buy-in, day and start at one room are counted (the reply's `duplicates`, logged
-    here as "N listed twice") and a group not seen before pages the admin once (`feed_dup_alerts`). It exists
-    for what the watcher's own check (`emit/duplicates.ts`) cannot see: a row prune KEEPS because someone
-    saved it, beside the event's current row.
+  - **Listed twice** (`lib/feed-duplicates.js`, owner 2026-11-15): after every production feed-sync, EVERY
+    listed row from today on (feed, hand import or bridge; not Personal, not feed rows hidden as hand-import
+    copies) is checked, and rows at one room (property, else series title), day, start and buy-in whose names
+    agree once labels are set aside (`lib/feed-dedupe.js` `nameSig`: "TORSE (2 Day)" = "TORSE"; flight letter
+    and restart day still separate) are counted (the reply's `duplicates`, logged here as "N listed twice") and
+    a group not seen before pages the admin once (`feed_dup_alerts`). It exists for what the watcher's own
+    check (`emit/duplicates.ts`) cannot see: a row production KEEPS because someone saved it. Feed rows only
+    under identical names missed the owner's saved bridge "TORSE (2 Day)" beside the feed's "TORSE" (Dec 13).
+  - **A saved bridge row moves to the feed's copy** (`supersedeBridges`, 2026-11-15): when the feed takes over
+    a hand-added bridge series, each saved bridge row's references go to its ONE feed twin (`pickTwin`: same
+    slot AND agreeing names), then the row is deleted with the rest; no single twin → kept, as before. Every
+    twin choice that moves a save (this, `remapStaleReferences`, the hand-import dedupe) breaks a shared slot
+    by name — Wynn runs TORSE and the Ladies Championship both at 11 AM for $1,100 on Dec 13.
   - **The backer page** (12, 21, 22, 23): `backer_page_options` per link (re-keyed on rotation via
     `TOKEN_COLUMNS`): coming-up (`feed.comingUp`, only when on, so the feed is otherwise byte for byte unchanged)
     and the sweat (`live.sweat`, chips only, only in the backer's action). `liveSession(..., { withRun })` keeps the

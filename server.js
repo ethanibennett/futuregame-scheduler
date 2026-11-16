@@ -11832,6 +11832,11 @@ const FEED_REF_TABLES = [
   'backer_event_overrides', 'backer_event_status', 'swap_suggestions',
   'bankroll_transactions', // an expense or income tagged to the event (lib/bankroll-transactions.js)
 ];
+// A query's rows as objects (db.exec gives columns + value arrays).
+function rowsOf(sql, params = []) {
+  const r = db.exec(sql, params);
+  return r.length ? r[0].values.map(v => Object.fromEntries(r[0].columns.map((c, i) => [c, v[i]]))) : [];
+}
 // The FEED_REF_TABLES this database has (an older one may lack a newer table).
 function presentRefTables() {
   return FEED_REF_TABLES.filter(name => db.exec(
@@ -11881,19 +11886,25 @@ function remapStaleReferences(staleWhereSql, staleParams, tag, isLive, label) {
   if (!present.length) return 0;
   const referenced = present.map(t => `EXISTS (SELECT 1 FROM ${t} r WHERE r.tournament_id = tournaments.id)`).join(' OR ');
   const staleRes = db.exec(
-    `SELECT id, venue, property, date, time, buyin FROM tournaments
+    `SELECT id, venue, property, date, time, buyin, event_name FROM tournaments
       WHERE source_pdf = ? AND ${staleWhereSql} AND (${referenced})`, [tag, ...staleParams]);
   if (!staleRes.length) return 0;
   let moved = 0;
-  for (const [id, venue, property, date, time, buyin] of staleRes[0].values) {
+  for (const [id, venue, property, date, time, buyin, eventName] of staleRes[0].values) {
     const cand = db.exec(
-      `SELECT id, venue, property, event_number FROM tournaments
+      `SELECT id, venue, property, event_number, event_name FROM tournaments
         WHERE source_pdf = ? AND date = ? AND time = ? AND buyin = ? AND id != ?`,
       [tag, date, time, buyin, id]);
     const mine = roomTokens({ venue, property });
-    const twins = (cand.length ? cand[0].values : [])
-      .map(([tid, tv, tp, te]) => ({ id: tid, venue: tv, property: tp, event_number: te }))
+    let twins = (cand.length ? cand[0].values : [])
+      .map(([tid, tv, tp, te, tn]) => ({ id: tid, venue: tv, property: tp, event_number: te, event_name: tn }))
       .filter(t => isLive(t) && [...roomTokens(t)].some(w => mine.has(w)));
+    // Two live events in the slot (TORSE and the Ladies Championship, both $1,100 at 11 AM): the
+    // one named like the stale row is its twin; if the name cannot tell them apart, nothing moves.
+    if (twins.length > 1) {
+      const named = twins.filter(t => feedDedupe.namesAgree(eventName, t.event_name, { loose: true }));
+      twins = named.length > 1 ? named.filter(t => feedDedupe.namesAgree(eventName, t.event_name)) : named;
+    }
     if (twins.length !== 1) continue;
     const twin = twins[0].id;
     repointRefs(id, twin, present);
@@ -12020,11 +12031,14 @@ const feedDedupe = require('./lib/feed-dedupe');
 let hiddenFeedIds = new Set();
 function refreshHandImportTwins(label = 'Dedupe') {
   try {
-    const stmt = db.prepare(`SELECT id, source_pdf, venue, property, date, time, buyin, event_name
-      FROM tournaments WHERE property IS NOT NULL AND property != '' AND venue != 'Personal'`);
-    const rows = [];
-    while (stmt.step()) rows.push(stmt.getAsObject());
-    stmt.free();
+    // A bridge the feed has taken over is not a hand import any more: its leftover saved rows must
+    // not hide the feed's copy (supersedeBridges moves them to it, or keeps them).
+    const supersededTags = new Set(BRIDGE_SUPERSEDE.filter(({ feedVenue }) => {
+      const r = db.exec(`SELECT 1 FROM tournaments WHERE venue = ? AND source_pdf IN (${FEED_TAGS.map(() => '?').join(', ')}) LIMIT 1`, [feedVenue, ...FEED_TAGS]);
+      return r.length > 0;
+    }).map(b => b.bridgeTag));
+    const rows = rowsOf(`SELECT id, source_pdf, venue, property, date, time, buyin, event_name
+      FROM tournaments WHERE property IS NOT NULL AND property != '' AND venue != 'Personal'`).filter(r => !supersededTags.has(r.source_pdf));
     const pairs = feedDedupe.findHandImportTwins(rows, { feedTags: FEED_TAGS });
     const present = presentRefTables();
     let moved = 0;
@@ -12051,6 +12065,24 @@ function supersedeBridges(feedVenueSet, label) {
     if (!feedVenueSet.has(feedVenue)) continue;
     const cnt = db.exec("SELECT COUNT(*) FROM tournaments WHERE source_pdf = ?", [bridgeTag]);
     if (!cnt.length || !cnt[0].values[0][0]) continue;
+    // A bridge row someone saved moves to the feed's copy of the same event first, then goes with
+    // the rest. Keeping it instead left it beside that copy for good — the owner's saved
+    // "TORSE (2 Day)" sat beside the feed's "TORSE" on Dec 13 from September on (2026-11-15). With
+    // no single twin by slot and name it stays, as before.
+    const present = presentRefTables();
+    if (present.length) {
+      const referenced = present.map(t => `EXISTS (SELECT 1 FROM ${t} r WHERE r.tournament_id = tournaments.id)`).join(' OR ');
+      const saved = rowsOf(`SELECT id, venue, property, date, time, buyin, event_name FROM tournaments WHERE source_pdf = ? AND (${referenced})`, [bridgeTag]);
+      const feedRows = saved.length
+        ? rowsOf(`SELECT id, venue, property, date, time, buyin, event_name FROM tournaments WHERE source_pdf IN (${FEED_TAGS.map(() => '?').join(', ')}) AND venue = ?`, [...FEED_TAGS, feedVenue])
+        : [];
+      for (const b of saved) {
+        const twin = feedDedupe.pickTwin(b, feedRows);
+        if (!twin) { console.log(`[${label}] kept saved bridge row #${b.id} "${b.event_name}" ${b.date} — no single feed twin`); continue; }
+        repointRefs(b.id, twin.id, present);
+        console.log(`[${label}] moved saved bridge row #${b.id} "${b.event_name}" to feed #${twin.id} "${twin.event_name}"`);
+      }
+    }
     db.run(`DELETE FROM tournaments WHERE source_pdf = ?${guard}`, [bridgeTag]);
     const gone = db.getRowsModified();
     removed += gone;
@@ -14029,7 +14061,7 @@ app.post('/api/tournaments/feed-sync/:token', async (req, res) => {
     // reply, and a group not seen before pages the admin once.
     let duplicates = 0;
     try {
-      const groups = feedDuplicates.find(db);
+      const groups = feedDuplicates.find(db, Date.now(), hiddenFeedIds);
       duplicates = groups.length;
       const fresh = feedDuplicates.fresh(db, groups);
       if (fresh.length) {

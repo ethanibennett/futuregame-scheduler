@@ -9,7 +9,8 @@ const os = require('os');
 const path = require('path');
 const http = require('http');
 const { spawn } = require('child_process');
-const { findHandImportTwins, restartDay } = require('../lib/feed-dedupe');
+const { findHandImportTwins, restartDay, namesAgree, pickTwin } = require('../lib/feed-dedupe');
+const feedDuplicates = require('../lib/feed-duplicates');
 
 let passed = 0, failed = 0;
 async function test(name, fn) {
@@ -66,6 +67,49 @@ const row = (id, src, o) => ({ id, source_pdf: src, venue: src === 'mtt-feed' ? 
     ], { feedTags: FEED }), []);
   });
 
+  // The owner's Dec 13 at Wynn (2026-11-15): a hand-added bridge row "TORSE (2 Day)" (no property,
+  // the feed's series title) beside the feed's "TORSE", with the Ladies Championship in the same
+  // $1,100 / 11 AM slot.
+  const W = (id, src, o) => ({ id, source_pdf: src, venue: '2026 WPT World Championship', date: 'December 13, 2026', time: '11:00 AM', buyin: 1100, ...o });
+  const bridge = W(1, 'WPT World Championship 2026', { property: null, event_name: 'TORSE (2 Day)' });
+  const torse = W(2, 'mtt-feed', { property: 'Wynn Las Vegas', event_name: 'TORSE' });
+  const ladies = W(3, 'mtt-feed', { property: 'Wynn Las Vegas', event_name: 'NLH Ladies Championship' });
+  await test('names agree once labels are set aside; different events do not', () => {
+    assert.ok(namesAgree('TORSE (2 Day)', 'TORSE'));
+    assert.ok(namesAgree("Event #28: $1,100 No-Limit Hold'em Ladies Championship", 'NLH Ladies Championship'));
+    assert.ok(namesAgree('NLH Kickoff - Day 1C', 'NLH Kickoff - Flight C'));
+    assert.ok(!namesAgree('TORSE', 'NLH Ladies Championship', { loose: true }));
+    assert.ok(!namesAgree('TORSE', 'TORSE Championship'));
+    assert.ok(namesAgree('TORSE', 'TORSE Championship', { loose: true }));
+  });
+  await test('a saved row moves only to the twin named like it, never to another event in the slot', () => {
+    assert.strictEqual(pickTwin(bridge, [ladies, torse]).id, 2);
+    assert.strictEqual(pickTwin(bridge, [ladies]), null, 'Ladies is not TORSE');
+    assert.strictEqual(pickTwin(bridge, [W(4, 'mtt-feed', { property: 'Wynn Las Vegas', event_name: 'TORSE', buyin: 600 })]), null, 'another buy-in');
+    assert.strictEqual(pickTwin(bridge, [W(5, 'mtt-feed', { venue: 'Other Series', property: 'Aria', event_name: 'TORSE' })]), null, 'another room');
+  });
+  await test('two feed rows on one hand slot: only the one carrying its name is hidden', () => {
+    const hand = row(1, 'Wynn sheet', { property: 'Wynn Las Vegas', date: '2026-12-13', time: '11:00 AM', buyin: 1100, event_name: 'TORSE (2 Day)' });
+    const r = findHandImportTwins([hand, { ...torse, property: 'Wynn Las Vegas' }, ladies], { feedTags: FEED });
+    assert.deepStrictEqual(r, [{ hand: 1, feed: 2 }]);
+  });
+  await test('the duplicate check sees a saved bridge row beside the feed copy, and not Ladies', async () => {
+    const SQLm = await require(path.join(__dirname, '..', 'node_modules', 'sql.js'))();
+    const m = new SQLm.Database();
+    m.run(`CREATE TABLE tournaments (id INTEGER PRIMARY KEY, source_pdf TEXT, venue TEXT, property TEXT, event_number TEXT,
+      event_name TEXT, date TEXT, time TEXT, buyin INTEGER, timezone TEXT)`);
+    const ins = (id, src, prop, num, name, time = '11:00 AM', buyin = 1100, venue = '2026 WPT World Championship') =>
+      m.run('INSERT INTO tournaments VALUES (?,?,?,?,?,?,?,?,?,?)', [id, src, venue, prop, num, name, 'December 13, 2099', time, buyin, 'America/Los_Angeles']);
+    ins(1, 'WPT World Championship 2026', null, '29', 'TORSE (2 Day)');
+    ins(2, 'mtt-feed', 'Wynn Las Vegas', '29-300620', 'TORSE');
+    ins(3, 'mtt-feed', 'Wynn Las Vegas', '28-300618', 'NLH Ladies Championship');
+    ins(4, 'mtt-feed', 'Aria Casino', 'PA-1', 'TORSE', '11:00 AM', 1100, '2099 Aria Poker Open');
+    ins(5, 'Personal', null, null, 'TORSE', '11:00 AM', 1100, 'Personal');
+    const groups = feedDuplicates.find(m);
+    assert.deepStrictEqual(groups.map(g => g.key), ['1,2']);
+    assert.deepStrictEqual(feedDuplicates.find(m, Date.now(), new Set([2])), [], 'a hidden row is not listed');
+  });
+
   // ── server ──
   const ROOT = path.join(__dirname, '..');
   const PORT = 46000 + Math.floor(Math.random() * 2000);
@@ -83,7 +127,10 @@ const row = (id, src, o) => ({ id, source_pdf: src, venue: src === 'mtt-feed' ? 
   const env = { ...process.env };
   for (const k of ['SYNC_TOKEN', 'DASHBOARD_TOKEN', 'TESTFLIGHT_WATCHDOG', 'RENDER_DEPLOY_WATCHDOG', 'SMTP_HOST', 'SMTP_USER',
     'SMTP_PASS', 'VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY', 'ANTHROPIC_API_KEY', 'RENDER', 'TRUST_PROXY']) delete env[k];
-  Object.assign(env, { JWT_SECRET: 'dedupe-test-secret', PORT: String(PORT), DB_PATH: path.join(tmp, 'scratch.db'), DISABLE_FEED_INGEST: '1' });
+  // SYNC_TOKEN opens feed-sync for the bridge test below. With a token the server also pushes its
+  // feed rows at boot — FEED_SYNC_BASE_URL points that at a closed local port, never futurega.me.
+  Object.assign(env, { JWT_SECRET: 'dedupe-test-secret', PORT: String(PORT), DB_PATH: path.join(tmp, 'scratch.db'), DISABLE_FEED_INGEST: '1',
+    SYNC_TOKEN: 'dedupe-test-sync', FEED_SYNC_BASE_URL: 'http://127.0.0.1:9' });
   const boot = () => { const c = spawn(process.execPath, ['-r', path.join(__dirname, 'stub-solver-preload.js'), 'server.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] }); c.stdout.on('data', () => {}); c.stderr.on('data', () => {}); return c; };
   const up = async (c) => { const until = Date.now() + 60000; while (Date.now() < until) { if (c.exitCode != null) throw new Error('server exited'); try { if ((await request('GET', '/health')).status === 200) return; } catch (_) {} await new Promise(r => setTimeout(r, 300)); } throw new Error('server did not come up'); };
   const down = (c) => new Promise((r) => { if (c.exitCode != null) return r(); c.once('exit', r); c.kill(); });
@@ -132,6 +179,34 @@ const row = (id, src, o) => ({ id, source_pdf: src, venue: src === 'mtt-feed' ? 
       const sids = rows.map(t => t.stable_id);
       assert.ok(sids.includes('H-1'), 'saved hand copy: ' + JSON.stringify(sids));
       assert.ok(!sids.includes('F-1'), 'no save left on the hidden copy');
+    });
+
+    // A bridge series (hand-added ahead of the feed) with one row saved, then the feed takes over.
+    const wv = '2026 WPT World Championship';
+    await request('POST', '/api/import-parsed-schedule', { headers: admin, body: { sourceFile: 'WPT World Championship 2026', events: [
+      { stable_id: 'B-TORSE', venue: wv, game_variant: 'HORSE', event_name: 'TORSE (2 Day)', date: '2099-12-13', time: '11:00 AM', buyin: 1100 },
+      { stable_id: 'B-LADIES', venue: wv, game_variant: 'NLH', event_name: 'NLH Ladies Championship', date: '2099-12-13', time: '11:00 AM', buyin: 1100 },
+    ] } });
+    const list3 = JSON.parse((await request('GET', '/api/tournaments?startDate=2099-01-01&endDate=2099-12-31', { headers: admin })).body);
+    const bridgeTorse = list3.find(t => t.stable_id === 'B-TORSE');
+    assert.ok(bridgeTorse, 'bridge row listed');
+    assert.strictEqual((await request('POST', '/api/schedule', { headers: admin, body: { tournamentId: bridgeTorse.id } })).status, 200, 'saved the bridge row');
+    const feedRow = (o) => ({ venue: wv, property: 'Wynn Las Vegas', source_pdf: 'mtt-feed', date: 'December 13, 2099', time: '11:00 AM', buyin: 1100, ...o });
+    const sync = await request('POST', '/api/tournaments/feed-sync/dedupe-test-sync', { body: { feedVenues: [wv], tournaments: [
+      feedRow({ stable_id: 'MTT-WPT-29', event_number: '29-300620-20991213', event_name: 'TORSE', game_variant: 'HORSE' }),
+      feedRow({ stable_id: 'MTT-WPT-28', event_number: '28-300618-20991213', event_name: 'NLH Ladies Championship', game_variant: 'NLH' }),
+    ] } });
+    await test('server: feed-sync accepted the takeover push', () => assert.strictEqual(sync.status, 200, sync.body));
+    const list4 = JSON.parse((await request('GET', '/api/tournaments?startDate=2099-01-01&endDate=2099-12-31', { headers: admin })).body);
+    await test('server: a saved bridge row moves to the feed\'s copy and goes — the event is listed once', () => {
+      const dec13 = list4.filter(t => t.venue === wv).map(t => `${t.stable_id}:${t.event_name}`).sort();
+      assert.deepStrictEqual(dec13, ['MTT-WPT-28:NLH Ladies Championship', 'MTT-WPT-29:TORSE']);
+    });
+    await test('server: the save now points at the feed\'s TORSE, not Ladies', async () => {
+      const mine = JSON.parse((await request('GET', '/api/my-schedule', { headers: admin })).body);
+      const sids = (Array.isArray(mine) ? mine : (mine.tournaments || mine.schedule || [])).map(t => t.stable_id);
+      assert.ok(sids.includes('MTT-WPT-29'), JSON.stringify(sids));
+      assert.ok(!sids.includes('MTT-WPT-28') && !sids.includes('B-TORSE'), JSON.stringify(sids));
     });
   } finally {
     await down(child);
