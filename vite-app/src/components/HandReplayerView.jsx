@@ -9346,23 +9346,37 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         let ux, uy;
         if (el.dataset.side === '1') { ux = Math.sign(tx - (P.left + P.width / 2)) || 1; uy = 0; }
         else { const dx = tx - cx, dy = ty - cy, len = Math.hypot(dx, dy) || 1; ux = dx / len; uy = dy / len; }
-        // Along the line to the pot (back toward the seat too) as far as the pot's centre, and up to 2r to either side
+        // Along the line to the pot (back toward the seat too) as far as the pot's centre, and up to 4r to either side
         // of it, nearest first, the line before the side; 1r of cloth from its own seat if the table has it, else less.
+        // (2r to a side left a nine-seat phone table's wager on the turn card, with cloth 3.5r off its line: 2026-11-16.)
         const reach = el.dataset.side === '1' ? Math.abs(tx - cx) : Math.hypot(tx - cx, ty - cy);
         const S2 = r / 2;
         const cands = [];
-        for (let d = -reach / 2; d <= reach; d += S2) for (let p = -2 * r; p <= 2 * r + 1e-6; p += S2) cands.push({ d, p, cost: Math.abs(d) + 1.5 * Math.abs(p) });
+        for (let d = -reach / 2; d <= reach; d += S2) for (let p = -4 * r; p <= 4 * r + 1e-6; p += S2) cands.push({ d, p, cost: Math.abs(d) + 1.5 * Math.abs(p) });
         cands.sort((a, b) => a.cost - b.cost);
         const at = (c) => ({ x: cx + ux * c.d - uy * c.p, y: cy + uy * c.d + ux * c.p });
-        let chosen = null, fallback = null;
+        let chosen = null;
         for (const g of [r, r / 2, r / 4]) {
           for (const c of cands) {
             const q = at(c);
             if (hit(own, q.x, q.y, g)) continue;
-            if (!fallback) fallback = q;                               // off its own seat at least
             if (clearElsewhere(q.x, q.y)) { chosen = q; break; }
           }
           if (chosen) break;
+        }
+        // No cloth anywhere in reach: off its own seat, the spot that covers least of everything else (it was the
+        // first spot off its seat, wherever that landed: on the board, more often than not).
+        let fallback = null;
+        if (!chosen) {
+          const over = (x, y) => [felt, others, placed].reduce((sum, list) => sum + list.reduce((t, b) =>
+            t + Math.max(0, Math.min(x + w / 2, b.right) - Math.max(x - w / 2, b.left)) * Math.max(0, Math.min(y + h / 2, b.bottom) - Math.max(y - h / 2, b.top)), 0), 0);
+          let best = Infinity;
+          for (const c of cands) {
+            const q = at(c);
+            if (hit(own, q.x, q.y, r / 4)) continue;
+            const o = over(q.x, q.y);
+            if (o < best - 0.5) { best = o; fallback = q; }
+          }
         }
         const q = chosen || fallback;
         if (q) { cx = q.x; cy = q.y; }
