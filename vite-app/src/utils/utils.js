@@ -2241,11 +2241,14 @@ export { THEME_ORDER, isDarkTheme, THEME_ICON, THEME_LABEL, THEME_META } from '.
 // toggle cycle, so its two CSS blocks could only ever fire for someone
 // carrying a stale localStorage value. Helvetica Neue is a system fallback
 // inside --font-sans anyway, so nothing is lost.
-export const SERIF_FONTS = ['baskerville', 'univers'];
-export const SERIF_ORDER = ['baskerville', 'univers'];
-export const SERIF_LABEL = { baskerville: 'Baskerville', univers: 'Univers' };
+// gothic: Century Gothic, for the Parx players (owner, 2026-11-16): the face installed with Office where there is one,
+// Futura on an iPhone (styles.css [data-serif="gothic"]).
+export const SERIF_FONTS = ['baskerville', 'univers', 'gothic'];
+export const SERIF_ORDER = ['baskerville', 'univers', 'gothic'];
+export const SERIF_LABEL = { baskerville: 'Baskerville', univers: 'Univers', gothic: 'Century Gothic' };
 export const SERIF_STACK = {
   baskerville: "'Libre Baskerville', Georgia, serif",
   univers: "'Univers', sans-serif",
+  gothic: "'FG Century Gothic', 'Century Gothic', Futura, 'Trebuchet MS', sans-serif",
 
 };

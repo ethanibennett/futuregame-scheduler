@@ -808,6 +808,14 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   edge inserts placed per chip by `utils/chip-inserts.js` (`chipInsertVars` / `applyChipInserts` from the chip's
   `pipShift`), at the same angles on the side and the face's rim, so each wraps over the edge as one piece. Any new
   place that draws a chip must set them, or it draws a plain disc.
+- **Two Easter eggs** (owner, 2026-11-16): **Century Gothic** is the third Display font (`gothic` in `SERIF_ORDER`, Settings'
+  three font tiles, "for Parx players"). It is Monotype's and is NOT shipped (public repo): `'FG Century Gothic'` is an
+  `@font-face` over `local('Century Gothic')` with the hhea ascent/descent as overrides so its lines match on every
+  system; without it installed (any phone) the stack falls to Futura. **The BTG card back**: Replayer settings > Cards >
+  Card Back (`utils/card-back.js`, stored as `replayerCardBack`, applied at boot as `<html data-card-back="btg">`, so
+  every face-down card wears it: the replayer, saved-hand rows, the trainers' `.card-back`). The logo is traced to
+  shapes in a data URI (`--back-btg-mark` in styles.css) and is a background, so the turn-over copies it (with its size,
+  position and repeat). A viewer preference: a shared link does not carry it.
 - **The Swiss theme** (owner, 2026-10-16; app admins only): `swiss-light` and `swiss-dark`, in the theme button's
   cycle only for an admin (`utils/theme.js` themeOrder/nextTheme), and shown only to one: `hooks/useThemeChoice.js` gives anyone else
   the standard theme when Swiss is stored on the device (signed out, a non-admin, a backer page), keeping the stored choice. Every style is `vite-app/src/theme-swiss.css`,

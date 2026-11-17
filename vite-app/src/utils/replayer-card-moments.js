@@ -37,7 +37,7 @@ export function cardTimes(set) {
  * lifted `lift` px at the half. The element is the FACE (the commit already shows it); until the half turn it is
  * drawn as a back (its image moved out of its box, the back's own paint behind it), so a seat waiting for its turn
  * shows backs. `prefix` is the card's own transform (a fan's matrix), `back` the back's paint read off a back on
- * the table: { image, color, ring }.
+ * the table: { image, color, ring, size, position, repeat }.
  */
 export function turnOver(reg, { set, rate = 1, el, prefix = '', delay = 0, lift = 0, size, back }) {
   const sp = tierSpring(set, 'hand');
@@ -53,9 +53,14 @@ export function turnOver(reg, { set, rate = 1, el, prefix = '', delay = 0, lift 
     objectFit: 'none', objectPosition: '-999em -999em',
     backgroundImage: back && back.image ? back.image : 'linear-gradient(180deg, #243b5c 0%, #1a2744 40%, #152238 100%)',
     backgroundColor: back && back.color ? back.color : '#1a2744',
+    /* Its size, place and repeat as well (2026-11-16): the BTG back is one logo, centred at 62% of the card, and with
+       only its image copied it tiled across the card for the first half of the turn. */
+    backgroundSize: back && back.size ? back.size : 'auto',
+    backgroundPosition: back && back.position ? back.position : '0% 0%',
+    backgroundRepeat: back && back.repeat ? back.repeat : 'repeat',
     boxShadow: 'inset 0 0 0 1px ' + (back && back.ring ? back.ring : '#3a5a8a'),
   };
-  const faceFrame = { objectFit: 'fill', objectPosition: '50% 50%', backgroundImage: 'none', backgroundColor: 'transparent', boxShadow: 'none' };
+  const faceFrame = { objectFit: 'fill', objectPosition: '50% 50%', backgroundImage: 'none', backgroundColor: 'transparent', backgroundSize: 'auto', backgroundPosition: '0% 0%', backgroundRepeat: 'repeat', boxShadow: 'none' };
   return reg.run(el, {
     key: keyOf(el, 'turn'), channels, size, prefix, tolPx: 0.25,
     extras: [{

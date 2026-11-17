@@ -1,4 +1,5 @@
 import { cardFaceSrc } from '../utils/card-faces.js';
+import { CARD_BACKS, CARD_BACK_KEY, normalizeCardBack, applyCardBack } from '../utils/card-back.js';
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import useBackToClose from '../hooks/useBackToClose.js';
 import { useSolverAvailability, offered as offeredGame } from './StudyHead.jsx';
@@ -2304,6 +2305,23 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
           {rows([
             { key:'highContrastDeck', label:'High-Contrast Deck', sub:'Lifts the suits off the felt' },
           ])}
+          {/* The back every face-down card wears (utils/card-back.js), shown as two of it on the felt. */}
+          <div className="replayer-settings-row is-stacked">
+            <div className="replayer-settings-label rs-cell"><span className="rs-t">Card Back</span></div>
+            <div className="replayer-settings-pills">
+              {CARD_BACKS.map(b => (
+                <button key={b.id} className={'replayer-settings-thumb' + (settings.cardBack === b.id ? ' active' : '')}
+                  aria-pressed={settings.cardBack === b.id} aria-label={'Card back: ' + b.label}
+                  onClick={() => onUpdate('cardBack', b.id)}>
+                  <span className="thumb-felt is-backs" aria-hidden="true"
+                    style={{ '--thumb-lit': settings.theme === 'default' ? settings.feltColor : (REPLAYER_THEMES.find(t => t.id === settings.theme) || {}).lit || settings.feltColor, '--thumb-shade': '#2c2e50' }}>
+                    <i data-back={b.id} /><i data-back={b.id} />
+                  </span>
+                  <span className="thumb-label rs-cell"><span className="rs-t">{b.label}</span></span>
+                </button>
+              ))}
+            </div>
+          </div>
           <SettingToggleRow label="Splay Hole Cards" on={settings.cardSplay} onToggle={v => onUpdate('cardSplay', v)} />
           {settings.cardSplay && (
             <div className="replayer-settings-row is-stacked">
@@ -6416,6 +6434,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const _animBoard = useReplayerSetting('AnimateBoard', true, vs('animateBoard'));
   const _animWinner = useReplayerSetting('AnimateWinner', true);
   const _animFold = useReplayerSetting('AnimateFold', true, vs('animateFold'));
+  /* The card back (utils/card-back.js): a viewer preference, not part of a shared link's look. */
+  const _cardBack = useReplayerSetting(CARD_BACK_KEY.replace(/^replayer/, ''), 'standard');
+  useEffect(() => { applyCardBack(_cardBack[0]); }, [_cardBack[0]]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rSettings = {
     theme: REPLAYER_THEME_IDS.has(_theme[0]) ? _theme[0] : 'default', feltColor,
@@ -6432,6 +6453,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     animateDeal: _animDeal[0], animateChips: _animChips[0], animateBoard: _animBoard[0], animateWinner: false,
     animateFold: _animFold[0],
     cardSplay: _cardSplay[0], splayAmount: _splayAmount[0], cardOverlap: _cardOverlap[0], lightStrip: _lightStrip[0], feltBright: _feltBright[0],
+    cardBack: normalizeCardBack(_cardBack[0]),
   };
   const rSetters = {
     theme: _theme[1], feltColor: v => { setFeltColor(v); localStorage.setItem('replayerFeltColor', v); },
@@ -6445,6 +6467,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     animateDeal: _animDeal[1], animateChips: _animChips[1], animateBoard: _animBoard[1], animateWinner: _animWinner[1],
     animateFold: _animFold[1],
     cardSplay: _cardSplay[1], splayAmount: _splayAmount[1], cardOverlap: _cardOverlap[1], lightStrip: _lightStrip[1], feltBright: _feltBright[1],
+    cardBack: v => _cardBack[1](normalizeCardBack(v)),
   };
   const handleSettingsUpdate = (key, val) => { if (rSetters[key]) rSetters[key](val); };
 
@@ -9870,12 +9893,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           }));
         }
         // A card's back, as this theme paints it: a card turned over is drawn as one until its half turn.
-        const themeKey = table.className;
+        const themeKey = table.className + '|' + (document.documentElement.dataset.cardBack || '');
         if (!motion.backPaint || motion.backTheme !== themeKey) {
           const b = table.querySelector('.replayer-seat-cards .card-unknown, .replayer-seat-cards .card-placeholder');
           if (b) {
             const cs = getComputedStyle(b);
-            motion.backPaint = { image: cs.backgroundImage, color: cs.backgroundColor, ring: cs.borderTopColor };
+            motion.backPaint = { image: cs.backgroundImage, color: cs.backgroundColor, ring: cs.borderTopColor,
+              size: cs.backgroundSize, position: cs.backgroundPosition, repeat: cs.backgroundRepeat };
             motion.backTheme = themeKey;
           }
         }

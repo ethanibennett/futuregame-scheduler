@@ -47,6 +47,17 @@
       src: url('/fonts/librebaskerville-italic-ext.woff2') format('woff2');
       unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
     }
+    /* Century Gothic where it is installed, on one line height everywhere ([data-serif="gothic"] below). */
+    @font-face {
+      font-family: 'FG Century Gothic'; font-style: normal; font-weight: 400; font-display: swap;
+      src: local('Century Gothic'), local('CenturyGothic');
+      ascent-override: 100.59%; descent-override: 22.02%; line-gap-override: 0%;
+    }
+    @font-face {
+      font-family: 'FG Century Gothic'; font-style: normal; font-weight: 700; font-display: swap;
+      src: local('Century Gothic Bold'), local('CenturyGothic-Bold');
+      ascent-override: 100.59%; descent-override: 22.02%; line-gap-override: 0%;
+    }
     @font-face {
       font-family: 'Univers';
       src: url('/fonts/univers-light.woff2?v=2') format('woff2');
@@ -1444,6 +1455,9 @@
     /* Two tiles split the row on a whole g (half the row less the gutter, rounded down), so on a
        row of even width neither tile ends half a g off its line. */
     .font-pick { display: grid; grid-template-columns: round(down, (100% - var(--gu)) / 2, var(--gu)) minmax(0, 1fr); column-gap: var(--gu); }
+    /* Three faces (Century Gothic joined, 2026-11-16): the first two a third of the row less the gutters, each rounded
+       down to whole g, the last the rest. */
+    .font-pick:has(> :nth-child(3)) { grid-template-columns: repeat(2, round(down, (100% - var(--gu) * 2) / 3, var(--gu))) minmax(0, 1fr); }
     .font-pick-tile {
       flex: 1;
       min-width: 0;
@@ -2041,6 +2055,14 @@
 
     [data-serif="univers"] {
       --serif: 'Univers', 'Helvetica Neue', Arial, sans-serif;
+    }
+    /* Century Gothic, for the Parx players (owner, 2026-11-16). Monotype's, so it is not shipped: the face installed
+       with Office (most Windows PCs, a Mac with Office) is used where there is one, through a face of the app's own
+       ('FG Century Gothic', the @font-face rules at the top) that gives it the same line on every system: its hhea
+       ascent and descent (2060 and 451 of 2048), no line gap, where Windows would otherwise build lines from its
+       taller win metrics. Futura, the nearest geometric face an iPhone has, where it is not installed. */
+    [data-serif="gothic"] {
+      --serif: 'FG Century Gothic', 'Century Gothic', Futura, 'Trebuchet MS', sans-serif;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -2920,6 +2942,27 @@
         linear-gradient(180deg, #2e4d70 0%, #1e3a58 40%, #1a2f48 100%);
       border-color: #4a6a9a;
     }
+    /* The BTG back (owner, 2026-11-16: "add the BTG logo as a card back design"; utils/card-back.js): the logo on
+       white, in its own two greens, chosen in the replayer's settings and worn by every face-down card through
+       <html data-card-back="btg">. The logo is the one the owner sent, traced to its shapes (a B of two quarter-turn
+       bowls of one radius, two mountains clipped to it), so it is drawn at any size. A background, not the fg mark's
+       ::before, so the turn-over, which copies the back's background onto the card as it turns, shows it too. */
+    :root {
+      --back-btg-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='382 349 1167 1233'%3E%3CclipPath id='b'%3E%3Cpath d='M382 349H1218A331 331 0 0 1 1385.5 965.5A331 331 0 0 1 1218 1582H382Z'/%3E%3C/clipPath%3E%3Cpath d='M382 349H1218A331 331 0 0 1 1385.5 965.5A331 331 0 0 1 1218 1582H382Z'/%3E%3Cg clip-path='url(%23b)'%3E%3Cpath fill='%2314984a' d='M879 807L1691 1700H139Z'/%3E%3Cpath fill='%2342b549' d='M484 1052L1077 1700H-49Z'/%3E%3C/g%3E%3C/svg%3E");
+      --back-btg-green: #14984a;
+    }
+    :root[data-card-back="btg"] .card-row .card-unknown,
+    :root[data-card-back="btg"] .card-row .card-placeholder,
+    :root[data-card-back="btg"] .card-back {
+      --back-border: var(--back-btg-green);
+      background: var(--back-btg-mark) 50% 50% / 62% auto no-repeat, #ffffff;
+      border-color: var(--back-btg-green);
+    }
+    :root[data-card-back="btg"] .card-row .card-unknown::before,
+    :root[data-card-back="btg"] .card-row .card-placeholder::before { content: none; }
+    :root[data-card-back="btg"] .card-row .card-unknown::after,
+    :root[data-card-back="btg"] .card-row .card-placeholder::after,
+    :root[data-card-back="btg"] .card-back::after { border-color: rgba(20, 152, 74, 0.4); }
 
     /* ── Hand result (winner display) ── */
     .hand-result { font-size: var(--fs-xs); font-family: var(--font-condensed); padding: var(--space-sm) var(--space-md); border-radius:var(--radius-xs); text-align:center; margin-top: var(--space-2xs); letter-spacing: var(--track-tight); line-height:1.4; }
@@ -3284,6 +3327,18 @@
     .replayer-settings-thumb.active .thumb-label { color: var(--text); }
     .replayer-settings-thumb:focus-visible .thumb-felt {
       outline: calc(var(--subrow) * 0.25) solid var(--brand); outline-offset: calc(var(--subrow) * 0.375);
+    }
+    /* The Card Back picker: two of the back on the felt, a card's shape at 2.5r x 3.5r (utils/card-back.js). */
+    .replayer-settings-thumb .thumb-felt.is-backs i {
+      width: calc(var(--subrow) * 2.5); height: calc(var(--subrow) * 3.5); border-radius: calc(var(--subrow) * 0.25);
+      border: var(--bw-hair) solid #3a5a8a;
+      background:
+        repeating-linear-gradient(45deg, transparent, transparent calc(var(--subrow) * 0.125), rgba(255,255,255,0.06) calc(var(--subrow) * 0.125), rgba(255,255,255,0.06) calc(var(--subrow) * 0.25)),
+        linear-gradient(180deg, #243b5c 0%, #1a2744 40%, #152238 100%);
+    }
+    .replayer-settings-thumb .thumb-felt.is-backs i[data-back="btg"] {
+      border-color: var(--back-btg-green);
+      background: var(--back-btg-mark) 50% 50% / 62% auto no-repeat, #ffffff;
     }
 
     /* 80 */

@@ -2588,6 +2588,7 @@ function App() {
                 toggleContrast={toggleContrast}
                 serifFont={serifFont}
                 toggleSerifFont={() => setSerifFont(f => SERIF_ORDER[(SERIF_ORDER.indexOf(f) + 1) % SERIF_ORDER.length])}
+                pickSerifFont={k => { if (SERIF_FONTS.includes(k)) setSerifFont(k); }}
                 onLogout={handleLogout}
                 onDebugTimeChange={() => setDebugTimeKey(k => k + 1)}
                 shareToken={shareToken}

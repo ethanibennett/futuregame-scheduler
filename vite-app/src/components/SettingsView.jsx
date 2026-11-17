@@ -20,7 +20,7 @@ const seatedInitial = (baselineR) => ({
   textBoxTrim: 'trim-both', textBoxEdge: 'cap alphabetic',
 });
 
-export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, pickTheme = null, onFindPeople = null, contrast, toggleContrast, serifFont, toggleSerifFont, onLogout, onDebugTimeChange, shareToken, onGenerateShareToken, onRevokeShareToken, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, token, isAdmin, seasonLabel, isGuest, onEditHome = null, onEditName, onGuestExit = null,
+export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, pickTheme = null, onFindPeople = null, contrast, toggleContrast, serifFont, toggleSerifFont, pickSerifFont = null, onLogout, onDebugTimeChange, shareToken, onGenerateShareToken, onRevokeShareToken, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, token, isAdmin, seasonLabel, isGuest, onEditHome = null, onEditName, onGuestExit = null,
   onToken = null, pushPerm = 'default', onEnablePush = null, onShowCode = null, onBlocksChanged = null }) {
   const toast = useToast();
   const displayName = useDisplayName();
@@ -252,16 +252,15 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
                 you are switching TO. The old control previewed the font you
                 already had. */}
             <div className="font-pick">
-              {/* The parent exposes a cycle, not a setter, so a tile toggles when
-                  it is not already active. That is exact while SERIF_ORDER holds
-                  two faces; a third would need a real setter. */}
+              {/* Three faces since Century Gothic (2026-11-16), so a tile sets its own face (pickSerifFont);
+                  the cycle is the fallback for a caller that only passes one. */}
               {SERIF_ORDER.map(key => (
                 <button
                   key={key}
                   type="button"
                   className={'font-pick-tile' + (serifFont === key ? ' is-on' : '')}
                   aria-pressed={serifFont === key}
-                  onClick={() => { if (serifFont !== key) toggleSerifFont(); }}
+                  onClick={() => { if (serifFont === key) return; if (pickSerifFont) pickSerifFont(key); else toggleSerifFont(); }}
                   style={{ fontFamily: SERIF_STACK[key] }}
                 >
                   <span className="font-pick-word">futurega.me</span>
