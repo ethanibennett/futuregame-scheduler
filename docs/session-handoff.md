@@ -18,7 +18,9 @@ wsop-console side and verified against both live services.
 
 - The owner expects zero ("Why are there any still left in the list"; then "Why would that answer not be yes" when
   asked whether to keep going). Every-size count on the 40-hand sample: 1,510 at phone sizes this morning; 300 at all
-  five sizes after adff466; 27 after 64e5886; **0** after the commit that followed (7,055 steps, all five sizes).
+  five sizes after adff466; 27 after 64e5886; **0** after b926ead (7,055 steps, all five sizes), and 0 on twice the
+  sample after the next commit (`--per-game 4`: 80 hands, 12,300 steps, all five sizes; it found a top seat's raised
+  cards on Note and Tags and a wager with no cloth on its line, both fixed).
 - **Two bugs I shipped and fixed the same day:** adff466 (label at 0.34 of a card) put 210 action labels on players'
   names at 1440/1728, measured only at phone sizes; its readout margins also drifted off the felt under Reduce Motion.
   Measure every size (`--sizes` default) before pushing a felt change.

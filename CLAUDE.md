@@ -769,8 +769,9 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
     been and move it again, a readout further off the felt each render (2026-11-16).
     **The placement order** (HandReplayerView's layout effects, after the board's and before the moments effect, which
     reads the wagers where they rest), the middle of the felt first, then what belongs to a seat, then the pill:
-    1. keepCardRowsOn, a seat's cards on the screen; the dealer button on its plaque's other lower corner when the one
-       facing the middle touches what is not its seat's (`data-flip`);
+    1. a seat's cards on the screen and, with each card where its pose leaves it (a played card rises 1r), off the
+       replay's buttons above the felt (`placeCardRows`); the dealer button on its plaque's other lower corner when the
+       one facing the middle touches what is not its seat's (`data-flip`);
     2. the pot 0.5r clear of the board, and the rows under the board 0.75r under it and 0.5r apart; a row that would
        reach a side seat's plaque, cards or labels wraps, centred, to the band between them (never round a readout);
     3. an action label on one of its own ranks sinks to clear it while that keeps it off the player's name, else goes
@@ -782,8 +783,8 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
        fractional size), and kept for the step at that size of table (the desktop pane draws the table at 0 x 0 for
        its first commits, when nothing is placed);
     5. the wagers, from their usual spot, moved off their seat until there is cloth, along the line to the pot and up
-       to 8r to either side, else the spot that covers least (left/top percentages, the form the push-out and the
-       ghosts read);
+       to 12r to either side, then round the spot every 15 degrees out to 16r, else the spot that covers least
+       (left/top percentages, the form the push-out and the ghosts read);
     6. the game pill, measured as itself (never its 46% column), moved up or down to the nearest clear spot, wagers
        included; with none it fades out for the step (`data-away`).
     Each is decided in the commit, while cards deal and tuck and a folded plaque eases to 0.88; **the settle pass**

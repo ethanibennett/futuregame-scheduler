@@ -9221,24 +9221,41 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   /* keepCardRowsOn (owner, 2026-11-13): a seat's row of cards wider than its plaque (seven stud cards) under a
      side seat ran off the screen (Opp 7's last card and backs were cut). The row, measured by its layout box (its
      cards' own transforms, a deal in flight, do not count), is moved in until it is 0.5g clear of the edge, by
-     `left`, since the cards' moments own their transforms. */
-  useLayoutEffect(() => {
-    const table = tableRef.current;
-    if (!table) return;
+     `left`, since the cards' moments own their transforms.
+     And off the replay's own buttons above the felt (2026-11-16): a top seat's cards that play rise a whole r at a
+     result, and at seven seats on a phone the raised row met Note and Tags. Each card is taken where its pose leaves
+     it (its drawn box, less the lift it is part way through, plus its pose's), and the row moves down by the shortfall,
+     by `top`. */
+  const placeCardRows = (table) => {
+    if (!table.clientWidth || !table.clientHeight) return;
     const rows = table.querySelectorAll('.replayer-seat-cards > .card-row');
     if (!rows.length) return;
     const host = table.closest('.replayer-replay') || document.documentElement;
     const box = host.getBoundingClientRect();
-    const gu = guPx(table);
-    rows.forEach(el => { el.style.left = ''; });
+    const gu = guPx(table), r1 = gu * 0.71;
+    const controls = [...host.querySelectorAll('.hx-chips > *, .replayer-quick-btn')].map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
+    const LIFT = { up: -1, 'up-lo': -1, 'up-half': -1, down: 1, 'down-half': 1 };
+    rows.forEach(el => { el.style.left = ''; el.style.top = ''; });
     rows.forEach(el => {
       const r = el.getBoundingClientRect();
       if (!r.width) return;
       const lo = box.left + gu / 2, hi = box.right - gu / 2;
       const shift = r.left < lo ? lo - r.left : r.right > hi ? hi - r.right : 0;
       if (shift) { el.style.position = 'relative'; el.style.left = `calc(var(--gu) * ${(shift / gu).toFixed(3)})`; }
+      let drop = 0;
+      [...el.children].forEach(c => {
+        const q = c.getBoundingClientRect();
+        if (!q.width) return;
+        const now = parseFloat((getComputedStyle(c).translate || '').split(' ')[1]) || 0;
+        const top = q.top - now + (LIFT[c.dataset.pose] || 0) * r1;
+        controls.forEach(b => {
+          if (q.left + shift < b.right && q.right + shift > b.left && top < b.bottom + r1 / 4 && top + q.height > b.top) drop = Math.max(drop, b.bottom + r1 / 4 - top);
+        });
+      });
+      if (drop > 0) { el.style.position = 'relative'; el.style.top = `calc(var(--gu) * ${(drop / gu).toFixed(3)})`; }
     });
-  });
+  };
+  useLayoutEffect(() => { if (tableRef.current) placeCardRows(tableRef.current); });
   /* The dealer button on the plaque's other lower corner when the one facing the middle touches anything that is not
      its seat's (2026-11-16: at 430 wide a side seat's button sat on the board's first card), if that one is clear. */
   const placeButton = (table) => {
@@ -9638,6 +9655,22 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           }
           if (chosen) break;
         }
+        // Then round its spot in every direction, every 15 degrees and out to 16r, nearest first: at a result a seat
+        // low on the left had its line to the pot taken by its own readout above and the next seat's cards beside, and
+        // cloth under its plaque (2026-11-16).
+        if (!chosen) {
+          outer: for (const g of [r, r / 2, r / 4]) {
+            for (let rad = S2; rad <= 16 * r; rad += S2) {
+              for (let a = 0; a < 24; a++) {
+                const t = a * Math.PI / 12;
+                const q = { x: cx + rad * Math.cos(t), y: cy + rad * Math.sin(t) };
+                if (q.x - w / 2 < ox || q.x + w / 2 > ox + W || q.y - h / 2 < oy || q.y + h / 2 > oy + H) continue;
+                if (hit(own, q.x, q.y, g)) continue;
+                if (clearElsewhere(q.x, q.y)) { chosen = q; break outer; }
+              }
+            }
+          }
+        }
         // No cloth anywhere in reach: off its own seat, the spot that covers least of everything else (it was the
         // first spot off its seat, wherever that landed: on the board, more often than not).
         let fallback = null;
@@ -9696,8 +9729,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   /* The settle pass (2026-11-16): each of those is decided in the commit, while the cards deal, flip and tuck, a folded
      plaque eases to its scale and the desktop pane's seats find their places, so a label could be moved for cards
      that were not where they came to rest, and stay moved (on the player's name, at 1440 and 1728). When the motion on
-     the table has finished, the button, the labels, the wagers and the pill are placed again, and any readout that now
-     touches something. */
+     the table has finished, the card rows, the button, the labels, the wagers and the pill are placed again, and any
+     readout that now touches something. */
   useLayoutEffect(() => {
     const table = tableRef.current;
     if (!table) return undefined;
@@ -9707,6 +9740,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     let live = true;
     const settle = () => {
       if (!live || tableRef.current !== table) return;
+      placeCardRows(table);
       placeButton(table);
       placeLabels(table);
       placeNames(table, true);
