@@ -1,7 +1,7 @@
 // ── Schedule Export Utilities ──
 // Ported from original export.jsx for Vite ESM
 
-import { cardFaceSrc } from './card-faces.js';
+import { cardFaceSrc, rankOnlyFaceSrc } from './card-faces.js';
 import { getVenueInfo, formatBuyin, currencySymbol, formatChips, ordinalSuffix, parseTournamentTime, normaliseDate, getToday, nativeCurrency, convertAmount } from './utils.js';
 import { parseCardNotation } from './poker-engine.js';
 
@@ -1883,14 +1883,17 @@ export function computeScorecardData(trackingDataIn, venueName, tournaments, { r
 
 export function loadCardImages(cards) {
   const unique = new Map();
-  cards.forEach(c => { if (c.suit !== 'x') unique.set(c.rank + c.suit, true); });
+  /* A card with a rank and no suit loads its rank-only face under 'rank-only:<rank>' (utils/card-faces.js), for the
+     board to draw; a hole card 'Ax' is a draw game's unrecorded card, still drawn as a back. */
+  cards.forEach(c => { unique.set(c.suit !== 'x' ? c.rank + c.suit : 'rank-only:' + c.rank, true); });
   const result = new Map();
   const promises = [];
   unique.forEach((_, key) => {
     promises.push((async () => {
-      const domImg = document.querySelector('img[alt="' + key + '"]');
+      const rankOnly = key.startsWith('rank-only:');
+      const domImg = rankOnly ? null : document.querySelector('img[alt="' + key + '"]');
       if (domImg && domImg.complete && domImg.naturalWidth > 0) { result.set(key, domImg); return; }
-      const url = cardFaceSrc(key);
+      const url = rankOnly ? rankOnlyFaceSrc(key.slice(10)) : cardFaceSrc(key);
       try {
         const img = new Image();
         img.src = url;

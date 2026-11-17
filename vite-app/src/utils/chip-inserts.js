@@ -10,6 +10,12 @@
 
 export const CHIP_FACE_K = 0.62;
 const N = 6, HALF = 0.16, INSERT = '#f4f1ea';
+/* The white $1 chip (owner, 2026-11-16: the pot's chips should add up to the pot, so small cash pots need 1s and 5s)
+   carries blue inserts, as a casino's does: white on white would not show. */
+export const WHITE_CHIP = '#ebe7de';
+export function insertFor(color) {
+  return String(color || '').toLowerCase() === WHITE_CHIP ? '#1d4ed8' : INSERT;
+}
 
 const r2 = n => Math.round(n * 100) / 100;
 
@@ -20,7 +26,7 @@ export function chipInsertAngles(pip) {
   return Array.from({ length: N }, (_, j) => (phase + j / N) * Math.PI * 2);
 }
 
-export function chipSide(pip) {
+export function chipSide(pip, insert = INSERT) {
   const stops = [];
   chipInsertAngles(pip)
     .map(th => ({ c: 50 + 50 * Math.sin(th), w: 100 * HALF * Math.cos(th) / 2 }))
@@ -28,7 +34,7 @@ export function chipSide(pip) {
     .sort((a, b) => a.c - b.c)
     .forEach(({ c, w }) => {
       const a = r2(Math.max(0, c - w)), b = r2(Math.min(100, c + w));
-      stops.push(`transparent ${a}%`, `${INSERT} ${a}% ${b}%`, `transparent ${b}%`);
+      stops.push(`transparent ${a}%`, `${insert} ${a}% ${b}%`, `transparent ${b}%`);
     });
   return stops.length ? `linear-gradient(90deg, ${stops.join(', ')})` : 'none';
 }
@@ -39,7 +45,7 @@ function faceDeg(th, k) {
   return (d + 360) % 360;
 }
 
-export function chipRim(pip, k = CHIP_FACE_K) {
+export function chipRim(pip, k = CHIP_FACE_K, insert = INSERT) {
   const arcs = [];
   for (const th of chipInsertAngles(pip)) {
     // Turning th forward runs the face angle backward (th = 0 is 180deg, the front), so th + HALF starts the arc.
@@ -47,15 +53,16 @@ export function chipRim(pip, k = CHIP_FACE_K) {
     if (a <= b) arcs.push([a, b]); else { arcs.push([a, 360]); arcs.push([0, b]); }
   }
   arcs.sort((x, y) => x[0] - y[0]);
-  const stops = arcs.map(([a, b]) => `transparent ${r2(a)}deg, ${INSERT} ${r2(a)}deg ${r2(b)}deg, transparent ${r2(b)}deg`);
+  const stops = arcs.map(([a, b]) => `transparent ${r2(a)}deg, ${insert} ${r2(a)}deg ${r2(b)}deg, transparent ${r2(b)}deg`);
   return `conic-gradient(${stops.join(', ')})`;
 }
 
-export function chipInsertVars(pip) {
-  return { '--chip-side': chipSide(pip), '--chip-rim': chipRim(pip) };
+export function chipInsertVars(pip, color) {
+  const insert = insertFor(color);
+  return { '--chip-side': chipSide(pip, insert), '--chip-rim': chipRim(pip, CHIP_FACE_K, insert) };
 }
 
-export function applyChipInserts(el, pip) {
-  const v = chipInsertVars(pip);
+export function applyChipInserts(el, pip, color) {
+  const v = chipInsertVars(pip, color);
   for (const k in v) el.style.setProperty(k, v[k]);
 }

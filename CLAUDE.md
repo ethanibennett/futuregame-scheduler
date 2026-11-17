@@ -808,6 +808,13 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   edge inserts placed per chip by `utils/chip-inserts.js` (`chipInsertVars` / `applyChipInserts` from the chip's
   `pipShift`), at the same angles on the side and the face's rim, so each wraps over the edge as one piece. Any new
   place that draws a chip must set them, or it draws a plain disc.
+  Denominations (`CHIP_DENOMS`) run 1 (white, blue inserts: `insertFor` in `utils/chip-inserts.js`), 5, 25, 100, 500,
+  1,000, 5,000, 25,000, 100,000, 500,000, 1,000,000, and **the pot's pile adds up to the pot** (`potStacksFor`: every
+  denomination as often as it goes, five stacks at most; owner, 2026-11-16: "Pot still not showing the right amount of
+  chips", when 71 drew as two 25s). A wager's own column stays five chips.
+- **A board card with a rank and no suit** ("Kx", which quick add writes when no suit was said) is drawn face up as its
+  rank on slate with a "?" for the suit (`rankOnlyFaceSrc`, utils/card-faces.js), on the felt and in the share image;
+  it was a back. Hand readings still leave it out, and a showdown its suit could decide is not paid out.
 - **Two Easter eggs** (owner, 2026-11-16): **Century Gothic** is the third Display font (`gothic` in `SERIF_ORDER`, Settings'
   three font tiles, "for Parx players"). It is Monotype's and is NOT shipped (public repo): `'FG Century Gothic'` is an
   `@font-face` over `local('Century Gothic')` with the hhea ascent/descent as overrides so its lines match on every

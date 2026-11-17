@@ -24,5 +24,28 @@ export function cardFaceSrc(key) {
   return uri;
 }
 
+/* A card whose rank was recorded and its suit not ("Kx": quick add writes one when a suit was not said; owner,
+   2026-11-16: "the river is face down"). It was drawn as a back, which hid the rank the hand does have. Drawn instead
+   as a face of the deck's own make (the same card, rank and font as cards_gui_*.svg) in slate, the colour of no
+   suit, with a question mark where the suit's pip would be. */
+const RANK_TEXT = { T: '10' };
+export function rankOnlyFaceSrc(rank) {
+  const r = String(rank || '').toUpperCase();
+  const key = 'rank-only:' + r;
+  let uri = built.get(key);
+  if (uri) return uri;
+  const text = RANK_TEXT[r] || r;
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 252"><defs><style>'
+    + "@font-face{font-family:'Univers Condensed';src:url('data:font/truetype;base64," + FONT_MARK + "') format('truetype');font-weight:700}"
+    + ".r,.q{font-family:'Univers Condensed','Univers-Condensed-Bold',sans-serif;font-weight:700}"
+    + '.r{fill:#fff;font-size:78px}.q{fill:#3a414d;font-size:150px}</style></defs>'
+    + '<rect width="180" height="252" rx="18" ry="18" fill="#59616e"/>'
+    + '<text class="r" transform="translate(' + (text.length > 1 ? '-1.4' : '17.3') + ' 72)">' + text + '</text>'   // as the deck sets 10
+    + '<text class="q" x="128" y="236" text-anchor="middle">?</text></svg>';
+  uri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.replace(FONT_MARK, FONT));
+  built.set(key, uri);
+  return uri;
+}
+
 /** How many faces the bundle carries (52 when the generator found them all). */
 export const CARD_FACE_COUNT = Object.keys(FACES).length;

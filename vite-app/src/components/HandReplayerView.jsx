@@ -1,4 +1,4 @@
-import { cardFaceSrc } from '../utils/card-faces.js';
+import { cardFaceSrc, rankOnlyFaceSrc } from '../utils/card-faces.js';
 import { CARD_BACKS, CARD_BACK_KEY, normalizeCardBack, applyCardBack } from '../utils/card-back.js';
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import useBackToClose from '../hooks/useBackToClose.js';
@@ -39,7 +39,7 @@ import { heroNet } from '../utils/hand-net.js';
 import { autoTitle, displayTitle } from '../utils/hand-title.js';
 import { SAMPLE_HAND } from '../utils/sample-hand.js';
 import { exportHandHistory, playedAtOf, handOfRow, handsFileName } from '../utils/hand-history/save.js';
-import { chipInsertVars, applyChipInserts } from '../utils/chip-inserts.js';
+import { chipInsertVars, applyChipInserts, WHITE_CHIP } from '../utils/chip-inserts.js';
 const ReplayerDrill = lazy(() => import('./ReplayerDrill.jsx'));
 
 /* The ranks a game deals, high to low, for its card pickers. Short Deck plays a 36-card deck, the
@@ -902,13 +902,21 @@ function pipShift(seed, index) {
 }
 
 // ── Chip visuals ──
+/* 1 and 5 (owner, 2026-11-16: "Pot still not showing the right amount of chips"): the smallest chip was 25, so a $71
+   pot at $1/$1 could only be drawn as two 25s. 100,000 to 1,000,000 for the tournament pots past what five 25,000s
+   reach. */
 const CHIP_DENOMS = [
+  { value: 1000000, color: '#9f1239' },
+  { value: 500000, color: '#0ea5e9' },
+  { value: 100000, color: '#ec4899' },
   { value: 25000, color: '#14b8a6' },
   { value: 5000,  color: '#f97316' },
   { value: 1000,  color: '#eab308' },
   { value: 500,   color: '#7c3aed' },
   { value: 100,   color: '#39406b' },
   { value: 25,    color: '#22c55e' },
+  { value: 5,     color: '#dc2626' },
+  { value: 1,     color: WHITE_CHIP },
 ];
 function getChipBreakdown(amount) {
   const chips = [];
@@ -917,7 +925,7 @@ function getChipBreakdown(amount) {
     const d = CHIP_DENOMS[i];
     while (remaining >= d.value && chips.length < 5) { chips.push(d.color); remaining -= d.value; }
   }
-  if (chips.length === 0) chips.push('#22c55e');
+  if (chips.length === 0) chips.push(WHITE_CHIP);
   return chips;
 }
 
@@ -940,7 +948,7 @@ function ChipStack({ amount }) {
            colour, the phase and the stacking order are per-disc. */
         <div key={i} className="chip-disc" style={{
           '--chip': color,
-          ...chipInsertVars(pipShift(amount, i)),
+          ...chipInsertVars(pipShift(amount, i), color),
           zIndex: chips.length - i,
         }} />
       ))}
@@ -1439,13 +1447,7 @@ function getPlayerStats(name) {
 
 // ── Pot chip visual ──
 function PotChipVisual({ amount }) {
-  const chips = getChipBreakdown(amount);
-  const stacks = [];
-  let current = null;
-  chips.forEach(color => {
-    if (current && current.color === color) current.count++;
-    else { current = { color, count: 1 }; stacks.push(current); }
-  });
+  const stacks = potStacksFor(amount);
   return (
     <div className="replayer-pot-chips">
       {stacks.slice(0, 5).map((stack, i) => (
@@ -1456,7 +1458,7 @@ function PotChipVisual({ amount }) {
                carried this; the pot's did not, and with flat ellipses it did
                not show. With a cylinder it does. */
             <div key={j} className="replayer-pot-chip-disc"
-              style={{ '--chip': stack.color, ...chipInsertVars(pipShift(amount + i * 977, j)),
+              style={{ '--chip': stack.color, ...chipInsertVars(pipShift(amount + i * 977, j), stack.color),
                 zIndex: Math.min(stack.count, 6) - j }} />
           ))}
         </div>
@@ -1467,14 +1469,18 @@ function PotChipVisual({ amount }) {
 
 /* The pot's stacks for an amount: one stack per colour, largest denomination first (left to right),
    as PotChipVisual draws them. The spring sweep lands each ghost on its own colour's stack from this,
-   without measuring the row it has not drawn yet. */
+   without measuring the row it has not drawn yet. The chips add up to the pot (owner, 2026-11-16: "Pot still
+   not showing the right amount of chips"): every denomination as many times as it goes, where it was five chips in
+   all, so 71 was two 25s. Five stacks at most (the smallest go first, past that); no denomination but the
+   largest comes more than four times, under the six a stack draws. */
 function potStacksFor(amount) {
+  let remaining = Math.floor(Math.abs(Number(amount) || 0));
   const stacks = [];
-  let current = null;
-  getChipBreakdown(amount).forEach(color => {
-    if (current && current.color === color) current.count++;
-    else { current = { color, count: 1 }; stacks.push(current); }
-  });
+  for (const d of CHIP_DENOMS) {
+    const n = Math.floor(remaining / d.value);
+    if (n > 0) { stacks.push({ color: d.color, count: n }); remaining -= n * d.value; }
+  }
+  if (!stacks.length && Number(amount) > 0) stacks.push({ color: CHIP_DENOMS[CHIP_DENOMS.length - 1].color, count: 1 });
   return stacks.slice(0, 5);
 }
 
@@ -1564,7 +1570,7 @@ function PotChipLive({ amount, motion, set, shipped = false }) {
           className={'replayer-pot-chip-stack' + (hidden && hidden.includes(stack.color) ? ' is-pending' : '')}>
           {Array.from({ length: Math.min(stack.count, 6) }, (_, j) => (
             <div key={j} className="replayer-pot-chip-disc"
-              style={{ '--chip': stack.color, ...chipInsertVars(pipShift(amount + i * 977, j)),
+              style={{ '--chip': stack.color, ...chipInsertVars(pipShift(amount + i * 977, j), stack.color),
                 zIndex: Math.min(stack.count, 6) - j }} />
           ))}
         </div>
@@ -8364,7 +8370,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         yPos += 14;
         for (const c of bCards) {
           const key = c.rank + c.suit;
-          const img = images.get(key);
+          const img = images.get(key) || (c.suit === 'x' ? images.get('rank-only:' + c.rank) : null);
           if (img) { ctx.drawImage(img, cx, yPos, cw, ch); }
           else { ctx.fillStyle = '#333'; ctx.fillRect(cx, yPos, cw, ch); ctx.fillStyle = '#666'; ctx.font = '24px Univers Condensed'; ctx.textAlign = 'center'; ctx.fillText('?', cx + cw/2, yPos + ch/2 + 8); }
           cx += cw + gap;
@@ -10337,7 +10343,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 const face = document.createElement('div');
                 face.className = 'replayer-pot-chip-disc';
                 if (w.topColor) face.style.setProperty('--chip', w.topColor);
-                applyChipInserts(face, pipShift(before + act.player * 977, actionIdx));
+                applyChipInserts(face, pipShift(before + act.player * 977, actionIdx), w.topColor);
                 chip.appendChild(face);
                 Object.assign(chip.style, { left: (fx - L.left) + 'px', top: (fy - L.top) + 'px', transform: 'translate(-50%, -50%)' });
                 layer.appendChild(chip);
@@ -11789,8 +11795,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             .filter(b => !springSet || hand.doubleBoard || parsed.length >= 5 || b.map(c => c.rank + c.suit).join('') !== parsed.map(c => c.rank + c.suit).join('')) : [];
           const renderCard = (c, i, key, withSlot) => {
             const slot = withSlot ? { 'data-slot': i, 'data-ck': key } : { 'data-xk': key };
-            if (c.suit === 'x') return <div key={key} {...slot} className="card-unknown" />;
             const pose = withSlot && cardPoses ? cardPoses.board.get(c.rank + c.suit) : undefined;
+            /* A board card with its rank and no suit ("Kx") shows its rank (utils/card-faces.js rankOnlyFaceSrc): it was
+               drawn face down, and a river the hand records read as one never dealt (owner, 2026-11-16). */
+            if (c.suit === 'x') return <img key={key} {...slot} data-pose={pose || undefined} className="card-img is-rank-only" src={rankOnlyFaceSrc(c.rank)} alt={c.rank + ', suit not recorded'} loading="eager" />;
             return <img key={key} {...slot} data-pose={pose || undefined} className="card-img" src={cardFaceSrc(c.rank + c.suit)} alt={c.rank + c.suit} loading="eager" />;
           };
           const unit = hand.doubleBoard ? 'Board' : 'Run';

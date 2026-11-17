@@ -1248,7 +1248,7 @@ export function shipPot(reg, { set, rate = 1, layer, layerRect, origin, discs = 
         const face = document.createElement('div');
         face.className = 'replayer-pot-chip-disc';
         face.style.setProperty('--chip', src.color);
-        applyChipInserts(face, src.pip ?? 0);
+        applyChipInserts(face, src.pip ?? 0, src.color);
         chip.appendChild(face);
       }
       clip.inner.appendChild(chip);
