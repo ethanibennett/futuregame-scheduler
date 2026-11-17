@@ -47,15 +47,16 @@
       src: url('/fonts/librebaskerville-italic-ext.woff2') format('woff2');
       unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
     }
-    /* Century Gothic where it is installed, on one line height everywhere ([data-serif="gothic"] below). */
+    /* Century Gothic where it is installed, else FG Gothic (TeX Gyre Adventor, renamed and set to Century Gothic's
+       proportions: public/fonts/FG-GOTHIC-LICENSE.txt), on one line height everywhere ([data-serif="gothic"] below). */
     @font-face {
       font-family: 'FG Century Gothic'; font-style: normal; font-weight: 400; font-display: swap;
-      src: local('Century Gothic'), local('CenturyGothic');
+      src: local('Century Gothic'), local('CenturyGothic'), url('/fonts/fg-gothic-regular.woff2?v=1') format('woff2');
       ascent-override: 100.59%; descent-override: 22.02%; line-gap-override: 0%;
     }
     @font-face {
       font-family: 'FG Century Gothic'; font-style: normal; font-weight: 700; font-display: swap;
-      src: local('Century Gothic Bold'), local('CenturyGothic-Bold');
+      src: local('Century Gothic Bold'), local('CenturyGothic-Bold'), url('/fonts/fg-gothic-bold.woff2?v=1') format('woff2');
       ascent-override: 100.59%; descent-override: 22.02%; line-gap-override: 0%;
     }
     @font-face {
@@ -2060,7 +2061,9 @@
        with Office (most Windows PCs, a Mac with Office) is used where there is one, through a face of the app's own
        ('FG Century Gothic', the @font-face rules at the top) that gives it the same line on every system: its hhea
        ascent and descent (2060 and 451 of 2048), no line gap, where Windows would otherwise build lines from its
-       taller win metrics. Futura, the nearest geometric face an iPhone has, where it is not installed. */
+       taller win metrics. Where it is not installed (every phone), FG Gothic, a free lookalike shipped at the same
+       proportions; Futura only if that cannot load. The owner holds a web licence for the real face: when it is
+       uploaded it replaces FG Gothic, kept out of this public repo. */
     [data-serif="gothic"] {
       --serif: 'FG Century Gothic', 'Century Gothic', Futura, 'Trebuchet MS', sans-serif;
     }

@@ -16,9 +16,10 @@ wsop-console side and verified against both live services.
 
 ## 2026-11-16 — Easter eggs: Century Gothic and the BTG card back
 
-- Century Gothic is a Display font tile; it uses the installed face (Windows/Mac with Office) and falls to Futura on
-  phones. **Waiting on the owner:** whether to bundle a free lookalike (TeX Gyre Adventor, GUST Font License) so phones
-  get it too; that is a download, so it needs a yes. If added it must pass `npm run check:fonts`.
+- Century Gothic is a Display font tile; it uses the installed face (Windows/Mac with Office), else FG Gothic, the free
+  lookalike now shipped (TeX Gyre Adventor via CTAN, owner's yes; same line height as the real face). **Waiting on the
+  owner:** the real Century Gothic under the web licence he bought, to upload from his computer; keep it out of the
+  public repo (a private fetch at build, as the solver is) and put it ahead of FG Gothic.
 - The BTG back: Replayer settings > Cards > Card Back. Notes in CLAUDE.md ("Two Easter eggs").
 
 ## 2026-11-16 — Replayer collisions toward zero (`check:replayer-collisions`, every size)

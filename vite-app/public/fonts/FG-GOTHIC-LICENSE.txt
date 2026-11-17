@@ -1,0 +1,11 @@
+FG Gothic (fg-gothic-regular.woff2, fg-gothic-bold.woff2)
+
+A modified version of TeX Gyre Adventor (texgyreadventor-regular.otf and texgyreadventor-bold.otf, from CTAN,
+https://ctan.org/pkg/tex-gyre-adventor), copyright GUST e-foundry, distributed under the GUST Font License
+(https://www.gust.org.pl/projects/e-foundry/licenses), which is the LaTeX Project Public License 1.3c with the
+additional condition that a modified font is renamed.
+
+Modified for futurega.me on 2026-11-16: renamed FG Gothic (family, full and PostScript names, and the CFF names),
+subset to the Latin range the app uses, and vertical metrics set to 1006/220 of 1000 with no line gap, the same
+in every table, so it draws one line height on every system. Used as the stand-in for Century Gothic where that
+face is not installed. The original copyright notice is kept in each font's name table.

@@ -811,7 +811,10 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
 - **Two Easter eggs** (owner, 2026-11-16): **Century Gothic** is the third Display font (`gothic` in `SERIF_ORDER`, Settings'
   three font tiles, "for Parx players"). It is Monotype's and is NOT shipped (public repo): `'FG Century Gothic'` is an
   `@font-face` over `local('Century Gothic')` with the hhea ascent/descent as overrides so its lines match on every
-  system; without it installed (any phone) the stack falls to Futura. **The BTG card back**: Replayer settings > Cards >
+  system; without it installed (any phone) the same face loads **FG Gothic** (`public/fonts/fg-gothic-*.woff2`), TeX
+  Gyre Adventor renamed, subset and set to Century Gothic's proportions (GUST Font License, `FG-GOTHIC-LICENSE.txt`).
+  The owner bought a web licence for the real face (2026-11-16) and will upload it: it must stay out of this public
+  repo (fetched at build like the solver), then replace FG Gothic in the `src` list. **The BTG card back**: Replayer settings > Cards >
   Card Back (`utils/card-back.js`, stored as `replayerCardBack`, applied at boot as `<html data-card-back="btg">`, so
   every face-down card wears it: the replayer, saved-hand rows, the trainers' `.card-back`). The logo is traced to
   shapes in a data URI (`--back-btg-mark` in styles.css) and is a background, so the turn-over copies it (with its size,
