@@ -5,7 +5,7 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-11-11 (from Windows) — newest section first. Earlier notes: 2026-10-21, 2026-10-13, then 2026-09-30, live
+Last updated: 2026-11-16 (from Windows) — newest section first. Earlier notes: 2026-10-21, 2026-10-13, then 2026-09-30, live
 tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
@@ -13,6 +13,26 @@ Below it the 2026-09-25 Schedule grid sweep, then the dated sections back throug
 wsop-console side and verified against both live services.
 
 ---
+
+## 2026-11-16 — Replayer collisions toward zero (`check:replayer-collisions`, every size)
+
+- The owner expects zero ("Why are there any still left in the list"; then "Why would that answer not be yes" when
+  asked whether to keep going). Every-size count on the 40-hand sample: 1,510 at phone sizes this morning; 300 at all
+  five sizes after adff466; 27 after 64e5886; **0** after the commit that followed (7,055 steps, all five sizes).
+- **Two bugs I shipped and fixed the same day:** adff466 (label at 0.34 of a card) put 210 action labels on players'
+  names at 1440/1728, measured only at phone sizes; its readout margins also drifted off the felt under Reduce Motion.
+  Measure every size (`--sizes` default) before pushing a felt change.
+- **Traps found** (now in CLAUDE.md, "The placement order"): Reduce Motion's 1 ms / 140 ms transitions on every
+  property; `--gu` read with parseFloat (NaN; the felt's g is the table's, measured by `guPx`); a label is the
+  plaque's child and a folded plaque is drawn at 0.88; the desktop pane draws the table at 0 x 0 for its first commits;
+  the guard counts the rows' containers as wide as their band unless measured pill by pill; a face just turned up is 3px
+  wide until it decodes (card images now carry their aspect ratio); a settle pass that waited on fades ran after the
+  guard measured.
+- **New on the felt, for the owner to see:** a showdown readout with no cloth anywhere shrinks to the action label's
+  size, and as a last resort sits on its own cards like the action label; an action label on its own ranks sinks or
+  goes beside the plaque; the game pill fades out for a step with no clear spot; the dealer button takes the other
+  lower corner when the facing one touches something; split and pot rows wrap to the band between the side seats.
+  Screenshots of a crowded 9-max O8 showdown at 375 and 402 were clean.
 
 ## 2026-11-11 — Replayer animations: 59 of the 62 picks built (34, 37, 39 not; 41, 44, 45 in part)
 

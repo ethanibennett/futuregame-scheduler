@@ -9242,6 +9242,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   /* The dealer button on the plaque's other lower corner when the one facing the middle touches anything that is not
      its seat's (2026-11-16: at 430 wide a side seat's button sat on the board's first card), if that one is clear. */
   const placeButton = (table) => {
+    if (!table.clientWidth || !table.clientHeight) return;   // the desktop pane's first commits draw it at 0 x 0
     const btn = table.querySelector('.replayer-dealer-btn');
     if (!btn) return;
     delete btn.dataset.flip;
@@ -9355,6 +9356,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      (the dealer button sits on one of them). Measured at its laid-out size around its drawn centre: it pops in from a
      smaller scale. */
   const placeLabels = (table) => {
+    if (!table.clientWidth || !table.clientHeight) return;   // the desktop pane's first commits draw it at 0 x 0
     const labels = table.querySelectorAll('.replayer-action-badge-outer');
     if (!labels.length) return;
     const host = table.closest('.replayer-replay') || document.documentElement;
@@ -9410,7 +9412,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   useLayoutEffect(() => { if (tableRef.current) placeLabels(tableRef.current); });
   const placeNames = (table, settle) => {
     const names = table.querySelectorAll('.replayer-seat-hand-name');
-    const stepKey = streetIdx + ':' + actionIdx;
+    /* Kept for the step at this size of table: the desktop pane draws the table at 0 x 0 for its first commits, and a
+       spot found against nothing was kept once the table had its size (2026-11-16). */
+    if (!table.clientWidth || !table.clientHeight) return;
+    const stepKey = streetIdx + ':' + actionIdx + ':' + table.clientWidth + 'x' + table.clientHeight;
     if (nameSpotRef.current.step !== stepKey) nameSpotRef.current = { step: stepKey, spots: new Map() };
     const spots = nameSpotRef.current.spots;
     if (!names.length) return;
@@ -9475,7 +9480,17 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     };
     const SEAT_PIECES = '.replayer-seat-cards .card-row > *, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-dealer-btn';
     const placed = [];
+    /* Where each readout not placed yet stands (its kept spot, else its own place), so none is moved onto another's:
+       one moved earlier took the spot under a later one's plaque, and the later one then had nowhere (2026-11-16). */
+    const pending = new Map();
     names.forEach(el => {
+      const seat = el.closest('.replayer-seat');
+      const k = spots.get((seat && seat.dataset.seat || '') + '|' + (el.dataset.nameSeat || '') + '|' + el.className);
+      const q = restOf(el);
+      if (q) pending.set(el, k ? { left: q.left + k.dx * gu, right: q.right + k.dx * gu, top: q.top + k.dy * gu, bottom: q.bottom + k.dy * gu } : q);
+    });
+    names.forEach(el => {
+      pending.delete(el);
       const seat = el.closest('.replayer-seat');
       const plaque = seat && seat.querySelector('.replayer-seat-info');
       const seatKey = (seat && seat.dataset.seat || '') + '|' + (el.dataset.nameSeat || '') + '|' + el.className;
@@ -9496,15 +9511,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         .flatMap(s => [...s.querySelectorAll('.replayer-seat-info, ' + SEAT_PIECES)])
         .concat([...seat.querySelectorAll(SEAT_PIECES)].filter(e => !ownCards.includes(e)))
         .concat([...table.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-above, .replayer-pot-layers.is-placed > *, .replayer-split-shares.is-placed > *')])
-        .map(rectOf).filter(b => b.width > 0 && b.height > 0).concat(placed);
+        .map(rectOf).filter(b => b.width > 0 && b.height > 0).concat(placed, [...pending.values()]);
       const others = besides.concat(ownCards.map(rectOf).filter(b => b.width > 0 && b.height > 0));
       if (!hits(r, others)) { placed.push(r); return; }
       const P = plaque.getBoundingClientRect();
       const inward = (P.left + P.width / 2) < (T.left + T.width / 2) ? 1 : -1;
       /* Beside the plaque on the side facing the middle, level with it, then up to its height higher or lower; the
-         same on the outer side; under it, toward the middle by up to a plaque's width, then away from the middle (the
-         dealer button sits beside the plaque on the side facing the table, its lower half on the name under it);
-         then lower. The first spot on the screen and clear of everything, the plaque included. */
+         same on the outer side; then under it, shifted and lowered (the dealer button sits on the plaque's lower corner
+         facing the table, its lower half on the name under it). The first spot on the screen and clear of
+         everything, the plaque included. */
       const spotFor = (q, from) => {
         const cands = from ? [{ left: q.left, top: q.top }] : [];
         const mid = P.top + (P.height - q.height) / 2;
@@ -9512,8 +9527,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           const left = side > 0 ? P.right + gu / 2 : P.left - gu / 2 - q.width;
           for (let k = 0; k <= 8; k++) for (const s of k ? [-1, 1] : [1]) cands.push({ left, top: mid + s * k * P.height / 8 });
         }
-        for (const dir of [inward, -inward]) for (let k = 1; k <= 16; k++) cands.push({ left: q.left + dir * k * P.width / 16, top: q.top });
-        for (let k = 1; k <= 4; k++) cands.push({ left: q.left, top: q.top + k * gu / 2 });
+        /* Under it, shifted either way by up to a plaque's width and down by up to 2g, the nearest first (a two-line
+           side-pot name under a top seat cleared the button beside its plaque only half a card in and 1g down). */
+        const under = [];
+        for (let k = -16; k <= 16; k++) for (let j = 0; j <= 4; j++) {
+          if (!k && !j) continue;
+          under.push({ left: q.left + inward * k * P.width / 16, top: q.top + j * gu / 2, cost: Math.abs(k) * P.width / 16 + 2 * j * gu / 2 + (k < 0 ? 0.5 : 0) });
+        }
+        under.sort((a, b) => a.cost - b.cost).forEach(c => cands.push(c));
         return cands.map(c => ({ left: c.left, right: c.left + q.width, top: c.top, bottom: c.top + q.height }))
           .find(o => o.left >= lo && o.right <= hi && !hits(o, others) && !hits(o, [P]));
       };
@@ -9553,9 +9574,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     });
   };
   useLayoutEffect(() => { if (tableRef.current) placeNames(tableRef.current, false); });
-  useLayoutEffect(() => {
-    const table = tableRef.current;
-    if (!table) return;
+  const placeWagers = (table) => {
+    if (!table.clientWidth || !table.clientHeight) return;   // the desktop pane's first commits draw it at 0 x 0
     const pills = table.querySelectorAll('.replayer-bet-chip[data-seat][data-base-left]');
     if (!pills.length) return;
     const r = subrowPx(table);
@@ -9598,14 +9618,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         let ux, uy;
         if (el.dataset.side === '1') { ux = Math.sign(tx - (P.left + P.width / 2)) || 1; uy = 0; }
         else { const dx = tx - cx, dy = ty - cy, len = Math.hypot(dx, dy) || 1; ux = dx / len; uy = dy / len; }
-        // Along the line to the pot (back toward the seat too) as far as the pot's centre, and up to 8r to either side
+        // Along the line to the pot (back toward the seat too) as far as the pot's centre, and up to 12r to either side
         // of it, nearest first, the line before the side; 1r of cloth from its own seat if the table has it, else less.
         // (2r to a side left a nine-seat phone table's wager on the turn card, with cloth 3.5r off its line; 4r left a
-        // side seat's winnings on the board's end card, with cloth above the board 6r up: 2026-11-16.)
+        // side seat's winnings on the board's end card, with cloth above the board 6r up; 8r left a top seat's wager on
+        // the pot's figure at 1440, its readout on the line and the cloth 10r over: 2026-11-16.)
         const reach = el.dataset.side === '1' ? Math.abs(tx - cx) : Math.hypot(tx - cx, ty - cy);
         const S2 = r / 2;
         const cands = [];
-        for (let d = -reach / 2; d <= reach; d += S2) for (let p = -8 * r; p <= 8 * r + 1e-6; p += S2) cands.push({ d, p, cost: Math.abs(d) + 1.5 * Math.abs(p) });
+        for (let d = -reach / 2; d <= reach; d += S2) for (let p = -12 * r; p <= 12 * r + 1e-6; p += S2) cands.push({ d, p, cost: Math.abs(d) + 1.5 * Math.abs(p) });
         cands.sort((a, b) => a.cost - b.cost);
         const at = (c) => ({ x: cx + ux * c.d - uy * c.p, y: cy + uy * c.d + ux * c.p });
         let chosen = null;
@@ -9638,13 +9659,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       el.style.left = ((cx - ox) / W * 100).toFixed(3) + '%';
       el.style.top = ((cy - oy) / H * 100).toFixed(3) + '%';
     });
-  });
+  };
+  useLayoutEffect(() => { if (tableRef.current) placeWagers(tableRef.current); });
   /* The game pill, last: moved to the nearest spot up or down where no seat's piece, the board, the pot or its rows,
      the watermark or a wager touches it (owner, 2026-11-16: "Watermark/variant collision": moved up to clear a wager,
      it landed on the wordmark's lower half). With no such spot (a ten-seat phone table at a split showdown), it fades
      out for the step rather than lie on something: the game and stakes are the one thing on the felt nobody is
      waiting to read there. */
   const placePill = (table) => {
+    if (!table.clientWidth || !table.clientHeight) return;   // the desktop pane's first commits draw it at 0 x 0
     const info = table.querySelector('.replayer-table-info');
     if (info) { info.style.marginTop = ''; delete info.dataset.away; }
     const r = subrowPx(table);
@@ -9673,36 +9696,67 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   /* The settle pass (2026-11-16): each of those is decided in the commit, while the cards deal, flip and tuck, a folded
      plaque eases to its scale and the desktop pane's seats find their places, so a label could be moved for cards
      that were not where they came to rest, and stay moved (on the player's name, at 1440 and 1728). When the motion on
-     the table has finished, the button, the labels and the pill are placed again, and any readout that now touches
-     something.
-     The wagers are not: the next sweep reads them where this commit left them. */
+     the table has finished, the button, the labels, the wagers and the pill are placed again, and any readout that now
+     touches something. */
   useLayoutEffect(() => {
     const table = tableRef.current;
     if (!table) return undefined;
     /* Looked for two frames on: the moments effect, after this one, starts this commit's motion, and a moment can build
-       its work the frame after its press. With none running, the pass runs once anyway. */
-    let live = true, rounds = 0;
+       its work the frame after its press. It waits until the table is quiet (a result's moments run in a chain), then
+       runs once. A wager it moves is moved in the record the next sweep starts from as well. */
+    let live = true;
     const settle = () => {
       if (!live || tableRef.current !== table) return;
       placeButton(table);
       placeLabels(table);
       placeNames(table, true);
+      const before = new Map([...table.querySelectorAll('.replayer-bet-chip[data-seat]')].map(el => [el, el.getBoundingClientRect()]));
+      placeWagers(table);
+      before.forEach((b, el) => {
+        const a = el.getBoundingClientRect();
+        const dx = (a.left + a.width / 2) - (b.left + b.width / 2), dy = (a.top + a.height / 2) - (b.top + b.height / 2);
+        const rec = prevWagersRef.current.get(Number(el.dataset.seat));
+        if ((dx || dy) && rec && rec.el === el && rec.geo) { rec.geo.cx += dx; rec.geo.cy += dy; }
+      });
       placePill(table);
+    };
+    /* Each frame until nothing finite that moves anything is running on the page (the desktop pane round the table
+       moves it too), then once; never waiting on a motion's `finished`, which a paused one never resolves. Six seconds
+       at most. A fade or a change of colour moves nothing, and a readout's own reveal is measured round (restOf), so
+       neither is waited for: the readout then takes its place before it shows, not after. */
+    let frame = 0;
+    const t0 = performance.now();
+    const PAINT = /^(opacity|color|background-?color|border-?(top|right|bottom|left)-?color|box-?shadow|outline-?color|fill|stroke)$/i;
+    const SKIP = new Set(['offset', 'easing', 'composite', 'computedOffset']);
+    const moves = (a) => {
+      if (a.playState !== 'running') return false;
+      const fx = a.effect;
+      const end = fx && fx.getComputedTiming ? fx.getComputedTiming().endTime : Infinity;
+      if (!Number.isFinite(end)) return false;
+      const t = fx && fx.target;
+      if (t && t.closest && t.closest('.replayer-seat-hand-name')) return false;
+      let props = a.transitionProperty ? [a.transitionProperty] : null;
+      if (!props) { try { props = [...new Set(fx.getKeyframes().flatMap(k => Object.keys(k)).filter(k => !SKIP.has(k)))]; } catch (e) { props = ['?']; } }
+      return props.some(p => !PAINT.test(p));
     };
     const wait = () => {
       if (!live) return;
-      const running = document.getAnimations().filter(a => {
-        const t = a.effect && a.effect.target;
-        if (a.playState !== 'running' || !t || !table.contains(t)) return false;
-        const end = a.effect.getComputedTiming ? a.effect.getComputedTiming().endTime : Infinity;
-        return Number.isFinite(end);
-      });
-      if (!running.length || rounds >= 4) { settle(); return; }
-      rounds++;
-      Promise.all(running.map(a => a.finished.catch(() => {}))).then(() => requestAnimationFrame(wait));
+      const running = document.getAnimations().some(moves);
+      if (running && performance.now() - t0 < 6000) { frame = requestAnimationFrame(wait); return; }
+      settle();
     };
-    const f1 = requestAnimationFrame(() => requestAnimationFrame(wait));
-    return () => { live = false; cancelAnimationFrame(f1); };
+    frame = requestAnimationFrame(() => { frame = requestAnimationFrame(wait); });
+    /* And when the table changes size without motion (the desktop pane lays it out after its first commits). */
+    let size = table.clientWidth + 'x' + table.clientHeight;
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
+      const now = table.clientWidth + 'x' + table.clientHeight;
+      if (now === size) return;
+      size = now;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(wait);
+    }) : null;
+    if (ro) ro.observe(table);
+    return () => { live = false; cancelAnimationFrame(frame); if (ro) ro.disconnect(); };
   });
 
   useLayoutEffect(() => {

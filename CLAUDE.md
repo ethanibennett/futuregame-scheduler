@@ -775,23 +775,29 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
        reach a side seat's plaque, cards or labels wraps, centred, to the band between them (never round a readout);
     3. an action label on one of its own ranks sinks to clear it while that keeps it off the player's name, else goes
        beside the plaque level with its top edge (a seven-card stud fan at 7th street);
-    4. keepHandNamesOn: a readout that lands on anything tries beside its plaque (the side facing the middle, then the
-       outer side), under it shifted either way, then lower; then all of those at the action label's size
+    4. keepHandNamesOn: a readout that lands on anything (other seats' pieces, the felt, a readout placed before it or
+       where a later one stands) tries beside its plaque (the side facing the middle, then the outer side), then under
+       it on a grid shifted either way and down to 2g, nearest first; then all of those at the action label's size
        (`data-spot="small"`); then, a single line, on its own cards (`data-spot="cards"`). Measured at rest (layout box,
-       fractional size), and kept for the step: measured mid-animation it jumped between spots;
+       fractional size), and kept for the step at that size of table (the desktop pane draws the table at 0 x 0 for
+       its first commits, when nothing is placed);
     5. the wagers, from their usual spot, moved off their seat until there is cloth, along the line to the pot and up
        to 8r to either side, else the spot that covers least (left/top percentages, the form the push-out and the
        ghosts read);
     6. the game pill, measured as itself (never its 46% column), moved up or down to the nearest clear spot, wagers
        included; with none it fades out for the step (`data-away`).
     Each is decided in the commit, while cards deal and tuck and a folded plaque eases to 0.88; **the settle pass**
-    (the effect after them) waits for the table's finite motion to finish (looking two frames on, once the moments
-    effect has started it) and places the button, the labels and the pill again, and any readout that now touches
-    something; never the wagers, which the next sweep reads where the commit left them. A label is the plaque's child,
+    (the effect after them) polls each frame, from two frames on, until no finite motion that moves anything runs on
+    the page (fades, colours and a readout's own reveal do not count, so a readout takes its place before it shows;
+    six seconds at most; and again when the table changes size), then places the button, the labels, the wagers and
+    the pill again, and any readout that now touches something; a wager it moves is moved in `prevWagersRef` too, the
+    record the next sweep starts from. A label is the plaque's child,
     so its margins are divided by the plaque's scale. **g on the felt is the table's** (`.replayer-table > *`:
     `--gu: calc(100cqmin / 35)`), measured by `subrowPx`/`guPx` (a probe on the table): never
     `parseFloat(getPropertyValue('--gu'))`, which reads the unresolved text, NaN, and whose old fallback (the pane's
-    width / 37) wrote every desktop margin at 57% of what was measured.
+    width / 37) wrote every desktop margin at 57% of what was measured. Card faces carry `aspect-ratio: 180 / 252`
+    (`.card-row img`): a face just turned up was laid out 3px wide until its image decoded, and a readout placed then
+    went onto it.
   - **One press runs a decided board out** (14, `runOutTo`): all in, nothing left to act on, one board, springs on;
     Back still steps a street at a time. A hand opened on its first step plays its opening (antes, blinds, the dealer
     button); Play from the first step deals the hand first. Exports skip action moments and open on their title card.

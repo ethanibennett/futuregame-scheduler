@@ -2852,6 +2852,10 @@
        A fixed 2px clipped a squarer corner than the card, and the rim light
        below then traced that wrong corner over the transparent pixels. */
     .card-row img { height:calc(var(--subrow) * 3.5); border-radius:7.1%; } /* no white outline (owner, 2026-10-11: "get rid of the white boxes around each card") */
+    /* The faces' own 180 x 252, so a card has its width before its image loads: a face just turned up at a showdown
+       was laid out 3px wide for its first frames, and a readout placed then went beside it, onto where it then stood
+       (2026-11-16). */
+    .card-row img { aspect-ratio: 180 / 252; }
     /* One back. The stops are variables, and .card-back (the shared class the
        solver and trainers use) inherits the same ones — the two decks used to
        disagree about what a face-down card looks like, and the trainers dealt
