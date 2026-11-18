@@ -23,6 +23,12 @@ sessions opened here own scheduler work.
   `hooks/useBankrollSide.js` (`useBankrollSide` / `SidePortal`); with no claim the tab is one pane. On desktop the
   ten Bankroll sections are rows in the rail (86, `DesktopRail` `RailSections`) and the section strip is hidden,
   so a script opens a section by `.dk-rail-subitem` there.
+  **My Schedule in the 64g pane** (`.dk-mine-block.is-two-col`, `.sched-days`): two 30g columns only when a day holds
+  two cards or more, the days sharing the row in date order and a day of two cards or more taking the row, its cards
+  side by side; with none, the block narrows to one 35g column, its header with it (owner, 2026-11-17: "If there isn't
+  enough for a second column in My Schedule, we should just narrow it to one"). Swiss keeps its own date column.
+  A selected list card keeps its outline in the standard themes (the brand ring was dropped 2026-10-20; only Swiss,
+  which still draws it, removes the card's own ring under it).
   Everything narrower, and
   every phone, is the phone layout, pixel-identical. Design and per-tab plan: `docs/desktop-layout.md`.
 - **Backend**: `server.js` — Express 5 + sql.js (SQLite loaded to memory, saved on write).
@@ -762,6 +768,10 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
     a split's shares, pill by pill; the board, the game pill), except a seat's cards under its own plaque and its action
     label (or a readout with no cloth) on its cards' bodies, never on a face-up card's rank (the guard's `index`: the
     top third of its left 30%, turned with the card); the watermark's ink is held against the game pill and the pot only.
+    Every piece is also held against what can be seen ("edge": the screen's sides, and the table slot's foot, which
+    clips just above the street track). `--insets "59,34" --admin` lays the page out as the app on an iPhone (safe areas,
+    and the admin row under the transport, which takes table height): run it at 402x874 and 440x956 too (owner,
+    2026-11-17, "Bottom part of hero is cut off", a draw game's run and hand name under the bottom plaque past the clip).
     Run it after any change to the felt, and alone: two at once can land on one scratch server (a --build run measured
     the other's build). `--json <file>` writes every collision (kind, hand, step, pieces). It runs under Reduce Motion,
     where the replay keeps fades and colours but no transition of a place (`.replayer-replay *` `transition-property`):
@@ -769,13 +779,19 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
     been and move it again, a readout further off the felt each render (2026-11-16).
     **The placement order** (HandReplayerView's layout effects, after the board's and before the moments effect, which
     reads the wagers where they rest), the middle of the felt first, then what belongs to a seat, then the pill:
-    1. a seat's cards on the screen and, with each card where its pose leaves it (a played card rises 1r), off the
+    0. on the phone, the table's foot (`placeTableFoot`): the bottom seat's fullest stack (plaque, draw run, hand name;
+       invisible stand-ins where the step has none, so it is one answer for the whole hand) must end 0.5r above the
+       slot's clip, and the table gives up exactly what that needs (inline height, `100cqh - var(--subrow) * N`);
+    1. a seat's cards on the screen by the fanned cards' own extent, not the row's box (a row whose cards are being
+       dealt keeps its last shift), and, with each card where its pose leaves it (a played card rises 1r), off the
        replay's buttons above the felt (`placeCardRows`); the dealer button on its plaque's other lower corner when the
        one facing the middle touches what is not its seat's (`data-flip`);
     2. the pot 0.5r clear of the board, and the rows under the board 0.75r under it and 0.5r apart; a row that would
        reach a side seat's plaque, cards or labels wraps, centred, to the band between them (never round a readout);
     3. an action label on one of its own ranks sinks to clear it while that keeps it off the player's name, else goes
-       beside the plaque level with its top edge (a seven-card stud fan at 7th street);
+       beside the plaque level with its top edge (a seven-card stud fan at 7th street); one whose foot reaches the
+       name (440 wide, past the 430 where the screen's g stops growing) is lifted off it, or beside the plaque if the
+       lift would cover a rank;
     4. keepHandNamesOn: a readout that lands on anything (other seats' pieces, the felt, a readout placed before it or
        where a later one stands) tries beside its plaque (the side facing the middle, then the outer side), then under
        it on a grid shifted either way and down to 2g, nearest first; then all of those at the action label's size

@@ -11,11 +11,13 @@
 //   - the pot, its row of main and side pots, a split's shares, the board and the game pill against every seat's
 //     pieces and against each other.
 //   - the watermark's ink against the game pill and the pot's figure (the board and the wagers may pass over it).
+//   - every piece against what can be seen (2026-11-17): the screen's sides and the slot's clipped foot over the street
+//     track ("edge"). --insets and --admin lay the page out as the app on an iPhone with the admin row.
 // Seats take long names (a plaque is as wide as its name), so the layout is tried at the width real tables have.
 //
 //   node scripts/check-replayer-collisions.mjs [--per-game 2] [--games "NLH,O8"] [--ids "NLH#3"]
 //        [--sizes "375x667,402x874,430x932,1440x900,1728x1117"] [--jobs 3] [--shots dir] [--slack 0.5] [--build dir]
-//        [--json file]
+//        [--json file] [--insets "59,34"] [--admin]
 //
 // Boots its own scratch server (test/helpers/scratch-server.js, ports 4890-4899) and stops it at the end. Needs the
 // built app (vite-app: npm run build). Exit 1 on any collision.
@@ -25,7 +27,7 @@ import path from 'node:path';
 
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
-const { createScratch, boot } = require('../test/helpers/scratch-server.js');
+const { createScratch, boot, scrubbedEnv } = require('../test/helpers/scratch-server.js');
 
 const args = process.argv.slice(2);
 const opt = (f, d) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : d; };
@@ -38,6 +40,11 @@ const JOBS = Number(opt('--jobs', 3));
 const SHOTS = opt('--shots', '');
 const SLACK = Number(opt('--slack', 0.5));   // px of overlap forgiven (anti-aliasing, a hairline border)
 const MAX_STEPS = 80;
+// An iPhone in the app (2026-11-17, the owner's "Bottom part of hero is cut off"): its safe areas as --sa-t,--sa-b in px
+// ("59,34"), and --admin for the admin row under the transport ("Study this draw" and its note), which together take
+// the table's height. Neither is on by default: the default sizes are a browser's.
+const INSETS = opt('--insets', '');
+const ADMIN = args.includes('--admin');
 
 // Long names, as real tables have them: the plaque is sized by its name.
 const NAMES = ['Vincent Basilicata', 'Joshua Rhodes', 'Rob Klein', 'Maria Konstantinidis', 'Alexander Petrov',
@@ -158,7 +165,11 @@ const MEASURE = () => {
     const replay = table.closest('.replayer-replay') || document;
     replay.querySelectorAll('.hx-chips > *, .replayer-quick-btn').forEach((el) => add('felt', 'control', el));
     const t = table.getBoundingClientRect();
-    return { r, items, table: { w: t.width, h: t.height } };
+    // What can be seen: the slot clips its foot (overflow hidden, just above the street track) and the screen its sides.
+    const slot = table.closest('.replayer-table-slot');
+    const S = slot ? slot.getBoundingClientRect() : { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
+    const view = { left: Math.max(0, S.left), top: Math.max(0, S.top), right: Math.min(innerWidth, S.right), bottom: Math.min(innerHeight, S.bottom) };
+    return { r, items, view, table: { w: t.width, h: t.height } };
   };
 };
 
@@ -203,6 +214,15 @@ function collisions(m, slack) {
       out.push({ a, b, ox, oy });
     }
   }
+  // Cut off: a piece any part of which is past what can be seen (the screen's sides, the slot's clipped foot).
+  // A name's ink and a card's rank stand with their plaque and card.
+  if (m.view) for (const a of it) {
+    if (a.kind === 'name' || a.kind === 'index' || a.kind === 'mark' || a.kind === 'control') continue;
+    const past = { left: m.view.left - a.x, right: a.x + a.w - m.view.right, bottom: a.y + a.h - m.view.bottom, top: m.view.top - a.y };
+    const [side, by] = Object.entries(past).sort((p, q) => q[1] - p[1])[0];
+    if (by > slack) out.push({ a, b: { owner: 'felt', kind: 'edge', label: side === 'bottom' ? 'the clip over the street track' : "the screen's " + side + ' edge' },
+      ox: side === 'left' || side === 'right' ? by : a.w, oy: side === 'top' || side === 'bottom' ? by : a.h });
+  }
   return out;
 }
 
@@ -235,8 +255,14 @@ const t0 = Date.now();
 async function worker(wi) {
   const email = `collide${wi}@x.test`;
   await api('/api/register', { method: 'POST', body: { username: 'collide' + wi, email, password: 'collide-password-1', realName: 'C W' } });
-  const { body: { token } } = await api('/api/login', { method: 'POST', body: { email, password: 'collide-password-1' } });
+  let { body: { token } } = await api('/api/login', { method: 'POST', body: { email, password: 'collide-password-1' } });
   if (!token) throw new Error('no token for worker ' + wi);
+  // --admin: the same account under an app admin's name, signed with the scratch server's own secret.
+  if (ADMIN) {
+    const jwt = require('jsonwebtoken');
+    const me = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
+    token = jwt.sign({ ...me, username: 'ham5' }, scrubbedEnv().JWT_SECRET, { algorithm: 'HS256' });
+  }
   let ctx = null, page = null, size = '';
   while (next < jobs.length) {
     const job = jobs[next++];
@@ -246,6 +272,11 @@ async function worker(wi) {
       ctx = await browser.newContext({ viewport: { width: job.w, height: job.h }, reducedMotion: 'reduce' });
       await ctx.addInitScript((tk) => { localStorage.setItem('token', tk); localStorage.setItem('onboarded', '1'); localStorage.setItem('hasOnboarded', 'true'); }, token);
       await ctx.addInitScript(MEASURE);
+      if (INSETS) await ctx.addInitScript(([t, b]) => {
+        const set = () => { document.documentElement.style.setProperty('--sa-t', t + 'px'); document.documentElement.style.setProperty('--sa-b', b + 'px'); };
+        if (document.documentElement) set();
+        document.addEventListener('DOMContentLoaded', set);
+      }, INSETS.split(',').map(Number));
       page = await ctx.newPage();
       size = key;
     }

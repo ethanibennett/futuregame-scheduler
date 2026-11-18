@@ -9255,6 +9255,63 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      result, and at seven seats on a phone the raised row met Note and Tags. Each card is taken where its pose leaves
      it (its drawn box, less the lift it is part way through, plus its pose's), and the row moves down by the shortfall,
      by `top`. */
+  /* The table's foot (owner, 2026-11-17: "Bottom part of hero is cut off"). On a phone the table is the slot's height
+     less 4r, and the slot clips at its foot, just above the street track. 4r is what a hand name under the bottom
+     seat's plaque needs; a draw game hangs its D1/D1/PAT run there as well, with the name under it, and on an iPhone
+     with the admin row the pair ran past the clip. So the stack the bottom seat will hold at its fullest is measured
+     (the run and the name, one line or a hi-lo's two, as invisible stand-ins where the step has none yet: the same
+     answer at every step, so the table never changes size mid-hand) and the table gives up just what it needs to
+     end 0.5r above the clip. Not on the desktop pane, whose table has room under it. */
+  const placeTableFoot = (table) => {
+    const slot = table.parentElement;
+    if (!slot || !slot.classList.contains('replayer-table-slot') || !table.closest('.replayer-fullbleed')) return;
+    table.style.height = '';
+    if (!table.clientHeight || !slot.clientHeight) return;
+    let low = null, lowB = -Infinity;
+    table.querySelectorAll('.replayer-seat[data-seat]').forEach(st => {
+      const pl = st.querySelector('.replayer-seat-info');
+      const b = pl ? pl.getBoundingClientRect().bottom : -Infinity;
+      if (b > lowB) { lowB = b; low = st; }
+    });
+    if (!low) return;
+    const plaque = low.querySelector('.replayer-seat-info');
+    const stand = [];
+    const standIn = (parent, cls, text) => {
+      const e = document.createElement('div');
+      e.className = cls; e.textContent = text;
+      e.style.visibility = 'hidden'; e.style.animation = 'none';
+      parent.appendChild(e); stand.push(e);
+    };
+    if (isDrawGame && !gameCfg.discardOnly && !plaque.querySelector('.replayer-seat-draw-badge')) standIn(plaque, 'replayer-seat-draw-badge', 'D3/D3/PAT');
+    const names = [...low.querySelectorAll('.replayer-seat-hand-name')];
+    names.forEach(e => { e.style.marginLeft = ''; e.style.marginTop = ''; delete e.dataset.spot; });
+    if (!names.length) standIn(low, 'replayer-seat-hand-name', isHiLo ? 'Hi: Two Pair' + String.fromCharCode(10) + 'Lo: 8 6 4 3 2 low' : 'Two Pair, Ks & 9s');
+    // Where each piece rests: its laid-out box under its positioned parent (a reveal's or a pop's transform aside).
+    const restBottom = (e) => {
+      const op = e.offsetParent;
+      if (!op) return e.getBoundingClientRect().bottom;
+      return op.getBoundingClientRect().top + op.clientTop + e.offsetTop + e.offsetHeight;
+    };
+    const stackBottom = () => Math.max(plaque.getBoundingClientRect().bottom,
+      ...[...low.querySelectorAll('.replayer-seat-draw-badge, .replayer-seat-hand-name')].map(restBottom));
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)';
+    slot.appendChild(probe);
+    const rs = probe.getBoundingClientRect().height / 100 || 8;   // the screen's r: the table's own height is in it
+    probe.remove();
+    const S = slot.getBoundingClientRect();
+    const clip = S.bottom - parseFloat(getComputedStyle(slot).paddingBottom || 0) - guPx(table) * 0.71 / 2;
+    const room = S.height - (parseFloat(getComputedStyle(slot).paddingTop) || 0) - (parseFloat(getComputedStyle(slot).paddingBottom) || 0);
+    let foot = 4;
+    for (let pass = 0; pass < 3; pass++) {
+      const over = stackBottom() - clip;
+      if (over <= 0.5) break;
+      foot = (room - (table.getBoundingClientRect().height - over)) / rs;
+      table.style.height = `calc(100cqh - var(--subrow) * ${foot.toFixed(3)})`;
+    }
+    stand.forEach(e => e.remove());
+  };
+  useLayoutEffect(() => { if (tableRef.current) placeTableFoot(tableRef.current); });
   const placeCardRows = (table) => {
     if (!table.clientWidth || !table.clientHeight) return;
     const rows = table.querySelectorAll('.replayer-seat-cards > .card-row');
@@ -9269,7 +9326,18 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const r = el.getBoundingClientRect();
       if (!r.width) return;
       const lo = box.left + gu / 2, hi = box.right - gu / 2;
-      const shift = r.left < lo ? lo - r.left : r.right > hi ? hi - r.right : 0;
+      /* By the cards as the fan draws them, not the row's box (2026-11-17: a side seat's five fanned draw cards ran
+         off the screen's edge while the row's own box was inside it). While a card is still being dealt or turned,
+         the row keeps the shift it had: its cards are not where they will rest. */
+      const kids = [...el.children];
+      let shift;
+      if (kids.some(c => c.getAnimations().some(a => a.playState === 'running'))) shift = Number(el.dataset.edgeShift) || 0;
+      else {
+        const L = Math.min(r.left, ...kids.map(c => c.getBoundingClientRect().left));
+        const R = Math.max(r.right, ...kids.map(c => c.getBoundingClientRect().right));
+        shift = L < lo ? lo - L : R > hi ? hi - R : 0;
+        el.dataset.edgeShift = String(shift);
+      }
       if (shift) { el.style.position = 'relative'; el.style.left = `calc(var(--gu) * ${(shift / gu).toFixed(3)})`; }
       let drop = 0;
       [...el.children].forEach(c => {
@@ -9420,22 +9488,36 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const q = el.getBoundingClientRect();
       const w = Math.max(q.width, el.offsetWidth), h = Math.max(q.height, el.offsetHeight);
       const L = { left: q.left + q.width / 2 - w / 2, right: q.left + q.width / 2 + w / 2, top: q.top + q.height / 2 - h / 2, bottom: q.top + q.height / 2 + h / 2 };
-      const under = rankBoxesOf(seat).filter(b => L.left < b.right && L.right > b.left && L.top < b.bottom && L.bottom > b.top);
-      if (!under.length) return;
-      const need = Math.max(...under.map(b => b.bottom - L.top)) + 1;
-      const nameEl = seat.querySelector('.replayer-seat-name');
-      let room = Infinity;
-      if (nameEl) {
-        const rg = document.createRange();
-        rg.selectNodeContents(nameEl);
-        const ink = rg.getBoundingClientRect();
-        if (ink.height) room = ink.top - 1 - L.bottom;
-      }
+      const ranksAll = rankBoxesOf(seat);
+      const under = ranksAll.filter(b => L.left < b.right && L.right > b.left && L.top < b.bottom && L.bottom > b.top);
       /* The label is the plaque's child, and a folded plaque is drawn at 0.88: a margin is in the plaque's own units. */
       const plaqueEl = seat.querySelector('.replayer-seat-info');
       const P = plaqueEl.getBoundingClientRect();
       const sx = (plaqueEl.offsetWidth && P.width / plaqueEl.offsetWidth) || 1, sy = (plaqueEl.offsetHeight && P.height / plaqueEl.offsetHeight) || 1;
-      if (need <= room) { el.style.marginBottom = `calc(var(--gu) * ${(-need / sy / gu).toFixed(3)})`; return; }
+      const nameEl = seat.querySelector('.replayer-seat-name');
+      let ink = null;
+      if (nameEl) {
+        const rg = document.createRange();
+        rg.selectNodeContents(nameEl);
+        const q2 = rg.getBoundingClientRect();
+        if (q2.height) ink = q2;
+      }
+      if (!under.length) {
+        /* Off the player's name (2026-11-17): at 440 wide, past the 430 where the screen's g stops growing while the
+           table's does not, the label's foot reached 1px onto the name's ink. Lifted by that if the lift covers no
+           rank; where it would (six fanned cards), beside the plaque like a label that cannot sink. */
+        const over = ink ? L.bottom - (ink.top - 1) : 0;
+        if (over <= 0 || L.left >= ink.right || L.right <= ink.left) return;
+        const up = { left: L.left, right: L.right, top: L.top - over, bottom: L.bottom - over };
+        if (!ranksAll.some(b => up.left < b.right && up.right > b.left && up.top < b.bottom && up.bottom > b.top)) {
+          el.style.marginBottom = `calc(var(--gu) * ${(over / sy / gu).toFixed(3)})`;
+          return;
+        }
+      } else {
+        const need = Math.max(...under.map(b => b.bottom - L.top)) + 1;
+        const room = ink ? ink.top - 1 - L.bottom : Infinity;
+        if (need <= room) { el.style.marginBottom = `calc(var(--gu) * ${(-need / sy / gu).toFixed(3)})`; return; }
+      }
       const pad = gu / 4;
       const others = [...table.querySelectorAll('.replayer-seat[data-seat]')].filter(x => x !== seat)
         .flatMap(x => [...x.querySelectorAll('.replayer-seat-info, .replayer-seat-cards .card-row > *, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn')])
@@ -9769,6 +9851,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     let live = true;
     const settle = () => {
       if (!live || tableRef.current !== table) return;
+      placeTableFoot(table);
       placeCardRows(table);
       placeButton(table);
       placeLabels(table);
