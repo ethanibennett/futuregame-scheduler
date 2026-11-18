@@ -10345,12 +10345,13 @@
        inset --card-outline), so the band the eye sees runs --bw-1 past the strip: pad the far side
        by as much to centre the name in the whole band. Physical right is the visual LEFT here
        (rotate(180deg)). Not where the ring is another colour or style (conditional: dashed, in
-       the conditional colour), absent (desktop selection) or not dimmed with the strip
-       (completed). A bracelet's ring is the strip's colour too: the inline --card-outline
+       the conditional colour), absent (a desktop selection in Swiss, the one theme that still drops it there) or
+       not dimmed with the strip (completed). A bracelet's ring is the strip's colour too: the inline --card-outline
        outranks the .bracelet.saved grey. */
-    .cal-event-row.saved:not(.conditional):not(.is-selected):not(.completed) > .cal-venue-strip {
+    .cal-event-row.saved:not(.conditional):not(.completed) > .cal-venue-strip {
       padding-right: var(--bw-1);
     }
+    :root[data-theme^="swiss"] .cal-event-row.saved.is-selected > .cal-venue-strip { padding-right: 0; }
     /* The Swiss theme sets the strip in sentence case (SwissParts.jsx StripLabel) and adds a
        running head (App.jsx); both hidden in every other theme. */
     .venue-strip-sc, .venue-strip-long, .sw-runhead, .kt-count, .sw-board-toggle { display: none; }
@@ -16164,8 +16165,10 @@
     /* One ring on the selected row. A saved event's venue-coloured outline (and a priority or
        conditional one) drew a second ring just inside the brand selection outline; while a row is
        the one in the detail pane, the selection outline is its only ring — the pane says whether
-       it is saved. Unselected rows keep every marker. */
-    .cal-event-row.is-selected .cal-event-row-content { box-shadow: none; outline: none; }
+       it is saved. Unselected rows keep every marker. Only where that ring is drawn (Swiss): the standard themes
+       dropped it (2026-10-20, below), and with this rule still on, a selected card lost its own outline and had no
+       border at all (owner, 2026-11-17: "when events are selected they lose their border in their original menu"). */
+    :root[data-theme^="swiss"] .cal-event-row.is-selected .cal-event-row-content { box-shadow: none; outline: none; }
     .cal-event-row.is-selected::after {
       content: '';
       display: block;
@@ -17286,16 +17289,28 @@
       content: ''; position: absolute; inset: calc(var(--subrow) * -0.5) calc(var(--gu) * -0.5);
     }
     .kind-toggle-split > .kind-toggle::after, .kind-toggle-split > .kind-toggle-caret::after { left: 0; right: 0; }
-    /* My Schedule on a wide right pane (UX pick 26): from 64g, each day's cards in two columns, the date
-       break across both, so a card keeps its name and buy-in near the 35g it was drawn for. The pane is
-       only ever 64g here (MAX_COLS 7), so its content is 62g: 1g apart, each column was 30.5g and every
-       card edge sat half a g off the grid (owner, 2026-11-15: "weird spacing"); 2g apart, each is 30g. */
-    .dk-mine-block.is-two-col [data-date-group] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--subcol); align-items: start; }
-    .dk-mine-block.is-two-col [data-date-group] > :first-child { grid-column: 1 / -1; }
-    /* A day of one card fills only the first column, so its break spans that column alone and the
-       weekday sits over the card's right edge, as on the phone; across both, it hung 32g past the card
-       over an empty column. (Swiss sets its own marginal date column.) */
-    :root:not([data-theme^="swiss"]) .dk-mine-block.is-two-col [data-date-group]:not(:has(> :nth-child(3))) > * { grid-column: 1; }
+    /* My Schedule's days, 1r apart (the gap was an inline margin on each day). */
+    .sched-days > [data-date-group] + [data-date-group] { margin-top: var(--subrow); }
+    /* My Schedule on a wide right pane (UX pick 26): from 64g, two 30g columns 2g apart (62g of content; 1g apart,
+       each was 30.5g and every card edge sat half a g off the grid), so a card keeps its name and buy-in near the 35g
+       it was drawn for. Two columns only when a day holds two cards or more; with none, there is nothing to put in a
+       second column, and My Schedule narrows to one column of 35g, its header with it (owner, 2026-11-17: "If there
+       isn't enough for a second column in My Schedule, we should just narrow it to one"; the list had run down the
+       left half beside an empty one). In two columns the days share the row in date order, left then right, and a
+       day of two cards or more takes the row, its cards side by side. (Swiss sets its own marginal date column.) */
+    :root:not([data-theme^="swiss"]) .dk-mine-block.is-two-col:not(:has(.sched-days > [data-date-group] > :nth-child(3))) > * {
+      max-width: calc(var(--gu) * 35);
+    }
+    :root:not([data-theme^="swiss"]) .dk-mine-block.is-two-col:has(.sched-days > [data-date-group] > :nth-child(3)) .sched-days {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--subcol); row-gap: var(--subrow);
+      align-items: start;
+    }
+    :root:not([data-theme^="swiss"]) .dk-mine-block.is-two-col:has(.sched-days > [data-date-group] > :nth-child(3)) .sched-days > [data-date-group] { margin-top: 0; min-width: 0; }
+    :root:not([data-theme^="swiss"]) .dk-mine-block.is-two-col .sched-days > [data-date-group]:has(> :nth-child(3)) {
+      grid-column: 1 / -1;
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--subcol); align-items: start;
+    }
+    :root:not([data-theme^="swiss"]) .dk-mine-block.is-two-col .sched-days > [data-date-group]:has(> :nth-child(3)) > :first-child { grid-column: 1 / -1; }
     /* Overlaps (UX pick 21): a 3r amber line under the card's name, the plan as a pill at its right (whole
        g, label centred); and one 3r summary under My Schedule's header. */
     .cal-overlap {

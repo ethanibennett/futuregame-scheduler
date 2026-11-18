@@ -580,7 +580,7 @@ export default function ScheduleView({
           <Icon.warn /> {overlaps.size} event{overlaps.size === 1 ? ' starts' : 's start'} while one of yours is still in late reg
         </div>
       )}
-      <div style={{minHeight:'100vh', paddingBottom:'100vh'}}>
+      <div className="sched-days" style={{minHeight:'100vh', paddingBottom:'100vh'}}>
         {(() => {
           // Land on the next event; with nothing upcoming, on the most recent one (the end of the
           // list) rather than leaving the oldest past event on top.
@@ -595,7 +595,7 @@ export default function ScheduleView({
             const past = group.date < todayISO;
             const needsRef = gi === anchorIdx;
             return (
-              <div key={group.date} ref={needsRef ? todayRef : null} data-today-scroll={needsRef ? 'true' : undefined} data-date-group={group.date} style={{marginTop: gi === 0 ? 0 : 'calc(var(--subrow) * 1)'}}>
+              <div key={group.date} ref={needsRef ? todayRef : null} data-today-scroll={needsRef ? 'true' : undefined} data-date-group={group.date}>
                 <DateBreak date={group.date} top={schedDateTop} isToday={isGroupToday}
                   onPillClick={(e) => { e.stopPropagation(); scrollDayToTop(e.currentTarget.closest('[data-date-group]')); }} />
                 {group.events.map(({ t, globalIdx: gIdx }) => {
