@@ -830,7 +830,16 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   chips", when 71 drew as two 25s). A wager's own column stays five chips.
 - **A board card with a rank and no suit** ("Kx", which quick add writes when no suit was said) is drawn face up as its
   rank on slate with a "?" for the suit (`rankOnlyFaceSrc`, utils/card-faces.js), on the felt and in the share image;
-  it was a back. Hand readings still leave it out, and a showdown its suit could decide is not paid out.
+  it was a back. With no winner stored, the replay reads the hand on every suit the card could be
+  (`utils/board-suit-fills.js` `boardSuitFills`, the replayer's `boardFills`): a reading every suit gives is the reading
+  ("Trip Js"), readings that differ are joined ("Pair of Ks or Flush, A-high"), and an outcome that differs leaves the
+  showdown undecided (seat class `undecided`: no gold or red, nothing paid, and the result line names the card, "The J's
+  suit decides this pot: Edit to add it"). Before, the card was left out of the readings (JJ on a J river read "Pair of
+  Js") and an evaluator that could not read it marked a winner.
+- **The admin keys (# grid, i readout, D demo states) on the replay over the whole window** stand in its top row, left of
+  the table-settings button (`.app-shell:has(.replayer-fullbleed) .grid-dev-toggle`, by `data-key`): at the foot they
+  covered the hero's result and the street track. D stands down there, and all of them do when three chips (Notes,
+  Note here, Tags, 1g apart) fill the row to 27g.
 - **Two Easter eggs** (owner, 2026-11-16): **Century Gothic** is the third Display font (`gothic` in `SERIF_ORDER`, Settings'
   three font tiles, "for Parx players"). It is Monotype's and is NOT shipped (public repo): `'FG Century Gothic'` is an
   `@font-face` over `local('Century Gothic')` with the hhea ascent/descent as overrides so its lines match on every

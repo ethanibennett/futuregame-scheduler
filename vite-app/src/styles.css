@@ -6215,6 +6215,8 @@
     }
     .replayer-seat.loser .replayer-seat-hand-name { color:#f87171; border-color:rgba(248,113,113,0.4); }
     .replayer-seat.split .replayer-seat-hand-name { color:#facc15; border-color:rgba(250,204,21,0.4); }
+    /* A showdown a suitless board card's suit decides (boardFills in HandReplayerView): nobody won yet, so no gold. */
+    .replayer-seat.undecided .replayer-seat-hand-name { color: rgba(255,255,255,0.82); border-color: rgba(255,255,255,0.3); }
     /* Each readout line is its own span, so a hi-lo readout's halves light one after the other as their cards move
        (owner, 2026-11-13): the high's as its cards rise, the low's as its cards sink. The swell is a motion; this is
        the light, on while the half is being read. */
@@ -15199,6 +15201,21 @@
     }
     .grid-dev-toggle.is-on { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }
     .grid-dev-toggle:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+    /* The replay over the whole window fills its foot (the result, the street track, the transport), so there
+       the keys stand in its top row, level with the table-settings button (.replayer-quick-btn): # 1g to its
+       left, the readout's i 1g further on (whole g, so each keeps to a g line). D, the Home dashboard's demo
+       states, stands down; so do all of them where the row's left holds three chips (a hand with saved notes),
+       which reach 27g, where # begins. */
+    .app-shell:has(.replayer-fullbleed) .grid-dev-toggle {
+      bottom: auto; top: calc(var(--sa-t) + var(--subrow));
+      right: calc(var(--gu) * (6 + 5 * (var(--dev-up, 7) - 7) / 12));
+      right: calc(var(--gu) * (6 + 5 * (var(--dev-up, 7) - 7) / 12) + 100% - round(down, 100%, var(--gu)));
+    }
+    @supports (top: round(up, 1dvh, 1dvh)) {
+      .app-shell:has(.replayer-fullbleed) .grid-dev-toggle { top: calc(round(up, var(--sa-t), var(--subrow)) + var(--subrow)); }
+    }
+    .app-shell:has(.replayer-fullbleed) .grid-dev-toggle[data-key="demo"],
+    .app-shell:has(.replayer-fullbleed .hx-chips > :nth-child(3)) .grid-dev-toggle { display: none; }
 
     /* ── Calendar tab filter panel (CalendarView Filters) ───────────────────────────────────
        Its own classes, so the Schedule tab's .filter-panel keeps its geometry. Horizontal:
@@ -17484,6 +17501,7 @@
     .replayer-result-strip.is-won .rrs-net { color: var(--ok); }
     .replayer-result-strip.is-lost .rrs-net { color: var(--danger); }
     .replayer-result-strip.is-even .rrs-net { color: var(--text-muted); }
+    .replayer-result-strip.is-undecided .rrs-line { color: var(--text-muted); font-weight: var(--fw-regular); }
     [data-capturing] .replayer-result-strip { display: none; }
     /* The saved row's net (UX pick 55): the figure on the title's line (baseline 4r), the word on the
        meta's (6r), right-aligned in the 7g column, seated as the title and meta are. */

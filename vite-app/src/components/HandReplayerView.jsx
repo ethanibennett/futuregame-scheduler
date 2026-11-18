@@ -1,4 +1,5 @@
 import { cardFaceSrc, rankOnlyFaceSrc } from '../utils/card-faces.js';
+import { boardSuitFills, readingAcross, undecidedLine } from '../utils/board-suit-fills.js';
 import { CARD_BACKS, CARD_BACK_KEY, normalizeCardBack, applyCardBack } from '../utils/card-back.js';
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import useBackToClose from '../hooks/useBackToClose.js';
@@ -6940,10 +6941,23 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     return result;
   }, [currentActions, actionIdx]);
 
+  /* A board card with a rank and no suit (utils/board-suit-fills.js): the boards it could be, so the readings and
+     the winner come from what holds on every one of them. One board only (a double board's cards are read as they
+     were); null when every board card has its suit. */
+  const boardFills = useMemo(() => {
+    if (!showResult || !feltBoard || boardCount(hand) > 1) return null;
+    const known = [heroCards, ...opponentCards].flatMap((t) => (t && t !== 'MUCK' ? parseCardNotation(t) : []));
+    return boardSuitFills(parseCardNotation(boardCards), known);
+  }, [showResult, feltBoard, hand, heroCards, opponentCards, boardCards]);
+
   // Eval result -- full evaluation from original
-  const evalResult = useMemo(() => {
-    if (showResult && hand.result && hand.result.winners) {
-      return hand.result.winners.map(w => {
+  /* With no winner stored and a suitless board card, the evaluation runs on each board the card allows: one outcome
+     on all of them is the result; outcomes that differ leave the showdown undecided (showdownUndecided): no seat
+     is marked a winner or a loser, and the result line says which card's suit decides it. */
+  const showdown = useMemo(() => {
+    const stored = showResult && hand.result && hand.result.winners;
+    if (stored && (stored.length || !boardFills)) {
+      return { undecided: false, results: hand.result.winners.map(w => {
         const pName = w.playerIdx === replayHeroIdx ? 'Hero' : houseName(hand.players[w.playerIdx]?.name || 'Player');
         let winHandName = '';
         const pCards = w.playerIdx === replayHeroIdx ? heroCards : (opponentCards[w.playerIdx] || '');
@@ -6969,32 +6983,40 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             color: w.split ? 'yellow' : (w.playerIdx === replayHeroIdx ? 'green' : 'red'),
           },
         };
-      });
+      }) };
     }
-    if (!showResult || !gameEval) return null;
+    if (!showResult || !gameEval) return { undecided: false, results: null };
     // Full auto-evaluation
-    const hCards = parseCardNotation(heroCards);
-    const bCards = feltBoard ? parseCardNotation(boardCards) : [];
-    if (gameCfg.hasBoard && bCards.length < 3) return null;
-    if (hCards.length < (gameCfg.isStud ? 5 : finalCards)) return null;
-    const boardSuits = new Set(bCards.map(c => c.suit));
-    const usedKeys = bCards.map(c => c.rank + c.suit);
-    let hEval = gameCfg.isStud ? hCards.filter(c => c.suit !== 'x') : assignNeutralSuits(hCards, usedKeys, boardSuits);
-    hEval.forEach(c => { if (c.suit !== 'x') usedKeys.push(c.rank + c.suit); });
-    const results = [];
-    for (let pi = 0; pi < opponentCards.length; pi++) {
-      if (pi === replayHeroIdx) continue;
-      if (folded.has(pi)) continue;
-      if (!opponentCards[pi]) continue;
-      const oRaw = parseCardNotation(opponentCards[pi]);
-      if (oRaw.length < (gameCfg.isStud ? 5 : finalCards)) continue;
-      const oEval = gameCfg.isStud ? oRaw.filter(c => c.suit !== 'x') : assignNeutralSuits(oRaw, usedKeys, boardSuits);
-      const ev = evaluateHand(hand.gameType, hEval, oEval, bCards, hand);
-      if (ev && ev.result) results.push({ index: pi, ...ev });
-      oEval.forEach(c => { if (c.suit !== 'x') usedKeys.push(c.rank + c.suit); });
-    }
-    return results.length ? results : null;
-  }, [showResult, hand, heroCards, opponentCards, boardCards, gameCfg, gameEval, folded, replayHeroIdx, category]);
+    const autoEval = (bCards) => {
+      const hCards = parseCardNotation(heroCards);
+      if (gameCfg.hasBoard && bCards.length < 3) return null;
+      if (hCards.length < (gameCfg.isStud ? 5 : finalCards)) return null;
+      const boardSuits = new Set(bCards.map(c => c.suit));
+      const usedKeys = bCards.map(c => c.rank + c.suit);
+      let hEval = gameCfg.isStud ? hCards.filter(c => c.suit !== 'x') : assignNeutralSuits(hCards, usedKeys, boardSuits);
+      hEval.forEach(c => { if (c.suit !== 'x') usedKeys.push(c.rank + c.suit); });
+      const results = [];
+      for (let pi = 0; pi < opponentCards.length; pi++) {
+        if (pi === replayHeroIdx) continue;
+        if (folded.has(pi)) continue;
+        if (!opponentCards[pi]) continue;
+        const oRaw = parseCardNotation(opponentCards[pi]);
+        if (oRaw.length < (gameCfg.isStud ? 5 : finalCards)) continue;
+        const oEval = gameCfg.isStud ? oRaw.filter(c => c.suit !== 'x') : assignNeutralSuits(oRaw, usedKeys, boardSuits);
+        const ev = evaluateHand(hand.gameType, hEval, oEval, bCards, hand);
+        if (ev && ev.result) results.push({ index: pi, ...ev });
+        oEval.forEach(c => { if (c.suit !== 'x') usedKeys.push(c.rank + c.suit); });
+      }
+      return results.length ? results : null;
+    };
+    if (!boardFills) return { undecided: false, results: autoEval(feltBoard ? parseCardNotation(boardCards) : []) };
+    const all = boardFills.map(autoEval);
+    const outcome = (r) => (r || []).map(x => x.index + ':' + x.result.outcome).join(',');
+    if (all.every(r => outcome(r) === outcome(all[0]))) return { undecided: false, results: all[0] };
+    return { undecided: all.some(r => r), results: null };
+  }, [showResult, hand, heroCards, opponentCards, boardCards, gameCfg, gameEval, folded, replayHeroIdx, category, boardFills]);
+  const evalResult = showdown.results;
+  const showdownUndecided = showdown.undecided;
 
   /* 26: calcShowdownEquity and a finished bar-plus-percentage style were
      both dead code, so at an all-in showdown the felt said nothing about who
@@ -8065,6 +8087,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const getPlayerSeatClass = (playerIdx) => {
     if (folded.has(playerIdx)) return 'folded';
     if (!showResult) return '';
+    if (showdownUndecided) return 'undecided';
     let cls = '';
     const manualWinners = hand.result?.winners;
     if (manualWinners && manualWinners.length > 0) {
@@ -8127,7 +8150,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     });
   };
 
+  /* A suitless board card is read on each suit it could have (boardFills): "Three of a Kind" where every suit gives
+     it, "Pair of Ks or Flush, A-high" where they differ; a two-line (hi-lo) reading that differs is read without
+     the card, as before. */
   const getPlayerHandName = (playerIdx, useShort) => {
+    if (!boardFills) return handNameOn(playerIdx, useShort, null);
+    const read = readingAcross(boardFills.map(b => handNameOn(playerIdx, useShort, b)));
+    return read != null ? read : handNameOn(playerIdx, useShort, null);
+  };
+  const handNameOn = (playerIdx, useShort, boardIn) => {
     if (!showResult || folded.has(playerIdx)) return null;
     const pCards = playerIdx === replayHeroIdx ? heroCards : (opponentCards[playerIdx] || '');
     if (!pCards) return null;
@@ -8135,7 +8166,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     if (!cfg) return null;
     const parsed = parseCardNotation(pCards).filter(c => c.suit !== 'x');
     if (parsed.length < finalCards) return null;
-    const board = feltBoard ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
+    const board = boardIn || (feltBoard ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : []);
     if (cfg.type === 'halves') {
       return halvesHandName(cfg, scoreHalves(cfg, parsed, board), !wonHalves || wonHalves.hi.has(playerIdx), !wonHalves || wonHalves.lo.has(playerIdx), useShort);
     }
@@ -11677,7 +11708,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         {(() => {
           const splitters = showResult ? halvedWinners.filter(w => w.split) : [];
           const isSplitResult = splitters.length >= 2;
-          const _isHiLo = isSplitResult && isHiLo && splitters.some(w => w.hi || w.lo);
           const halfLabels = (gameEval && gameEval.labels) || ['Hi', 'Lo'];
           // More than one pot paid out (an all-in): its pills name the pot, not a share of the whole.
           const sidePots = !!(potAwards && potAwards.parts && new Set(potAwards.parts.map(p => p.layer)).size > 1);
@@ -11754,7 +11784,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                     its digits there directly (motion.writePot) rather than re-rendering. */}
                 <div className="replayer-pot-total" ref={potTotalRef}>
                   <span className="replayer-pot-cell-label">
-                    {isSplitResult ? (_isHiLo ? 'Split' : 'Split Pot') : (potLayers.length > 1 ? 'Total' : 'Pot')}
+                    {isSplitResult ? 'Split' : (potLayers.length > 1 ? 'Total' : 'Pot')}
                   </span>
                   {fmtChips(potCommitted)}
                 </div>
@@ -12588,6 +12618,11 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           and what the hand did for the hero. The table already says it in four places, none of them
           the figure; this is the one sentence that states the outcome. Not under an export, which
           has its own close bookend. */}
+      {showResult && showdownUndecided && rSettings.showResults && !linkedReplay && (
+        <div className="replayer-result-strip is-undecided" role="status">
+          <span className="rrs-line">{undecidedLine(parseCardNotation(boardCards))}</span>
+        </div>
+      )}
       {showResult && potAwards && rSettings.showResults && !linkedReplay && (() => {
         const winners = hand.players.map((_, i) => ({ i, won: potAwards[i] || 0 })).filter(w => w.won > 0);
         if (!winners.length) return null;

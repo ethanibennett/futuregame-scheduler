@@ -2746,6 +2746,7 @@ function App() {
             <button
               type="button"
               className={'grid-dev-toggle' + (gridReadout ? ' is-on' : '')}
+              data-key="readout"
               title={`${gridReadout ? 'Hide' : 'Show'} grid readout (admin)`}
               aria-pressed={gridReadout}
               onClick={() => setGridReadout(v => { const next = !v; localStorage.setItem('gridReadout', next ? 'on' : 'off'); return next; })}
@@ -2756,6 +2757,7 @@ function App() {
             <button
               type="button"
               className={'grid-dev-toggle' + (gridOverlay ? ' is-on' : '')}
+              data-key="grid"
               title={`${gridOverlay ? 'Hide' : 'Show'} layout grid (admin)`}
               aria-pressed={gridOverlay}
               onClick={() => setGridOverlay(g => { const next = !g; localStorage.setItem('gridOverlay', next ? 'on' : 'off'); return next; })}
@@ -2765,6 +2767,7 @@ function App() {
             <button
               type="button"
               className={'grid-dev-toggle' + (demoStates ? ' is-on' : '')}
+              data-key="demo"
               title={`${demoStates ? 'Hide' : 'Show'} demo dashboard states (admin)`}
               aria-pressed={demoStates}
               onClick={() => setDemoStates(d => !d)}
