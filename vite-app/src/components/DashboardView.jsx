@@ -12,7 +12,7 @@ import {
 } from '../utils/utils.js';
 import { API_URL } from '../utils/api.js';
 import PayLadder from './PayLadder.jsx';
-import { syncLiveActivity } from '../utils/live-activity.js';
+import { syncLiveActivity, cashPlay } from '../utils/live-activity.js';
 import { homeCurrency, playingEnded } from '../utils/home.js';
 import { gridGeom } from '../utils/grid-panel.js';
 import { resolveConditions, offLast, planKind, openBags } from '../utils/home-upnext.js';
@@ -615,9 +615,20 @@ export default function DashboardView({
   );
 
   // The event being played on the lock screen (Features 10): the first run in progress, with the room's
-  // clock where it answers (the level's end counts down on the lock screen by itself).
+  // clock where it answers (the level's end counts down on the lock screen by itself). A running cash
+  // session comes first (owner, 2026-11-18), as its card leads the carousel: the card's figures, the
+  // session's clock counting up.
   useEffect(() => {
     if (demoStates) return;
+    if (cashSession) {
+      const room = String(cashSession.room || '').trim();
+      const play = cashPlay(cashSession, cashStacks, {
+        skew: cashSkew,
+        cur: CURRENCY_CONFIG[cashSession.currency] || CURRENCY_CONFIG.USD,
+        strip: room ? getVenueBrandColor(getVenueInfo(room).abbr) : undefined,
+      });
+      if (play) { syncLiveActivity(play); return; }
+    }
     const ev = whatsNextEvents.find(e => !!activeEventMap[e.id]);
     if (!ev) { syncLiveActivity(null); return; }
     const u = activeEventMap[ev.id];
@@ -638,7 +649,7 @@ export default function DashboardView({
       lateRegClosesAt: Number.isFinite(close) && close > Date.now() ? close : 0,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [whatsNextEvents, activeEventMap, liveClocks, demoStates]);
+  }, [whatsNextEvents, activeEventMap, liveClocks, demoStates, cashSession, cashStacks, cashSkew]);
 
   const nextUpEventId = useMemo(() => {
     if (hasActivePlaying) return null;

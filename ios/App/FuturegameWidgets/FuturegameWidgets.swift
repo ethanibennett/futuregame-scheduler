@@ -12,6 +12,11 @@
 // bundled here (Info.plist UIAppFonts): Libre Baskerville Bold for the event, Univers Condensed for every figure
 // and label. They are the app's own TTFs (vite-app/public/fonts); the Baskerville bold file is renamed
 // LibreBaskerville-Bold inside, since the shipped one kept the regular face's name and iOS registers a font by it.
+//
+// A running cash session is drawn too (owner, 2026-11-18: "Live activity should reflect cash games too"; kind
+// "cash"), as Home's cash card: the room on the band, the game and stakes as the name with when it started under it,
+// then the session's clock (counting up from its start by itself), what is in play, and the last stack over its
+// result. The app sends the money as text, in the session's currency.
 
 import WidgetKit
 import SwiftUI
@@ -28,7 +33,17 @@ struct PlayingAttributes: ActivityAttributes {
         var bigBlinds: Int?
         var lateRegClosesAt: Date?
         var note: String?
+        // A cash session's (owner, 2026-11-18): when it started (the clock counts up from it), and the Home
+        // card's figures as text in the session's currency: what is in play, the last stack, the label under it
+        // ("Stack +$840", "No update yet") and the result alone. All optional, so an older state still decodes.
+        var startedAt: Date?
+        var inPlay: String?
+        var stackText: String?
+        var stackLabel: String?
+        var result: String?
     }
+    // "cash" for a cash session; nil for a tournament run (and every activity from an older app).
+    var kind: String?
     var event: String
     var room: String
     // The app's look, sent at the start: the venue band's colour (#rrggbb) and the name on it, and the chosen
@@ -92,6 +107,19 @@ private func stackLabel(_ s: PlayingAttributes.ContentState) -> String {
     return "Stack"
 }
 
+private func isCash(_ a: PlayingAttributes) -> Bool { a.kind == "cash" }
+
+private func nonEmpty(_ t: String?) -> String? {
+    guard let t = t, !t.isEmpty else { return nil }
+    return t
+}
+
+/// A cash session's clock: the time since it started, counting up on its own.
+private func sessionClock(_ s: PlayingAttributes.ContentState) -> Text {
+    guard let start = s.startedAt else { return Text("\u{2014}") }
+    return Text(start, style: .timer)
+}
+
 private func liveEnd(_ s: PlayingAttributes.ContentState) -> Date? {
     guard let end = s.levelEndsAt, end > Date() else { return nil }
     return end
@@ -127,6 +155,81 @@ private struct StatBox: View {
     }
 }
 
+/// A tournament run under the band, as Home's playing card: the event, then the blinds over the level, the stack over
+/// its big blinds, and the level's countdown; late registration's countdown and a note under them.
+private struct TournamentCardBody: View {
+    let look: Look
+    let event: String
+    let s: PlayingAttributes.ContentState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(event)
+                .font(Face.display(15))
+                .foregroundColor(look.text)
+                .lineLimit(2)
+            HStack(spacing: 8) {
+                StatBox(look: look, value: Text(s.blinds.isEmpty ? "\u{2014}" : s.blinds), label: levelLabel(s))
+                StatBox(look: look, value: Text(s.stack > 0 ? s.stack.formatted() : "\u{2014}"), label: stackLabel(s))
+                if let end = liveEnd(s) {
+                    StatBox(look: look, value: Text(timerInterval: Date()...end, countsDown: true), label: "Live")
+                } else {
+                    StatBox(look: look, value: Text("\u{2014}"), label: "Clock")
+                }
+            }
+            if let close = s.lateRegClosesAt, close > Date() {
+                (Text("LATE REG  ").font(Face.label(11)).foregroundColor(look.muted)
+                    + Text(timerInterval: Date()...close, countsDown: true).font(Face.figure(12)).foregroundColor(look.text))
+                    .monospacedDigit()
+            }
+            if let note = s.note, !note.isEmpty {
+                Text(note)
+                    .font(Face.label(11))
+                    .foregroundColor(look.muted)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// A cash session under the band, as Home's cash card: the game and stakes, when it started, then the session's clock,
+/// what is in play, and the last stack over its result.
+private struct CashCardBody: View {
+    let look: Look
+    let event: String
+    let s: PlayingAttributes.ContentState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(event)
+                    .font(Face.display(15))
+                    .foregroundColor(look.text)
+                    .lineLimit(2)
+                if let note = nonEmpty(s.note) {
+                    Text(note)
+                        .font(Face.label(11))
+                        .foregroundColor(look.muted)
+                        .lineLimit(1)
+                }
+            }
+            HStack(spacing: 8) {
+                StatBox(look: look, value: sessionClock(s), label: "Session")
+                StatBox(look: look, value: Text(nonEmpty(s.inPlay) ?? "\u{2014}"), label: "In play")
+                StatBox(look: look, value: Text(nonEmpty(s.stackText) ?? "\u{2014}"), label: nonEmpty(s.stackLabel) ?? "No update yet")
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 private struct LockScreenCard: View {
     let context: ActivityViewContext<PlayingAttributes>
 
@@ -143,36 +246,11 @@ private struct LockScreenCard: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 22)
                 .background(look.strip)
-            VStack(alignment: .leading, spacing: 10) {
-                Text(context.attributes.event)
-                    .font(Face.display(15))
-                    .foregroundColor(look.text)
-                    .lineLimit(2)
-                HStack(spacing: 8) {
-                    StatBox(look: look, value: Text(s.blinds.isEmpty ? "\u{2014}" : s.blinds), label: levelLabel(s))
-                    StatBox(look: look, value: Text(s.stack > 0 ? s.stack.formatted() : "\u{2014}"), label: stackLabel(s))
-                    if let end = liveEnd(s) {
-                        StatBox(look: look, value: Text(timerInterval: Date()...end, countsDown: true), label: "Live")
-                    } else {
-                        StatBox(look: look, value: Text("\u{2014}"), label: "Clock")
-                    }
-                }
-                if let close = s.lateRegClosesAt, close > Date() {
-                    (Text("LATE REG  ").font(Face.label(11)).foregroundColor(look.muted)
-                        + Text(timerInterval: Date()...close, countsDown: true).font(Face.figure(12)).foregroundColor(look.text))
-                        .monospacedDigit()
-                }
-                if let note = s.note, !note.isEmpty {
-                    Text(note)
-                        .font(Face.label(11))
-                        .foregroundColor(look.muted)
-                        .lineLimit(1)
-                }
+            if isCash(context.attributes) {
+                CashCardBody(look: look, event: context.attributes.event, s: s)
+            } else {
+                TournamentCardBody(look: look, event: context.attributes.event, s: s)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 10)
-            .padding(.bottom, 12)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .activityBackgroundTint(look.surface)
         .activitySystemActionForegroundColor(look.text)
@@ -196,27 +274,47 @@ struct PlayingActivityWidget: Widget {
         } dynamicIsland: { context in
             let look = Look(context.attributes)
             let s = context.state
+            let cash = isCash(context.attributes)
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(s.blinds.isEmpty ? "\u{2014}" : s.blinds)
-                            .font(Face.figure(17)).monospacedDigit().foregroundColor(Look.islandText)
-                        Text(levelLabel(s).uppercased())
-                            .font(Face.label(10)).tracking(0.8).foregroundColor(Look.islandMuted)
+                    if cash {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(nonEmpty(s.stackText) ?? "\u{2014}")
+                                .font(Face.figure(17)).monospacedDigit().foregroundColor(Look.islandText)
+                            Text((nonEmpty(s.stackLabel) ?? "No update yet").uppercased())
+                                .font(Face.label(10)).tracking(0.8).foregroundColor(Look.islandMuted)
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(s.blinds.isEmpty ? "\u{2014}" : s.blinds)
+                                .font(Face.figure(17)).monospacedDigit().foregroundColor(Look.islandText)
+                            Text(levelLabel(s).uppercased())
+                                .font(Face.label(10)).tracking(0.8).foregroundColor(Look.islandMuted)
+                        }
                     }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        if let end = liveEnd(s) {
-                            Text(timerInterval: Date()...end, countsDown: true)
+                    if cash {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            sessionClock(s)
                                 .font(Face.figure(17)).monospacedDigit().foregroundColor(Look.islandText)
                                 .multilineTextAlignment(.trailing)
-                                .frame(maxWidth: 72, alignment: .trailing)
-                            Text("LIVE").font(Face.label(10)).tracking(0.8).foregroundColor(Look.islandMuted)
-                        } else {
-                            Text(s.stack > 0 ? s.stack.formatted() : "\u{2014}")
-                                .font(Face.figure(17)).monospacedDigit().foregroundColor(Look.islandText)
-                            Text(stackLabel(s).uppercased()).font(Face.label(10)).tracking(0.8).foregroundColor(Look.islandMuted)
+                                .frame(maxWidth: 80, alignment: .trailing)
+                            Text("SESSION").font(Face.label(10)).tracking(0.8).foregroundColor(Look.islandMuted)
+                        }
+                    } else {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            if let end = liveEnd(s) {
+                                Text(timerInterval: Date()...end, countsDown: true)
+                                    .font(Face.figure(17)).monospacedDigit().foregroundColor(Look.islandText)
+                                    .multilineTextAlignment(.trailing)
+                                    .frame(maxWidth: 72, alignment: .trailing)
+                                Text("LIVE").font(Face.label(10)).tracking(0.8).foregroundColor(Look.islandMuted)
+                            } else {
+                                Text(s.stack > 0 ? s.stack.formatted() : "\u{2014}")
+                                    .font(Face.figure(17)).monospacedDigit().foregroundColor(Look.islandText)
+                                Text(stackLabel(s).uppercased()).font(Face.label(10)).tracking(0.8).foregroundColor(Look.islandMuted)
+                            }
                         }
                     }
                 }
@@ -228,7 +326,12 @@ struct PlayingActivityWidget: Widget {
                         Text(context.attributes.event)
                             .font(Face.display(13)).foregroundColor(Look.islandText).lineLimit(1)
                         Spacer(minLength: 4)
-                        if liveEnd(s) != nil {
+                        if cash {
+                            Text(nonEmpty(s.inPlay) ?? "\u{2014}")
+                                .font(Face.figure(13)).monospacedDigit().foregroundColor(Look.islandText)
+                            + Text("  IN PLAY")
+                                .font(Face.label(11)).foregroundColor(Look.islandMuted)
+                        } else if liveEnd(s) != nil {
                             Text(s.stack > 0 ? s.stack.formatted() : "\u{2014}")
                                 .font(Face.figure(13)).monospacedDigit().foregroundColor(Look.islandText)
                             + Text(s.bigBlinds.map { "  \($0) BB" } ?? "")
@@ -241,11 +344,21 @@ struct PlayingActivityWidget: Widget {
                     RoundedRectangle(cornerRadius: 2, style: .continuous)
                         .fill(look.strip)
                         .frame(width: 4, height: 14)
-                    Text(s.level > 0 ? "L\(s.level)" : "\u{2014}")
-                        .font(Face.figure(14)).foregroundColor(Look.islandText)
+                    if cash {
+                        Text(nonEmpty(s.result) ?? "$")
+                            .font(Face.figure(14)).monospacedDigit().foregroundColor(Look.islandText)
+                    } else {
+                        Text(s.level > 0 ? "L\(s.level)" : "\u{2014}")
+                            .font(Face.figure(14)).foregroundColor(Look.islandText)
+                    }
                 }
             } compactTrailing: {
-                if let end = liveEnd(s) {
+                if cash {
+                    sessionClock(s)
+                        .font(Face.figure(14)).monospacedDigit().foregroundColor(Look.islandText)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 56)
+                } else if let end = liveEnd(s) {
                     Text(timerInterval: Date()...end, countsDown: true)
                         .font(Face.figure(14)).monospacedDigit().foregroundColor(Look.islandText)
                         .multilineTextAlignment(.trailing)
@@ -255,7 +368,7 @@ struct PlayingActivityWidget: Widget {
                         .font(Face.figure(14)).monospacedDigit().foregroundColor(Look.islandText)
                 }
             } minimal: {
-                Text(s.level > 0 ? "L\(s.level)" : "FG")
+                Text(cash ? "$" : (s.level > 0 ? "L\(s.level)" : "FG"))
                     .font(Face.figure(13)).foregroundColor(look.strip)
             }
             .keylineTint(look.strip)

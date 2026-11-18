@@ -456,7 +456,17 @@ struct PlayingAttributes: ActivityAttributes {
         var bigBlinds: Int?
         var lateRegClosesAt: Date?
         var note: String?
+        // A cash session's (owner, 2026-11-18): when it started (the clock counts up from it), and the Home
+        // card's figures as text in the session's currency: what is in play, the last stack, the label under it
+        // ("Stack +$840", "No update yet") and the result alone. All optional, so an older state still decodes.
+        var startedAt: Date?
+        var inPlay: String?
+        var stackText: String?
+        var stackLabel: String?
+        var result: String?
     }
+    // "cash" for a cash session; nil for a tournament run (and every activity from an older app).
+    var kind: String?
     var event: String
     var room: String
     // The app's look (owner, 2026-11-15): the venue band's colour and name, the chosen theme's colours.
@@ -501,7 +511,12 @@ public class LiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             stack: call.getInt("stack") ?? 0,
             bigBlinds: call.getInt("bigBlinds"),
             lateRegClosesAt: date("lateRegClosesAt"),
-            note: call.getString("note")
+            note: call.getString("note"),
+            startedAt: date("startedAt"),
+            inPlay: call.getString("inPlay"),
+            stackText: call.getString("stackText"),
+            stackLabel: call.getString("stackLabel"),
+            result: call.getString("result")
         )
     }
     #endif
@@ -511,6 +526,7 @@ public class LiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         if #available(iOS 16.2, *) {
             let palette = (call.getObject("palette") ?? [:]).compactMapValues { $0 as? String }
             let attrs = PlayingAttributes(
+                kind: call.getString("kind"),
                 event: call.getString("event") ?? "Tournament",
                 room: call.getString("room") ?? "",
                 strip: call.getString("strip"),
