@@ -10446,8 +10446,15 @@
        it. Swiss stays flat. A browser without color-mix keeps the ring alone (the rule above). */
     :root:not([data-theme^="swiss"]) .cal-event-row.anchor {
       box-shadow: inset 0 0 0 calc(var(--subrow) * 0.25) var(--border),
-        0 0 calc(var(--gu) * 0.75) color-mix(in srgb, var(--anchor-color, var(--border)) 45%, transparent);
+        0 0 calc(var(--gu) * 0.75) calc(var(--gu) * 0.125) color-mix(in srgb, var(--anchor-color, var(--border)) 70%, transparent);
     }
+    /* Stronger since the first look (owner, 2026-11-19: "the glow is a little too subtle"): 70% and 0.125g of spread,
+       still inside the 1g margin (0.875g in all). */
+    /* No sliver between a saved card's strip and its body (owner, 2026-11-19: "slight hairline gap in the right side
+       of the selected event venue strip"): the strip measured 0.235px short of the body's edge (WebKit, 1440 at 2x),
+       the card's dark ground showing between them. Its colour is carried 1px into the body as a shadow (negative x:
+       the strip is turned 180 degrees), over the body's outline, which on a saved card is that same colour. */
+    .cal-event-row.saved:not(.conditional) > .cal-venue-strip { box-shadow: calc(var(--bw-1) * -1) 0 0 0 var(--strip-bg, transparent); }
     /* anchor icon color handled via .cal-action-icon in new layout */
 
     .badge-condition {

@@ -740,7 +740,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
     <div ref={rowRef} className={rowClasses} data-tid={tournament.id} style={isInSchedule && isAnchor ? {'--anchor-color': stripColor} : undefined}>
       <div
         className={`cal-venue-strip venue-strip-${venue.abbr.toLowerCase().replace(/\s+/g, '-')}`}
-        style={{ background: stripColor, color: stripTextColor, cursor: 'pointer' }}
+        style={{ background: stripColor, '--strip-bg': stripColor, color: stripTextColor, cursor: 'pointer' }}
         {...venueStripProps(tournament, toggle, { 'aria-expanded': open })}
       ><StripLabel text={getStripAbbr(venue.abbr)} long={venue.longName || venue.abbr} />{open && <span className="venue-strip-full">{venue.longName || venue.abbr}</span>}</div>
       <div className="cal-event-row-content" style={isInSchedule ? {'--card-outline': conditions && conditions.length > 0 ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
@@ -1377,7 +1377,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
     <div className={rowClasses} data-tid={tournament.id} style={isInSchedule && isAnchor ? {'--anchor-color': stripColor} : undefined}>
       <div
         className={`cal-venue-strip venue-strip-${venue.abbr.toLowerCase().replace(/\s+/g, '-')}`}
-        style={{ background: stripColor, color: stripTextColor, cursor: 'pointer' }}
+        style={{ background: stripColor, '--strip-bg': stripColor, color: stripTextColor, cursor: 'pointer' }}
         {...venueStripProps(tournament, expand)}
       ><StripLabel text={getStripAbbr(venue.abbr)} long={venue.longName || venue.abbr} /></div>
       <div className="cal-event-row-content" style={isInSchedule ? {'--card-outline': hasConditions ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
