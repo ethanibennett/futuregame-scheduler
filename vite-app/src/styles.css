@@ -10921,6 +10921,15 @@
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .cal-live-field { grid-column: 4; justify-self: start; }
+    /* The blinds centred between the level and the clock (owner, 2026-11-19: "leave everything aligned as it is
+       currently except for the blinds, let's make those evenly centered between the level number and ticking
+       clock"): the level's column is its own text, the blinds' takes the rest of the 12g up to the clock, and the
+       blinds sit in its middle. The row is the four columns' 23g, so the clock stays on 12g and the field on 15g. */
+    :root:not([data-theme^="swiss"]) .cal-live-row {
+      width: calc(var(--gu) * 23);
+      grid-template-columns: max-content 1fr calc(var(--gu) * 3) calc(var(--gu) * 8);
+    }
+    :root:not([data-theme^="swiss"]) .cal-live-row > .cal-clock-pt.blinds { justify-self: center; }
     /* The blinds: bold, at the start time's size; the rest stays regular. */
     .cal-clock-pt.blinds { font-size: var(--fs-sm); font-weight: var(--fw-bold); }
     /* Always 2r clear of whatever else is in the card (owner, 2026-11-05). Closed, the row closes the
