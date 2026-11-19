@@ -1325,7 +1325,8 @@ export default function DashboardView({
     // Friends and the Table scanner: Edit home options that start off (owner, 2026-10-20).
     friends: () => (
       <HomeFriends key="friends" buddies={shareBuddies} liveUpdates={buddyLiveUpdates} buddyEvents={buddyEvents}
-        tournaments={tournaments} today={todayISO} demo={!!demoStates} onOpenSocial={() => onNavigate && onNavigate('social')} />
+        tournaments={tournaments} today={todayISO} demo={!!demoStates} onOpenSocial={() => onNavigate && onNavigate('social')}
+        myClock={(() => { const ev = whatsNextEvents.find(e => !!activeEventMap[e.id]); return ev ? liveClocks[ev.id] || null : null; })()} />
     ),
     scanner: () => (
       <section key="scanner" className="dashboard-section hm-scanner" aria-label="Table scanner">

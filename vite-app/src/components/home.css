@@ -1064,6 +1064,48 @@ button.hm-receipt:focus-visible { outline: var(--focus-ring); outline-offset: va
 .hm-friends-list { display: grid; row-gap: var(--subrow); }
 .hm-friends .hm-bank-col { flex: 1 1 auto; }
 .hm-friends .hm-bank-pill { margin-left: var(--gu); }
+/* Friends' breaks against yours (owner, 2026-11-19; HomeFriends, utils/break-align.js): a 35g card of 3r rows,
+   the names in a 7g column and the hours to the right, then a 2r row of hours and 1r under it. A break is a
+   2r block 0.5r inside its row, placed in percent of the window (data, as a chart's bars): yours outlined in the
+   brand colour, a friend's neutral, a dinner break (45 minutes or more) with a heavier outline, the time a friend
+   shares with you filled in the brand colour; a break whose length the room does not give is a 0.5g mark. */
+.hm-breaks {
+  box-sizing: border-box;
+  padding: 0 var(--gu) var(--subrow);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1);
+}
+.hm-breaks-head, .hm-breaks-row { display: flex; height: calc(var(--subrow) * 3); }
+.hm-breaks-head > .hm-cell, .hm-breaks-who { --h: 3; --k: 2; }
+.hm-breaks-key { margin-left: auto; }
+.hm-breaks-swatch {
+  display: inline-block;
+  width: var(--gu);
+  height: calc(var(--subrow) * 1);
+  margin-right: calc(var(--gu) * 0.5);
+  border-radius: var(--radius-xs);
+  background: var(--brand);
+}
+.hm-breaks-who { flex: 0 0 calc(var(--gu) * 7); }
+.hm-breaks-track, .hm-breaks-ticks { position: relative; flex: 1 1 auto; min-width: 0; }
+.hm-breaks-track { background: linear-gradient(var(--border), var(--border)) center / 100% var(--bw-hair) no-repeat; }
+.hm-breaks-block, .hm-breaks-shared {
+  position: absolute;
+  top: calc(var(--subrow) * 0.5);
+  height: calc(var(--subrow) * 2);
+  box-sizing: border-box;
+  border-radius: var(--radius-xs);
+}
+.hm-breaks-block { background: var(--surface2); box-shadow: inset 0 0 0 var(--bw-hair) var(--border-strong); }
+.hm-breaks-block.is-dinner { box-shadow: inset 0 0 0 var(--bw-1) var(--text-muted); }
+.hm-breaks-row.is-me .hm-breaks-block { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-hair) var(--brand); }
+.hm-breaks-row.is-me .hm-breaks-block.is-dinner { box-shadow: inset 0 0 0 var(--bw-1) var(--brand); }
+.hm-breaks-block.is-open { width: calc(var(--gu) * 0.5); background: var(--text-muted); box-shadow: none; transform: translateX(-50%); }
+.hm-breaks-shared { background: var(--brand); }
+.hm-breaks-axis { display: flex; height: calc(var(--subrow) * 2); }
+.hm-breaks-tick { --h: 2; --k: 2; position: absolute; top: 0; transform: translateX(-50%); }
+.hm-breaks-tick.is-now { left: 0; transform: none; }
 /* Then (UX pick 36): a 35g card 1r under the pager, the period card's 4r rows (21g | 14g) as buttons. */
 .hm-then {
   margin-top: var(--subrow); border-radius: var(--radius); overflow: hidden;

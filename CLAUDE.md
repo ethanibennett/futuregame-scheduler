@@ -518,6 +518,14 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   Hands › From your Watch (`FromYourWatch`) opens each in Quick Add (`seed`), and saving or Discard marks it done.
   The Mac checks a native change before master: `.github/workflows/ios-build-check.yml` runs
   `ios-testflight.sh --archive-only` (signed, not uploaded) on any branch.
+- **Friends' breaks against yours** (owner, 2026-11-19: "show connected friends' breaks/dinner breaks and how they
+  align"; `utils/break-align.js`, `npm test`): Home's Friends section (an Edit home option, off by default) asks the
+  room clock of each event a friend is playing (their live update today) and says their next break against yours on
+  the name line ("break 6:40 PM, with yours", "dinner 7:45 PM, 45 min with yours", "on break, 9 min left"), then
+  draws a timeline of the next 3 to 6 hours: you on top, a dinner break (45 minutes or more; no room names one)
+  outlined, the time shared with you filled. WSOP+ gives every break ahead with its length (`breaks`, `breakMins` in
+  `lib/wsop-live-clocks.js`); PokerAtlas and Bravo give only when the next one starts, drawn as a mark, its length
+  never guessed. The admin demo states (D) show it with made-up friends.
 - **Growth measurement** (launch plan, action 5; `lib/growth.js`): `growth_events` (`signup` with its
   source: the browser's first touch from futurega.me/live `?ct=`, the web app's `?src=`, the platform and
   the sign-up form's "How did you hear about us?"; `activated` = the first event saved to My Schedule,

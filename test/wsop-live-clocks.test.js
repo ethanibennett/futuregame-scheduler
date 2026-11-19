@@ -97,11 +97,18 @@ eq('time left ages from serverTime', Math.round(n.remainingSecs), 1549);
 eq('level length in seconds', n.levelSecs, 2400);
 eq('next level', [n.nextBlinds, n.nextAnte], ['1,200 - 2,400', 2400]);
 eq('minutes to the break after level 12', n.minsToBreak, Math.round((1549 + 2400) / 60));
+// Every break ahead (2026-11-19, friends' breaks): after level 12, 15, then nothing (the structure ends at 17).
+eq('the breaks ahead: when and how long', n.breaks, [
+  { inMins: Math.round((1549 + 2400) / 60), mins: 15 },
+  { inMins: Math.round((1549 + 2400 + 900 + 3 * 2400) / 60), mins: 15 },
+]);
+eq('no break on now: no break length', n.breakMins, null);
 eq('field and money', [n.entries, n.playersLeft, n.avgStack, n.prizePool], [186, 66, 112727, 281790]);
 eq('registration end and the flight start', [n.regEndsAt, n.startsAt], ['2026-10-23T00:45:06.713Z', '2026-10-22T15:00:00.0000000Z']);
 {
   const b = W.normalizeWsopClock({ ...clock, levelIndex: 15, level: 12, type: 1, levelDuration: 15, duration: 211 }, { structure, detail, now: at });
   eq('a break carries no blinds and no time to the break', [b.onBreak, b.sb, b.minsToBreak, b.nextBlinds, b.levelSecs], [true, null, null, '1,300 - 2,600', 900]);
+  eq('a break on now: its length, and the next one after three levels', [b.breakMins, b.breaks[0]], [15, { inMins: Math.round((211 - 10 + 3 * 2400) / 60), mins: 15 }]);
 }
 eq('a paused clock holds its time', W.normalizeWsopClock({ ...clock, pauseStartTime: '2026-10-22T23:24:00Z' }, { structure, detail, now: at }).remainingSecs, 1559);
 {

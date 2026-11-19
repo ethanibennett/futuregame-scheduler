@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
-import { getVenueInfo, normaliseDate, parseTournamentTime } from '../utils/utils.js';
+import { getVenueInfo, getVenueCoords, normaliseDate, parseTournamentTime } from '../utils/utils.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
+import { useLiveClocks } from '../utils/live-clocks.js';
+import { breakWindows, alignBreaks, breakNote, breakTimeline } from '../utils/break-align.js';
 
 /**
  * The home's Friends section (owner, 2026-10-20: "bring back the option to add friends events to the
@@ -15,6 +17,12 @@ import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
  *
  * Five rows at most, then a row that says how many more and opens Social. Every row opens Social,
  * where the friend's card has the rest. Nothing to show: a single row that says so.
+ *
+ * Breaks (owner, 2026-11-19: "show connected friends' breaks/dinner breaks and how they align"): for a friend
+ * playing now, their event's room clock gives their breaks (utils/break-align.js), and the name line says the
+ * next one against yours ("break 6:40 PM, with yours"); under the rows, a timeline of the next hours, you on
+ * top, each break a block, a dinner break (45 minutes or more) outlined, and the time a friend shares with
+ * you filled. A room that says only when its next break starts draws a mark there; nothing is guessed.
  */
 const MAX_ROWS = 5;
 
@@ -61,17 +69,52 @@ function todayLine(events) {
   return `${t.time ? `${t.time} · ` : ''}${room ? `${room} · ` : ''}${t.event_name}`;
 }
 
+// The admin demo states: breaks as a WSOP clock would give them, minutes from now (made up).
+const demoClock = (breaks, extra = {}) => ({ state: 'running', receivedAt: Date.now(), onBreak: false, breaks, ...extra });
+const DEMO_MY_CLOCK = demoClock([{ inMins: 25, mins: 20 }, { inMins: 170, mins: 60 }]);
+const DEMO_CLOCKS = {
+  'demo-f1': demoClock([{ inMins: 25, mins: 20 }, { inMins: 185, mins: 60 }]),
+  'demo-f3': demoClock([{ inMins: 70, mins: 20 }], { onBreak: true, remainingSecs: 540, breakMins: 15 }),
+};
+
 // The admin demo states (DashboardView demoStates), as the old Friends Playing had: made-up people.
 const DEMO = [
   { buddy: { id: 'demo-f1', username: 'demo_alice', display_name: 'Alice D.' }, live: { stack: '85000', sb: '500', bb: '1000', bbAnte: '1000', eventName: 'PLO 6-Max - Day 1' }, events: [] },
+  { buddy: { id: 'demo-f3', username: 'demo_cara', display_name: 'Cara M.' }, live: { stack: '31000', sb: '300', bb: '600', bbAnte: '600', eventName: 'NLH Deepstack' }, events: [] },
   { buddy: { id: 'demo-f2', username: 'demo_bob', display_name: 'Bob R.' }, live: null,
     events: [{ id: -1, time: '7:00 PM', venue: 'Borgata', event_name: '$600 NLH Deepstack' }, { id: -2, time: '9:00 PM', venue: 'Borgata', event_name: '$250 NLH Turbo' }] },
 ];
 
-export default function HomeFriends({ buddies, liveUpdates, buddyEvents, tournaments, today, onOpenSocial, demo = false }) {
+export default function HomeFriends({ buddies, liveUpdates, buddyEvents, tournaments, today, onOpenSocial, demo = false, myClock = null }) {
   const displayName = useDisplayName();
   const rows = useMemo(() => (demo ? DEMO : friendsToday({ buddies, liveUpdates, buddyEvents, tournaments, today })),
     [demo, buddies, liveUpdates, buddyEvents, tournaments, today]);
+
+  // The room clocks of the events friends are playing (the shared poller: an event already asked for costs nothing).
+  const clockKey = useMemo(() => {
+    if (demo) return '';
+    const tById = new Map((tournaments || []).map((t) => [Number(t.id), t]));
+    const ids = [...new Set(rows.filter((r) => r.live && r.live.tournamentId).map((r) => Number(r.live.tournamentId)))].slice(0, 20);
+    return JSON.stringify(ids.map((id) => {
+      const t = tById.get(id);
+      const c = t ? getVenueCoords(t.venue, t.property) : null;
+      return { id, lat: c?.lat, lng: c?.lng, ...(t ? { startMs: parseTournamentTime(t) } : {}) };
+    }));
+  }, [demo, rows, tournaments]);
+  const clocks = useLiveClocks(clockKey ? JSON.parse(clockKey) : [], clockKey);
+  const now = Date.now();
+  const mine = breakWindows(demo ? DEMO_MY_CLOCK : myClock, now);
+  const breaksOf = (r) => breakWindows(demo ? DEMO_CLOCKS[r.buddy.id] : (r.live && clocks[Number(r.live.tournamentId)]), now);
+  const notes = new Map();
+  const people = mine.length ? [{ key: 'me', name: 'You', me: true, windows: mine }] : [];
+  for (const r of rows) {
+    if (!r.live) continue;
+    const w = breaksOf(r);
+    if (!w.length) continue;
+    notes.set(r.buddy.id, breakNote(alignBreaks(mine, w), now));
+    people.push({ key: r.buddy.id, name: displayName(r.buddy) || r.buddy.username, windows: w });
+  }
+  const timeline = people.some((p) => !p.me) ? breakTimeline(people, now) : null;
   const live = rows.filter((r) => r.live).length;
   const shown = rows.length > MAX_ROWS ? rows.slice(0, MAX_ROWS - 1) : rows;
   const rest = rows.length - shown.length;
@@ -100,13 +143,47 @@ export default function HomeFriends({ buddies, liveUpdates, buddyEvents, tournam
               <span className="hm-bank-col">
                 {/* More than one event today: the count rides on the name line, which never fills, rather
                     than at the end of the event line, where a long name cut it off. */}
-                <span className="hm-cell hm-f-2xs hm-bank-k"><span className="hm-clip">{name}{!r.live && r.events.length > 1 ? ` · ${r.events.length} events` : ''}</span></span>
+                <span className="hm-cell hm-f-2xs hm-bank-k"><span className="hm-clip">{name}{!r.live && r.events.length > 1 ? ` · ${r.events.length} events` : ''}{notes.get(r.buddy.id) ? ` · ${notes.get(r.buddy.id)}` : ''}</span></span>
                 <span className="hm-cell hm-f-md-b hm-bank-v"><span className="hm-clip">{line}</span></span>
               </span>
               <span className={'hm-bank-pill snap-g' + (r.live ? ' is-up' : '')}><span className="hm-tag-t">{r.live ? 'Live' : 'Today'}</span></span>
             </button>
           );
         })}
+        {timeline && (
+          <div className="hm-breaks" role="img"
+            aria-label={`Breaks, the next ${timeline.hours} hours. ${people.filter((p) => !p.me).map((p) => `${p.name}: ${notes.get(p.key) || ''}`).join('; ')}`}>
+            <div className="hm-breaks-head">
+              <span className="hm-cell hm-f-2xs hm-bank-k"><span className="hm-clip">Breaks · next {timeline.hours} h</span></span>
+              {mine.length > 0 && (
+                <span className="hm-cell hm-f-2xs hm-bank-k hm-breaks-key"><span className="hm-clip"><i className="hm-breaks-swatch" aria-hidden="true" />With you</span></span>
+              )}
+            </div>
+            {timeline.rows.map((row) => (
+              <div key={row.key} className={'hm-breaks-row' + (row.me ? ' is-me' : '')}>
+                <span className="hm-cell hm-f-2xs hm-bank-k hm-breaks-who"><span className="hm-clip">{row.name}</span></span>
+                <span className="hm-breaks-track">
+                  {row.blocks.map((b, i) => (
+                    <span key={'b' + i} className={'hm-breaks-block' + (b.open ? ' is-open' : '') + (b.dinner ? ' is-dinner' : '') + (b.now ? ' is-now' : '')}
+                      style={{ left: `${b.left}%`, ...(b.open ? {} : { width: `${b.width}%` }) }} />
+                  ))}
+                  {row.shared.map((sh, i) => (
+                    <span key={'s' + i} className="hm-breaks-shared" style={{ left: `${sh.left}%`, width: `${sh.width}%` }} />
+                  ))}
+                </span>
+              </div>
+            ))}
+            <div className="hm-breaks-axis">
+              <span className="hm-breaks-who" />
+              <span className="hm-breaks-ticks">
+                <span className="hm-cell hm-f-2xs hm-bank-k hm-breaks-tick is-now">Now</span>
+                {timeline.ticks.map((t) => (
+                  <span key={t.left} className="hm-cell hm-f-2xs hm-bank-k hm-breaks-tick" style={{ left: `${t.left}%` }}>{t.label}</span>
+                ))}
+              </span>
+            </div>
+          </div>
+        )}
         {rest > 0 && (
           <button type="button" className="hm-bank-bar" onClick={onOpenSocial} aria-label={`${rest} more friends. Open Social`}>
             <span className="hm-bank-col">
