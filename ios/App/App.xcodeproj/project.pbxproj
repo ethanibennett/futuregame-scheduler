@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		FB7A0E01300A2B5F00A0B8A5 /* FuturegameWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = FB7A0E02300A2B5F00A0B8A5 /* FuturegameWatch.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
@@ -21,6 +22,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		FB7A0E03300A2B5F00A0B8A5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FB7A0E04300A2B5F00A0B8A5;
+			remoteInfo = FuturegameWatch;
+		};
 		DEA9EAE030AA2B5F00A0B8A5 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
@@ -31,6 +39,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		FB7A0E05300A2B5F00A0B8A5 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				FB7A0E01300A2B5F00A0B8A5 /* FuturegameWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DEA9EAE330AA2B5F00A0B8A5 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -45,6 +64,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		FB7A0E02300A2B5F00A0B8A5 /* FuturegameWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FuturegameWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* futurega.me.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = futurega.me.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -61,6 +81,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		FB7A0E06300A2B5F00A0B8A5 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = FB7A0E04300A2B5F00A0B8A5 /* FuturegameWatch */;
+		};
 		DEA9EAE630AA2B5F00A0B8A5 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -71,10 +98,18 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		FB7A0E07300A2B5F00A0B8A5 /* FuturegameWatch */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (FB7A0E06300A2B5F00A0B8A5 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = FuturegameWatch; sourceTree = "<group>"; };
 		DEA9EAD630AA2B5E00A0B8A5 /* FuturegameWidgets */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DEA9EAE630AA2B5F00A0B8A5 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = FuturegameWidgets; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		FB7A0E08300A2B5F00A0B8A5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		504EC3011FED79650016851F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -101,6 +136,7 @@
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
 				DEA9EAD630AA2B5E00A0B8A5 /* FuturegameWidgets */,
+				FB7A0E07300A2B5F00A0B8A5 /* FuturegameWatch */,
 				DEA9EAD130AA2B5E00A0B8A5 /* Frameworks */,
 				504EC3051FED79650016851F /* Products */,
 			);
@@ -111,6 +147,7 @@
 			children = (
 				504EC3041FED79650016851F /* futurega.me.app */,
 				DEA9EAD030AA2B5E00A0B8A5 /* FuturegameWidgetsExtension.appex */,
+				FB7A0E02300A2B5F00A0B8A5 /* FuturegameWatch.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -142,6 +179,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		FB7A0E04300A2B5F00A0B8A5 /* FuturegameWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FB7A0E0B300A2B5F00A0B8A5 /* Build configuration list for PBXNativeTarget "FuturegameWatch" */;
+			buildPhases = (
+				FB7A0E0A300A2B5F00A0B8A5 /* Sources */,
+				FB7A0E08300A2B5F00A0B8A5 /* Frameworks */,
+				FB7A0E09300A2B5F00A0B8A5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				FB7A0E07300A2B5F00A0B8A5 /* FuturegameWatch */,
+			);
+			name = FuturegameWatch;
+			packageProductDependencies = (
+			);
+			productName = FuturegameWatch;
+			productReference = FB7A0E02300A2B5F00A0B8A5 /* FuturegameWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 		504EC3031FED79650016851F /* futurega.me */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 504EC3161FED79650016851F /* Build configuration list for PBXNativeTarget "futurega.me" */;
@@ -150,11 +209,13 @@
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
 				DEA9EAE330AA2B5F00A0B8A5 /* Embed Foundation Extensions */,
+				FB7A0E05300A2B5F00A0B8A5 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				DEA9EAE130AA2B5F00A0B8A5 /* PBXTargetDependency */,
+				FB7A0E0C300A2B5F00A0B8A5 /* PBXTargetDependency */,
 			);
 			name = futurega.me;
 			packageProductDependencies = (
@@ -203,6 +264,9 @@
 					DEA9EACF30AA2B5E00A0B8A5 = {
 						CreatedOnToolsVersion = 27.2;
 					};
+					FB7A0E04300A2B5F00A0B8A5 = {
+						CreatedOnToolsVersion = 27.2;
+					};
 				};
 			};
 			buildConfigurationList = 504EC2FF1FED79650016851F /* Build configuration list for PBXProject "App" */;
@@ -224,11 +288,19 @@
 			targets = (
 				504EC3031FED79650016851F /* futurega.me */,
 				DEA9EACF30AA2B5E00A0B8A5 /* FuturegameWidgetsExtension */,
+				FB7A0E04300A2B5F00A0B8A5 /* FuturegameWatch */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		FB7A0E09300A2B5F00A0B8A5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		504EC3021FED79650016851F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -252,6 +324,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		FB7A0E0A300A2B5F00A0B8A5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		504EC3001FED79650016851F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -270,6 +349,12 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		FB7A0E0C300A2B5F00A0B8A5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilter = ios;
+			target = FB7A0E04300A2B5F00A0B8A5 /* FuturegameWatch */;
+			targetProxy = FB7A0E03300A2B5F00A0B8A5 /* PBXContainerItemProxy */;
+		};
 		DEA9EAE130AA2B5F00A0B8A5 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			platformFilter = ios;
@@ -298,6 +383,67 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		FB7A0E0D300A2B5F00A0B8A5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 62;
+				DEVELOPMENT_TEAM = 27TK6846H8;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FuturegameWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = futurega.me;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = app.futurega.me.beta;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.futurega.me.beta.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		FB7A0E0E300A2B5F00A0B8A5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 62;
+				DEVELOPMENT_TEAM = 27TK6846H8;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FuturegameWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = futurega.me;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = app.futurega.me.beta;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.futurega.me.beta.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
 		504EC3141FED79650016851F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
@@ -558,6 +704,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		FB7A0E0B300A2B5F00A0B8A5 /* Build configuration list for PBXNativeTarget "FuturegameWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FB7A0E0D300A2B5F00A0B8A5 /* Debug */,
+				FB7A0E0E300A2B5F00A0B8A5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		504EC2FF1FED79650016851F /* Build configuration list for PBXProject "App" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
