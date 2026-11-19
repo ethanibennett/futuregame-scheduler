@@ -16108,7 +16108,10 @@
        (a ring outside the box, so the outcome's right edge and the layout are untouched). */
     .replayer-hand-card.is-row.is-selected { box-shadow: var(--elev-1), 0 0 0 var(--bw-2) var(--brand); }
     /* Cash: the heatmaps under a 6r head, as the event pane's (title baseline on 4r). */
-    .cash-side { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 0 var(--gu); }
+    /* At most 64g (9 x 7 + 1, the second pane's usual width), from the pane's left edge: the pane runs to the
+       shell's right edge (107), and on a wide window the heatmap, its switch and its footer stretched across all of
+       it (owner, 2026-11-19: "why is this screen so wide"). */
+    .cash-side { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 0 var(--gu); box-sizing: border-box; width: 100%; max-width: calc(var(--gu) * 64); }
     .dk-side-title {
       flex: none; margin: 0; color: var(--text);
       font-family: var(--font-title); font-size: var(--fs-lg); font-weight: var(--fw-regular);

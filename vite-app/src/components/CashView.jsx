@@ -447,7 +447,9 @@ export default function CashView({ token, onModeChange, sidePane = null }) {
                         const earliest = starts.length ? starts.slice().sort((a, b) => at(a) - at(b))[0] : undefined;
                         const longest = openLabel(earliest, snapMs, windowStartMs);
                         const isOpen = n > 1 && openGames.has(key);
-                        const sum = n > 1 ? `${n} tables${longest ? ' \u00b7 ' + longest : ''}` : (longest || '');
+                        // "2 tables · 15h 54m+": the word "open" once is enough (owner, 2026-11-19: the summary ran
+                        // under the WL pill).
+                        const sum = n > 1 ? `${n} tables${longest ? ' \u00b7 ' + longest.replace(/^open /, '') : ''}` : (longest || '');
                         return (
                           <React.Fragment key={gi}>
                             <div className={'cb-row is-top' + (n > 1 ? ' is-game' : '') + (isOpen ? ' is-open' : '')}
@@ -464,7 +466,7 @@ export default function CashView({ token, onModeChange, sidePane = null }) {
                             {isOpen && Array.from({ length: n }, (_, ti) => (
                               <div key={gi + '-' + ti} className="cb-row">
                                 <span className="cb-stakes" />
-                                <span className="cb-game">{'Table ' + (ti + 1) + (ti === 0 && starts.length > 1 ? ' (the longest open)' : '')}</span>
+                                <span className="cb-game">{'Table ' + (ti + 1)}</span>
                                 <span className="cb-open">{openLabel(starts.slice().sort((a, b) => at(a) - at(b))[ti], snapMs, windowStartMs) || ''}</span>
                                 <span className="cb-wl-cell" />
                               </div>

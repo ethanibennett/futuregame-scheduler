@@ -22,12 +22,14 @@
    pill's line) with the month where the day number sits and the month's net where the weekday sits;
    2r to the first card and 2r between cards (BackerPage's .bp-month rules). styles.css loads after the
    component sheets, so these out-rank its rules by one class. */
-.tr-month-break { padding-bottom: calc(var(--subrow) * 2); }
+/* 1r above the pill (owner, 2026-11-19: the pill sat on the line above it, the Lines header's rule or the last
+   row's), the 4r pill line, 2r under it: 7r, every piece on the pill's line. */
+.schedule-date-break.tr-month-break { padding-top: var(--subrow); padding-bottom: calc(var(--subrow) * 2); }
 .tr-month-break .tr-month-pill { width: calc(var(--gu) * 10); }
 .tr-month-break .date-break-label { font-size: var(--fs-xl); }
 .tr-month-break .date-break-day { font-size: var(--fs-xl); }
 .tr-month-break .date-break-mon { font-size: var(--fs-sm); }
-.tr-month-break .tr-month-end { width: calc(var(--gu) * 11); margin-right: var(--gu); }
+.tr-month-break .tr-month-end { width: auto; min-width: 0; margin-right: var(--gu); column-gap: var(--gu); }
 .tr-month-net { font-variant-numeric: var(--num-tabular); white-space: nowrap; }
 .tr-month-break .tr-month-net.is-pos { color: var(--pos, var(--ok)); }
 .tr-month-break .tr-month-net.is-neg { color: var(--neg, var(--danger)); }
@@ -273,10 +275,9 @@
 .tr-card:not(.open) > .cal-event-row-content > .cal-event-chevron svg { width: var(--subrow); height: var(--subrow); }
 /* A month break carries the running total under its net (28), on the break's 6r line. */
 .tr-month-break { position: sticky; }
-/* A break with its running total is 6r (the pill's 4r and 2r under it), so the total sits 2r under the net. */
-.schedule-date-break.tr-month-break:has(.tr-month-todate) { padding-bottom: calc(var(--subrow) * 2); }
+/* The running total on the pill's line, before the net, its baseline the net's (both trimmed cap..baseline and
+   bottom-aligned on the 4r line by .date-break-end). */
 .tr-month-todate {
-  position: absolute; right: var(--gu); bottom: 0;
   font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text-muted);
   line-height: calc(var(--subrow) * 2); white-space: nowrap; font-variant-numeric: var(--num-tabular);
   text-box-trim: trim-both; text-box-edge: cap alphabetic;

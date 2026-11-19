@@ -113,11 +113,12 @@ export function MonthBreak({ monthKey, count, net, fmtNet, noun = 'event', toDat
         </span>
       </span>
       <span className="date-break-count">{count === 1 ? '1 ' + noun : count + ' ' + noun + 's'}</span>
+      {/* Where the total stood at the month's end (Bankroll design 28), on the pill's line before the month's net
+          (owner, 2026-11-19: "clean up these areas with date pills"; it was a third line under the net). */}
       <span className="date-break-end tr-month-end">
+        {toDate != null && <span className="tr-month-todate">to date <b>{fmtNet(toDate)}</b></span>}
         <span className={'date-break-dow tr-month-net' + (net > 0 ? ' is-pos' : net < 0 ? ' is-neg' : '')}>{fmtNet(net)}</span>
       </span>
-      {/* Where the total stood at the month's end (Bankroll design 28), on the break's 6r line. */}
-      {toDate != null && <span className="tr-month-todate">to date <b>{fmtNet(toDate)}</b></span>}
     </div>
   );
 }
