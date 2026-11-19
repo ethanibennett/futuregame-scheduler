@@ -203,6 +203,28 @@ else
 fi
 sed -i '' "s/CURRENT_PROJECT_VERSION = $CURRENT_BUILD;/CURRENT_PROJECT_VERSION = $NEW_BUILD;/g" "$IOS_PROJECT/project.pbxproj"
 
+# ── Version number ──────────────────────────────────────────────────────────
+# Every TestFlight upload gets the next version (owner, 2026-11-19): 1.0, then 1.01, 1.02 … 1.09, 1.10, past
+# the highest App Store Connect has (compared number by number, so 1.10 is after 1.09). Every target's
+# MARKETING_VERSION (the app, the widget, the Watch app) takes it, as they must match. Not for --archive-only, which
+# uploads nothing. Unreachable App Store Connect: the committed value stands, as before.
+CURRENT_VERSION=$(grep -m1 'MARKETING_VERSION' "$IOS_PROJECT/project.pbxproj" | sed 's/.*= //;s/;.*//')
+if ! $ARCHIVE_ONLY; then
+  APPLE_VERSION=$(node "$PROJECT_ROOT/scripts/asc-latest-build.js" \
+    "$ASC_KEY_PATH" "$ASC_KEY_ID" "$ASC_ISSUER_ID" "$BUNDLE_ID" --version 2>/dev/null || echo "0")
+  if [ -n "$APPLE_VERSION" ] && [ "$APPLE_VERSION" != "0" ]; then
+    NEW_VERSION=$(node -e '
+      const v = process.argv[1].split(".").map((x) => parseInt(x, 10) || 0);
+      const major = v[0], minor = (v[1] || 0) + 1;
+      console.log(major + "." + String(minor).padStart(2, "0"));
+    ' "$APPLE_VERSION")
+    sed -i '' "s/MARKETING_VERSION = [0-9.]*;/MARKETING_VERSION = $NEW_VERSION;/g" "$IOS_PROJECT/project.pbxproj"
+    info "Version: $CURRENT_VERSION → $NEW_VERSION (past App Store Connect's $APPLE_VERSION)"
+  else
+    warn "App Store Connect gave no version; keeping $CURRENT_VERSION."
+  fi
+fi
+
 # ── Sync web assets into the iOS project ────────────────────────────────────
 info "Syncing web build into ios/App (npx cap sync ios)..."
 npx cap sync ios

@@ -355,6 +355,76 @@
 }
 .app-shell.is-desktop .bk-bar.bk-bar--sched .bk-grid--row { grid-template-columns: calc(var(--gu) * 17) var(--col) var(--col); }
 .app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.bk-bar--sched) { --bk-band-h: calc(var(--subrow) * 7); --tr-break-top: var(--bk-band-h); }
+/* The whole head of the results list stays too (owner, 2026-11-19: "Everything down to the hairline above Nov 2026
+   should be a sticky header, nothing should be visible or pressable that scrolls past that point"): under the 7r
+   band, Log Result's row 8r (1r, the 5r row, 2r) and the list bar 6r (the 4r bar, 2r), each sticking where it
+   already sits, its gap made padding on --bg so nothing shows or takes a tap between them; then the Lines table's
+   3r header, and the month breaks under all of it (21r for cards, 24r for lines). Only where the list bar follows
+   Log Result (the MTT list, an admin's). */
+.app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.tr-head-row:not(.cs-head) ~ .tr-listbar) .bk-bar.bk-bar--sched { margin-bottom: 0; }
+.app-shell.is-desktop .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head):has(~ .tr-listbar) {
+  position: sticky; top: var(--bk-band-h, 0px); z-index: 7; background: var(--bg);
+  padding: var(--subrow) 0 calc(var(--subrow) * 2); margin-bottom: 0;
+}
+.app-shell.is-desktop .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head) ~ .tr-listbar {
+  position: sticky; top: calc(var(--bk-band-h, 0px) + var(--subrow) * 8); z-index: 7; background: var(--bg);
+  box-sizing: border-box; height: calc(var(--subrow) * 6); padding-bottom: calc(var(--subrow) * 2); margin-bottom: 0;
+}
+.app-shell.is-desktop .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head) ~ .tr-listbar ~ .tr-months .tr-lines-head { top: calc(var(--bk-band-h, 0px) + var(--subrow) * 14); }
+.app-shell.is-desktop .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head) ~ .tr-listbar ~ .tr-months { --tr-break-top: calc(var(--bk-band-h, 0px) + var(--subrow) * 14); }
+.app-shell.is-desktop .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head) ~ .tr-listbar ~ .tr-months.tr-lines { --tr-break-top: calc(var(--bk-band-h, 0px) + var(--subrow) * 17); }
+/* The phone too (owner, 2026-11-19: "Yes the phone too"): the bankroll's row 7r, the section strip 5r, Log Result's
+   row 5r and the list bar 4r stick where they sit, each with the 2r under it: 0, 9r, 16r, 23r; the month breaks at
+   29r. The summary card between Log Result and the bar scrolls up under the head before the bar sticks. Each piece's
+   2r gap is a --bg strip hung under it (::after: it takes a tap, so nothing under the head can be pressed), the
+   pieces' own boxes unchanged. Measured in WebKit at 402: 7 + 2, 5 + 2, 5 + 2, 4 + 2. */
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.tr-head-row:not(.cs-head) ~ .tr-listbar) :is(.bk-bar.bk-bar--sched, .results-kind-tabs),
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head):has(~ .tr-listbar),
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head) ~ .tr-listbar {
+  position: sticky; z-index: 7; background: var(--bg);
+}
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.tr-head-row:not(.cs-head) ~ .tr-listbar) :is(.bk-bar.bk-bar--sched, .results-kind-tabs)::after,
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head):has(~ .tr-listbar)::after,
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head) ~ .tr-listbar::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 100%; height: calc(var(--subrow) * 2); background: var(--bg);
+}
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.tr-head-row:not(.cs-head) ~ .tr-listbar) .bk-bar.bk-bar--sched { top: 0; }
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.tr-head-row:not(.cs-head) ~ .tr-listbar) .results-kind-tabs { top: calc(var(--subrow) * 9); }
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head):has(~ .tr-listbar) { top: calc(var(--subrow) * 16); }
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head) ~ .tr-listbar { top: calc(var(--subrow) * 23); }
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head) ~ .tr-listbar ~ .tr-months { --tr-break-top: calc(var(--subrow) * 29); }
+/* Cash and All the same way (owner, 2026-11-19: "do the same sticky header for Cash and All"). Measured in WebKit at
+   402 and 1440, each piece sticks where it sits, its gap a --bg strip under it (::after):
+     Cash, phone:   the band 0 (7r + 2r), the strip 9r (5r + 2r), Start session's row 16r (5r + 2r), the bar 23r
+                    (4r + 2r); breaks 29r.
+     Cash, desktop: the band 0 (7r + 1r), Start session's row 8r (5r + 2r), the bar 15r (4r + 2r), the Lines header
+                    21r (3r); breaks 24r (lines) or 21r (cards).
+     All, phone:    the band and the strip as Cash's, the bar 16r (4r + 2r); breaks 22r.
+     All, desktop:  the band (7r + 1r), the bar 8r (4r + 2r), the Lines header 14r; breaks 17r or 14r.
+   The summary and the graph between the head and the bar scroll up under the head before the bar sticks. */
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) :is(.bk-bar.bk-bar--sched, .results-kind-tabs),
+.tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) .cs-head.tr-head-row,
+.tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) :is(.cs-list, .ra-all) > .tr-listbar { position: sticky; z-index: 7; background: var(--bg); }
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) :is(.bk-bar.bk-bar--sched, .results-kind-tabs)::after,
+.tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) .cs-head.tr-head-row::after,
+.tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) :is(.cs-list, .ra-all) > .tr-listbar::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; background: var(--bg); height: calc(var(--subrow) * 2); }
+.app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) .bk-bar.bk-bar--sched::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; background: var(--bg); height: var(--subrow); }
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) .bk-bar.bk-bar--sched { top: 0; }
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) .results-kind-tabs { top: calc(var(--subrow) * 9); }
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar) .cs-head.tr-head-row { top: calc(var(--subrow) * 16); }
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar) .cs-list > .tr-listbar { top: calc(var(--subrow) * 23); }
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar) .cs-list { --tr-break-top: calc(var(--subrow) * 29); }
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.ra-all > .tr-listbar) .ra-all > .tr-listbar { top: calc(var(--subrow) * 16); }
+.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.ra-all > .tr-listbar) .ra-all > .tr-months { --tr-break-top: calc(var(--subrow) * 22); }
+.app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar) .cs-head.tr-head-row { top: calc(var(--bk-band-h, 0px) + var(--subrow)); }
+.app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar) .cs-list > .tr-listbar { top: calc(var(--bk-band-h, 0px) + var(--subrow) * 8); }
+.app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar) .cs-list > .tr-lines-head { top: calc(var(--bk-band-h, 0px) + var(--subrow) * 14); }
+.app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar) .cs-list { --tr-break-top: calc(var(--bk-band-h, 0px) + var(--subrow) * 14); }
+.app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar) .cs-list.tr-lines { --tr-break-top: calc(var(--bk-band-h, 0px) + var(--subrow) * 17); }
+.app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.ra-all > .tr-listbar) .ra-all > .tr-listbar { top: calc(var(--bk-band-h, 0px) + var(--subrow)); }
+.app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.ra-all > .tr-listbar) .ra-all > .tr-months .tr-lines-head { top: calc(var(--bk-band-h, 0px) + var(--subrow) * 7); }
+.app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.ra-all > .tr-listbar) .ra-all > .tr-months { --tr-break-top: calc(var(--bk-band-h, 0px) + var(--subrow) * 7); }
+.app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.ra-all > .tr-listbar) .ra-all > .tr-months.tr-lines { --tr-break-top: calc(var(--bk-band-h, 0px) + var(--subrow) * 10); }
 
 /* ── Bankroll design upgrades, part D: one hover (88) ──
    The rest of the tab's pressables take the same recipe as the chips above: the --hover-overlay fill over

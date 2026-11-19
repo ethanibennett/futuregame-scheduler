@@ -4,7 +4,11 @@
 // (so the caller can use it as a baseline for bumping).
 //
 // Usage:
-//   node scripts/asc-latest-build.js <p8KeyPath> <keyId> <issuerId> <bundleId>
+//   node scripts/asc-latest-build.js <p8KeyPath> <keyId> <issuerId> <bundleId> [--version]
+//
+// --version (owner, 2026-11-19: "let's start changing the version number when we push to testflight, next should
+// be 1.01 etc"): print instead the highest version string (CFBundleShortVersionString) App Store Connect has, as
+// "1.0" or "1.04", compared number by number; "0" when there is none.
 //
 // Auth uses the App Store Connect REST API with an ES256 JWT signed by the p8
 // key. Token TTL is capped at 20 minutes by Apple; we use 10 minutes.
@@ -12,7 +16,8 @@
 const fs = require('fs');
 const https = require('https');
 
-const [,, keyPath, keyId, issuerId, bundleId] = process.argv;
+const [,, keyPath, keyId, issuerId, bundleId, mode] = process.argv;
+const WANT_VERSION = mode === '--version';
 if (!keyPath || !keyId || !issuerId || !bundleId) {
   console.error('Usage: asc-latest-build.js <p8KeyPath> <keyId> <issuerId> <bundleId>');
   process.exit(2);
@@ -59,6 +64,15 @@ function ascGet(path) {
     return;
   }
   const appId = app.id;
+
+  if (WANT_VERSION) {
+    const pre = await ascGet(`/v1/preReleaseVersions?filter[app]=${appId}&limit=200&fields[preReleaseVersions]=version`);
+    const parts = (v) => String(v).split('.').map((x) => parseInt(x, 10) || 0);
+    const cmp = (a, b) => { const x = parts(a), y = parts(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
+    const list = (pre.data || []).map((p) => p.attributes && p.attributes.version).filter((v) => /^\d+(\.\d+){0,2}$/.test(String(v || '')));
+    console.log(list.length ? list.sort(cmp).pop() : '0');
+    return;
+  }
 
   // 2. Highest build number across all versions. Apple's `sort=-version` is a
   //    string sort, so "9" > "10" — we pull a page and max ourselves.
