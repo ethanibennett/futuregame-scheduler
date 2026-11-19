@@ -499,6 +499,14 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
 - **Parser eval from Admin** (`lib/admin-eval.js`): `POST/GET /api/admin/quick-add-eval` (app admins) runs
   `test/quick-add/eval.js` in the background with the server's own ANTHROPIC_API_KEY, one run at a time;
   the Admin screen's "Hand parser, live eval" section starts it and shows the report.
+- **Quick add, typed and said** (owner, 2026-11-19: "make the shorthand and voice add more robust"; `npm run
+  test:quick-add`, `test/quick-add/robust.test.js`): a hand said through Speak is sent as `source: 'speech'` (it was
+  always 'text', so the speech reading never ran), and text that reads as dictation (the keyboard's mic, the Watch) is
+  parsed as speech too (`looksSpoken`). Listening outlasts a pause, a result the recogniser re-sends is written once,
+  and words still being recognised at the end are kept (`utils/quick-add/dictation.js`). The normaliser re-picks the
+  cards a short suit run names ("ATT42cc") when the first-as-written one is shown elsewhere, rules out a two-way size
+  ("b40") the stacks or the big blind make impossible, gives "everyone 20k" to every dealt seat (`allStacks`), and
+  `parseStakes` reads stakes with words around them ("1/2k bba", "NL200").
 - **Growth measurement** (launch plan, action 5; `lib/growth.js`): `growth_events` (`signup` with its
   source: the browser's first touch from futurega.me/live `?ct=`, the web app's `?src=`, the platform and
   the sign-up form's "How did you hear about us?"; `activated` = the first event saved to My Schedule,

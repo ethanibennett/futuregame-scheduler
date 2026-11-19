@@ -194,6 +194,14 @@ export function seatTable(hand, n, remap) {
     return out;
   }
   delete qa.tableSize;
+  // "Everyone 20k": the stack of every seat that has none of its own (lib/quick-add/normalize.js).
+  if (isObj(qa.allStacks)) {
+    const all = qa.allStacks;
+    out.players = out.players.map(p => (p.startingStack != null || p.startingStackBB != null ? p
+      : isNum(all.startingStack) ? { ...p, startingStack: all.startingStack }
+        : isNum(all.startingStackBB) ? { ...p, startingStackBB: all.startingStackBB } : p));
+    delete qa.allStacks;
+  }
   const cfg = gameConfig(out.gameType) || {};
   const b = out.blinds = { ...(out.blinds || {}) };
   if (isNum(qa.antePerPlayer)) {

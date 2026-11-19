@@ -3,6 +3,7 @@ import { API_URL } from '../utils/api.js';
 import { HAND_CONFIG } from '../utils/utils.js';
 import { findGaps, applyAnswer } from '../utils/quick-add/gaps.js';
 import { gameConfig } from '../utils/quick-add/game.js';
+import { sessionTranscript, joinText, dictationError, MAX_RESTARTS, MAX_LISTEN_MS } from '../utils/quick-add/dictation.js';
 
 /* Quick Add — describe a hand in words, then answer one question at a time
    until the replayer has what it needs. Contract: docs/quick-add-contract.md.
@@ -268,36 +269,71 @@ function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch { /* s
    way (the parser already reads recogniser output: lib/quick-add/speech.js). */
 const Recognition = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition || null) : null;
 
-function useDictation(setText) {
+/* 2026-11-19 (owner: "make the shorthand and voice add more robust"): a pause no longer ends
+   listening (the recogniser ends a session on its own after a few seconds of silence; it restarts
+   until Stop), words still being recognised when a session ends are kept, a result the recogniser
+   sends twice is written once (utils/quick-add/dictation.js), every failure says what happened, and
+   `onSpoke` marks the description as dictated, so it is parsed as speech. */
+function useDictation(getText, setText, onSpoke) {
   const recRef = useRef(null);
+  // `text`: the description as committed so far; each session's words go after it.
+  const live = useRef({ wanted: false, restarts: 0, since: 0, text: '' });
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState('');
-  const [failed, setFailed] = useState(null);
-  const stop = useCallback(() => { try { if (recRef.current) recRef.current.stop(); } catch { /* already stopped */ } }, []);
+  const [failed, setFailed] = useState(null);   // null | { kind, message }
+  const stop = useCallback(() => {
+    live.current.wanted = false;
+    try { if (recRef.current) recRef.current.stop(); } catch { /* already stopped */ }
+  }, []);
+  const session = useCallback(() => {
+    const rec = new Recognition();
+    rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true;
+    const base = live.current.text;
+    let said = { final: '', interim: '' };
+    rec.onresult = (e) => {
+      const list = [];
+      for (let i = 0; i < e.results.length; i++) list.push({ transcript: e.results[i][0].transcript, isFinal: e.results[i].isFinal });
+      said = sessionTranscript(list);
+      if (said.final) { setText(joinText(base, said.final)); onSpoke(); }
+      setInterim(said.interim);
+    };
+    rec.onerror = (e) => {
+      const err = dictationError(e && e.error);
+      if (err.stop) { live.current.wanted = false; setFailed({ kind: err.kind, message: err.message }); }
+    };
+    rec.onend = () => {
+      // Words still being recognised when the session ended are what was said: keep them.
+      const done = joinText(joinText(base, said.final), said.interim);
+      if (said.interim) { setText(done); onSpoke(); }
+      live.current.text = done;
+      setInterim('');
+      recRef.current = null;
+      const l = live.current;
+      if (l.wanted && l.restarts < MAX_RESTARTS && Date.now() - l.since < MAX_LISTEN_MS) {
+        l.restarts++;
+        try { session(); return; } catch { /* fall through: stopped */ }
+      }
+      l.wanted = false;
+      setListening(false);
+    };
+    recRef.current = rec;
+    rec.start();
+  }, [setText, onSpoke]);
   const start = useCallback(() => {
     if (!Recognition) return false;
     try {
-      const rec = new Recognition();
-      rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true;
-      rec.onresult = (e) => {
-        let fin = '', mid = '';
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          const t = e.results[i][0].transcript;
-          if (e.results[i].isFinal) fin += t; else mid += t;
-        }
-        if (fin) setText((prev) => (prev && !/\s$/.test(prev) ? prev + ' ' : prev) + fin.trim());
-        setInterim(mid.trim());
-      };
-      rec.onerror = (e) => { setFailed(e.error === 'not-allowed' || e.error === 'service-not-allowed' ? 'denied' : 'error'); };
-      rec.onend = () => { setListening(false); setInterim(''); recRef.current = null; };
-      recRef.current = rec;
+      live.current = { wanted: true, restarts: 0, since: Date.now(), text: getText() };
       setFailed(null);
-      rec.start();
+      session();
       setListening(true);
       return true;
-    } catch { setFailed('error'); return false; }
-  }, [setText]);
-  useEffect(() => () => { try { if (recRef.current) recRef.current.abort(); } catch { /* gone */ } }, []);
+    } catch {
+      live.current.wanted = false;
+      setFailed({ kind: 'error', message: dictationError('').message });
+      return false;
+    }
+  }, [session, getText]);
+  useEffect(() => () => { live.current.wanted = false; try { if (recRef.current) recRef.current.abort(); } catch { /* gone */ } }, []);
   return { supported: !!Recognition, listening, interim, failed, start, stop };
 }
 
@@ -305,6 +341,12 @@ export default function QuickAddView({ token, heroName, onBack, onOpen, voice = 
   const draft = useMemo(loadDraft, []);
   const [phase, setPhase] = useState(() => (draft && draft.phase === 'chat' && draft.hand ? 'chat' : 'describe'));
   const [text, setText] = useState(() => (draft && typeof draft.text === 'string' ? draft.text : ''));
+  // Any of the description said through Speak: it is parsed as speech (lib/quick-add/prompt.js).
+  const [dictated, setDictated] = useState(() => !!(draft && draft.dictated));
+  const textNow = useRef(text);
+  textNow.current = text;
+  const getText = useCallback(() => textNow.current, []);
+  const onSpoke = useCallback(() => setDictated(true), []);
   const [hand, setHand] = useState(() => (draft && draft.phase === 'chat' ? draft.hand || null : null));
   const [log, setLog] = useState(() => (draft && draft.phase === 'chat' && Array.isArray(draft.log) ? draft.log : []));   // { side, tone?, text }
   const [busy, setBusy] = useState(null);               // null | 'parse' | 'answer'
@@ -313,7 +355,7 @@ export default function QuickAddView({ token, heroName, onBack, onOpen, voice = 
   const [skipped, setSkipped] = useState(() => new Set());
   const activeRef = useRef(null);
   const textRef = useRef(null);
-  const dict = useDictation(setText);
+  const dict = useDictation(getText, setText, onSpoke);
   // Opened by Say: listen at once (on the describe step), or hand the keyboard's mic the field.
   useEffect(() => {
     if (!voice || phase !== 'describe') return;
@@ -332,9 +374,9 @@ export default function QuickAddView({ token, heroName, onBack, onOpen, voice = 
   useEffect(() => {
     try {
       if (!text.trim() && !hand) localStorage.removeItem(DRAFT_KEY);
-      else localStorage.setItem(DRAFT_KEY, JSON.stringify({ phase, text, hand, log }));
+      else localStorage.setItem(DRAFT_KEY, JSON.stringify({ phase, text, hand, log, dictated }));
     } catch { /* storage unavailable or full: the draft is a convenience */ }
-  }, [phase, text, hand, log]);
+  }, [phase, text, hand, log, dictated]);
 
   // The description goes with the hand (saved as its notes); the draft is done with.
   const openHand = target => {
@@ -351,7 +393,7 @@ export default function QuickAddView({ token, heroName, onBack, onOpen, voice = 
     setBusy('parse'); setError(null);
     const hints = { ...(heroName ? { heroName } : {}), ...(again ? { handIndex: again } : {}) };
     const { ok, status, data } = await postJson('/quick-add/parse', token, {
-      text: description, source: 'text', hints: Object.keys(hints).length ? hints : undefined,
+      text: description, source: dictated ? 'speech' : 'text', hints: Object.keys(hints).length ? hints : undefined,
     });
     setBusy(null);
     if (!ok || !data?.hand) { setError(describeFailure(ok ? 500 : status, 'parse')); return; }
@@ -483,10 +525,10 @@ export default function QuickAddView({ token, heroName, onBack, onOpen, voice = 
             <textarea id="qa-describe-text" ref={textRef} value={dict.interim ? (text ? text + ' ' : '') + dict.interim : text} disabled={busy === 'parse'}
               readOnly={dict.listening}
               placeholder={'e.g. 200/400 400 ante, I open AKs on the button to 1000, BB calls. Flop Q72 rainbow, check, I bet 1200, call. Turn 5s…'}
-              onChange={e => setText(e.target.value)} />
-            <p className="qa-hint">{dict.failed === 'denied'
-              ? 'The microphone is off for futurega.me. Allow it in Settings, or tap the mic on your keyboard.'
-              : dict.listening ? 'Listening. Say the hand street by street, then tap Stop.'
+              onChange={e => { setText(e.target.value); if (!e.target.value.trim()) setDictated(false); }} />
+            <p className="qa-hint">{dict.failed
+              ? dict.failed.message
+              : dict.listening ? 'Listening. Say the hand street by street; pauses are fine. Tap Stop when done.'
                 : dict.supported ? 'Type it, or tap Speak and say it.' : 'Type it, or tap the mic on your keyboard and say it.'}</p>
           </div>
           {dict.supported && (
