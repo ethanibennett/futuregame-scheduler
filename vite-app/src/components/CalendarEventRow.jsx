@@ -1038,6 +1038,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
                     const sym = currencySymbol(tournament.venue, tournament.currency);
                     const url = googleCalendarUrl({ ...tournament, date: day }, {
                       zone: getVenueTimezone(tournament.venue),
+                      number: shortEventNumber(tournament.event_number),
                       money: (n) => `${sym}${Number(n).toLocaleString()}`,
                     });
                     return url && (

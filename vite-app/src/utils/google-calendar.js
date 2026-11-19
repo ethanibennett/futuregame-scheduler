@@ -37,9 +37,12 @@ function stamp(day, minutes) {
  * The link, or null when there is nothing to add (a Personal row, no date or a time it cannot read).
  *   t     the event row (event_number, event_name, date as YYYY-MM-DD, time, buyin, late_reg_end, level_duration,
  *         property, venue)
- *   opts  { zone: the room's IANA zone, money: (amount) => "$1,500", site: 'futurega.me' }
+ *   opts  { zone: the room's IANA zone, number: the event number as the card shows it (shortEventNumber; null
+ *         for none), money: (amount) => "$1,500", site: 'futurega.me' }
+ * The stored event_number is never written as it is: for many rooms it is the feed's own id ("PA-310117-20261212"),
+ * which the card hides and the title printed (owner, 2026-11-19: "This google calendar formatting sucks").
  */
-export function googleCalendarUrl(t, { zone, money = (n) => `$${Number(n || 0).toLocaleString('en-US')}`, site = 'futurega.me' } = {}) {
+export function googleCalendarUrl(t, { zone, number = null, money = (n) => `$${Number(n || 0).toLocaleString('en-US')}`, site = 'futurega.me' } = {}) {
   if (!t || t.venue === 'Personal') return null;
   const day = String(t.date || '').slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
@@ -47,7 +50,7 @@ export function googleCalendarUrl(t, { zone, money = (n) => `$${Number(n || 0).t
   if (startMin == null) return null;
   const close = lateRegCloseMin(t, startMin);
   const endMin = Math.max(close != null ? close : startMin + 8 * 60, startMin + 60);
-  const title = (t.event_number ? `#${t.event_number} ` : '') + (t.event_name || 'Tournament');
+  const title = (number ? `#${number} ` : '') + (t.event_name || 'Tournament');
   const where = [t.property, t.venue].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(' · ');
   const details = [
     Number(t.buyin) ? `Buy-in ${money(t.buyin)}` : null,
