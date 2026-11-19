@@ -10453,7 +10453,9 @@
     /* And a subtle glow in the room's colour behind it (owner, 2026-11-19: "can we add a subtle glow behind the priority
        events in addition to the thicker border?"): 0.75g of blur at 45%, inside the list's 1g margin so no edge clips
        it. Swiss stays flat. A browser without color-mix keeps the ring alone (the rule above). */
-    :root:not([data-theme^="swiss"]) .cal-event-row.anchor {
+    /* Only on the selected event in the right pane (owner, 2026-11-19: "pull the glow out of the regular schedule and
+       leave it only in the selected event pane"): the lists keep the ring alone. */
+    :root:not([data-theme^="swiss"]) .cal-event-row.anchor.is-detail {
       box-shadow: inset 0 0 0 calc(var(--subrow) * 0.25) var(--border),
         0 0 calc(var(--gu) * 0.75) calc(var(--gu) * 0.125) color-mix(in srgb, var(--anchor-color, var(--border)) 70%, transparent);
     }
