@@ -118,6 +118,17 @@ Last button: "Show my schedule" (it stays on Home).
   and the row is untouched: "+2 more set in Filters".
 - Buy-ins: caption "BUY-INS"; chips Under $500 · $500–1.5K · $1.5K–5K · $5K+
 
+**Step 4 — "Want a heads-up?"** (owner, 2026-11-19, before the first testers; a first run only, and only where the
+device can take notifications and has not been asked: App passes `onEnablePush` then)
+- Lead: "We'll tell you when an event you saved moves or changes, and when a friend sends you a hand or a request.
+  Choose which in Settings anytime."
+- One tile: "Turn on notifications" / "Your phone asks once"; after the ask, "Notifications are on" / "Settings ›
+  Notifications has the switches", or "Notifications are off for futurega.me" / "Turn them on in your phone's
+  Settings when you want them".
+- The tap saves the answers first (as the last button does): in a browser, turning notifications on installs the
+  service worker, and the page can start over (seen in WebKit); setup must not lose its answers or open again.
+- Four steps: four 7g progress segments 1g apart.
+
 **Count line** (every step):
 - "1,204 live events near you · 890 online"
 - without a location: "3,410 live events · 890 online"
@@ -129,7 +140,9 @@ Last button: "Show my schedule" (it stays on Home).
 **Footer:**
 - Back (hidden on step 1).
 - Next on steps 1–2.
-- On step 3: "Show 2,094 events" ("Show 1 event"), or "Show events" when the count is unknown or 0.
+- On the last step (3, or 4 with notifications): "Show 2,094 events" ("Show 1 event"), or "Show events" when the
+  count is unknown or 0.
+- The box holds still from step to step: its top is pinned 8r down (it was centred on each step's height and moved).
 
 **Location menu item:** "Re-run filter setup" becomes "Run setup again".
 
@@ -180,9 +193,11 @@ questions would be asked of everyone for a feature only admins can see.
 
 ## 5. Defaults, Skip, Back, Esc, and the live count
 
-- **Defaults:** step 1 Everywhere (or what is saved); step 2 **No, live only on a first run** (launch
-  plan, L1 in section 9; a re-run shows what is stored, Yes when nothing is); step 3 no chips. Next is
-  always enabled: Next, Next, Show finishes with the defaults.
+- **Defaults:** step 1 **nothing picked on a first run with nothing saved** (owner, 2026-11-19: it was Everywhere, and
+  a tester who only tapped Next got every event in the world): the count line reads "Pick where you play, or
+  Everywhere." and Next waits for a choice (Use my location, a search, or a region, Everywhere among them). What is
+  saved, or a re-run, starts where it was. Step 2 **No, live only on a first run** (launch plan, L1 in section 9; a
+  re-run shows what is stored, Yes when nothing is); step 3 no chips. Skip is always there.
 - **A first run always answers step 2**, whether or not it is touched: `showOnline: false` is written
   when the player finishes on No, when they skip, and when they never reach it. (A re-run writes a
   row only if it was touched.)

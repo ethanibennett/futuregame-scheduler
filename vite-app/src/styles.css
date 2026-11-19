@@ -2357,6 +2357,13 @@
       height: var(--subrow);
       margin-top: var(--subrow);
     }
+    /* Four steps (the notifications step, 2026-11-19): four 7g segments 1g apart, 7+1+7+1+7+1+7 = 31g. */
+    .ob .ob-progress.is-4 { grid-template-columns: repeat(4, calc(var(--gu) * 7)); column-gap: var(--gu); }
+    /* The box holds still from step to step (owner, 2026-11-19): its top is pinned 8r down instead of
+       centring on each step's height, which moved it up and down; snap-place still seats it on a line. A short
+       screen keeps the modal's own max-height and scroll. */
+    .modal-backdrop:has(> .modal-content.ob:not(.ob-name)) { align-items: flex-start; padding-top: calc(var(--subrow) * 8); }
+    .modal-backdrop > .modal-content.ob:not(.ob-name) { max-height: round(down, calc(100dvh - var(--subrow) * 10), var(--subrow)); }
     .ob .ob-seg { border-radius: var(--radius-xs); background: var(--border); }
     .ob .ob-seg.is-on { background: var(--brand); }
     .modal-content.ob .ob-title {
@@ -8727,8 +8734,19 @@
       transition: border-color var(--dur-snap);
     }
 
-    /* The sign-up's one select (2026-10-15): the inputs' box, the platform's arrow kept. */
+    /* The sign-up's one select (2026-10-15): the inputs' box. Its own chevron since 2026-11-19 (owner): WebKit's
+       native face filled it lighter and set its text larger than the inputs beside it. */
     .form-field select { width: 100%; }
+    .auth-select-wrap { position: relative; display: block; }
+    .auth-card .form-field .auth-select-wrap select {
+      -webkit-appearance: none; appearance: none; cursor: pointer;
+      padding-right: calc(var(--gu) * 4);
+    }
+    .auth-select-chev {
+      --icon-size: calc(var(--subrow) * 2);
+      position: absolute; top: calc(var(--subrow) * 2); right: calc(var(--gu) * 1.5);
+      display: flex; pointer-events: none; color: var(--text-muted);
+    }
     .form-field input:focus, .form-field select:focus {
       border-color: var(--brand-line);
     }

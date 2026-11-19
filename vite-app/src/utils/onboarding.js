@@ -52,12 +52,28 @@ export const ROW_STEP = { place: 0, radius: 0, state: 1, online: 1, sites: 1, ga
 export const ALL_ROWS = Object.fromEntries(Object.keys(ROW_STEP).map(k => [k, true]));
 
 // ── Copy (docs/onboarding.md quotes these word for word) ────────────────────────────────────────
-export const STEP_TITLES = ['Where do you play live?', 'Do you play online too?', 'What do you play?'];
+export const STEP_TITLES = ['Where do you play live?', 'Do you play online too?', 'What do you play?', 'Want a heads-up?'];
 export const STEP_LEADS = [
   "We'll show the events near you. Change it anytime from the location button on the Schedule.",
   'Online tournaments show in your list next to live ones.',
   'Pick any that apply. Leave a row empty to see everything.',
+  "We'll tell you when an event you saved moves or changes, and when a friend sends you a hand or a request. Choose which in Settings anytime.",
 ];
+/* Step 1 on a first run with nothing saved starts with no place picked (owner, 2026-11-19, before the first
+   testers: it started on Everywhere, so a tester who only tapped Next got every event in the world); Next waits
+   for a choice, and the status line asks for one. */
+export const PICK_PLACE = 'Pick where you play, or Everywhere.';
+export const placeChosen = (a) => !!(a && a.place && a.place.kind !== 'none');
+/* The notifications step (owner, 2026-11-19): shown on a first run where the device can take notifications and
+   has not been asked; its button asks the device, and the answer reads back here. */
+export const PUSH_COPY = {
+  ask: 'Turn on notifications',
+  askSub: 'Your phone asks once',
+  on: 'Notifications are on',
+  onSub: 'Settings › Notifications has the switches',
+  off: 'Notifications are off for futurega.me',
+  offSub: "Turn them on in your phone's Settings when you want them",
+};
 export const LOCATE_ERRORS = {
   denied: 'Location is off for futurega.me. Search a city or pick a region instead.',
   unavailable: "Couldn't get a location fix. Search a city or pick a region instead.",
@@ -86,7 +102,8 @@ const countryOf = (code) => (code ? (String(code).toUpperCase() === 'US' ? 'US' 
 export function answersFrom(savedLoc, savedFilters, { firstRun = false } = {}) {
   const loc = repairJurisdiction(savedLoc) || {};
   const f = savedFilters || {};
-  let place = { kind: 'everywhere' };
+  // A first run with nothing saved picks no place: the player chooses (PICK_PLACE).
+  let place = firstRun ? { kind: 'none' } : { kind: 'everywhere' };
   const pt = loc.userLocation;
   if (pt && Number.isFinite(Number(pt.lat)) && Number.isFinite(Number(pt.lng))) {
     place = loc.locationLabel === 'Current Location'
@@ -94,6 +111,8 @@ export function answersFrom(savedLoc, savedFilters, { firstRun = false } = {}) {
       : { kind: 'point', point: pt, label: loc.locationLabel || null };
   } else if (loc.locationRegion && LOCATION_REGIONS[loc.locationRegion]) {
     place = { kind: 'region', region: loc.locationRegion };
+  } else if (savedLoc && (loc.jurisdiction || loc.locationLabel)) {
+    place = { kind: 'everywhere' }; // a saved Everywhere (with a state): a choice already made
   }
   const jurisdiction = stateCodeFrom(loc.jurisdiction) || null;
   const sel = Array.isArray(f.selectedGames) ? f.selectedGames : [];

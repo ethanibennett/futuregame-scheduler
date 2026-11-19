@@ -2983,6 +2983,8 @@ function App() {
           isGuest={isGuest}
           tournaments={tournaments}
           firstRun={onboardingFirstRun}
+          onEnablePush={isPushAdmin && pushSupported && pushPerm === 'default' ? subscribeToPush : null}
+          pushPerm={pushSupported ? pushPerm : 'denied'}
           onDone={(res) => {
             setShowOnboarding(false);
             if (res && res.applied && onboardingFirstRun) setCurrentView('tournaments');

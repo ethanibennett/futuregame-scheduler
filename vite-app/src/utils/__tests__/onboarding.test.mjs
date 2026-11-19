@@ -69,6 +69,20 @@ test('answersFrom: location variants', () => {
   assert.deepEqual([st.place.kind, st.jurisdiction, st.jurisdictionManual], ['everywhere', 'NV', true]);
 });
 
+test('a first run with nothing saved picks no place: Next waits for a choice (owner, 2026-11-19)', () => {
+  const first = O.answersFrom(null, null, { firstRun: true });
+  assert.equal(first.place.kind, 'none');
+  assert.equal(O.placeChosen(first), false);
+  assert.equal(O.placeChosen(O.chooseRegion(first, 'everywhere')), true, 'Everywhere is a choice');
+  assert.equal(O.placeChosen(O.chooseRegion(first, 'texas')), true);
+  // Nothing touched: no location is written, as before.
+  assert.equal(O.locationFrom(first, null, {}), null);
+  // A saved place, or a saved Everywhere with a state, is a choice already made.
+  assert.equal(O.answersFrom({ locationRegion: 'lasvegas' }, null, { firstRun: true }).place.kind, 'region');
+  assert.equal(O.answersFrom({ jurisdiction: 'NV', jurisdictionManual: true }, null, { firstRun: true }).place.kind, 'everywhere');
+  assert.equal(O.STEP_TITLES.length, 4, 'the notifications step');
+});
+
 test('answersFrom: online, the sites default, and filter-sheet extras', () => {
   assert.equal(O.answersFrom(null, { showOnline: false }).online, false);
   assert.equal(O.answersFrom(null, {}).online, true);
@@ -247,8 +261,9 @@ function oldBuyin(t, filters) {
       if (r === '0-500') return b < 500;
       if (r === '500-1500') return b >= 500 && b < 1500;
       if (r === '1500-5000') return b >= 1500 && b < 5000;
-      if (r === '5000-10000') return b >= 5000 && b <= 10000;
-      if (r === '10000+') return b > 10000;
+      // Every band holds its lower edge only (App improvements 7, utils.js matchesBuyin): $10,000 is 10000+.
+      if (r === '5000-10000') return b >= 5000 && b < 10000;
+      if (r === '10000+') return b >= 10000;
       return true;
     });
     if (!matchesBuyin) return false;

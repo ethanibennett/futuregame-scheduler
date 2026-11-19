@@ -9,7 +9,7 @@ import {
 } from '../utils/location-prefs.js';
 import {
   SETUP_REGION_ORDER, REGION_LABEL, RADII, GAME_CHIPS, BUYIN_CHIPS, WIZARD_DEFAULTS, ROW_STEP,
-  STEP_TITLES, STEP_LEADS, LOCATE_ERRORS,
+  STEP_TITLES, STEP_LEADS, LOCATE_ERRORS, PICK_PLACE, placeChosen, PUSH_COPY,
   answersFrom, chooseRegion, choosePoint, choosePlace, learnPlace, pickState, sitesShown, withFirstRunRows,
   locationFrom, filtersFrom, wizardSubset, countSetup, isLocated, statusLine, showLabel, pushServerOnboarding,
 } from '../utils/onboarding.js';
@@ -22,9 +22,12 @@ import {
    re-opened from the location menu ("Run setup again", the 'reopen-onboarding' event), pre-filled
    from the current filters. Skip (or Esc) keeps the steps already confirmed with Next. */
 
-const STEPS = STEP_TITLES.length;
-
-export default function OnboardingWizard({ token, isGuest = false, tournaments, firstRun = true, onDone }) {
+export default function OnboardingWizard({ token, isGuest = false, tournaments, firstRun = true, onDone, onEnablePush = null, pushPerm = 'default' }) {
+  // The notifications step only where it can do something: a first run, a device that takes notifications and
+  // has not been asked (App passes onEnablePush only then). Decided once, so the step count never changes.
+  const withPush = useRef(!!(firstRun && onEnablePush && pushPerm === 'default')).current;
+  const STEPS = withPush ? 4 : 3;
+  const [asking, setAsking] = useState(false);
   // What this device had when setup opened: the answers start from it, and an untouched row is
   // written back exactly as it was.
   const prev = useRef(null);
@@ -148,7 +151,7 @@ export default function OnboardingWizard({ token, isGuest = false, tournaments, 
   const showOnlineNow = merged.showOnline === true;
   const counts = useMemo(() => (tournaments && tournaments.length ? countSetup(tournaments, loc, merged, getToday()) : null),
     [tournaments, loc, merged]);
-  const status = statusLine(counts, { located: isLocated(loc), showOnline: showOnlineNow });
+  const status = step === 0 && !placeChosen(a) ? PICK_PLACE : statusLine(counts, { located: isLocated(loc), showOnline: showOnlineNow });
 
   // Writes the answers in `ans` for the rows in `t`. Nothing else in storage changes.
   const commit = (ans, t, skipped) => {
@@ -216,6 +219,31 @@ export default function OnboardingWizard({ token, isGuest = false, tournaments, 
   }, [step]);
 
   const opt = (on, extra) => 'onboarding-option ' + extra + (on ? ' is-on' : '');
+
+  // ── Step 4: notifications ──
+  const pushOn = pushPerm === 'granted';
+  const pushOff = pushPerm === 'denied';
+  const askPush = async () => {
+    if (!onEnablePush || asking || pushOn || pushOff) return;
+    // The answers are saved before the device is asked: in a browser, turning notifications on installs the
+    // service worker, and a page that starts over there must not lose setup or open it again (seen in WebKit,
+    // 2026-11-19). The last button still closes it, saving the same answers again.
+    commit(a, rows, false);
+    setAsking(true);
+    try { await onEnablePush(); } catch { /* the device said no, or could not ask: pushPerm says which */ }
+    setAsking(false);
+  };
+  const step4 = (
+    <div className="ob-group ob-stack">
+      <button type="button" className={opt(pushOn, 'ob-tile ob-tile--icon')} onClick={askPush} disabled={asking} aria-pressed={pushOn}>
+        <span className="ob-tile-icon" aria-hidden="true"><Icon.bell /></span>
+        <span className="ob-tile-text">
+          <span className="ob-tile-title">{pushOn ? PUSH_COPY.on : pushOff ? PUSH_COPY.off : asking ? 'Asking…' : PUSH_COPY.ask}</span>
+          <span className="ob-tile-sub">{pushOn ? PUSH_COPY.onSub : pushOff ? PUSH_COPY.offSub : PUSH_COPY.askSub}</span>
+        </span>
+      </button>
+    </div>
+  );
 
   // ── Step 1: where ──
   const isPoint = a.place.kind === 'current' || a.place.kind === 'point';
@@ -353,19 +381,19 @@ export default function OnboardingWizard({ token, isGuest = false, tournaments, 
           <span className="ob-step">Step {step + 1} of {STEPS}</span>
           <button type="button" className="btn btn-ghost btn-sm snap-g" onClick={skip}>Skip</button>
         </div>
-        <div className="ob-progress" role="progressbar" aria-label="Setup progress" aria-valuemin={1} aria-valuemax={STEPS} aria-valuenow={step + 1}>
+        <div className={'ob-progress' + (STEPS === 4 ? ' is-4' : '')} role="progressbar" aria-label="Setup progress" aria-valuemin={1} aria-valuemax={STEPS} aria-valuenow={step + 1}>
           {Array.from({ length: STEPS }, (_, i) => <span key={i} className={'ob-seg' + (i <= step ? ' is-on' : '')} />)}
         </div>
         <h3 id="ob-title" className="ob-title" tabIndex={-1} ref={titleRef}>{STEP_TITLES[step]}</h3>
         <p className="ob-lead">{STEP_LEADS[step]}</p>
         {/* Keyed by step: each step mounts its own controls, so a tile is never one step's
             control re-dressed as the next one's (a ring animating from its old state). */}
-        <React.Fragment key={step}>{step === 0 ? step1 : step === 1 ? step2 : step3}</React.Fragment>
+        <React.Fragment key={step}>{step === 0 ? step1 : step === 1 ? step2 : step === 2 ? step3 : step4}</React.Fragment>
         <p className={'ob-status' + (status ? '' : ' ob-hide')} role="status" aria-live="polite">{status || ' '}</p>
         <div className="ob-foot">
           <button type="button" className={'btn btn-ghost btn-sm snap-g' + (step === 0 ? ' ob-hide' : '')} onClick={back} disabled={step === 0}>Back</button>
           {step < STEPS - 1
-            ? <button type="button" className="btn btn-primary btn-sm snap-g" onClick={next}>Next</button>
+            ? <button type="button" className="btn btn-primary btn-sm snap-g" onClick={next} disabled={step === 0 && !placeChosen(a)}>Next</button>
             : <button type="button" className="btn btn-primary btn-sm snap-g" onClick={finish}>{showLabel(counts, { showOnline: showOnlineNow })}</button>}
         </div>
       </div>

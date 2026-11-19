@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Icon from './Icon.jsx';
 import ThemeButton from './ThemeButton.jsx';
 import { THEME_LABEL, getStoredSeasonLabel } from '../utils/utils.js';
 import { nextTheme } from '../utils/theme.js';
@@ -129,10 +130,15 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
                 {/* Where the player heard of the app (launch plan, growth measurement; optional), asked
                     only when no campaign tag already says. No preset answer. */}
                 <label htmlFor="auth-heard">How did you hear about us?</label>
-                <select id="auth-heard" name="heard" defaultValue="">
-                  <option value="">Choose one (optional)</option>
-                  {HEARD_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
+                {/* Drawn as the fields above it, with its own chevron (owner, 2026-11-19): WebKit's own select was a
+                    lighter, larger box than the inputs. */}
+                <span className="auth-select-wrap">
+                  <select id="auth-heard" name="heard" defaultValue="">
+                    <option value="">Choose one (optional)</option>
+                    {HEARD_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                  <span className="auth-select-chev" aria-hidden="true"><Icon.chevronDown /></span>
+                </span>
               </div>
             )}
             {!isRegister && (
