@@ -27,6 +27,11 @@ sessions opened here own scheduler work.
   two cards or more, the days sharing the row in date order and a day of two cards or more taking the row, its cards
   side by side; with none, the block narrows to one 35g column, its header with it (owner, 2026-11-17: "If there isn't
   enough for a second column in My Schedule, we should just narrow it to one"). Swiss keeps its own date column.
+  **Bankroll's lists keep their head** (owner, 2026-11-19: "nothing should be visible or pressable that scrolls past
+  that point"): on MTT, Cash and All, desktop and phone, the band, the section strip (phone), Log Result / Start session
+  and the list bar are `position: sticky` where they sit, each gap a `--bg` `::after` strip that takes a tap, then the
+  Lines header, and the month breaks stick at `--tr-break-top` under all of it (`tracking-cards.css`, the offsets in r
+  beside each rule). A piece added to that head moves every offset under it.
   A selected list card keeps its outline in the standard themes (the brand ring was dropped 2026-10-20; only Swiss,
   which still draws it, removes the card's own ring under it).
   Everything narrower, and
@@ -261,6 +266,12 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   .testflight-hold` first and delete it when master is whole.** `TESTFLIGHT_NIGHTLY=0` turns it
   off; `node scripts/testflight-nightly.js --dry-run` says what it would do now;
   `npm run test:testflight-nightly`.
+  **Only the nightly build takes a new version** (owner, 2026-11-19: "next should be 1.01 etc", "only bump the nightly
+  push"): its dispatch sends `client_payload.bump_version`, the workflow passes it as `BUMP_VERSION`, and
+  `scripts/next-app-version.js` sets every target's MARKETING_VERSION one past App Store Connect's highest (1.0, 1.01 …
+  1.09, 1.10). Any other upload (by hand, a dispatch without the flag) stays on that highest version, never behind it:
+  CI never commits the bumped value, so the committed MARKETING_VERSION is a floor, not the truth. The watchdog's retry
+  of a sleep-killed nightly bumps too (the nightly's state names the SHA it sent).
 - **Online feed (in)**: `online-poker-watcher` runs its own pm2 app (a persistent
   loop, emitting at :10 past the hour and at boot) into `./online-feed/` — sources
   ACR, GGPoker, WSOP.com (bracelets + monthly Circuit rings), Phenom, and ClubWPT
