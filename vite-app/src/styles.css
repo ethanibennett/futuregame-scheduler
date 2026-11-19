@@ -13339,6 +13339,8 @@
        recipe: Univers Condensed A - D = 0.7333em). Results drop from its bottom
        edge in 7r rows shaped like the cards. */
     .social-search { position: relative; margin-bottom: calc(var(--subrow) * 2); }
+    /* Friends' breaks against yours (FriendsBreaks.jsx, home.css .hm-breaks), over the search, 2r above it. */
+    .social-breaks { margin-bottom: calc(var(--subrow) * 2); }
     .social-search-input {
       display: block;
       width: 100%;
@@ -17424,8 +17426,10 @@
       text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-muted);
     }
     .social-search-pending { flex: 0 0 auto; color: var(--text-muted); font-family: var(--font-condensed); font-size: var(--fs-xs); }
+    /* Content-sized (snap-g rounds the width up to whole g; the "…" became one character, 2026-11-19, and left both
+       off the grid), the label centred in its box. */
     .social-remove-quiet {
-      display: flex; align-items: center; justify-content: flex-end; width: fit-content; margin: calc(var(--subrow) * 3) 0 0 auto;
+      display: flex; align-items: center; justify-content: center; width: fit-content; margin: calc(var(--subrow) * 3) 0 0 auto;
       height: calc(var(--subrow) * 3); padding: 0; border: 0; background: none; cursor: pointer;
       color: var(--text-muted); font-family: var(--font-condensed); font-size: var(--fs-xs);
     }

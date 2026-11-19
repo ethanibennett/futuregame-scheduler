@@ -526,6 +526,9 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   outlined, the time shared with you filled. WSOP+ gives every break ahead with its length (`breaks`, `breakMins` in
   `lib/wsop-live-clocks.js`); PokerAtlas and Bravo give only when the next one starts, drawn as a mark, its length
   never guessed. The admin demo states (D) show it with made-up friends.
+  Social shows the same timeline at the top of Connections and a "Next break" row on a playing friend's card
+  (owner, 2026-11-19: "Add the breaks timeline to Social too"); both use `components/FriendsBreaks.jsx`
+  (`useFriendsBreaks`, `BreaksTimeline`), Social asking your own event's clock from your latest live update.
 - **Growth measurement** (launch plan, action 5; `lib/growth.js`): `growth_events` (`signup` with its
   source: the browser's first touch from futurega.me/live `?ct=`, the web app's `?src=`, the platform and
   the sign-up form's "How did you hear about us?"; `activated` = the first event saved to My Schedule,

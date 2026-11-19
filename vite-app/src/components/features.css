@@ -58,6 +58,9 @@
 .msg-row.is-quiet { color: var(--text-muted); box-shadow: none; }
 .msg-why { width: 100%; height: calc(var(--subrow) * 8); margin-bottom: var(--subrow); }
 .social-quiet-row { display: flex; gap: calc(var(--gu) * 2); }
+/* The pair sits right: only the first pushes (two auto margins split the free space, which put "Remove connection…"
+   half a g off its line on a phone). */
+.social-quiet-row .social-remove-quiet + .social-remove-quiet { margin-left: 0; }
 .social-code-btn { width: auto; padding: 0 var(--gu); }
 
 /* ── Plans in common (40) ── */

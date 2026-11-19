@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { parseServerStamp } from '../utils/utils.js';
 import { createPortal } from 'react-dom';
 import Avatar from './Avatar.jsx';
@@ -9,6 +9,7 @@ import { withoutDnpMarkers } from '../utils/didnt-play.js';
 import { getVenueInfo, getVenueBrandColor, normaliseDate, getToday, formatBuyin, formatLiveUpdate, parseTournamentTime } from '../utils/utils.js';
 import MessageSheet from './MessageSheet.jsx';
 import { plansInCommon } from '../utils/plans-in-common.js';
+import { useFriendsBreaks, BreaksTimeline } from './FriendsBreaks.jsx';
 import './features.css';
 
 // Avatars on the r grid (a px size floored each card to 7.18r): 5r, centred in
@@ -605,6 +606,8 @@ export default function SocialView({
   pendingIncoming = [], onAcceptRequest, onRejectRequest,
   // Features 36, 38, 40 (2026-11-11): the at-the-table code, blocks, and the player's own plan.
   onShowCode = null, hiddenIds = null, onBlocked = null, mySchedule = null, focusBuddyId = null, onFocusUsed = null,
+  // Friends' breaks against yours (owner, 2026-11-19: "Add the breaks timeline to Social too"; FriendsBreaks.jsx).
+  tournaments = null, myActiveUpdates = null,
 }) {
   const [expandedId, setExpandedId] = useState(null);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -716,6 +719,23 @@ export default function SocialView({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusBuddyId, shareBuddies]);
 
+  /* Friends' breaks against yours (FriendsBreaks.jsx): the friends playing now (a live update today, not busted)
+     and the event you are playing (your latest live update, neither busted nor bagged). Above the early return,
+     as every hook. */
+  const breakFriends = useMemo(() => (shareBuddies || [])
+    .map((b) => ({ buddy: b, live: buddyLiveUpdates && buddyLiveUpdates[b.id] }))
+    .filter((f) => f.live && !f.live.isBusted && f.live.tournamentId), [shareBuddies, buddyLiveUpdates]);
+  const myBreakEvent = useMemo(() => {
+    const u = (myActiveUpdates || []).find((x) => x && !x.is_busted && !x.is_bagged && x.tournament_id != null);
+    if (!u) return null;
+    const id = Number(u.tournament_id);
+    return (tournaments || []).find((t) => Number(t.id) === id) || (mySchedule || []).find((t) => Number(t.id) === id) || { id };
+  }, [myActiveUpdates, tournaments, mySchedule]);
+  const breaks = useFriendsBreaks({
+    friends: breakFriends, tournaments, myEvent: myBreakEvent,
+    nameOf: (b) => (typeof displayName === 'function' ? displayName(b) : (b.real_name || b.username)) || b.username,
+  });
+
   // If a group is active, show GroupDetailView
   if (activeGroupId) {
     const group = myGroups.find(g => g.id === activeGroupId);
@@ -770,7 +790,7 @@ export default function SocialView({
         <div className="social-search-results">
           <div className="social-search-label">Everyone else</div>
           {searchLoading && searchSlow && !searchResults.length && (
-            <div className="social-search-note">Searching\u2026</div>
+            <div className="social-search-note">Searching…</div>
           )}
           {searchResults.map(u => (
             <div key={u.id} className="social-search-row">
@@ -909,6 +929,7 @@ export default function SocialView({
           ? <button type="button" className="dashboard-section-badge social-new-btn social-code-btn" onClick={onShowCode}><span>Add at the table</span></button>
           : (hasBuddies && <span className="dashboard-section-badge dashboard-section-badge--wide">{shareBuddies.length} friend{shareBuddies.length !== 1 ? 's' : ''}</span>)}
       </div>
+      {breaks.timeline && <BreaksTimeline data={breaks} className="social-breaks" />}
       {searchBar}
       {hasBuddies && (
         <React.Fragment>
@@ -944,6 +965,12 @@ export default function SocialView({
                 </div>
                 {isExpanded && isLive && (
                   <div className="social-buddy-detail">
+                    {breaks.notes.get(buddy.id) && (
+                      <div className="social-detail-row">
+                        <span className="social-detail-label">Next break</span>
+                        <span className="social-detail-value">{breaks.notes.get(buddy.id)}</span>
+                      </div>
+                    )}
                     <div className="social-detail-row">
                       <span className="social-detail-label">Stack</span>
                       <span className="social-detail-value">{lu.stack ? Number(lu.stack).toLocaleString() : '—'}</span>
@@ -1121,10 +1148,10 @@ export default function SocialView({
                     ) : (
                       <div className="social-quiet-row">
                         <button
-                          className="social-remove-quiet"
+                          className="social-remove-quiet snap-g"
                           onClick={(e) => { e.stopPropagation(); setConfirmRemoveId(buddy.id); }}
-                        ><span>Remove connection\u2026</span></button>
-                        <button className="social-remove-quiet" onClick={(e) => { e.stopPropagation(); setConfirmBlockId(buddy.id); }}><span>Block\u2026</span></button>
+                        ><span>Remove connection…</span></button>
+                        <button className="social-remove-quiet snap-g" onClick={(e) => { e.stopPropagation(); setConfirmBlockId(buddy.id); }}><span>Block…</span></button>
                       </div>
                     )}
                   </div>

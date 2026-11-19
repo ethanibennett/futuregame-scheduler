@@ -2673,6 +2673,8 @@ function App() {
                 onRejectRequest={handleRejectRequest}
                 shareBuddies={shareBuddies}
                 buddyLiveUpdates={buddyLiveUpdates}
+                tournaments={tournaments}
+                myActiveUpdates={myActiveUpdates}
                 displayName={displayName}
                 myGroups={myGroups}
                 activeGroupId={activeGroupId}

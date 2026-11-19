@@ -6128,7 +6128,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                   {h.event && h.event.title ? ' \u00b7 ' + h.event.title : ''}
                   {Array.isArray(h.tags) && h.tags.length > 0 && <span className="hx-row-tag">{h.tags[0]}</span>}
                 </span>
-                {openingId === h.id && <span className="replayer-hand-card-meta is-opening-line">Opening\u2026</span>}
+                {openingId === h.id && <span className="replayer-hand-card-meta is-opening-line">Opening…</span>}
               </div>
               {/* The hero's net where Delete was (UX pick 55): the figure on the title's line, the word
                   on the meta's, both right-aligned in the row's 7g column. */}

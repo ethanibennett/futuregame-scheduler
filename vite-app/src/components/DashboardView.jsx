@@ -1291,7 +1291,7 @@ export default function DashboardView({
                   <button type="button" role="menuitem" className="dash-more-item is-danger" onClick={() => {
                     const id = moreMenu.id; setMoreMenu(null);
                     if (confirm('Remove from schedule?')) onToggle(id);
-                  }}>Remove from schedule\u2026</button>
+                  }}>Remove from schedule…</button>
                 )}
               </div>
             </>,
