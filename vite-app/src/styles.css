@@ -10441,6 +10441,13 @@
     .cal-event-row.anchor {
       box-shadow: inset 0 0 0 calc(var(--subrow) * 0.25) var(--border);
     }
+    /* And a subtle glow in the room's colour behind it (owner, 2026-11-19: "can we add a subtle glow behind the priority
+       events in addition to the thicker border?"): 0.75g of blur at 45%, inside the list's 1g margin so no edge clips
+       it. Swiss stays flat. A browser without color-mix keeps the ring alone (the rule above). */
+    :root:not([data-theme^="swiss"]) .cal-event-row.anchor {
+      box-shadow: inset 0 0 0 calc(var(--subrow) * 0.25) var(--border),
+        0 0 calc(var(--gu) * 0.75) color-mix(in srgb, var(--anchor-color, var(--border)) 45%, transparent);
+    }
     /* anchor icon color handled via .cal-action-icon in new layout */
 
     .badge-condition {
@@ -11749,7 +11756,13 @@
     .late-reg-label.closed { color: var(--text-muted); }
     .late-reg-label.pending { color: var(--text-muted); }
     .late-reg-time.pending  { color: var(--text-muted); }
-    .late-reg-sep { flex: 1; height: calc(var(--subrow) * 0.125); background: var(--border); align-self: center; }
+    /* The leader rule in the middle of a row, between grid lines (owner, 2026-11-19: "the late reg bar line should be
+       in the center of a row, between gridlines"): the label row is 2r with the text on its foot, so the rule is
+       centred in the lower r, 1.5r down (it was centred in the 2r, on the 1r line). */
+    .late-reg-sep {
+      flex: 1; height: calc(var(--subrow) * 0.125); background: var(--border);
+      align-self: flex-end; margin-bottom: calc(var(--subrow) * 0.5 - var(--subrow) * 0.0625);
+    }
 
     .late-reg-time {
       font-size: var(--fs-sm);
@@ -12201,7 +12214,7 @@
     /* "Until Start ——— 44 minutes": the leader rule stands on the labels' shared
        baseline (the row's 2r line) like a typeset leader, instead of floating at
        the row's centre (0.93r..1.05r, on no line). */
-    .dash-card-content .late-reg-sep { align-self: flex-end; }
+    /* (Since 2026-11-19 it is centred in the row's lower r, as on every card: the base rule.) */
     .dash-card-content .late-reg-bar-bg { height: var(--subrow); }
     /* Mini bar (busted / conditional cards): the label is a flex item of the 2r
        row, bottom-aligned; trimmed it seats its baseline on the row's 2r line
@@ -16268,13 +16281,15 @@
        grows and shrinks with the open / close move and is gone when nothing is selected. */
     /* + 2r of the pane's own ground under the event before the band (owner, 2026-10-21): the foot is
        6r and the band's shadow (below) still covers only its last 4r. */
-    .dk-pane-detail > .dk-detail-block > .dk-detail { padding-bottom: calc(var(--subrow) * 6); }
+    /* The band is 1r since 2026-11-19 (owner: "let's reduce the gap between selected event and my schedule to 1r"):
+       the foot is 2r of ground and the 1r band. */
+    .dk-pane-detail > .dk-detail-block > .dk-detail { padding-bottom: calc(var(--subrow) * 3); }
     .dk-pane-detail > .dk-detail-block.is-closing { pointer-events: none; }
     .dk-pane-detail > .dk-mine-block { flex: 1 1 0; }
     /* No rule between them: the 4r above My Schedule is the divider, in the header's colour like the
        2g between panes (owner, 2026-10-13): a shadow cast 4r up from My Schedule with no blur covers
        exactly the details' 4r foot, full width, and moves with the open / close as the foot does. */
-    .dk-detail-block + .dk-mine-block { box-shadow: 0 calc(var(--subrow) * -4) 0 0 var(--surface); }
+    .dk-detail-block + .dk-mine-block { box-shadow: 0 calc(var(--subrow) * -1) 0 0 var(--surface); }
     /* Both blocks framed in the standard themes (owner, 2026-10-20: "every pane fully bordered"): a
        hairline at the band's top (the event's foot) and at its foot (My Schedule's top, drawn just
        outside the block: its sticky header would paint over a line inside it). Shadows paint first
@@ -16282,13 +16297,13 @@
     :root:not([data-theme^="swiss"]) .dk-detail-block + .dk-mine-block {
       box-shadow:
         0 calc(var(--bw-hair) * -1) 0 0 var(--border),
-        0 calc(var(--subrow) * -4) 0 0 var(--surface),
-        0 calc(var(--subrow) * -4 - var(--bw-hair)) 0 0 var(--border);
+        0 calc(var(--subrow) * -1) 0 0 var(--surface),
+        0 calc(var(--subrow) * -1 - var(--bw-hair)) 0 0 var(--border);
       /* The band's lines stop at the pane's edges (owner, 2026-10-21: "clip the hairlines that cross over
          the spaces between panes"): clipped to the block's own width, open only upward for the band. The
          pane's overflow clip should already hold them, and does in WebKit here, but the owner's screen
          showed them running across the 1g gap. */
-      clip-path: inset(calc(var(--subrow) * -4 - var(--bw-hair) * 2) 0 0 0);
+      clip-path: inset(calc(var(--subrow) * -1 - var(--bw-hair) * 2) 0 0 0);
     }
     /* And the pane's side hairlines break across that band (owner, 2026-10-22: "hairlines still bridging
        the gap"): the band is a gap like the 1g between panes, so the pane's edges stop at its top line and
@@ -16296,11 +16311,29 @@
        line sits 4r above it, the bottom line a hair above it. */
     :root:not([data-theme^="swiss"]) .dk-pane-detail:has(> .dk-detail-block + .dk-mine-block)::before {
       -webkit-mask:
-        linear-gradient(#000 0 0) top / 100% calc(var(--dk-band-at, 0px) - var(--subrow) * 4) no-repeat,
+        linear-gradient(#000 0 0) top / 100% calc(var(--dk-band-at, 0px) - var(--subrow)) no-repeat,
         linear-gradient(#000 0 0) bottom / 100% calc(100% - var(--dk-band-at, 0px) + var(--bw-hair)) no-repeat;
       mask:
-        linear-gradient(#000 0 0) top / 100% calc(var(--dk-band-at, 0px) - var(--subrow) * 4) no-repeat,
+        linear-gradient(#000 0 0) top / 100% calc(var(--dk-band-at, 0px) - var(--subrow)) no-repeat,
         linear-gradient(#000 0 0) bottom / 100% calc(100% - var(--dk-band-at, 0px) + var(--bw-hair)) no-repeat;
+    }
+    /* The four corners at the band are rounded like the panes' (owner, 2026-11-19: "These corners aren't rounded"):
+       the event's foot and My Schedule's head are each a framed box of --radius-sm. The band and its lines are
+       shadows, which cannot curve inward, so a piece over each corner, above the pane's frame and the sticky rows,
+       paints the gap's colour outside a hairline arc (a radial gradient centred on the corner's inner point). The
+       lower pair sits a hair higher, as My Schedule's top line does (a hair above its block). */
+    :root:not([data-theme^="swiss"]) .dk-pane-detail:has(> .dk-detail-block + .dk-mine-block)::after {
+      --r: var(--radius-sm);
+      --arc: transparent calc(var(--r) - var(--bw-hair)), var(--border) calc(var(--r) - var(--bw-hair)), var(--border) var(--r), var(--surface) var(--r);
+      content: ''; position: absolute; left: 0; right: 0;
+      top: calc(var(--dk-band-at, 0px) - var(--subrow) - var(--r));
+      height: calc(var(--subrow) + var(--r) * 2 - var(--bw-hair));
+      z-index: calc(var(--z-sticky) + 2); pointer-events: none;
+      background:
+        radial-gradient(circle at 100% 0, var(--arc)) left top / var(--r) var(--r) no-repeat,
+        radial-gradient(circle at 0 0, var(--arc)) right top / var(--r) var(--r) no-repeat,
+        radial-gradient(circle at 100% 100%, var(--arc)) left bottom / var(--r) var(--r) no-repeat,
+        radial-gradient(circle at 0 100%, var(--arc)) right bottom / var(--r) var(--r) no-repeat;
     }
     /* My Schedule's heading in the right pane matches the selected event's (owner, 2026-10-21): Baskerville
        at the wordmark's size; its count stays the small Univers beside it. */
@@ -17319,6 +17352,28 @@
        (6g of the phone's 33g). Fewer buttons keep the generic columns above. */
     .cal-action-row.is-saved-row:has(> :nth-child(5):last-child) {
       grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 7) calc(var(--gu) * 8) calc(var(--gu) * 5) 1fr;
+    }
+    /* On a card wider than the phone's (the right pane on desktop; owner, 2026-11-19: "These buttons at the bottom are
+       oddly spaced": Remove took everything past the phone's widths, half the row) the columns share the row, each an
+       equal share rounded down to whole g, the last taking what is left. A row under 40g (the phone, the desktop list)
+       keeps the phone's columns exactly: --narrow is how far under 40g the row is (0 at 40g and wider), and ten times
+       it, taken off the share, leaves the phone width as the larger. A browser without round() keeps the phone's
+       columns, the declaration before. */
+    .cal-action-row.is-saved-row { --narrow: max(calc(var(--gu) * 0), calc(var(--gu) * 40 - 100%)); }
+    .cal-action-row.is-saved-row:has(> :nth-child(3):last-child) {
+      grid-template-columns: repeat(2, calc(var(--gu) * 11)) 1fr;
+      grid-template-columns: repeat(2, max(calc(var(--gu) * 11), calc(round(down, calc(100% / 3), var(--gu)) - var(--narrow) * 10))) 1fr;
+    }
+    .cal-action-row.is-saved-row:has(> :nth-child(4):last-child) {
+      grid-template-columns: calc(var(--gu) * 7) repeat(2, calc(var(--gu) * 9)) 1fr;
+      grid-template-columns: max(calc(var(--gu) * 7), calc(round(down, 25%, var(--gu)) - var(--narrow) * 10))
+        repeat(2, max(calc(var(--gu) * 9), calc(round(down, 25%, var(--gu)) - var(--narrow) * 10))) 1fr;
+    }
+    .cal-action-row.is-saved-row:has(> :nth-child(5):last-child) {
+      grid-template-columns: max(calc(var(--gu) * 7), calc(round(down, 20%, var(--gu)) - var(--narrow) * 10))
+        max(calc(var(--gu) * 7), calc(round(down, 20%, var(--gu)) - var(--narrow) * 10))
+        max(calc(var(--gu) * 8), calc(round(down, 20%, var(--gu)) - var(--narrow) * 10))
+        max(calc(var(--gu) * 5), calc(round(down, 20%, var(--gu)) - var(--narrow) * 10)) 1fr;
     }
     /* The countdown, the start time and the guarantee readable at a glance (UX pick 23): the time and the
        guarantee in --accent (6.66:1 on a dark card), the countdown in the brand inside its last hour. */
