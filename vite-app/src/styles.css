@@ -15915,6 +15915,13 @@
       border-bottom: var(--bw-hair) solid var(--border);
     }
     :root:not([data-theme^="swiss"]) .dk-rail { box-shadow: inset 0 0 0 var(--bw-hair) var(--border); }
+    /* Every pane's corners are the event cards' (owner, 2026-11-19: "Let's try giving all the desktop panes a radius
+       like the event cards"): --radius-sm on the rail, each pane and the frame drawn over it. The pane clips
+       (overflow: hidden) and the rail scrolls, so what is inside rounds with them; the gaps behind are --surface, the
+       body's own colour, so the corners show the gutter. */
+    :root:not([data-theme^="swiss"]) .dk-rail,
+    :root:not([data-theme^="swiss"]) .dk-pane,
+    :root:not([data-theme^="swiss"]) .dk-pane::before { border-radius: var(--radius-sm); }
     /* The header's foot breaks in the gutters (owner, 2026-10-20): on desktop the header draws no
        bottom line of its own; the rail's and each pane's top hairline are its edge, so the line runs
        over them and stops in every 1g gap. */

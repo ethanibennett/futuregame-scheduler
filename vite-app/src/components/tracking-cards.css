@@ -343,6 +343,16 @@
   box-shadow: inset 0 calc(var(--bw-1) * -1) 0 var(--border-strong);
 }
 .app-shell.is-desktop .tr-line-played { display: block; }
+/* The sticky head is as wide as the rows (owner, 2026-11-19: "This sticky header should span the full width, not
+   showing stuff scrolling behind it"). Where a pointer hovers, a line bleeds 1g past the column on each side (its hover
+   fill and hairline, .tr-line above), and those hairlines showed, and took a tap, beside the head as they scrolled
+   under it. So every piece of the head and the month breaks bleed the same 1g (a negative margin, the same padding:
+   their content stays where it was), and the gap strips hung under them (::after, left 0 / right 0) follow. */
+@media (hover: hover) and (pointer: fine) {
+  .tab-panel[data-tab="tracking"] :is(.tr-month-break, .bk-bar.bk-bar--sched, .results-kind-tabs, .tr-head-row, .tr-listbar, .tr-lines-head) {
+    margin-inline: calc(var(--gu) * -1); padding-inline: var(--gu);
+  }
+}
 .app-shell.is-desktop .an-cell.tr-line-amt { padding-left: 0; }
 /* Desktop (Bankroll design 49 and 87): the bankroll's band stays at the top of the pane, 7r (the 5r
    picker, Manage and "+ Add", 1r over and under), on --bg with a hairline under it, so the bankroll,
@@ -364,7 +374,7 @@
 .app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.tr-head-row:not(.cs-head) ~ .tr-listbar) .bk-bar.bk-bar--sched { margin-bottom: 0; }
 .app-shell.is-desktop .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head):has(~ .tr-listbar) {
   position: sticky; top: var(--bk-band-h, 0px); z-index: 7; background: var(--bg);
-  padding: var(--subrow) 0 calc(var(--subrow) * 2); margin-bottom: 0;
+  padding-block: var(--subrow) calc(var(--subrow) * 2); margin-bottom: 0;
 }
 .app-shell.is-desktop .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head) ~ .tr-listbar {
   position: sticky; top: calc(var(--bk-band-h, 0px) + var(--subrow) * 8); z-index: 7; background: var(--bg);

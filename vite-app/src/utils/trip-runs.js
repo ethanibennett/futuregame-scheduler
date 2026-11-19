@@ -6,6 +6,9 @@
    series" and run on into the next ones, Nov 17 to Mar 25, 129 nights). A Day Off inside it does not end it; an online
    event is neither in it nor ends it. An event with no coordinates is measured by its room instead: the same room as
    the trip's is in it, and any other room is in it too, since nothing says it is elsewhere.
+   The Travel Day home (the one that ends a trip) opens a trip of its own only for a series near home: two events or
+   more in one place after it, restarts not counted (owner, 2026-11-19: "The trip home should only start a new trip if
+   there are multiple events in a series near home"), so one event after landing is not a trip.
    Pure: dateOf (ISO day), placeOf (the room), coordsOf ({lat, lng} or null) and isOnline are passed in. */
 export const TRIP_GAP_DAYS = 7;
 // The Strip to Henderson or Summerlin is under 20 miles, LA's card rooms are within 25 of each other; Philadelphia to
@@ -28,16 +31,19 @@ export function tripRuns(sorted, todayISO, { dateOf, placeOf, coordsOf = () => n
   const out = new Map();
   const list = (sorted || []).filter(Boolean);
   const isTravel = (t) => t.venue === 'Personal' && /travel/i.test(t.event_name || '');
+  const homeward = new Set(); // Travel Days that end a trip
   for (let i = 0; i < list.length; i += 1) {
     const t = list[i];
     if (!isTravel(t)) continue;
     const start = dateOf(t);
-    if (!start || start < todayISO) continue;
+    if (!start) continue;
+    // A trip already under way shows no card, but its way home is still the way home.
+    const past = start < todayISO;
     const events = [];
-    let room = null, at = null, last = null, home = null;
+    let room = null, at = null, last = null, home = null, homeTravel = null;
     for (let j = i + 1; j < list.length; j += 1) {
       const u = list[j];
-      if (isTravel(u)) { home = dateOf(u) || null; break; }
+      if (isTravel(u)) { home = dateOf(u) || null; homeTravel = u; break; }
       if (u.venue === 'Personal' || isOnline(u)) continue;
       const d = dateOf(u);
       if (!d) continue;
@@ -50,8 +56,11 @@ export function tripRuns(sorted, todayISO, { dateOf, placeOf, coordsOf = () => n
       last = d;
     }
     if (!events.length) continue;
+    if (homeward.has(t.id) && events.filter((e) => !e.is_restart).length < 2) continue;
     // The Travel Day that follows within a week is the way home (or on): the trip runs to it.
     const end = home && home >= last && days(last, home) <= TRIP_GAP_DAYS ? home : last;
+    if (end !== last) homeward.add(homeTravel.id);
+    if (past) continue;
     const rooms = [...new Set(events.map(placeOf).filter(Boolean))];
     const nights = Math.max(1, end === last ? days(start, end) + 1 : days(start, end));
     out.set(t.id, { travelDay: t, events, start, end, nights, room, rooms, homeDay: end === last ? null : end });

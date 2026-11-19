@@ -29,6 +29,20 @@ test('a Vegas trip is every room in Vegas, to the Travel Day home (owner, 2026-1
   assert.deepEqual(t.rooms, ['Orleans', 'Wynn', 'GVR']);
 });
 
+test('the Travel Day home opens a trip only for two events or more near home (owner, 2026-11-19)', () => {
+  const vegas = [travel(1, '2026-12-11'), ev(2, '2026-12-11', 'Orleans'), ev(3, '2026-12-12', 'Wynn'), travel(4, '2026-12-14')];
+  const one = tripRuns([...vegas, ev(5, '2026-12-16', 'Borgata'), ev(6, '2026-12-17', 'Borgata', { is_restart: 1 })], '2026-11-19', opts);
+  assert.equal(one.get(1).end, '2026-12-14');
+  assert.equal(one.has(4), false, 'one event and its restart after landing: no trip');
+  const series = tripRuns([...vegas, ev(5, '2026-12-16', 'Borgata'), ev(6, '2026-12-18', 'Borgata')], '2026-11-19', opts);
+  assert.deepEqual(series.get(4).events.map((e) => e.id), [5, 6]);
+  // Already in Vegas (the Travel Day out has passed): the way home is still the way home.
+  assert.equal(tripRuns([...vegas, ev(5, '2026-12-16', 'Borgata')], '2026-12-12', opts).has(4), false);
+  assert.equal(tripRuns([...vegas, ev(5, '2026-12-16', 'Borgata')], '2026-12-12', opts).has(1), false);
+  // A Travel Day out with nothing before it is not a way home: one event is a trip.
+  assert.deepEqual(tripRuns([travel(1, '2026-12-11'), ev(2, '2026-12-12', 'Borgata')], '2026-11-19', opts).get(1).events.map((e) => e.id), [2]);
+});
+
 test('an event placed somewhere else ends the trip', () => {
   const list = [travel(1, '2026-11-17'), ev(2, '2026-11-18', 'Seminole'), dayOff(3, '2026-11-19'), ev(4, '2026-11-20', 'Seminole'),
     ev(5, '2026-12-02', 'Borgata'), ev(6, '2027-03-25', 'Seminole')];
@@ -61,9 +75,9 @@ test('a gap of more than a week ends the trip, and a Travel Day after it is not 
 
 test('the next Travel Day ends it, and a past one opens none', () => {
   const list = [travel(1, '2026-11-01'), ev(2, '2026-11-02', 'Orleans'), travel(3, '2026-11-17'), ev(4, '2026-11-18', 'Wynn'), travel(5, '2026-11-19'), ev(6, '2026-11-20', 'Wynn')];
-  const runs = tripRuns(list, '2026-11-13', opts);
+  const runs = tripRuns([...list, ev(7, '2026-11-21', 'Wynn')], '2026-11-13', opts);
   assert.equal(runs.has(1), false);
   assert.deepEqual(runs.get(3).events.map((e) => e.id), [4]);
   assert.equal(runs.get(3).end, '2026-11-19');
-  assert.deepEqual(runs.get(5).events.map((e) => e.id), [6]);
+  assert.deepEqual(runs.get(5).events.map((e) => e.id), [6, 7]);
 });
