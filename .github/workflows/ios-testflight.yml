@@ -144,6 +144,9 @@ jobs:
         env:
           ASC_ADMIN_KEY_ID: ${{ secrets.ASC_ADMIN_KEY_ID }}
           ASC_ADMIN_KEY_B64: ${{ secrets.ASC_ADMIN_KEY_B64 }}
+          # Only the nightly build's dispatch (scripts/testflight-nightly.js, and the watchdog's retry of it) sends
+          # bump_version: true, the one upload that takes the next version number (owner, 2026-11-19).
+          BUMP_VERSION: ${{ github.event.client_payload.bump_version }}
         run: ./scripts/ios-testflight.sh --no-pull
 
       - name: Restore keychain search list

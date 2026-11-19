@@ -117,7 +117,10 @@ async function runNightly({ dryRun = false, log = console.log, api = { gh, ghJso
   if (serving === false) return wait(`futurega.me is not serving ${masterSha.slice(0, 7)} yet`);
 
   if (dryRun) return done('would-dispatch', `would build master ${masterSha.slice(0, 7)}`, { sha: masterSha });
-  await api.gh(['api', `repos/${REPO}/dispatches`, '-f', `event_type=${DISPATCH_EVENT}`]);
+  // The nightly build is the one upload that takes the next version number (owner, 2026-11-19: "only bump the
+  // nightly push"); the workflow hands bump_version to ios-testflight.sh. The `sha` settled below is how the
+  // watchdog knows a retry is of this build, and bumps too.
+  await api.gh(['api', `repos/${REPO}/dispatches`, '-f', `event_type=${DISPATCH_EVENT}`, '-F', 'client_payload[bump_version]=true']);
   settle(`dispatched ${masterSha.slice(0, 7)}`, { sha: masterSha });
   return done('dispatched', `building master ${masterSha.slice(0, 7)}`, { sha: masterSha });
 }

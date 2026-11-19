@@ -39,6 +39,9 @@ set -euo pipefail
 DO_PULL=true
 DRY_RUN=false
 ARCHIVE_ONLY=false
+# The nightly build's dispatch sets it (client_payload.bump_version, which the workflow hands on as BUMP_VERSION); a run
+# by hand can pass --bump-version.
+case "${BUMP_VERSION:-}" in true|1) BUMP_VERSION=true ;; *) BUMP_VERSION=false ;; esac
 DO_COMMIT=false
 FORCE_BUILD=""
 CATALYST=false
@@ -48,6 +51,7 @@ while [ $# -gt 0 ]; do
     --no-pull)  DO_PULL=false ;;
     --dry-run)  DRY_RUN=true ;;
     --archive-only) ARCHIVE_ONLY=true ;;
+    --bump-version) BUMP_VERSION=true ;;
     --commit)   DO_COMMIT=true ;;
     --catalyst) CATALYST=true ;;
     --build)    FORCE_BUILD="${2:-}"; shift ;;
@@ -204,22 +208,27 @@ fi
 sed -i '' "s/CURRENT_PROJECT_VERSION = $CURRENT_BUILD;/CURRENT_PROJECT_VERSION = $NEW_BUILD;/g" "$IOS_PROJECT/project.pbxproj"
 
 # ── Version number ──────────────────────────────────────────────────────────
-# Every TestFlight upload gets the next version (owner, 2026-11-19): 1.0, then 1.01, 1.02 … 1.09, 1.10, past
-# the highest App Store Connect has (compared number by number, so 1.10 is after 1.09). Every target's
-# MARKETING_VERSION (the app, the widget, the Watch app) takes it, as they must match. Not for --archive-only, which
-# uploads nothing. Unreachable App Store Connect: the committed value stands, as before.
+# Only the nightly build takes the next version (owner, 2026-11-19: "next should be 1.01 etc", then "only bump the
+# nightly push"): 1.0, then 1.01, 1.02 … 1.09, 1.10, one past the highest App Store Connect has (compared number by
+# number, so 1.10 is after 1.09). Any other upload stays on that highest version, never behind it: CI never commits the
+# bumped value, so the committed one falls behind, and a build sent by hand joins the night's version (no new Beta App
+# Review for it) instead of landing under an older one. Every target's MARKETING_VERSION (the app, the widget, the Watch
+# app) takes it, as they must match. Not for --archive-only, which uploads nothing. Unreachable App Store Connect: the
+# committed value stands.
 CURRENT_VERSION=$(grep -m1 'MARKETING_VERSION' "$IOS_PROJECT/project.pbxproj" | sed 's/.*= //;s/;.*//')
 if ! $ARCHIVE_ONLY; then
   APPLE_VERSION=$(node "$PROJECT_ROOT/scripts/asc-latest-build.js" \
     "$ASC_KEY_PATH" "$ASC_KEY_ID" "$ASC_ISSUER_ID" "$BUNDLE_ID" --version 2>/dev/null || echo "0")
   if [ -n "$APPLE_VERSION" ] && [ "$APPLE_VERSION" != "0" ]; then
-    NEW_VERSION=$(node -e '
-      const v = process.argv[1].split(".").map((x) => parseInt(x, 10) || 0);
-      const major = v[0], minor = (v[1] || 0) + 1;
-      console.log(major + "." + String(minor).padStart(2, "0"));
-    ' "$APPLE_VERSION")
-    sed -i '' "s/MARKETING_VERSION = [0-9.]*;/MARKETING_VERSION = $NEW_VERSION;/g" "$IOS_PROJECT/project.pbxproj"
-    info "Version: $CURRENT_VERSION → $NEW_VERSION (past App Store Connect's $APPLE_VERSION)"
+    NEW_VERSION=$(node "$PROJECT_ROOT/scripts/next-app-version.js" "$APPLE_VERSION" "$CURRENT_VERSION" "$BUMP_VERSION")
+    if [ "$NEW_VERSION" != "$CURRENT_VERSION" ]; then
+      sed -i '' "s/MARKETING_VERSION = [0-9.]*;/MARKETING_VERSION = $NEW_VERSION;/g" "$IOS_PROJECT/project.pbxproj"
+    fi
+    if $BUMP_VERSION; then
+      info "Version: $CURRENT_VERSION → $NEW_VERSION (the nightly build: one past App Store Connect's $APPLE_VERSION)"
+    else
+      info "Version: $NEW_VERSION (App Store Connect's latest is $APPLE_VERSION; only the nightly build takes a new one)"
+    fi
   else
     warn "App Store Connect gave no version; keeping $CURRENT_VERSION."
   fi

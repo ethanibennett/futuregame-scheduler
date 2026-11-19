@@ -20,6 +20,8 @@ const path = require('path');
 
 const STATE_FILE = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'tf-watchdog-')), 'state.json');
 process.env.TESTFLIGHT_WATCHDOG_STATE = STATE_FILE;
+const NIGHTLY_FILE = path.join(path.dirname(STATE_FILE), 'nightly.json');
+process.env.TESTFLIGHT_NIGHTLY_STATE = NIGHTLY_FILE;
 
 // Must come after the env var above — the module reads it at load time.
 const { runWatchdog, MAX_ATTEMPTS_PER_SHA } = require('../scripts/testflight-watchdog');
@@ -175,6 +177,19 @@ async function main() {
   if (!recorded) failures++;
   console.log(`  ${recorded ? 'ok  ' : 'FAIL'}  the attempt was written to the budget file`);
   console.log(`        → ${JSON.stringify(persisted.shas[MASTER] || null)}`);
+
+  // Only a retry of the nightly build takes the next version (owner, 2026-11-19: "only bump the nightly push").
+  const bumps = (c) => !!c && c.includes('client_payload[bump_version]=true');
+  if (bumps(dispatch)) failures++;
+  console.log(`  ${bumps(dispatch) ? 'FAIL' : 'ok  '}  a retry of a build the nightly did not send keeps the version`);
+  fs.writeFileSync(NIGHTLY_FILE, JSON.stringify({ date: '2026-11-19', outcome: `dispatched ${MASTER.slice(0, 7)}`, sha: MASTER }));
+  const again = await check('a sleep kill of the nightly build dispatches it again',
+    { runs: [run({})], job: sleepKilledJob }, { action: 'dispatched', dispatched: true });
+  const nightlyRetry = again.api.calls.find((c) => c[1] && c[1].endsWith('/dispatches'));
+  if (!bumps(nightlyRetry)) failures++;
+  console.log(`  ${bumps(nightlyRetry) ? 'ok  ' : 'FAIL'}  ... and asks for the next version, as the nightly did`);
+  console.log(`        → gh ${(nightlyRetry || []).join(' ')}`);
+  fs.unlinkSync(NIGHTLY_FILE);
 
   if (result.sha !== MASTER) {
     failures++;

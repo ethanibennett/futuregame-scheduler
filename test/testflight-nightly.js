@@ -57,7 +57,7 @@ const run = (a, t, extra = {}) => runNightly({ api: a, now: () => t, log: quiet,
   await test('new commit, nothing live: dispatches once, then done for the night', async () => {
     const a = api([{ id: 1, head_sha: OLD, status: 'completed', conclusion: 'success' }]);
     assert.strictEqual((await run(a, at('08:00'))).action, 'dispatched');
-    assert.deepStrictEqual(a.calls[0], ['api', 'repos/ethanibennett/futuregame-scheduler/dispatches', '-f', 'event_type=ios-testflight']);
+    assert.deepStrictEqual(a.calls[0], ['api', 'repos/ethanibennett/futuregame-scheduler/dispatches', '-f', 'event_type=ios-testflight', '-F', 'client_payload[bump_version]=true']);
     assert.strictEqual((await run(a, at('08:30'))).action, 'done-tonight');
     assert.strictEqual(a.calls.length, 1);
   });

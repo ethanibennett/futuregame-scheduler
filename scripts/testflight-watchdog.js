@@ -331,7 +331,11 @@ async function runWatchdog({ dryRun = false, log = console.log, api = { gh, ghJs
       { runId: newest.id, sha: masterSha });
   }
 
-  await api.gh(['api', `repos/${REPO}/dispatches`, '-f', `event_type=${DISPATCH_EVENT}`]);
+  // A retry of the night's build is still the night's build, so it takes the next version as that one would have
+  // (the nightly settles the SHA it dispatched). Any other retry keeps the version, as an upload by hand does.
+  const args = ['api', `repos/${REPO}/dispatches`, '-f', `event_type=${DISPATCH_EVENT}`];
+  if (nightlyDispatched(masterSha)) args.push('-F', 'client_payload[bump_version]=true');
+  await api.gh(args);
 
   entry.attempts += 1;
   entry.lastDispatchAt = now();
@@ -341,6 +345,15 @@ async function runWatchdog({ dryRun = false, log = console.log, api = { gh, ghJs
   return done('dispatched',
     `run ${newest.id} was a sleep kill (${verdict.reason}); rebuilding master ${masterSha.slice(0, 7)}, attempt ${entry.attempts}/${MAX_ATTEMPTS_PER_SHA}`,
     { runId: newest.id, sha: masterSha, attempts: entry.attempts });
+}
+
+/** Did the nightly build dispatch this SHA? Read from its state file (not required: the nightly requires this module). */
+function nightlyDispatched(sha) {
+  const file = process.env.TESTFLIGHT_NIGHTLY_STATE || path.join(__dirname, '..', '.testflight-nightly.json');
+  try {
+    const s = JSON.parse(fs.readFileSync(file, 'utf8')) || {};
+    return s.sha === sha && /^dispatched/.test(String(s.outcome || ''));
+  } catch { return false; }
 }
 
 module.exports = { runWatchdog, isSleepKill, durationSeconds, STATE_PATH, MAX_ATTEMPTS_PER_SHA, gh, ghJson };
