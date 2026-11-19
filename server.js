@@ -13205,18 +13205,21 @@ function postProcessEvents(allEvents, userVenue) {
 // ANTHROPIC_API_KEY. Models: QUICK_ADD_PARSE_MODEL / QUICK_ADD_ANSWER_MODEL override
 // the defaults. Contract: docs/quick-add-contract.md.
 {
-  const { createQuickAddRouter } = require('./lib/quick-add');
+  const { createQuickAddRouter, parseHand, validateParseBody } = require('./lib/quick-add');
   let quickAddClient = null, quickAddKey = null;
-  app.use('/api/quick-add', createQuickAddRouter({
-    authenticateToken,
-    isAdmin: (user) => APP_ADMIN_USERNAMES.has(String((user && user.username) || '').toLowerCase()) && !user.isGuest,
-    getClient: () => {
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) return null;
-      if (apiKey !== quickAddKey) { quickAddClient = new Anthropic({ apiKey, timeout: 90000, maxRetries: 1 }); quickAddKey = apiKey; }
-      return quickAddClient;
-    },
-  }));
+  const quickAddAdmin = (user) => APP_ADMIN_USERNAMES.has(String((user && user.username) || '').toLowerCase()) && !user.isGuest;
+  const quickAddClientFor = () => {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return null;
+    if (apiKey !== quickAddKey) { quickAddClient = new Anthropic({ apiKey, timeout: 90000, maxRetries: 1 }); quickAddKey = apiKey; }
+    return quickAddClient;
+  };
+  app.use('/api/quick-add', createQuickAddRouter({ authenticateToken, isAdmin: quickAddAdmin, getClient: quickAddClientFor }));
+  // Hands said on the Apple Watch (lib/watch.js): pairing, the Watch's hands, and the phone's inbox.
+  require('./lib/watch').mountRoutes(app, {
+    getDb: () => db, saveDatabase, authenticateToken, requireRegistered,
+    isAdmin: quickAddAdmin, getClient: quickAddClientFor, parseHand, validateParseBody,
+  });
 }
 // ── Quick-add hand histories ── END ────────────────────────────────────────────
 

@@ -292,6 +292,50 @@ export function ImportHandsSheet({ token, onDone, onClose }) {
   );
 }
 
+/* From your Watch (owner, 2026-11-19: "Apple Watch: dictation through quick add"; lib/watch.js): hands said on
+   the Watch, newest first, each finished in Quick Add (its questions answered) and saved from there. Quick add's
+   admins only, like the Watch itself; nothing shows when there is nothing to finish. */
+const ago = (ms) => {
+  const m = Math.max(0, Math.round((Date.now() - ms) / 60000));
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.round(h / 24);
+  return d === 1 ? 'yesterday' : `${d} days ago`;
+};
+export function FromYourWatch({ token, onOpen }) {
+  const [rows, setRows] = useState([]);
+  useEffect(() => {
+    if (!token) return undefined;
+    let live = true;
+    const load = () => fetch(`${API_URL}/quick-add/inbox`, { headers: { Authorization: 'Bearer ' + token } })
+      .then((r) => (r.ok ? r.json() : null)).then((d) => { if (live && d) setRows(d.hands || []); }).catch(() => {});
+    load();
+    // A hand said on the Watch while this list is open arrives without a reload.
+    const onVis = () => { if (document.visibilityState === 'visible') load(); };
+    document.addEventListener('visibilitychange', onVis);
+    const timer = setInterval(load, 60000);
+    return () => { live = false; document.removeEventListener('visibilitychange', onVis); clearInterval(timer); };
+  }, [token]);
+  if (!rows.length) return null;
+  return (
+    <div className="hx-inbox">
+      <div className="replayer-list-heading"><span>From your Watch</span></div>
+      {rows.slice(0, 8).map((h) => {
+        const s = h.summary;
+        const left = s && Number.isInteger(s.questions) ? (s.questions ? `${s.questions} question${s.questions === 1 ? '' : 's'}` : 'Ready to save') : h.status === 'parsed' ? 'Read' : 'Not read yet';
+        return (
+          <button key={h.id} type="button" className="hx-inbox-row hx-inbox-btn" onClick={() => onOpen(h)}>
+            <span className="hx-inbox-who">{s ? s.title : h.text.slice(0, 60)}</span>
+            <span className="hx-inbox-what">{[left, ago(h.createdAt)].join(' · ')}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /* Sent to you (26): hands friends sent, newest first, each opening its replay. */
 export function SentToYou({ token }) {
   const [rows, setRows] = useState([]);

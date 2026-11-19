@@ -134,7 +134,7 @@ export function Palette({ rows, mixes, history, current, onPick, onClose, hands 
         <span className="vp-row-name">{r.name}{mix ? <span className="vp-row-mix"> · {mix}</span> : null}</span>
         {!r.custom && (
           <span className="vp-row-info" role="button" tabIndex={-1} aria-label={`The rules of ${r.name}`}
-            onClick={(e) => { e.stopPropagation(); setRulesRow(r); }}>i</span>
+            onClick={(e) => { e.stopPropagation(); setRulesRow(r); }}><span className="ctl-cap">i</span></span>
         )}
         <Tag row={r} />
       </button>

@@ -507,6 +507,17 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   cards a short suit run names ("ATT42cc") when the first-as-written one is shown elsewhere, rules out a two-way size
   ("b40") the stacks or the big blind make impossible, gives "everyone 20k" to every dealt seat (`allStacks`), and
   `parseStakes` reads stakes with words around them ("1/2k bba", "NL200").
+- **Hands said on the Apple Watch** (owner, 2026-11-19: "Apple Watch: dictation through quick add"; `lib/watch.js`,
+  `npm run test:watch`): the Watch app (`ios/App/FuturegameWatch/`, a synced folder like the widget's; embedded in the
+  iOS app only) pairs by a six-digit code typed into Settings › Apple Watch (`AppleWatchSection`), never a password:
+  `POST /api/watch/pair` → the code, `POST /api/watch/pair/claim` (quick add's admins) → the Watch's next poll of
+  `GET /api/watch/pair/:id` gets its `fgw_` token once. That token opens `/api/watch/*` only, is stored hashed
+  (`watch_tokens`), and Unpair (either side) ends it. A hand said there (`TextFieldLink`, the system's dictation) goes
+  to `POST /api/watch/hands`, is kept in `quick_add_inbox` at once and read by quick add as speech (25 s budget); the
+  Watch is told the game, the cards and how many questions are left (the client's `findGaps`, loaded by the server).
+  Hands › From your Watch (`FromYourWatch`) opens each in Quick Add (`seed`), and saving or Discard marks it done.
+  The Mac checks a native change before master: `.github/workflows/ios-build-check.yml` runs
+  `ios-testflight.sh --archive-only` (signed, not uploaded) on any branch.
 - **Growth measurement** (launch plan, action 5; `lib/growth.js`): `growth_events` (`signup` with its
   source: the browser's first touch from futurega.me/live `?ct=`, the web app's `?src=`, the platform and
   the sign-up form's "How did you hear about us?"; `activated` = the first event saved to My Schedule,

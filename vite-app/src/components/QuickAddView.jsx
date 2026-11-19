@@ -337,8 +337,18 @@ function useDictation(getText, setText, onSpoke) {
   return { supported: !!Recognition, listening, interim, failed, start, stop };
 }
 
-export default function QuickAddView({ token, heroName, onBack, onOpen, voice = false }) {
-  const draft = useMemo(loadDraft, []);
+/* A hand said on the Watch (lib/watch.js), opened from Hands › From your Watch: read already, it opens on its
+   questions; not read yet, on its words, ready for Read hand. Its words were dictated, so they are parsed as speech. */
+function seedDraft(seed) {
+  const text = String(seed.text || '');
+  if (!seed.hand) return { phase: 'describe', text, dictated: true };
+  const settled = settleAuto(seed.hand);
+  const notes = (Array.isArray(seed.notes) ? seed.notes : []).filter(Boolean).map(n => ({ side: 'app', tone: 'note', text: n }));
+  return { phase: 'chat', text, hand: settled.hand, log: [{ side: 'user', text }, ...notes, ...settled.notes], dictated: true };
+}
+
+export default function QuickAddView({ token, heroName, onBack, onOpen, voice = false, seed = null }) {
+  const draft = useMemo(() => (seed ? seedDraft(seed) : loadDraft()), []); // eslint-disable-line react-hooks/exhaustive-deps
   const [phase, setPhase] = useState(() => (draft && draft.phase === 'chat' && draft.hand ? 'chat' : 'describe'));
   const [text, setText] = useState(() => (draft && typeof draft.text === 'string' ? draft.text : ''));
   // Any of the description said through Speak: it is parsed as speech (lib/quick-add/prompt.js).
@@ -372,16 +382,23 @@ export default function QuickAddView({ token, heroName, onBack, onOpen, voice = 
   const say = useCallback((...entries) => setLog(l => [...l, ...entries]), []);
 
   useEffect(() => {
+    if (seed) return; // a Watch hand waits on the server, not in this device's draft
     try {
       if (!text.trim() && !hand) localStorage.removeItem(DRAFT_KEY);
       else localStorage.setItem(DRAFT_KEY, JSON.stringify({ phase, text, hand, log, dictated }));
     } catch { /* storage unavailable or full: the draft is a convenience */ }
-  }, [phase, text, hand, log, dictated]);
+  }, [phase, text, hand, log, dictated, seed]);
+
+  // A Watch hand is done once it is saved, or thrown away: it leaves Hands › From your Watch.
+  const doneWithSeed = useCallback(() => {
+    if (!seed || !token) return;
+    fetch(`${API_URL}/quick-add/inbox/${seed.id}/done`, { method: 'POST', headers: { Authorization: 'Bearer ' + token } }).catch(() => {});
+  }, [seed, token]);
 
   // The description goes with the hand (saved as its notes); the draft is done with.
   const openHand = target => {
     const description = text.trim() || (log.find(m => m.side === 'user') || {}).text || '';
-    clearDraft();
+    if (seed) doneWithSeed(); else clearDraft();
     onOpen(toReplayable(hand), target, description);
   };
 
@@ -541,6 +558,11 @@ export default function QuickAddView({ token, heroName, onBack, onOpen, voice = 
           <button type="button" className="qa-chip is-best qa-wide" disabled={!text.trim() || !!busy || dict.listening} onClick={parse}>
             <span>{busy === 'parse' ? 'Reading the hand…' : 'Read hand'}</span>
           </button>
+          {seed && (
+            <button type="button" className="qa-chip qa-wide" disabled={!!busy} onClick={() => { doneWithSeed(); onBack(); }}>
+              <span>Discard this Watch hand</span>
+            </button>
+          )}
           {error && <Status text={error} />}
         </div>
       ) : (

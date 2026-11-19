@@ -18,7 +18,7 @@ import { parseCardNotation, evaluateHand, evaluateShowdown, assignNeutralSuits, 
          boardKey, handBoards, boardCount, multiBoardWinners, multiBoardEvals, multiBoardShaped, combinesHiLo,
          seatOrderFromButton } from '../utils/poker-engine.js';
 import { encodeHand, VISUAL_SWITCHES } from '../utils/hand-shorthand.js';
-import { MomentNote, NoteTrack, NoteSheet, DetailsSheet, SendHandSheet, QuestionCard, ImportHandsSheet, SentToYou, noteAt, heroDecisionNext, questionHand } from './HandExtras.jsx';
+import { MomentNote, NoteTrack, NoteSheet, DetailsSheet, SendHandSheet, QuestionCard, ImportHandsSheet, SentToYou, FromYourWatch, noteAt, heroDecisionNext, questionHand } from './HandExtras.jsx';
 import { keepListCopy, listCopy, outbox as readOutbox, addToOutbox, flushOutbox } from '../utils/hand-outbox.js';
 import { loadCardImages, ensureExportFonts } from '../utils/export.js';
 import {
@@ -5106,6 +5106,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   // Hands > Study > Play a hand.
   useEffect(() => { if (drillAsk) { setMode('drill'); if (onDrillAsked) onDrillAsked(); } }, [drillAsk, onDrillAsked]);
   const [quickVoice, setQuickVoice] = useState(false);   // quick add opened by Say (listening at once)
+  const [quickSeed, setQuickSeed] = useState(null);      // a hand said on the Watch, finished in quick add
   const [hands, setHands] = useState([]);
   const [games, setGames] = useState([]);
   const [currentHand, setCurrentHand] = useState(initialHand ? canonicalHand(initialHand) : null);
@@ -5766,13 +5767,15 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 
   // ── Quick add (admins): describe a hand, answer its gaps, then replay or review it ──
   if (mode === 'quick' && quickAdd) {
-    return <QuickAddView token={token} heroName={heroName} voice={quickVoice} onBack={() => setMode('list')}
+    return <QuickAddView key={quickSeed ? 'watch-' + quickSeed.id : 'quick'} token={token} heroName={heroName} voice={quickVoice} seed={quickSeed}
+      onBack={() => { setQuickSeed(null); setMode('list'); }}
       onOpen={(hand, target, description) => {
         // The description the hand was read from is kept as its notes, so the original words
         // travel with the saved hand. "Open in replayer" saves at once — before this nothing
         // quick add produced was ever stored; "Review & save" saves when the form is done.
         const desc = String(description || '').trim();
         if (target === 'entry' && draftInTheWay()) return;
+        setQuickSeed(null);
         setCurrentHand(hand); setCurrentHandId(null); setHandIsShared(false);
         setTitle(''); setNotes(desc); setIsPublic(false);
         // A hand read from a description is whole: it opens on its result, as Edit does.
@@ -5956,6 +5959,9 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 
       {/* Saved hands list. The heading carries the hand-history export (all hands,
           as PokerStars-format text for PokerTracker 4) at its right. */}
+      {quickAdd && (
+        <FromYourWatch token={token} onOpen={(h) => { setQuickSeed(h); setQuickVoice(false); setMode('quick'); }} />
+      )}
       <SentToYou token={token} />
       {offlineCopy && (
         <div className="hx-offline" role="status">{`No signal. Showing the copy on this phone${waiting.length ? ` · ${waiting.length} waiting to upload` : ''}`}</div>

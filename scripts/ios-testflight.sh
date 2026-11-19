@@ -23,6 +23,8 @@ set -euo pipefail
 #   ./scripts/ios-testflight.sh              # pull, build, archive, upload (iOS)
 #   ./scripts/ios-testflight.sh --catalyst   # same, but the native Mac (Mac Catalyst) app
 #   ./scripts/ios-testflight.sh --dry-run    # everything up to archive, then stop
+#   ./scripts/ios-testflight.sh --archive-only  # archive and sign, but upload nothing (a branch's build check,
+#                                               # .github/workflows/ios-build-check.yml)
 #   ./scripts/ios-testflight.sh --no-pull    # build what is in the tree already
 #   ./scripts/ios-testflight.sh --commit     # also commit the build-number bump
 #   ./scripts/ios-testflight.sh --build 42   # force a specific build number
@@ -36,6 +38,7 @@ set -euo pipefail
 
 DO_PULL=true
 DRY_RUN=false
+ARCHIVE_ONLY=false
 DO_COMMIT=false
 FORCE_BUILD=""
 CATALYST=false
@@ -44,6 +47,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --no-pull)  DO_PULL=false ;;
     --dry-run)  DRY_RUN=true ;;
+    --archive-only) ARCHIVE_ONLY=true ;;
     --commit)   DO_COMMIT=true ;;
     --catalyst) CATALYST=true ;;
     --build)    FORCE_BUILD="${2:-}"; shift ;;
@@ -238,6 +242,12 @@ xcodebuild -project "$IOS_PROJECT" \
 
 [ -d "$ARCHIVE_PATH" ] || die "archive failed — no .xcarchive produced."
 info "Archive succeeded"
+
+if $ARCHIVE_ONLY; then
+  info "--archive-only: built and signed; nothing uploaded."
+  find "$ARCHIVE_PATH/Products/Applications" -maxdepth 3 -name '*.app' -print | sed 's/^/  /'
+  exit 0
+fi
 
 # ── Upload ──────────────────────────────────────────────────────────────────
 # ExportOptions.plist has destination=upload, so exportArchive uploads straight

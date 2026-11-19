@@ -203,6 +203,71 @@ export function AccountSecurityRows({ token, onToken }) {
   );
 }
 
+/* ── Apple Watch (owner, 2026-11-19: "Apple Watch: dictation through quick add"; lib/watch.js) ──
+   Pair once: the Watch shows a six-digit code, typed here. Hands said on the Watch then wait in Hands ›
+   From your Watch. Quick add's admins only, as quick add is. */
+export function AppleWatchSection({ token }) {
+  const toast = useToast();
+  const [devices, setDevices] = useState(null);
+  const [code, setCode] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => {
+    fetch(`${API_URL}/watch/devices`, { headers: authHdr(token) }).then((r) => (r.ok ? r.json() : null)).then((d) => setDevices(d ? d.devices || [] : null)).catch(() => {});
+  }, [token]);
+  useEffect(() => { load(); }, [load]);
+  if (!devices) return null; // not quick add's admin, or no connection
+  const pair = async (e) => {
+    e.preventDefault();
+    setBusy(true); setErr('');
+    try {
+      const r = await fetch(`${API_URL}/watch/pair/claim`, { method: 'POST', headers: authHdr(token, true), body: JSON.stringify({ code }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setErr(d.error || `It did not work (${r.status})`); return; }
+      setCode(''); load();
+      if (toast) toast.success('Paired. Say a hand on your Watch.');
+    } catch { setErr('No connection. Nothing changed.'); }
+    finally { setBusy(false); }
+  };
+  const unpair = async (id) => {
+    setBusy(true);
+    try { await fetch(`${API_URL}/watch/devices/${id}`, { method: 'DELETE', headers: authHdr(token) }); load(); } catch { /* the list stays */ }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="settings-section">
+      <div className="settings-section-label">Apple Watch</div>
+      <div className="settings-card">
+        <div className="settings-row settings-row--stack">
+          <span className="settings-row-label">Say hands on your Watch</span>
+          <p className="settings-help">Open futurega.me on your Watch, tap Pair, and type the code it shows. Hands you say there wait in Hands to be finished.</p>
+          <form className="settings-form" onSubmit={pair}>
+            <input className="settings-debug-input" inputMode="numeric" autoComplete="one-time-code" placeholder="Code from your Watch" maxLength={7}
+              value={code} onChange={(e) => setCode(e.target.value.replace(/[^\d ]/g, ''))} />
+            {err && <p className="settings-help settings-help--danger" role="alert">{err}</p>}
+            <div className="settings-inline-row">
+              <button type="submit" className="btn btn-primary btn-sm settings-btn settings-btn--w7" disabled={busy || code.replace(/\D/g, '').length !== 6}><span>{busy ? 'Pairing…' : 'Pair'}</span></button>
+            </div>
+          </form>
+        </div>
+        {devices.length > 0 && (
+          <div className="settings-row settings-row--stack">
+            <span className="settings-row-label">{`Paired: ${devices.length} Watch${devices.length === 1 ? '' : 'es'}`}</span>
+            <div className="settings-people">
+              {devices.map((d) => (
+                <div key={d.id} className="settings-people-item settings-device">
+                  <span className="settings-people-name">{d.device}{d.lastUsed ? ` · ${when(d.lastUsed)}` : ' · not used yet'}</span>
+                  <button type="button" className="btn btn-ghost btn-sm settings-btn settings-btn--danger" onClick={() => unpair(d.id)} disabled={busy}><span>Unpair</span></button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── Privacy: hide money (44) and the app lock (43) ──────────────────────── */
 export function PrivacySection() {
   const [hidden, setHidden] = useState(moneyHidden);

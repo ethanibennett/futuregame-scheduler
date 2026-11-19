@@ -6,7 +6,7 @@ import { THEME_LABEL, THEME_ICON, SERIF_LABEL, SERIF_STACK, SERIF_ORDER, setDebu
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { SITE_URL, API_URL } from '../utils/api.js';
-import { NotificationsSection, AccountSecurityRows, PrivacySection, InviteRow, BlockedRow, DataSection } from './SettingsMore.jsx';
+import { NotificationsSection, AccountSecurityRows, PrivacySection, InviteRow, BlockedRow, DataSection, AppleWatchSection } from './SettingsMore.jsx';
 
 // Avatars on the r grid (a px size floored the account row to 8.22r). A circle
 // can't be whole g AND whole r, so each sits centred in a whole-g cell (CSS).
@@ -285,6 +285,8 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
       </div>
 
       <PrivacySection />
+
+      {isAdmin && token && <AppleWatchSection token={token} />}
 
       {isAdmin && (
       <div className="settings-section">

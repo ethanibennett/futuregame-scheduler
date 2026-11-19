@@ -1,0 +1,59 @@
+name: iOS build check
+
+# Archive and sign the app on the Mac WITHOUT uploading it, for a branch that changes the native project
+# (2026-11-19: the Apple Watch app's target was written by hand on Windows, and the first place a project file is
+# read is Xcode; a broken one on master would sink the 4 a.m. TestFlight build). It runs the same script as the
+# TestFlight build, with --archive-only, so what passes here is what the nightly would build.
+#
+# From Windows (one line):
+#   gh api repos/ethanibennett/futuregame-scheduler/dispatches -f event_type=ios-build-check -F 'client_payload[ref]=watch-app'
+# or Actions › iOS build check › Run workflow, on the branch.
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [ios-build-check]
+
+# Its own group, so a check never takes a TestFlight build's pending slot; the one Mac runner takes jobs one at a time.
+concurrency:
+  group: ios-build-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: [self-hosted, macOS]
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.client_payload.ref || github.ref }}
+
+      - name: Deepen history for the build-number floor
+        continue-on-error: true
+        run: git fetch --filter=tree:0 --unshallow origin HEAD 2>/dev/null || git fetch --filter=tree:0 --deepen=5000 origin HEAD
+
+      - name: Show what is checked
+        run: |
+          echo "ref:    ${{ github.event.client_payload.ref || github.ref }}"
+          echo "commit: $(git rev-parse --short HEAD)"
+          git log -1 --pretty='%s' | cut -c1-200
+
+      - name: Unlock build keychain
+        env:
+          BUILD_KEYCHAIN_PASSWORD: ${{ secrets.BUILD_KEYCHAIN_PASSWORD }}
+        run: |
+          KEYCHAIN="$HOME/Library/Keychains/build.keychain-db"
+          security list-keychains -d user -s "$KEYCHAIN"
+          security unlock-keychain -p "$BUILD_KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings "$KEYCHAIN"
+
+      - name: Archive and sign (no upload)
+        env:
+          ASC_ADMIN_KEY_ID: ${{ secrets.ASC_ADMIN_KEY_ID }}
+          ASC_ADMIN_KEY_B64: ${{ secrets.ASC_ADMIN_KEY_B64 }}
+        run: ./scripts/ios-testflight.sh --no-pull --archive-only
+
+      - name: Restore keychain search list
+        if: always()
+        run: security list-keychains -d user -s "$HOME/Library/Keychains/login.keychain-db"

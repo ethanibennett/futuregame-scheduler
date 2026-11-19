@@ -291,6 +291,8 @@
 .hx-inbox-row { display: flex; flex-direction: column; justify-content: center; min-height: calc(var(--subrow) * 6); padding: 0 var(--gu); border-radius: var(--radius-sm); background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border); margin-bottom: calc(var(--subrow) * 0.5); text-decoration: none; }
 .hx-inbox-who { font-size: var(--fs-sm); color: var(--text); }
 .hx-inbox-what { font-size: var(--fs-xs); color: var(--text-muted); }
+/* From your Watch's rows are buttons, drawn as the links above (lib/watch.js). */
+button.hx-inbox-btn { appearance: none; border: 0; width: 100%; font: inherit; color: inherit; text-align: left; align-items: flex-start; cursor: pointer; }
 .qc-card { position: fixed; z-index: calc(var(--z-modal) - 1); left: var(--gu); right: var(--gu); bottom: calc(var(--sa-b, 0px) + var(--subrow) * 3); padding: 0 var(--gu) var(--subrow); border-radius: var(--radius); background: var(--surface-raised); box-shadow: var(--elev-2), inset 0 0 0 var(--bw-1) var(--brand-line); }
 .qc-label { font-family: var(--font-display); font-size: var(--fs-md); line-height: calc(var(--subrow) * 4); color: var(--text); }
 .qc-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gu); }
@@ -323,7 +325,10 @@
 .lk-share i { font-style: normal; font-size: var(--fs-2xs); color: var(--text-muted); }
 
 /* ── The rules of every game (33) ── */
-.vp-row-info { display: inline-grid; place-items: center; flex: 0 0 auto; width: calc(var(--gu) * 2.5); height: calc(var(--gu) * 2.5); margin-left: auto; margin-right: var(--gu); border-radius: var(--radius-circle); box-shadow: inset 0 0 0 var(--bw-1) var(--border-strong); color: var(--text-muted); font-family: var(--font-display); font-style: italic; font-size: var(--fs-xs); cursor: pointer; }
+/* The control is a whole cell, 2g x the row's 4r, its label centred (.ctl-cap: the display face); the ring is drawn
+   inside it, 2g across (a circle cannot be whole g and whole r at once; it was a 2.5g box, off both grids). */
+.vp-row-info { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: calc(var(--gu) * 2); height: calc(var(--subrow) * 4); margin-left: auto; margin-right: var(--gu); color: var(--text-muted); font-family: var(--font-display); font-style: italic; font-size: var(--fs-xs); cursor: pointer; }
+.vp-row-info::before { content: ''; position: absolute; left: 0; top: 50%; width: calc(var(--gu) * 2); height: calc(var(--gu) * 2); transform: translateY(-50%); border-radius: var(--radius-circle); box-shadow: inset 0 0 0 var(--bw-1) var(--border-strong); pointer-events: none; }
 .vp-rules { z-index: calc(var(--z-modal) + 2); }
 .vp-rules-backdrop { z-index: calc(var(--z-modal) + 1); }
 .vp-rules-p { font-size: var(--fs-sm); line-height: calc(var(--subrow) * 3); color: var(--text); margin: 0 0 var(--subrow); }
