@@ -213,7 +213,9 @@ npx cap sync ios
 # see docs/mac-catalyst.md). Without them EVERY build fails, iOS included, so a
 # fresh runner checkout needs this. No-op once built for the pinned version,
 # which `cap sync` above may have just changed.
-"$PROJECT_ROOT/scripts/build-capacitor-xcframeworks.sh"
+# The iPhone build uses Ionic's signed xcframeworks untouched (ITMS-91065: an SDK signature is required); only
+# the Mac (Catalyst) build needs the merged ones with a Catalyst slice.
+if $CATALYST; then "$PROJECT_ROOT/scripts/build-capacitor-xcframeworks.sh"; else "$PROJECT_ROOT/scripts/build-capacitor-xcframeworks.sh" --ios-only; fi
 
 if $DRY_RUN; then
   info "--dry-run: stopping before archive."
