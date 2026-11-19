@@ -10318,7 +10318,15 @@
       /* Outline drawn as an inset shadow so it never adds to the card's height
          (a 1px border would push the 8px-grid card 2px off). Colour via
          --card-outline (venue colour for saved events, set inline). */
-      box-shadow: inset 0 0 0 var(--bw-1) var(--card-outline, var(--border));
+      /* Top, right and bottom only: the outline ends in the venue strip, with no side of its own against it (owner,
+         2026-11-19: "There should not be an outline just inside the venue strip, it should only span the
+         top/right/bottom sides and die into the venue strip"). On a saved card that side was the strip's colour, and
+         the strip's own 1px cover (.cal-event-row.saved > .cal-venue-strip below) still paints it, so the strip's
+         band and its centred name are unchanged there. */
+      box-shadow:
+        inset 0 var(--bw-1) 0 0 var(--card-outline, var(--border)),
+        inset calc(var(--bw-1) * -1) 0 0 0 var(--card-outline, var(--border)),
+        inset 0 calc(var(--bw-1) * -1) 0 0 var(--card-outline, var(--border));
       border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     }
 
@@ -10432,10 +10440,11 @@
     .late-reg-label.event-completed-label { color: var(--text); opacity: 1; }
 
     /* ── Conditional events ── */
-    .cal-event-row.conditional .cal-event-row-content {
-      box-shadow: none;
-      outline: var(--bw-1) dashed var(--card-outline, var(--border));
-      outline-offset: calc(-1 * var(--bw-1));
+    /* Dashed, on the same three sides (an outline cannot leave one out, so a frame inside the box). */
+    .cal-event-row.conditional .cal-event-row-content { box-shadow: none; outline: none; position: relative; }
+    .cal-event-row.conditional .cal-event-row-content::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+      border: var(--bw-1) dashed var(--card-outline, var(--border)); border-left: 0;
     }
     /* Anchor / must-play events — inset bold border (no size change) */
     .cal-event-row.anchor {
