@@ -13,8 +13,9 @@ import {
   getMaxEntries, getVenueTzAbbr, getNow, isTbd,
   formatConditionBadge,
   getIfIBustEvents, getIfIBagEvents, describeGame,
-  currencySymbol, VENUE_BRAND_VAR, splitEventStage, formatChips, getVenueCoords, getToday, formatBuyin,
+  currencySymbol, VENUE_BRAND_VAR, splitEventStage, formatChips, getVenueCoords, getToday, formatBuyin, getVenueTimezone,
 } from '../utils/utils.js';
+import { googleCalendarUrl } from '../utils/google-calendar.js';
 import { registerClock, useClockStore, liveView, clockRegEnd, clockFieldLabel, lateRegOver, fmtClock, isCompleted, clockAskable } from '../utils/live-clocks.js';
 import { API_URL } from '../utils/api.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
@@ -1023,6 +1024,26 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
                           className="cal-structure-link"
                         >
                           View Structure Sheet {'\u2197'}
+                        </a>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Add to Google Calendar (owner, 2026-11-19): Google's new-event page filled in, in the room's own
+                      time and zone, ending when late reg closes (else 8 hours), as the calendar feed does. Upcoming
+                      events only. */}
+                  {(() => {
+                    const day = normaliseDate(tournament.date);
+                    if (!day || day < getToday()) return null;
+                    const sym = currencySymbol(tournament.venue, tournament.currency);
+                    const url = googleCalendarUrl({ ...tournament, date: day }, {
+                      zone: getVenueTimezone(tournament.venue),
+                      money: (n) => `${sym}${Number(n).toLocaleString()}`,
+                    });
+                    return url && (
+                      <div className="cal-structure-cell">
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="cal-structure-link cal-gcal-link">
+                          Add to Google Calendar {'\u2197'}
                         </a>
                       </div>
                     );

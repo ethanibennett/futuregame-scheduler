@@ -10039,6 +10039,10 @@
     }
     /* In the month row the two icon buttons are a date button wide (5g), over MON and SAT. */
     .cal-month-row > .cal-month-icon-btn { width: calc(var(--gu) * 5); }
+    /* 2r above the month row (under the All events | Calendar switch; its own 1r margin collapses into this one) and
+       2r under the date strip (its own 1r bottom pad and 1r more) (owner, 2026-11-19). */
+    .sched-switch + .cal-month-row { margin-top: calc(var(--subrow) * 2); }
+    .cal-date-strip + .cal-bottom-row { margin-top: var(--subrow); }
     .cal-month-icon-btn svg { width: calc(var(--subrow) * 2.25); height: calc(var(--subrow) * 2.25); }
     /* Today icon (crosshairs) needs a tighter glyph — its native viewBox
        fills nearly the entire box. Trim a hair so it visually matches

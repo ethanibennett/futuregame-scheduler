@@ -62,7 +62,16 @@ function gridUnitsPx() {
   probe.remove();
   return { g: b.width / 100, r: b.height / 100 };
 }
-/* The vertical lines an edge may sit on, in g from the app's left edge: each 8g column
+/* The canvas the grid is counted from: the phone's screen, or on the desktop layout the pane the calendar is in (the
+   phone's 37g canvas, 11g right of the shell's edge past the rail). Measured from the shell there, the pills' edges
+   went to lines 11g off: "Mixed" ended 7g short of the filter button, overflowed its strip and was cut off at its
+   left (owner, 2026-11-19), and the filter panel opened over the rail. */
+function canvasLeft(el) {
+  const pane = el && el.closest ? el.closest('.dk-pane') : null;
+  const box = pane || document.querySelector('.app-shell');
+  return box ? box.getBoundingClientRect().left : 0;
+}
+/* The vertical lines an edge may sit on, in g from the canvas's left edge: each 8g column
    (starting 1g, 10g, 19g, 28g) has a line every 2g - 1,3,5,7,9 | 10..18 | 19..27 | 28..36. */
 const GRID_LINES = [-4, -3, -2, -1, 0, 1, 2, 3].flatMap(c => [0, 2, 4, 6, 8].map(s => 1 + 9 * c + s));
 /* (continued leftwards past the screen edge, so pills scrolled out of the strip keep the pattern) */
@@ -82,7 +91,7 @@ function calPanelPos(btn) {
   const shell = document.querySelector('.app-shell');
   const nav = document.querySelector('.bottom-nav');
   const barTop = bar ? bar.getBoundingClientRect().top : 0;
-  const x0 = shell ? shell.getBoundingClientRect().left : 0;
+  const x0 = btn ? canvasLeft(btn) : (shell ? shell.getBoundingClientRect().left : 0);
   const limit = nav ? nav.getBoundingClientRect().top : (window.innerHeight || document.documentElement.clientHeight);
   const b = btn ? btn.getBoundingClientRect() : null;
   const topR = b ? Math.ceil((b.bottom - barTop) / r - 0.01) + 1 : 8;
@@ -230,8 +239,7 @@ function Filters({ filters, setFilters, tournaments, search, setSearch }) {
     const els = [...box.querySelectorAll('[data-cal-pill]')];
     if (!els.length) return;
     const { g } = gridUnitsPx();
-    const shell = document.querySelector('.app-shell');
-    const x0 = shell ? shell.getBoundingClientRect().left : 0;
+    const x0 = canvasLeft(btn);
     els.forEach(el => { el.style.width = ''; el.style.marginRight = ''; });
     const natural = els.map(el => el.getBoundingClientRect().width / g);
     let edge = (btn.getBoundingClientRect().left - x0) / g;
