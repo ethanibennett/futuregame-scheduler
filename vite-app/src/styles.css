@@ -6725,6 +6725,9 @@
     .replayer-turn-ring { position: absolute; pointer-events: none; box-sizing: border-box; z-index: 4; border: var(--bw-1) solid var(--brand-on-dark);
       box-shadow: var(--plate-bevel), var(--ring-1) rgba(60,200,224,0.55), var(--ring-2) rgba(60,200,224,0.40); }
     .replayer-turn-ring.is-allin { border-color: var(--act-allin); box-shadow: var(--ring-1) rgba(168,85,247,0.42); }
+    /* The turn's crossfade rings live in their plaques (2026-11-19): over the plaque's own border box, with its hairline
+       border, so they scale, grey and move with it, and hand over to the plaque's own ring without a step. */
+    .replayer-turn-ring.is-in-plaque { inset: calc(var(--bw-hair) * -1); border-width: var(--bw-hair); z-index: 2; }
     .replayer-seat.ring-wait .replayer-seat-info { border-color: rgba(255,255,255,0.22); box-shadow: none; transition: none; }
     .replayer-seat.ring-wait .replayer-seat-info::before { animation: none; }
     /* While the turn crossfades (owner, 2026-11-13: "not smooth at all"), neither plaque runs its own CSS transition:

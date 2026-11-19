@@ -92,16 +92,19 @@ export const SPRING_SETS = {
     stage: {
       sweepStagger: 25, sweepCap: 120,
       place: 40, beat: 140, midLag: 25, yieldAfterSweep: 25, cardLag: 20, boardWaitMax: 60, shipAfterSweep: 0,
-      appear: 33, placeVelocity: 5,
-      arrivalFade: 40, labelFade: 35,
+      // Calmer (owner, 2026-11-19: "Some of the replayer animations are still too violent"): things fade in over
+      // 60-70ms, not 33-40 (they popped), and a card enters its landing at half the speed it did (5 progress a second).
+      appear: 60, placeVelocity: 2.5,
+      arrivalFade: 70, labelFade: 60,
       pileIn: 33, pileOut: 40,
       placeScale: 1.05, placeDrop: 0.10,
       rot: { flop: -2, turn: 1.5, river: -1.5 },
       push: 0.4, addOn: 0.22,
-      squash: [1.03, 0.955],
+      squash: [1.015, 0.978],   // half the landing squash (was 1.03 x 0.955)
       sweepLift: 0.04, crossLift: 0.12,
       shipStagger: 5, shipTiers: ['arm', 'armHeavy', 'armLight', 'arm', 'armHeavy'],
-      shipBow: 0.45, shipBows: [1, -1, 0.6, -0.6, 0.3], stretchMax: 0.35,
+      // stretchMax 0.15 since 2026-11-19 (a shipped chip at speed read as a smear at 0.35).
+      shipBow: 0.45, shipBows: [1, -1, 0.6, -0.6, 0.3], stretchMax: 0.15,
       shipLift: 0.10, shipShrink: 0.85, stackOut: 16,
     },
   },
@@ -592,4 +595,6 @@ export function keyframes(channels, opts = {}) {
 /* The replayer's pace on screen (owner, 2026-11-13: "slow the replayer animations down a bit, it's very
    chaotic now"): every live moment's rate is multiplied by this, so at 0.8 each motion takes a quarter
    longer, its springs, beats, lags and fades alike. Exports keep their own rate (replay-capture.js). */
-export const REPLAYER_PACE = 0.8;
+// 0.65 since 2026-11-19 (owner: "Some of the replayer animations are still too violent"): each motion takes half as
+// long again as its own rate, the autoplay tempo with it.
+export const REPLAYER_PACE = 0.65;

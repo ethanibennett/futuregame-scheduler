@@ -11191,29 +11191,34 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         /* 51: the turn passes by a crossfade (owner, 2026-11-13: "it shouldn't jump from seat to seat, it should fade
            out and fade in"): the ring fades out on the plaque that acted as it fades in on the next one to act. */
         const toSeat = turnIdx != null && turnIdx >= 0 ? seatOf(turnIdx) : null;
-        if ((motionKind === 'action' || motionKind === 'street') && prevS.turn && toSeat && prevS.turn.seat !== turnIdx && layer && L) {
+        if ((motionKind === 'action' || motionKind === 'street') && prevS.turn && toSeat && prevS.turn.seat !== turnIdx) {
           const info = toSeat.querySelector('.replayer-seat-info');
-          const tr = info.getBoundingClientRect(), fr = prevS.turn.rect;
-          const radius = getComputedStyle(info).borderRadius;
-          const fade = (2 * S4.beat) / rate;
+          /* Three beats (owner, 2026-11-19: "the crossfade between player seats is not smooth"; it was two), and each
+             drawn ring is a child of its plaque, not a box on the layer at the plaque's old place: the seat that acted
+             and folded shrinks to 0.88 and greys while its ring fades, and the ring now shrinks and greys with it (it
+             had hung full size round a shrinking plaque). It has the plaque's own hairline border (.is-in-plaque), so
+             the hand-over at the end changes nothing (the drawn ring's 1.6px border thinned to the hairline). */
+          const fade = (3 * S4.beat) / rate;
           writes.push(() => {
-            const ringAt = (r) => {
+            const ringIn = (plaque) => {
               const ring = document.createElement('div');
-              ring.className = 'replayer-turn-ring';
-              Object.assign(ring.style, { left: (r.left - L.left) + 'px', top: (r.top - L.top) + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: radius });
-              layer.appendChild(ring);
+              ring.className = 'replayer-turn-ring is-in-plaque';
+              ring.style.borderRadius = getComputedStyle(plaque).borderRadius;
+              plaque.appendChild(ring);
               return ring;
             };
             const ease = (p) => p * p * (3 - 2 * p);
             // The seat that acted drops its own ring at once, under the drawn one fading out (see .ring-leave).
             const fromSeat = seatOf(prevS.turn.seat);
+            const fromInfo = fromSeat && fromSeat.querySelector('.replayer-seat-info');
             table.querySelectorAll('.replayer-seat.ring-leave, .replayer-seat.ring-hand').forEach(s => s.classList.remove('ring-leave', 'ring-hand'));
+            table.querySelectorAll('.replayer-turn-ring.is-in-plaque').forEach(r => r.remove());
             if (fromSeat) fromSeat.classList.add('ring-leave');
-            motion.run(ringAt(fr), { transient: true, size: { w: fr.width, h: fr.height }, end: fade, channels: [
+            if (fromInfo) motion.run(ringIn(fromInfo), { transient: true, size: { w: fromInfo.offsetWidth, h: fromInfo.offsetHeight }, end: fade, channels: [
               { prop: 'opacity', ramp: { from: 1, to: 0, delay: 0, duration: fade, ease } },
             ] });
             toSeat.classList.add('ring-wait');
-            const entry = motion.run(ringAt(tr), { transient: true, size: { w: tr.width, h: tr.height }, end: fade, channels: [
+            const entry = motion.run(ringIn(info), { transient: true, size: { w: info.offsetWidth, h: info.offsetHeight }, end: fade, channels: [
               { prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: fade, ease } },
             ] });
             // The seat to act takes its ring at once, as the drawn one goes: no transition, no arrival pulse.

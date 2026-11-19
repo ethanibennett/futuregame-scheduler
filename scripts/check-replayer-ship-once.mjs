@@ -25,7 +25,10 @@ const ENGINE = opt('--engine', 'msedge');
 const THROTTLE = Number(opt('--throttle', ENGINE === 'msedge' ? 4 : 1));
 const SPRINGS = opt('--springs', null);
 const TRIALS = Number(opt('--trials', 12));
-const H8 = 'N85.1000-2000~120000,95000,150000,80000,70000,210000,64000,110000.AsKc,-,-,QhQd,-,-,-,-/bKh7d2c/b9s/bAh.'
+// The same 8-max hand (AK against QQ to a river showdown, one winner stored, no side pot), in today's share-link encoding,
+// which carries the actions: the link this check was written with no longer decodes, and the page sat on "Loading..."
+// (2026-11-19).
+const H8 = 'N80.1000-2000~120000,95000,150000,80000,70000,210000,64000,110000.AsKc,-,-,QhQd,-,-,-,-/bKh7d2c/b9s/bAh.0r5000,1f,2f,3c5000,4f,5f,6f,7f/0b6000,3c6000/0x,3x/0b15000,3c15000.w0';
   + '0f,1f,2r5000,3f,4f,5r15000,6f,7f,2c15000/2x,5b12000,2c12000/2x,5b30000,2c30000/2b40000,5c40000.w5';
 const G1 = [0, 40, 120, 240], G2 = [0, 60, 200];
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -35,7 +38,7 @@ if (!guest.token) throw new Error('guest login failed at ' + BASE);
 const browser = ENGINE === 'webkit' ? await webkit.launch() : await chromium.launch({ channel: 'msedge', headless: true });
 const ctx = await browser.newContext({ viewport: { width: 402, height: 874 }, deviceScaleFactor: 2 });
 await ctx.addInitScript(({ tok, springs }) => {
-  localStorage.setItem('token', tok);
+  // Signed out: a shared link opens the replay over the whole window (a guest's token left it on Home).
   localStorage.setItem('onboardComplete', '1');
   localStorage.setItem('hasOnboarded', 'true');
   localStorage.setItem('onboarded', '1');
@@ -45,7 +48,7 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', e => errors.push(String(e).slice(0, 300)));
 await page.goto(BASE + '/#h/' + encodeURIComponent(H8), { waitUntil: 'domcontentloaded' });
-await page.waitForSelector('button[title="Forward"]', { timeout: 40000 });
+await page.waitForSelector('button[title^="Forward"]', { timeout: 40000 });
 await sleep(3000);
 await page.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 800 }).catch(() => {});
 if (ENGINE !== 'webkit' && THROTTLE > 1) {
@@ -69,9 +72,9 @@ const fails = [];
 let most = 0, mostLaunched = 0;
 for (let i = 0; i < TRIALS; i++) {
   const g1 = G1[i % G1.length], g2 = G2[Math.floor(i / G1.length) % G2.length];
-  await page.evaluate(() => document.querySelector('button[title="End"]').click());
+  await page.evaluate(() => document.querySelector('button[title^="End"]').click());
   await sleep(1000);
-  await page.evaluate(() => document.querySelector('button[title="Back"]').click());
+  await page.evaluate(() => document.querySelector('button[title^="Back"]').click());
   await sleep(500); await idle(); await sleep(200);
   const r = await page.evaluate(async ([g1, g2]) => {
     window.__launches = [];
@@ -82,12 +85,12 @@ for (let i = 0; i < TRIALS; i++) {
       clips = Math.max(clips, t.querySelectorAll('.replayer-ship-clip').length);
     }, 3);
     const t0 = performance.now();
-    document.querySelector('button[title="Forward"]').click();
+    document.querySelector('button[title^="Forward"]').click();
     await new Promise(r => setTimeout(r, g1));
     const back = performance.now() - t0;
-    document.querySelector('button[title="Back"]').click();
+    document.querySelector('button[title^="Back"]').click();
     await new Promise(r => setTimeout(r, g2));
-    document.querySelector('button[title="Forward"]').click();
+    document.querySelector('button[title^="Forward"]').click();
     await new Promise(r => setTimeout(r, 2500));
     clearInterval(iv);
     const winner = t.querySelector('.replayer-seat.winner .replayer-seat-stack');
@@ -95,7 +98,8 @@ for (let i = 0; i < TRIALS; i++) {
   }, [g1, g2]);
   const after = r.launches.filter(x => x > r.back).length;
   most = Math.max(most, r.chips); mostLaunched = Math.max(mostLaunched, after);
-  const bad = r.chips > 5 || r.clips > 1 || after > 1 || r.stack !== '310K';
+  // The winner's stack at its award: Hero's 94,000 after the hand plus the 55,000 pot (the old hand's was 310K).
+  const bad = r.chips > 5 || r.clips > 1 || after > 1 || r.stack !== '149K';
   if (bad) fails.push({ g1, g2, ...r });
   console.log(`g1 ${g1} g2 ${g2}: Back at ${r.back}ms, ships launched at ${r.launches.join(', ') || 'none'}ms, most chips at once ${r.chips}, clips ${r.clips}, the winner's stack ${r.stack}${bad ? '  FAIL' : ''}`);
 }
