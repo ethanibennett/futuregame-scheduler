@@ -908,10 +908,10 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
                         <span className="cal-detail-value">{tournament.level_duration} min</span>
                       </div>
                     )}
-                    {tournament.reentry && (
+                    {tournament.venue !== 'Personal' && (
                       <div className="cal-detail-item">
                         <span className="cal-detail-label">Re-entry</span>
-                        <span className="cal-detail-value">{isFreezeout(tournament.reentry) ? 'Freezeout' : tournament.reentry}</span>
+                        <span className="cal-detail-value">{isFreezeout(tournament.reentry) ? 'Freezeout' : getMaxEntries(tournament.reentry) >= 99 && !/unlimited/i.test(tournament.reentry || '') ? 'Unlimited' : tournament.reentry}</span>
                       </div>
                     )}
                     {tournament.late_reg && (

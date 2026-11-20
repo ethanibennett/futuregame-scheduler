@@ -60,26 +60,31 @@ test('a server stamp with no zone is UTC (App improvements 353)', async () => {
   assert.ok(Number.isNaN(parseServerStamp('')));
 });
 
-// Re-entry policies (owner, 2026-11-20, the Wynn WPT: "Why are there no reentry options on events"): the feed sent
-// none for all 149 WPT World Championship events, and a missing policy read as a freezeout, so the schedule card had
-// no Max Entries stepper and Home no Re-enter button. Unknown is never a freezeout.
-test('a re-entry policy the feed does not name leaves re-entry open; only a stated freezeout allows one entry', async () => {
-  const { getMaxEntries, isFreezeout, reentryKnown, reentriesLeftText } = await import('../utils.js');
-  for (const none of [null, undefined, '', '  ']) {
-    assert.equal(reentryKnown(none), false);
-    assert.equal(isFreezeout(none), false);
-    assert.equal(getMaxEntries(none), 99);
-    assert.equal(reentriesLeftText(none, 1), '');
+// Re-entry policies (owner, 2026-11-20, the Wynn WPT: "Unless an event explicitly says a number of maximum entries it
+// is always unlimited"). The feed sent none for all 149 WPT World Championship events, and a missing policy read as a
+// freezeout: no Max Entries stepper on the Schedule card, no Re-enter on Home.
+test('re-entry is unlimited unless the event states a number; a stated freezeout is one entry', async () => {
+  const { getMaxEntries, isFreezeout, reentriesLeftText } = await import('../utils.js');
+  // Nothing stated, or words with no number: unlimited.
+  for (const r of [null, undefined, '', '  ', 'Re-Entry', 'Unlimited', 'Unlimited Re-Entry', 'Bust A Play B',
+    'Bust B Play C', 'Re-entry until level 8', 'Unlimited through end of level 12']) {
+    assert.equal(isFreezeout(r), false, String(r));
+    assert.equal(getMaxEntries(r), 99, String(r));
+    assert.equal(reentriesLeftText(r, 3), 'unlimited', String(r));
   }
-  for (const fo of ['N/A', 'Freezeout', 'freeze-out', 'None', 'No re-entry']) {
-    assert.equal(isFreezeout(fo), true, fo);
-    assert.equal(getMaxEntries(fo), 1, fo);
+  // A stated freezeout.
+  for (const r of ['N/A', 'Freezeout', 'freeze-out', 'None', 'No re-entry']) {
+    assert.equal(isFreezeout(r), true, r);
+    assert.equal(getMaxEntries(r), 1, r);
   }
-  assert.equal(getMaxEntries('Unlimited'), 99);
-  assert.equal(reentriesLeftText('Unlimited', 3), 'unlimited');
-  assert.equal(getMaxEntries('Unlimited through end of level 12'), 99);
+  // A stated number: re-entries, one more entry than that; "N entries" is entries.
   assert.equal(getMaxEntries('1'), 2);
-  assert.equal(reentriesLeftText('2', 1), '2 left');
+  assert.equal(getMaxEntries('2'), 3);
+  assert.equal(getMaxEntries('Single'), 2);
+  assert.equal(getMaxEntries('Single Re-Entry'), 2);
   assert.equal(getMaxEntries('1 Per Flight'), 2);
-  assert.equal(getMaxEntries('Bust A Play B'), 2);
+  assert.equal(getMaxEntries('2 Per Flight'), 3);
+  assert.equal(getMaxEntries('Max 2 re-entries'), 3);
+  assert.equal(getMaxEntries('3 entries max'), 3);
+  assert.equal(reentriesLeftText('2', 1), '2 left');
 });

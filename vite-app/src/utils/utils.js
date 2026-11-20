@@ -1012,10 +1012,11 @@ export function getVenueClass(t) {
   return VENUE_CLASS_MAP[t.venue] || '';
 }
 
-/* Re-entry policies (owner, 2026-11-20, the Wynn WPT: "Why are there no reentry options on events"). The feeds
-   name a policy for about a third of events ("Unlimited") and nothing for the rest: all 149 WPT World Championship
-   events came with none. A missing policy is UNKNOWN, never a freezeout, so re-entry stays open with no count;
-   only a policy that says freezeout ('N/A', 'Freezeout', 'None', the server's normalizeReentry) allows one entry. */
+/* Re-entry policies (owner, 2026-11-20, the Wynn WPT: "Unless an event explicitly says a number of maximum entries it
+   is always unlimited"). The feeds name a policy for about a third of events and nothing for the rest (all 149 WPT
+   World Championship events came with none); a missing or wordy policy ("Re-Entry", "Bust A Play B", "until level 8")
+   is unlimited. A stated number limits it: "1", "2 Per Flight" and "Single" are re-entries (one more entry than
+   that), "3 entries" is entries; a stated freezeout ('N/A', 'Freezeout', 'None') is one entry. */
 export function reentryKnown(reentry) {
   return String(reentry == null ? '' : reentry).trim() !== '';
 }
@@ -1023,18 +1024,20 @@ export function isFreezeout(reentry) {
   return /^(n\/a|none|no|freeze-?out|no re-?entr(y|ies))$/i.test(String(reentry == null ? '' : reentry).trim());
 }
 export function getMaxEntries(reentry) {
-  if (!reentryKnown(reentry)) return 99;
   if (isFreezeout(reentry)) return 1;
-  if (/unlimited/i.test(reentry)) return 99;
-  const num = parseInt(reentry);
-  if (!isNaN(num)) return num + 1;
-  return 2;
+  const r = String(reentry == null ? '' : reentry).trim();
+  if (/unlimited/i.test(r)) return 99;
+  if (/^single\b/i.test(r)) return 2;
+  const entries = r.match(/(\d+)\s*(?:total\s+)?entries\b/i);
+  if (entries) return Math.max(1, Number(entries[1]));
+  const re = r.match(/^(\d+)\b/) || r.match(/(\d+)\s*re-?entr/i);
+  if (re) return Number(re[1]) + 1;
+  return 99;
 }
-/** What the Re-enter button says after "Re-enter": "unlimited", "2 left", or nothing when the policy is unknown. */
+/** What the Re-enter button says after "Re-enter": "unlimited" or "2 left". */
 export function reentriesLeftText(reentry, used) {
-  if (!reentryKnown(reentry)) return '';
   const max = getMaxEntries(reentry);
-  return max >= 99 ? 'unlimited' : `${max - used} left`;
+  return max >= 99 ? 'unlimited' : `${Math.max(0, max - used)} left`;
 }
 
 // ── Venue Timezone Mapping ─────────────────────────────
