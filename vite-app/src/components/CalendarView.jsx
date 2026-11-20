@@ -228,8 +228,17 @@ function Filters({ filters, setFilters, tournaments, search, setSearch }) {
      line that just clears the label. Widths are written in g, so they scale with the screen. */
   const pillsRef = useRef(null);
   const [, bumpPills] = useState(0);
+  /* Pills that do not all fit beside the filter button fold into one, "2 filters", whose x clears them all (owner,
+     2026-11-19: "Still cutting off these pills": they scrolled inside the cell, the first cut at its left). Decided
+     by measurement, for this set of pills at this width: the walk below finds the first pill's left past the cell's. */
+  const pillSig = pills.map(([label]) => label).join('|');
+  const [foldedSig, setFoldedSig] = useState(null);
+  const folded = pills.length > 1 && foldedSig === pillSig;
+  const shown = folded
+    ? [[`${pills.length} filters`, Object.assign({}, ...pills.map(([, patch]) => patch)), 'all']]
+    : pills;
   useEffect(() => {
-    const onResize = () => bumpPills(n => n + 1);
+    const onResize = () => { setFoldedSig(null); bumpPills(n => n + 1); };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
@@ -250,8 +259,8 @@ function Filters({ filters, setFilters, tournaments, search, setSearch }) {
       els[i].style.marginRight = `calc(var(--gu) * ${Math.round(edge - right)})`;
       edge = left;
     }
-    // Overflowing (more pills than the 17g cell holds): rest at the right end, where the walk
-    // above put every edge on a line; the rest scroll in from the left.
+    // More than the cell holds: fold them into one pill (above), measured again on the next commit.
+    if (!folded && els.length > 1 && edge < (box.getBoundingClientRect().left - x0) / g - 0.01) { setFoldedSig(pillSig); return; }
     box.scrollLeft = box.scrollWidth;
   });
 
@@ -260,8 +269,8 @@ function Filters({ filters, setFilters, tournaments, search, setSearch }) {
       <div className="filter-row cal-fp-bar" style={{gap:'calc(var(--subrow) * 1)',marginBottom:'0',width:'100%',alignItems:'center'}}>
         <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:0,justifyContent:'flex-end'}}>
           <div ref={pillsRef} className="cal-fp-pills">
-          {pills.map(([label, patch]) => (
-            <span key={Object.keys(patch)[0]} className="filter-chip active cal-fp-pill" data-cal-pill="">
+          {shown.map(([label, patch, key]) => (
+            <span key={key || Object.keys(patch)[0]} className="filter-chip active cal-fp-pill" data-cal-pill="">
               <span className="cal-fp-cap">{label}</span>
               <span className="cal-fp-cap cal-fp-pill-x" role="button" aria-label={`Clear ${label}`}
                 onClick={() => setFilters(f => ({...f, ...patch}))}>&#10005;</span>
