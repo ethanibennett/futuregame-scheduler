@@ -5579,7 +5579,9 @@
        and soft everywhere else. Two shadows: contact, then cast. */
     .replayer-board-area .card-row img {
       height: var(--card-h);
-      filter: drop-shadow(0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.72))
+      /* brightness(1) first, as the dimmed card's filter is (data-pose="dead"): two lists that start alike blend, and
+         these did not (drop-shadow against brightness), so a card went dark or bright in one frame (2026-11-19). */
+      filter: brightness(1) drop-shadow(0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.72))
               drop-shadow(var(--cast-x) var(--cast-y) var(--cast-blur) rgba(var(--shadow-rgb, 0, 0, 0), 0.38));   /* felt-tinted (idea 15) */
       /* No lit-edge ring (owner, 2026-10-11): a box-shadow follows the <img>'s BOX, not the
          card's rounded artwork inside it, so it drew a pale square frame around every card. */
@@ -5803,7 +5805,7 @@
          the table lit from the side — and there are two to ten of them in
          every frame — while the board two rules up, the felt's own inset and
          the rail's highlight all said the light is above and in front. */
-      filter: drop-shadow(var(--cast-x) calc(var(--cast-y) * 0.6) calc(var(--cast-blur) * 0.6) rgba(var(--shadow-rgb, 0, 0, 0), 0.5));
+      filter: brightness(1) drop-shadow(var(--cast-x) calc(var(--cast-y) * 0.6) calc(var(--cast-blur) * 0.6) rgba(var(--shadow-rgb, 0, 0, 0), 0.5));
       /* no white outline around the card (owner, 2026-10-11) */
     }
     /* 31.4px = 44 x (180/252), matching the faces they sit beside. */
@@ -6692,7 +6694,10 @@
     .replayer-table .card-row > [data-pose="down-half"] { translate: 0 var(--subrow); }
     /* Dimmed by darkening, not by opacity (owner, 2026-11-14): at 0.45 opacity an overlapped card showed the one under it
        through it. Each keeps its own shadow after the brightness. */
-    .replayer-table .card-row > [data-pose="dead"] { transition: filter var(--dur-slow) var(--ease-out); }
+    /* Both ways (owner, 2026-11-19: "still jittery nonsense with card brightness"): the ease sat on the dimmed state
+       only, so a card coming back to full brightness (a counterfeit undone, Back over it) snapped; and the two filters
+       did not blend at all (see the cards' brightness(1) above). */
+    .replayer-table .card-row > img { transition: filter var(--dur-slow) var(--ease-out); }
     .replayer-seat-cards .card-row > img[data-pose="dead"] {
       filter: brightness(0.42) drop-shadow(var(--cast-x) calc(var(--cast-y) * 0.6) calc(var(--cast-blur) * 0.6) rgba(var(--shadow-rgb, 0, 0, 0), 0.5));
     }
@@ -6734,8 +6739,14 @@
        the seat that acted drops its ring at once under the drawn one fading out (its border and glow had faded at
        their own two speeds UNDER it, a doubled glow), and the seat to act takes its ring at once as the drawn one
        goes (it had faded in again from nothing, a dip, then fired the arrival pulse, a second ring). */
+    /* Only the ring's own properties stop (border-color, box-shadow: the drawn rings carry those). A fold's greying and
+       shrinking keep the folded plaque's ease (owner, 2026-11-19: "still jittery nonsense with card brightness": with
+       every transition cut, a folding plaque went from full brightness and size to 0.62 and 0.88 in one frame,
+       measured on every fold of the 8-max hand). */
     .replayer-seat.ring-leave .replayer-seat-info,
-    .replayer-seat.ring-hand .replayer-seat-info { transition: none; }
+    .replayer-seat.ring-hand .replayer-seat-info {
+      transition: filter var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out);
+    }
     /* The transport (Replayer animations 76-80). The play glyph and a ghost of the one it replaces turn in one
        place; the countdown ring is two half rings turned inside their clips; the speed label rolls inside its
        button; a held Forward or Back slides out a second chevron and lights a ring; a button standing down eases. */

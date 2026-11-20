@@ -1749,7 +1749,7 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal, spanSca
       transformOrigin: '50% 118%',
       marginLeft: index === 0 ? 0 : 'calc(var(--card-w) * -0.65)',
       marginTop: extraY || undefined,
-      filter: shadow,
+      filter: 'brightness(1) ' + shadow,   // brightness first, as when dimmed, so the two blend
       zIndex: z,
     };
   }
@@ -1794,7 +1794,7 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal, spanSca
       + y.toFixed(3) + ' * var(--card-w)' + (extraY ? ' + ' + extraY : '') + ')) rotate('
       + rot + 'deg)' + grow,
     transformOrigin: '50% 118%',
-    filter: shadow,
+    filter: 'brightness(1) ' + shadow,   // brightness first, as when dimmed, so the two blend
     zIndex: z,
   };
 }
@@ -2009,7 +2009,7 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
           src={cardFaceSrc(c.rank + c.suit)}
           alt={c.rank+c.suit} loading="eager" data-pose={pose || undefined}
           /* A fanned card carries its shadow as an inline filter, which the stylesheet's darkening cannot reach. */
-          style={pose === 'dead' && splayStyle.filter ? { ...splayStyle, filter: 'brightness(0.42) ' + splayStyle.filter } : splayStyle} {...tap} />;
+          style={pose === 'dead' && splayStyle.filter ? { ...splayStyle, filter: String(splayStyle.filter).replace(/^brightness\(1\) /, 'brightness(0.42) ') } : splayStyle} {...tap} />;
       })}
     </div>
   );
