@@ -85,3 +85,10 @@ test('runsFromOf, runRows: runs with unknown cards still show every run', () => 
   assert.equal(E.runsFromOf({ doubleBoard: true, streets: bricks.streets }), null);
   assert.equal(E.runRows({ streets: bricks.streets }, 3), null);
 });
+
+test('runRows: the cards every run shares, which a later run does not repeat', () => {
+  const s = (board, board2, n) => ({ ...street(board, board2), actions: Array.from({ length: n }, () => ({ player: 0, action: 'check', amount: 0 })) });
+  assert.equal(E.runRows({ runs: 2, streets: [s('', '', 2), s('AhQc5h', '', 2), s('2c', '', 2), s('', '', 0)] }, 3).shared, 4);
+  assert.equal(E.runRows({ runs: 2, streets: [s('', '', 2), s('AhQc5h', '', 0), s('', 'Kd', 0), s('', '', 0)] }, 3).shared, 3);
+  assert.equal(E.runRows({ runs: 2, streets: [s('', '', 2), s('', 'AhQc5h', 0), s('', '', 0), s('', '', 0)] }, 3).shared, 0);
+});

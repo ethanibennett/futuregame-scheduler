@@ -121,6 +121,10 @@ export function encodeHand(hand) {
       }
       strCodes.push(code);
     }
+    /* A straddle that is not twice the big blind ("2/2/5": a $5 straddle over a $2 big blind) adds '@' and its size.
+       An older decoder reads the letters and skips the rest, and posts twice the big blind. */
+    var sa = Number(blinds.straddleAmount);
+    if (strCodes.length && sa > 0 && sa !== (Number(blinds.bb) || 0) * 2) strCodes.push('@' + amountOut(sa));
     if (strCodes.length) blindStr += '!' + strCodes.join('');
   }
   var stacks = hand.players.map(function(p) { return p.startingStack || 50000; });
@@ -330,6 +334,9 @@ export function decodeHand(str) {
     if (tildeAt >= 0) { stackTail = straddleCode.slice(tildeAt); straddleCode = straddleCode.slice(0, tildeAt); }
     blindsStr = blindsStr.slice(0, bangAt) + stackTail;
   }
+  var straddleAmount = 0;
+  var atAt = straddleCode.indexOf('@');
+  if (atAt >= 0) { straddleAmount = amountIn(straddleCode.slice(atAt + 1)); straddleCode = straddleCode.slice(0, atAt); }
 
   var blindsParts = blindsStr.split('~');
   var blindNums = blindsParts[0].split('-').map(amountIn);
@@ -545,6 +552,7 @@ export function decodeHand(str) {
           b.straddleSeats[t] = Number(m[2]);
         }
       }
+      if (b.straddle && straddleAmount > 0) b.straddleAmount = straddleAmount;
       return b;
     })(),
     streets: streets,

@@ -522,8 +522,12 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   reads every card token of a typed description in code (`cardsAsTyped`) and a holding or a street's board with those
   ranks takes its suits; "AAK5ssxx" is As Ax Ks 5x (`parseCards`). **A hand run twice or three times is stored**
   (`runs`, `runsFrom` = the street after the last action, a later run's cards as `board2`/`board3`); a run's card nobody
-  named ("brick brick") is dealt face down on the felt (`runRows` in `poker-engine.js`), each run's winner tag kept off
-  the seats (`placeRunTags`).
+  named ("brick brick") is dealt face down on the felt (`runRows` in `poker-engine.js`); a later run's row holds only its
+  own cards, under run 1's, and each run's winner tag sits beside its cards, never on a card or a seat (`placeRunTags`);
+  the game pill does not say "Run twice". **A cash game's third stake is its straddle** (owner, 2026-11-20: "2/2/5 here
+  clearly means a 5 straddle"; `stakesStraddle`): `blinds.straddleAmount` when it is not twice the big blind, in links as
+  `!u@5`, priced by `getStraddles` / `betting.js straddles()` (each straddle after it doubles), the export and the
+  PokerStars import alike.
 - **Hands said on the Apple Watch** (owner, 2026-11-19: "Apple Watch: dictation through quick add"; `lib/watch.js`,
   `npm run test:watch`): the Watch app (`ios/App/FuturegameWatch/`, a synced folder like the widget's; embedded in the
   iOS app only) pairs by a six-digit code typed into Settings › Apple Watch (`AppleWatchSection`), never a password:

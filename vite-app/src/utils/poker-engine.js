@@ -1010,6 +1010,10 @@ export function runRows(hand, upTo) {
     }
     rows.push(row);
   }
+  // How many cards every run shares (the streets before the runs), which a later run's row does not repeat.
+  var shared = 0;
+  for (var sj = 0; sj < from && sj < streets.length; sj++) shared += parseCardNotation((streets[sj].cards || {}).board || '').length;
+  rows.shared = shared;
   return rows;
 }
 /** Whether the hi-lo halves are settled over all boards at once (double board) or per board (runs). */

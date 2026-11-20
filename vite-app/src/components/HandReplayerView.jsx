@@ -368,7 +368,11 @@ function getStraddles(players, blinds) {
     picked.push({ type, seat });
   });
   picked.sort((a, c) => a.seat - c.seat);
-  return picked.map((st, i) => ({ ...st, amount: bb * Math.pow(2, i + 1) }));
+  /* The first straddle is blinds.straddleAmount when the game says one ("2/2/5": $2/$2 with a $5 straddle, owner
+     2026-11-19), else twice the big blind; each after it doubles the one before. */
+  const sa = Number(b.straddleAmount);
+  const first = sa > bb ? sa : bb * 2;
+  return picked.map((st, i) => ({ ...st, amount: first * Math.pow(2, i) }));
 }
 
 /* The seat that closes the preflop betting, or -1 for none. */
@@ -9842,9 +9846,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     });
   };
   useLayoutEffect(() => { if (tableRef.current) placeWagers(tableRef.current); });
-  /* Who took each run or board (boardWinnerTags), beside its row: on the right, else on the left, else on the row's last
-     card, low, every row's the same way (owner, 2026-11-19: a PLO hand run twice at 402, eight-handed, put the second row's tag on the side seat's
-     plaque; a row of five is as wide as the board gets). Before the pill, which keeps off them. */
+  /* Who took each run or board (boardWinnerTags), beside its cards: on the right, else on the left (a later run's row,
+     under the shared cards' empty places), else the side that touches least; never on a card (owner, 2026-11-19/20: at
+     402, eight-handed, the second row's tag lay on the side seat's plaque, then on the river). Before the pill, which
+     keeps off them. */
   const placeRunTags = (table) => {
     const tags = [...table.querySelectorAll('.replayer-board-winner')];
     if (!tags.length || !table.clientWidth) return;
@@ -9855,11 +9860,17 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       .map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
     const clear = (b) => b.left >= T.left && b.right <= T.right
       && !others.some(o => b.left < o.right + g && b.right > o.left - g && b.top < o.bottom + g && b.bottom > o.top - g);
-    // One side for every row, so the tags still read as a column.
-    for (const side of ['', 'left', 'over']) {
-      tags.forEach(t => { if (side) t.dataset.side = side; else delete t.dataset.side; });
-      if (side === 'over' || tags.every(t => clear(t.getBoundingClientRect()))) break;
-    }
+    const touch = (b) => others.reduce((sum, o) => sum + Math.max(0, Math.min(b.right, o.right + g) - Math.max(b.left, o.left - g))
+      * Math.max(0, Math.min(b.bottom, o.bottom + g) - Math.max(b.top, o.top - g)), 0)
+      + Math.max(0, T.left - b.left) * b.height + Math.max(0, b.right - T.right) * b.height;
+    tags.forEach(t => {
+      const right = t.getBoundingClientRect();
+      if (clear(right)) return;
+      t.dataset.side = 'left';
+      const left = t.getBoundingClientRect();
+      if (clear(left)) return;
+      if (touch(right) <= touch(left)) delete t.dataset.side;
+    });
   };
   useLayoutEffect(() => { if (tableRef.current) placeRunTags(tableRef.current); });
   /* The game pill, last: moved to the nearest spot up or down where no seat's piece, the board, the pot or its rows,
@@ -11939,11 +11950,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           /* Once a hand's runs have begun, each run is its own row, and a card a run was dealt that the hand does not
              say ("run it twice, brick brick") lies face down in its place, so every run shows its river (owner,
              2026-11-19: "we don't see two rivers"; a second row that read the same as the first was never drawn). */
+          /* A later run's row holds only that run's cards, under run 1's, never the shared streets again (owner,
+             2026-11-20: "we don't need two rows of the cards before running it twice"); before the runs begin there
+             is one row. A double board is two boards from the flop. */
           const runs = runRows(hand, streetIdx);
           const unknownOwn = runs ? runs[0].filter(c => c == null).length : 0;
-          const extra = runs ? runs.slice(1)
-            : boardCount(hand) > 1 ? handBoards(hand, streetIdx).slice(1).map(b => parseCardNotation(b)).filter(b => b.length)
-              .filter(b => !springSet || hand.doubleBoard || parsed.length >= 5 || b.map(c => c.rank + c.suit).join('') !== parsed.map(c => c.rank + c.suit).join('')) : [];
+          const skip = runs ? runs.shared : 0;
+          const extra = runs ? runs.slice(1).map(r => r.slice(skip))
+            : hand.doubleBoard ? handBoards(hand, streetIdx).slice(1).map(b => parseCardNotation(b)).filter(b => b.length) : [];
           const renderCard = (c, i, key, withSlot) => {
             if (c == null) return <div key={key} data-xk={key} className="card-unknown is-run-unknown" role="img" aria-label="A card the hand does not record" />;
             const slot = withSlot ? { 'data-slot': i, 'data-ck': key } : { 'data-xk': key };
@@ -11970,12 +11984,20 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 {Array.from({ length: unknownOwn }, (_, i) => renderCard(null, parsed.length + i, 'unknown_' + i, false))}
                 {tag(0)}
               </div>
-              {extra.map((b, bi) => (
-                <div key={'board-' + (bi + 2)} className="card-row replayer-board-spaced replayer-board-extra" aria-label={unit + ' ' + (bi + 2)}>
-                  {b.map((c, i) => renderCard(c, i, 'b' + (bi + 2) + '_' + (c ? c.rank + c.suit : 'unknown') + '_' + i, false))}
-                  {tag(bi + 1)}
-                </div>
-              ))}
+              {extra.map((b, bi) => {
+                const own = b.map((c, i) => renderCard(c, i, 'b' + (bi + 2) + '_' + (c ? c.rank + c.suit : 'unknown') + '_' + i, false));
+                return (
+                  <div key={'board-' + (bi + 2)} className="card-row replayer-board-spaced replayer-board-extra" aria-label={unit + ' ' + (bi + 2)}>
+                    {skip > 0 ? (
+                      /* Under run 1's own cards: the row keeps the board's width, the shared cards' places left empty, and
+                         the tag sits beside these cards, not beside the empty places. */
+                      <span className="replayer-run-cards" style={{ marginLeft: `calc((var(--card-w) + var(--space-2xs)) * ${skip})` }}>
+                        {own}{tag(bi + 1)}
+                      </span>
+                    ) : <>{own}{tag(bi + 1)}</>}
+                  </div>
+                );
+              })}
             </div>
           );
         })()}
@@ -12040,7 +12062,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           // SPR moved to plain text above the pot's chip stack (2026-09-30).
           /* No street here (owner, 2026-10-15): the board itself says which street it is. */
           // A hand with several boards says so on the felt (owner, 2026-10-21).
-          const boardsTag = hand.doubleBoard ? 'Double board' : Number(hand.runs) > 1 ? (Number(hand.runs) === 3 ? 'Run three times' : 'Run twice') : null;
+          // Running it twice is not the game (owner, 2026-11-20): the rows say it; a double board is.
+          const boardsTag = hand.doubleBoard ? 'Double board' : null;
           const named = [hand.gameType, boardsTag].filter(Boolean).join('  ·  ');
           const level = [named, sizes].filter(Boolean).join('  ·  ');
           /* A long line takes two on a portrait table, game over stakes, with no dot left hanging: at

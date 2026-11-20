@@ -276,7 +276,9 @@ export function prepareHand(input, opts = {}) {
   const scaled = {
     ...h,
     players: h.players.map(p => ({ ...p, startingStack: toCents(p.startingStack) })),
-    blinds: { ...(h.blinds || {}), sb: env.sb, bb: env.bb, ante: env.ante, bigBet: env.bigBet, bringIn: env.bringIn },
+    blinds: { ...(h.blinds || {}), sb: env.sb, bb: env.bb, ante: env.ante, bigBet: env.bigBet, bringIn: env.bringIn,
+      // A straddle's own size ("2/2/5"), in hundredths like the rest.
+      ...(Number(h.blinds && h.blinds.straddleAmount) > 0 ? { straddleAmount: toCents(h.blinds.straddleAmount) } : {}) },
   };
   const unitCents = cash ? 1 : (isWholeChips(h) ? 100 : 1);
   const stLabel = (si) => streetWord(category, si);

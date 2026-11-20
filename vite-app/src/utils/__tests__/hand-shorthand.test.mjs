@@ -133,3 +133,15 @@ test("a straddled hand keeps its stacks: the '!' code is written before the '~' 
   const back = SH.decodeHand(SH.encodeHand(h));
   assert.deepEqual(back.players.map(p => p.startingStack), [4000, 4000, 4500, 4000, 7350, 4000, 9000, 4000]);
 });
+
+/* A straddle that is not twice the big blind ("$2/2/5": a $5 straddle, owner 2026-11-20) rides in the link after an
+   '@'; an older decoder skips it. A hand run twice whose rivers were never said carries no board2, and its runs. */
+test("a straddle's own size and a hand run twice survive a link", () => {
+  const h = SH.decodeHand('P86.2-2!u@5~700*R2.QsQhJs4h,-,-,-,-,-,AsAdKs5c,-/bAhQc5h/b2c/.1r15,2f,3c15,4c15,5r50,6c48,7f,0f,1f,3c35,4c35/6x,3x,4x,5b200,6c200,3f,4f/6x,5b435,6c435/.w5.$USD');
+  assert.deepEqual([h.blinds.sb, h.blinds.bb, h.blinds.straddle_utg, h.blinds.straddleAmount, h.runs], [2, 2, true, 5, 2]);
+  assert.deepEqual(h.players.map(p => p.startingStack), Array(8).fill(700));
+  const again = SH.encodeHand(h);
+  assert.match(again, /^P86\.2-2!u@5~700\*R2\./);
+  // Twice the big blind writes no size, as before.
+  assert.match(SH.encodeHand({ ...h, blinds: { ...h.blinds, straddleAmount: 4 } }), /^P86\.2-2!u~700/);
+});

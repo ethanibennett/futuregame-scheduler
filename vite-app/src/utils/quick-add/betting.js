@@ -51,7 +51,10 @@ export function straddles(players, blinds) {
     picked.push({ type, seat });
   });
   picked.sort((a, c) => a.seat - c.seat);
-  return picked.map((st, i) => ({ ...st, amount: bb * Math.pow(2, i + 1) }));
+  // The first straddle is blinds.straddleAmount ("2/2/5"), else twice the big blind; each after it doubles (the replayer's getStraddles).
+  const sa = Number(b.straddleAmount);
+  const first = sa > bb ? sa : bb * 2;
+  return picked.map((st, i) => ({ ...st, amount: first * Math.pow(2, i) }));
 }
 
 export function lastStraddleSeat(list) {

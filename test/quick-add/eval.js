@@ -748,7 +748,8 @@ function simulate(c, ex0, cat, cfg, heroRef0) {
       const seatFor = t => (t === 'utg' ? seats[0] : t === 'button' ? 'BTN' : null);
       const list = b.straddle.map(seatFor).filter(Boolean)
         .sort((x, y) => seats.indexOf(x) - seats.indexOf(y));
-      list.forEach((s, i) => { const amt = b.bb * Math.pow(2, i + 1); put(s, amt); posts[s] = amt; straddles.push(s); });
+      const first = Number(b.straddleAmount) > b.bb ? Number(b.straddleAmount) : b.bb * 2;
+      list.forEach((s, i) => { const amt = first * Math.pow(2, i); put(s, amt); posts[s] = amt; straddles.push(s); });
       if (list.length < b.straddle.length) P('rock/mississippi straddles need a seat the validator cannot infer');
     }
   } else if (isNum(b.ante) && b.ante > 0) {

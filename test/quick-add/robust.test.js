@@ -153,8 +153,8 @@ AQ5hch. X x x bu $200 with ~$450 behind. I c, f f
 2cc. X he jam $435 I c run twice brick brick
 He AAK5ssxx`;
 const ownerPlo = (format = { runouts: 2, otherRunouts: [''] }, riverActions = null) => ({
-  gameType: 'PLO', gameMode: 'cash', currency: '$', blinds: { sb: 2, bb: 5, ante: 0, stakes: '$2/2/5' },
-  othersFolded: true, format,
+  gameType: 'PLO', gameMode: 'cash', currency: '$', blinds: { sb: 2, bb: 5, ante: 2, stakes: '$2/2/5' },   // as the model read it
+  othersFolded: true, format, tableSize: 8,
   players: [{ position: 'EP', isHero: false }, { position: 'HJ', isHero: false }, { position: 'CO', isHero: false },
     { position: 'BTN', isHero: false }, { position: 'SB', isHero: true }],
   streets: [
@@ -227,4 +227,23 @@ test('a hand run twice is stored as runs from the street after the betting, a ru
   const late = normalizeDraft(ownerPlo(undefined, [{ player: 4, action: 'check' }, { player: 3, action: 'check' }]), { text: OWNER_PLO_TEXT });
   assert.equal(late.hand.runs, undefined);
   assert.ok(late.notes.some((n) => /nothing was left to run/.test(n)), late.notes.join(' | '));
+});
+
+test('a cash game\'s third number is its straddle: "$2/2/5" is $2/$2 with a $5 straddle', () => {
+  const { hand, notes } = normalizeDraft(ownerPlo(), { text: OWNER_PLO_TEXT });
+  assert.equal(hand.blinds.sb, 2);
+  assert.equal(hand.blinds.bb, 2);
+  assert.equal(hand.blinds.ante, 0);
+  assert.equal(hand.blinds.straddle_utg, true);
+  assert.equal(hand.blinds.straddleAmount, 5);
+  assert.ok(notes.some((n) => /read as 2\/2 with a 5 straddle/.test(n)), notes.join(' | '));
+  // EP opens first, from the seat after the straddler; the straddler (seat 0, $5 in) folds to the 3-bet.
+  const pre = hand.streets[0].actions;
+  assert.deepEqual([pre[0].player, pre[0].action, pre[0].amount], [1, 'raise', 15]);
+  assert.ok(pre.some((a) => a.player === 0 && a.action === 'fold'));
+  // Twice the big blind is the replayer's own straddle: no size stored. A tournament's "25/50/50" is its ante.
+  const twice = normalizeDraft({ ...ownerPlo(), blinds: { stakes: '$1/2/4' } }, { text: OWNER_PLO_TEXT }).hand.blinds;
+  assert.deepEqual([twice.sb, twice.bb, twice.straddle_utg, twice.straddleAmount], [1, 2, true, undefined]);
+  const mtt = normalizeDraft({ ...ownerPlo(), gameMode: 'mtt', currency: null, blinds: { stakes: '25/50/50' } }, {}).hand.blinds;
+  assert.equal(mtt.straddle, undefined);
 });
