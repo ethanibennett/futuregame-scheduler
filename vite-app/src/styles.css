@@ -424,10 +424,11 @@
       --track-caps:    0.08em;
       --track-tight:   0.01em;
       --track-display: -0.02em;
-      /* The wordmark sets tighter than the rest of the display type. This is
-         the setting it has always used; at -0.02em it reads as a different
-         face at these sizes, which is what it was mistaken for. */
-      --track-wordmark: -0.05em;
+      /* The wordmark sets tighter than the rest of the display type: -0.05em
+         from the start (at -0.02em it read as a different face at these sizes),
+         -0.07em since the owner's "push the letters closer together"
+         (2026-11-20). */
+      --track-wordmark: -0.07em;
 
       /* Digits that change, or stack vertically, must not shuffle. */
       --num-tabular: tabular-nums lining-nums;
@@ -2164,6 +2165,10 @@
       letter-spacing: var(--track-wordmark);
       white-space: nowrap;
     }
+    /* The wordmark's period sits a little under the baseline (owner, 2026-11-20: "Drop the period in futurega.me
+       down slightly"), wherever the word is set as a heading. In em, so it scales with the word; relative, so it moves
+       nothing else and the word's baseline stays seated. */
+    .wm-dot { position: relative; top: 0.08em; }
 
     /* Screen/page titles — non-bold Baskerville. Size, margins and line-height
        stay per-view; this only fixes the family and weight. */

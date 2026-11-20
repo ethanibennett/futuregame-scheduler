@@ -74,7 +74,7 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
           <ThemeButton theme={theme} nextThemeLabel={nextThemeLabel} onToggle={toggleTheme} />
         </div>
         <div className="auth-logo">
-          <h1>futurega.me</h1>
+          <h1>futurega<span className="wm-dot">.</span>me</h1>
           <p>{isRegister ? 'Create your free account' : season}</p>
         </div>
 

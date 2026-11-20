@@ -49,7 +49,7 @@ export default function ResetPasswordForm({ resetToken, theme, toggleTheme }) {
           <ThemeButton theme={theme} nextThemeLabel={nextThemeLabel} onToggle={toggleTheme} />
         </div>
         <div className="auth-logo">
-          <h1>futurega.me</h1>
+          <h1>futurega<span className="wm-dot">.</span>me</h1>
           <p>set new password</p>
         </div>
 

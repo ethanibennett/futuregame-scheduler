@@ -57,7 +57,7 @@ export default function LivePage() {
     <div className="app-shell bp-shell lp-shell">
       <header className="top-bar bp-top">
         <div className="top-bar-title">
-          <h1>futurega.me</h1>
+          <h1>futurega<span className="wm-dot">.</span>me</h1>
           <small>the poker calendar</small>
         </div>
         <div className="bp-top-actions">

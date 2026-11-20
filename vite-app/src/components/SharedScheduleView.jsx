@@ -40,7 +40,7 @@ export default function SharedScheduleView({ shareToken }) {
   if (loading) return (
     <div className="auth-wrap">
       <div className="auth-card" style={{textAlign:'center'}}>
-        <div className="auth-logo"><h1>futurega.me</h1><p>{getStoredSeasonLabel()}</p></div>
+        <div className="auth-logo"><h1>futurega<span className="wm-dot">.</span>me</h1><p>{getStoredSeasonLabel()}</p></div>
         <p style={{color:'var(--text-muted)',marginTop:'var(--space-xl)'}}>Loading schedule...</p>
       </div>
     </div>
@@ -49,7 +49,7 @@ export default function SharedScheduleView({ shareToken }) {
   if (error || !data) return (
     <div className="auth-wrap">
       <div className="auth-card" style={{textAlign:'center'}}>
-        <div className="auth-logo"><h1>futurega.me</h1><p>{getStoredSeasonLabel()}</p></div>
+        <div className="auth-logo"><h1>futurega<span className="wm-dot">.</span>me</h1><p>{getStoredSeasonLabel()}</p></div>
         <p style={{color:'var(--text-muted)',marginTop:'var(--space-xl)'}}>{error || 'Schedule not found'}</p>
       </div>
     </div>
@@ -68,7 +68,7 @@ export default function SharedScheduleView({ shareToken }) {
         {/* The owner is named once, in the heading (UX pick 94): the top bar says what the page is,
             and carries only the theme button. */}
         <div className="top-bar-title">
-          <h1>futurega.me</h1>
+          <h1>futurega<span className="wm-dot">.</span>me</h1>
           <small>shared schedule</small>
         </div>
         <div className="top-bar-actions">

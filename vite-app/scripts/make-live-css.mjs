@@ -17,7 +17,7 @@ const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
    files), ThemeButton's, and the grid overlay's (the guards load /live with ?gridOverlay=1). */
 const LIVE_CLASSES = new Set([
   'app-shell', 'top-bar', 'top-bar-title', 'content-area', 'btn', 'btn-ghost', 'btn-icon', 'ctl', 'ctl-cap',
-  'bp-shell', 'bp-top', 'bp-top-actions', 'bp-content', 'lp-shell', 'lp-content',
+  'bp-shell', 'bp-top', 'bp-top-actions', 'bp-content', 'lp-shell', 'lp-content', 'wm-dot',
 ]);
 const LIVE_CLASS_PREFIXES = ['grid-dev-', 'lp-', 'an-'];
 const LIVE_ELEMENTS = new Set([

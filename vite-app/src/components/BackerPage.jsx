@@ -205,7 +205,7 @@ function TopBar({ push, theme }) {
   return (
     <header className="top-bar bp-top">
       <div className="top-bar-title">
-        <h1 ref={wordmarkRef}>futurega.me</h1>
+        <h1 ref={wordmarkRef}>futurega<span className="wm-dot">.</span>me</h1>
         {/* The player's full name (owner, 2026-10-14). One player today; when backers belong to other
             players after the bankroll merge, this comes from the feed. */}
         <small>your action with Ethan Bennett</small>
