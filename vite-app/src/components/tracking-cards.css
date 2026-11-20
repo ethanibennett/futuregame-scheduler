@@ -343,10 +343,13 @@
   box-shadow: inset 0 calc(var(--bw-1) * -1) 0 var(--border-strong);
 }
 .app-shell.is-desktop .tr-line-played { display: block; }
-/* The head's gap strips (::after, top: 100%) sit BEHIND their own row's content (z-index -1 inside the sticky row's
-   stacking context, still above the list, which is outside it): the strip starts at the row's foot, a fractional
-   pixel, and painted over the hairline bottom border of the controls standing on that foot (owner, 2026-11-19: the
-   Cash chip's "outline ... is cut off", its bottom edge gone at 2x and 3x). */
+/* A sticky piece's gap is its own padding, not a strip hung under it (owner, 2026-11-19: the Cash chip's "outline ... is
+   cut off"; 2026-11-20, the same on an iPhone: "Still not fixed. Why."). The controls stand on their row's foot, a
+   fractional pixel, and the lit chip's outline is one device pixel (--bw-fine). Hung under the row (::after, top:
+   100%), the strip first painted over that line; put behind the row's content (z-index -1) it still lost it on iOS,
+   where the sticky row is a layer of its own clipped at its edge, a fractional pixel, and the negative z-index splits
+   it again. As padding the gap is inside the row, so every control's edge is 2r inside it, and nothing hangs under it.
+   content-box, so a row's set height (Start session's 5r, the list bar's 4r) stays its content's. */
 /* The sticky head is as wide as the rows (owner, 2026-11-19: "This sticky header should span the full width, not
    showing stuff scrolling behind it"). Where a pointer hovers, a line bleeds 1g past the column on each side (its hover
    fill and hairline, .tr-line above), and those hairlines showed, and took a tap, beside the head as they scrolled
@@ -390,17 +393,13 @@
 /* The phone too (owner, 2026-11-19: "Yes the phone too"): the bankroll's row 7r, the section strip 5r, Log Result's
    row 5r and the list bar 4r stick where they sit, each with the 2r under it: 0, 9r, 16r, 23r; the month breaks at
    29r. The summary card between Log Result and the bar scrolls up under the head before the bar sticks. Each piece's
-   2r gap is a --bg strip hung under it (::after: it takes a tap, so nothing under the head can be pressed), the
-   pieces' own boxes unchanged. Measured in WebKit at 402: 7 + 2, 5 + 2, 5 + 2, 4 + 2. */
+   2r gap is its own padding on --bg (it takes a tap, so nothing under the head can be pressed; it was a strip hung
+   under the piece until 2026-11-20, see above). Measured in WebKit at 402: 7 + 2, 5 + 2, 5 + 2, 4 + 2. */
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.tr-head-row:not(.cs-head) ~ .tr-listbar) :is(.bk-bar.bk-bar--sched, .results-kind-tabs),
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head):has(~ .tr-listbar),
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head) ~ .tr-listbar {
   position: sticky; z-index: 7; background: var(--bg);
-}
-.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.tr-head-row:not(.cs-head) ~ .tr-listbar) :is(.bk-bar.bk-bar--sched, .results-kind-tabs)::after,
-.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head):has(~ .tr-listbar)::after,
-.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head) ~ .tr-listbar::after {
-  content: ''; position: absolute; left: 0; right: 0; top: 100%; z-index: -1; height: calc(var(--subrow) * 2); background: var(--bg);
+  box-sizing: content-box; padding-bottom: calc(var(--subrow) * 2); margin-bottom: 0;
 }
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.tr-head-row:not(.cs-head) ~ .tr-listbar) .bk-bar.bk-bar--sched { top: 0; }
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.tr-head-row:not(.cs-head) ~ .tr-listbar) .results-kind-tabs { top: calc(var(--subrow) * 9); }
@@ -408,7 +407,7 @@
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head) ~ .tr-listbar { top: calc(var(--subrow) * 23); }
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head) ~ .tr-listbar ~ .tr-months { --tr-break-top: calc(var(--subrow) * 29); }
 /* Cash and All the same way (owner, 2026-11-19: "do the same sticky header for Cash and All"). Measured in WebKit at
-   402 and 1440, each piece sticks where it sits, its gap a --bg strip under it (::after):
+   402 and 1440, each piece sticks where it sits, its gap its own padding on --bg (the desktop band's 1r a strip under it):
      Cash, phone:   the band 0 (7r + 2r), the strip 9r (5r + 2r), Start session's row 16r (5r + 2r), the bar 23r
                     (4r + 2r); breaks 29r.
      Cash, desktop: the band 0 (7r + 1r), Start session's row 8r (5r + 2r), the bar 15r (4r + 2r), the Lines header
@@ -418,10 +417,10 @@
    The summary and the graph between the head and the bar scroll up under the head before the bar sticks. */
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) :is(.bk-bar.bk-bar--sched, .results-kind-tabs),
 .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) .cs-head.tr-head-row,
-.tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) :is(.cs-list, .ra-all) > .tr-listbar { position: sticky; z-index: 7; background: var(--bg); }
-.app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) :is(.bk-bar.bk-bar--sched, .results-kind-tabs)::after,
-.tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) .cs-head.tr-head-row::after,
-.tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) :is(.cs-list, .ra-all) > .tr-listbar::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; z-index: -1; background: var(--bg); height: calc(var(--subrow) * 2); }
+.tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) :is(.cs-list, .ra-all) > .tr-listbar {
+  position: sticky; z-index: 7; background: var(--bg);
+  box-sizing: content-box; padding-bottom: calc(var(--subrow) * 2); margin-bottom: 0;
+}
 .app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) .bk-bar.bk-bar--sched::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; z-index: -1; background: var(--bg); height: var(--subrow); }
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) .bk-bar.bk-bar--sched { top: 0; }
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) .results-kind-tabs { top: calc(var(--subrow) * 9); }
