@@ -62,3 +62,26 @@ test('a hi-lo run splits its own share hi/lo', () => {
   const { awards } = E.computePotAwards(shaped, { order: [0, 1] });
   assert.equal(awards[0] + awards[1], 1000);
 });
+
+/* A hand run twice whose rivers were never said (owner, 2026-11-19: "run twice brick brick", "we don't see two
+   rivers"): the runs begin on the street after the last action, a later run never borrows run 1's card, and each run's
+   unknown river is a null the felt deals face down. */
+test('runsFromOf, runRows: runs with unknown cards still show every run', () => {
+  const act = (n) => Array.from({ length: n }, (_, i) => ({ player: i % 2, action: 'check', amount: 0 }));
+  const s = (board, board2, actions) => ({ ...street(board, board2), actions });
+  // All in on the turn, both rivers unknown: as a link carries it (runs, no runsFrom, no board2).
+  const bricks = { runs: 2, streets: [s('', '', act(2)), s('AhQc5h', '', act(2)), s('2c', '', act(2)), s('', '', [])] };
+  assert.equal(E.runsFromOf(bricks), 3);
+  assert.deepEqual(E.handBoards(bricks), ['AhQc5h2c', 'AhQc5h2c']);
+  assert.equal(E.runRows(bricks, 2), null);                       // the runs have not begun on the turn
+  const rows = E.runRows(bricks, 3).map((r) => r.map((c) => (c ? c.rank + c.suit : '?')).join(' '));
+  assert.deepEqual(rows, ['Ah Qc 5h 2c ?', 'Ah Qc 5h 2c ?']);
+  // Run 1's river known, run 2's not: run 2 does not take run 1's river.
+  const one = { ...bricks, streets: [...bricks.streets.slice(0, 3), s('9d', '', [])] };
+  assert.deepEqual(E.handBoards(one), ['AhQc5h2c9d', 'AhQc5h2c']);
+  assert.deepEqual(E.runRows(one, 3).map((r) => r.map((c) => (c ? c.rank + c.suit : '?')).join('')), ['AhQc5h2c9d', 'AhQc5h2c?']);
+  // Stored runsFrom wins; a double board is not a run.
+  assert.equal(E.runsFromOf({ ...bricks, runsFrom: 2 }), 2);
+  assert.equal(E.runsFromOf({ doubleBoard: true, streets: bricks.streets }), null);
+  assert.equal(E.runRows({ streets: bricks.streets }, 3), null);
+});

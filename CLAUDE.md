@@ -517,7 +517,13 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   and words still being recognised at the end are kept (`utils/quick-add/dictation.js`). The normaliser re-picks the
   cards a short suit run names ("ATT42cc") when the first-as-written one is shown elsewhere, rules out a two-way size
   ("b40") the stacks or the big blind make impossible, gives "everyone 20k" to every dealt seat (`allStacks`), and
-  `parseStakes` reads stakes with words around them ("1/2k bba", "NL200").
+  `parseStakes` reads stakes with words around them ("1/2k bba", "NL200"). **Typed cards win** (2026-11-19, the owner's "QQJ4shsh" and
+  "AQ5hch" came back Qd Qs Jh 4h and Ac Qh 5s: the model turned the letters into counts): `normalizeDraft(draft, { text })`
+  reads every card token of a typed description in code (`cardsAsTyped`) and a holding or a street's board with those
+  ranks takes its suits; "AAK5ssxx" is As Ax Ks 5x (`parseCards`). **A hand run twice or three times is stored**
+  (`runs`, `runsFrom` = the street after the last action, a later run's cards as `board2`/`board3`); a run's card nobody
+  named ("brick brick") is dealt face down on the felt (`runRows` in `poker-engine.js`), each run's winner tag kept off
+  the seats (`placeRunTags`).
 - **Hands said on the Apple Watch** (owner, 2026-11-19: "Apple Watch: dictation through quick add"; `lib/watch.js`,
   `npm run test:watch`): the Watch app (`ios/App/FuturegameWatch/`, a synced folder like the widget's; embedded in the
   iOS app only) pairs by a six-digit code typed into Settings › Apple Watch (`AppleWatchSection`), never a password:

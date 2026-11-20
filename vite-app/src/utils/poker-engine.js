@@ -957,20 +957,60 @@ export function boardCount(hand) {
 }
 const BOARD_KEYS = ['board', 'board2', 'board3'];
 export function boardKey(k) { return BOARD_KEYS[k] || 'board'; }
-/** Each board's cards, cumulative through street `upTo` (all streets when omitted): strings. */
+/** The first street a hand run twice or three times deals once per run: as stored; else the first street holding a
+    later run's cards; else the street after the last action, since a hand is run once the betting is over (a link
+    whose runs were never said carries no board2). null when the hand is not run. */
+export function runsFromOf(hand) {
+  if (!hand || hand.doubleBoard || !(Number(hand.runs) > 1)) return null;
+  var streets = hand.streets || [];
+  if (Number.isInteger(hand.runsFrom) && hand.runsFrom >= 1 && hand.runsFrom < streets.length) return hand.runsFrom;
+  for (var i = 0; i < streets.length; i++) {
+    var c = (streets[i] && streets[i].cards) || {};
+    if (c.board2 || c.board3) return i;
+  }
+  var last = -1;
+  for (var j = 0; j < streets.length; j++) if (streets[j] && (streets[j].actions || []).length) last = j;
+  return Math.min(Math.max(1, last + 1), Math.max(1, streets.length - 1));
+}
+/** Each board's cards, cumulative through street `upTo` (all streets when omitted): strings. From the street a hand's
+    runs begin, a later run has only its own cards (one it does not record is not run 1's). */
 export function handBoards(hand, upTo) {
   var n = boardCount(hand);
   var last = upTo == null ? (hand.streets || []).length - 1 : upTo;
+  var from = runsFromOf(hand);
   var out = [];
   for (var k = 0; k < n; k++) {
     var b = '';
     for (var si = 0; si <= last && si < (hand.streets || []).length; si++) {
       var c = hand.streets[si].cards || {};
-      b += (k > 0 && c[BOARD_KEYS[k]]) ? c[BOARD_KEYS[k]] : (c.board || '');
+      if (k > 0 && from != null && si >= from) b += c[BOARD_KEYS[k]] || '';
+      else b += (k > 0 && c[BOARD_KEYS[k]]) ? c[BOARD_KEYS[k]] : (c.board || '');
     }
     out.push(b);
   }
   return out;
+}
+/** Each run's cards through street `upTo` as the felt deals them: { rank, suit } per card, with null for a card the
+    run was dealt and the hand does not say ("run it twice, brick brick"), drawn face down, so every run shows its
+    river. null when the hand is not run or its runs have not begun by `upTo`. A flop is three cards, a turn and a
+    river one. */
+export function runRows(hand, upTo) {
+  var from = runsFromOf(hand);
+  var streets = (hand && hand.streets) || [];
+  if (from == null || upTo == null || upTo < from) return null;
+  var DEALS = [0, 3, 1, 1];
+  var rows = [];
+  for (var k = 0; k < boardCount(hand); k++) {
+    var row = [];
+    for (var si = 0; si <= upTo && si < streets.length; si++) {
+      var c = streets[si].cards || {};
+      var own = parseCardNotation(si < from ? (c.board || '') : (c[BOARD_KEYS[k]] || ''));
+      row = row.concat(own);
+      if (si >= from) for (var m = own.length; m < (DEALS[si] || 0); m++) row.push(null);
+    }
+    rows.push(row);
+  }
+  return rows;
 }
 /** Whether the hi-lo halves are settled over all boards at once (double board) or per board (runs). */
 export const combinesHiLo = (hand) => !!(hand && hand.doubleBoard);

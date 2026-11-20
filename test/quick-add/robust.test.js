@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 
 const { parseCards, parseStakes } = require('../../lib/quick-add/cards');
 const { looksSpoken } = require('../../lib/quick-add/speech');
-const { normalizeDraft } = require('../../lib/quick-add/normalize');
+const { normalizeDraft, normalizeHand } = require('../../lib/quick-add/normalize');
 const { buildParseRequest } = require('../../lib/quick-add/prompt');
 
 const cards = (s) => { const r = parseCards(s); return r && r.cards.join(''); };
@@ -142,4 +142,89 @@ test('a speech description gets the speech reading and the number-word pass', ()
   const r = buildParseRequest({ text: 'I raise to twelve hundred with pocket jacks', source: 'speech', hints: {}, model: 'm' });
   assert.match(r.system[0].text, /speech transcript/);
   assert.match(JSON.stringify(r.messages), /1200/);
+});
+
+/* The owner's PLO hand (2026-11-19, futurega.me/h/Ck3i6mIB): "QQJ4shsh" and a flop of "AQ5hch" came back as
+   Qd Qs Jh 4h and Ac Qh 5s, the run twice was one board, and "AAK5ssxx" (two aces of spades as written) was never
+   shown. The draft below is the reading that reproduces the saved hand exactly: the suit letters turned into counts. */
+const OWNER_PLO_TEXT = `$2/2/5 plo
+Ep $15, hj, Co c. Bu $50. I sb QQJ4shsh c. Hj co c
+AQ5hch. X x x bu $200 with ~$450 behind. I c, f f
+2cc. X he jam $435 I c run twice brick brick
+He AAK5ssxx`;
+const ownerPlo = (format = { runouts: 2, otherRunouts: [''] }, riverActions = null) => ({
+  gameType: 'PLO', gameMode: 'cash', currency: '$', blinds: { sb: 2, bb: 5, ante: 0, stakes: '$2/2/5' },
+  othersFolded: true, format,
+  players: [{ position: 'EP', isHero: false }, { position: 'HJ', isHero: false }, { position: 'CO', isHero: false },
+    { position: 'BTN', isHero: false }, { position: 'SB', isHero: true }],
+  streets: [
+    { name: 'Preflop', cards: [{ player: 4, cards: 'QQJ4', suitCounts: { h: 2 } }, { player: 3, cards: 'AAK5ssxx' }], actions: [
+      { player: 0, action: 'raise', toAmount: 15 }, { player: 1, action: 'call' }, { player: 2, action: 'call' },
+      { player: 3, action: 'raise', toAmount: 50 }, { player: 4, action: 'call' }, { player: 0, action: 'fold' },
+      { player: 1, action: 'call' }, { player: 2, action: 'call' }] },
+    { name: 'Flop', board: 'AQ5', actions: [
+      { player: 4, action: 'check' }, { player: 1, action: 'check' }, { player: 2, action: 'check' },
+      { player: 3, action: 'bet', toAmount: 200, behind: 450 }, { player: 4, action: 'call' },
+      { player: 1, action: 'fold' }, { player: 2, action: 'fold' }] },
+    { name: 'Turn', board: '2c', suitCounts: { c: 2 }, actions: [
+      { player: 4, action: 'check' }, { player: 3, action: riverActions ? 'bet' : 'all-in', toAmount: riverActions ? 100 : 435 }, { player: 4, action: 'call' }] },
+    ...(riverActions ? [{ name: 'River', board: '9d', actions: riverActions }] : []),
+  ],
+  result: { winners: [{ playerIdx: 3, split: false }] },
+});
+
+test('a pair given one suit twice ("AAK5ssxx") is suited in that suit, not two aces of spades', () => {
+  const r = parseCards('AAK5ssxx');
+  assert.equal(r.cards.join(''), 'AsAxKs5x');
+  assert.equal(r.partialSuits, true);
+  assert.equal(cards('QQJ4shsh'), 'QsQhJs4h');   // as many letters as cards: in order, unchanged
+  assert.equal(cards('AQ5hch'), 'AhQc5h');
+  assert.equal(cards('AA92hh'), 'AhAx9h2x');      // the shorthand with fewer letters, unchanged
+});
+
+test('the cards as typed win over the model reading their suit letters as counts', () => {
+  const without = normalizeDraft(ownerPlo(), {}).hand;
+  assert.equal(without.streets[0].cards.hero, 'QdQsJh4h');   // what the owner got
+  assert.equal(without.streets[1].cards.board, 'AcQh5s');
+  const { hand, notes } = normalizeDraft(ownerPlo(), { text: OWNER_PLO_TEXT });
+  assert.equal(hand.streets[0].cards.hero, 'QsQhJs4h');
+  assert.equal(hand.streets[1].cards.board, 'AhQc5h');
+  assert.equal(hand.streets[2].cards.board, '2c');
+  const opp = hand.streets[0].cards.opponents.find(Boolean);
+  assert.match(opp, /^As(Ad|Ac)Ks5[dc]$/);                  // shown: the ace and king of spades, the rest filled
+  assert.ok(notes.some((n) => /Cards read as you typed them: the flop Ah Qc 5h; your hand Qs Qh Js 4h/.test(n)), notes.join(' | '));
+  assert.ok(!notes.some((n) => /more than once/.test(n)), notes.join(' | '));
+  // Speech is not typed notation, and words are never cards.
+  assert.equal(normalizeDraft(ownerPlo(), { source: 'speech', text: OWNER_PLO_TEXT }).hand.streets[0].cards.hero, 'QdQsJh4h');
+  const words = { ...ownerPlo(), streets: ownerPlo().streets.map((st, i) => (i === 1 ? { ...st, board: 'AKJ' } : st)) };
+  const w = normalizeDraft(words, { text: 'pocket Jacks, As he jams, flop AKJ' });
+  assert.ok(!w.notes.some((n) => /read as you typed/.test(n)), w.notes.join(' | '));   // "Jacks" is not Jx Ac Ks
+});
+
+test('a hand run twice is stored as runs from the street after the betting, a run nobody named left open', () => {
+  const { hand, notes } = normalizeDraft(ownerPlo(), { text: OWNER_PLO_TEXT });
+  assert.equal(hand.runs, 2);
+  assert.equal(hand.runsFrom, 3);
+  assert.equal(hand.streets[3].cards.board, '');
+  assert.equal(hand.streets[3].cards.board2, undefined);
+  assert.ok(!(hand.quickAdd && hand.quickAdd.unsupported), JSON.stringify(hand.quickAdd));
+  assert.ok(!notes.some((n) => /cannot store/.test(n)), notes.join(' | '));
+  // A second river said: it is that run's river; given with the shared cards in front, they are dropped.
+  const said = normalizeDraft(ownerPlo({ runouts: 2, otherRunouts: ['9d'] }), { text: OWNER_PLO_TEXT }).hand;
+  assert.equal(said.streets[3].cards.board2, '9d');
+  const full = normalizeDraft(ownerPlo({ runouts: 2, otherRunouts: ['AhQc5h2c9d'] }), { text: OWNER_PLO_TEXT }).hand;
+  assert.equal(full.streets[3].cards.board2, '9d');
+  // Three times: two later runs.
+  const three = normalizeDraft(ownerPlo({ runouts: 3, otherRunouts: ['9d', ''] }), { text: OWNER_PLO_TEXT }).hand;
+  assert.equal(three.runs, 3);
+  assert.equal(three.streets[3].cards.board2, '9d');
+  // The client's hand comes back through normalizeHand with its runs and run cards.
+  const again = normalizeHand(said).hand;
+  assert.equal(again.runs, 2);
+  assert.equal(again.runsFrom, 3);
+  assert.equal(again.streets[3].cards.board2, '9d');
+  // Betting on the river leaves nothing to run: one board, said so.
+  const late = normalizeDraft(ownerPlo(undefined, [{ player: 4, action: 'check' }, { player: 3, action: 'check' }]), { text: OWNER_PLO_TEXT });
+  assert.equal(late.hand.runs, undefined);
+  assert.ok(late.notes.some((n) => /nothing was left to run/.test(n)), late.notes.join(' | '));
 });

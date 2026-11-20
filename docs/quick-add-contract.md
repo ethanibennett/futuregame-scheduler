@@ -28,6 +28,16 @@ form in `HandReplayerView.jsx` for field meanings). Key facts:
 - `result` `{ winners: [{ playerIdx, split }], pots?: [{ name, winners: [{ playerIdx, split }] }] }`
   (optional). `pots` (owner decision G) is a winner PER POT — side pots, a hand run twice — the
   main pot first; `winners` is the main pot's.
+- `runs?: 2|3`, `runsFrom?` (2026-11-19): a hand run twice or three times. `runsFrom` is the first street
+  dealt once per run, the street after the last action; each later run's cards on that street and after are
+  the street's `cards.board2` / `cards.board3`. A run's card nobody named ("run twice, brick brick") is
+  absent and the replayer deals it face down (`runRows` in `poker-engine.js`). The parse reads
+  `format.runouts` and `format.otherRunouts` (one string per later run). Double boards, bomb pots and
+  button blinds are still `unsupported`.
+- Typed card notation wins (2026-11-19): `normalizeDraft(draft, { text })` reads every card token in a typed
+  description in code (`cardsAsTyped`), and a holding or a street's board whose ranks are one token's takes
+  that token's suits, whatever the model made of the letters. A pair given one suit twice ("AAK5ssxx") is
+  As Ax Ks 5x (`parseCards`).
 - `heroless?: true` (owner decision C): the narrator was not in the hand. `heroIdx` is null, every
   known card is kept with its player, and `cards.hero` is SEAT 0's cards (the slot layout of a hand
   with no hero). The replayer does not show such a hand yet — see "Follow-ups for the replayer" in

@@ -15,7 +15,7 @@ import { buildDrawStudySpot } from '../utils/draw-study-spot';
 import { parseCardNotation, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL, gameEvalFor,
          bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestBadugiHand, scoreHalves, halvesWinnersAmong, halvesHandName, oddChipToLo,
          computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot, studOddChipKey, studOddChipOrder,
-         boardKey, handBoards, boardCount, multiBoardWinners, multiBoardEvals, multiBoardShaped, combinesHiLo,
+         boardKey, handBoards, boardCount, runRows, multiBoardWinners, multiBoardEvals, multiBoardShaped, combinesHiLo,
          seatOrderFromButton } from '../utils/poker-engine.js';
 import { encodeHand, VISUAL_SWITCHES } from '../utils/hand-shorthand.js';
 import { MomentNote, NoteTrack, NoteSheet, DetailsSheet, SendHandSheet, QuestionCard, ImportHandsSheet, SentToYou, FromYourWatch, noteAt, heroDecisionNext, questionHand } from './HandExtras.jsx';
@@ -9842,6 +9842,26 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     });
   };
   useLayoutEffect(() => { if (tableRef.current) placeWagers(tableRef.current); });
+  /* Who took each run or board (boardWinnerTags), beside its row: on the right, else on the left, else on the row's last
+     card, low, every row's the same way (owner, 2026-11-19: a PLO hand run twice at 402, eight-handed, put the second row's tag on the side seat's
+     plaque; a row of five is as wide as the board gets). Before the pill, which keeps off them. */
+  const placeRunTags = (table) => {
+    const tags = [...table.querySelectorAll('.replayer-board-winner')];
+    if (!tags.length || !table.clientWidth) return;
+    tags.forEach(t => { delete t.dataset.side; });
+    const r = subrowPx(table), g = r / 4;
+    const T = table.getBoundingClientRect();
+    const others = [...table.querySelectorAll('.replayer-seat-info, .replayer-seat-cards .card-row > *, .replayer-seat-hand-name, .replayer-action-badge-outer, .replayer-dealer-btn, .replayer-bet-chip')]
+      .map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
+    const clear = (b) => b.left >= T.left && b.right <= T.right
+      && !others.some(o => b.left < o.right + g && b.right > o.left - g && b.top < o.bottom + g && b.bottom > o.top - g);
+    // One side for every row, so the tags still read as a column.
+    for (const side of ['', 'left', 'over']) {
+      tags.forEach(t => { if (side) t.dataset.side = side; else delete t.dataset.side; });
+      if (side === 'over' || tags.every(t => clear(t.getBoundingClientRect()))) break;
+    }
+  };
+  useLayoutEffect(() => { if (tableRef.current) placeRunTags(tableRef.current); });
   /* The game pill, last: moved to the nearest spot up or down where no seat's piece, the board, the pot or its rows,
      the watermark or a wager touches it (owner, 2026-11-16: "Watermark/variant collision": moved up to clear a wager,
      it landed on the wordmark's lower half). With no such spot (a ten-seat phone table at a split showdown), it fades
@@ -9901,6 +9921,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         const rec = prevWagersRef.current.get(Number(el.dataset.seat));
         if ((dx || dy) && rec && rec.el === el && rec.geo) { rec.geo.cx += dx; rec.geo.cy += dy; }
       });
+      placeRunTags(table);
       placePill(table);
     };
     /* Each frame until nothing finite that moves anything is running on the page (the desktop pane round the table
@@ -11915,9 +11936,16 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           /* A hand run twice is ONE board until the runs begin (Replayer animations 13): a second row that
              repeats the first is not drawn while the board is still being dealt, and parts from it at the first
              run-out card. A double board is two boards from the flop. */
-          const extra = boardCount(hand) > 1 ? handBoards(hand, streetIdx).slice(1).map(b => parseCardNotation(b)).filter(b => b.length)
-            .filter(b => !springSet || hand.doubleBoard || parsed.length >= 5 || b.map(c => c.rank + c.suit).join('') !== parsed.map(c => c.rank + c.suit).join('')) : [];
+          /* Once a hand's runs have begun, each run is its own row, and a card a run was dealt that the hand does not
+             say ("run it twice, brick brick") lies face down in its place, so every run shows its river (owner,
+             2026-11-19: "we don't see two rivers"; a second row that read the same as the first was never drawn). */
+          const runs = runRows(hand, streetIdx);
+          const unknownOwn = runs ? runs[0].filter(c => c == null).length : 0;
+          const extra = runs ? runs.slice(1)
+            : boardCount(hand) > 1 ? handBoards(hand, streetIdx).slice(1).map(b => parseCardNotation(b)).filter(b => b.length)
+              .filter(b => !springSet || hand.doubleBoard || parsed.length >= 5 || b.map(c => c.rank + c.suit).join('') !== parsed.map(c => c.rank + c.suit).join('')) : [];
           const renderCard = (c, i, key, withSlot) => {
+            if (c == null) return <div key={key} data-xk={key} className="card-unknown is-run-unknown" role="img" aria-label="A card the hand does not record" />;
             const slot = withSlot ? { 'data-slot': i, 'data-ck': key } : { 'data-xk': key };
             const pose = withSlot && cardPoses ? cardPoses.board.get(c.rank + c.suit) : undefined;
             /* A board card with its rank and no suit ("Kx") shows its rank (utils/card-faces.js rankOnlyFaceSrc): it was
@@ -11939,11 +11967,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   top:28%, where it would have sat on the pot eyebrow. */}
               <div className="card-row replayer-board-spaced" ref={boardRowRef} aria-label={extra.length ? unit + ' 1' : undefined}>
                 {parsed.map((c, i) => renderCard(c, i, c.rank + c.suit + '_' + i, true))}
+                {Array.from({ length: unknownOwn }, (_, i) => renderCard(null, parsed.length + i, 'unknown_' + i, false))}
                 {tag(0)}
               </div>
               {extra.map((b, bi) => (
                 <div key={'board-' + (bi + 2)} className="card-row replayer-board-spaced replayer-board-extra" aria-label={unit + ' ' + (bi + 2)}>
-                  {b.map((c, i) => renderCard(c, i, 'b' + (bi + 2) + '_' + c.rank + c.suit + '_' + i, false))}
+                  {b.map((c, i) => renderCard(c, i, 'b' + (bi + 2) + '_' + (c ? c.rank + c.suit : 'unknown') + '_' + i, false))}
                   {tag(bi + 1)}
                 </div>
               ))}

@@ -5588,7 +5588,9 @@
     }
     .replayer-board-area .card-row .card-unknown,
     .replayer-board-area .card-row .card-placeholder {
-      width: var(--card-w); height: var(--card-h);
+      /* The width from this row's own card height: a board run three times sets a smaller --card-h on the area,
+         and --card-w, worked out on the table, would keep the full size (a run's unknown river, 2026-11-19). */
+      width: calc(var(--card-h) * 0.7143); height: var(--card-h);
       --back-mark: calc(var(--card-h) * 0.30);
     }
 
@@ -6222,6 +6224,10 @@
       box-shadow: var(--elev-1);
       animation: turnRiverSlide var(--dur-base) var(--ease-object) both;
     }
+    /* Where the right side touches a seat (HandReplayerView placeRunTags): the left side, else on the row's last card,
+       low, where its rank (top left) still shows. */
+    .replayer-board-winner[data-side="left"] { left: auto; right: 100%; margin-left: 0; margin-right: 1.2cqmin; }
+    .replayer-board-winner[data-side="over"] { left: auto; right: 0; top: auto; bottom: 0; margin-left: 0; transform: none; z-index: 1; }
     .replayer-seat.loser .replayer-seat-hand-name { color:#f87171; border-color:rgba(248,113,113,0.4); }
     .replayer-seat.split .replayer-seat-hand-name { color:#facc15; border-color:rgba(250,204,21,0.4); }
     /* A showdown a suitless board card's suit decides (boardFills in HandReplayerView): nobody won yet, so no gold. */
