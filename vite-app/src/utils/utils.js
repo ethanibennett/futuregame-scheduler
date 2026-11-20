@@ -1012,12 +1012,29 @@ export function getVenueClass(t) {
   return VENUE_CLASS_MAP[t.venue] || '';
 }
 
+/* Re-entry policies (owner, 2026-11-20, the Wynn WPT: "Why are there no reentry options on events"). The feeds
+   name a policy for about a third of events ("Unlimited") and nothing for the rest: all 149 WPT World Championship
+   events came with none. A missing policy is UNKNOWN, never a freezeout, so re-entry stays open with no count;
+   only a policy that says freezeout ('N/A', 'Freezeout', 'None', the server's normalizeReentry) allows one entry. */
+export function reentryKnown(reentry) {
+  return String(reentry == null ? '' : reentry).trim() !== '';
+}
+export function isFreezeout(reentry) {
+  return /^(n\/a|none|no|freeze-?out|no re-?entr(y|ies))$/i.test(String(reentry == null ? '' : reentry).trim());
+}
 export function getMaxEntries(reentry) {
-  if (!reentry || reentry === 'N/A') return 1;
+  if (!reentryKnown(reentry)) return 99;
+  if (isFreezeout(reentry)) return 1;
   if (/unlimited/i.test(reentry)) return 99;
   const num = parseInt(reentry);
   if (!isNaN(num)) return num + 1;
   return 2;
+}
+/** What the Re-enter button says after "Re-enter": "unlimited", "2 left", or nothing when the policy is unknown. */
+export function reentriesLeftText(reentry, used) {
+  if (!reentryKnown(reentry)) return '';
+  const max = getMaxEntries(reentry);
+  return max >= 99 ? 'unlimited' : `${max - used} left`;
 }
 
 // ── Venue Timezone Mapping ─────────────────────────────

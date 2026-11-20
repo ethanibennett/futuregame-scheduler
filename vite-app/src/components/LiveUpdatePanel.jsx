@@ -8,7 +8,7 @@ import { API_URL } from '../utils/api.js';
 import {
   getToday, normaliseDate, parseLateRegEnd, lateRegCloseOf, parseTournamentTime,
   getGamePills, haptic, HAND_CONFIG, HAND_CONFIG_DEFAULT,
-  formatLiveUpdate, ordinalSuffix, parseShorthand,
+  formatLiveUpdate, ordinalSuffix, parseShorthand, isFreezeout,
 } from '../utils/utils.js';
 import { parseCardNotation, dualPlaceholder, evaluateHand, assignNeutralSuits, GAME_EVAL } from '../utils/poker-engine.js';
 import { loadCardImages, drawHandImageOverlay } from '../utils/export.js';
@@ -147,7 +147,7 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
       if (normaliseDate(t.date) >= todayISO) return false;
       if (!(t.id in latest)) return false;
       if (bustedMap[t.id]) {
-        if (!t.reentry) return false;
+        if (isFreezeout(t.reentry)) return false;
         const lateEnd = lateRegCloseOf(t);
         return !isNaN(lateEnd) && now < lateEnd;
       }

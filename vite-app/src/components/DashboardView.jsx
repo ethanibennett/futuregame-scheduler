@@ -6,7 +6,7 @@ import {
   getVenueInfo, getVenueBrandColor, normaliseDate, getToday, getNow,
   formatBuyin, haptic, fmtShortDate,
   parseTournamentTime, parseDateTimeInTz, parseDateTime, parseLateRegEnd, lateRegCtx, lateRegCloseOf,
-  getMaxEntries, getVenueTzAbbr, getVenueCoords,
+  getMaxEntries, reentriesLeftText, getVenueTzAbbr, getVenueCoords,
   estimateBlindLevel, formatChips,
   CURRENCY_CONFIG, splitEventStage,
 } from '../utils/utils.js';
@@ -97,6 +97,10 @@ function MiniLateRegBar({ lateRegEnd, date, time, openOnly, venue, startAt, comp
 // Friends Playing and Connections left the home (verdict "placement"): they live in Social, one
 // tap from the tab bar. The Table Scanner left it too: it is the Playing card's Scan action now,
 // and a tool in Hands.
+/* The Re-enter button's words: "Re-enter · 2 left", "Re-enter · unlimited", or plain "Re-enter" when the event's
+   re-entry policy is not listed (utils.js getMaxEntries: unknown is never a freezeout). */
+const reentryLabel = (reentry, used) => ['Re-enter', reentriesLeftText(reentry, used)].filter(Boolean).join(' · ');
+
 /* At the bust, before firing again (Features 11, 2026-11-11): the four facts a re-entry rests on, in one
    block over the menu: late reg left, the new stack in big blinds now, this event's bullets and what they come
    to counting the next one, and where the player sits (Features 12). Facts, never advice. */
@@ -948,7 +952,7 @@ export default function DashboardView({
                         playStartedAt: new Date().toISOString(),
                       });
                     }
-                  }}><span className="dash-t">Re-enter · {maxEntries >= 99 ? 'unlimited' : `${maxEntries - usedEntries} left`}</span></button>
+                  }}><span className="dash-t">{reentryLabel(event.reentry, usedEntries)}</span></button>
                 ) : (
                   <div className="dash-no-rebuy"><span className="dash-t">All entries used</span></div>
                 )}
@@ -992,7 +996,7 @@ export default function DashboardView({
                         }, 300);
                       }
                       setBustMenuEventId(null);
-                    }}><span className="dash-t">Re-enter · {maxEntries >= 99 ? 'unlimited' : `${maxEntries - bulletNum} left`}</span></button>
+                    }}><span className="dash-t">{reentryLabel(event.reentry, bulletNum)}</span></button>
                   )}
                   <button className="dash-bust-btn" onClick={() => {
                     haptic(25);

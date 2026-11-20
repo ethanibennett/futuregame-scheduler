@@ -10,7 +10,7 @@ import { wsopStructureUrlFor } from '../utils/wsop-structure-pages.js';
 import {
   getVenueInfo, getVenueClass, getVenueBrandColor, getStripAbbr, formatGuarantee, shortEventNumber, isBraceletEvent, isRingEvent,
   normaliseDate, parseDateTime, parseDateTimeInTz, parseLateRegEnd, parseTournamentTime, lateRegCtx, lateRegLevel, fmtCloseInRoom,
-  getMaxEntries, getVenueTzAbbr, getNow, isTbd,
+  getMaxEntries, isFreezeout, getVenueTzAbbr, getNow, isTbd,
   formatConditionBadge,
   getIfIBustEvents, getIfIBagEvents, describeGame,
   currencySymbol, VENUE_BRAND_VAR, splitEventStage, formatChips, getVenueCoords, getToday, formatBuyin, getVenueTimezone,
@@ -911,7 +911,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
                     {tournament.reentry && (
                       <div className="cal-detail-item">
                         <span className="cal-detail-label">Re-entry</span>
-                        <span className="cal-detail-value">{tournament.reentry === 'N/A' ? 'Freezeout' : tournament.reentry}</span>
+                        <span className="cal-detail-value">{isFreezeout(tournament.reentry) ? 'Freezeout' : tournament.reentry}</span>
                       </div>
                     )}
                     {tournament.late_reg && (
@@ -1256,7 +1256,7 @@ The feed's own values return at the next hourly sync — your edits stay visible
                           <span className="cal-action-label">Priority</span>
                         </button>
                       )}
-                      {isInSchedule && onSetPlannedEntries && tournament.reentry && tournament.reentry !== 'N/A' && (() => {
+                      {isInSchedule && onSetPlannedEntries && !isFreezeout(tournament.reentry) && (() => {
                         const maxE = getMaxEntries(tournament.reentry);
                         const cur = plannedEntries || 1;
                         return (

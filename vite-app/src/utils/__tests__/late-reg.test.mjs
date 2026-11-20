@@ -59,3 +59,27 @@ test('a server stamp with no zone is UTC (App improvements 353)', async () => {
   assert.equal(parseServerStamp('2026-11-10T16:04:48.000Z'), Date.parse('2026-11-10T16:04:48Z'));
   assert.ok(Number.isNaN(parseServerStamp('')));
 });
+
+// Re-entry policies (owner, 2026-11-20, the Wynn WPT: "Why are there no reentry options on events"): the feed sent
+// none for all 149 WPT World Championship events, and a missing policy read as a freezeout, so the schedule card had
+// no Max Entries stepper and Home no Re-enter button. Unknown is never a freezeout.
+test('a re-entry policy the feed does not name leaves re-entry open; only a stated freezeout allows one entry', async () => {
+  const { getMaxEntries, isFreezeout, reentryKnown, reentriesLeftText } = await import('../utils.js');
+  for (const none of [null, undefined, '', '  ']) {
+    assert.equal(reentryKnown(none), false);
+    assert.equal(isFreezeout(none), false);
+    assert.equal(getMaxEntries(none), 99);
+    assert.equal(reentriesLeftText(none, 1), '');
+  }
+  for (const fo of ['N/A', 'Freezeout', 'freeze-out', 'None', 'No re-entry']) {
+    assert.equal(isFreezeout(fo), true, fo);
+    assert.equal(getMaxEntries(fo), 1, fo);
+  }
+  assert.equal(getMaxEntries('Unlimited'), 99);
+  assert.equal(reentriesLeftText('Unlimited', 3), 'unlimited');
+  assert.equal(getMaxEntries('Unlimited through end of level 12'), 99);
+  assert.equal(getMaxEntries('1'), 2);
+  assert.equal(reentriesLeftText('2', 1), '2 left');
+  assert.equal(getMaxEntries('1 Per Flight'), 2);
+  assert.equal(getMaxEntries('Bust A Play B'), 2);
+});
