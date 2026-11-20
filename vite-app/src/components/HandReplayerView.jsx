@@ -1253,8 +1253,12 @@ function antesPosted(hand) {
    were cut at the wrong places and paid the wrong seats (2026-11-10: 41 of 100 cash hands with side pots,
    found by scripts/check-replayer-oracle.mjs). A millionth is far below a cent and far above the residue. */
 const chipRound = (v) => Math.round(v * 1e6) / 1e6;
-/* Cards that slide at the showdown (Replayer animations 20-23: the playing cards up, a hi-lo pot's halves, the winning
-   five). Off for now (owner, 2026-11-15); the poses before the result (a tabled leader, a counterfeit) are unchanged. */
+/* Cards that slide at the showdown to say which ones play (Replayer animations 16, 17, 20-23: the playing cards up, a hi-lo
+   pot's halves, the winning five, a tabled all-in's leader raised through the run-out, the hero's made hand lifting as a
+   run-out card lands, stud's five that play rising and the rest dropping to the down cards' place). Off (owner, 2026-11-15:
+   "we can get rid of card sliding motions at showdown for now"; 2026-11-20: "stop sliding any cards at showdown to
+   indicate which ones play"): every card stays where it was dealt. Dimming is not a slide and stays (a counterfeit, a
+   stud card that does not play). */
 const SHOWDOWN_SLIDES = false;
 /* The pot's pile draws the whole pot, as its figure does (owner, 2026-11-15: "This stack of chips should change to reflect the
    number in the pot"): wagers in front of the seats included, so a sweep moves chips into it without changing it. */
@@ -1968,9 +1972,10 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
         // does, and dims — see the seat render, which flags the thrown cards the
         // moment the d1/d2/pat badge appears.
         const isDiscard = discardIdx && discardIdx.has(i);
-        // Stud at showdown: the five that play are the up cards and the rest sit as down cards, wherever each was dealt.
+        // Stud at showdown: the cards that do not play dim where they were dealt (with SHOWDOWN_SLIDES on, the five that
+        // play would also rise as up cards and the rest drop to the down cards' place).
         const plays = playIds && c.suit !== 'x' ? playIds.has(c.rank + c.suit) : null;
-        const studYOffset = plays != null ? (plays ? STUD_LIFT_UP : STUD_LIFT_DOWN)
+        const studYOffset = plays != null && SHOWDOWN_SLIDES ? (plays ? STUD_LIFT_UP : STUD_LIFT_DOWN)
           : isStudUp ? STUD_LIFT_UP : isDown ? STUD_LIFT_DOWN : (isDiscard ? STUD_LIFT_UP : '');
         // A revealed face never reverses: the rank index lives at top-left only,
         // so leftmost-on-top buries every rank but the first.
@@ -7327,7 +7332,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     }
     if (!showResult) {
       // 16: the tabled hand in front sits raised.
-      if (exposeAllIn && cfg.type === 'high') {
+      if (SHOWDOWN_SLIDES && exposeAllIn && cfg.type === 'high') {
         const hands = live.map(pi => ({ seat: pi, cards: cardsOf(pi) })).filter(h => h.cards.length >= 2);
         if (hands.length === live.length) {
           const lead = leaderOf(cfg, hands, board);
@@ -10967,7 +10972,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
 
         // 17: the card that lifts the hero's hand into a new category: the five that now play lift together, once.
         const landed = 320 / rate;
-        if (motionKind === 'street' && category === 'community' && !folded.has(replayHeroIdx) && boardCount(hand) <= 1) {
+        if (motionKind === 'street' && category === 'community' && !folded.has(replayHeroIdx) && boardCount(hand) <= 1
+          && (SHOWDOWN_SLIDES || !decidedNow)) {
           const cfg = gameEvalFor(hand.gameType, hand);
           const board = parseCardNotation(boardCards).filter(c => c.suit !== 'x');
           let prevBoardStr = '';
@@ -10998,7 +11004,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
              press, so a lead that changes on the turn and back on the river is seen to. */
           const sequenced = new Set();
           const jumpN = motionKind === 'street' && stepPrev ? streetIdx - stepPrev.s : 1;
-          if (jumpN > 1 && exposeAllIn) {
+          if (SHOWDOWN_SLIDES && jumpN > 1 && exposeAllIn) {
             const cfg = gameEvalFor(hand.gameType, hand);
             const board = parseCardNotation(boardCards).filter(c => c.suit !== 'x');
             const sizes = [];
@@ -12213,6 +12219,19 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               const back = 'Ax';
               cards = back + back + upCards.map(c => c.rank + c.suit).join('')
                 + (dealt >= 7 ? back : '');
+            } else if (upCards.length) {
+              /* A shown hand keeps every card in the slot it was dealt to (owner, 2026-11-20: no card slides at the
+                 showdown). 3rd street holds the hidden cards in front of the door, newest pick first, and a save with no
+                 7th-street card keeps the 7th among them, first: `h7 h2 h1 door` (docs/hand-history-io.md, the stud
+                 layout). Read in that order, the 7th took the door's slot and every up card moved one slot on as the
+                 hand was shown, the last into the river's down slot; and a hand tabled all in before 7th street
+                 showed its 7th card early. */
+              const known = (si) => parseCardNotation((hand.streets[si]?.cards.opponents || [])[oppSlot] || '').filter(c => c.suit !== 'x');
+              const hidden = known(0).slice(0, -1);
+              const sev = known(4)[0];
+              const hole = !sev && hidden.length > 2 ? hidden.slice(1, 3) : hidden.slice(0, 2);
+              const seventh = sev || (hidden.length > 2 ? hidden[0] : null);
+              if (hole.length === 2) cards = [...hole, ...upCards, ...(dealt >= 7 && seventh ? [seventh] : [])].map(c => c.rank + c.suit).join('');
             }
           }
           const seatClass = getPlayerSeatClass(pi);

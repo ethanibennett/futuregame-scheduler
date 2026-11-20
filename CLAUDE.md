@@ -811,6 +811,11 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
     property, so it composes with a fan's own transform): the tabled leader, a counterfeit, the winning five, a hi-lo
     pot's halves, a badugi's dead card, the rank two lows part on. The registry keys a motion per element AND kind
     (`run(el, { key, property: 'individual' })`), so a card can turn over (transform) while it lifts (translate).
+    **No card slides at the showdown to say which cards play** (owner, 2026-11-15 and 2026-11-20: "stop sliding any
+    cards at showdown to indicate which ones play"): `SHOWDOWN_SLIDES` is off, which holds back the tabled leader, the
+    hero's made hand lifting in a decided run-out, the winning five, a hi-lo pot's halves, a badugi's dead card and
+    stud's five that play rising; dimming is not a slide and stays. A stud opponent's shown hand keeps the slots it was
+    dealt to, the `h7 h2 h1 door` form included.
   - **The pot's FIGURE counts every chip put in** (owner, 2026-11-15: "the pot should not be zero at this point";
     `potCommitted`), the wagers still in front of the seats included: a raise to 80,000 over 20,000/40,000 blinds reads
     140,000. The PILE above it draws only what is in the middle (`potBase` / `shownPot`: under springs the posted blinds
