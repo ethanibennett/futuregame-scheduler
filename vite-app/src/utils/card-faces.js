@@ -47,5 +47,21 @@ export function rankOnlyFaceSrc(rank) {
   return uri;
 }
 
+/* A card a hand's run was dealt and the hand does not name ("run it twice, brick brick"): the slate face above with an
+   X for the rank and no pip (owner, 2026-11-20: "The rivers can just be grey cards with an X for the rank"). */
+export function unknownCardFaceSrc() {
+  const key = 'unknown';
+  let uri = built.get(key);
+  if (uri) return uri;
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 252"><defs><style>'
+    + "@font-face{font-family:'Univers Condensed';src:url('data:font/truetype;base64," + FONT_MARK + "') format('truetype');font-weight:700}"
+    + ".r{font-family:'Univers Condensed','Univers-Condensed-Bold',sans-serif;font-weight:700;fill:#fff;font-size:78px}</style></defs>"
+    + '<rect width="180" height="252" rx="18" ry="18" fill="#59616e"/>'
+    + '<text class="r" transform="translate(17.3 72)">X</text></svg>';
+  uri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.replace(FONT_MARK, FONT));
+  built.set(key, uri);
+  return uri;
+}
+
 /** How many faces the bundle carries (52 when the generator found them all). */
 export const CARD_FACE_COUNT = Object.keys(FACES).length;

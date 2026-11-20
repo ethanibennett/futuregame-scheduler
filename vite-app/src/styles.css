@@ -6934,6 +6934,9 @@
       font-weight: var(--fw-light); color: var(--text-muted);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    /* The first straddle's size, in the place its amount was (twice the big blind until it is set). */
+    .replayer-straddle-size { margin-left: auto; flex: none; width: calc(var(--gu) * 6); }
+    .replayer-straddle-size input { height: calc(var(--subrow) * 3); padding-block: 0; text-align: right; font-variant-numeric: var(--num-tabular); }
     .replayer-straddle-row.is-on .replayer-straddle-amt {
       color: var(--accent2); font-weight: var(--fw-bold);
       font-variant-numeric: var(--num-tabular);

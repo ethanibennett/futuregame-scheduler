@@ -1,4 +1,4 @@
-import { cardFaceSrc, rankOnlyFaceSrc } from '../utils/card-faces.js';
+import { cardFaceSrc, rankOnlyFaceSrc, unknownCardFaceSrc } from '../utils/card-faces.js';
 import { boardSuitFills, readingAcross, undecidedLine } from '../utils/board-suit-fills.js';
 import { CARD_BACKS, CARD_BACK_KEY, normalizeCardBack, applyCardBack } from '../utils/card-back.js';
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
@@ -3414,11 +3414,22 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                               ))}
                             </select>
                           )}
-                          <span className="replayer-straddle-amt">
-                            {checked
-                              ? (posted ? formatChipAmount(posted.amount) : 'covered')
-                              : STRADDLE_NOTES[type]}
-                          </span>
+                          {/* The first straddle's size is set here (owner, 2026-11-20: "It should default to twice the BB
+                              but be flexible. Especially when fewer chips make the straddle simpler": a $5 straddle at
+                              $2/$2). Left blank it is twice the big blind; each straddle after it doubles the one before. */}
+                          {posted && live[0] && posted.type === live[0].type ? (
+                            <div className="replayer-field replayer-straddle-size">
+                              <AmountField value={Number(b.straddleAmount) > (Number(b.bb) || 0) ? b.straddleAmount : ''} blankZero cents={cents}
+                                disabled={locked} ariaLabel={STRADDLE_LABELS[type] + ' size'} placeholder={formatChipAmount((Number(b.bb) || 0) * 2)}
+                                onCommit={v => setBlind('straddleAmount', Number(v) > (Number(b.bb) || 0) && Number(v) !== (Number(b.bb) || 0) * 2 ? v : undefined)} />
+                            </div>
+                          ) : (
+                            <span className="replayer-straddle-amt">
+                              {checked
+                                ? (posted ? formatChipAmount(posted.amount) : 'covered')
+                                : STRADDLE_NOTES[type]}
+                            </span>
+                          )}
                         </div>
                       );
                     })}
@@ -3427,6 +3438,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                 {on && live.length > 0 && (
                   <div className="replayer-field-hint" style={{marginBottom:'var(--space-sm)'}}>
                     {live.length > 1 ? 'Each straddle doubles the one before it. ' : ''}
+                    {Number(b.straddleAmount) > (Number(b.bb) || 0) ? '' : 'Twice the big blind unless you set its size. '}
                     Preflop action starts on {seatBadge((closer + 1) % nSeats)} and {seatBadge(closer)} closes.
                   </div>
                 )}
@@ -11959,7 +11971,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           const extra = runs ? runs.slice(1).map(r => r.slice(skip))
             : hand.doubleBoard ? handBoards(hand, streetIdx).slice(1).map(b => parseCardNotation(b)).filter(b => b.length) : [];
           const renderCard = (c, i, key, withSlot) => {
-            if (c == null) return <div key={key} data-xk={key} className="card-unknown is-run-unknown" role="img" aria-label="A card the hand does not record" />;
+            if (c == null) return <img key={key} data-xk={key} className="card-img is-run-unknown" src={unknownCardFaceSrc()} alt="A card the hand does not record" loading="eager" />;
             const slot = withSlot ? { 'data-slot': i, 'data-ck': key } : { 'data-xk': key };
             const pose = withSlot && cardPoses ? cardPoses.board.get(c.rank + c.suit) : undefined;
             /* A board card with its rank and no suit ("Kx") shows its rank (utils/card-faces.js rankOnlyFaceSrc): it was
