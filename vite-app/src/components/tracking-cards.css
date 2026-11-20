@@ -343,6 +343,10 @@
   box-shadow: inset 0 calc(var(--bw-1) * -1) 0 var(--border-strong);
 }
 .app-shell.is-desktop .tr-line-played { display: block; }
+/* The head's gap strips (::after, top: 100%) sit BEHIND their own row's content (z-index -1 inside the sticky row's
+   stacking context, still above the list, which is outside it): the strip starts at the row's foot, a fractional
+   pixel, and painted over the hairline bottom border of the controls standing on that foot (owner, 2026-11-19: the
+   Cash chip's "outline ... is cut off", its bottom edge gone at 2x and 3x). */
 /* The sticky head is as wide as the rows (owner, 2026-11-19: "This sticky header should span the full width, not
    showing stuff scrolling behind it"). Where a pointer hovers, a line bleeds 1g past the column on each side (its hover
    fill and hairline, .tr-line above), and those hairlines showed, and took a tap, beside the head as they scrolled
@@ -396,7 +400,7 @@
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.tr-head-row:not(.cs-head) ~ .tr-listbar) :is(.bk-bar.bk-bar--sched, .results-kind-tabs)::after,
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head):has(~ .tr-listbar)::after,
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"] .tr-head-row:not(.cs-head) ~ .tr-listbar::after {
-  content: ''; position: absolute; left: 0; right: 0; top: 100%; height: calc(var(--subrow) * 2); background: var(--bg);
+  content: ''; position: absolute; left: 0; right: 0; top: 100%; z-index: -1; height: calc(var(--subrow) * 2); background: var(--bg);
 }
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.tr-head-row:not(.cs-head) ~ .tr-listbar) .bk-bar.bk-bar--sched { top: 0; }
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.tr-head-row:not(.cs-head) ~ .tr-listbar) .results-kind-tabs { top: calc(var(--subrow) * 9); }
@@ -417,8 +421,8 @@
 .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) :is(.cs-list, .ra-all) > .tr-listbar { position: sticky; z-index: 7; background: var(--bg); }
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) :is(.bk-bar.bk-bar--sched, .results-kind-tabs)::after,
 .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) .cs-head.tr-head-row::after,
-.tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) :is(.cs-list, .ra-all) > .tr-listbar::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; background: var(--bg); height: calc(var(--subrow) * 2); }
-.app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) .bk-bar.bk-bar--sched::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; background: var(--bg); height: var(--subrow); }
+.tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) :is(.cs-list, .ra-all) > .tr-listbar::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; z-index: -1; background: var(--bg); height: calc(var(--subrow) * 2); }
+.app-shell.is-desktop .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) .bk-bar.bk-bar--sched::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; z-index: -1; background: var(--bg); height: var(--subrow); }
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) .bk-bar.bk-bar--sched { top: 0; }
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar, .ra-all > .tr-listbar) .results-kind-tabs { top: calc(var(--subrow) * 9); }
 .app-shell:not(.is-desktop) .tab-panel[data-tab="tracking"]:has(.cs-list > .tr-listbar) .cs-head.tr-head-row { top: calc(var(--subrow) * 16); }
