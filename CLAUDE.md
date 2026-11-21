@@ -570,6 +570,10 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   once) and `user_days` (an account active that UTC day, written by `authenticateToken`). The weekly
   cohort report (sign-ups, activated within 7 days, D7, D30, by source) is `GET /api/admin/growth`
   (app admins). No SDK, no ATT prompt. Test: `npm run test:growth`.
+  **The Monday scorecard** (launch plan v2 §7 and §12; `scorecard` / `setSpend` in `lib/growth.js`, Admin's
+  `GrowthScorecard.jsx`): last week's new accounts and organic share, each cohort figure from the newest week old
+  enough to have it, against the day-90 KPIs (statuses from launch day), and the cost per activated paid account
+  from the weekly ad spend entered per channel (`growth_spend`, `PUT /api/admin/growth/spend`).
 - **The Features catalogue, built** (owner picks 2026-11-11: every one of `docs/catalogues/features` but 3, 6, 7,
   24, 28 and 50). Server modules are registered in ONE place, `lib/feature-mounts.js` (`init` at load, `migrateAll`
   in initDatabase AND again at boot, after every late table exists, `mountAll` beside the MCP endpoint);
@@ -896,6 +900,11 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
     Back still steps a street at a time. A hand opened on its first step plays its opening (antes, blinds, the dealer
     button); Play from the first step deals the hand first. Exports skip action moments and open on their title card.
   - Sampled figures (a stack counting down) are `MotionRegistry.sample`; under an export `seek()` places them.
+- **No card moves up or down on its own** (owner, 2026-11-21: "cards in the replayer are STILL sliding up and down.
+  STOP IT"): `CARD_LIFTS` and `RING_CLOSES` in HandReplayerView are off beside `SHOWDOWN_SLIDES` (no made-hand lift,
+  door lift, turn-over rise, pat rap, thrown-card rise, run-twice row slide; no all-in ring closing, OUT only dims).
+  Every new wager's push starts at its player's plaque (`rayToRect`). Showdown Equity is `computeOdds` on its worker,
+  shown in the seat's readout while an all-in's cards are to come, never at the result.
 - **The chips are casino clay** (owner, 2026-11-13: pick 1 of `docs/catalogues/replayer-chips`, gallery
   https://claude.ai/artifact/UrZPCY5D5q7TBcnwG49ZBY): `.chip-disc` / `.replayer-pot-chip-disc` in `styles.css`, six white
   edge inserts placed per chip by `utils/chip-inserts.js` (`chipInsertVars` / `applyChipInserts` from the chip's
