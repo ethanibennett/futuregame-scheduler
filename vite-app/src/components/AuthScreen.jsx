@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Icon from './Icon.jsx';
+import useWordmarkFit from '../hooks/useWordmarkFit.js';
 import ThemeButton from './ThemeButton.jsx';
 import { THEME_LABEL, getStoredSeasonLabel } from '../utils/utils.js';
 import { nextTheme } from '../utils/theme.js';
@@ -40,6 +41,8 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
     fetch(`${API_URL}/invite/${encodeURIComponent(invite)}/info`).then((r) => (r.ok ? r.json() : null)).then((d) => { if (on && d) setInviter(d); }).catch(() => {});
     return () => { on = false; };
   }, [invite]);
+  const wordmarkRef = useRef(null);
+  useWordmarkFit(wordmarkRef, { fitG: null });
   const [isRegister, setIsRegister] = useState(!!initialRegister);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [email, setEmail] = useState('');
@@ -74,7 +77,9 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
           <ThemeButton theme={theme} nextThemeLabel={nextThemeLabel} onToggle={toggleTheme} />
         </div>
         <div className="auth-logo">
-          <h1>futurega.me</h1>
+          {/* The top bar's wordmark loop here too (owner, 2026-11-21: "The wordmark animation should be on the sign-in
+              page too"; styles.css .wm-loop): the dot's place read from the face, the size the card's own. */}
+          <h1 ref={wordmarkRef} className="wm-loop" aria-label="futurega.me">f<span className="wm-u">u</span>t<span className="wm-u">u</span>reg<span className="wm-a">a</span><span className="wm-dot">.</span><span className="wm-me">me</span></h1>
           <p>{isRegister ? 'Create your free account' : season}</p>
         </div>
 

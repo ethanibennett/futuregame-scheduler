@@ -33,15 +33,17 @@ function setDotGeometry(el) {
   if (geo.originY != null) el.style.setProperty('--wm-dot-oy', em(geo.originY));
 }
 
-function fit(el) {
+// `fitG` null: the dot's geometry only, the size left to the element's own CSS (the sign-in card's centred mark).
+function fit(el, fitG = 8) {
   if (!el || !el.isConnected) return;
+  if (fitG == null) { setDotGeometry(el); return; }
   const probe = document.createElement('div');
   probe.style.cssText = 'position:absolute;visibility:hidden;width:calc(var(--gu) * 100);height:0';
   document.body.appendChild(probe);
   const g = probe.getBoundingClientRect().width / 100;
   probe.remove();
   if (!(g > 0)) return;
-  const target = g * 8;
+  const target = g * fitG;
   // Under Reduce Motion the app-wide rule gives every property a 1ms transition, the font size included, so the
   // second pass read the size before the first had landed and the word stayed up to half a pixel off 8g.
   el.style.transitionProperty = 'none';
@@ -57,11 +59,11 @@ function fit(el) {
   }
 }
 
-export default function useWordmarkFit(ref) {
+export default function useWordmarkFit(ref, { fitG = 8 } = {}) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
-    const run = () => fit(ref.current);
+    const run = () => fit(ref.current, fitG);
     run();
     let raf = 0;
     const later = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(run); };
@@ -79,5 +81,5 @@ export default function useWordmarkFit(ref) {
       window.removeEventListener('resize', later);
       document.fonts?.removeEventListener?.('loadingdone', later);
     };
-  }, [ref]);
+  }, [ref, fitG]);
 }
