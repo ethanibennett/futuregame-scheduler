@@ -2164,12 +2164,15 @@
       letter-spacing: var(--track-wordmark);
       white-space: nowrap;
     }
-    /* The wordmark's period hangs under the word, between the "a" and the "m", and takes no width (owner, 2026-11-20:
-       "I want the dot below the wordmark, with the same tracking as before but without the gap before the last two
-       letters"), wherever the word is set as a heading. A 0-wide inline flex box with the dot centred on it, so the dot
-       overflows both sides alike in any face and "me" follows "a" at the word's own tracking; dropped in em, so it
-       scales with the word, and relative, so the word's baseline stays seated. */
-    .wm-dot { display: inline-flex; justify-content: center; width: 0; letter-spacing: 0; position: relative; top: 0.24em; }
+    /* The wordmark's period floats over the word, between the "a" and the "m", in the brand blue, and takes no width
+       (owner, 2026-11-20: "without the gap before the last two letters", then "Put the dot back on top of the wordmark
+       but in the accent blue we are using"), wherever the word is set as a heading. A 0-wide inline flex box with the
+       dot centred on it, so the dot overflows both sides alike in any face and "me" follows "a" at the word's own
+       tracking; raised in em, so it scales with the word, and relative, so the word's baseline stays seated. 0.7em
+       puts the dot's top on the f's ascender in Libre Baskerville (measured: the period's ink is 0.14em tall, x-height
+       0.56em, f 0.85em), clear of the a and the m; Univers and the Gothic face rise 0.1em past their shorter f.
+       Swiss's top bar keeps its red dot (theme-swiss.css). */
+    .wm-dot { display: inline-flex; justify-content: center; width: 0; letter-spacing: 0; position: relative; top: -0.7em; color: var(--brand); }
 
     /* Screen/page titles — non-bold Baskerville. Size, margins and line-height
        stay per-view; this only fixes the family and weight. */
