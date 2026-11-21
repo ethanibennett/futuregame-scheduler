@@ -1104,17 +1104,30 @@ app.post('/api/growth/apple-ads', authenticateToken, requireRegistered, async (r
 });
 
 // The hand parser's live eval, run by the server with its own key (lib/admin-eval.js): app admins only.
-// POST starts one run (409 while one runs, 503 without ANTHROPIC_API_KEY); GET is its status and report.
+// POST starts one run (409 while one runs, 503 without ANTHROPIC_API_KEY), its body { model, effort, corpus,
+// limit } picking what to measure; GET is its status and report; /runs the finished runs side by side.
 const adminEval = require('./lib/admin-eval');
+const quickAddLearn = require('./lib/quick-add/learn');
+adminEval.init({ getDb: () => db, saveDatabase: () => saveDatabase() });
 app.post('/api/admin/quick-add-eval', authenticateToken, requireAppAdmin, (req, res) => {
-  const r = adminEval.start();
+  const r = adminEval.start({ options: req.body || {} });
   if (r.error) return res.status(r.status).json({ error: r.error });
-  console.log('[quick-add eval] started by', req.user.username);
+  console.log('[quick-add eval] started by', req.user.username, JSON.stringify(r.options));
   res.status(202).json(adminEval.status());
 });
 app.get('/api/admin/quick-add-eval', authenticateToken, requireAppAdmin, (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json(adminEval.status());
+});
+app.get('/api/admin/quick-add-eval/runs', authenticateToken, requireAppAdmin, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ runs: adminEval.runs(), options: adminEval.OPTIONS, estimates: adminEval.estimates() });
+});
+app.get('/api/admin/quick-add-eval/runs/:id', authenticateToken, requireAppAdmin, (req, res) => {
+  const run = adminEval.run(Number(req.params.id));
+  if (!run) return res.status(404).json({ error: 'Not found' });
+  res.set('Cache-Control', 'no-store');
+  res.json(run);
 });
 
 // The weekly cohort report (lib/growth.js report): app admins only. ?weeks= up to 52 (default 13).
@@ -8609,6 +8622,7 @@ app.post('/api/replayer/hands', authenticateToken, requireRegistered, async (req
     idStmt.step();
     const { id } = idStmt.getAsObject();
     idStmt.free();
+    quickAddLearn.onHandSaved(db, req.user.id, hand, id); // a quick-add hand: kept beside its parse (lib/quick-add/learn.js)
     await saveDatabase();
     res.status(201).json({ id });
   } catch (error) {
@@ -8629,6 +8643,7 @@ app.put('/api/replayer/hands/:id', authenticateToken, requireRegistered, async (
     const gameType = bodyGameType || hand.gameType || 'custom';
     db.run('UPDATE saved_hands SET hand_data = ?, game_type = ?, title = ?, notes = ?, is_public = ? WHERE id = ? AND user_id = ?',
       [JSON.stringify(hand), gameType, title || hand.title || null, notes || hand.notes || null, isPublic ? 1 : 0, id, req.user.id]);
+    quickAddLearn.onHandSaved(db, req.user.id, hand, id);
     await saveDatabase();
     res.json({ message: 'Updated' });
   } catch (error) {
@@ -13214,7 +13229,8 @@ function postProcessEvents(allEvents, userVenue) {
     if (apiKey !== quickAddKey) { quickAddClient = new Anthropic({ apiKey, timeout: 90000, maxRetries: 1 }); quickAddKey = apiKey; }
     return quickAddClient;
   };
-  app.use('/api/quick-add', createQuickAddRouter({ authenticateToken, isAdmin: quickAddAdmin, getClient: quickAddClientFor }));
+  // getDb + saveDatabase: the parse log (lib/quick-add/learn.js), GET /api/quick-add/log for admins.
+  app.use('/api/quick-add', createQuickAddRouter({ authenticateToken, isAdmin: quickAddAdmin, getClient: quickAddClientFor, getDb: () => db, saveDatabase }));
   // Hands said on the Apple Watch (lib/watch.js): pairing, the Watch's hands, and the phone's inbox.
   require('./lib/watch').mountRoutes(app, {
     getDb: () => db, saveDatabase, authenticateToken, requireRegistered,

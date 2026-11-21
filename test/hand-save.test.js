@@ -5,14 +5,14 @@
 //   node test/hand-save.test.js        (npm run test:hand-save; ports 4740-4749)
 'use strict';
 const assert = require('assert');
-const { boot, createScratch, runner } = require('./helpers/scratch-server');
+const { boot, createScratch, runner, rowsOf, one } = require('./helpers/scratch-server');
 
 const SECRET = 'hand-save-test-secret';
 
 (async () => {
   const { test, done } = runner('hand-save');
   const scratch = await createScratch();
-  const srv = await boot(scratch.dbPath, { JWT_SECRET: SECRET }, { ports: [4740, 4749] });
+  let srv = await boot(scratch.dbPath, { JWT_SECRET: SECRET }, { ports: [4740, 4749] });
   const api = async (method, p, body, token) => {
     const r = await fetch(`http://127.0.0.1:${srv.port}${p}`, {
       method,
@@ -55,6 +55,29 @@ const SECRET = 'hand-save-test-secret';
       const a = await api('POST', '/api/replayer/games', { name: 'House game' }, token);
       assert.strictEqual(a.status, 201);
       assert.ok(a.json.id > 0, 'id ' + a.json.id);
+    });
+
+    // Last: it restarts the server to seed the parse log (the server holds the database in memory).
+    await test('a quick-add hand is kept beside its parse when saved and edited, and only by its own account', async () => {
+      const uid = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).id;
+      await srv.stop();
+      let db = scratch.open();
+      db.run("INSERT INTO quick_add_parses (user_id, source, text, parsed_hand, status) VALUES (?, 'text', 'a made-up hand', ?, 200)", [uid, JSON.stringify(hand(9))]);
+      const pid = one(db, 'SELECT max(id) FROM quick_add_parses');
+      scratch.save(db);
+      srv = await boot(scratch.dbPath, { JWT_SECRET: SECRET }, { ports: [4740, 4749] });
+      const other = (await api('POST', '/api/register', { username: 'othertest', email: 'other@x.test', password: 'a-long-test-password-2', realName: 'Other Test' })).json.token;
+      assert.strictEqual((await api('POST', '/api/replayer/hands', { handData: { ...hand(9), quickAddParseId: pid }, gameType: 'NLH' }, other)).status, 201);
+      const withStack = (s) => ({ ...hand(9), players: [{ name: 'A', startingStack: s }, { name: 'B' }], quickAddParseId: pid });
+      const a = await api('POST', '/api/replayer/hands', { handData: withStack(300), gameType: 'NLH', title: 'Quick' }, token);
+      assert.strictEqual(a.status, 201);
+      assert.strictEqual((await api('PUT', '/api/replayer/hands/' + a.json.id, { handData: withStack(400), gameType: 'NLH', title: 'Quick' }, token)).status, 200);
+      await srv.stop();
+      db = scratch.open();
+      const [row] = rowsOf(db, 'SELECT * FROM quick_add_parses WHERE id = ?', [pid]);
+      assert.strictEqual(row.saved_hand_id, a.json.id, 'paired with the owner\'s hand, not the other account\'s');
+      assert.strictEqual(JSON.parse(row.final_hand).players[0].startingStack, 400, 'the hand as last saved');
+      assert.deepStrictEqual(JSON.parse(row.diff), [{ fact: 'seat 1 stack', parsed: null, saved: 400, kind: 'filled' }]);
     });
   } finally {
     await srv.stop();

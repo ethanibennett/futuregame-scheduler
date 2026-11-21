@@ -54,6 +54,12 @@ Options:
   --source text|speech   Only cases from that source.
   --incomplete / --complete   Only cases with / without expectGaps.
   --limit <n>            Stop after n cases.
+  --sample <n>           n cases spread evenly over the selection (a cheap pilot of a full run).
+  --model <id>           Default mode only: the parse model (default QUICK_ADD_PARSE_MODEL, else
+                         lib/quick-add.js's default).
+  --effort <level>       Default mode only: low|medium|high|xhigh|max = adaptive thinking at that
+                         effort (lib/quick-add/prompt.js requestShape); off = the model's plain
+                         request (default QUICK_ADD_EFFORT, else off). Reports carry the cost.
   --concurrency <n>      Parallel parses (default 1: the server rate-limits per user).
   --delay <ms>           Pause between requests per worker (default 0).
   --timeout <ms>         Per-parse timeout (default 120000).
@@ -91,6 +97,9 @@ function parseArgs(argv) {
       case '--incomplete': o.only = 'incomplete'; break;
       case '--complete': o.only = 'complete'; break;
       case '--limit': o.limit = Number(need(i, a)); i++; break;
+      case '--sample': o.sample = Math.max(1, Number(need(i, a)) || 1); i++; break;
+      case '--model': o.model = need(i, a); i++; break;
+      case '--effort': o.effort = need(i, a).toLowerCase(); i++; break;
       case '--concurrency': o.concurrency = Math.max(1, Number(need(i, a)) || 1); i++; break;
       case '--delay': o.delay = Math.max(0, Number(need(i, a)) || 0); i++; break;
       case '--timeout': o.timeout = Math.max(1000, Number(need(i, a)) || 120000); i++; break;
@@ -140,6 +149,21 @@ function stubBrowserGlobals() {
     };
   }
   if (!g.window) g.window = g;
+}
+
+/* The Anthropic SDK refuses to construct a client where it sees a browser (window and window.document),
+   which these stubs fake. Until 2026-11-21 that made the default mode find "no parser" and fall back to
+   a dry run, so the Admin screen's live eval ended with exit code 0 and nothing scored. The client is
+   built with the stubs out of sight; this is Node, and the SDK checks only when constructing. */
+function withoutBrowserStubs(fn) {
+  const g = globalThis;
+  const saved = { window: Object.getOwnPropertyDescriptor(g, 'window'), document: Object.getOwnPropertyDescriptor(g, 'document') };
+  if (saved.window) delete g.window;
+  if (saved.document) delete g.document;
+  try { return fn(); } finally {
+    if (saved.window) Object.defineProperty(g, 'window', saved.window);
+    if (saved.document) Object.defineProperty(g, 'document', saved.document);
+  }
 }
 
 /* Used only if utils.js cannot be imported; mirrors HAND_CONFIG's betting facts. */
@@ -1492,6 +1516,7 @@ async function makeParser(o, validated) {
   }
   if (o.url) {
     if (!o.token) { console.error('--url needs --token <jwt> (an admin user\'s token)'); process.exit(2); }
+    if (o.model || o.effort) console.log('Note: --model and --effort apply to the default mode only; the server parses with its own QUICK_ADD_* settings.');
     const endpoint = o.url + '/api/quick-add/parse';
     return {
       name: `POST ${endpoint}`,
@@ -1551,13 +1576,22 @@ async function makeParser(o, validated) {
   let client = null;
   try {
     const Anthropic = require('@anthropic-ai/sdk');
-    client = new (Anthropic.default || Anthropic)({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 90000, maxRetries: 1 });
+    // More retries than the server's client: a long run should not score an overloaded minute as errors.
+    client = withoutBrowserStubs(() => new (Anthropic.default || Anthropic)({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 90000, maxRetries: 3 }));
   } catch (e) { return { unavailable: `could not load @anthropic-ai/sdk: ${e.message}` }; }
+  // The model and effort under test: --model/--effort, else what the server would use (its env), else the module's default.
+  const model = o.model || process.env.QUICK_ADD_PARSE_MODEL || (mod.DEFAULTS && mod.DEFAULTS.parseModel) || null;
+  const effort = o.effort != null ? o.effort : (process.env.QUICK_ADD_EFFORT || null);
+  let shape = null;
+  try { shape = require(path.join(ROOT, 'lib', 'quick-add', 'prompt.js')).describeShape(model, effort); } catch { /* another module */ }
   return {
-    name: `${path.relative(ROOT, modPath)} ${fnName}()`,
+    name: `${path.relative(ROOT, modPath)} ${fnName}()${shape ? ' · ' + shape : ''}`,
     mode: 'module',
+    model, effort, shape,
     parse: async c => {
       const input = { client, text: c.text, source: c.source };
+      if (model) input.model = model;
+      if (effort) input.effort = effort;
       if (o.hintGame && c.expect.gameType) input.hints = { gameType: c.expect.gameType };
       // A timer that is cleared once the parse settles, so it cannot hold the process open.
       const run = p => new Promise((resolve, reject) => {
@@ -1571,7 +1605,8 @@ async function makeParser(o, validated) {
         if (e instanceof TypeError) res = await run(Promise.resolve(fn(c.text, c.source, input.hints)));
         else throw e;
       }
-      return unwrapParse(res);
+      // parseHand also says what the call used and cost (usage, meta): kept for the report's cost line.
+      return { ...unwrapParse(res), usage: res && res.usage ? res.usage : null, meta: res && res.meta ? res.meta : null };
     },
   };
 }
@@ -1667,6 +1702,11 @@ async function main() {
     }
     return true;
   });
+  if (o.sample && o.sample < cases.length) {
+    // Evenly spread, so a pilot sees every collection, game and source in proportion.
+    const step = cases.length / o.sample;
+    cases = Array.from({ length: o.sample }, (_, i) => cases[Math.floor(i * step)]);
+  }
   if (o.limit) cases = cases.slice(0, o.limit);
 
   const printProblems = () => {
@@ -1748,6 +1788,8 @@ async function main() {
         r.latencyMs = out.latencyMs != null ? out.latencyMs : Date.now() - t0;
         r.hand = out.hand;
         r.notes = out.notes;
+        if (out.usage) r.usage = out.usage;
+        if (out.meta) r.meta = out.meta;
       } catch (e) {
         r.latencyMs = Date.now() - t0;
         r.error = e.message || String(e);
@@ -1786,7 +1828,10 @@ async function main() {
     corpus: path.relative(ROOT, path.resolve(o.corpus || DEFAULT_CORPUS)),
     cases: results.length,
     git: gitSha(),
-    options: { hintGame: !!o.hintGame, filter: o.filter, source: o.source || null, only: o.only || null },
+    options: {
+      hintGame: !!o.hintGame, filter: o.filter, source: o.source || null, only: o.only || null, sample: o.sample || null,
+      model: parser.model || null, effort: parser.effort || null, shape: parser.shape || null,
+    },
   };
   const md = markdownReport(meta, agg, results, cases);
   console.log(summaryText(agg));
@@ -1848,6 +1893,26 @@ function aggregate(results) {
   const incomplete = gapped.filter(r => r.incomplete);
   const diag = {};
   results.forEach(r => r.score.diagnostics.forEach(d => { diag[d.kind] = (diag[d.kind] || 0) + 1; }));
+  /* What the run cost, at list price (lib/quick-add/pricing.js), from each parse's own usage: every
+     request a parse made (a retry, a line read) included. Per case is over every case run, fast-path
+     cases (no model call) included, as a player's average parse would be. A case that errored has no
+     usage, so its cost is not counted. */
+  const called = results.filter(r => r.meta && r.meta.calls > 0);
+  const tokens = k => sum(results, r => (r.usage && Number(r.usage[k])) || 0);
+  const totalUsd = sum(results, r => (r.meta && isNum(r.meta.costUsd) ? r.meta.costUsd : 0));
+  const cost = called.length ? {
+    totalUsd: Math.round(totalUsd * 10000) / 10000,
+    perCaseUsd: results.length ? Math.round((totalUsd / results.length) * 1e6) / 1e6 : null,
+    casesWithModel: called.length,
+    unpriced: called.filter(r => !isNum(r.meta.costUsd)).length,
+    inputTokens: tokens('input_tokens'),
+    cacheReadTokens: tokens('cache_read_input_tokens'),
+    cacheWriteTokens: tokens('cache_creation_input_tokens'),
+    outputTokens: tokens('output_tokens'),
+    outputTokensPerCase: Math.round(tokens('output_tokens') / called.length),
+    retried: called.filter(r => r.meta.calls > 1).length,
+    fallbacks: called.filter(r => r.meta.fallback).length,
+  } : null;
   return {
     overall: summarize(results),
     byCategory,
@@ -1876,6 +1941,7 @@ function aggregate(results) {
     } : null,
     latency: { p50: quantile(lat, 0.5), p90: quantile(lat, 0.9), max: lat.length ? Math.max(...lat) : null, mean: lat.length ? Math.round(lat.reduce((a, b) => a + b, 0) / lat.length) : null },
     diagnostics: diag,
+    cost,
   };
 }
 
@@ -1893,6 +1959,12 @@ function summaryText(agg) {
     lines.push(`False alarms    ${g.completeWithBlocking}/${g.completeCases} complete cases raised a blocking gap`);
   } else lines.push('Gap recall      n/a (no gaps engine)');
   lines.push(`Latency         p50 ${agg.latency.p50 ?? '—'} ms, p90 ${agg.latency.p90 ?? '—'} ms, max ${agg.latency.max ?? '—'} ms`);
+  if (agg.cost) {
+    const c = agg.cost;
+    lines.push(`Cost            $${c.totalUsd.toFixed(2)} total, $${(c.perCaseUsd || 0).toFixed(4)} per case at list price (${c.outputTokensPerCase} output tokens a parse, thinking included)` +
+      (c.unpriced ? `; ${c.unpriced} case(s) on a model with no price` : ''));
+    if (c.retried || c.fallbacks) lines.push(`Retries         ${c.retried} parse(s) took a second request${c.fallbacks ? `, ${c.fallbacks} answered by a refusal fallback` : ''}`);
+  }
   if (o.errors) lines.push(`Errors          ${o.errors} case(s) failed to parse`);
   if (Object.keys(agg.diagnostics).length) lines.push(`Diagnostics     ${Object.entries(agg.diagnostics).map(([k, n]) => `${k} ×${n}`).join(', ')}`);
   return lines.join('\n');
@@ -1988,4 +2060,5 @@ if (require.main === module) {
 module.exports = {
   parseCardsStrict, parseCardsLoose, cardsMatch, positionLabels, validateCase, simulate,
   buildOracleHand, scoreCase, scoreGaps, fieldMatches, gapMatches, loadCorpus, categoryOf,
+  semanticIndex, loadHandConfig, aggregate, summaryText,
 };

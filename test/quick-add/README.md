@@ -98,10 +98,25 @@ node test/quick-add/eval.js --parses test/quick-add/reports/<stamp>-endpoint.jso
 ```
 
 Useful options: `--filter <text>` (matches id, game or tag; repeatable), `--source speech`,
-`--incomplete` / `--complete`, `--limit n`, `--concurrency n` (default 1, because the server
+`--incomplete` / `--complete`, `--limit n`, `--sample n` (n cases spread evenly over the
+selection: a cheap pilot), `--concurrency n` (default 1, because the server
 rate-limits per user), `--delay ms`, `--hint-game` (send the expected game as
 `hints.gameType`), `--verbose`, `--no-gaps`, `--no-report`, and `--min-recall 0.9` /
 `--max-hallucinations 0` to exit 1 below a bar. `--help` lists them all.
+
+**Which model** (the direct mode only; 2026-11-21): `--model <id>` and `--effort <low|medium|high|xhigh|max|off>`
+pick what the parse runs on (`lib/quick-add/prompt.js` `requestShape`; the defaults are the server's
+`QUICK_ADD_PARSE_MODEL` / `QUICK_ADD_EFFORT`). Every report then carries a **Cost** line: the total and per
+hand at list price (`lib/quick-add/pricing.js`), and the output tokens a parse, thinking included. The Admin
+screen starts these runs on the server's key and keeps them side by side; the runs worth making, and their
+cost, are in `docs/quick-add-model-runs.md`.
+
+**Cases from real use.** Admin › Quick add log › Export as eval cases downloads the hands players saved
+after quick add as draft cases (`lib/quick-add/learn.js` `caseFromLog`): `expect` is the saved hand, the
+notes say what the parse got wrong, the id is `live-<n>` and the tags `live`, `needs-review`. They carry
+the RAW text, so before one joins the corpus: paraphrase the text (the rule above), strike from `expect`
+any fact the text does not state (a saved hand includes the answers to the questions), drop the
+`needs-review` tag, and run `--dry-run` with `--corpus <the file>`.
 
 ## What the scores mean
 

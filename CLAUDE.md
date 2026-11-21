@@ -509,7 +509,21 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   bridged session in tmux himself (doc step 4). `npm run test:session-bridge`.
 - **Parser eval from Admin** (`lib/admin-eval.js`): `POST/GET /api/admin/quick-add-eval` (app admins) runs
   `test/quick-add/eval.js` in the background with the server's own ANTHROPIC_API_KEY, one run at a time;
-  the Admin screen's "Hand parser, live eval" section starts it and shows the report.
+  the Admin screen's "Hand parser, live eval" section starts it and shows the report. Each run picks its model,
+  thinking effort, corpus and size (POST body), and finished runs are kept (`quick_add_eval_runs`, `GET …/runs`)
+  and compared side by side, cost per hand included. Until 2026-11-21 it had never scored anything: the eval's
+  browser stubs made the Anthropic SDK refuse to build a client, so every run fell back to a dry run (fixed:
+  `withoutBrowserStubs`).
+- **Quick add on the newer models, measured first** (2026-11-21; `docs/quick-add-model-runs.md`, the runs to make
+  and their cost): `prompt.js` `requestShape` sends today's forced-tool request by default, and a thinking request
+  (adaptive thinking, `output_config.effort`, `tool_choice` auto with one call, a refusal fallback) for Opus 5.5 /
+  Sonnet 5.5, which 400 on a forced tool, or once `QUICK_ADD_EFFORT` is set; `QUICK_ADD_PARSE_MODEL`,
+  `QUICK_ADD_ANSWER_MODEL`, `QUICK_ADD_ANSWER_EFFORT`, `QUICK_ADD_FALLBACKS=0`, and the boot log says which.
+  `record_hand` cannot be `strict: true` (79 optional and 57 nullable fields against the grammar's 24 / 16).
+  **The parse log** (`lib/quick-add/learn.js`, `quick_add_parses`, `QUICK_ADD_LOG=0` off): every parse with its
+  text, model, cost and hand; the hand carries `quickAddParseId`, and the replayer's save routes pair the saved hand
+  with it (`onHandSaved`) and diff them. Admin › Quick add log lists them and exports the saved ones as draft corpus
+  cases (raw text: paraphrase before committing). Tests: `test:quick-add` (`learn.test.js`, `eval-options.test.js`).
 - **Quick add, typed and said** (owner, 2026-11-19: "make the shorthand and voice add more robust"; `npm run
   test:quick-add`, `test/quick-add/robust.test.js`): a hand said through Speak is sent as `source: 'speech'` (it was
   always 'text', so the speech reading never ran), and text that reads as dictation (the keyboard's mic, the Watch) is

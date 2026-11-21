@@ -1040,6 +1040,308 @@ test('rate limiter: sliding window', () => {
   t = 1000; eq(rl.take('a').ok, true);
 });
 
+/* ── The thinking request shape (2026-11-21) ─────────────────────────────────── */
+
+const P = require('../../lib/quick-add/prompt');
+
+test('request shape: today\'s forced request is unchanged unless the model or an effort asks for thinking', () => {
+  eq(P.requestShape('claude-sonnet-5', null), { mode: 'forced', effort: null });
+  eq(P.requestShape('claude-sonnet-5', 'off'), { mode: 'forced', effort: null });
+  eq(P.requestShape('claude-haiku-4-5-20251001', 'high'), { mode: 'forced', effort: null }); // no adaptive thinking on Haiku 4.5
+  eq(P.requestShape('claude-haiku-5-5', null), { mode: 'forced', effort: null }); // takes a forced tool
+  eq(P.requestShape('claude-sonnet-5', 'HIGH'), { mode: 'thinking', effort: 'high' });
+  eq(P.requestShape('claude-haiku-5-5', 'low'), { mode: 'thinking', effort: 'low' });
+  // Opus 5.5 and Sonnet 5.5 400 on a forced tool_choice: always the thinking shape, medium unless set.
+  eq(P.requestShape('claude-opus-5-5', null), { mode: 'thinking', effort: 'medium' });
+  eq(P.requestShape('claude-sonnet-5-5', 'xhigh'), { mode: 'thinking', effort: 'xhigh' });
+  eq(P.requestShape('claude-fable-5-2', 'bogus'), { mode: 'thinking', effort: 'medium' });
+  eq(P.describeShape('claude-opus-5-5', 'low'), 'claude-opus-5-5, thinking at effort low');
+  eq(P.describeShape('claude-sonnet-5', ''), 'claude-sonnet-5, forced tool (no thinking)');
+  // The forced shape is byte for byte what was sent before: same keys in the same order, no thinking fields.
+  const f = buildParseRequest({ text: 'x', source: 'text', hints: {}, model: 'claude-sonnet-5' });
+  eq(Object.keys(f), ['model', 'max_tokens', 'system', 'tools', 'tool_choice', 'messages']);
+  eq(f.max_tokens, 8192);
+  eq(f.tools, [HAND_TOOL]);
+  const a = buildAnswerRequest({ hand: normalizeDraft(EXAMPLE_DRAFT()).hand, gap: { question: 'q' }, answer: 'a', model: 'claude-haiku-4-5-20251001', effort: 'high' });
+  eq(Object.keys(a), ['model', 'max_tokens', 'system', 'tools', 'tool_choice', 'messages']);
+  eq(a.tool_choice, { type: 'tool', name: 'apply_answer' });
+});
+
+test('request shape: thinking = auto tool choice (one call), adaptive thinking, explicit effort, cached system with the tool-only line', () => {
+  const t = buildParseRequest({ text: 'UTG opens, I 3b', source: 'text', hints: {}, model: 'claude-opus-5-5' });
+  eq(t.tool_choice, { type: 'auto', disable_parallel_tool_use: true });
+  eq(t.thinking, { type: 'adaptive' });
+  eq(t.output_config, { effort: 'medium' });
+  eq(t.max_tokens, P.THINKING_MAX_TOKENS.parse);
+  assert.ok(t.max_tokens >= 16000, 'thinking spends output tokens');
+  eq(t.tools, [HAND_TOOL]); // not strict: see the next test
+  eq(t.system.length, 1);
+  eq(t.system[0].cache_control, { type: 'ephemeral' });
+  assert.ok(t.system[0].text.startsWith(PARSE_SYSTEM + TEXT_ADDENDUM));
+  assert.match(t.system[0].text, /Answer only by calling the record_hand tool, exactly once/);
+  assert.ok(!('temperature' in t) && !('top_p' in t) && !('top_k' in t));
+  // The system text is the same on every request, so it caches.
+  const t2 = buildParseRequest({ text: 'another hand entirely', source: 'text', hints: { gameType: 'PLO' }, model: 'claude-opus-5-5' });
+  eq(t2.system, t.system);
+  // Refusals fall back server-side on the models that offer it (beta), unless turned off.
+  eq(t.betas, [P.FALLBACK_BETA]);
+  eq(t.fallbacks, 'default');
+  const off = buildParseRequest({ text: 'x', source: 'text', hints: {}, model: 'claude-opus-5-5', fallbacks: false });
+  assert.ok(!('betas' in off) && !('fallbacks' in off));
+  const s5 = buildParseRequest({ text: 'x', source: 'speech', hints: {}, model: 'claude-sonnet-5', effort: 'low' });
+  eq(s5.output_config, { effort: 'low' });
+  assert.ok(!('betas' in s5), 'no fallback beta on Sonnet 5');
+  assert.ok(s5.system[0].text.includes(SPEECH_ADDENDUM));
+  const ans = buildAnswerRequest({ hand: normalizeDraft(EXAMPLE_DRAFT()).hand, gap: { question: 'q' }, answer: 'a', model: 'claude-haiku-5-5', effort: 'low' });
+  eq(ans.tool_choice, { type: 'auto', disable_parallel_tool_use: true });
+  eq(ans.max_tokens, P.THINKING_MAX_TOKENS.answer);
+  assert.match(ans.system[0].text, /apply_answer tool, exactly once/);
+});
+
+/* The grammar's published limits for strict tools (structured outputs docs, 2026-11): 24 optional and 16
+   nullable (type array / anyOf) parameters across a request's strict schemas, every object closed, no
+   numeric or array-size keywords beyond minItems 0/1. */
+function strictProblems(schema) {
+  let optional = 0, union = 0;
+  const problems = [];
+  const walk = (s, at) => {
+    if (!s || typeof s !== 'object') return;
+    for (const k of ['minimum', 'maximum', 'maxItems', 'multipleOf', 'minLength', 'maxLength']) if (k in s) problems.push(`${at}: ${k}`);
+    if ('minItems' in s && s.minItems > 1) problems.push(`${at}: minItems ${s.minItems}`);
+    if (s.type === 'object' || (Array.isArray(s.type) && s.type.includes('object'))) {
+      if (s.properties && s.additionalProperties !== false) problems.push(`${at}: open object`);
+    }
+    if (s.properties) {
+      const req = new Set(s.required || []);
+      for (const [k, v] of Object.entries(s.properties)) {
+        if (!req.has(k)) optional++;
+        if (Array.isArray(v.type) || v.anyOf) union++;
+        if (!v.type && !v.anyOf && !v.enum && !v.const) problems.push(`${at}.${k}: no type`);
+        walk(v, `${at}.${k}`);
+      }
+    }
+    if (s.items) walk(s.items, at + '[]');
+  };
+  walk(schema, '$');
+  if (optional > 24) problems.push(`${optional} optional parameters (limit 24)`);
+  if (union > 16) problems.push(`${union} nullable parameters (limit 16)`);
+  return problems;
+}
+
+test('strict: read_lines is strict in the thinking shape and fits the grammar; record_hand and apply_answer cannot', () => {
+  const lines = P.buildLineRequest({ lines: [{ street: 0, line: 'Player 2: cartwheels' }], model: 'claude-opus-5-5' });
+  const tool = lines.tools[0];
+  eq(tool.strict, true);
+  eq(strictProblems(tool.input_schema), []);
+  eq(tool.input_schema.properties.lines.items.required, ['index', 'skip', 'player', 'action', 'toAmount', 'amount']);
+  eq(tool.input_schema.properties.lines.items.properties.action.type, ['string', 'null']); // nullable stays nullable
+  assert.ok(!('strict' in P.buildLineRequest({ lines: [], model: 'claude-sonnet-5' }).tools[0]), 'the forced shape is unchanged');
+  // Why the other two are checked in code instead: they break the grammar's limits as written.
+  const hand = strictProblems(P.toStrictSchema(HAND_TOOL.input_schema));
+  assert.ok(hand.some((p) => /nullable parameters \(limit 16\)/.test(p)), hand.join('; '));
+  assert.ok(strictProblems(P.toStrictSchema(ANSWER_TOOL.input_schema)).some((p) => /value: no type/.test(p)));
+  eq(P.buildParseRequest({ text: 'x', source: 'text', model: 'claude-opus-5-5' }).tools[0].strict, undefined);
+});
+
+const thinkingTool = (name, input, extra = {}) => ({
+  ...toolReply(name, input), model: 'claude-opus-5-5',
+  content: [{ type: 'thinking', thinking: '', signature: 'sig' }, { type: 'tool_use', id: 'toolu_1', name, input }], ...extra,
+});
+const OPUS = { model: 'claude-opus-5-5' };
+
+test('callTool: a thinking reply with no tool call is asked once more, as a continuation, then 502', async () => {
+  const text = { id: 'm', type: 'message', role: 'assistant', model: 'claude-opus-5-5', stop_reason: 'end_turn',
+    content: [{ type: 'thinking', thinking: '', signature: 's1' }, { type: 'text', text: 'Which game was this?' }],
+    usage: { input_tokens: 100, output_tokens: 50, cache_read_input_tokens: 9000 } };
+  const client = stubClient([text, toolReply('record_hand', EXAMPLE_DRAFT())]);
+  const out = await QA.parseHand({ client, text: 'x', ...OPUS });
+  eq(client.calls.length, 2);
+  const again = client.calls[1].messages;
+  eq(again.length, 3);
+  eq(again[1], { role: 'assistant', content: text.content }); // the reply, thinking blocks unchanged
+  eq(again[2].role, 'user');
+  assert.match(again[2].content, /record_hand tool call now/);
+  eq(client.calls[1].system, client.calls[0].system); // the cached prefix is untouched
+  eq(out.hand.heroIdx, 6);
+  eq(out.meta.calls, 2);
+  eq(out.usage.input_tokens, 4100); // both requests counted
+  eq(out.usage.output_tokens, 650);
+  // Twice without a call: the existing 502.
+  const never = stubClient(text);
+  await assert.rejects(QA.parseHand({ client: never, text: 'x', ...OPUS }), (e) => e.status === 502 && /did not return a hand/.test(e.message));
+  eq(never.calls.length, 2);
+  // The forced shape never asks again (a forced tool cannot come back without its call).
+  const forced = stubClient(text);
+  await assert.rejects(QA.parseHand({ client: forced, text: 'x' }), (e) => e.status === 502);
+  eq(forced.calls.length, 1);
+});
+
+test('callTool: a refusal is a 422 at once; max_tokens is retried once at effort low, then 422', async () => {
+  const refusal = { id: 'm', type: 'message', role: 'assistant', model: 'claude-opus-5-5', stop_reason: 'refusal', content: [], stop_details: { type: 'refusal', category: null } };
+  const r = stubClient(refusal);
+  await assert.rejects(QA.parseHand({ client: r, text: 'x', ...OPUS }), (e) => e.status === 422 && /declined/.test(e.message));
+  eq(r.calls.length, 1);
+  const cut = { ...thinkingTool('record_hand', {}), stop_reason: 'max_tokens', content: [{ type: 'thinking', thinking: '', signature: 's' }] };
+  const m = stubClient([cut, thinkingTool('record_hand', EXAMPLE_DRAFT())]);
+  const out = await QA.parseHand({ client: m, text: 'x', model: 'claude-opus-5-5', effort: 'high' });
+  eq(m.calls.length, 2);
+  eq(m.calls[0].output_config, { effort: 'high' });
+  eq(m.calls[1].output_config, { effort: 'low' });
+  eq(m.calls[1].messages, m.calls[0].messages); // a fresh try, not a continuation of the cut-off reply
+  eq(out.meta.effortLowered, true);
+  const twice = stubClient(cut);
+  await assert.rejects(QA.parseHand({ client: twice, text: 'x', model: 'claude-opus-5-5', effort: 'high' }), (e) => e.status === 422 && /too long/.test(e.message));
+  eq(twice.calls.length, 2);
+  const low = stubClient(cut); // already at low: nothing lower to try
+  await assert.rejects(QA.parseHand({ client: low, text: 'x', model: 'claude-opus-5-5', effort: 'low' }), (e) => e.status === 422);
+  eq(low.calls.length, 1);
+});
+
+test('callTool: the fallback beta goes through client.beta.messages; a stub without it gets the plain request', async () => {
+  const plain = stubClient(thinkingTool('record_hand', EXAMPLE_DRAFT()));
+  await QA.parseHand({ client: plain, text: 'x', ...OPUS });
+  assert.ok(!('betas' in plain.calls[0]) && !('fallbacks' in plain.calls[0]));
+  const betaCalls = [], opts = [];
+  const served = thinkingTool('record_hand', EXAMPLE_DRAFT(), { model: 'claude-opus-5' });
+  served.content.unshift({ type: 'fallback', from: { model: 'claude-opus-5-5' }, to: { model: 'claude-opus-5' } });
+  const withBeta = {
+    messages: { async create() { throw new Error('the beta request must not go here'); } },
+    beta: { messages: { async create(req, o) { betaCalls.push(req); opts.push(o); return served; } } },
+  };
+  const out = await QA.parseHand({ client: withBeta, text: 'x', ...OPUS });
+  eq(betaCalls[0].betas, [P.FALLBACK_BETA]);
+  eq(betaCalls[0].fallbacks, 'default');
+  assert.ok(opts[0] && opts[0].timeout >= 120000, 'a thinking request gets a longer timeout');
+  eq(out.meta.fallback, true);
+  eq(out.meta.servedBy, 'claude-opus-5');
+  eq(out.meta.model, 'claude-opus-5-5');
+  // Priced at the model that answered: 4000 in, 600 out, 3500 cache read at Opus 5's list price.
+  eq(out.meta.costUsd, Math.round(((4000 * 5) + (600 * 25) + (3500 * 0.5)) / 1e6 * 1e6) / 1e6);
+});
+
+test('parseHand: meta says what the parse ran on and what it cost', async () => {
+  const out = await QA.parseHand({ client: stubClient(toolReply('record_hand', EXAMPLE_DRAFT())), text: 'x' });
+  eq(out.meta.mode, 'forced');
+  eq(out.meta.effort, null);
+  eq(out.meta.calls, 1);
+  eq(out.meta.servedBy, 'stub'); // the reply's model; a stub has no price
+  eq(out.meta.costUsd, null);
+  const opus = await QA.parseHand({ client: stubClient(thinkingTool('record_hand', EXAMPLE_DRAFT())), text: 'x', model: 'claude-opus-5-5', effort: 'low' });
+  eq([opus.meta.mode, opus.meta.effort], ['thinking', 'low']);
+  eq(opus.meta.costUsd, Math.round(((4000 * 4) + (600 * 20) + (3500 * 0.2)) / 1e6 * 1e6) / 1e6);
+});
+
+test('routes: QUICK_ADD_* pick the model and effort; the boot log says which', async () => {
+  const ham = sign({ id: 1, username: 'ham5' });
+  const client = stubClient(thinkingTool('record_hand', EXAMPLE_DRAFT()));
+  const lines = [];
+  const app = express();
+  app.use(express.json());
+  app.use('/api/quick-add', QA.createQuickAddRouter({
+    authenticateToken, isAdmin: (u) => ADMINS.has(u.username), getClient: () => client,
+    parseModel: 'claude-sonnet-5-5', parseEffort: 'high', answerModel: 'claude-haiku-5-5', log: { log: (m) => lines.push(m), error() {} },
+  }));
+  assert.ok(lines[0].includes('parse: claude-sonnet-5-5, thinking at effort high · answer: claude-haiku-5-5, forced tool (no thinking)'), lines[0]);
+  const server = await new Promise((resolve) => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });
+  try {
+    const res = await fetch(`http://127.0.0.1:${server.address().port}/api/quick-add/parse`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: ham }, body: JSON.stringify({ text: 'a hand' }),
+    });
+    eq(res.status, 200);
+    eq(client.calls[0].model, 'claude-sonnet-5-5');
+    eq(client.calls[0].output_config, { effort: 'high' });
+    assert.ok(lines.some((l) => / effort=high calls=1/.test(l)), lines.join('\n'));
+  } finally { await new Promise((r) => server.close(r)); }
+});
+
+/* ── The parse log (lib/quick-add/learn.js) ─────────────────────────────────── */
+
+const learn = require('../../lib/quick-add/learn');
+async function memoryDb() {
+  const SQL = await require('sql.js')();
+  const db = new SQL.Database();
+  db.run('CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT)');
+  db.run("INSERT INTO users (id, username) VALUES (1, 'ham5'), (2, 'claude')");
+  learn.migrate(db);
+  return db;
+}
+
+test('parse log: each parse is kept with its hand; the saved hand is paired with it; admins read and export it', async () => {
+  const db = await memoryDb();
+  const ham = sign({ id: 1, username: 'ham5' });
+  let saves = 0;
+  const client = stubClient(toolReply('record_hand', EXAMPLE_DRAFT()));
+  await withServer({ getClient: () => client, getDb: () => db, saveDatabase: async () => { saves++; } }, async (call) => {
+    const r = await call('/parse', { text: '1/3 live, UTG limps, I raise to 15 on the button with AhQh…', source: 'text' }, ham);
+    eq(r.status, 200);
+    const id = r.body.hand.quickAddParseId;
+    assert.ok(Number.isInteger(id) && id > 0, 'the hand carries its parse id');
+    const { quickAddParseId, ...rest } = r.body.hand; // eslint-disable-line no-unused-vars
+    eq(rest, normalizeDraft(EXAMPLE_DRAFT()).hand); // nothing else changes
+    assert.ok(saves >= 1);
+    // The player fixes the hero's stack and the river bet, then saves (the replayer's save routes call onHandSaved).
+    const saved = JSON.parse(JSON.stringify(r.body.hand));
+    saved.players[6].startingStack = 300;
+    saved.streets[3].actions[0].amount = 75;
+    eq(learn.onHandSaved(db, 2, saved, 99), false, 'another account cannot pair with it');
+    eq(learn.onHandSaved(db, 1, { ...saved, quickAddParseId: 'nope' }, 99), false);
+    eq(learn.onHandSaved(db, 1, saved, 41), true);
+    // A failed parse is kept too, with its error.
+    const failing = stubClient(apiError(400, 'invalid request'));
+    client.messages.create = failing.messages.create;
+    eq((await call('/parse', { text: 'a hand the model choked on' }, ham)).status, 502);
+  });
+  const read = async (route, user) => {
+    let out = null;
+    const app = express();
+    app.use('/api/quick-add', QA.createQuickAddRouter({ authenticateToken, isAdmin: (u) => ADMINS.has(u.username), getClient: () => null, getDb: () => db, log: { log() {}, error() {} } }));
+    const server = await new Promise((resolve) => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });
+    try {
+      const res = await fetch(`http://127.0.0.1:${server.address().port}/api/quick-add${route}`, { headers: user ? { Authorization: user } : {} });
+      out = { status: res.status, body: await res.json() };
+    } finally { await new Promise((r) => server.close(r)); }
+    return out;
+  };
+  eq((await read('/log', sign({ id: 5, username: 'someone' }))).status, 403);
+  const list = await read('/log', ham);
+  eq(list.status, 200);
+  eq(list.body.summary.parses, 2);
+  eq(list.body.summary.saved, 1);
+  eq(list.body.summary.failed, 1);
+  const [failed, ok] = list.body.parses;
+  eq([failed.status, failed.saved, ok.status, ok.saved, ok.user], [502, false, 200, true, 'ham5']);
+  assert.match(failed.error, /rejected the request/);
+  eq([ok.changed, ok.filled], [1, 1]); // the river bet changed; the hero's stack was filled in
+  assert.ok(!('text' in ok), 'the list carries a preview, not the text');
+  const one = await read('/log/' + ok.id, ham);
+  eq(one.body.finalHand.players[6].startingStack, 300);
+  assert.ok(one.body.diff.some((d) => d.fact === 'River actions' && d.kind === 'changed'), JSON.stringify(one.body.diff));
+  assert.ok(one.body.diff.some((d) => d.fact === 'seat 7 stack' && d.kind === 'filled' && d.saved === 300));
+  const exp = await read('/log/export', ham);
+  eq(exp.body.cases.length, 1);
+  const c = exp.body.cases[0];
+  eq([c.id, c.source, c.game], ['live-' + ok.id, 'text', 'NLH']);
+  eq(c.expect.heroPosition, 'BTN');
+  eq(c.expect.heroCards, 'AhQh');
+  eq(c.expect.stacks, { BTN: 300 });
+  eq(c.expect.board, { flop: 'Qs7d2c', turn: '4h', river: 'Ks' });
+  eq(c.expect.actions.river, [['UTG', 'bet', 75], ['BTN', 'call', 60]]);
+  assert.match(c.notes, /paraphrase it before it goes in the public corpus/);
+  // Account deletion clears the log with the rest (feature-mounts USER_TABLES).
+  assert.ok(require('../../lib/feature-mounts').USER_TABLES.includes('quick_add_parses'));
+});
+
+test('parse log: QUICK_ADD_LOG=0 (parseLog false) keeps nothing and adds no id', async () => {
+  const db = await memoryDb();
+  const ham = sign({ id: 1, username: 'ham5' });
+  await withServer({ getClient: () => stubClient(toolReply('record_hand', EXAMPLE_DRAFT())), getDb: () => db, parseLog: false }, async (call) => {
+    const r = await call('/parse', { text: 'a hand' }, ham);
+    eq(r.status, 200);
+    eq(r.body.hand.quickAddParseId, undefined);
+  });
+  eq(learn.summary(db).parses, 0);
+});
+
 /* ── Run ───────────────────────────────────────────────────────────────────── */
 
 (async () => {

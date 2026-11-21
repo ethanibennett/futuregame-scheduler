@@ -1,0 +1,46 @@
+/* ==================================================================
+   Quick add's Admin sections (app admins): the parser eval's options and
+   its runs side by side (ParserEval.jsx), and the parse log (QuickAddLog.jsx).
+   On analytics.css's grid roles (an-row, an-td, an-lbl, an-p); every
+   measurement is g or r, on the Admin pane's 35g.
+   ================================================================== */
+
+/* Options: two 17g fields a row (17 + 1 + 17 = 35g), each a 2r label over a 4r select. */
+.qa-eval-opts {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 17) calc(var(--gu) * 17);
+  column-gap: var(--gu); row-gap: var(--subrow);
+  margin-bottom: calc(var(--subrow) * 2);
+}
+.qa-eval-field { display: flex; flex-direction: column; min-width: 0; margin: 0; }
+.qa-eval-select {
+  box-sizing: border-box; width: 100%; height: calc(var(--subrow) * 4); margin: 0;
+  padding: 0 var(--gu); border: 0; border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border); background: var(--surface); color: var(--text);
+  font-family: var(--font-condensed); font-size: var(--fs-sm);
+}
+.qa-eval-select:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+/* The runs: a 10g label and six figures, Perfect 5g (its header is the widest), the rest 4g
+   (10 + 4 + 4 + 5 + 4 + 4 + 4 = 35g). */
+.qa-runs-cols { grid-template-columns: calc(var(--gu) * 10) calc(var(--gu) * 4) calc(var(--gu) * 4) calc(var(--gu) * 5) repeat(3, calc(var(--gu) * 4)); }
+/* The log: an 8g date, a 15g preview and a 10g outcome, 1g apart (8 + 1 + 15 + 1 + 10 = 35g). */
+.qa-log-cols { grid-template-columns: calc(var(--gu) * 8) calc(var(--gu) * 15) calc(var(--gu) * 10); column-gap: var(--gu); }
+
+/* The tables are read, not pressed: a row's detail opens from the select under its table, a control
+   on the grid like the options (check:controls holds every button's label centred). */
+.qa-table { margin-bottom: calc(var(--subrow) * 2); }
+
+.qa-detail { padding-bottom: calc(var(--subrow) * 2); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border); }
+.qa-detail .an-p { white-space: normal; }
+.qa-detail pre {
+  margin: 0; padding: var(--subrow) var(--gu); border-radius: var(--radius-sm); background: var(--surface);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+  font-family: var(--font-sans); font-size: var(--fs-xs); line-height: calc(var(--subrow) * 2); color: var(--text);
+  max-height: calc(var(--subrow) * 30); overflow: auto;
+}
+.qa-diff { margin: 0; padding: 0; list-style: none; }
+.qa-diff li { font-family: var(--font-condensed); font-size: var(--fs-xs); line-height: calc(var(--subrow) * 2); color: var(--text-muted); }
+.qa-diff li strong { color: var(--text); font-weight: var(--fw-bold); }
+
+.qa-actions { display: flex; flex-wrap: wrap; column-gap: var(--gu); row-gap: var(--subrow); margin-bottom: calc(var(--subrow) * 2); }
