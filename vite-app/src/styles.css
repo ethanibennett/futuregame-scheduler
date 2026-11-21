@@ -2201,8 +2201,9 @@
        the room and the dot's place from the face's own ink (--wm-gap, --wm-dot-x, --wm-dot-oy; utils/wordmark-dot.js:
        the same clear space to the a as to the m, "put the dot evenly spaced between the a and m") and fits the whole
        mark, room open, to 8g; the fallbacks are Baskerville's. At rest, and under Reduce Motion, it is "futurega.me".
-       Only the app's top bar has the class; the sign-in, /live, the backer page and the shared schedule keep the plain
-       word. The curves are the preview's the owner approved, not the motion tokens. */
+       The app's top bar and the sign-in card have the class (the card at its own size: useWordmarkFit's fitG null);
+       /live, the backer page and the shared schedule keep the plain word. The curves are the preview's the owner
+       approved, not the motion tokens. */
     .wm-loop { --wm-loop: 4.8s; --wm-slide: cubic-bezier(0.65, 0, 0.35, 1); }
     /* Nothing in the word transitions: under Reduce Motion the app-wide rule gives every property 1ms, the inherited
        font size included, and useWordmarkFit's second pass read the spans mid-change (the word ended up to 0.04g wide). */
@@ -8824,6 +8825,9 @@
     /* Whole-r rows inside the card: the wordmark 4r, the season 2r; a field's label 2r over its
        6r input, 1r apart; the hints 2r lines. */
     .auth-card .auth-logo h1 { line-height: calc(var(--subrow) * 4); margin-bottom: 0; }
+    /* The wordmark loop (owner, 2026-11-21): "me" slides right by the dot's room, so the line keeps that room on its
+       right and the mark is centred as "futurega.me", the state it holds and rests in. */
+    .auth-card .auth-logo h1.wm-loop { padding-right: var(--wm-gap, 0.311em); }
     .auth-card .auth-logo p { line-height: calc(var(--subrow) * 2); }
     .auth-card .form-field { gap: var(--subrow); }
     .auth-card .form-field label { line-height: calc(var(--subrow) * 2); }
