@@ -152,12 +152,24 @@ function CashLocationPicker({ token, onSaved, trailing = null }) {
 
   // A point selection steers the watcher; region/jurisdiction are hidden here so
   // there is always a point to save.
+  /* A save that did not land says so and the picker goes back to the watcher's location (2026-11-21: a pick of
+     Philadelphia made while the hosted watcher was redeploying failed, the picker kept showing Philadelphia,
+     and the board stayed on Austin with nothing saying why). */
   const saveToCash = useCallback((f) => {
     if (!f.userLocation) return;
     const body = { lat: f.userLocation.lat, lon: f.userLocation.lng, radiusMiles: Math.max(5, Math.min(1000, Number(f.maxDistance) || 100)), label: f.locationLabel || 'Location' };
+    const failed = async () => {
+      if (toast) toast.error('The cash location was not saved. Try again in a moment.');
+      try {
+        const r = await fetch(`${API_URL}/cash/location`, { headers: { Authorization: 'Bearer ' + token } });
+        const loc = r.ok ? await r.json() : null;
+        if (loc && loc.lat != null) setFiltersState(p => ({ ...p, userLocation: { lat: loc.lat, lng: loc.lon }, maxDistance: String(loc.radiusMiles || 100), locationLabel: loc.label || 'Location' }));
+      } catch { /* keep what is shown */ }
+    };
     fetch(`${API_URL}/cash/location`, { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      .then(() => { if (onSaved) onSaved(); }).catch(() => {});
-  }, [token, onSaved]);
+      .then((r) => { if (r.ok) { if (onSaved) onSaved(); } else failed(); })
+      .catch(failed);
+  }, [token, onSaved, toast]);
 
   const setFilters = useCallback((updater) => {
     setFiltersState(prev => {
