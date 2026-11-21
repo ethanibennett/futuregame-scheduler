@@ -141,6 +141,15 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
                 </span>
               </div>
             )}
+            {isRegister && (
+              <div className="form-field">
+                {/* A registration code (owner, 2026-11-21), optional: BTG's unlocks its card back (lib/registration-codes.js).
+                    One the server does not know is refused with a message rather than dropped. */}
+                <label htmlFor="auth-code">Registration code</label>
+                <input id="auth-code" type="text" name="code" placeholder="If you have one" maxLength="20"
+                  autoComplete="off" autoCapitalize="characters" autoCorrect="off" spellCheck={false} />
+              </div>
+            )}
             {!isRegister && (
               <label className="auth-keep" style={{display:'flex',alignItems:'center',gap:'var(--space-sm)',fontSize:'calc(var(--gu) * 1.178)',color:'var(--text-muted)',cursor:'pointer'}}>
                 <input type="checkbox" checked={keepSignedIn} onChange={e => setKeepSignedIn(e.target.checked)}

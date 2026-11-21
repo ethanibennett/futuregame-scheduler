@@ -606,6 +606,7 @@ const bankrollManagement = require('./lib/bankroll-management');
 const bankrollImport = require('./lib/bankroll-import');
 const cashSessions = require('./lib/cash-sessions');
 const growth = require('./lib/growth');   // first-party growth measurement (launch plan, action 5)
+const registrationCodes = require('./lib/registration-codes');   // Create Account's optional code (BTG's card back)
 const features = require('./lib/feature-mounts');   // the Features catalogue's modules (docs/catalogues/features)
 const appleBilling = require('./lib/billing/apple');   // App Store purchases on the account (launch plan, action 10)
 const attribution = require('./lib/attribution');   // SKAdNetwork / AdAttributionKit postback copies, Apple Ads (launch plan §13)
@@ -3556,6 +3557,14 @@ async function initDatabase() {
       }
     },
     {
+      // The registration code an account was made with (lib/registration-codes.js): BTG unlocks its card back.
+      name: 'users-registration-code-2026-11',
+      fn: () => {
+        db.run('ALTER TABLE users ADD COLUMN registration_code TEXT');
+        console.log('Added users.registration_code');
+      }
+    },
+    {
       // When the room's clock showed the tournament finished: set by /api/live-clocks once a clock
       // it had seen running is gone from its provider (Bravo drops finished events). Stored, so it
       // survives restarts and reaches every client in the tournament list.
@@ -4341,6 +4350,10 @@ app.post('/api/register', registerLimit, async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
 
+    // An optional registration code; one we do not know is refused, never dropped (lib/registration-codes.js).
+    const reg = registrationCodes.checkCode(req.body.code);
+    if (reg.error) return res.status(400).json({ error: reg.error });
+
     // Reject case-insensitive duplicate username/email. The UNIQUE index is
     // BINARY-collated, so without this a look-alike account (e.g. 'HAM' vs 'ham')
     // could be registered — which is exactly what would defeat username-based
@@ -4357,8 +4370,8 @@ app.post('/api/register', registerLimit, async (req, res) => {
 
     // Insert user
     db.run(
-      'INSERT INTO users (username, email, password, real_name) VALUES (?, ?, ?, ?)',
-      [username, email, hashedPassword, realName.trim()]
+      'INSERT INTO users (username, email, password, real_name, registration_code) VALUES (?, ?, ?, ?, ?)',
+      [username, email, hashedPassword, realName.trim(), reg.code]
     );
     const idRow = db.exec('SELECT id FROM users WHERE username = ?', [username]);
     const userId = idRow.length && idRow[0].values.length ? idRow[0].values[0][0] : null;
@@ -4388,7 +4401,7 @@ app.post('/api/register', registerLimit, async (req, res) => {
     res.status(201).json({
       message: 'User created successfully',
       token, username, userId, avatar: null, realName: realName.trim(), handReplayerAccess: false, onboarding: null,
-      invitedBy: inviterId || null,
+      invitedBy: inviterId || null, cardBacks: registrationCodes.cardBacksFor(reg.code),
     });
   } catch (error) {
     if (error.message && error.message.includes('UNIQUE')) {
@@ -4433,7 +4446,8 @@ app.post('/api/login', loginLimit, async (req, res) => {
     // Bearer auth for the main app is unchanged.
     setSessionCookie(res, token);
 
-    res.json({ token, username: user.username, userId: user.id, avatar: user.avatar || null, realName: user.real_name || null, handReplayerAccess: !!user.hand_replayer_access, onboarding: parseOnboarding(user.onboarding) });
+    res.json({ token, username: user.username, userId: user.id, avatar: user.avatar || null, realName: user.real_name || null, handReplayerAccess: !!user.hand_replayer_access, onboarding: parseOnboarding(user.onboarding),
+      cardBacks: registrationCodes.cardBacksFor(user.registration_code) });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed. Please try again.' });
