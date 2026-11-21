@@ -2164,13 +2164,6 @@
       letter-spacing: var(--track-wordmark);
       white-space: nowrap;
     }
-    /* The wordmark's period lies on top of the word, on a layer over the join of the "a" and the "m", in the brand
-       blue, and takes no width (owner, 2026-11-20: "without the gap before the last two letters", then "Put the dot
-       back on top of the wordmark but in the accent blue we are using ... On a layer above the word", NOT raised
-       above it). A 0-wide inline flex box with the dot centred on it, on the word's own baseline, so the dot
-       overflows both sides alike in any face and "me" follows "a" at the word's own tracking; positioned with a
-       z-index, so it paints over the letters it covers. Swiss's top bar keeps its red dot (theme-swiss.css). */
-    .wm-dot { display: inline-flex; justify-content: center; width: 0; letter-spacing: 0; position: relative; z-index: 1; color: var(--brand); }
 
     /* Screen/page titles — non-bold Baskerville. Size, margins and line-height
        stay per-view; this only fixes the family and weight. */

@@ -37,7 +37,7 @@ export default function ForgotPasswordForm({ onBack, theme, toggleTheme, initial
           <ThemeButton theme={theme} nextThemeLabel={nextThemeLabel} onToggle={toggleTheme} />
         </div>
         <div className="auth-logo">
-          <h1>futurega<span className="wm-dot">.</span>me</h1>
+          <h1>futurega.me</h1>
           <p>reset password</p>
         </div>
 
