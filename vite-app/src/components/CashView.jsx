@@ -293,7 +293,7 @@ export default function CashView({ token, onModeChange, sidePane = null }) {
   // After a location save the board must change, but the new room list only exists once the box
   // has pulled the location, re-derived and pushed it back (about 30-60 s). The board used to keep
   // its old rooms until the 5-minute refresh, so the picker looked like it did nothing. Now it
-  // checks every 8 s until the watcher reports the new location applied, then reloads.
+  // checks every 2 s until the watcher reports the new location applied, then reloads as the rows arrive.
   const [switchingTo, setSwitchingTo] = useState(null);
   useEffect(() => {
     if (!locationVersion) return undefined;
@@ -308,18 +308,19 @@ export default function CashView({ token, onModeChange, sidePane = null }) {
         if (loc && !loc.pending) {
           setSwitchingTo(null);
           load();
-          /* The new rooms' first polls land over the next minute or two (the box polls them the moment their
-             list is derived and pushes each one within ~15 s; owner, 2026-11-21: "It's VERY slow"), so the board
-             reloads as they arrive instead of waiting for the 5-minute refresh. */
-          for (const ms of [15000, 30000, 45000, 60000, 90000, 120000]) followUps.push(setTimeout(() => { if (live) load(); }, ms));
+          /* The new rooms' first polls land over the next half minute (the box polls them three at a time the
+             moment their list is derived and pushes rows every 3 s; owner, 2026-11-21: "We have to get this to
+             update much faster to a new location"), so the board reloads as they arrive. */
+          for (const ms of [3000, 6000, 9000, 12000, 15000, 20000, 25000, 30000, 45000, 60000, 90000, 120000]) followUps.push(setTimeout(() => { if (live) load(); }, ms));
           return;
         }
         if (loc) setSwitchingTo((loc.requested && loc.requested.label) || loc.label || 'the new location');
       } catch { /* try again */ }
-      if (live && tries < 25) timer = setTimeout(check, 8000);
+      // Every 2 s (it was 8): the switch now applies within seconds of the pick.
+      if (live && tries < 90) timer = setTimeout(check, 2000);
       else if (live) setSwitchingTo(null);
     };
-    timer = setTimeout(check, 1500);
+    timer = setTimeout(check, 1000);
     return () => { live = false; clearTimeout(timer); followUps.forEach(clearTimeout); };
   }, [locationVersion, token, load]);
 

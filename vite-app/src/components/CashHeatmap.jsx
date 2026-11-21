@@ -16,6 +16,24 @@ const HEAT_W = 'calc(var(--gu) * 32)';
 const HEAT_ROW_H = 'calc(var(--subrow) * 2)';
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const UNIVERS = "var(--font-condensed, 'Univers Condensed', 'Univers', sans-serif)";
+/* The Game list's order (owner, 2026-11-21: "First list the NLH games in ascending stakes, then PLO, then
+   anything else"): NLH, then PLO, then every other game by name; within a game by ascending stakes, the big
+   blind first, then the small blind, then any third figure (a straddle or a "5/10/20"). */
+const GAME_RANK = { NLH: 0, PLO: 1 };
+const stakesNums = (s) => String(s || '').split('/').map(x => parseFloat(String(x).replace(/[^0-9.]/g, '')) || 0);
+const stakesKey = (s) => { const n = stakesNums(s); return n.length >= 2 ? [n[1], n[0], ...n.slice(2)] : n; };
+export function gameOrder(a, b) {
+  const ra = GAME_RANK[a.gameType] ?? 2, rb = GAME_RANK[b.gameType] ?? 2;
+  if (ra !== rb) return ra - rb;
+  if (ra === 2 && a.gameType !== b.gameType) return String(a.gameType).localeCompare(String(b.gameType));
+  const x = stakesKey(a.stakes), y = stakesKey(b.stakes);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    const d = (x[i] ?? 0) - (y[i] ?? 0);
+    if (d) return d;
+  }
+  return 0;
+}
+
 const SEL_KEY = 'cashHeatmapSel';
 const METRIC_KEY = 'cashHeatmapMetric';
 const gLabel = (g) => `${g.stakes} ${g.gameType}`;
@@ -95,7 +113,7 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
         const rows = (g.games || []).filter(row => vNames[row.venueSlug]);
         const byVenue = {};
         rows.forEach(row => { (byVenue[row.venueSlug] = byVenue[row.venueSlug] || []).push(row); });
-        for (const k of Object.keys(byVenue)) byVenue[k].sort((a, b) => (b.samples || 0) - (a.samples || 0));
+        for (const k of Object.keys(byVenue)) byVenue[k].sort(gameOrder);
         if (!live) return;
         setPending(switching ? ((loc.requested && loc.requested.label) || loc.label || 'the new location') : null);
         setCatalog({ vNames, byVenue });
@@ -110,16 +128,16 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
     return () => { live = false; };
   }, [token, locationVersion, recheck]);
 
-  // While the watcher is switching, look again every 15 s (it re-derives within ~10 s of the pull and
-  // pushes the new list on its next 15 s sync); stop after ~5 minutes rather than polling forever. Once
-  // the switch applies, look twice more as the new rooms' games and sweep heatmaps arrive (owner,
-  // 2026-11-21: "It's VERY slow").
+  // While the watcher is switching, look again every 4 s (the box pulls the pick within 3 s and posts the
+  // new room list the moment it is derived); stop after ~4 minutes rather than polling forever. Once the
+  // switch applies, look twice more as the new rooms' games and sweep heatmaps arrive (owner, 2026-11-21:
+  // "We have to get this to update much faster to a new location").
   const rechecks = useRef(0);
   const wasPending = useRef(false);
   useEffect(() => { rechecks.current = 0; }, [locationVersion]);
   useEffect(() => {
-    if (!pending || rechecks.current >= 20) return undefined;
-    const id = setTimeout(() => { rechecks.current += 1; setRecheck(n => n + 1); }, 15000);
+    if (!pending || rechecks.current >= 60) return undefined;
+    const id = setTimeout(() => { rechecks.current += 1; setRecheck(n => n + 1); }, 4000);
     return () => clearTimeout(id);
   }, [pending, recheck]);
   useEffect(() => {
@@ -229,7 +247,8 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
           onChange={(e) => {
             const venue = e.target.value;
             const list = catalog.byVenue[venue] || [];
-            const top = list[0];
+            // The room's busiest game, not the first in the list (which is ordered by game and stakes).
+            const top = list.slice().sort((a, b) => (b.samples || 0) - (a.samples || 0))[0];
             persistSel(top ? { venue, gameType: top.gameType, stakes: top.stakes } : { venue, gameType: sel.gameType, stakes: sel.stakes });
           }}>
           {venueSlugs.map(s => <option key={s} value={s}>{catalog.vNames[s] || s}</option>)}
