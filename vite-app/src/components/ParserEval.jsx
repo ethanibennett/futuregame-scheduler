@@ -99,7 +99,13 @@ export default function ParserEval({ token }) {
     setOpenRun(d);
   };
   const runName = (r) => `${modelName(r.model)} ${effortLabel(r.model, r.effort)}${r.corpus === 'shorthand' ? ' · sh' : ''}${r.sample ? ` · ${r.cases || r.totalCases || r.sample}` : ''}`;
-  const progressOf = (r) => `${r.doneCases || 0}${r.totalCases ? ` of ${r.totalCases}` : ''} hands`;
+  // The table is loaded when a run starts and ends; the run going now takes its count from the 5 s status poll.
+  const progressOf = (r) => {
+    const live = s && s.running && s.runId === r.id && s.progress ? s.progress : null;
+    const done = Math.max(r.doneCases || 0, live ? live.done || 0 : 0);
+    const total = r.totalCases || (live ? live.total : null);
+    return `${done}${total ? ` of ${total}` : ''} hands`;
+  };
   const set = (k) => (e) => { setConfirming(false); setPick((p) => ({ ...p, [k]: e.target.value })); };
   const summary = s && s.report ? s.report.split('\n').filter((l) => /recall|precision|halluc|cases|cost/i.test(l)).slice(0, 7) : [];
 
