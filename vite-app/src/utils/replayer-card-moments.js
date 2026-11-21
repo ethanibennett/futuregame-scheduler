@@ -360,7 +360,8 @@ export function angleOf(matrix) {
  *            should also be animated and smooth"): brightness 1 to `dimTo` (a dead card's 0.42) on an ease-out over
  *            the gather, held through the spin.
  *   spin     a beat after they meet, the stack goes to `target` (px, the layer's frame) on the inertia spring, turning a
- *            whole turn (toward the side it travels), shrinking to 0.6 and fading over its last 40%.
+ *            whole turn (toward the side it travels), shrinking to 0.6 and fading out as it goes (owner, 2026-11-21: "fade
+ *            the cards out as they spin toward the middle"): opacity follows the spin's own progress, 1 to 0.
  * cards: [{ node, cx, cy, w, h, angle }] in page px (angle in degrees); returns the ghosts.
  */
 export function foldToStack(reg, { set, rate = 1, layer, layerRect, cards, target, spin = 360, scaleTo = 0.6, back = null, dimTo = 0.42 }) {
@@ -451,7 +452,7 @@ export function foldToStack(reg, { set, rate = 1, layer, layerRect, cards, targe
         { prop: 'y', fn: (t) => pos(Math.min(t, end)).y, start: 0, end, key: 'fsy:' + i + ':' + c.cx + ':' + c.cy + ':' + T.y },
         { prop: 'rotate', fn: (t) => { const q = g(Math.min(t, end)), k = h(Math.min(t, end)); return a0 + (aS - a0) * q + dir * spin * k; }, start: 0, end, key: 'fsr:' + i + ':' + a0 + ':' + aS + ':' + dir },
         { prop: 'scale', fn: (t) => 1 + (scaleTo - 1) * clamp01(h(Math.min(t, end))), start: 0, end, key: 'fss:' + scaleTo + ':' + tGo },
-        { prop: 'opacity', fn: (t) => 1 - clamp01((h(Math.min(t, end)) - 0.6) / 0.4), start: 0, end, key: 'fso:' + tGo },
+        { prop: 'opacity', fn: (t) => 1 - clamp01(h(Math.min(t, end))), start: 0, end, key: 'fso2:' + tGo },
       ],
     }) && ghost;
   }).filter(Boolean);

@@ -205,9 +205,13 @@ export class MotionRegistry {
     this.stop(key);
     let anim;
     try {
+      /* A transient (a ghost, a shipped chip) holds its last frame until _done removes it (owner, 2026-11-21: "The
+         cards are briefly flashing in the seat box after hitting the muck"): with no fill, the frame between the
+         animation's end and its finish handler drew the element in its own style, a folded card back in its seat
+         at full opacity. Anything else ends on its own style, which its last keyframe already is. */
       anim = el.animate(kf.keyframes, {
         duration: kf.duration, delay: kf.delay, easing: 'linear',
-        fill: kf.delay > 0 ? 'backwards' : 'none',
+        fill: transient ? 'both' : (kf.delay > 0 ? 'backwards' : 'none'),
       });
     } catch (e) { return null; }
     /* Where the element is visibly at rest (within 0.25px of every channel's rest): the export's

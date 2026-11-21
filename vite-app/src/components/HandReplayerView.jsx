@@ -11318,9 +11318,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           const lab = table.querySelector('.replayer-action-badge-outer[data-act-seat="' + act4.player + '"]');
           if (lab) writes.push(() => {
             lab.getAnimations().forEach(a => { if (a instanceof CSSAnimation) a.cancel(); });
+            // To the label's own opacity (a check or fold rests at 0.85): ramped to 1, it dimmed a notch the frame the
+            // rise ended (owner, 2026-11-21: "make all of this kind of jittery stuff go away").
+            const own = Number(getComputedStyle(lab).opacity);
             motion.run(lab, { key: { el: lab, kind: 'rise' }, property: 'individual', size: { w: lab.offsetWidth, h: lab.offsetHeight }, channels: [
               { prop: 'y', spring: ySp, from: r4, to: 0, timeScale: rate },
-              { prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: 60 / rate } },
+              { prop: 'opacity', ramp: { from: 0, to: Number.isFinite(own) ? own : 1, delay: 0, duration: 60 / rate } },
             ] });
           });
         }
