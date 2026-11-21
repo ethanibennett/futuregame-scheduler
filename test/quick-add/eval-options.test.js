@@ -48,7 +48,27 @@ try {
   const offReport = { ...report, meta: { ...report.meta, options: { ...report.meta.options, effort: 'off' } } };
   assert.strictEqual(summarize(offReport, { model: 'claude-sonnet-5', effort: null, corpus: 'main', sample: null }).effort, null);
   assert.strictEqual(summarize(offReport, null).effort, null);
-  console.log('eval-options.test.js - passed (model, effort and sample reach the parser; the report carries the cost)');
+
+  // --emit-cases: one "@@case" line per parse; --resume: the parses kept from an interrupted run are not
+  // parsed again, and the cost still counts them (it is what those parses cost).
+  fs.writeFileSync(seen, '');
+  const emitted = spawnSync(process.execPath, [path.join(__dirname, 'eval.js'), '--module', stub, '--model', 'claude-opus-5-5', '--effort', 'low', '--sample', '12', '--no-gaps', '--no-report', '--emit-cases'],
+    { env: { ...process.env, ANTHROPIC_API_KEY: 'sk-test-dummy' }, encoding: 'utf8' });
+  const kept = emitted.stdout.split('\n').filter((l) => l.startsWith('@@case ')).map((l) => JSON.parse(l.slice(7)));
+  assert.strictEqual(kept.length, 12);
+  assert.ok(kept.every((k) => k.id && k.meta && k.meta.costUsd === 0.0642 && 'hand' in k), JSON.stringify(kept[0]));
+  const resumeFile = path.join(dir, 'resume.json');
+  fs.writeFileSync(resumeFile, JSON.stringify({ cases: [...kept.slice(0, 5), { ...kept[5], error: 'timed out' }] }));
+  fs.writeFileSync(seen, '');
+  const resumedRun = spawnSync(process.execPath, [path.join(__dirname, 'eval.js'), '--module', stub, '--model', 'claude-opus-5-5', '--effort', 'low', '--sample', '12', '--no-gaps', '--out', dir, '--emit-cases', '--resume', resumeFile],
+    { env: { ...process.env, ANTHROPIC_API_KEY: 'sk-test-dummy' }, encoding: 'utf8' });
+  assert.strictEqual(resumedRun.status, 0, resumedRun.stderr);
+  assert.strictEqual(fs.readFileSync(seen, 'utf8').trim().split('\n').length, 7, 'only the 7 not kept (one had errored) were parsed');
+  assert.strictEqual(resumedRun.stdout.split('\n').filter((l) => l.startsWith('@@case ')).length, 7, 'only new parses are emitted');
+  assert.match(resumedRun.stdout, /Resuming: 5 case\(s\) carried over/);
+  const resumedReport = JSON.parse(fs.readFileSync(path.join(dir, fs.readdirSync(dir).filter((f) => f.endsWith('-module.json')).sort().pop()), 'utf8'));
+  assert.deepStrictEqual([resumedReport.meta.cases, resumedReport.meta.options.resumed, resumedReport.aggregate.cost.totalUsd], [12, 5, Math.round(0.0642 * 12 * 10000) / 10000]);
+  console.log('eval-options.test.js - passed (model, effort and sample reach the parser; the report carries the cost; parses are emitted and resumed)');
 } finally {
   fs.rmSync(dir, { recursive: true, force: true });
 }

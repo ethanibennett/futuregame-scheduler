@@ -78,6 +78,14 @@ corpus README's rule), and its notes say which facts the parse got wrong. The lo
 account. Parses from the Apple Watch (`lib/watch.js`) are not logged yet; they do follow the switches below
 (`parseHand` and `answerGap` take their defaults from the same env, which the Watch's parse did not before).
 
+**7. Runs survive a deploy** (added the same day, after a deploy killed a full Opus run seven hands from
+the end: about $5.80 spent, nothing kept). A run is a row from the moment it starts, and each hand's parse is
+kept as it finishes (`quick_add_eval_cases`, from `eval.js --emit-cases`; the database is saved at most every
+15 s while a run goes). A run a restart cut off reads "interrupted at N of M hands" in the table, and **Resume
+the run** parses only the hands it had not kept (`eval.js --resume`), then scores all of them together; the
+report says how many were carried over. A deploy still stops the run in progress: resume it once the site is
+back.
+
 ## The runs to make from Admin
 
 All on the server's key. Costs are **estimates** (list price; the cached prompt of ~11,700 tokens read from

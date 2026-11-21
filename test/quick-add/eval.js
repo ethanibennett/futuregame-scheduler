@@ -60,6 +60,10 @@ Options:
   --effort <level>       Default mode only: low|medium|high|xhigh|max = adaptive thinking at that
                          effort (lib/quick-add/prompt.js requestShape); off = the model's plain
                          request (default QUICK_ADD_EFFORT, else off). Reports carry the cost.
+  --emit-cases           Print each case's parse as it finishes, one line "@@case <json>" (the
+                         Admin runner keeps them, so a run a restart kills can be resumed).
+  --resume <file.json>   { cases: [{ id, hand, notes, latencyMs, usage, meta }] }: cases already
+                         parsed by an interrupted run are scored from the file, not parsed again.
   --concurrency <n>      Parallel parses (default 1: the server rate-limits per user).
   --delay <ms>           Pause between requests per worker (default 0).
   --timeout <ms>         Per-parse timeout (default 120000).
@@ -100,6 +104,8 @@ function parseArgs(argv) {
       case '--sample': o.sample = Math.max(1, Number(need(i, a)) || 1); i++; break;
       case '--model': o.model = need(i, a); i++; break;
       case '--effort': o.effort = need(i, a).toLowerCase(); i++; break;
+      case '--resume': o.resume = need(i, a); i++; break;
+      case '--emit-cases': o.emitCases = true; break;
       case '--concurrency': o.concurrency = Math.max(1, Number(need(i, a)) || 1); i++; break;
       case '--delay': o.delay = Math.max(0, Number(need(i, a)) || 0); i++; break;
       case '--timeout': o.timeout = Math.max(1000, Number(need(i, a)) || 120000); i++; break;
@@ -1774,6 +1780,15 @@ async function main() {
   console.log(`Gaps engine: ${gapsMod.findGaps ? gapsMod.name : 'n/a — ' + gapsMod.unavailable}`);
   console.log(`Cases: ${cases.length}\n`);
 
+  /* A resumed run (2026-11-21): the cases an interrupted run already parsed are scored from what it
+     kept, not parsed (and paid for) again. A case that errored there is parsed again. */
+  const resumed = new Map();
+  if (o.resume) {
+    const saved = JSON.parse(fs.readFileSync(path.resolve(o.resume), 'utf8'));
+    for (const p of saved.cases || []) if (p && typeof p.id === 'string' && !p.error) resumed.set(p.id, p);
+    console.log(`Resuming: ${[...resumed.keys()].filter(id => cases.some(c => c.id === id)).length} case(s) carried over from the interrupted run\n`);
+  }
+
   const results = new Array(cases.length);
   let next = 0, done = 0;
   const worker = async () => {
@@ -1783,17 +1798,31 @@ async function main() {
       const v = validated.get(c.id);
       const r = { id: c.id, game: c.game, source: c.source, incomplete: isIncomplete(c), file: c._file, tags: c.tags || [] };
       const t0 = Date.now();
-      try {
-        const out = await parser.parse(c);
-        r.latencyMs = out.latencyMs != null ? out.latencyMs : Date.now() - t0;
-        r.hand = out.hand;
-        r.notes = out.notes;
-        if (out.usage) r.usage = out.usage;
-        if (out.meta) r.meta = out.meta;
-      } catch (e) {
-        r.latencyMs = Date.now() - t0;
-        r.error = e.message || String(e);
-        r.hand = null;
+      const prev = resumed.get(c.id);
+      if (prev) {
+        r.latencyMs = prev.latencyMs;
+        r.hand = prev.hand === undefined ? null : prev.hand;
+        r.notes = Array.isArray(prev.notes) ? prev.notes : [];
+        if (prev.usage) r.usage = prev.usage;
+        if (prev.meta) r.meta = prev.meta;
+        r.resumed = true;
+      } else {
+        try {
+          const out = await parser.parse(c);
+          r.latencyMs = out.latencyMs != null ? out.latencyMs : Date.now() - t0;
+          r.hand = out.hand;
+          r.notes = out.notes;
+          if (out.usage) r.usage = out.usage;
+          if (out.meta) r.meta = out.meta;
+        } catch (e) {
+          r.latencyMs = Date.now() - t0;
+          r.error = e.message || String(e);
+          r.hand = null;
+        }
+        // One line per parse for the Admin runner to keep (--emit-cases): what a resumed run needs.
+        if (o.emitCases) {
+          console.log('@@case ' + JSON.stringify({ id: r.id, hand: r.hand, notes: r.notes || [], latencyMs: r.latencyMs, usage: r.usage || null, meta: r.meta || null, error: r.error || null }));
+        }
       }
       r.score = scoreCase(c, v, r.hand);
       if (gapsMod.findGaps && r.hand) {
@@ -1812,7 +1841,7 @@ async function main() {
         console.log(`${String(done).padStart(3)}/${cases.length} ${c.id.padEnd(34)} recall ${pct(r.score.recall).padStart(6)} prec ${pct(r.score.precision).padStart(6)}`
           + ` halluc ${h.cards.length + h.stacks.length}${r.gapScore ? ` gaps ${r.gapScore.matched}/${r.gapScore.expected}` : ''}${r.error ? ' ERROR ' + r.error : ''} ${r.latencyMs}ms`);
       } else if (process.stdout.isTTY) process.stdout.write(`\r${done}/${cases.length}`);
-      if (o.delay) await sleep(o.delay);
+      if (o.delay && !r.resumed) await sleep(o.delay);
     }
   };
   await Promise.all(Array.from({ length: Math.min(o.concurrency, cases.length) }, worker));
@@ -1831,6 +1860,7 @@ async function main() {
     options: {
       hintGame: !!o.hintGame, filter: o.filter, source: o.source || null, only: o.only || null, sample: o.sample || null,
       model: parser.model || null, effort: parser.effort || null, shape: parser.shape || null,
+      resumed: results.filter(r => r.resumed).length,
     },
   };
   const md = markdownReport(meta, agg, results, cases);
@@ -1979,6 +2009,7 @@ function markdownReport(meta, agg, results, cases) {
   out.push(`- Parser: ${meta.parser}`);
   out.push(`- Gaps engine: ${meta.gaps || 'n/a — ' + meta.gapsUnavailable}`);
   out.push(`- Corpus: \`${meta.corpus}\`, ${meta.cases} cases${meta.git ? `, commit ${meta.git}` : ''}${meta.options.hintGame ? ', game hint ON' : ''}`);
+  if (meta.options.resumed) out.push(`- Resumed: ${meta.options.resumed} case(s) were parsed by the interrupted run and scored from what it kept`);
   out.push('');
   out.push('## Headline');
   out.push('');

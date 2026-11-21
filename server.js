@@ -1109,14 +1109,16 @@ app.post('/api/growth/apple-ads', authenticateToken, requireRegistered, async (r
 
 // The hand parser's live eval, run by the server with its own key (lib/admin-eval.js): app admins only.
 // POST starts one run (409 while one runs, 503 without ANTHROPIC_API_KEY), its body { model, effort, corpus,
-// limit } picking what to measure; GET is its status and report; /runs the finished runs side by side.
+// sample } picking what to measure, or { resume: id } finishing a run a restart cut off; GET is its status
+// and report; /runs the kept runs (done, running, interrupted) side by side.
 const adminEval = require('./lib/admin-eval');
 const quickAddLearn = require('./lib/quick-add/learn');
 adminEval.init({ getDb: () => db, saveDatabase: () => saveDatabase() });
 app.post('/api/admin/quick-add-eval', authenticateToken, requireAppAdmin, (req, res) => {
-  const r = adminEval.start({ options: req.body || {} });
+  const body = req.body || {};
+  const r = adminEval.start({ options: body, resume: body.resume != null ? Number(body.resume) : null });
   if (r.error) return res.status(r.status).json({ error: r.error });
-  console.log('[quick-add eval] started by', req.user.username, JSON.stringify(r.options));
+  console.log('[quick-add eval] started by', req.user.username, JSON.stringify(r.options), r.resumed ? `resuming run ${r.runId} (${r.resumed} hands kept)` : '');
   res.status(202).json(adminEval.status());
 });
 app.get('/api/admin/quick-add-eval', authenticateToken, requireAppAdmin, (req, res) => {

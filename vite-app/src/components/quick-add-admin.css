@@ -30,6 +30,10 @@
 /* The tables are read, not pressed: a row's detail opens from the select under its table, a control
    on the grid like the options (check:controls holds every button's label centred). */
 .qa-table { margin-bottom: calc(var(--subrow) * 2); }
+/* A run with no figures yet (running, or interrupted by a restart): its state across the figure columns. */
+.qa-span-rest { grid-column: 2 / -1; }
+/* The resume offer stands 2r clear of the options under it. */
+.qa-resume { margin-bottom: calc(var(--subrow) * 2); }
 
 .qa-detail { padding-bottom: calc(var(--subrow) * 2); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border); }
 .qa-detail .an-p { white-space: normal; }

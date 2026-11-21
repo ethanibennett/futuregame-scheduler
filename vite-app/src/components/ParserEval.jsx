@@ -69,28 +69,37 @@ export default function ParserEval({ token }) {
 
   const corpusCases = opts && opts.corpora && opts.corpora[pick.corpus] ? opts.corpora[pick.corpus].cases : 266;
   const hands = pick.sample ? Math.min(Number(pick.sample), corpusCases) : corpusCases;
+  // Finished runs have figures; a run a restart cut off (2026-11-21) is listed and can be resumed.
+  const doneRuns = runs.filter((r) => !r.status || r.status === 'done');
+  const interrupted = running ? null : runs.find((r) => r.status === 'interrupted') || null;
   // A measured cost per hand for this model and effort, else the server's rough estimate.
-  const measured = runs.find((r) => r.model === pick.model && effortOf(r.effort) === pick.effort && r.costPerCase != null);
-  const perHand = measured ? measured.costPerCase : (estimates[pick.model] || {})[pick.effort];
+  const perHandFor = (model, effort) => {
+    const m = doneRuns.find((r) => r.model === model && effortOf(r.effort) === effortOf(effort) && r.costPerCase != null);
+    return { usd: m ? m.costPerCase : (estimates[model] || {})[effortOf(effort)], measured: !!m };
+  };
+  const { usd: perHand, measured } = perHandFor(pick.model, pick.effort);
   const cost = perHand == null ? null : perHand * hands;
 
-  const run = async () => {
+  const post = async (body) => {
     setConfirming(false); setError('');
     const r = await fetch(`${API_URL}/admin/quick-add-eval`, {
-      method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: pick.model, effort: pick.effort, corpus: pick.corpus, sample: pick.sample || null }),
+      method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { setError(d.error || 'Could not start the eval'); return; }
     setS(d);
+    loadRuns();
   };
+  const run = () => post({ model: pick.model, effort: pick.effort, corpus: pick.corpus, sample: pick.sample || null });
+  const resume = () => post({ resume: interrupted.id });
   const showRun = async (id) => {
     if (!id) { setOpenRun(null); return; }
     const r = await fetch(`${API_URL}/admin/quick-add-eval/runs/${id}`, { headers: auth }).catch(() => null);
     const d = r && r.ok ? await r.json().catch(() => null) : null;
     setOpenRun(d);
   };
-  const runName = (r) => `${modelName(r.model)} ${effortLabel(r.model, r.effort)}${r.corpus === 'shorthand' ? ' · sh' : ''}${r.sample ? ` · ${r.cases}` : ''}`;
+  const runName = (r) => `${modelName(r.model)} ${effortLabel(r.model, r.effort)}${r.corpus === 'shorthand' ? ' · sh' : ''}${r.sample ? ` · ${r.cases || r.totalCases || r.sample}` : ''}`;
+  const progressOf = (r) => `${r.doneCases || 0}${r.totalCases ? ` of ${r.totalCases}` : ''} hands`;
   const set = (k) => (e) => { setConfirming(false); setPick((p) => ({ ...p, [k]: e.target.value })); };
   const summary = s && s.report ? s.report.split('\n').filter((l) => /recall|precision|halluc|cases|cost/i.test(l)).slice(0, 7) : [];
 
@@ -144,7 +153,12 @@ export default function ParserEval({ token }) {
                   <span key={h} role="columnheader" className={'an-cell an-lbl an-lbl-3b' + (i ? ' an-num' : '')}>{h}</span>
                 ))}
               </div>
-              {runs.map((r) => (
+              {runs.map((r) => (r.status && r.status !== 'done' ? (
+                <div key={r.id} className="an-row is-body qa-runs-cols is-small" role="row">
+                  <span role="cell" className="an-cell an-td an-clip">{runName(r)}</span>
+                  <span role="cell" className="an-cell an-td an-clip qa-span-rest">{r.status === 'running' ? `running: ${progressOf(r)} kept` : `interrupted at ${progressOf(r)}: resume below`}</span>
+                </div>
+              ) : (
                 <div key={r.id} className="an-row is-body qa-runs-cols" role="row">
                   <span role="cell" className="an-cell an-td an-clip">{runName(r)}</span>
                   <span role="cell" className="an-cell an-td an-num">{pct(r.recall)}</span>
@@ -154,13 +168,13 @@ export default function ParserEval({ token }) {
                   <span role="cell" className="an-cell an-td an-num">{usd(r.costPerCase)}</span>
                   <span role="cell" className="an-cell an-td an-num">{secs(r.latencyP90)}</span>
                 </div>
-              ))}
+              )))}
             </div>
             <div className="qa-eval-opts">
               <label className="qa-eval-field"><span className="an-cell an-lbl an-lbl-2">A run in full</span>
                 <select className="qa-eval-select" value={openRun ? String(openRun.id) : ''} onChange={(e) => showRun(Number(e.target.value) || null)}>
                   <option value="">Pick a run</option>
-                  {runs.map((r) => <option key={r.id} value={String(r.id)}>{runName(r)}, {when(r.finishedAt)}</option>)}
+                  {doneRuns.map((r) => <option key={r.id} value={String(r.id)}>{runName(r)}, {when(r.finishedAt)}</option>)}
                 </select>
               </label>
             </div>
@@ -174,6 +188,17 @@ export default function ParserEval({ token }) {
         )}
 
         {error && <p className="an-p" role="alert">{error}</p>}
+        {interrupted && (() => {
+          // A restart cut this run off: resuming parses only the hands it had not kept.
+          const left = interrupted.totalCases ? Math.max(0, interrupted.totalCases - (interrupted.doneCases || 0)) : null;
+          const ph = perHandFor(interrupted.model, interrupted.effort).usd;
+          return (
+            <div className="parser-eval-actions qa-resume">
+              <p className="an-p" role="status">{runName(interrupted)} was interrupted at {progressOf(interrupted)} (the server restarted). Resume parses only the {left != null ? `${left} left` : 'hands it did not keep'}{left != null && ph != null ? `, about $${(left * ph).toFixed(2)}` : ''}.</p>
+              <button type="button" className="parser-eval-btn ctl is-primary" onClick={resume}>Resume the run</button>
+            </div>
+          );
+        })()}
         {!running && (
           <>
             <div className="qa-eval-opts">

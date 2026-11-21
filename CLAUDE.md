@@ -513,7 +513,10 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   thinking effort, corpus and size (POST body), and finished runs are kept (`quick_add_eval_runs`, `GET …/runs`)
   and compared side by side, cost per hand included. Until 2026-11-21 it had never scored anything: the eval's
   browser stubs made the Anthropic SDK refuse to build a client, so every run fell back to a dry run (fixed:
-  `withoutBrowserStubs`).
+  `withoutBrowserStubs`). **A deploy kills a run in progress**, so runs are kept as they go: each hand's parse is
+  saved as it finishes (`quick_add_eval_cases`, `eval.js --emit-cases`), a run a restart cut off reads
+  "interrupted", and Resume (`{ resume: id }`, `eval.js --resume`) parses only the hands it is missing.
+  Pushing to master while someone runs a full eval still costs them the run's last 15 s and a resume.
 - **Quick add on the newer models, measured first** (2026-11-21; `docs/quick-add-model-runs.md`, the runs to make
   and their cost): `prompt.js` `requestShape` sends today's forced-tool request by default, and a thinking request
   (adaptive thinking, `output_config.effort`, `tool_choice` auto with one call, a refusal fallback) for Opus 5.5 /
