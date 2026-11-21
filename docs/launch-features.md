@@ -25,9 +25,9 @@ What PokerAtlas does not offer comes first (plan, section 3): the clash, the pla
 | 1 | Every live series in one schedule | "Every live series near you, each in its room's own time." | Live. /live counted 1,655 events in 76 series at 63 rooms over 30 days on 2026-11-04; use the count on the day |
 | 2 | The clash, flagged first | "See the clash before you register for both." | Live: My Schedule's conflict banner. **Paywall conflict, below** |
 | 3 | If-bag and if-bust plans | "Plan for bagging. Plan for busting." | Live: If I Bag / If I Bust on a saved event |
-| 4 | Every flight, compared | "Pick the flight that fits your week." | **Check first:** flights list by date and the plans find the closest one; I found no side-by-side view, which is what /live and the listing say today |
+| 4 | Every flight, compared | "Pick the flight that fits your week." | Live (checked 2026-11-21): an opened Day 1 card's "Compare N flights" opens every Day 1 flight side by side (day and start, level length, late reg, Saved, Overlaps with a saved event, Save, "If I bust A"), open to everyone. Screenshot 4's "Nine flights. Pick the one that fits." is true of it |
 | 5 | Late reg, counted down | "Never miss late reg." | Live: the bar on each running card |
-| 6 | The room's live clock | "The live level and clock, wherever the room publishes one." | Live for some rooms, so always with that qualifier. Check the Mid-Atlantic rooms on capture day (plan, open question 3) |
+| 6 | The room's live clock | "The live level and clock, wherever the room publishes one." | Live for some rooms, so always with that qualifier. Mid-Atlantic, checked: Borgata, Live! Philadelphia, Parx, Maryland Live! and MGM National Harbor on 2026-10-15; Live! Philadelphia again on 2026-11-21, after WSOP+ was added (Live! Cup VIII Flight I, level 4, 200/400, 267 entries). None at Harrah's AC, Horseshoe Baltimore or Wind Creek. Check again on capture day |
 | 7 | Only what you can drive to | "Filter by distance from home." | Live |
 | 8 | Mixed games first class | "HORSE, stud, draw, PLO hi-lo: filter by the games you play." | Live |
 | 9 | Bring the crew | "See where your friends are playing. Send your week in one link." | Live: Social and the share link. Social's empty state is what a new user sees, so seed the screenshot |
@@ -70,7 +70,7 @@ A strong later story for serious players, and the plan's mixed-game audience (se
 | Staking, backer pages, settlement | Admins only (segment 5, "held until staking ships"). Backer pages already work for the owner's own backers |
 | Online rooms | Never in ads or on linked pages. Off until a user turns them on |
 | The Mac app | The listing says it launches later, but the plan's sign-off still says "iPhone, iPad and Mac" |
-| Calendar sync | Not built as far as I can find, and PokerAtlas PRO sells it; `MONETIZATION-PLAN.md` lists it for Pro |
+| Calendar sync | **Built since** (Features 1, 2026-11-11): Export Schedule › Subscribe, a private `/cal/<token>.ics` link for Apple and Google calendars, open to every account. The plan (v2, section 8) makes it a Reel, "Your schedule, in the calendar you already use". Still on the Pro side of `MONETIZATION-PLAN.md` from 1 March, so decide that with the clash question before it is touted as free |
 | The Swiss theme, the MCP connector, session bridge | Owner tools |
 
 ## 5. Decisions and gaps this list turned up
@@ -79,8 +79,10 @@ A strong later story for serious players, and the plan's mixed-game audience (se
 2. **Conflict detection is on the paid side of `MONETIZATION-PLAN.md`,** and it is our lead feature. From 1 March, "see the
    clash" would be a paid claim beside "Free to start", and Pro is also where the plan puts more than 5 saved events and
    more than 5 results a month. Worth deciding before the screenshots are made.
-3. **"Every flight side by side" needs to be true or reworded.** Either build the comparison (screenshot 4 says "Nine
-   flights. Pick the one that fits.") or change the line on /live, the listing and Ad 9.
+3. ~~**"Every flight side by side" needs to be true or reworded.**~~ **True since 2026-11-11** (Features 2,
+   `FlightCompareSheet.jsx`; checked 2026-11-21): screenshot 4, /live, the listing and Ad 9 can keep the line.
 4. **Mac in the sign-off.** Pick one: the listing says no, the plan's ads say yes (open question 5, due 4 Dec).
 5. **Live clocks in the Mid-Atlantic.** The first ads pin those rooms. WSOP+ was added on 2026-10-23, so re-check Parx,
-   Live!, Borgata and Maryland Live! on a running event before Ad 2 runs there.
+   Live!, Borgata and Maryland Live! on a running event before Ad 2 runs there. **Live! Philadelphia re-checked
+   2026-11-21** (a running Bravo clock through `clockForEvent`); Borgata, Parx and Maryland Live! had no event in the
+   feed that day. Borgata's Pure Grind runs from Wed 25 Nov: check it then.
