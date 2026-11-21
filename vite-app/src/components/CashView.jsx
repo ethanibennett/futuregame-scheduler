@@ -308,6 +308,16 @@ export default function CashView({ token, onModeChange, sidePane = null }) {
   // checks every second until the watcher reports the new location applied, then reloads every 1.5 s for the
   // first 12 s as the rows arrive (owner, 2026-11-21: "Can we get the update to be any faster?").
   const [switchingTo, setSwitchingTo] = useState(null);
+  // While any room has no first poll yet, look again every 1.5 s (up to ~30 s), so a new location's games fill
+  // in the moment their rows land rather than at the next scheduled reload.
+  const awaitTries = useRef(0);
+  useEffect(() => {
+    const waiting = data && Array.isArray(data.venues) && data.venues.some(v => v.ok === null);
+    if (!waiting) { awaitTries.current = 0; return undefined; }
+    if (awaitTries.current >= 20) return undefined;
+    const id = setTimeout(() => { awaitTries.current += 1; load(); }, 1500);
+    return () => clearTimeout(id);
+  }, [data, load]);
   useEffect(() => {
     if (!locationVersion) return undefined;
     let live = true, tries = 0, timer = null;
@@ -449,10 +459,16 @@ export default function CashView({ token, onModeChange, sidePane = null }) {
             {token && <CashAlertsButton token={token} venues={data.venues} />}
           </div>
 
+          {/* Rooms with no first poll yet (a new location, its rows a second or two away) are loading, not empty
+              (owner, 2026-11-21: "it ... initially said nothing was running at all"). */}
           {venues.length === 0 && (
             <div style={{ color: 'var(--text-muted, #aaa)', padding: 'var(--space-2xl)', textAlign: 'center' }}>
-              {filterActive ? 'Nothing running in the selected variants.' : 'No venues reporting.'}
+              {rawVenues.some(v => v.ok === null) ? 'Getting the live games…'
+                : filterActive ? 'Nothing running in the selected variants.' : 'No venues reporting.'}
             </div>
+          )}
+          {venues.length > 0 && rawVenues.some(v => v.ok === null) && (
+            <p className="cb-snap">{`Getting the live games for ${rawVenues.filter(v => v.ok === null).length} more room${rawVenues.filter(v => v.ok === null).length === 1 ? '' : 's'}…`}</p>
           )}
 
           <div className="cb-venues">
