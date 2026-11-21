@@ -939,7 +939,12 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   Card Back (`utils/card-back.js`, stored as `replayerCardBack`, applied at boot as `<html data-card-back="btg">`, so
   every face-down card wears it: the replayer, saved-hand rows, the trainers' `.card-back`). The logo is traced to
   shapes in a data URI (`--back-btg-mark` in styles.css) and is a background, so the turn-over copies it (with its size,
-  position and repeat). A viewer preference: a shared link does not carry it.
+  position and repeat). A viewer preference: a shared link does not carry it. **Only for accounts made with the
+  registration code BTG** (owner, 2026-11-21): Create Account (and Sign in with Apple when it makes the account) takes
+  an optional code (`lib/registration-codes.js`, `users.registration_code`; an unknown one is refused, never dropped),
+  and register and every sign-in return `cardBacks`, kept with the session (`cardBacks` in storage, cleared at sign-out).
+  Without it the Card Back row is hidden and a stored BTG choice paints the standard back. Add a code there.
+  `npm run test:registration-codes` (ports 4770-4779).
 - **The top bar's wordmark loops, forever** (owner, 2026-11-20; `.wm-loop` in styles.css, `utils/wordmark-dot.js`,
   `npm test`): "futuregame", then "me" slides right and a blue dot grows in, holds as "futurega.me", the dot shrinks
   away and "me" slides back, every 4.8 s; still "futurega.me" under Reduce Motion. Transforms only, on spans in App.jsx's

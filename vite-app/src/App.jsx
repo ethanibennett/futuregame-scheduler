@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense, startTransition } from 'react';
 import useBackToClose from './hooks/useBackToClose.js';
 import { tabHash, viewFromHash } from './utils/tab-address.js';
+import { applyStoredCardBack, CARD_BACKS_UNLOCKED_KEY } from './utils/card-back.js';
 import AppLockVeil from './components/AppLockVeil.jsx';
 import { applyMoneyMask, installRevealOnHold } from './utils/hide-money.js';
 import './components/features.css';
@@ -738,7 +739,8 @@ function App() {
     if (res.status === 401 || res.status === 403) {
       // The whole session goes, as Sign out does (App improvements 401: a guest's flag survived and the next real
       // sign-in opened in guest mode).
-      ['token', 'username', 'avatar', 'isGuest', 'realName', 'sessionOnly'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); });
+      ['token', 'username', 'avatar', 'isGuest', 'realName', 'sessionOnly', CARD_BACKS_UNLOCKED_KEY].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); });
+      applyStoredCardBack();
       setIsGuest(false);
       setToken(null);
       setUsername('');
@@ -1160,7 +1162,8 @@ function App() {
     try {
       const endpoint = isRegister ? '/register' : '/login';
       const body = isRegister
-        ? { email, password, realName: realNameInput, source: signupSource(fd.get('heard')), invite: pendingInvite() || undefined, device: DEVICE_HINT }
+        ? { email, password, realName: realNameInput, source: signupSource(fd.get('heard')), invite: pendingInvite() || undefined, device: DEVICE_HINT,
+            code: String(fd.get('code') || '').trim() || undefined }
         : { email, password, device: DEVICE_HINT };
 
       const res = await fetch(`${API_URL}${endpoint}`, {
@@ -1226,6 +1229,10 @@ function App() {
     if (data.realName) store.setItem('realName', data.realName);
     else store.removeItem('realName');
     store.setItem('handReplayerAccess', data.handReplayerAccess ? 'true' : 'false');
+    // The card backs this account's registration code unlocked (utils/card-back.js), then the back repainted for it.
+    localStorage.removeItem(CARD_BACKS_UNLOCKED_KEY); sessionStorage.removeItem(CARD_BACKS_UNLOCKED_KEY);
+    if (Array.isArray(data.cardBacks) && data.cardBacks.length) store.setItem(CARD_BACKS_UNLOCKED_KEY, JSON.stringify(data.cardBacks));
+    applyStoredCardBack();
     if (!keepSignedIn) localStorage.setItem('sessionOnly', 'true');
     /* Setup is the account's: an account that has never finished it clears this browser's flag
        (a shared browser must not hand the last user's "done" to this one); one that has, adopts
@@ -1254,7 +1261,9 @@ function App() {
       const r = await AS.authorize();
       const res = await fetch(`${API_URL}/auth/apple`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identityToken: r.identityToken, givenName: r.givenName, familyName: r.familyName, device: DEVICE_HINT, source: signupSource(null), invite: pendingInvite() || undefined }),
+        body: JSON.stringify({ identityToken: r.identityToken, givenName: r.givenName, familyName: r.familyName, device: DEVICE_HINT, source: signupSource(null), invite: pendingInvite() || undefined,
+          // A registration code typed in the sign-up form counts for an account Apple creates here too.
+          code: ((document.getElementById('auth-code') || {}).value || '').trim() || undefined }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { setError(data.error || 'Sign in with Apple failed. Please try again.'); return; }
@@ -1285,10 +1294,11 @@ function App() {
 
   const handleLogout = () => {
     fetch(`${API_URL}/logout`, { method: 'POST', headers: token ? { Authorization: 'Bearer ' + token } : {} }).catch(() => {});
-    ['token','username','avatar','isGuest','realName','sessionOnly'].forEach(k => {
+    ['token','username','avatar','isGuest','realName','sessionOnly', CARD_BACKS_UNLOCKED_KEY].forEach(k => {
       localStorage.removeItem(k);
       sessionStorage.removeItem(k);
     });
+    applyStoredCardBack();   // an unlocked back goes with the account
     setToken(null);
     setUsername(null);
     setIsGuest(false);

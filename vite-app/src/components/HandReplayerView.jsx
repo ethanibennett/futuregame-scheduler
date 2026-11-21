@@ -1,6 +1,6 @@
 import { cardFaceSrc, rankOnlyFaceSrc, unknownCardFaceSrc } from '../utils/card-faces.js';
 import { boardSuitFills, readingAcross, undecidedLine } from '../utils/board-suit-fills.js';
-import { CARD_BACKS, CARD_BACK_KEY, normalizeCardBack, applyCardBack } from '../utils/card-back.js';
+import { availableCardBacks, CARD_BACK_KEY, normalizeCardBack, applyCardBack } from '../utils/card-back.js';
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import useBackToClose from '../hooks/useBackToClose.js';
 import { useSolverAvailability, offered as offeredGame } from './StudyHead.jsx';
@@ -2304,11 +2304,13 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
           {rows([
             { key:'highContrastDeck', label:'High-Contrast Deck', sub:'Lifts the suits off the felt' },
           ])}
-          {/* The back every face-down card wears (utils/card-back.js), shown as two of it on the felt. */}
+          {/* The back every face-down card wears (utils/card-back.js), shown as two of it on the felt. Only the designs
+              this account has: with just the standard one there is nothing to choose, so the row is left out. */}
+          {availableCardBacks().length > 1 && (
           <div className="replayer-settings-row is-stacked">
             <div className="replayer-settings-label rs-cell"><span className="rs-t">Card Back</span></div>
             <div className="replayer-settings-pills">
-              {CARD_BACKS.map(b => (
+              {availableCardBacks().map(b => (
                 <button key={b.id} className={'replayer-settings-thumb' + (settings.cardBack === b.id ? ' active' : '')}
                   aria-pressed={settings.cardBack === b.id} aria-label={'Card back: ' + b.label}
                   onClick={() => onUpdate('cardBack', b.id)}>
@@ -2321,6 +2323,7 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
               ))}
             </div>
           </div>
+          )}
           <SettingToggleRow label="Splay Hole Cards" on={settings.cardSplay} onToggle={v => onUpdate('cardSplay', v)} />
           {settings.cardSplay && (
             <div className="replayer-settings-row is-stacked">
