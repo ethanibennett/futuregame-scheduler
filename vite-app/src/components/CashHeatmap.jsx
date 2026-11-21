@@ -73,33 +73,26 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
         const g = await gRes.json();
         const vNames = {};
         if (vRes && vRes.ok) { try { const v = await vRes.json(); (v.venues || []).forEach(x => { vNames[x.slug] = x.name; }); } catch { /* names optional */ } }
-        /* /cash/games is every (venue, game, stakes) the watcher has EVER recorded, but names
-           come only from /cash/venues, its ACTIVE list — so rooms it sampled for a day or two and
-           dropped (pa-9319, maryland-live, ...) surfaced as bare slugs. A venue is offered if it is
-           on the active list OR has data from the last two days: the hosted copy's list arrives by
-           push from the box and can lag it (mohegan-pa showed bare while the box had it active),
-           and trusting the list alone hid a room that was being collected right then. A live room
-           with no name gets its slug prettified. If the list didn't load, everything is offered. */
+        /* /cash/games is every (venue, game, stakes) the watcher has EVER recorded, but names come only from
+           /cash/venues, its ACTIVE list, so a room it sampled and dropped would surface as a bare slug. Only rooms
+           on the active list are offered (below). Until 2026-11-21 rooms with data from the last two days were
+           offered too, because the hosted list could lag the box by many minutes; it now follows within seconds. */
         const named = Object.keys(vNames).length > 0;
         let loc = null;
         if (lRes && lRes.ok) { try { loc = await lRes.json(); } catch { /* treat as unknown */ } }
         const switching = !!(loc && loc.pending);
-        const RECENT_MS = 2 * 24 * 3600 * 1000;
-        const lastBySlug = {};
-        (g.games || []).forEach(row => {
-          const t = Date.parse(row.lastTs || '');
-          if (Number.isFinite(t)) lastBySlug[row.venueSlug] = Math.max(lastBySlug[row.venueSlug] || 0, t);
-        });
-        const live = slug => Date.now() - (lastBySlug[slug] || 0) < RECENT_MS;
-        /* The active list IS the set of rooms near the picked location (the watcher derives it from
-           that point and radius). Once it matches the picked location it is the whole answer: the
-           two-day "recent data" allowance kept every room from the previous location on offer for
-           two days after a change, which is why moving the picker changed nothing. The allowance
-           stays only while the switch is still pending, so the list is never empty mid-change. */
-        const rows = (g.games || []).filter(row => !named || vNames[row.venueSlug] || (switching && live(row.venueSlug)));
-        rows.forEach(row => {
-          if (!vNames[row.venueSlug]) vNames[row.venueSlug] = String(row.venueSlug).replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        });
+        /* The active list IS the set of rooms near the picked location (the watcher derives it from that
+           point and radius), so it is the whole answer. Only the current location's named rooms (owner, 2026-11-21: "the venue dropdown has a bunch of Bravo
+           nonsense and still has the Texas rooms"): the allowance for rooms with recent data during a switch, and
+           offering everything when the list did not load, put the last locations' rooms on the list as bare ids
+           ("Bravo Bela"). A switch now applies within seconds, so it waits on the list instead. */
+        if (!named) {
+          if (!live) return;
+          setErr(switching ? 'Updating the rooms for the new location…' : 'Could not load the room names. Try again.');
+          setStatus('error');
+          return;
+        }
+        const rows = (g.games || []).filter(row => vNames[row.venueSlug]);
         const byVenue = {};
         rows.forEach(row => { (byVenue[row.venueSlug] = byVenue[row.venueSlug] || []).push(row); });
         for (const k of Object.keys(byVenue)) byVenue[k].sort((a, b) => (b.samples || 0) - (a.samples || 0));
