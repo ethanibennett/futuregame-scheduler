@@ -43,6 +43,11 @@ try {
   // admin-eval keeps these figures for the side-by-side table.
   const s = require('../../lib/admin-eval').summarize(report, { model: 'claude-opus-5-5', effort: 'low', corpus: 'main', sample: 12 });
   assert.deepStrictEqual([s.model, s.effort, s.cases, s.costPerCase, s.outputTokensPerCase], ['claude-opus-5-5', 'low', 12, 0.0642, 3000]);
+  // A run with no effort reaches eval.js as --effort off: kept as null ("no thinking"), not 'off'.
+  const { summarize } = require('../../lib/admin-eval');
+  const offReport = { ...report, meta: { ...report.meta, options: { ...report.meta.options, effort: 'off' } } };
+  assert.strictEqual(summarize(offReport, { model: 'claude-sonnet-5', effort: null, corpus: 'main', sample: null }).effort, null);
+  assert.strictEqual(summarize(offReport, null).effort, null);
   console.log('eval-options.test.js - passed (model, effort and sample reach the parser; the report carries the cost)');
 } finally {
   fs.rmSync(dir, { recursive: true, force: true });

@@ -23,8 +23,10 @@ const MODEL_NAMES = {
 export const modelName = (m) => MODEL_NAMES[m] || String(m || '?').replace(/^claude-/, '');
 // The models that only take the thinking request (prompt.js NO_FORCED_TOOL): no effort means medium there.
 const THINKING_ONLY = /^claude-(?:opus-5-5|sonnet-5-5|fable-5-[12])/;
+// No effort set: '' in the form, null in a kept run, 'off' in a run kept before 2026-11-21's fix.
+const effortOf = (e) => (e && e !== 'off' ? e : '');
 function effortLabel(model, effort) {
-  if (effort) return effort;
+  if (effortOf(effort)) return effort;
   return THINKING_ONLY.test(model || '') ? 'medium' : 'no thinking';
 }
 const pct = (x) => (x == null ? '—' : (x * 100).toFixed(1) + '%');
@@ -68,7 +70,7 @@ export default function ParserEval({ token }) {
   const corpusCases = opts && opts.corpora && opts.corpora[pick.corpus] ? opts.corpora[pick.corpus].cases : 266;
   const hands = pick.sample ? Math.min(Number(pick.sample), corpusCases) : corpusCases;
   // A measured cost per hand for this model and effort, else the server's rough estimate.
-  const measured = runs.find((r) => r.model === pick.model && (r.effort || '') === pick.effort && r.costPerCase != null);
+  const measured = runs.find((r) => r.model === pick.model && effortOf(r.effort) === pick.effort && r.costPerCase != null);
   const perHand = measured ? measured.costPerCase : (estimates[pick.model] || {})[pick.effort];
   const cost = perHand == null ? null : perHand * hands;
 
