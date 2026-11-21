@@ -675,7 +675,21 @@ function App() {
     navPushRef.current = false;
     if (!token || RESET_MATCH || HAND_MATCH || PATH_HAND_ID) return;
     const want = tabHash(currentView);
-    if (!want || window.location.hash === want) return;
+    if (!want) {
+      /* A view with no address (Admin, Staking, New Events) still takes over the step a menu row opened it from, as
+         a tab with an address does by replacing it: the step stays the menu's otherwise, so the menu gave it back on
+         closing (useBackToClose), and that Back landed on the tab before, "#/home", and opened Home again (owner,
+         2026-11-21: "This admin link is not responding on mobile"). Back from the view still returns to that tab. */
+      try {
+        const st = window.history.state;
+        if (st && st.overlay != null) {
+          const { overlay, ...rest } = st;
+          window.history.replaceState({ ...rest, tab: currentView }, '', window.location.href);
+        }
+      } catch (_) { /* a sandboxed frame */ }
+      return;
+    }
+    if (window.location.hash === want) return;
     try {
       if (push) window.history.pushState({ tab: currentView }, '', want);
       else window.history.replaceState({ tab: currentView }, '', want);
