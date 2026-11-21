@@ -131,7 +131,9 @@ export default function ParserEval({ token }) {
              so far, and that the page can be left. */
           const p = s.progress || null;
           const frac = p && p.total ? Math.min(1, p.done / p.total) : 0;
-          const ms = p && p.done > 0 && s.startedAt ? ((Date.now() - s.startedAt) / p.done) * (p.total - p.done) : null;
+          // The rate is this run's own: a resumed run's carried hands took no time here.
+          const parsed = p ? p.done - (s.resumed || 0) : 0;
+          const ms = p && parsed > 0 && s.startedAt ? ((Date.now() - s.startedAt) / parsed) * (p.total - p.done) : null;
           const left = ms == null ? '' : ms < 90e3 ? ' · about a minute left' : ` · about ${Math.round(ms / 60e3)} min left`;
           const o = s.options;
           return (
