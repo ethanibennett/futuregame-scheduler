@@ -341,6 +341,16 @@ eq('getGamePills: a mix gives its games', getGamePills('Mixed', '9-Game Mixed Ch
 eq('getGamePills: a single game gives itself', getGamePills('2-7 Triple Draw', 'x').join(','), '2-7 TD');
 eq('getGamePills: an unspelled mix gives its name', getGamePills('Circus Mix', 'Super Circus Mix').join(','), 'Circus Mix');
 eq('getGamePills: no variant', getGamePills('', 'Main Event').length, 0);
+/* A structure sheet's list (the feed's mix_games): the event's own games, in its tables' order (owner, 2026-11-21). */
+const WYNN_NINE = ['Stud Hi', '2-7 TD', 'O8', 'Razz', 'Big O', 'Badugi', 'LHE', 'Stud 8', 'PLO'];
+const dgm = (v, n, m) => { const d = describeGame(v, n, m); return d ? `${d.label} [${d.games.join(',')}]` : null; };
+eq('a sheet names an unnamed mix\'s games', dgm('Mixed', 'Mixed Wynn Championship', WYNN_NINE), `Mixed [${WYNN_NINE.join(',')}]`);
+eq('as the stored JSON text too', dgm('Mixed', 'Mixed Wynn Championship', JSON.stringify(WYNN_NINE)), `Mixed [${WYNN_NINE.join(',')}]`);
+eq('a TORSE filed under HORSE takes its sheet\'s games and the title\'s name', dgm('HORSE', 'TORSE Championship', ['2-7 TD', 'O8', 'Razz', 'Stud Hi', 'Stud 8']), 'TORSE [2-7 TD,O8,Razz,Stud Hi,Stud 8]');
+eq('the sheet\'s order wins over the map\'s', dgm('HORSE', 'HORSE', ['O8', 'LHE', 'Razz', 'Stud Hi', 'Stud 8']), 'HORSE [O8,LHE,Razz,Stud Hi,Stud 8]');
+eq('a list of one is no list', dgm('Mixed', 'Mixed Wynn Championship', ['PLO']), 'Mixed []');
+eq('bad JSON is no list', dgm('Mixed', 'Mixed Wynn Championship', '[nope'), 'Mixed []');
+eq('getGamePills: a sheet\'s games', getGamePills('Mixed', 'Mixed Wynn Championship', WYNN_NINE).join(','), WYNN_NINE.join(','));
 
 console.log('currency — feed rows declare it; amounts are in the room\'s own units');
 // Before the column every uncurated venue fell to USD: Middelkerke's €550 Knockout read "$550".

@@ -346,7 +346,7 @@ export function bestGuess({ rows, schedule = [], updates = [], now = Date.now(),
   }
   cands.sort((a, b) => a.rank - b.rank || Math.abs(a.ts - now) - Math.abs(b.ts - now));
   for (const c of cands) {
-    const d = describeGame(c.t.game_variant, c.t.event_name);
+    const d = describeGame(c.t.game_variant, c.t.event_name, c.t.mix_games);
     if (!d) continue;
     const types = d.games.length ? d.games : [d.label];
     const games = types.map((x) => rowForGameType(rows, x)).filter(Boolean)

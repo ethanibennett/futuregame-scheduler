@@ -618,8 +618,8 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
   const [showConditionUI, setShowConditionUI] = useState(false);
   const [showRakeBreakdown, setShowRakeBreakdown] = useState(false);
   const [showMixGames, setShowMixGames] = useState(false);
-  const game = useMemo(() => describeGame(tournament.game_variant, tournament.event_name),
-    [tournament.game_variant, tournament.event_name]);
+  const game = useMemo(() => describeGame(tournament.game_variant, tournament.event_name, tournament.mix_games),
+    [tournament.game_variant, tournament.event_name, tournament.mix_games]);
   const [travelNotes, setTravelNotes] = useState(tournament.notes || '');
   const [editing, setEditing] = useState(false);
   const [editFields, setEditFields] = useState({});

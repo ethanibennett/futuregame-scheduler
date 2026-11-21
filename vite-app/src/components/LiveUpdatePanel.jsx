@@ -293,7 +293,7 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
 
   // Game variant pills for hand tab
   const gamePills = useMemo(() =>
-    selectedTournament ? getGamePills(selectedTournament.game_variant, selectedTournament.event_name) : ['NLH'],
+    selectedTournament ? getGamePills(selectedTournament.game_variant, selectedTournament.event_name, selectedTournament.mix_games) : ['NLH'],
     [selectedTournament]);
   const activeGame = handGame || gamePills[0] || 'NLH';
   const gameConfig = HAND_CONFIG[activeGame] || HAND_CONFIG_DEFAULT;

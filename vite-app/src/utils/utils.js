@@ -262,7 +262,29 @@ function listedGames(name) {
   return [];
 }
 
-export function describeGame(gameVariant, eventName) {
+/* The games a structure sheet lists for the event (the feed's `mix_games`, owner 2026-11-21: "When we have a
+   structure that says which games are in the mix the expanded card should show them in the same way horse does"):
+   an array, or the JSON text the tournaments column stores; null unless it names two games or more. */
+function sheetGames(mixGames) {
+  let v = mixGames;
+  if (typeof v === 'string') { try { v = JSON.parse(v); } catch { return null; } }
+  if (!Array.isArray(v)) return null;
+  const games = [...new Set(v.map(g => String(g || '').trim()).filter(Boolean))];
+  return games.length >= 2 ? games : null;
+}
+
+/* With `mixGames` (the sheet's list), the games are the sheet's, in its tables' order: Wynn's "Mixed Wynn
+   Championship" is nine games no title or variant names, and its TORSE rows come with game_variant HORSE. The
+   label is the mix the title names, else what the event is otherwise called ("Mixed"). */
+export function describeGame(gameVariant, eventName, mixGames) {
+  const listed = sheetGames(mixGames);
+  const base = describeGameFromNames(gameVariant, eventName);
+  if (!listed) return base;
+  const key = MIX_KEYS.find(k => MIX_KEY_RE[k].test(canonMixTitle(eventName)));
+  return { label: key || (base && base.label) || 'Mixed', games: listed };
+}
+
+function describeGameFromNames(gameVariant, eventName) {
   const variant = String(gameVariant || '').trim();
   if (MULTI_GAME_MAP[variant]) return { label: variant, games: MULTI_GAME_MAP[variant] };
   // The variant is a mix (or no answer at all) — the title gets to say which one.
@@ -287,8 +309,8 @@ export function describeGame(gameVariant, eventName) {
 }
 
 /* The games to offer for an event: the component games of a mix, else its one game. */
-export function getGamePills(gameVariant, eventName) {
-  const d = describeGame(gameVariant, eventName);
+export function getGamePills(gameVariant, eventName, mixGames) {
+  const d = describeGame(gameVariant, eventName, mixGames);
   if (!d) return [];
   return d.games.length ? d.games : [d.label];
 }

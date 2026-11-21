@@ -3546,6 +3546,16 @@ async function initDatabase() {
       }
     },
     {
+      // A mixed event's games as its structure sheet lists them, in its tables' order (JSON text), carried by the
+      // MTT feed as `mix_games` (owner, 2026-11-21: "When we have a structure that says which games are in the mix
+      // the expanded card should show them in the same way horse does"). The card's describeGame reads it.
+      name: 'tournaments-mix-games-2026-11',
+      fn: () => {
+        db.run('ALTER TABLE tournaments ADD COLUMN mix_games TEXT');
+        console.log('Added tournaments.mix_games');
+      }
+    },
+    {
       // When the room's clock showed the tournament finished: set by /api/live-clocks once a clock
       // it had seen running is gone from its provider (Bravo drops finished events). Stored, so it
       // survives restarts and reaches every client in the tournament list.
@@ -12405,6 +12415,16 @@ async function ingestMttFeed() { return ingestFeed('mtt-feed', 'mtt-feed', 'MTT 
 // their own tag and directory so the two can never prune each other.
 async function ingestOnlineFeed() { return ingestFeed('online-feed', 'online-feed', 'Online feed', 'ONL'); }
 
+// A mixed event's games as the feed carries them (`mix_games`, an array) or as production receives them in a
+// pushed row (the column's JSON text): stored as JSON text of two games or more, else null.
+function mixGamesText(v) {
+  let a = v;
+  if (typeof a === 'string') { try { a = JSON.parse(a); } catch { return null; } }
+  if (!Array.isArray(a)) return null;
+  const games = a.map(g => String(g == null ? '' : g).trim()).filter(Boolean).slice(0, 30);
+  return games.length >= 2 ? JSON.stringify(games) : null;
+}
+
 async function ingestFeed(feedDir, tag, label, idPrefix) {
   // Tests boot server.js from the repo, whose mtt-feed/ and online-feed/ hold real feed files on
   // the live box; DISABLE_FEED_INGEST=1 keeps a scratch DB free of them.
@@ -12460,7 +12480,7 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
              property = ?, is_online = ?, site = ?,
              -- A clock id only ever arrives; a snapshot without one must not erase it.
              clock_ref = COALESCE(?, clock_ref),
-             timezone = ?, currency = ?,
+             timezone = ?, currency = ?, mix_games = ?,
              source_pdf = ?, stable_id = COALESCE(stable_id, ?),
              -- Feed value wins when the feed has one. When it carries null, a locally
              -- attached sheet (a schedule-docs file name, from the structure upload)
@@ -12479,7 +12499,7 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
            t.house_fee, t.opt_add_on, t.rake_pct, t.rake_dollars, t.is_deepstack || 0,
            t.property || null, t.is_online || 0, t.site || null,
            t.clock_ref || null,
-           t.timezone || null, t.currency || null,
+           t.timezone || null, t.currency || null, mixGamesText(t.mix_games),
            t.source_pdf || tag, feedStableId(t, idPrefix), t.structure_sheet_path || null, t.structure_sheet_path || null,
            t.venue, t.event_number]
         );
@@ -12490,15 +12510,16 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
            game_variant, venue, notes, category, is_satellite, target_event,
            is_restart, parent_event, prize_pool, house_fee, opt_add_on,
            rake_pct, rake_dollars, source_pdf, is_deepstack, stable_id, structure_sheet_path, property,
-           is_online, site, clock_ref, timezone, currency)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           is_online, site, clock_ref, timezone, currency, mix_games)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [t.event_number || '', t.event_name, t.date, t.time, t.buyin,
            t.starting_chips, t.level_duration, t.reentry, t.late_reg, t.late_reg_end,
            t.game_variant, t.venue, t.notes, t.category, t.is_satellite || 0, t.target_event,
            t.is_restart || 0, t.parent_event, t.prize_pool, t.house_fee, t.opt_add_on,
            t.rake_pct, t.rake_dollars, t.source_pdf, t.is_deepstack || 0, feedStableId(t, idPrefix),
            t.structure_sheet_path || null, t.property || null,
-           t.is_online || 0, t.site || null, t.clock_ref || null, t.timezone || null, t.currency || null]
+           t.is_online || 0, t.site || null, t.clock_ref || null, t.timezone || null, t.currency || null,
+           mixGamesText(t.mix_games)]
         );
         inserts++;
         } catch (rowErr) {
@@ -13989,8 +14010,8 @@ async function upsertTournamentsByStableId(tournaments, source) {
     sel.free();
 
     db.run(
-      `INSERT INTO tournaments (stable_id, event_number, event_name, date, time, buyin, starting_chips, level_duration, reentry, late_reg, late_reg_end, game_variant, venue, notes, category, is_satellite, target_event, is_restart, parent_event, day_length, prize_pool, house_fee, opt_add_on, rake_pct, rake_dollars, is_deepstack, source_pdf, structure_sheet_path, property, is_online, site, clock_ref, timezone, currency)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO tournaments (stable_id, event_number, event_name, date, time, buyin, starting_chips, level_duration, reentry, late_reg, late_reg_end, game_variant, venue, notes, category, is_satellite, target_event, is_restart, parent_event, day_length, prize_pool, house_fee, opt_add_on, rake_pct, rake_dollars, is_deepstack, source_pdf, structure_sheet_path, property, is_online, site, clock_ref, timezone, currency, mix_games)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(stable_id) DO UPDATE SET
          event_number=excluded.event_number, event_name=excluded.event_name, date=excluded.date,
          time=excluded.time, buyin=excluded.buyin, starting_chips=excluded.starting_chips,
@@ -14003,7 +14024,7 @@ async function upsertTournamentsByStableId(tournaments, source) {
          is_deepstack=excluded.is_deepstack, structure_sheet_path=excluded.structure_sheet_path,
          property=excluded.property, is_online=excluded.is_online, site=excluded.site,
          clock_ref=COALESCE(excluded.clock_ref, tournaments.clock_ref), timezone=excluded.timezone,
-         currency=excluded.currency`,
+         currency=excluded.currency, mix_games=excluded.mix_games`,
       [
         t.stable_id, t.event_number || '', t.event_name, t.date, t.time || '12:00 PM',
         t.buyin || 0, t.starting_chips || null, t.level_duration || null,
@@ -14015,7 +14036,7 @@ async function upsertTournamentsByStableId(tournaments, source) {
         t.rake_pct || null, t.rake_dollars || null, t.is_deepstack ? 1 : 0,
         t.source_pdf || null, t.structure_sheet_path || null, t.property || null,
         t.is_online ? 1 : 0, t.site || null, t.clock_ref || null, t.timezone || null,
-        t.currency || null
+        t.currency || null, mixGamesText(t.mix_games)
       ]
     );
     if (existing) updated++; else { inserted++; newIds.push(t.stable_id); }
