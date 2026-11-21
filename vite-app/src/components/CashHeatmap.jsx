@@ -128,7 +128,7 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
     return () => { live = false; };
   }, [token, locationVersion, recheck]);
 
-  // While the watcher is switching, look again every 4 s (the box pulls the pick within 3 s and posts the
+  // While the watcher is switching, look again every 2 s (the box pulls the pick within 1 s and posts the
   // new room list the moment it is derived); stop after ~4 minutes rather than polling forever. Once the
   // switch applies, look twice more as the new rooms' games and sweep heatmaps arrive (owner, 2026-11-21:
   // "We have to get this to update much faster to a new location").
@@ -136,15 +136,15 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
   const wasPending = useRef(false);
   useEffect(() => { rechecks.current = 0; }, [locationVersion]);
   useEffect(() => {
-    if (!pending || rechecks.current >= 60) return undefined;
-    const id = setTimeout(() => { rechecks.current += 1; setRecheck(n => n + 1); }, 4000);
+    if (!pending || rechecks.current >= 120) return undefined;
+    const id = setTimeout(() => { rechecks.current += 1; setRecheck(n => n + 1); }, 2000);
     return () => clearTimeout(id);
   }, [pending, recheck]);
   useEffect(() => {
     if (pending) { wasPending.current = true; return undefined; }
     if (!wasPending.current) return undefined;
     wasPending.current = false;
-    const ids = [30000, 90000].map(ms => setTimeout(() => setRecheck(n => n + 1), ms));
+    const ids = [5000, 15000, 45000].map(ms => setTimeout(() => setRecheck(n => n + 1), ms));
     return () => ids.forEach(clearTimeout);
   }, [pending]);
 

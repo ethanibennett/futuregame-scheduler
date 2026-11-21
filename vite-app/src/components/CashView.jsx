@@ -305,7 +305,8 @@ export default function CashView({ token, onModeChange, sidePane = null }) {
   // After a location save the board must change, but the new room list only exists once the box
   // has pulled the location, re-derived and pushed it back (about 30-60 s). The board used to keep
   // its old rooms until the 5-minute refresh, so the picker looked like it did nothing. Now it
-  // checks every 2 s until the watcher reports the new location applied, then reloads as the rows arrive.
+  // checks every second until the watcher reports the new location applied, then reloads every 1.5 s for the
+  // first 12 s as the rows arrive (owner, 2026-11-21: "Can we get the update to be any faster?").
   const [switchingTo, setSwitchingTo] = useState(null);
   useEffect(() => {
     if (!locationVersion) return undefined;
@@ -323,16 +324,16 @@ export default function CashView({ token, onModeChange, sidePane = null }) {
           /* The new rooms' first polls land over the next half minute (the box polls them three at a time the
              moment their list is derived and pushes rows every 3 s; owner, 2026-11-21: "We have to get this to
              update much faster to a new location"), so the board reloads as they arrive. */
-          for (const ms of [3000, 6000, 9000, 12000, 15000, 20000, 25000, 30000, 45000, 60000, 90000, 120000]) followUps.push(setTimeout(() => { if (live) load(); }, ms));
+          for (const ms of [1500, 3000, 4500, 6000, 7500, 9000, 10500, 12000, 15000, 20000, 25000, 30000, 45000, 60000, 90000, 120000]) followUps.push(setTimeout(() => { if (live) load(); }, ms));
           return;
         }
         if (loc) setSwitchingTo((loc.requested && loc.requested.label) || loc.label || 'the new location');
       } catch { /* try again */ }
-      // Every 2 s (it was 8): the switch now applies within seconds of the pick.
-      if (live && tries < 90) timer = setTimeout(check, 2000);
+      // Every 1 s (it was 8, then 2): the switch now applies about a second after the pick.
+      if (live && tries < 180) timer = setTimeout(check, 1000);
       else if (live) setSwitchingTo(null);
     };
-    timer = setTimeout(check, 1000);
+    timer = setTimeout(check, 500);
     return () => { live = false; clearTimeout(timer); followUps.forEach(clearTimeout); };
   }, [locationVersion, token, load]);
 
