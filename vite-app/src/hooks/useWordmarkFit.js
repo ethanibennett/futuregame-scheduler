@@ -1,4 +1,5 @@
 import { useLayoutEffect } from 'react';
+import { measureWordmarkDot } from '../utils/wordmark-dot.js';
 
 // The top bar's "futurega.me" is exactly one column, 8g, wide in every theme and every display face
 // (owner, 2026-10-17). styles.css sets the box to var(--col) and a font size from a ratio measured
@@ -8,6 +9,30 @@ import { useLayoutEffect } from 'react';
 // in em), so one pass lands it, and a second takes up rounding. The size is written in g, never px,
 // so it holds when the screen width (and g) changes. Re-fits on a theme or face change and when the
 // webfonts finish loading.
+// The app's top bar plays the dot loop (utils/wordmark-dot.js): there the word's spacing for the dot is read from the
+// face first, and the width fitted is the whole mark, "futurega.me" with the room open, measured on layout (the
+// animation's transforms set aside), so the fit never depends on where the loop is.
+function wordWidth(el, range) {
+  const rect = range.getBoundingClientRect();
+  const me = el.querySelector('.wm-me');
+  if (!me) return rect.width;
+  const t = getComputedStyle(me).transform;
+  const moved = t && t !== 'none' ? new DOMMatrixReadOnly(t).m41 : 0;
+  const gap = parseFloat(getComputedStyle(el).getPropertyValue('--wm-gap')) || 0;
+  return me.getBoundingClientRect().right - moved + gap * parseFloat(getComputedStyle(el).fontSize) - rect.left;
+}
+
+function setDotGeometry(el) {
+  if (!el.querySelector('.wm-me')) return;
+  const geo = measureWordmarkDot(el);
+  if (!geo) return;
+  const em = (v) => `${v.toFixed(4)}em`;
+  el.style.setProperty('--wm-gap', em(geo.gap));
+  el.style.setProperty('--wm-dot-x', em(geo.dotX));
+  if (geo.base != null) el.style.setProperty('--wm-base', em(geo.base));
+  if (geo.originY != null) el.style.setProperty('--wm-dot-oy', em(geo.originY));
+}
+
 function fit(el) {
   if (!el || !el.isConnected) return;
   const probe = document.createElement('div');
@@ -17,10 +42,14 @@ function fit(el) {
   probe.remove();
   if (!(g > 0)) return;
   const target = g * 8;
+  // Under Reduce Motion the app-wide rule gives every property a 1ms transition, the font size included, so the
+  // second pass read the size before the first had landed and the word stayed up to half a pixel off 8g.
+  el.style.transitionProperty = 'none';
+  setDotGeometry(el);
   const range = document.createRange();
   range.selectNodeContents(el);
   for (let i = 0; i < 2; i++) {
-    const w = range.getBoundingClientRect().width;
+    const w = wordWidth(el, range);
     const fs = parseFloat(getComputedStyle(el).fontSize);
     if (!(w > 0) || !(fs > 0)) return;
     if (Math.abs(w - target) < 0.25) return;
@@ -42,7 +71,7 @@ export default function useWordmarkFit(ref) {
     }
     // A theme is html[data-theme]; a chosen serif is a custom property on html's style or a class.
     const mo = new MutationObserver(later);
-    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'style', 'class'] });
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-serif', 'style', 'class'] });
     window.addEventListener('resize', later);
     return () => {
       cancelAnimationFrame(raf);

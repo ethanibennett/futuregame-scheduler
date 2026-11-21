@@ -914,6 +914,14 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   every face-down card wears it: the replayer, saved-hand rows, the trainers' `.card-back`). The logo is traced to
   shapes in a data URI (`--back-btg-mark` in styles.css) and is a background, so the turn-over copies it (with its size,
   position and repeat). A viewer preference: a shared link does not carry it.
+- **The top bar's wordmark loops, forever** (owner, 2026-11-20; `.wm-loop` in styles.css, `utils/wordmark-dot.js`,
+  `npm test`): "futuregame", then "me" slides right and a blue dot grows in, holds as "futurega.me", the dot shrinks
+  away and "me" slides back, every 4.8 s; still "futurega.me" under Reduce Motion. Transforms only, on spans in App.jsx's
+  h1 (`wm-u`, `wm-dot`, `wm-me`). `useWordmarkFit` reads the room and the dot's place from the face's ink on a canvas (the
+  same clear space to the a as to the m, in every face) and fits the whole mark, room open, to 8g. In Baskerville the
+  u's are 0.97 tall, from the baseline, so their serifs meet the f's and t's crossbars, and while there is no dot the
+  a's tail and the m's serif are one (`.wm-me::before` fills the slot's foot between them). Only the app's top bar loops:
+  the sign-in, /live, the backer page and the shared schedule keep the plain word.
 - **The Swiss theme** (owner, 2026-10-16; app admins only): `swiss-light` and `swiss-dark`, in the theme button's
   cycle only for an admin (`utils/theme.js` themeOrder/nextTheme), and shown only to one: `hooks/useThemeChoice.js` gives anyone else
   the standard theme when Swiss is stored on the device (signed out, a non-admin, a backer page), keeping the stored choice. Every style is `vite-app/src/theme-swiss.css`,
