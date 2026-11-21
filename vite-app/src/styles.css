@@ -17228,7 +17228,14 @@
 .growth-status.is-act { color: var(--danger); }
 .growth-spend { display: flex; align-items: stretch; column-gap: var(--gu); max-width: calc(var(--gu) * 46); }
 .growth-spend > select, .growth-spend .money-field > input { box-sizing: border-box; height: calc(var(--subrow) * 5); }
-.growth-spend > select { flex: 0 0 calc(var(--gu) * 10); }
+/* The channel select as the parser eval's (quick-add-admin.css .qa-eval-select): its own face and size, padding and a
+   hairline; left to WebKit's defaults its label sat 15.8px off the box's centre (check:controls, 1440). */
+.growth-spend > select {
+  flex: 0 0 calc(var(--gu) * 10); margin: 0; padding: 0 var(--gu); border: 0; border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border); background: var(--surface); color: var(--text);
+  font-family: var(--font-condensed); font-size: var(--fs-sm);
+}
+.growth-spend > select:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 .growth-spend > .parser-eval-btn { flex: 0 0 calc(var(--gu) * 17); }
 .parser-eval .an-p { white-space: normal; }
 .parser-eval .an-sec { margin-bottom: var(--subrow); }
