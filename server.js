@@ -495,10 +495,17 @@ function deriveUsername(realName) {
 // by a few counts between polls, so it is kept here and served at once, refreshed in the background
 // once it is a minute old (owner, 2026-10-17: "the heat map just took too long to load"; five minutes until
 // 2026-11-21, which kept a new location's rooms off the heatmap's list that long: "It's VERY slow"). A location
-// change drops it, so the next read waits for the new rooms rather than serving the old ones.
+// change drops it, so the next read waits for the new rooms rather than serving the old ones, and for two
+// minutes after it the cache is refreshed every 5 s: the new rooms' sweep games (weeks of history the box sends
+// a few seconds after the room list) would otherwise stay off the list a minute or more ("no heatmaps for
+// columbus, oh", 2026-11-21).
 const CASH_GAMES_TTL_MS = 60 * 1000;
+const CASH_GAMES_SWITCH_TTL_MS = 5 * 1000;
+const CASH_GAMES_SWITCH_WINDOW_MS = 2 * 60 * 1000;
 let cashGamesCache = null; // { at, type, body }
 let cashGamesRefresh = null;
+let cashLocationAt = 0; // when the location was last written
+const cashGamesTtl = () => (Date.now() - cashLocationAt < CASH_GAMES_SWITCH_WINDOW_MS ? CASH_GAMES_SWITCH_TTL_MS : CASH_GAMES_TTL_MS);
 
 app.use('/api/cash', authenticateToken, (req, res) => {
   const u = String((req.user && req.user.username) || '').toLowerCase();
@@ -534,13 +541,22 @@ app.use('/api/cash', authenticateToken, (req, res) => {
     })
     .catch(() => null)
     .finally(() => { cashGamesRefresh = null; });
+  // Within a switch's first two minutes a stale list is not served while it refreshes: the read waits, so the new
+  // rooms' games show at the app's next look rather than the one after (served stale, each look got the list as it
+  // was one refresh earlier, and the swept games arrived ~15 s late).
+  const switchWindow = Date.now() - cashLocationAt < CASH_GAMES_SWITCH_WINDOW_MS;
   if (isGamesRead && cashGamesCache) {
-    if (Date.now() - cashGamesCache.at > CASH_GAMES_TTL_MS && !cashGamesRefresh) cashGamesRefresh = fetchGames();
-    if (cashGamesCache.type) res.type(cashGamesCache.type);
-    return res.status(200).send(cashGamesCache.body);
+    const stale = Date.now() - cashGamesCache.at > cashGamesTtl();
+    if (stale && !cashGamesRefresh) cashGamesRefresh = fetchGames();
+    if (!(stale && switchWindow)) {
+      if (cashGamesCache.type) res.type(cashGamesCache.type);
+      return res.status(200).send(cashGamesCache.body);
+    }
   }
   if (isGamesRead && cashGamesRefresh) {
+    const held = cashGamesCache;
     return cashGamesRefresh.then((c) => {
+      if (!c) c = held; // a failed refresh falls back to the list already held
       if (!c) return res.status(503).json({ error: 'cash watcher offline' });
       if (c.type) res.type(c.type);
       res.status(200).send(c.body);
@@ -572,7 +588,7 @@ app.use('/api/cash', authenticateToken, (req, res) => {
     if (type) res.type(type);
     if (isGamesRead && upstream.ok) cashGamesCache = { at: Date.now(), type, body };
     // A new location: the cached games are the old rooms', so the next read fetches afresh.
-    if (isLocationWrite && upstream.ok) cashGamesCache = null;
+    if (isLocationWrite && upstream.ok) { cashGamesCache = null; cashLocationAt = Date.now(); }
     res.status(upstream.status).send(body);
   })();
 });

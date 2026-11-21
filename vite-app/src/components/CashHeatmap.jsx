@@ -71,6 +71,13 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
   const [status, setStatus] = useState('loading'); // loading | ready | error
   const [err, setErr] = useState('');
   const [pick, setPick] = useState(null); // a tapped cell, for the readout
+  // Counts the catalog's loads, so the heatmap on screen is asked for again each time (below).
+  const [catalogAt, setCatalogAt] = useState(0);
+  // The selection as last rendered, and whether it was made for the viewer (not picked from the lists): a stored
+  // pick is the viewer's; a location whose rooms do not include it makes the next one automatic.
+  const selRef = useRef(sel);
+  selRef.current = sel;
+  const autoSel = useRef(!sel);
 
   // Catalog (venues + games) for the pickers.
   useEffect(() => {
@@ -106,22 +113,33 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
            ("Bravo Bela"). A switch now applies within seconds, so it waits on the list instead. */
         if (!named) {
           if (!live) return;
+          // Mid-switch, pending drives the 2 s recheck below; without it this message never cleared on its own.
+          setPending(switching ? ((loc.requested && loc.requested.label) || loc.label || 'the new location') : null);
           setErr(switching ? 'Updating the rooms for the new location…' : 'Could not load the room names. Try again.');
           setStatus('error');
           return;
         }
-        const rows = (g.games || []).filter(row => vNames[row.venueSlug]);
+        // A row with no stakes ("NLH null", a listing the room gave no blinds) has no heatmap to show.
+        const rows = (g.games || []).filter(row => vNames[row.venueSlug] && row.stakes && row.stakes !== 'null');
         const byVenue = {};
         rows.forEach(row => { (byVenue[row.venueSlug] = byVenue[row.venueSlug] || []).push(row); });
         for (const k of Object.keys(byVenue)) byVenue[k].sort(gameOrder);
         if (!live) return;
         setPending(switching ? ((loc.requested && loc.requested.label) || loc.label || 'the new location') : null);
         setCatalog({ vNames, byVenue });
-        setSel(prev => {
-          if (prev && byVenue[prev.venue] && byVenue[prev.venue].some(x => x.gameType === prev.gameType && x.stakes === prev.stakes)) return prev;
+        setCatalogAt(n => n + 1);
+        /* The selection: the one on screen while this location still has it and it was the viewer's choice, else
+           the most-seen game. A choice made for the viewer is made again at each load, because the first load
+           after a switch counts only the collector's few polls (the sweep's weeks arrive seconds later), so it
+           would keep a minor game. Worked out here, not in a state updater, which React may run again. */
+        const prev = selRef.current;
+        const valid = !!(prev && byVenue[prev.venue] && byVenue[prev.venue].some(x => x.gameType === prev.gameType && x.stakes === prev.stakes));
+        if (!valid) autoSel.current = true;
+        if (!valid || autoSel.current) {
           const best = rows.slice().sort((a, b) => (b.samples || 0) - (a.samples || 0))[0];
-          return best ? { venue: best.venueSlug, gameType: best.gameType, stakes: best.stakes } : null;
-        });
+          const next = best ? { venue: best.venueSlug, gameType: best.gameType, stakes: best.stakes } : null;
+          if (!next || !prev || next.venue !== prev.venue || next.gameType !== prev.gameType || next.stakes !== prev.stakes) setSel(next);
+        }
         setStatus('ready');
       } catch { if (live) { setErr('Could not reach the server.'); setStatus('error'); } }
     })();
@@ -130,8 +148,9 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
 
   // While the watcher is switching, look again every 2 s (the box pulls the pick within 1 s and posts the
   // new room list the moment it is derived); stop after ~4 minutes rather than polling forever. Once the
-  // switch applies, look twice more as the new rooms' games and sweep heatmaps arrive (owner, 2026-11-21:
-  // "We have to get this to update much faster to a new location").
+  // switch applies, look again as the new rooms' games and sweep heatmaps arrive (owner, 2026-11-21:
+  // "We have to get this to update much faster to a new location"; "no heatmaps for columbus, oh": the box
+  // sends a room's weeks of sweep a few seconds after its room list, so the first look has only its own polls).
   const rechecks = useRef(0);
   const wasPending = useRef(false);
   useEffect(() => { rechecks.current = 0; }, [locationVersion]);
@@ -144,16 +163,20 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
     if (pending) { wasPending.current = true; return undefined; }
     if (!wasPending.current) return undefined;
     wasPending.current = false;
-    const ids = [5000, 15000, 45000].map(ms => setTimeout(() => setRecheck(n => n + 1), ms));
+    const ids = [3000, 8000, 15000, 30000, 60000].map(ms => setTimeout(() => setRecheck(n => n + 1), ms));
     return () => ids.forEach(clearTimeout);
   }, [pending]);
 
-  // Heatmap for the current selection.
+  /* Heatmap for the current selection, asked for again whenever the catalog reloads: a room picked moments ago
+     answers from its few collector polls until the box's sweep summaries land, and the selection usually stays
+     the same across those reloads, so keying on it alone kept that first, nearly empty answer on screen. A
+     refresh of the same selection keeps its cells until the new ones arrive (no flash of Loading). */
+  const shownKey = useRef('');
   useEffect(() => {
     if (!sel) return;
     let live = true;
-    setCells(null);
-    setBasis(null);
+    const key = `${sel.venue}|${sel.gameType}|${sel.stakes}`;
+    if (key !== shownKey.current) { shownKey.current = key; setCells(null); setBasis(null); }
     (async () => {
       const headers = { Authorization: 'Bearer ' + token };
       const tz = -new Date().getTimezoneOffset(); // minutes UTC->local, as the API wants
@@ -162,12 +185,12 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
         const res = await fetch(`${API_URL}/cash/heatmap?${qs.toString()}`, { headers });
         const j = res.ok ? await res.json() : { cells: [] };
         if (live) { setCells(j.cells || []); setBasis(j.source ? { source: j.source, days: j.days, windowDays: j.windowDays } : null); }
-      } catch { if (live) setCells([]); }
+      } catch { if (live) setCells(c => c || []); }
     })();
     return () => { live = false; };
-  }, [sel, token]);
+  }, [sel, token, catalogAt]);
 
-  const persistSel = useCallback((s) => { setSel(s); try { localStorage.setItem(SEL_KEY, JSON.stringify(s)); } catch { /* ignore */ } setPick(null); }, []);
+  const persistSel = useCallback((s) => { autoSel.current = false; setSel(s); try { localStorage.setItem(SEL_KEY, JSON.stringify(s)); } catch { /* ignore */ } setPick(null); }, []);
   const persistMetric = useCallback((m) => { setMetric(m); try { localStorage.setItem(METRIC_KEY, m); } catch { /* ignore */ } }, []);
 
   /* Seat the grid on the r lines: the pickers and metric buttons above it are not whole-r
@@ -232,7 +255,7 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
     <div style={wrap}>
       {pending && (
         <div style={{ height: 'calc(var(--subrow) * 3)', lineHeight: 'calc(var(--subrow) * 3)', fontSize: 'var(--fs-sm)', color: 'var(--text-muted,#aaa)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 'var(--space-sm)' }}>
-          Switching rooms to {pending}. The list updates within about ten minutes.
+          Switching rooms to {pending}. The list updates in a few seconds.
         </div>
       )}
       {/* Room and Game as the app's own fields (UX pick 102): two 17g x 5r tiles, a caption over the
