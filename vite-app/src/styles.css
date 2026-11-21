@@ -4614,10 +4614,11 @@
     /* Draw card selection — tap to discard */
     .card-img.draw-selectable { transition: filter var(--dur-snap) ease, opacity var(--dur-snap) ease, transform var(--dur-snap) var(--ease-out); }
     .card-img.draw-selectable:active { transform: scale(0.92); }
+    /* A thrown card dims where it is and does not sink (owner, 2026-11-21: "cards in the replayer are STILL sliding up
+       and down. STOP IT"). */
     .card-img.draw-discarded {
       filter: grayscale(0.8) brightness(0.45);
       opacity: 0.5;
-      transform: translateY(calc(var(--subrow) * 0.5));
     }
 
 
@@ -6810,8 +6811,12 @@
     /* The seats' words (Replayer animations 55, 58, 63, 66, 71). */
     .replayer-action-badge-outer.is-stale { opacity: 0.4; }
     .replayer-out-mark { font: inherit; letter-spacing: inherit; color: var(--text-muted); }
-    .replayer-seat.is-out .replayer-seat-info { scale: 0.93; opacity: 0.5; }
+    /* Out dims; it does not shrink (owner, 2026-11-21: "the highlight around hero's seat box is jittering and not
+       smooth": the scale to 0.93 re-drew the hairline border and its glow at every in-between size). */
+    .replayer-seat.is-out .replayer-seat-info { opacity: 0.5; }
     .replayer-seat-hand-name.is-trailing { opacity: 0.55; }
+    /* Showdown Equity's figure, in the seat's own readout (2026-11-21; seatEquity). */
+    .replayer-seat-hand-name .hn-eq { white-space: nowrap; font-variant-numeric: tabular-nums; }
     .replayer-seat-hand-name.is-note { color: var(--brand-on-dark); }
     /* A ring on its way between plaques (51) or closing onto one (57); the plaque's own ring waits for it. */
     /* The crossfading ring is drawn exactly as .active-turn draws the plaque (border, bevel, both rings), so the

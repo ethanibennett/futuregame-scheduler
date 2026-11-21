@@ -18,6 +18,7 @@ import { parseCardNotation, evaluateHand, evaluateShowdown, assignNeutralSuits, 
          boardKey, handBoards, boardCount, runRows, multiBoardWinners, multiBoardEvals, multiBoardShaped, combinesHiLo,
          seatOrderFromButton } from '../utils/poker-engine.js';
 import { encodeHand, VISUAL_SWITCHES } from '../utils/hand-shorthand.js';
+import { ODDS_GAMES } from '../utils/odds.js';
 import { MomentNote, NoteTrack, NoteSheet, DetailsSheet, SendHandSheet, QuestionCard, ImportHandsSheet, SentToYou, FromYourWatch, noteAt, heroDecisionNext, questionHand } from './HandExtras.jsx';
 import { keepListCopy, listCopy, outbox as readOutbox, addToOutbox, flushOutbox } from '../utils/hand-outbox.js';
 import { loadCardImages, ensureExportFonts } from '../utils/export.js';
@@ -1260,6 +1261,18 @@ const chipRound = (v) => Math.round(v * 1e6) / 1e6;
    indicate which ones play"): every card stays where it was dealt. Dimming is not a slide and stays (a counterfeit, a
    stud card that does not play). */
 const SHOWDOWN_SLIDES = false;
+/* No card moves up or down on its own, at any step (owner, 2026-11-21: "cards in the replayer are STILL sliding up and
+   down. STOP IT"). Off, every lift SHOWDOWN_SLIDES did not cover stays still: the hero's made hand lifting as a street
+   lands (17), the stud door card at the bring-in (4), the half-r rise of a card turning face up (19/15, seventh street's
+   too), a pat hand's rap toward the middle (11), a draw game's thrown cards rising before the draw (and a card marked
+   on the felt in the drill), and the board row sliding up as a hand run twice parts into its runs (13). Cards still
+   travel in from the dealer spot, turn over, dim, and go to the muck. */
+const CARD_LIFTS = false;
+/* An all-in's ring does not close onto its plaque from 1.35 times its size (Replayer animations 57): on the arm spring,
+   damped short of critical, it shrank past the plaque and back while the turn's own ring was still fading on it, the
+   "jittering" the owner saw round the hero's plaque (2026-11-21: "the highlight around hero's seat box is jittering
+   and not smooth"). The plaque takes its purple border and glow in place, on its own transition. */
+const RING_CLOSES = false;
 /* The pot's pile draws the whole pot, as its figure does (owner, 2026-11-15: "This stack of chips should change to reflect the
    number in the pot"): wagers in front of the seats included, so a sweep moves chips into it without changing it. */
 const PILE_IS_WHOLE_POT = true;
@@ -1395,44 +1408,13 @@ function estimateRange(hand, playerIdx, upToStreet, upToAction) {
   return null;
 }
 
-function calcShowdownEquity(hand, heroCardsStr, opponentCardsArr, boardCardsStr, gameCfg, gameEval, folded, replayHeroIdx) {
-  if (!gameEval || gameEval.type === 'halves') return null;
-  const bCards = boardCardsStr ? parseCardNotation(boardCardsStr).filter(c => c.suit !== 'x') : [];
-  const getScore = (holeStr) => {
-    try {
-      const hole = parseCardNotation(holeStr).filter(c => c.suit !== 'x');
-      if (hole.length < 2) return 0;
-      const all = hole.concat(bCards);
-      let ev;
-      if (gameEval.type === 'low') {
-        ev = gameEval.lowType === 'a5' ? bestLowA5Hand(all, false) : bestLow27Hand(all);
-        return ev && ev.score < Infinity ? (1e9 - ev.score) : 0;
-      }
-      if (gameEval.type === 'hilo') {
-        const hiEv = bestHighFor(gameEval, hole, bCards);
-        const loEv = bestLow8For(gameEval, hole, bCards);
-        const hiScore = hiEv && hiEv.score ? hiEv.score : 0;
-        const loScore = loEv && loEv.qualified ? (1e9 - loEv.score) : 0;
-        return hiScore + loScore;
-      }
-      ev = bestHighFor(gameEval, hole, bCards);
-      return ev && ev.score ? ev.score : 0;
-    } catch { return 0; }
-  };
-  const activePlayers = [];
-  hand.players.forEach((p, pi) => { if (!folded.has(pi)) activePlayers.push(pi); });
-  if (activePlayers.length < 2) return null;
-  const scores = {};
-  activePlayers.forEach(pi => {
-    const cards = pi === replayHeroIdx ? heroCardsStr : (opponentCardsArr[pi] || '');
-    if (!cards || cards === 'MUCK') { scores[pi] = 0; return; }
-    scores[pi] = getScore(cards);
-  });
-  let totalScore = 0;
-  activePlayers.forEach(pi => { totalScore += Math.max(scores[pi] || 0, 1); });
-  const equities = {};
-  activePlayers.forEach(pi => { equities[pi] = Math.round((Math.max(scores[pi] || 0, 1) / totalScore) * 100); });
-  return equities;
+/* The odds tool's name for a replayer game (utils/odds.js ODDS_GAMES), for Showdown Equity, or null where it cannot
+   play it (draw games, and anything it has no rules for). Limit and pot-limit forms play as their no-limit game. */
+function oddsGameFor(gameType) {
+  const g = String(gameType || '');
+  if (ODDS_GAMES.some(x => x[0] === g)) return g;
+  const map = { LHE: 'NLH', PLH: 'NLH', 'Limit Hold\'em': 'NLH', 'LO Hi': 'PLO', 'PLO Hi': 'PLO', O8: 'PLO8', NLO8: 'PLO8', 'Big O': 'NL Big O', 'PL Big O': 'NL Big O', 'Stud 8/b': 'Stud 8' };
+  return map[g] || null;
 }
 
 function calcPotBeforeAction(hand, streetIdx, actionIdx) {
@@ -1975,8 +1957,9 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
         // Stud at showdown: the cards that do not play dim where they were dealt (with SHOWDOWN_SLIDES on, the five that
         // play would also rise as up cards and the rest drop to the down cards' place).
         const plays = playIds && c.suit !== 'x' ? playIds.has(c.rank + c.suit) : null;
+        // A thrown card only dims while CARD_LIFTS is off (owner, 2026-11-21): it no longer rises.
         const studYOffset = plays != null && SHOWDOWN_SLIDES ? (plays ? STUD_LIFT_UP : STUD_LIFT_DOWN)
-          : isStudUp ? STUD_LIFT_UP : isDown ? STUD_LIFT_DOWN : (isDiscard ? STUD_LIFT_UP : '');
+          : isStudUp ? STUD_LIFT_UP : isDown ? STUD_LIFT_DOWN : (isDiscard && CARD_LIFTS ? STUD_LIFT_UP : '');
         // A revealed face never reverses: the rank index lives at top-left only,
         // so leftmost-on-top buries every rank but the first.
         // 63: --ci is the card's place in the hand. The per-card deal
@@ -1994,7 +1977,7 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
           : getFlatStyle(i, cards.length, studYOffset, rowReverseZ)),
           ...(isDiscard ? { opacity: 0.4 } : null),
           // A card marked on the felt eases back when it is unmarked, as well as out.
-          ...(isDiscard || onCardTap ? { transition: 'transform 260ms var(--ease-out), opacity 260ms var(--ease-out)' } : null) };
+          ...(isDiscard || onCardTap ? { transition: CARD_LIFTS ? 'transform 260ms var(--ease-out), opacity 260ms var(--ease-out)' : 'opacity 260ms var(--ease-out)' } : null) };
         /* The drill's draw: the card itself is the control (owner, 2026-11-04). Fanned cards overlap, and
            each takes the taps on the part of it that shows. */
         const id = c.rank + c.suit;
@@ -2382,7 +2365,7 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             { key:'showSPR', label:'Stack-to-Pot Ratio', sub:'SPR under the pot, from the flop on' },
             { key:'showBetSizing', label:'Bet Sizing', sub:'A pot-relative label on each wager' },
             { key:'showRanges', label:'Range Read', sub:'An estimated strength tier per opponent' },
-            { key:'showEquity', label:'Showdown Equity', sub:'Who is ahead once the cards are up' },
+            { key:'showEquity', label:'Showdown Equity', sub:'Each all-in hand’s chance while cards are to come' },
           ])}
         </details>
         <div className="replayer-settings-group">
@@ -7052,16 +7035,53 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      has been decided — a scoreboard shown after the whistle. The moment a
      viewer wants a percentage is when the money goes IN, and then again as
      each card lands. It runs from the point the last live player is committed. */
-  const runout = allIn.size > 0 && (hand.players.length - folded.size - allIn.size) <= 0;
-  const showdownEquity = useMemo(() => {
-    if (!rSettings.showEquity || !gameEval) return null;
-    // Equity is one board's; with several boards it would be wrong, so it is not shown.
-    if (boardCount(hand) > 1) return null;
-    if (!showResult && !runout) return null;
-    try {
-      return calcShowdownEquity(hand, heroCards, opponentCards, boardCards, gameCfg, gameEval, folded, replayHeroIdx);
-    } catch { return null; }
-  }, [rSettings.showEquity, showResult, runout, hand, heroCards, opponentCards, boardCards, gameCfg, gameEval, folded, replayHeroIdx]);
+  /* All in and called, the board to come: two or more live, one at least all in, at most one with chips behind, and no
+     action left in the hand from here (exposeAllIn's test, in cash too). It had counted only a table where EVERY live
+     seat was all in, so a caller with chips behind (most all-ins) never showed a figure until the result. */
+  const runout = useMemo(() => {
+    const live = hand.players.map((_, i) => i).filter(i => !folded.has(i));
+    if (live.length < 2 || !live.some(i => allIn.has(i)) || live.filter(i => !allIn.has(i)).length > 1) return false;
+    for (let si = streetIdx; si < hand.streets.length; si++) {
+      const acts = hand.streets[si].actions || [];
+      if (acts.length > (si === streetIdx ? actionIdx + 1 : 0)) return false;
+    }
+    return true;
+  }, [hand, folded, allIn, streetIdx, actionIdx]);
+  /* The figure is each hand's real chance of the pot (owner, 2026-11-21: "This is a mess"): computeOdds (utils/odds.js, the
+     Study odds tool's), every run-out from the flop on and a sample before it, on its worker so a step never waits for it.
+     It was each hand's evaluator score over the sum of them, so a wheel that had lost to a flush read 39%. Only while
+     cards are to come in an all-in with every hand known, on one board, in a game the odds tool plays (not draw games). */
+  const equityAsk = useMemo(() => {
+    if (!rSettings.showEquity || showResult || !runout || boardCount(hand) > 1) return null;
+    const game = oddsGameFor(hand.gameType);
+    // Board games only: a stud seat's cards here are not yet every card it holds, which the odds tool needs.
+    if (!game || (ODDS_GAMES.find(x => x[0] === game) || [])[3] !== 'board') return null;
+    const seats = hand.players.map((_, pi) => pi).filter(pi => !folded.has(pi));
+    if (seats.length < 2) return null;
+    const hands = seats.map(pi => (pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '')));
+    if (hands.some(h => !h || h === 'MUCK' || parseCardNotation(h).some(c => c.suit === 'x'))) return null;
+    if (parseCardNotation(boardCards).filter(c => c.suit !== 'x').length >= 5) return null;
+    return { game, seats, hands, board: boardCards, key: [game, hands.join(','), boardCards].join('|') };
+  }, [rSettings.showEquity, showResult, runout, hand, folded, replayHeroIdx, heroCards, opponentCards, boardCards]);
+  const [equityRes, setEquityRes] = useState(null);
+  const equityKey = equityAsk ? equityAsk.key : '';
+  useEffect(() => {
+    if (!equityAsk) return undefined;
+    let worker = null, gone = false;
+    try { worker = new Worker(new URL('../utils/odds-worker.js', import.meta.url), { type: 'module' }); } catch { return undefined; }
+    worker.onmessage = (e) => {
+      const r = e.data && e.data.result;
+      if (!gone && r && Array.isArray(r.players)) setEquityRes({ key: equityAsk.key, seats: equityAsk.seats, pct: r.players.map(p => Math.round(p.equity * 100)) });
+      worker.terminate();
+    };
+    worker.postMessage({ id: 1, game: equityAsk.game, hands: equityAsk.hands, board: equityAsk.board });
+    return () => { gone = true; worker.terminate(); };
+  }, [equityKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const showdownEquity = equityAsk && equityRes && equityRes.key === equityAsk.key
+    ? Object.fromEntries(equityRes.seats.map((s, i) => [s, equityRes.pct[i]])) : null;
+  /* A seat's equity as a figure in its readout, so the readout's placement keeps it off the plaque and everything else
+     (it was a bar and a percentage pinned half an r above the seat's foot, across a bottom seat's plaque). */
+  const seatEquity = (pi) => (showdownEquity && !showResult && showdownEquity[pi] != null && !folded.has(pi) ? showdownEquity[pi] : null);
 
   /* Which half (or halves) each stored winner took. Hands saved before the
      evaluator recorded hi/lo flags only carry it in the label text, which is
@@ -10816,7 +10836,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         }
 
         // 4: the door card that forced the bring-in lifts once.
-        if (act && act.action === 'bring-in' && gameCfg.isStud) {
+        if (CARD_LIFTS && act && act.action === 'bring-in' && gameCfg.isStud) {
           const door = rowEls(act.player)[2];
           if (door) {
             const size = sizeOf(door), dy = -rPx();
@@ -10849,7 +10869,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           });
           if (turning.length && rSettings.animateDeal) {
             const seatStep = turning.length > 1 ? Math.min(S.beat, 560 / (turning.length - 1)) : 0;
-            const lift = 0.5 * rPx();
+            const lift = CARD_LIFTS ? 0.5 * rPx() : 0;
             const jobs = [];
             turning.forEach((faces, k) => faces.forEach((el, j) => {
               const delay = (k * seatStep + j * S.cardLag) / rate;
@@ -10883,7 +10903,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             });
           });
           if (jobs.length) {
-            const lift = 0.5 * rPx();
+            const lift = CARD_LIFTS ? 0.5 * rPx() : 0;
             writes.push(() => jobs.forEach(j => {
               j.el.getAnimations().forEach(a => a.cancel());
               dealIn(motion, { set, rate, el: j.el, dx: j.dx, dy: j.dy, delay: j.delay, size: j.size });
@@ -10901,7 +10921,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           if (extras.length) {
             const parting = !hand.doubleBoard && !before.extraRows && before.rowY != null;
             const jobs = [];
-            if (parting) {
+            if (parting && CARD_LIFTS) {
               const rows = [area.querySelector(':scope > .card-row:not(.replayer-board-extra)'), ...extras].filter(Boolean);
               rows.forEach(row => {
                 const r = row.getBoundingClientRect();
@@ -10936,7 +10956,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           // 11: a hand that stands pat is rapped once, toward the middle of the table, as its PAT is declared.
           const nActs = (hand.streets[streetIdx]?.actions || []).length;
           const declared = (motionKind === 'action' && actionIdx === nActs - 1) || (motionKind === 'street' && nActs === 0);
-          if (declared) {
+          if (declared && CARD_LIFTS) {
             const r = rPx();
             const jobs = [];
             (hand.streets[streetIdx]?.draws || []).filter(d => d && d.discarded === 0 && !folded.has(d.player)).forEach(d => {
@@ -10972,7 +10992,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
 
         // 17: the card that lifts the hero's hand into a new category: the five that now play lift together, once.
         const landed = 320 / rate;
-        if (motionKind === 'street' && category === 'community' && !folded.has(replayHeroIdx) && boardCount(hand) <= 1
+        if (CARD_LIFTS && motionKind === 'street' && category === 'community' && !folded.has(replayHeroIdx) && boardCount(hand) <= 1
           && (SHOWDOWN_SLIDES || !decidedNow)) {
           const cfg = gameEvalFor(hand.gameType, hand);
           const board = parseCardNotation(boardCards).filter(c => c.suit !== 'x');
@@ -11311,8 +11331,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             { prop: 'opacity', ramp: { from: 1, to: 0.4, delay: (60 + k * 25) / rate, duration: S4.beat / rate } },
           ] })));
         }
-        // 57: an all-in's ring closes onto its plaque from 1.35 times its size.
-        if (act4 && act4.action === 'all-in' && layer && L) {
+        // 57: an all-in's ring closes onto its plaque from 1.35 times its size. Off (RING_CLOSES).
+        if (RING_CLOSES && act4 && act4.action === 'all-in' && layer && L) {
           const seat = seatOf(act4.player);
           const info = seat && seat.querySelector('.replayer-seat-info');
           if (info) {
@@ -11381,7 +11401,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             writes.push(() => list.forEach((x, k) => drop(x.el, (base + k * step) / rate + (loHalf(x.pi) && won(x.pi) ? 3 * S4.beat / rate : 0))));
           }
         }
-        // 63: a tournament seat that lost everything reads OUT; a beat later its plaque eases down.
+        // 63: a tournament seat that lost everything reads OUT; a beat later its plaque dims. It no longer shrinks (owner,
+        // 2026-11-21: "the highlight around hero's seat box is jittering"): the scale re-drew its ring at every size.
         if (motionKind === 'result' && hand.gameMode !== 'cash' && potAwards && shipPlan && shipPlan.length) {
           const tLand0 = shipStartAfterSweep(set, rate, sweepPlan ? sweepPlan.length : 0) + uncalledDelay + shipFirstArrival(set, rate) + (motion.shipWaveEnd || 0);
           const outs = hand.players.map((_, pi) => pi).filter(pi => bustedAtResult(pi));
@@ -11389,7 +11410,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             const info = seatOf(pi) && seatOf(pi).querySelector('.replayer-seat-info');
             if (!info) return;
             motion.run(info, { key: { el: info, kind: 'out' }, property: 'individual', size: { w: info.offsetWidth, h: info.offsetHeight }, channels: [
-              { prop: 'scale', spring: inertiaSp, from: 1, to: 0.93, delay: tLand0 + S4.beat / rate, timeScale: rate },
               { prop: 'opacity', spring: inertiaSp, from: 1, to: 0.5, delay: tLand0 + S4.beat / rate, timeScale: rate },
             ] });
           }));
@@ -12503,19 +12523,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   })()}
                 </div>
               )}
-              {/* 26: filled by leader, below the plaque so it does not fight
-                  the hand name. */}
-              {showdownEquity && showdownEquity[pi] != null && !folded.has(pi) && (() => {
-                const pct = showdownEquity[pi];
-                const best = Math.max(...Object.values(showdownEquity));
-                const col = pct >= best ? 'var(--ok)' : 'rgba(255,255,255,0.45)';
-                return (
-                  <div className="replayer-equity-bar-wrap">
-                    <div className="replayer-equity-bar"><div className="replayer-equity-fill" style={{width: pct + '%', background: col}} /></div>
-                    <div className="replayer-equity-pct" style={{color: col}}>{pct}%</div>
-                  </div>
-                );
-              })()}
+              {/* The showdown equity is a figure in the seat's readout, not a piece of its own (owner, 2026-11-21: "This is
+                  a mess"): the bar and its percentage were pinned half an r above the seat's foot, outside the placement,
+                  so on the bottom seat they lay across the plaque's stack line ("OUT" under a bar and "39%"). See the
+                  readouts below and seatEquity. */}
               {/* 29: both of these are absolutely positioned directly under the
                   plaque — the badge at calc(100% + 2px), the name at 100% plus
                   a margin — and at showdown BOTH render, because lastAct
@@ -12528,12 +12539,20 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 {String(handName).split('\n').map((ln, k) => (
                   <React.Fragment key={k}>{k ? '\n' : ''}<span className="hn-line" data-half={/^(Side )?[Hh]i:/.test(ln) ? 'hi' : /^(Side )?[Ll]o:/.test(ln) ? 'lo' : undefined}>{ln}</span></React.Fragment>
                 ))}
+                {seatEquity(pi) != null && <span className="hn-eq">{' \u00b7 ' + seatEquity(pi) + '%'}</span>}
               </div>}
               {!handName && runoutNames && runoutNames.has(pi) && (
-                <div data-name-seat={pi} data-run-name={runoutNames.get(pi).text} className={'replayer-seat-hand-name is-run' + (runoutNames.get(pi).lead ? '' : ' is-trailing')}>{runoutNames.get(pi).text}</div>
+                <div data-name-seat={pi} data-run-name={runoutNames.get(pi).text} className={'replayer-seat-hand-name is-run' + (runoutNames.get(pi).lead ? '' : ' is-trailing')}>
+                  {runoutNames.get(pi).text}
+                  {seatEquity(pi) != null && <span className="hn-eq">{' \u00b7 ' + seatEquity(pi) + '%'}</span>}
+                </div>
               )}
               {!handName && studFirstNote && studFirstNote.seat === pi && (
                 <div data-name-seat={pi} className="replayer-seat-hand-name is-note">{studFirstNote.text}</div>
+              )}
+              {/* Equity with no readout yet (an all-in before the flop): the figure alone, placed as a readout is. */}
+              {!handName && !(runoutNames && runoutNames.has(pi)) && !(studFirstNote && studFirstNote.seat === pi) && seatEquity(pi) != null && (
+                <div data-name-seat={pi} className="replayer-seat-hand-name is-run is-eq">{seatEquity(pi) + '%'}</div>
               )}
             </div>
           );
