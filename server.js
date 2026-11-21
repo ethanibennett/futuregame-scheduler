@@ -493,8 +493,10 @@ function deriveUsername(realName) {
 // /cash/games is the heatmap's catalog: every (room, game, stakes) the watcher has ever recorded,
 // a full scan of its history (over a second on the box, longer on the hosted copy). It changes only
 // by a few counts between polls, so it is kept here and served at once, refreshed in the background
-// once it is five minutes old (owner, 2026-10-17: "the heat map just took too long to load").
-const CASH_GAMES_TTL_MS = 5 * 60 * 1000;
+// once it is a minute old (owner, 2026-10-17: "the heat map just took too long to load"; five minutes until
+// 2026-11-21, which kept a new location's rooms off the heatmap's list that long: "It's VERY slow"). A location
+// change drops it, so the next read waits for the new rooms rather than serving the old ones.
+const CASH_GAMES_TTL_MS = 60 * 1000;
 let cashGamesCache = null; // { at, type, body }
 let cashGamesRefresh = null;
 
@@ -569,6 +571,8 @@ app.use('/api/cash', authenticateToken, (req, res) => {
     const type = upstream.headers.get('content-type');
     if (type) res.type(type);
     if (isGamesRead && upstream.ok) cashGamesCache = { at: Date.now(), type, body };
+    // A new location: the cached games are the old rooms', so the next read fetches afresh.
+    if (isLocationWrite && upstream.ok) cashGamesCache = null;
     res.status(upstream.status).send(body);
   })();
 });
