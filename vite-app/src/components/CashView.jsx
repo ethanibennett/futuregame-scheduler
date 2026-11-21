@@ -159,6 +159,7 @@ function CashLocationPicker({ token, onSaved, trailing = null }) {
     if (!f.userLocation) return;
     const body = { lat: f.userLocation.lat, lon: f.userLocation.lng, radiusMiles: Math.max(5, Math.min(1000, Number(f.maxDistance) || 100)), label: f.locationLabel || 'Location' };
     const failed = async () => {
+      lastSavedKey.current = ''; // the same place can be picked again
       if (toast) toast.error('The cash location was not saved. Try again in a moment.');
       try {
         const r = await fetch(`${API_URL}/cash/location`, { headers: { Authorization: 'Bearer ' + token } });
@@ -171,12 +172,23 @@ function CashLocationPicker({ token, onSaved, trailing = null }) {
       .catch(failed);
   }, [token, onSaved, toast]);
 
+  /* The save runs once per pick, OUTSIDE the state updater, and only for a location that changed (2026-11-21:
+     a pick of Philadelphia was applied at 19:29:57 and Austin, the previous search, was posted again at 19:30:30
+     with no pick). A side effect inside an updater can run again: React re-applies queued updaters when a later
+     update rebases over them (tab presses are transitions), which replays an old pick's save. */
+  const filtersRef = useRef(filters);
+  useEffect(() => { filtersRef.current = filters; }, [filters]);
+  const lastSavedKey = useRef('');
   const setFilters = useCallback((updater) => {
-    setFiltersState(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
+    const prev = filtersRef.current;
+    const next = typeof updater === 'function' ? updater(prev) : updater;
+    filtersRef.current = next;
+    setFiltersState(next);
+    const key = next && next.userLocation ? `${next.userLocation.lat}|${next.userLocation.lng}|${next.maxDistance}` : '';
+    if (key && key !== lastSavedKey.current) {
+      lastSavedKey.current = key;
       saveToCash(next);
-      return next;
-    });
+    }
   }, [saveToCash]);
 
   const label = filters.userLocation && filters.maxDistance
