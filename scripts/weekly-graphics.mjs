@@ -7,7 +7,8 @@
 // Per region: a 5-slide carousel at 1080x1350 (cover, headliners, two day-by-day slides, CTA) and a
 // 1080x1920 Story. --week is the Monday the week starts on (default: the coming Monday, or today
 // when today is Monday). Regions are the app's own location presets (LOCATION_REGIONS in
-// vite-app/src/utils/utils.js), so "Northeast US" here means what it means in the app's filter.
+// vite-app/src/utils/utils.js), so "Northeast US" here means what it means in the app's filter, plus
+// the launch's own regions (EXTRA_REGIONS below; launch plan section 8), which exist only here.
 //
 // What counts: live events only (no online), no satellites, no restart days (Day 2+, final tables),
 // no $0 rows. A multi-flight event is ONE event (its flights are counted, its guarantee once).
@@ -31,7 +32,17 @@ const args = process.argv.slice(2);
 const opt = (flag, d) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : d; };
 const BASE = opt('--base', 'http://localhost:3001').replace(/\/$/, '');
 const OUT = path.resolve(ROOT, opt('--out', 'weekly-graphics'));
-const REGIONS = opt('--regions', Object.keys(U.LOCATION_REGIONS).join(',')).split(',').filter(Boolean);
+// The launch's first audience is the Mid-Atlantic (launch plan, section 8), and "Northeast US" is eleven states
+// wide, so two narrower regions are drawn here only (the app's location menu is unchanged). Philadelphia & AC:
+// within 40 miles of Philadelphia (Parx, Live!, Harrah's, Rivers, Valley Forge) or 20 of Atlantic City (Borgata,
+// Hard Rock, Ocean and the rest). DC & Baltimore: within 35 miles of a point between them (MGM National Harbor,
+// Maryland Live!, Horseshoe Baltimore). A week under --min is skipped, like every region.
+const EXTRA_REGIONS = {
+  phillyac: { label: 'Philadelphia & AC', test: (c) => U.haversineDistance(39.952, -75.165, c.lat, c.lng) <= 40 || U.haversineDistance(39.364, -74.423, c.lat, c.lng) <= 20 },
+  dcbalt: { label: 'DC & Baltimore', test: (c) => U.haversineDistance(39.03, -76.83, c.lat, c.lng) <= 35 },
+};
+const REGION_DEFS = { ...U.LOCATION_REGIONS, ...EXTRA_REGIONS };
+const REGIONS = opt('--regions', Object.keys(REGION_DEFS).join(',')).split(',').filter(Boolean);
 
 function nextMonday(from = new Date()) {
   const d = new Date(Date.UTC(from.getFullYear(), from.getMonth(), from.getDate()));
@@ -90,7 +101,7 @@ const inWeek = all.filter(t => t.iso && t.iso >= DAYS[0] && t.iso <= DAYS[6]
   && !t.is_online && !t.is_satellite && !isRestart(t) && Number(t.buyin) > 0 && t.venue !== 'Personal');
 
 function regionRows(key) {
-  const reg = U.LOCATION_REGIONS[key];
+  const reg = REGION_DEFS[key];
   return inWeek.filter(t => { const c = U.getVenueCoords(t.venue); return c && reg.test(c); });
 }
 
@@ -133,7 +144,7 @@ function build(key) {
     return { iso, top: picks.slice(0, 3).sort((a, b) => mins(a.time) - mins(b.time)), more: Math.max(0, picks.length - 3) };
   });
   return {
-    key, label: U.LOCATION_REGIONS[key].label, events: list, rooms: [...rooms.values()], headliners, byDay,
+    key, label: REGION_DEFS[key].label, events: list, rooms: [...rooms.values()], headliners, byDay,
     totalGtd: list.reduce((s, e) => s + e.gtd, 0),
   };
 }
@@ -201,7 +212,7 @@ function cover(R, W, H) {
   return `<div class="slide" style="width:${W}px;height:${H}px">
     <div style="padding:96px 84px 0;display:flex;flex-direction:column;gap:22px">
       <div class="eyebrow" style="font-size:34px">This week near you</div>
-      <div class="serif" style="font-size:${R.label.length > 10 ? 118 : 140}px;line-height:1.02">${esc(R.label)}</div>
+      <div class="serif" style="font-size:${R.label.length > 14 ? 100 : R.label.length > 10 ? 118 : 140}px;line-height:1.02">${esc(R.label)}</div>
       <div class="cond" style="font-size:52px;color:#cfcfcf">${esc(weekLabel())}</div>
     </div>
     <div style="display:flex;gap:56px;padding:64px 84px 0">
@@ -274,7 +285,7 @@ function story(R, W, H) {
   return `<div class="slide" style="width:${W}px;height:${H}px">
     <div style="padding:150px 80px 0;display:flex;flex-direction:column;gap:18px">
       <div class="eyebrow" style="font-size:34px">This week near you</div>
-      <div class="serif" style="font-size:${R.label.length > 10 ? 104 : 124}px;line-height:1.02">${esc(R.label)}</div>
+      <div class="serif" style="font-size:${R.label.length > 14 ? 92 : R.label.length > 10 ? 104 : 124}px;line-height:1.02">${esc(R.label)}</div>
       <div class="cond" style="font-size:48px;color:#cfcfcf">${esc(weekLabel())} · ${R.events.length} tournaments${R.totalGtd ? ' · ' + money(R.totalGtd) + ' GTD' : ''}</div>
     </div>
     <div style="display:flex;flex-direction:column;gap:22px;padding:70px 64px 0">${R.headliners.slice(0, 5).map(e => eventCard(e)).join('')}</div>
@@ -300,7 +311,7 @@ async function shoot(html, W, H, file) {
 }
 const made = [];
 for (const key of REGIONS) {
-  if (!U.LOCATION_REGIONS[key]) { console.log(`unknown region ${key}; known: ${Object.keys(U.LOCATION_REGIONS).join(', ')}`); continue; }
+  if (!REGION_DEFS[key]) { console.log(`unknown region ${key}; known: ${Object.keys(REGION_DEFS).join(', ')}`); continue; }
   const R = build(key);
   if (R.events.length < MIN_EVENTS) { console.log(`${R.label} ${weekLabel()}: ${R.events.length} tournament(s), under --min ${MIN_EVENTS}, skipped`); continue; }
   const dir = path.join(OUT, WEEK, key);
