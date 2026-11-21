@@ -25,9 +25,9 @@ wsop-console side and verified against both live services.
 - **Replayer (`c49f00d`, `9ca690a`):** no card lifts or sinks on its own (`CARD_LIFTS` off, beside `SHOWDOWN_SLIDES`);
   an all-in's ring no longer closes from 1.35x (`RING_CLOSES` off) and OUT only dims; Showdown Equity is real
   (`computeOdds` on its worker) and sits in the seat's readout ("Wheel · 73%"), never at the result; every new wager's
-  push starts at its player's plaque (`rayToRect`). **Waiting on the owner:** the new fold (`foldToStack` in
-  `utils/replayer-card-moments.js`: gather round the fan's arc or sideways, then the stack spins to the middle), built
-  but NOT committed; preview videos were sent for approval.
+  push starts at its player's plaque (`rayToRect`). **The new fold** (`0d7b6ed`, approved; `foldToStack` in
+  `utils/replayer-card-moments.js`: gather round the fan's arc or sideways, dimming, then the stack spins to the
+  middle, at 3/4 pace).
 - **The Monday scorecard** is in Admin (`6f1411e`; `lib/growth.js` scorecard, `GrowthScorecard.jsx`), with weekly
   ad spend entered per channel. Seen only at 1440 in WebKit: on the phone, Admin opened from the avatar menu fell back
   to Home in headless WebKit (the menu's close and the tab address race, unconfirmed on a device).
