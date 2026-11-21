@@ -1142,6 +1142,35 @@ app.get('/api/admin/growth', authenticateToken, requireAppAdmin, (req, res) => {
   }
 });
 
+// The Monday scorecard (lib/growth.js scorecard; launch plan v2, sections 7 and 12): app admins only.
+app.get('/api/admin/growth/scorecard', authenticateToken, requireAppAdmin, (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    res.json(growth.scorecard(db));
+  } catch (e) {
+    console.error('[growth] scorecard:', e.message);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
+// One week's ad spend for one channel, as read off the platform: { week: 'YYYY-MM-DD' (a Monday),
+// channel, cents } (0 removes it). The scorecard's cost per activated user divides it.
+app.put('/api/admin/growth/spend', authenticateToken, requireAppAdmin, async (req, res) => {
+  const { week, channel, cents } = req.body || {};
+  try {
+    growth.setSpend(db, week, channel, cents);
+  } catch (e) {
+    return res.status(400).json({ error: e.message });
+  }
+  try {
+    await saveDatabase();
+    res.json(growth.scorecard(db));
+  } catch (e) {
+    console.error('[growth] spend:', e.message);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
 // The landing page's figures: live events in the next 30 days (not online, not a Day 2 restart, not
 // a player's Personal day), the series they belong to and the rooms. Public and cached ten minutes.
 // appStore is the store link's parts once the app is listed (APP_STORE_ID and the campaign provider

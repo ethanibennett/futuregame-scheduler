@@ -17186,6 +17186,19 @@
 .growth-report .an-sec { margin-bottom: var(--subrow); }
 /* The parser eval (ParserEval.jsx): buttons 17g x 5r on the grid, labels centred (.ctl). */
 .parser-eval { margin-bottom: calc(var(--subrow) * 3); }
+/* The Monday scorecard above it (GrowthScorecard.jsx, 2026-11-21): the same table; a status word in the
+   status colours; the spend row a 10g channel, the amount and the 17g x 5r button, 1g apart. */
+.growth-scorecard { margin-bottom: calc(var(--subrow) * 3); }
+.growth-scorecard .an-p { white-space: normal; }
+.growth-scorecard .an-sec { margin-bottom: var(--subrow); }
+.growth-scorecard-table td { white-space: nowrap; }
+.growth-status.is-ok { color: var(--ok); }
+.growth-status.is-watch { color: var(--warn); }
+.growth-status.is-act { color: var(--danger); }
+.growth-spend { display: flex; align-items: stretch; column-gap: var(--gu); max-width: calc(var(--gu) * 46); }
+.growth-spend > select, .growth-spend .money-field > input { box-sizing: border-box; height: calc(var(--subrow) * 5); }
+.growth-spend > select { flex: 0 0 calc(var(--gu) * 10); }
+.growth-spend > .parser-eval-btn { flex: 0 0 calc(var(--gu) * 17); }
 .parser-eval .an-p { white-space: normal; }
 .parser-eval .an-sec { margin-bottom: var(--subrow); }
 .parser-eval-actions { display: flex; flex-wrap: wrap; column-gap: var(--gu); }

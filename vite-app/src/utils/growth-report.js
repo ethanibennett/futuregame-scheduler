@@ -40,3 +40,51 @@ export function topSources(report, n = 6) {
   return Object.entries(src).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).slice(0, n)
     .map(([k, v]) => `${k} ${v}`).join(' · ');
 }
+
+/* ── The Monday scorecard (GET /api/admin/growth/scorecard; lib/growth.js scorecard) ── */
+
+const dollars = (cents) => (cents == null ? '—' : '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 }));
+const pctOf = (v) => (v == null ? '—' : `${Math.round(v * 100)}%`);
+const one = (v) => (v == null ? '—' : String(Math.round(v * 10) / 10));
+const SCORE = {
+  newAccounts: { label: 'New accounts', fmt: (v) => String(v ?? 0), target: (k) => String(k.target), act: (k) => '<' + k.act },
+  organicShare: { label: 'Organic share of new accounts', fmt: pctOf, target: (k) => pctOf(k.target), act: (k) => '<' + pctOf(k.act) },
+  activation: { label: 'Activation (a save within 7 days)', fmt: pctOf, target: (k) => pctOf(k.target), act: (k) => '<' + pctOf(k.act) },
+  savesPerActivated: { label: 'Saves per activated account, first 7 days', fmt: one },
+  sharesPer100: { label: 'Schedules shared per 100 new accounts', fmt: one },
+  followsPer100: { label: 'Buddy requests per 100 new accounts', fmt: one },
+  d1: { label: 'D1 retention', fmt: pctOf },
+  d7: { label: 'D7 retention', fmt: pctOf, target: (k) => pctOf(k.target), act: (k) => '<' + pctOf(k.act) },
+  d30: { label: 'D30 retention', fmt: pctOf, target: (k) => pctOf(k.target), act: (k) => '<' + pctOf(k.act) },
+  costPerPaidSignup: { label: 'Ad spend per paid sign-up', fmt: dollars },
+  costPerActivated: { label: 'Cost per activated account (paid)', fmt: dollars, target: (k) => dollars(k.target), act: (k) => '>' + dollars(k.act) },
+};
+const STATUS_WORD = { ok: 'On target', watch: 'Watch', act: 'Act' };
+
+/** The scorecard's rows as display text: { key, label, value, target, status, statusWord, week }. The
+ *  week is the cohort the figure is read from ("Jan 4"), since each needs a different age. */
+export function scorecardRows(sc) {
+  const figs = (sc && Array.isArray(sc.figures)) ? sc.figures : [];
+  return figs.filter((f) => SCORE[f.key]).map((f) => {
+    const d = SCORE[f.key];
+    const k = { target: f.target, act: f.act };
+    return {
+      key: f.key,
+      label: d.label,
+      value: d.fmt(f.value),
+      target: d.target && f.target != null ? `${d.target(k)} · act ${d.act(k)}` : '',
+      status: f.status || null,
+      statusWord: f.status ? STATUS_WORD[f.status] : '',
+      week: weekLabel(f.week),
+    };
+  });
+}
+
+/** "Meta $45 · Apple Ads $10 · total $55" for the week's spend, or '' with none entered. */
+const CHANNEL_NAME = { apple: 'Apple Ads', meta: 'Meta', creators: 'Creators', podcasts: 'Podcasts', reddit: 'Reddit', x: 'X', other: 'Other' };
+export function channelName(c) { return CHANNEL_NAME[c] || c; }
+export function spendLine(sc) {
+  const ch = (sc && sc.spend && sc.spend.channels) || {};
+  const parts = Object.entries(ch).sort((a, b) => b[1] - a[1]).map(([c, cents]) => `${channelName(c)} ${dollars(cents)}`);
+  return parts.length ? `${parts.join(' · ')} · total ${dollars(sc.spend.totalCents)}` : '';
+}

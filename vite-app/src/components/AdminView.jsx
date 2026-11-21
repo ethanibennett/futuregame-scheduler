@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import GrowthReport from './GrowthReport.jsx';
+import GrowthScorecard from './GrowthScorecard.jsx';
 import ParserEval from './ParserEval.jsx';
 import AdminInbox from './AdminInbox.jsx';
 import { API_URL } from '../utils/api.js';
@@ -143,6 +144,7 @@ return (
       {sorted.length === 0 && <div style={{height:'calc(var(--subrow) * 9)',lineHeight:'calc(var(--subrow) * 3)',padding:'calc(var(--subrow) * 2.75) var(--gu) 0',boxSizing:'border-box',textAlign:'center',color:'var(--text-muted)'}}>No users found</div>}
       </>)}
       <AdminInbox token={token} />
+      <GrowthScorecard token={token} />
       <GrowthReport token={token} />
       <ParserEval token={token} />
     </div>
