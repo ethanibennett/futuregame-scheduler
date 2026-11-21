@@ -920,7 +920,8 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   h1 (`wm-u`, `wm-dot`, `wm-me`). `useWordmarkFit` reads the room and the dot's place from the face's ink on a canvas (the
   same clear space to the a as to the m, in every face) and fits the whole mark, room open, to 8g. In Baskerville the
   u's are 0.97 tall, from the baseline, so their serifs meet the f's and t's crossbars, and while there is no dot the
-  a's tail and the m's serif are one (`.wm-me::before` fills the slot's foot between them). Only the app's top bar loops:
+  a's tail bends down onto the m's serif (a clip-path on `.wm-a`, swept away as "me" leaves). Swiss's `body *` sets
+  thin and untracked, so the spans take `inherit` back. Only the app's top bar loops:
   the sign-in, /live, the backer page and the shared schedule keep the plain word.
 - **The Swiss theme** (owner, 2026-10-16; app admins only): `swiss-light` and `swiss-dark`, in the theme button's
   cycle only for an admin (`utils/theme.js` themeOrder/nextTheme), and shown only to one: `hooks/useThemeChoice.js` gives anyone else

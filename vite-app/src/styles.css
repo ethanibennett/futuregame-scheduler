@@ -2176,6 +2176,9 @@
        Only the app's top bar has the class; the sign-in, /live, the backer page and the shared schedule keep the plain
        word. The curves are the preview's the owner approved, not the motion tokens. */
     .wm-loop { --wm-loop: 4.8s; --wm-slide: cubic-bezier(0.65, 0, 0.35, 1); }
+    /* Nothing in the word transitions: under Reduce Motion the app-wide rule gives every property 1ms, the inherited
+       font size included, and useWordmarkFit's second pass read the spans mid-change (the word ended up to 0.04g wide). */
+    .wm-loop, .wm-loop * { transition-property: none; }
     .wm-loop .wm-dot {
       display: inline-flex; justify-content: center; width: 0; letter-spacing: 0;
       color: var(--brand);
@@ -2211,36 +2214,38 @@
       transform: scaleY(0.97);
       transform-origin: 50% calc(50% + var(--wm-base, 0.35em));
     }
-    /* While there is no dot, the a's tail and the m's serif are one (owner, 2026-11-20: "make the tail of the a merge
-       with the serif of the m when they are dotless"). They already touch, but meet in a spike between two dents, so
-       the slot between the a's stem and the m's first stem ran almost to the baseline, a nick at the top bar's size.
-       This fills that slot's foot in the word's colour, from just under the a's stem to just into the m's, up to where
-       the stems run straight, with a rounded hollow in its top whose floor is the spike's tip, so the slot ends in one
-       curve, as a counter does (Libre Baskerville bold at 300px: stems at -0.041em and +0.108em from where "me" starts,
-       straight from 0.14em above the baseline, the tip 0.10em above it, the serif's foot 0.015em under it). The hollow
-       is a radial gradient: an ellipse as wide as the fill, 0.04em deep. It rides with "me", so it lets go as "me" starts
-       to slide (1.2-1.32s) and closes as "me" lands (4.05-4.15s, when "me" is within 0.022em of home, so the fill still
-       reaches into the a's stem); with the dot there, and under Reduce Motion, it is
-       not drawn. Baskerville only, like the u's. */
-    :root:not([data-serif="univers"]):not([data-serif="gothic"]):not([data-theme^="swiss"]) .wm-loop .wm-me { position: relative; }
-    :root:not([data-serif="univers"]):not([data-serif="gothic"]):not([data-theme^="swiss"]) .wm-loop .wm-me::before {
-      content: '';
-      position: absolute;
-      left: -0.042em;
-      width: 0.151em;
-      top: calc(50% + var(--wm-base, 0.35em) - 0.142em);
-      height: 0.154em;
-      background: radial-gradient(ellipse 50% 0.04em at 50% 0, transparent 96%, currentColor 100%);
-      opacity: 0;
-      animation: wm-loop-join var(--wm-loop) infinite;
+    /* While there is no dot, the a's tail bends down to meet the m's serif (owner, 2026-11-20: "make the tail of the a
+       merge with the serif of the m when they are dotless", then "Maybe just bend the tail of the a down to meet the m
+       serif?"). Libre Baskerville's a ends in a tail that curls up, and at rest its tip overlaps the m's left serif and
+       stands 0.035em above it, a spike between two dents that read as a nick at the top bar's size. The a is clipped
+       along a line from its tail's top (0.065em above the baseline, 0.517em from its origin) down to the serif's top
+       (0.045em, 0.58em), so the tail runs down into the serif and the slot between the stems ends in one floor
+       (measured at 300px, the a and the m drawn apart). The cut is a clip-path, which interpolates: as "me" starts to
+       slide the line sweeps up past the tip (1.2-1.4s) and the a has its own tail with the dot there; it comes down as
+       "me" lands (4.05-4.2s). Under Reduce Motion the word is "futurega.me", the tail whole. Baskerville only, like the
+       u's. B is the baseline in the a's box: half its line height plus --wm-base. */
+    :root:not([data-serif="univers"]):not([data-serif="gothic"]):not([data-theme^="swiss"]) .wm-loop .wm-a {
+      display: inline-block;
+      clip-path: polygon(-1em -1em, 0.517em -1em, 0.517em calc(50% + var(--wm-base, 0.35em) - 0.12em),
+        0.58em calc(50% + var(--wm-base, 0.35em) - 0.12em), 2em calc(50% + var(--wm-base, 0.35em) - 0.12em), 2em 2em, -1em 2em);
+      animation: wm-loop-bend var(--wm-loop) infinite;
     }
-    @keyframes wm-loop-join {
-      0%, 25% { opacity: 1; }
-      27.5%, 84.38% { opacity: 0; }
-      86.46%, 100% { opacity: 1; }
+    @keyframes wm-loop-bend {
+      0%, 25% {
+        clip-path: polygon(-1em -1em, 0.517em -1em, 0.517em calc(50% + var(--wm-base, 0.35em) - 0.065em),
+          0.58em calc(50% + var(--wm-base, 0.35em) - 0.045em), 2em calc(50% + var(--wm-base, 0.35em) - 0.045em), 2em 2em, -1em 2em);
+      }
+      29.17%, 84.38% {
+        clip-path: polygon(-1em -1em, 0.517em -1em, 0.517em calc(50% + var(--wm-base, 0.35em) - 0.12em),
+          0.58em calc(50% + var(--wm-base, 0.35em) - 0.12em), 2em calc(50% + var(--wm-base, 0.35em) - 0.12em), 2em 2em, -1em 2em);
+      }
+      87.5%, 100% {
+        clip-path: polygon(-1em -1em, 0.517em -1em, 0.517em calc(50% + var(--wm-base, 0.35em) - 0.065em),
+          0.58em calc(50% + var(--wm-base, 0.35em) - 0.045em), 2em calc(50% + var(--wm-base, 0.35em) - 0.045em), 2em 2em, -1em 2em);
+      }
     }
     @media (prefers-reduced-motion: reduce) {
-      .wm-loop .wm-me::before { animation: none; }
+      .wm-loop .wm-a { animation: none; }
     }
 
     /* Screen/page titles — non-bold Baskerville. Size, margins and line-height

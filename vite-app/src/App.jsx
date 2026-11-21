@@ -2850,9 +2850,9 @@ function App() {
     >
       <header className="top-bar">
         <div className="top-bar-title">
-          {/* The wordmark loop (owner, 2026-11-20; styles.css .wm-loop, utils/wordmark-dot.js). The u's are spans so
-              Baskerville can set them to the f's and t's crossbars; aria-label keeps the name one word. */}
-          <h1 ref={wordmarkRef} className="wm-loop" aria-label="futurega.me">f<span className="wm-u">u</span>t<span className="wm-u">u</span>rega<span className="wm-dot">.</span><span className="wm-me">me</span></h1>
+          {/* The wordmark loop (owner, 2026-11-20; styles.css .wm-loop, utils/wordmark-dot.js). The u's and the a are
+              spans so Baskerville can set the u's to the crossbars and bend the a's tail; aria-label keeps the name one word. */}
+          <h1 ref={wordmarkRef} className="wm-loop" aria-label="futurega.me">f<span className="wm-u">u</span>t<span className="wm-u">u</span>reg<span className="wm-a">a</span><span className="wm-dot">.</span><span className="wm-me">me</span></h1>
           {/* The cash tab is not seasonal, so its subtitle names the tab instead of the
               season's date range. The h2 inside CashView is dropped in favour of this. */}
           {currentView === 'cash' ? <small>{cashMode === 'heatmap' ? 'cash game history' : 'live cash games'}</small>
