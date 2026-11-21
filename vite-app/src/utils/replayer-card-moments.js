@@ -348,3 +348,111 @@ export function angleOf(matrix) {
   const [a, b] = m[1].split(',').map(Number);
   return Math.atan2(b, a) * 180 / Math.PI;
 }
+
+/**
+ * 25, as the owner asked it (2026-11-21: "When splayed, they should just slide together around the arc into a single
+ * stack, then that whole stack should spin into the middle. Same with non-splayed, but they should just slide
+ * laterally"). Ghost copies of the folded cards in the flight layer, each starting where its card was:
+ *   gather   every card slides to the middle card of the hand on the slide spring. A fan's cards travel round the fan's
+ *            own arc (its pivot and radius fitted to the cards' centres and tilts), turning as they go, so they meet at
+ *            the middle card's tilt; a flat row's cards slide straight along it.
+ *            They dim as they close (owner, 2026-11-21: "dim the folded cards as they combine into a stack. The dimming
+ *            should also be animated and smooth"): brightness 1 to `dimTo` (a dead card's 0.42) on an ease-out over
+ *            the gather, held through the spin.
+ *   spin     a beat after they meet, the stack goes to `target` (px, the layer's frame) on the inertia spring, turning a
+ *            whole turn (toward the side it travels), shrinking to 0.6 and fading over its last 40%.
+ * cards: [{ node, cx, cy, w, h, angle }] in page px (angle in degrees); returns the ghosts.
+ */
+export function foldToStack(reg, { set, rate = 1, layer, layerRect, cards, target, spin = 360, scaleTo = 0.6, back = null, dimTo = 0.42 }) {
+  if (!layer || !layerRect || !cards.length) return [];
+  const gather = tierSpring(set, 'slide'), go = tierSpring(set, 'inertia');
+  const n = cards.length;
+  const rad = (d) => (d * Math.PI) / 180;
+  const unit = (d) => ({ x: Math.sin(rad(d)), y: -Math.cos(rad(d)) });
+  // The fan's pivot P and radius: least squares on c = P + R * unit(angle), unknowns Px, Py, R.
+  const angles = cards.map((c) => c.angle || 0);
+  const fanned = Math.max(...angles) - Math.min(...angles) > 1;
+  let P = null;
+  if (fanned) {
+    // Normal equations for [Px, Py, R].
+    const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], b = [0, 0, 0];
+    for (const c of cards) {
+      const u = unit(c.angle || 0);
+      const rows = [[1, 0, u.x, c.cx], [0, 1, u.y, c.cy]];
+      for (const [a0, a1, a2, v] of rows) {
+        const r = [a0, a1, a2];
+        for (let i = 0; i < 3; i++) { for (let j = 0; j < 3; j++) A[i][j] += r[i] * r[j]; b[i] += r[i] * v; }
+      }
+    }
+    const det = (m) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+    const D = det(A);
+    if (Math.abs(D) > 1e-9) {
+      const col = (k) => A.map((row, i) => row.map((v, j) => (j === k ? b[i] : v)));
+      const R = det(col(2)) / D;
+      if (R > 0) P = { x: det(col(0)) / D, y: det(col(1)) / D };
+    }
+  }
+  // The stack forms on the middle card (on the arc between the two middle cards for an even count).
+  const mid = (n - 1) / 2;
+  const lo = cards[Math.floor(mid)], hi = cards[Math.ceil(mid)];
+  const aS = ((lo.angle || 0) + (hi.angle || 0)) / 2;
+  const radiusOf = (c) => (P ? (c.cx - P.x) * unit(c.angle || 0).x + (c.cy - P.y) * unit(c.angle || 0).y : 0);
+  const rS = (radiusOf(lo) + radiusOf(hi)) / 2;
+  const S = P ? { x: P.x + rS * unit(aS).x, y: P.y + rS * unit(aS).y } : { x: (lo.cx + hi.cx) / 2, y: (lo.cy + hi.cy) / 2 };
+  const tMeet = timeTo(gather, 0.985) / rate;
+  const tGo = tMeet + stage(set).beat / rate * 0.5;
+  const end = tGo + settle(go) / rate;
+  const g = (t) => (t <= 0 ? 0 : gather.at(t * rate));
+  const h = (t) => (t <= tGo ? 0 : go.at((t - tGo) * rate));
+  const T = { x: target.x + layerRect.left, y: target.y + layerRect.top };
+  const dir = T.x >= S.x ? 1 : -1;
+  let host = layer.querySelector(':scope > .replayer-ghost-row');
+  if (!host) {
+    host = document.createElement('div');
+    host.className = 'card-row replayer-ghost-row';
+    layer.appendChild(host);
+  }
+  return cards.map((c, i) => {
+    const ghost = c.node.cloneNode(true);
+    ghost.removeAttribute('data-ck');
+    ghost.removeAttribute('data-slot');
+    ghost.style.cssText = '';
+    ghost.className = c.node.className;
+    const a0 = c.angle || 0;
+    Object.assign(ghost.style, {
+      position: 'absolute', left: (c.cx - layerRect.left - c.w / 2) + 'px', top: (c.cy - layerRect.top - c.h / 2) + 'px',
+      width: c.w + 'px', height: c.h + 'px', margin: '0', transformOrigin: '50% 50%', zIndex: String(i + 1),
+      transform: 'none', pointerEvents: 'none',
+    });
+    /* A face-down card is a placeholder the seat's own rules paint; out of the seat it is painted as the theme's back
+       (`back`, read off a back on the table, as a turn-over is). */
+    if (c.node.tagName !== 'IMG' && back) {
+      Object.assign(ghost.style, {
+        backgroundImage: back.image || 'none', backgroundColor: back.color || '#1a2744', backgroundSize: back.size || 'auto',
+        backgroundPosition: back.position || '0% 0%', backgroundRepeat: back.repeat || 'repeat', borderRadius: back.radius || '',
+        boxShadow: 'inset 0 0 0 1px ' + (back.ring || '#3a5a8a'),
+      });
+    }
+    host.appendChild(ghost);
+    const r0 = radiusOf(c);
+    // Where the card's centre is at gather progress q, relative to where it started.
+    const at = (q) => {
+      if (!P) return { x: (S.x - c.cx) * q, y: (S.y - c.cy) * q };
+      const th = a0 + (aS - a0) * q, r = r0 + (rS - r0) * q, u = unit(th);
+      return { x: P.x + r * u.x - c.cx, y: P.y + r * u.y - c.cy };
+    };
+    const pos = (t) => { const q = g(t), k = h(t), p = at(q); return { x: p.x + (T.x - S.x) * k, y: p.y + (T.y - S.y) * k }; };
+    return reg.run(ghost, {
+      transient: true, size: { w: c.w, h: c.h }, tolPx: 0.25, end,
+      extras: [{ el: ghost, frames: [{ filter: 'brightness(1)' }, { filter: 'brightness(' + dimTo + ')' }],
+        options: { duration: Math.max(1, tMeet), delay: 0, fill: 'forwards', easing: 'cubic-bezier(0.33, 0, 0.2, 1)' } }],
+      channels: [
+        { prop: 'x', fn: (t) => pos(Math.min(t, end)).x, start: 0, end, key: 'fsx:' + i + ':' + c.cx + ':' + c.cy + ':' + T.x },
+        { prop: 'y', fn: (t) => pos(Math.min(t, end)).y, start: 0, end, key: 'fsy:' + i + ':' + c.cx + ':' + c.cy + ':' + T.y },
+        { prop: 'rotate', fn: (t) => { const q = g(Math.min(t, end)), k = h(Math.min(t, end)); return a0 + (aS - a0) * q + dir * spin * k; }, start: 0, end, key: 'fsr:' + i + ':' + a0 + ':' + aS + ':' + dir },
+        { prop: 'scale', fn: (t) => 1 + (scaleTo - 1) * clamp01(h(Math.min(t, end))), start: 0, end, key: 'fss:' + scaleTo + ':' + tGo },
+        { prop: 'opacity', fn: (t) => 1 - clamp01((h(Math.min(t, end)) - 0.6) / 0.4), start: 0, end, key: 'fso:' + tGo },
+      ],
+    }) && ghost;
+  }).filter(Boolean);
+}

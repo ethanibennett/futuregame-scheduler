@@ -31,7 +31,7 @@ import {
 } from '../utils/replayer-motion.js';
 import { SPRING_SETS, spring, timeTo, tierSpring, keyframes as transportKeyframes, REPLAYER_PACE } from '../utils/spring.js';
 import { bestFive, halvesOf, counterfeitedNow, leaderOf, lowDecider, indexOfLowRank, streetChange } from '../utils/replayer-reading.js';
-import { turnOver, dealIn, liftOnce, poseTo, rap, ghostsAway, angleOf, cardTimes, slideRow, runOutBoard, runOutTimes, poseSequence, drawIn, ghostsTo, appearAt, makeRoom } from '../utils/replayer-card-moments.js';
+import { turnOver, dealIn, liftOnce, poseTo, rap, ghostsAway, foldToStack, angleOf, cardTimes, slideRow, runOutBoard, runOutTimes, poseSequence, drawIn, ghostsTo, appearAt, makeRoom } from '../utils/replayer-card-moments.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
 import { exportReplayGif } from '../utils/replay-gif-export.js';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -6616,13 +6616,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const movedForward = actionIdx > prevActionIdxRef.current;
     if (movedForward && actionIdx >= 0 && actionIdx < currentActions.length) {
       const act = currentActions[actionIdx];
-      if (act && act.action === 'fold' && rSettings.animateFold) {
+      // Under springs the fold is the moments effect's (25, foldToStack); this CSS one is the springs-off table's.
+      if (act && act.action === 'fold' && rSettings.animateFold && !springOn) {
         setAnimFolded(prev => { const n = new Set(prev); n.add(act.player); return n; });
         setTimeout(() => { setAnimFolded(prev => { const n = new Set(prev); n.delete(act.player); return n; }); }, 450);
       }
     }
     prevActionIdxRef.current = actionIdx;
-  }, [actionIdx, currentActions, rSettings.animateFold]);
+  }, [actionIdx, currentActions, rSettings.animateFold, springOn]);
   /* On the spring path an empty set stays the same set: a new one re-rendered the whole replayer
      right after every street press, in the middle of the flop's spread and the turn's landing. */
   useEffect(() => { setAnimFolded(prev => (springOn && !prev.size ? prev : new Set())); }, [streetIdx]);
@@ -10094,7 +10095,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           if (b) {
             const cs = getComputedStyle(b);
             motion.backPaint = { image: cs.backgroundImage, color: cs.backgroundColor, ring: cs.borderTopColor,
-              size: cs.backgroundSize, position: cs.backgroundPosition, repeat: cs.backgroundRepeat };
+              size: cs.backgroundSize, position: cs.backgroundPosition, repeat: cs.backgroundRepeat, radius: cs.borderRadius };
             motion.backTheme = themeKey;
           }
         }
@@ -10797,13 +10798,16 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         const prevEls = motion.prevCardEls || new Set();
         const backPaint = motion.backPaint || null;
 
-        // 25: a fold's cards leave toward the muck on the yield spring, 0.45 of the way, turning and fading.
-        if (act && act.action === 'fold' && L && rSettings.animateDeal && !gameCfg.isStud) {
+        /* 25: a folded hand gathers and goes (owner, 2026-11-21: "When splayed, they should just slide together around the
+           arc into a single stack, then that whole stack should spin into the middle. Same with non-splayed, but they
+           should just slide laterally"): foldToStack in utils/replayer-card-moments.js. */
+        // The seat's own cards stay in the page, hidden at once by .fold-sprung; the ghosts are the motion.
+        if (act && act.action === 'fold' && L && rSettings.animateFold && !gameCfg.isStud) {
           const was = (prevCards.get(act.player) || []).filter(c => c.node);
-          if (was.length && !rowEls(act.player).length) {
-            const m = ptOf(muckTarget);
-            const cx = was.reduce((s, c) => s + c.cx, 0) / was.length, cy = was.reduce((s, c) => s + c.cy, 0) / was.length;
-            writes.push(() => ghostsAway(motion, { set, rate, layer, layerRect: L, cards: was, tx: (m.x - cx) * 0.45, ty: (m.y - cy) * 0.45 }));
+          if (was.length) {
+            const m = ptOf([50, 54]);
+            // At 3/4 of the replay's pace (owner, 2026-11-21: "Let's go 3/4 speed").
+            writes.push(() => foldToStack(motion, { set, rate: rate * 0.75, layer, layerRect: L, cards: was, target: { x: m.x - L.left, y: m.y - L.top }, back: backPaint }));
           }
         }
 
@@ -12300,6 +12304,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                name grows inward. pos still drives the shadow and the fold origin. */
             <div key={pi} data-seat={pi} className={`replayer-seat ${seatClass}${isMucked ? ' mucked' : ''}${foldAnimClass}`
               + (pi === replayHeroIdx ? ' is-hero' : '') + (allIn.has(pi) ? ' is-allin' : '')
+              + (springOn && folded.has(pi) ? ' fold-sprung' : '')
               + (pi === turnIdx ? ' active-turn' : '')
               + (bustedAtResult(pi) && hand.gameMode !== 'cash' ? ' is-out' : '')
               + (!isLandscape && pos[0] === gx(CL) ? ' seat-edge-left' : '')

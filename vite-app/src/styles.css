@@ -5828,6 +5828,9 @@
     }
     .replayer-seat.folded .replayer-seat-cards,
     .replayer-seat.mucked .replayer-seat-cards { opacity:0; transform: scale(0.8) translateY(calc(var(--subrow) * 2.5)); }
+    /* Under springs a fold's motion is its ghosts gathering and spinning to the middle (foldToStack, owner 2026-11-21);
+       the seat's own cards go at once, with no fade and no drop under them. */
+    .replayer-seat.folded.fold-sprung .replayer-seat-cards { transition: none; transform: none; }
     .replayer-seat-cards .card-row { justify-content:center; flex-wrap:nowrap; }
     .replayer-seat-cards .card-row:not(.card-row-splay) { gap:0; }
     /* 36: face-up and face-down cards were both flat rectangles with a
