@@ -1,9 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import GrowthReport from './GrowthReport.jsx';
 import GrowthScorecard from './GrowthScorecard.jsx';
 import ParserEval from './ParserEval.jsx';
 import AdminInbox from './AdminInbox.jsx';
 import { API_URL } from '../utils/api.js';
+
+/* The users table's columns, with widths the viewer can drag (owner, 2026-11-21: "This table should have adjustable
+   columns so that I can see the full username/email etc"). Each header's right edge is a handle: drag it (mouse or
+   touch) and the column follows in whole g; double-click it to fit the column to its longest entry. Widths are kept
+   on the device (localStorage, in g). Email takes what is left until it is set, and never less than 13g; once it is,
+   a filler column before Joined takes the rest, so Joined stays on the table's right edge. A table wider than the
+   pane scrolls sideways (its wrapper). Defaults 9g + 6g + the rest + 7g = 35g on a phone, as before. */
+const ADMIN_COLS = [
+  { key: 'username', label: 'Username', def: 9 },
+  { key: 'real_name', label: 'Name', def: 6 },
+  { key: 'email', label: 'Email', def: null },
+  { key: 'created_at', label: 'Joined', def: 7, right: true },
+];
+const COL_MIN_G = 4;
+const COL_MAX_G = 80;
+const EMAIL_MIN_G = 13;
+const COL_WIDTHS_KEY = 'adminColWidths';
+const clampG = (n) => Math.max(COL_MIN_G, Math.min(COL_MAX_G, Math.round(n)));
+function readColWidths() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(COL_WIDTHS_KEY)) || {};
+    const out = {};
+    for (const c of ADMIN_COLS) if (Number.isFinite(raw[c.key])) out[c.key] = clampG(raw[c.key]);
+    return out;
+  } catch { return {}; }
+}
 
 export default function AdminView({ token, onNavigate }) {
   const [users, setUsers] = useState([]);
@@ -13,6 +39,85 @@ export default function AdminView({ token, onNavigate }) {
   const [filter, setFilter] = useState('');
   const [sortField, setSortField] = useState('created_at');
   const [sortAsc, setSortAsc] = useState(false);
+  const [colW, setColW] = useState(readColWidths);
+  const [resizing, setResizing] = useState(null); // the column being dragged
+  const tableWrap = useRef(null);
+  useEffect(() => { try { localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(colW)); } catch { /* fine */ } }, [colW]);
+
+  // One g in CSS pixels where the table sits, from a 100g probe (the drag arrives in pixels; widths are kept in g).
+  const gPx = () => {
+    const host = tableWrap.current;
+    if (!host) return 0;
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:absolute;visibility:hidden;height:0;width:calc(var(--gu) * 100)';
+    host.appendChild(probe);
+    const g = probe.getBoundingClientRect().width / 100;
+    probe.remove();
+    return g;
+  };
+  const startResize = (e, key) => {
+    if (e.button != null && e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const handle = e.currentTarget;
+    const th = handle.parentElement;
+    const g = gPx();
+    if (!(g > 0) || !th) return;
+    const startX = e.clientX;
+    const startG = th.getBoundingClientRect().width / g;
+    try { handle.setPointerCapture(e.pointerId); } catch { /* fine */ }
+    setResizing(key);
+    const move = (ev) => {
+      const w = clampG(startG + (ev.clientX - startX) / g);
+      setColW(prev => (prev[key] === w ? prev : { ...prev, [key]: w }));
+    };
+    const up = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', up);
+      handle.removeEventListener('pointercancel', up);
+      setResizing(null);
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', up);
+    handle.addEventListener('pointercancel', up);
+  };
+  // Double-click: the column as wide as its longest entry (header included), in whole g.
+  const fitColumn = (e, key) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const th = e.currentTarget.parentElement;
+    const table = th && th.closest('table');
+    const g = gPx();
+    if (!table || !(g > 0)) return;
+    // A cell's own need: its text's laid-out extent (nowrap, so a cut entry is still laid out whole) plus its side
+    // padding. Not scrollWidth, which never reads less than the column already is, so fit could only widen.
+    const need = (cell) => {
+      const cs = getComputedStyle(cell);
+      const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+      let left = Infinity, right = -Infinity;
+      const walk = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+      for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+        if (!n.textContent.trim() || (n.parentElement && n.parentElement.closest('.admin-avatar, .admin-col-handle'))) continue;
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        const b = range.getBoundingClientRect();
+        if (b.width > 0) { left = Math.min(left, b.left); right = Math.max(right, b.right); }
+      }
+      return pad + (right > left ? right - left : 0);
+    };
+    const idx = th.cellIndex;
+    let widest = need(th);
+    for (const row of table.tBodies[0] ? table.tBodies[0].rows : []) {
+      const cell = row.cells[idx];
+      if (cell) widest = Math.max(widest, need(cell));
+    }
+    const w = clampG(Math.ceil(widest / g));
+    setColW(prev => ({ ...prev, [key]: w }));
+  };
+  const widthOf = (c) => colW[c.key] ?? c.def;
+  const emailSet = colW.email != null;
+  const fixedSum = ADMIN_COLS.reduce((s, c) => s + (widthOf(c) || 0), 0);
+  const tableWidth = `max(100%, calc(var(--gu) * ${emailSet ? fixedSum : fixedSum + EMAIL_MIN_G}))`;
 
   useEffect(() => {
     (async () => {
@@ -100,30 +205,38 @@ return (
         onChange={e => setFilter(e.target.value)}
         style={{width:'100%',height:'calc(var(--subrow) * 5)',lineHeight:'calc(var(--subrow) * 3)',padding:'0 var(--gu) var(--space-sm)',marginBottom:'calc(var(--subrow) * 2)',background:'var(--surface)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius-sm)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.252)',boxSizing:'border-box'}}
       />
-      <div style={{overflowX:'auto'}}>
-        <table className="admin-table" style={{width:'100%',borderCollapse:'separate',borderSpacing:0,fontSize:'calc(var(--gu) * 1.178)'}}>
+      <div ref={tableWrap} style={{overflowX:'auto',position:'relative'}}>
+        <table className={'admin-table' + (resizing ? ' is-resizing' : '')} style={{width:tableWidth,borderCollapse:'separate',borderSpacing:0,fontSize:'calc(var(--gu) * 1.178)'}}>
           <colgroup>
-            {/* Email takes whatever the table has over 26g (9g on a phone), so the columns after
-                it stay on whole g on a wider pane too; Replayer is the 4g toggle's own column. */}
-            {/* Four columns, as the headers (UX pick 104): the retired Replayer toggle's 4g col was
-                still 4th, so Joined fell into it and every column was cut. 9g + 6g + 13g + 7g = 35g. */}
-            <col style={{width:'calc(var(--gu) * 9)'}} />
-            <col style={{width:'calc(var(--gu) * 6)'}} />
-            <col />
-            <col style={{width:'calc(var(--gu) * 7)'}} />
+            {/* Four columns, as the headers (UX pick 104), each its own width in g (ADMIN_COLS above);
+                Email the free one until it is set, then a filler before Joined takes what is left. */}
+            {ADMIN_COLS.map(c => (
+              <React.Fragment key={c.key}>
+                {c.key === 'created_at' && emailSet && <col className="admin-col-fill" />}
+                <col style={widthOf(c) ? {width:`calc(var(--gu) * ${widthOf(c)})`} : undefined} />
+              </React.Fragment>
+            ))}
           </colgroup>
           <thead>
             <tr>
-              <th onClick={() => handleSort('username')}>Username{sortArrow('username')}</th>
-              <th onClick={() => handleSort('real_name')}>Name{sortArrow('real_name')}</th>
-              <th onClick={() => handleSort('email')}>Email{sortArrow('email')}</th>
-              <th style={{textAlign:'right'}} onClick={() => handleSort('created_at')}>Joined{sortArrow('created_at')}</th>
+              {ADMIN_COLS.map(c => (
+                <React.Fragment key={c.key}>
+                  {c.key === 'created_at' && emailSet && <th className="admin-col-fill" aria-hidden="true" />}
+                  <th style={c.right ? {textAlign:'right'} : undefined} onClick={() => handleSort(c.key)}>
+                    {c.label}{sortArrow(c.key)}
+                    <span className={'admin-col-handle' + (resizing === c.key ? ' is-active' : '')} role="separator" aria-orientation="vertical"
+                      aria-label={`Resize the ${c.label} column`} title="Drag to resize; double-click to fit"
+                      onPointerDown={(e) => startResize(e, c.key)} onClick={(e) => e.stopPropagation()}
+                      onDoubleClick={(e) => fitColumn(e, c.key)} />
+                  </th>
+                </React.Fragment>
+              ))}
             </tr>
           </thead>
           <tbody>
             {sorted.map(u => (
               <tr key={u.id}>
-                <td className="admin-user-cell">
+                <td className="admin-user-cell" title={u.username}>
                   {u.avatar ? (
                     <img className="admin-avatar" src={u.avatar} alt={u.username} />
                   ) : (
@@ -133,8 +246,9 @@ return (
                   )}
                   <span style={{fontWeight: 'var(--fw-bold)',color:'var(--text)'}}>{u.username}</span>
                 </td>
-                <td style={{color:'var(--text-muted)'}}>{u.real_name || '\u2014'}</td>
-                <td style={{color:'var(--text-muted)'}}>{u.email}</td>
+                <td style={{color:'var(--text-muted)'}} title={u.real_name || undefined}>{u.real_name || '\u2014'}</td>
+                <td style={{color:'var(--text-muted)'}} title={u.email || undefined}>{u.email}</td>
+                {emailSet && <td className="admin-col-fill" />}
                 <td style={{color:'var(--text-muted)',textAlign:'right',whiteSpace:'nowrap'}} title={u.created_at}>{timeAgo(u.created_at)}</td>
               </tr>
             ))}

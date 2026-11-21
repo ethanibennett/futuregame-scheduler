@@ -511,7 +511,7 @@ export default function CashView({ token, onModeChange, sidePane = null }) {
                               <span className="cb-open">{sum}</span>
                               <span className="cb-wl-cell">
                                 {(g.waitlistLen || 0) > 0 && <span className="cb-wl">WL {g.waitlistLen}</span>}
-                                {n > 1 && <span className="cb-chev" aria-hidden="true">{isOpen ? '\u2304' : '\u203A'}</span>}
+                                <span className="cb-chev" aria-hidden="true">{n > 1 ? (isOpen ? '\u2304' : '\u203A') : ''}</span>
                               </span>
                             </div>
                             {isOpen && Array.from({ length: n }, (_, ti) => (

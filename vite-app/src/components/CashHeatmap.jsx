@@ -6,13 +6,10 @@ import { API_URL } from '../utils/api.js';
 // a venue + game/stake; the grid shows when it runs and how busy. Needs ~2 weeks
 // of collected history to be meaningful.
 
-// Heatmap geometry: a 4g hour column (labels end 1g short of it), then seven 4g day columns
-// that touch — told apart by the inset hairline each cell draws, so the gaps are hairlines and
-// cost no width. 32g, placed with the labels from 2g: cells on 6g..34g, every edge a whole g.
-// Every row 2r.
-const HEAT_COLS = 'calc(var(--gu) * 4) repeat(7, calc(var(--gu) * 4))';
+// Heatmap geometry: a 4g hour column (labels end 1g short of it), then seven day columns of whole g
+// (4g on a phone, wider as the pane allows: heatFit in the component) that touch — told apart by the
+// inset hairline each cell draws, so the gaps are hairlines and cost no width. Every row 2r.
 const HEAT_COL_GAP = 0;
-const HEAT_W = 'calc(var(--gu) * 32)';
 const HEAT_ROW_H = 'calc(var(--subrow) * 2)';
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const UNIVERS = "var(--font-condensed, 'Univers Condensed', 'Univers', sans-serif)";
@@ -198,15 +195,28 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
      measured from the grid origin (the top bar's top) with a 100r probe for r. */
   const gridRef = useRef(null);
   const [gridDrop, setGridDrop] = useState(0);
+  /* The grid as wide as its pane allows (owner, 2026-11-21: "expand the actual heatmap horizontally [as] the window
+     is resized"): the day columns are whole g, 4g at the least (the phone's 35g rail: 4g + 7 x 4g, as before), each a
+     g wider for every 7g the pane has to spare; the grid sits ⌊spare / 2⌋ g in from the pane's left, so every edge
+     stays on a whole g (on the phone: 1g, where it was 1.5g centred less a 0.5g nudge). Measured from the pane. */
+  const [heatFit, setHeatFit] = useState({ col: 4, off: 1 });
   useLayoutEffect(() => {
     const el = gridRef.current;
     if (!el) return undefined;
     const snap = () => {
       const probe = document.createElement('div');
-      probe.style.cssText = 'position:absolute;height:calc(var(--subrow) * 100);width:0;visibility:hidden';
+      probe.style.cssText = 'position:absolute;height:calc(var(--subrow) * 100);width:calc(var(--gu) * 100);visibility:hidden';
       document.body.appendChild(probe);
-      const r = probe.getBoundingClientRect().height / 100;
+      const pr = probe.getBoundingClientRect();
       probe.remove();
+      const r = pr.height / 100, g = pr.width / 100;
+      const pane = el.parentElement;
+      if (g > 0 && pane) {
+        const avail = Math.floor(pane.clientWidth / g + 0.01);
+        const col = Math.max(4, Math.floor((avail - 4) / 7));
+        const off = Math.max(0, Math.floor((avail - 4 - 7 * col) / 2));
+        if (col !== heatFit.col || off !== heatFit.off) setHeatFit({ col, off });
+      }
       const bar = document.querySelector('.top-bar');
       if (!(r > 0) || !bar) return;
       // The container's own top does not move with its padding-top, so this is stable.
@@ -219,6 +229,8 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
     window.addEventListener('resize', snap);
     return () => window.removeEventListener('resize', snap);
   });
+
+  const heatCols = `calc(var(--gu) * 4) repeat(7, calc(var(--gu) * ${heatFit.col}))`;
 
   const cellMap = useMemo(() => {
     const m = new Map();
@@ -258,9 +270,10 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
           Switching rooms to {pending}. The list updates in a few seconds.
         </div>
       )}
-      {/* Room and Game as the app's own fields (UX pick 102): two 17g x 5r tiles, a caption over the
-          value and a caret, the native select laid over each at no opacity, so the tap still opens the
-          system's own list. They were native selects 17.32g and 15.55g wide, on no line. */}
+      {/* Room and Game as the app's own fields (UX pick 102): two 5r tiles, a caption over the value and a
+          caret, the native select laid over each at no opacity, so the tap still opens the system's own list.
+          Each is half the metric strip under it, 1g between (owner, 2026-11-21: "indexed to the avg
+          tables/reliability buttons"): 17g each on a phone, as before, wider with the pane. */}
       <div className="cash-picks">
         <label className="cash-pick">
           <span className="cash-pick-cap">Room</span>
@@ -304,19 +317,19 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
           {/* Vertical orientation: hours run DOWN as rows, the 7 days ACROSS as
               columns. Seven columns fit the phone width, so no horizontal scroll —
               the grid grows downward instead. */}
-          {/* Every cell is 3g x 2r, columns 1g apart, every edge on a whole g (see HEAT_COLS);
+          {/* Every cell is whole g x 2r, every edge on a whole g (see heatCols);
               24 rows x 2r = 48r with no row gap. Vertically adjacent cells are told apart by an
               inset hairline in the background colour, which costs no size. */}
-          <div ref={gridRef} style={{ flex: 'none', display: 'flex', flexDirection: 'column', width: HEAT_W, maxWidth: '100%', margin: '0 auto', position: 'relative', left: 'calc(var(--gu) * -0.5)', paddingTop: `calc(var(--subrow) * ${gridDrop.toFixed(4)})` }}>
+          <div ref={gridRef} style={{ flex: 'none', display: 'flex', flexDirection: 'column', width: `calc(var(--gu) * ${4 + 7 * heatFit.col})`, maxWidth: '100%', marginLeft: `calc(var(--gu) * ${heatFit.off})`, position: 'relative', paddingTop: `calc(var(--subrow) * ${gridDrop.toFixed(4)})` }}>
             {/* Day axis (column headers), one 2r line */}
-            <div style={{ display: 'grid', gridTemplateColumns: HEAT_COLS, gridAutoRows: HEAT_ROW_H, columnGap: HEAT_COL_GAP, rowGap: 0, flexShrink: 0 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: heatCols, gridAutoRows: HEAT_ROW_H, columnGap: HEAT_COL_GAP, rowGap: 0, flexShrink: 0 }}>
               <div />
               {DOW.map((day, d) => (
                 <div key={d} style={{ fontSize: 'calc(var(--gu) * 0.884)', color: d === nowDow ? 'var(--brand)' : 'var(--text-muted,#999)', fontWeight: d === nowDow ? 'var(--fw-bold)' : undefined, textAlign: 'center', fontFamily: UNIVERS, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{day}</div>
               ))}
             </div>
             {Array.from({ length: 24 }, (_, h) => (
-              <div key={h} style={{ display: 'grid', gridTemplateColumns: HEAT_COLS, gridAutoRows: HEAT_ROW_H, columnGap: HEAT_COL_GAP, rowGap: 0, flex: 'none' }}>
+              <div key={h} style={{ display: 'grid', gridTemplateColumns: heatCols, gridAutoRows: HEAT_ROW_H, columnGap: HEAT_COL_GAP, rowGap: 0, flex: 'none' }}>
                 <div style={{ fontSize: 'calc(var(--gu) * 0.884)', color: h === nowHour ? 'var(--brand)' : 'var(--text-muted,#999)', fontWeight: h === nowHour ? 'var(--fw-bold)' : undefined, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 'var(--gu)', fontFamily: UNIVERS, fontVariantNumeric: 'tabular-nums' }}>{hourLabel(h)}</div>
                 {DOW.map((day, d) => {
                   const c = cellMap.get(`${d}-${h}`);

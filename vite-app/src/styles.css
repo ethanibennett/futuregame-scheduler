@@ -1627,6 +1627,34 @@
       font-weight: var(--fw-bold);
       color: var(--bg);
     }
+    /* Adjustable columns (owner, 2026-11-21: "This table should have adjustable columns so that I can see the full
+       username/email etc"; AdminView ADMIN_COLS): a 1g strip on each header's right edge, the head's full 4r, with
+       a hairline 1r in from top and bottom to show where to grab; brighter on hover and while dragging. No touch
+       action, so a drag on a phone moves the column rather than the page. */
+    .admin-table th .admin-col-handle {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: var(--gu);
+      height: 100%;
+      cursor: col-resize;
+      touch-action: none;
+      z-index: 1;
+    }
+    .admin-table th .admin-col-handle::after {
+      content: '';
+      position: absolute;
+      top: var(--subrow);
+      bottom: var(--subrow);
+      right: 0;
+      width: var(--bw-hair);
+      background: var(--border);
+    }
+    .admin-table th .admin-col-handle:hover::after,
+    .admin-table th .admin-col-handle.is-active::after { width: calc(var(--bw-hair) * 2); background: var(--brand); }
+    .admin-table.is-resizing,
+    .admin-table.is-resizing * { cursor: col-resize; user-select: none; -webkit-user-select: none; }
+    .admin-table .admin-col-fill { padding: 0; }
 
     /* ==================================================================
        Date break. The pinned header used to sit on a flat --bg with no
@@ -17272,12 +17300,16 @@
        a hairline box, a caps LOCATION label seated on r2 over the place on r4, the
        chevron at the right; no pin. The row's other controls grow to 5r with it. Swiss keeps its
        headline (theme-swiss.css), so the label and chevron are hidden there. */
+    /* The two lines are centred in the box as a pair (owner, 2026-11-21: "center these lines vertically in the
+       box, disregard the gridlines inside"): each trimmed to its capitals and baseline, the place's baseline 2r
+       under the label's as before, and the pair centred by the column's justify. Where text-box-trim is not
+       supported (iOS 15) the line boxes are centred instead, a hair lower. */
     :root:not([data-theme^="swiss"]) .filter-chip.loc-tile {
       position: relative;
       height: calc(var(--subrow) * 5) !important;
       flex-direction: column !important;
       align-items: flex-start !important;
-      justify-content: flex-start !important;
+      justify-content: center !important;
       gap: 0 !important;
       padding: 0 calc(var(--gu) * 3) 0 var(--gu) !important;
       border-radius: var(--radius-xs);
@@ -17291,12 +17323,12 @@
       display: block;
       box-sizing: border-box;
       width: 100%;
-      height: calc(var(--subrow) * 2);
-      padding-top: calc(var(--subrow) * 2 - 1cap);
+      flex: none;
       line-height: 1 !important;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
       white-space: nowrap;
     }
+    :root:not([data-theme^="swiss"]) .loc-tile .loc-tile-value { margin-top: calc(var(--subrow) * 2 - 1cap); }
     :root:not([data-theme^="swiss"]) .loc-tile-label {
       font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
       letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-muted);
@@ -18039,9 +18071,10 @@
     .parser-eval-fill { height: 100%; background: var(--brand); }
     /* Admin's users first (UX pick 104). */
     .admin-users-head { margin-bottom: var(--subrow); }
-    /* The heatmap's Room and Game (UX pick 102): 17g x 5r tiles 1g apart, the caption's caps over the
-       value, a caret at the right; the native select over each, invisible, takes the tap. */
-    .cash-picks { display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 17)); column-gap: var(--gu); }
+    /* The heatmap's Room and Game (UX pick 102): 5r tiles 1g apart, the caption's caps over the value, a
+       caret at the right; the native select over each, invisible, takes the tap. Each half the metric strip
+       under them (owner, 2026-11-21: "indexed to the avg tables/reliability buttons"): 17g on a phone. */
+    .cash-picks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--gu); }
     .cash-pick {
       position: relative; display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 2); grid-template-rows: calc(var(--subrow) * 2) calc(var(--subrow) * 3);
       height: calc(var(--subrow) * 5); box-sizing: border-box; padding: 0 0 0 var(--gu); border-radius: var(--radius-sm);

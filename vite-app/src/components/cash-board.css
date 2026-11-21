@@ -90,12 +90,14 @@
 .cb-venue-meta { text-align: right; padding: 0 var(--gu); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border); }
 .cb-note { padding-left: var(--gu); }
 
-/* A table: stakes 6g, the game, open 12g, the waitlist and the chevron 6g; 1g between, 1g in from the box. Open was
+/* A table: stakes 6g, the game, open, the waitlist and the chevron 6g; 1g between, 1g in from the box. Open was
    10g and the WL cell 5g: "2 tables · open 15h 54m+" ran under the WL pill, and the pill and its chevron out of
-   their cell (owner, 2026-11-19: "This is a bit of a mess too"). */
+   their cell (owner, 2026-11-19: "This is a bit of a mess too"). Open is as wide as its own text, up to 12g, and
+   the game takes the rest (owner, 2026-11-21: "Give the game type more room before the ..."): a fixed 12g left
+   "PLO - 8 h…" beside an open time of 5g. */
 .cb-row {
   display: grid;
-  grid-template-columns: calc(var(--gu) * 6) minmax(0, 1fr) calc(var(--gu) * 12) calc(var(--gu) * 6);
+  grid-template-columns: calc(var(--gu) * 6) minmax(0, 1fr) fit-content(calc(var(--gu) * 12)) calc(var(--gu) * 6);
   column-gap: var(--gu);
   padding: 0 var(--gu);
 }
@@ -159,7 +161,9 @@
 .cb-variants { grid-template-columns: repeat(var(--n, 6), calc(var(--gu) * var(--cw, 5))); justify-content: start; }
 .cb-chip { background: var(--surface); border-color: var(--border); color: var(--text-muted); }
 .cb-chip.is-on { background: rgba(160,160,160,0.1); border-color: var(--accent); border-width: var(--bw-fine); color: var(--accent); }
-/* One row per game (UX pick 96): a game with several tables opens on a tap; the chevron after the WL. */
+/* One row per game (UX pick 96): a game with several tables opens on a tap; the chevron after the WL. Every top
+   row keeps the chevron's 1g slot, empty where there is none, so the WL pills end on one line (owner,
+   2026-11-21: "Right align these pills with the chevron still on the right"). */
 .cb-row.is-game { cursor: pointer; }
 .cb-row.is-game.is-open { background: var(--hover-overlay); }
-.cb-chev { margin-left: calc(var(--gu) * 0.5); color: var(--text-muted); }
+.cb-chev { flex: none; width: var(--gu); margin-left: calc(var(--gu) * 0.5); text-align: center; color: var(--text-muted); }
