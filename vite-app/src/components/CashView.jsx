@@ -159,6 +159,7 @@ function CashLocationPicker({ token, onSaved, trailing = null }) {
     if (!f.userLocation) return;
     const body = { lat: f.userLocation.lat, lon: f.userLocation.lng, radiusMiles: Math.max(5, Math.min(1000, Number(f.maxDistance) || 100)), label: f.locationLabel || 'Location' };
     const failed = async () => {
+      lastSavedKey.current = ''; // the same place can be picked again
       if (toast) toast.error('The cash location was not saved. Try again in a moment.');
       try {
         const r = await fetch(`${API_URL}/cash/location`, { headers: { Authorization: 'Bearer ' + token } });
@@ -171,12 +172,23 @@ function CashLocationPicker({ token, onSaved, trailing = null }) {
       .catch(failed);
   }, [token, onSaved, toast]);
 
+  /* The save runs once per pick, OUTSIDE the state updater, and only for a location that changed (2026-11-21:
+     a pick of Philadelphia was applied at 19:29:57 and Austin, the previous search, was posted again at 19:30:30
+     with no pick). A side effect inside an updater can run again: React re-applies queued updaters when a later
+     update rebases over them (tab presses are transitions), which replays an old pick's save. */
+  const filtersRef = useRef(filters);
+  useEffect(() => { filtersRef.current = filters; }, [filters]);
+  const lastSavedKey = useRef('');
   const setFilters = useCallback((updater) => {
-    setFiltersState(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
+    const prev = filtersRef.current;
+    const next = typeof updater === 'function' ? updater(prev) : updater;
+    filtersRef.current = next;
+    setFiltersState(next);
+    const key = next && next.userLocation ? `${next.userLocation.lat}|${next.userLocation.lng}|${next.maxDistance}` : '';
+    if (key && key !== lastSavedKey.current) {
+      lastSavedKey.current = key;
       saveToCash(next);
-      return next;
-    });
+    }
   }, [saveToCash]);
 
   const label = filters.userLocation && filters.maxDistance
@@ -293,8 +305,19 @@ export default function CashView({ token, onModeChange, sidePane = null }) {
   // After a location save the board must change, but the new room list only exists once the box
   // has pulled the location, re-derived and pushed it back (about 30-60 s). The board used to keep
   // its old rooms until the 5-minute refresh, so the picker looked like it did nothing. Now it
-  // checks every 8 s until the watcher reports the new location applied, then reloads.
+  // checks every second until the watcher reports the new location applied, then reloads every 1.5 s for the
+  // first 12 s as the rows arrive (owner, 2026-11-21: "Can we get the update to be any faster?").
   const [switchingTo, setSwitchingTo] = useState(null);
+  // While any room has no first poll yet, look again every 1.5 s (up to ~30 s), so a new location's games fill
+  // in the moment their rows land rather than at the next scheduled reload.
+  const awaitTries = useRef(0);
+  useEffect(() => {
+    const waiting = data && Array.isArray(data.venues) && data.venues.some(v => v.ok === null);
+    if (!waiting) { awaitTries.current = 0; return undefined; }
+    if (awaitTries.current >= 20) return undefined;
+    const id = setTimeout(() => { awaitTries.current += 1; load(); }, 1500);
+    return () => clearTimeout(id);
+  }, [data, load]);
   useEffect(() => {
     if (!locationVersion) return undefined;
     let live = true, tries = 0, timer = null;
@@ -308,18 +331,19 @@ export default function CashView({ token, onModeChange, sidePane = null }) {
         if (loc && !loc.pending) {
           setSwitchingTo(null);
           load();
-          /* The new rooms' first polls land over the next minute or two (the box polls them the moment their
-             list is derived and pushes each one within ~15 s; owner, 2026-11-21: "It's VERY slow"), so the board
-             reloads as they arrive instead of waiting for the 5-minute refresh. */
-          for (const ms of [15000, 30000, 45000, 60000, 90000, 120000]) followUps.push(setTimeout(() => { if (live) load(); }, ms));
+          /* The new rooms' first polls land over the next half minute (the box polls them three at a time the
+             moment their list is derived and pushes rows every 3 s; owner, 2026-11-21: "We have to get this to
+             update much faster to a new location"), so the board reloads as they arrive. */
+          for (const ms of [1500, 3000, 4500, 6000, 7500, 9000, 10500, 12000, 15000, 20000, 25000, 30000, 45000, 60000, 90000, 120000]) followUps.push(setTimeout(() => { if (live) load(); }, ms));
           return;
         }
         if (loc) setSwitchingTo((loc.requested && loc.requested.label) || loc.label || 'the new location');
       } catch { /* try again */ }
-      if (live && tries < 25) timer = setTimeout(check, 8000);
+      // Every 1 s (it was 8, then 2): the switch now applies about a second after the pick.
+      if (live && tries < 180) timer = setTimeout(check, 1000);
       else if (live) setSwitchingTo(null);
     };
-    timer = setTimeout(check, 1500);
+    timer = setTimeout(check, 500);
     return () => { live = false; clearTimeout(timer); followUps.forEach(clearTimeout); };
   }, [locationVersion, token, load]);
 
@@ -435,10 +459,16 @@ export default function CashView({ token, onModeChange, sidePane = null }) {
             {token && <CashAlertsButton token={token} venues={data.venues} />}
           </div>
 
+          {/* Rooms with no first poll yet (a new location, its rows a second or two away) are loading, not empty
+              (owner, 2026-11-21: "it ... initially said nothing was running at all"). */}
           {venues.length === 0 && (
             <div style={{ color: 'var(--text-muted, #aaa)', padding: 'var(--space-2xl)', textAlign: 'center' }}>
-              {filterActive ? 'Nothing running in the selected variants.' : 'No venues reporting.'}
+              {rawVenues.some(v => v.ok === null) ? 'Getting the live games…'
+                : filterActive ? 'Nothing running in the selected variants.' : 'No venues reporting.'}
             </div>
+          )}
+          {venues.length > 0 && rawVenues.some(v => v.ok === null) && (
+            <p className="cb-snap">{`Getting the live games for ${rawVenues.filter(v => v.ok === null).length} more room${rawVenues.filter(v => v.ok === null).length === 1 ? '' : 's'}…`}</p>
           )}
 
           <div className="cb-venues">
