@@ -371,6 +371,10 @@ const EXPECT_KEYS = new Set([
   // recordable hand; an ante of unstated type; a format the replayer cannot store; other hands
   // told alongside.
   'observer', 'recordable', 'anteUnclear', 'unsupported', 'otherHands',
+  // Cards an opponent shows whose seat the text never gives (a rant, a story of several
+  // hands: "I had A4, he had A2"): one string per such opponent, flop and draw games only.
+  // Scored as "some opponent holds them"; they count as stated, never as invented.
+  'shown',
 ]);
 /* sourceUrl: where a paraphrased case came from (the corpus never carries the raw
    text of a forum post or a video; `source` is already text|speech). */
@@ -462,6 +466,7 @@ function validateCase(c, seenIds) {
   if (ex.anteUnclear != null && ex.blinds && ex.blinds.ante != null) E('anteUnclear is for an ante whose type is not known: leave blinds.ante out');
   if (ex.unsupported != null && ex.unsupported !== true) E('unsupported, when given, is true');
   if (ex.otherHands != null && !(Number.isInteger(ex.otherHands) && ex.otherHands >= 1)) E('otherHands is the number of other hands told');
+  if (ex.shown != null && !(Array.isArray(ex.shown) && ex.shown.length && ex.shown.every(x => typeof x === 'string' && x))) E('shown is a list of card strings, one per opponent whose seat is not told');
   if (c.expectGaps != null) {
     if (!Array.isArray(c.expectGaps)) E('expectGaps must be an array');
     else c.expectGaps.forEach((g, i) => {
@@ -668,6 +673,13 @@ function validateCards(c, ex, cat, cfg, heroRef) {
     if (cat === 'stud' ? cs.length > want : cs.length !== want) errs.push(`showdown.${ref} has ${cs.length} cards; ${c.game} wants ${want}`);
     add('opp:' + ref, cs);
   }
+
+  (ex.shown || []).forEach((v, k) => {
+    if (cat === 'stud') { errs.push('shown is for flop and draw games; a stud opponent is "@<door card>"'); return; }
+    const cs = parse(`shown[${k}]`, v);
+    if (cs.length !== cfg.heroCards) errs.push(`shown[${k}] has ${cs.length} cards; ${c.game} wants ${cfg.heroCards}`);
+    add('opp:shown' + k, cs);
+  });
 
   // Cross-owner duplicates (dedupe within an owner: a stud up card also listed in a showdown is one card).
   const where = new Map();
@@ -1020,6 +1032,7 @@ function buildOracleHand(c, v) {
   if (isStud && ex.players && ex.players > seats.length) {
     for (let i = seats.length; i < ex.players; i++) seats.push('?seat' + i);
   }
+  if (!isStud) (ex.shown || []).forEach((_, k) => seats.push('?shown' + k));
   const n = seats.length;
   const heroIdx = seats.indexOf(heroRef) >= 0 ? seats.indexOf(heroRef) : (seats.indexOf('hero') >= 0 ? seats.indexOf('hero') : null);
   const involved = new Set([heroRef]);
@@ -1032,8 +1045,8 @@ function buildOracleHand(c, v) {
     return null;
   };
   const players = seats.map((s, i) => ({
-    name: i === heroIdx ? 'Hero' : (s.startsWith('@') ? 'Door ' + s.slice(1) : s),
-    position: isStud ? 'Seat ' + (i + 1) : (s === 'hero' ? '' : s),
+    name: i === heroIdx ? 'Hero' : (s.startsWith('@') ? 'Door ' + s.slice(1) : s.startsWith('?shown') ? 'Opponent ' + (Number(s.slice(6)) + 1) : s),
+    position: isStud ? 'Seat ' + (i + 1) : (s === 'hero' || s.startsWith('?shown') ? '' : s),
     startingStack: stackFor(s),
   }));
   // With no hero the replayer (and the server) lay the card slots out as if seat 0
@@ -1076,6 +1089,11 @@ function buildOracleHand(c, v) {
         else streets[0].cards.opponents[slotOf(i)] = v2;
       }
     }
+    (ex.shown || []).forEach((v2, k) => {
+      const i = seats.indexOf('?shown' + k);
+      if (heroIdx == null && i === slotHero) streets[0].cards.hero = v2;
+      else streets[0].cards.opponents[slotOf(i)] = v2;
+    });
   }
   keys.forEach((k, si) => {
     for (const a of sim.completed[k] || []) {
@@ -1360,6 +1378,23 @@ function scoreCase(c, v, hand) {
     const e = parseCardsStrict(val), p = parseCardsLoose(got).filter(x => x.r !== '?' || cat !== 'stud');
     F('showdown.' + ref, 'showdown', val, got || null, cat === 'stud' ? cardsSubset(e.filter(x => x.r !== '?'), p) : cardsMatch(e, p));
   }
+  // Shown hands of opponents with no seat: each must be some other opponent's cards.
+  if (ex.shown && cat !== 'stud') {
+    const used = new Set(Object.keys(ex.showdown || {}).map(r => ctx.resolve(r)));
+    ex.shown.forEach((val, k) => {
+      const e = parseCardsStrict(val) || [];
+      let hit = -1, seen = '';
+      for (let i = 0; i < ctx.n; i++) {
+        if (i === ctx.heroIdx || used.has(i)) continue;
+        const got = ctx.oppCards(0, i);
+        if (!got) continue;
+        if (!seen) seen = got;
+        if (cardsMatch(e, parseCardsLoose(got))) { hit = i; break; }
+      }
+      if (hit >= 0) used.add(hit);
+      F(`shown.${k}`, 'showdown', val, hit >= 0 ? ctx.oppCards(0, hit) : (seen || null), hit >= 0);
+    });
+  }
   if (ex.winners) {
     const want = winnerRefs(ex.winners).map(r => ctx.resolve(r));
     const gotW = (H.result && Array.isArray(H.result.winners) ? H.result.winners : []).map(w => w.playerIdx);
@@ -1390,6 +1425,7 @@ function scoreCase(c, v, hand) {
   Object.values(ex.heroStreetCards || {}).forEach(noteCards);
   Object.values(ex.board || {}).forEach(noteCards);
   Object.values(ex.showdown || {}).forEach(noteCards);
+  (ex.shown || []).forEach(noteCards);
   Object.values(ex.studUp || {}).forEach(noteCards);
   Object.keys(ex.studUp || {}).concat([...collectRefs(ex)]).filter(r => r.startsWith('@')).forEach(r => noteCards(r.slice(1)));
   Object.values(ex.draws || {}).forEach(list => list.forEach(d => { if (d[2]) noteCards(d[2]); if (d[3]) noteCards(d[3]); }));

@@ -6049,7 +6049,6 @@
   "sourceUrl": "https://www.reddit.com/r/poker/comments/17devew/texas_poker_hit_app/kjxdp8z/",
   "game": "NLH",
   "tags": [
-   "not-a-hand",
    "rant",
    "all-caps",
    "several-hands"
@@ -6057,16 +6056,50 @@
   "text": "THIS APP IS RIGGED, CHEATED 3 TIMES TODAY. IN A TOURNAMENT ONE GUY FOLDED, THE OTHER WENT ALL IN, WE BOTH HAD ABOUT 1K, I WON AND NEVER GOT HIS CHIPS. NEXT GAME I HAD A4, HE HAD A2, BOARD A66Q AND SOMETHING, SAME HAND, THEY GAVE HIM THE WHOLE POT AND DELETED IT FROM THE CHAT. BOTS EVERYWHERE. STAY AWAY.",
   "expect": {
    "gameType": "NLH",
-   "recordable": false
+   "heroCards": "Ax4x",
+   "shown": [
+    "Ax2x"
+   ],
+   "board": {
+    "flop": "Ax6x6x",
+    "turn": "Qx"
+   },
+   "otherHands": 1
   },
   "expectGaps": [
    {
-    "kind": "impossible",
-    "field": "quickAdd.notRecordable",
-    "id": "scope",
-    "about": "not one recordable hand"
+    "kind": "ambiguous",
+    "field": "quickAdd.otherHands",
+    "id": "hand-choice",
+    "about": "the post tells more than one hand"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the hero's seat is never stated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
    }
-  ]
+  ],
+  "notes": "Two hands (owner, 2026-11-21: several hands are recorded one at a time). The second is recorded, the only one with cards: A4 against A2 on A66Q and a river not told. \"Same hand\" disputes who won, so no winner is expected."
  },
  {
   "id": "web-rigged-rant-jj-vs-j5-555",
@@ -6074,23 +6107,54 @@
   "sourceUrl": "https://www.reddit.com/r/poker/comments/myhtsg/online_poker_is_rigged/ilwk8dv/",
   "game": "NLH",
   "tags": [
-   "not-a-hand",
    "rant",
    "fragment"
   ],
   "text": "Four straight 1-3 outers on the river took me out of a big event on ClubWPT. Five sets of quads in a few hours. This week I called a shove with JJ against J5 and the flop came 555. That doesn't happen naturally. Rigged for entertainment.",
   "expect": {
    "gameType": "NLH",
-   "recordable": false
+   "heroCards": "JxJx",
+   "shown": [
+    "Jx5x"
+   ],
+   "board": {
+    "flop": "5x5x5x"
+   }
   },
   "expectGaps": [
    {
-    "kind": "impossible",
-    "field": "quickAdd.notRecordable",
-    "id": "scope",
-    "about": "not one recordable hand"
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the hero's seat is never stated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given for the shove"
    }
-  ]
+  ],
+  "notes": "One hand is told: JJ calls a shove from J5 and the flop is 555. The rest are counts of hands (\"four straight 1-3 outers\", \"five sets of quads\"), not hands, so otherHands is not expected (owner, 2026-11-21: several hands are recorded one at a time)."
  },
  {
   "id": "web-kk-blinds-as-lines-all-others-fold",
@@ -8486,7 +8550,6 @@
   "sourceUrl": "https://bsky.app/profile/redacted/post/3lsz3eg6zec24",
   "game": "NLH",
   "tags": [
-   "not-a-hand",
    "fragment",
    "several-hands",
    "result-symbol"
@@ -8495,16 +8558,40 @@
   "expect": {
    "gameType": "NLH",
    "gameMode": "mtt",
-   "recordable": false
+   "heroCards": "AxAx",
+   "shown": [
+    "Kc8c"
+   ],
+   "otherHands": 2
   },
   "expectGaps": [
    {
-    "kind": "impossible",
-    "field": "quickAdd.notRecordable",
-    "id": "scope",
-    "about": "not one recordable hand"
+    "kind": "ambiguous",
+    "field": "quickAdd.otherHands",
+    "id": "hand-choice",
+    "about": "the post tells more than one hand"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the hero's seat is never stated"
    }
-  ]
+  ],
+  "notes": "Three hands told as results (owner, 2026-11-21: several hands are recorded one at a time). The first is recorded, the one whose opponent cards are given in full: AA against K8cc. The stack and the level are after the hands, so neither is expected for it."
  },
  {
   "id": "web-mtt-ak-lj-raise-bb-leads-range-braces",

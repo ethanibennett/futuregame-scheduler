@@ -119,6 +119,15 @@ attributed yet. **Before switching:** decide whether a story of several hands is
 a time, and make the prompt and the corpus agree. Haiku 5.5 is a tenth of today's cost at today's recall, but
 slower (p90 14 s) and no better where it matters.
 
+**Decided (owner, 2026-11-21): "One hand at a time".** A text that tells several hands records the one told in most
+detail and asks which was meant (decision F, `quickAdd.otherHands`), however briefly each is told; only a text with no
+hand in it is "not recordable". The prompt's `recordable` rule now says so (it listed "a result only", which refused
+montages of fragments), and six corpus cases that expected a refusal now expect their most detailed hand: a rant of
+two hands, a rant with one hand among counts of others, a run of three results, two commentated hands, a stud montage
+and three hands in four sentences. Their opponents' seats are never told, so the eval gained `shown`: cards an
+unseated opponent shows, one fact ("some opponent holds them"), never counted as invented
+(`test/quick-add/scorer-shown.test.js`). The runs above were scored on the old corpus and prompt.
+
 ## The runs to make from Admin
 
 All on the server's key. Costs are **estimates** (list price; the cached prompt of ~11,700 tokens read from

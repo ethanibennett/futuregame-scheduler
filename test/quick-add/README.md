@@ -200,10 +200,11 @@ Each file is an array of cases:
 | `winners` | `["UTG"]` or `{ "refs": ["BTN","BB"], "split": true }` | the main pot's winners |
 | `pots` | `[{ "name": "board 1", "winners": ["UTG"] }, { "name": "board 2", "winners": ["BTN"] }]` | a winner per pot (side pots, a hand run twice); scored by pot name |
 | `observer` | `true` | the narrator was not in the hand: stored hero-less (`hand.heroless`), no hero question; no `heroPosition` or `heroCards` |
-| `recordable` | `false` | the text is not one recordable hand (a rules question, a story, a montage) |
+| `recordable` | `false` | the text has no hand to record (a rules question, a story with no hand, a misdeal). A text that tells several hands is recordable: the one told in most detail is expected, with `otherHands` (owner, 2026-11-21) |
 | `anteUnclear` | `5000` | an ante said with no type and no pot to settle it; leave `blinds.ante` out |
 | `unsupported` | `true` | a format the replayer cannot store: bomb pot, double board, run it twice, button blind, PLO5/6, short deck |
 | `otherHands` | `3` | how many other hands the text also tells |
+| `shown` | `["Ax2x"]` | cards an opponent shows whose seat the text never gives ("I had A4, he had A2"), one string per opponent; flop and draw games. Scored as "some opponent holds them", and never counted as invented |
 
 The last five are what only the parse can tell. The server carries them in `hand.quickAdd`
 (`notRecordable`, `anteUnclear`, `unsupported`, `otherHands`) and `hand.heroless` (`observer`), the

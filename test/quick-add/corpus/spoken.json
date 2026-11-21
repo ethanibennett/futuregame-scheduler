@@ -2386,7 +2386,6 @@
   "sourceUrl": "https://www.youtube.com/watch?v=-jWYRL1xENs&t=1316s",
   "game": "NLH",
   "tags": [
-   "not-a-hand",
    "live-commentary",
    "several-hands",
    "garbled"
@@ -2394,17 +2393,48 @@
   "text": "the button opens to 150 and a short stack calls with jack ten of diamonds, then a quiet player three bets with pocket tens, queen deuce folds and the tens scoop it. next hand the veteran makes it 300, ace deuce of spades calls, games wild, nineteen two of diamonds calls, somebody lets ace deuce go, and the bald guy ships his pocket eights",
   "expect": {
    "gameType": "NLH",
-   "recordable": false
+   "observer": true,
+   "shown": [
+    "JdTd",
+    "TxTx",
+    "Qx2x"
+   ],
+   "otherHands": 1
   },
   "expectGaps": [
    {
-    "kind": "impossible",
-    "field": "quickAdd.notRecordable",
-    "id": "scope",
-    "about": "not one recordable hand"
+    "kind": "ambiguous",
+    "field": "quickAdd.otherHands",
+    "id": "hand-choice",
+    "about": "the post tells more than one hand"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "only the button is seated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
    }
   ],
-  "notes": "Stream commentary running several hands together, half garbled: nothing to record as one hand."
+  "notes": "Stream commentary running two hands together (owner, 2026-11-21: several hands are recorded one at a time). The first is told in order and recorded, hero-less: the button opens to 150, JdTd calls, TT three-bets, Q2 folds, the tens win. Only the button is seated, so the cards are expected by owner, not by seat. The second is half garbled (\"nineteen two\", A2 calls and is then let go)."
  },
  {
   "id": "sp-at-table-3-6-or-6-6-jammed-14-7",
@@ -3138,7 +3168,6 @@
   "sourceUrl": "https://www.youtube.com/watch?v=lgmh6Fe6XXg&t=452s",
   "game": "Stud 8",
   "tags": [
-   "not-a-hand",
    "montage",
    "several-hands",
    "hedged-card"
@@ -3147,17 +3176,17 @@
   "expect": {
    "gameType": "Stud 8",
    "gameMode": "mtt",
-   "recordable": false
+   "otherHands": 2
   },
   "expectGaps": [
    {
-    "kind": "impossible",
-    "field": "quickAdd.notRecordable",
-    "id": "scope",
-    "about": "not one recordable hand"
+    "kind": "ambiguous",
+    "field": "quickAdd.otherHands",
+    "id": "hand-choice",
+    "about": "the post tells more than one hand"
    }
   ],
-  "notes": "A montage of hands with the key one told only as a summary."
+  "notes": "A montage: two hands in passing, then, \"long story short\", the one told in most detail, which is recorded (owner, 2026-11-21: several hands are recorded one at a time): three sixes against 678 and a hedged nine, checked through on the river, a full house all along. Too vague for its cards or bets to be expected."
  },
  {
   "id": "sp-lhe-small-queens-nicknames-limits-from-8k",
@@ -3294,24 +3323,56 @@
   "sourceUrl": "https://www.youtube.com/watch?v=p4BWxVzXfl0&t=1122s",
   "game": "LHE",
   "tags": [
-   "not-a-hand",
    "several-hands",
    "compressed"
   ],
   "text": "first hand I had a king in the big blind and he showed ace king, which flopped a king. then he had pocket sixes against my pocket sevens and I flopped a 76. and just now I open king ten, he's got king five, I call, and it runs out ace king nine queen, guess guess guess [ __ ] he's on a heater against me",
   "expect": {
    "gameType": "LHE",
-   "recordable": false
+   "heroCards": "KxTx",
+   "shown": [
+    "Kx5x"
+   ],
+   "board": {
+    "flop": "AxKx9x",
+    "turn": "Qx"
+   },
+   "otherHands": 2
   },
   "expectGaps": [
    {
-    "kind": "impossible",
-    "field": "quickAdd.notRecordable",
-    "id": "scope",
-    "about": "not one recordable hand"
+    "kind": "ambiguous",
+    "field": "quickAdd.otherHands",
+    "id": "hand-choice",
+    "about": "the post tells more than one hand"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the hero's seat is never stated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
    }
   ],
-  "notes": "Four hands, a sentence each: none is told fully."
+  "notes": "Three hands, a sentence each, and a complaint (owner, 2026-11-21: several hands are recorded one at a time). The last is told in most detail and recorded: KT against K5, A K 9 and then a queen. Its river is garbled, so no river is expected."
  },
  {
   "id": "sp-razz-steel-position-dead-cards-nine-on-five",
