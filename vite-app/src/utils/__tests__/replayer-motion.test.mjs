@@ -663,3 +663,19 @@ test('settlePile: the row makes room after a delay, holding its old place until 
   assert.ok(an.options.delay >= 40 - 1e-9 || /translate\(-10px/.test(an.frames[0].transform), 'held at its old place');
   assert.equal(an.options.fill === 'backwards' || an.options.delay === 0, true);
 });
+
+import { rayToRect } from '../replayer-motion.js';
+
+test('rayToRect: the distance to where a ray enters a rect, null when it misses', () => {
+  const rect = { left: 100, right: 200, top: 300, bottom: 340 };
+  // Straight down from above its middle: it enters the top edge 100 below.
+  assert.equal(rayToRect(150, 200, { x: 0, y: 1 }, rect), 100);
+  // At 45 degrees down-right from (50, 250): x enters at t=50*sqrt2, y at t=50*sqrt2.
+  const d = Math.SQRT1_2;
+  assert.ok(Math.abs(rayToRect(50, 250, { x: d, y: d }, rect) - 50 / d) < 1e-9);
+  // Pointing away, or past it: null.
+  assert.equal(rayToRect(150, 200, { x: 0, y: -1 }, rect), null);
+  assert.equal(rayToRect(50, 200, { x: 0, y: 1 }, rect), null);
+  // Starting inside: 0.
+  assert.equal(rayToRect(150, 320, { x: 1, y: 0 }, rect), 0);
+});

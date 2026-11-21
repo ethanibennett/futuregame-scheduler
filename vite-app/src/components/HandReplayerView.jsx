@@ -26,7 +26,7 @@ import {
   MotionRegistry, SPRINGS_FLAG_KEY, readSpringsFlag, springSetFor, rateFor,
   prefersReducedMotion as springsReducedMotion,
   dealBoard, yieldBoard, pushOut, planSweep, sweepWagers, shipPot, shipFirstArrival, shipStartAfterSweep,
-  settlePile, fadePileOut, emptyPile, seatLanding, clearPush, centreOf, unionRect,
+  settlePile, fadePileOut, emptyPile, seatLanding, clearPush, rayToRect, centreOf, unionRect,
   collectAtResult, potShown,
 } from '../utils/replayer-motion.js';
 import { SPRING_SETS, spring, timeTo, tierSpring, keyframes as transportKeyframes, REPLAYER_PACE } from '../utils/spring.js';
@@ -10508,7 +10508,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               : [];
             const g = w.geo;
             const box = { left: g.cx - g.w / 2, right: g.cx + g.w / 2, top: g.cy - g.h / 2, bottom: g.cy + g.h / 2 };
-            const pushPx = clearPush(box, dir, want, obstacles);
+            /* Every bet comes from its player (owner, 2026-11-21: "After the flop, bets are originating from the center
+               of the table instead of the seat box … They should always come from the player"): the push starts where
+               the line from the wager to its seat meets the seat's plaque. It was a fixed 0.4-0.55 of a card's width,
+               about 10px, so a new wager appeared beside where it rests; only a call's added chips came from the plaque. */
+            const plaqueRect = seatEl && seatEl.querySelector('.replayer-seat-info') ? seatEl.querySelector('.replayer-seat-info').getBoundingClientRect() : null;
+            const toPlaque = plaqueRect ? rayToRect(g.cx, g.cy, dir, plaqueRect) : null;
+            const pushPx = toPlaque != null && toPlaque > 0 ? toPlaque : clearPush(box, dir, want, obstacles);
             const S3 = SPRING_SETS[set].stage;
             const tn = [...el.childNodes].find(n => n.nodeType === 3);
             const before = computePlayerContrib(hand, streetIdx, currentActions, actionIdx - 1, act.player);

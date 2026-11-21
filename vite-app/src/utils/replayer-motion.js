@@ -1411,6 +1411,23 @@ export function fadePileOut(reg, { set, rate = 1, layer, layerRect, stacks, dela
  * @param {number} pushPx
  * @param {DOMRect[]} obstacles
  */
+/**
+ * How far a point travels along a unit direction before it meets a rect: the distance to where the ray (x, y) + t·dir
+ * enters it, or null when it never does (or starts inside it, 0). A wager's push-out starts at its seat's plaque so
+ * (owner, 2026-11-21: "They should always come from the player"). Pure.
+ */
+export function rayToRect(x, y, dir, rect) {
+  let tIn = -Infinity, tOut = Infinity;
+  for (const [p, d, lo, hi] of [[x, dir.x, rect.left, rect.right], [y, dir.y, rect.top, rect.bottom]]) {
+    if (Math.abs(d) < 1e-9) { if (p < lo || p > hi) return null; continue; }
+    const a = (lo - p) / d, b = (hi - p) / d;
+    tIn = Math.max(tIn, Math.min(a, b));
+    tOut = Math.min(tOut, Math.max(a, b));
+  }
+  if (tOut < 0 || tIn > tOut) return null;
+  return Math.max(0, tIn);
+}
+
 export function clearPush(box, dir, pushPx, obstacles, margin = 1) {
   const hits = (k) => obstacles.some(o => {
     const dx = dir.x * pushPx * k, dy = dir.y * pushPx * k;
