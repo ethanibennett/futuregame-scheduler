@@ -86,6 +86,39 @@ the run** parses only the hands it had not kept (`eval.js --resume`), then score
 report says how many were carried over. A deploy still stops the run in progress: resume it once the site is
 back.
 
+## Measured (2026-11-21, futurega.me Admin, the 266-hand corpus)
+
+| Every hand | Sonnet 5 (today) | Opus 5.5 low | Haiku 5.5 low |
+|---|---:|---:|---:|
+| Fact recall | 83.2% | **90.1%** | 83.3% |
+| Fact precision | 85.4% | **89.7%** | 88.0% |
+| Wrong facts | 254 | **94** | 157 |
+| Perfect parses | 69 | **126** | 79 |
+| Complete hands perfect (of 58) | 20 | **48** | 38 |
+| Complete hands asked a blocking question (of 58) | 27 | **6** | 12 |
+| Gap recall | 73.2% | **76.4%** | 71.9% |
+| Hallucinated cards | **69** (32 cases) | 109 (32 cases) | 77 (26 cases) |
+| Invented suits | **487** | 548 | 503 |
+| Invented stacks | 40 | **24** | 26 |
+| Speech: recall / perfect (of 109) | 74.0% / 15 | **84.9% / 40** | 76.4% / 21 |
+| Cost a hand | $0.011 | $0.022 | **$0.0013** |
+| Latency p50 / p90 | **5.7 s / 7.7 s** | 6.3 s / 10.8 s | 9.1 s / 14.0 s |
+| Failed parses | 0 | 1 | 1 |
+
+The 40-hand pilots (same 40 hands): Sonnet 5 87.3% / 88.0%, 10 perfect, 18 cards; Opus 5.5 low 89.6% / 90.5%,
+19 perfect, 18 cards; Haiku 5.5 low 87.9% / 90.8%, 16, 20; Sonnet 5.5 medium 84.1% / 90.5%, 13, 13.
+
+**Reading it.** Opus 5.5 at low effort is ahead on every fact measure, most of all on speech and on complete
+hands (48 of 58 perfect, none with an invented card, and 6 needless questions where today asks 27). Its one
+worse figure is hallucinated cards, and every one of them is in an incomplete description. In the 25 worst cases
+the report lists, about half of its extra cards come from five stories that are not one hand (a rant, a montage
+of several hands): the corpus expects "not one recordable hand", Opus records the most detailed hand and asks
+which was meant (`quickAdd.otherHands`), and every card of it, ranks the text named included, counts as
+invented. The rest are spread below the listed cases; a finished run keeps only its report, so they cannot be
+attributed yet. **Before switching:** decide whether a story of several hands is refused or recorded one hand at
+a time, and make the prompt and the corpus agree. Haiku 5.5 is a tenth of today's cost at today's recall, but
+slower (p90 14 s) and no better where it matters.
+
 ## The runs to make from Admin
 
 All on the server's key. Costs are **estimates** (list price; the cached prompt of ~11,700 tokens read from
