@@ -945,6 +945,12 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   together behind the plaque, never over it (owner, 2026-11-22; foldToStack, and a stud fold's down cards). The opening's
   ante chip is in its denomination's colour (`getChipBreakdown(ante)[0]`): with none it drew the text colour, a plain
   white disc. The winner's gold eases in over 200ms (it was most of the way in two frames).
+  **The opening builds the pot** (owner, 2026-11-22: "Build the pot starting with the ante and then the small and big
+  blinds"): the figure and the pile start empty, take each ante as it lands, then each blind as its chips come to rest
+  (`potTo` in the opening; the last step is `potCommitted`). `motion.potBuilding` keeps `resyncDigits` off the figure
+  meanwhile (a commit with no moment put the whole pot back, so it read 5,000 from the first frame); the pile steps by
+  `setPile(value, { fade })`, a stack leaving it fading out as a copy (`fadePileOut`'s `duration`) and a new or grown
+  stack fading in over two beats.
 - **The action pills are solid** (owner, 2026-11-22: "a solid color with contrasting text"): `--act-pill` / `--act-pill-ink`
   per action, from `--act-*-solid` and `--act-ink-light` / `--act-ink-dark` (styles.css, beside `--act-*`): fold, call
   (blue-600) and raise (red-600) in white, check and bet in near-black, all-in as before; each pair measured at 4.8:1 or

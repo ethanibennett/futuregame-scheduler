@@ -79,6 +79,8 @@ export class MotionRegistry {
     this.pendingStacks = new Map();
     // The seats whose stack figure a sampler is counting: a commit's resync leaves their digits alone.
     this.countingStacks = new Set();
+    // The opening is building the pot's figure from nothing (the ante, then the blinds): a commit's resync leaves it.
+    this.potBuilding = false;
     // Supplied by the component: write the pot / a stack's digits, and one React render when
     // everything pending has landed so React's value matches the DOM again.
     this.writePot = null;
@@ -436,6 +438,7 @@ export class MotionRegistry {
     this.potFloor = 0;
     this.pendingStacks.clear();
     this.countingStacks.clear();
+    this.potBuilding = false;
     this.momentKind = null;
     this.momentKey = null;
     this.captureNow = 0;
@@ -1369,7 +1372,9 @@ export function emptyPile(reg, { set, rate = 1, stacks }) {
  * @param {{el:Element, size:object}[]} p.reveals
  * @param {number} [p.delay]  ms before the moves start (at rate 1)
  */
-export function settlePile(reg, { set, rate = 1, moves = [], reveals = [], delay = 0 }) {
+/* fade: how long a new stack takes to come in (ms), where no landing chip covers it (the opening's blinds); the stage's
+   pileIn otherwise. */
+export function settlePile(reg, { set, rate = 1, moves = [], reveals = [], delay = 0, fade = 0 }) {
   const st = stageOf(set);
   const sp = tierOf(set, 'yield');
   const byEl = new Map();
@@ -1381,7 +1386,9 @@ export function settlePile(reg, { set, rate = 1, moves = [], reveals = [], delay
   }
   for (const { el, size } of reveals) {
     const e = byEl.get(el) || { size, channels: reg.continuation(el, ['opacity']) };
-    e.channels.push({ prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: (st.pileIn || 33) / rate } });
+    e.channels.push({ prop: 'opacity', ramp: fade > 0
+      ? { from: 0, to: 1, delay: 0, duration: fade / rate, ease: (p) => p * p * (3 - 2 * p) }
+      : { from: 0, to: 1, delay: 0, duration: (st.pileIn || 33) / rate } });
     byEl.set(el, e);
   }
   for (const [el, { size, channels }] of byEl) reg.run(el, { channels, size, tolPx: 0.1 });
@@ -1394,7 +1401,7 @@ export function settlePile(reg, { set, rate = 1, moves = [], reveals = [], delay
  * @param {{el:Element, rect:DOMRect}[]} p.stacks   the stacks going, measured where they are seen
  * @param {number} [p.delay]  ms before the fade starts (at rate 1)
  */
-export function fadePileOut(reg, { set, rate = 1, layer, layerRect, stacks, delay = 0 }) {
+export function fadePileOut(reg, { set, rate = 1, layer, layerRect, stacks, delay = 0, duration = 0 }) {
   const st = stageOf(set);
   const L = layerRect;
   for (const { el, rect } of stacks) {
@@ -1411,7 +1418,9 @@ export function fadePileOut(reg, { set, rate = 1, layer, layerRect, stacks, dela
     wrap.style.opacity = '0';
     layer.appendChild(wrap);
     const entry = reg.run(wrap, {
-      channels: [{ prop: 'opacity', ramp: { from: 1, to: 0, delay: delay / rate, duration: (st.pileOut || 50) / rate } }],
+      channels: [{ prop: 'opacity', ramp: duration > 0
+        ? { from: 1, to: 0, delay: delay / rate, duration: duration / rate, ease: (p) => p * p * (3 - 2 * p) }
+        : { from: 1, to: 0, delay: delay / rate, duration: (st.pileOut || 50) / rate } }],
       size: { w: rect.width, h: rect.height }, transient: true,
     });
     if (!entry) wrap.remove();

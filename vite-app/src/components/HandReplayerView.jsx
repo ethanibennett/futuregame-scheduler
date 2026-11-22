@@ -1516,7 +1516,7 @@ function PotChipLive({ amount, motion, set, shipped = false }) {
     motion.setPile = (value, opts) => {
       const update = () => setLive({
         seq: motion.renderSeq, value, shipped: !!(opts && opts.shipped), hidden: (opts && opts.hidden) || null,
-        layout: (opts && opts.layout) || null, delay: (opts && opts.delay) || 0,
+        layout: (opts && opts.layout) || null, delay: (opts && opts.delay) || 0, fade: (opts && opts.fade) || 0,
       });
       // Same frame as the digits: synchronously, except inside a commit (React flushes it there).
       if (motion.inCommit) update(); else { try { flushSync(update); } catch (e) { update(); } }
@@ -1527,8 +1527,9 @@ function PotChipLive({ amount, motion, set, shipped = false }) {
   const layoutKey = layout ? layout.join(',') : '';
   useLayoutEffect(() => {
     const colors = stacks.map(s => s.color);
+    const counts = stacks.map(s => Math.min(s.count, 6));
     const prev = prevRef.current;
-    prevRef.current = { colors, shipped: isShipped, hidden: hidden || [] };
+    prevRef.current = { colors, counts, shipped: isShipped, hidden: hidden || [] };
     const row = rowRef.current;
     if (!isLive || !row || row.children.length !== colors.length || colors.length < 1) return;
     const kids = [...row.children];
@@ -1558,7 +1559,16 @@ function PotChipLive({ amount, motion, set, shipped = false }) {
       if (j < 0 || prev.hidden.includes(c)) reveals.push({ el: kids[i], size });
       if (j >= 0) moves.push({ el: kids[i], dx: (slot(j, prev.colors.length) - slot(i, colors.length)) * pitch, size });
     });
-    if (moves.length || reveals.length) settlePile(motion, { set, rate: motion.rate || 1, moves, reveals, delay: (isLive && live.delay) || 0 });
+    if (moves.length || reveals.length) settlePile(motion, { set, rate: motion.rate || 1, moves, reveals, delay: (isLive && live.delay) || 0, fade: (isLive && live.fade) || 0 });
+    /* A stack that stays and grows, where no chip lands on it (the opening's blinds): its new chips fade in rather
+       than appear (owner, 2026-11-22). */
+    if (isLive && live.fade > 0 && prev.counts) colors.forEach((c, i) => {
+      const j = prev.colors.indexOf(c);
+      if (j < 0 || !(counts[i] > prev.counts[j])) return;
+      [...kids[i].children].slice(prev.counts[j]).forEach(d => motion.run(d, { key: { el: d, kind: 'disc-in' }, property: 'individual', size: { w: d.offsetWidth || 1, h: d.offsetHeight || 1 }, channels: [
+        { prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: live.fade / (motion.rate || 1), ease: (q) => q * q * (3 - 2 * q) } },
+      ] }));
+    });
   }, [shown, isShipped, hiddenKey, layoutKey]);
   return (
     <div className={'replayer-pot-chips' + (isShipped ? ' is-shipped' : '')} ref={rowRef}>
@@ -7671,7 +7681,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     if (!motion.wroteDigits) return;
     motion.wroteDigits = false;
     const tn = potTextNode();
-    if (tn && tn.data !== rendered.pot) tn.data = rendered.pot;
+    // Not while the opening builds the pot (motion.potBuilding): a commit with no moment put the whole pot back.
+    if (tn && !motion.potBuilding && tn.data !== rendered.pot) tn.data = rendered.pot;
     hand.players.forEach((_, pi) => {
       if (motion.countingStacks.has(pi)) return;
       const sn = stackTextNode(pi);
@@ -10283,8 +10294,25 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             motion.momentKey = 'open';
             const full = shownPot;
             // The figure counts the antes up as they land, to the whole pot (potCommitted: the blinds already in it).
-            let landed = potCommitted - anteJobs.length * ante;
-            if (potTn && anteJobs.length) { potTn.data = landed > 0 ? fmtChips(landed) : ''; motion.wroteDigits = true; }
+            /* The pot builds as the hand opens (owner, 2026-11-22: "Build the pot starting with the ante and then the small
+               and big blinds"): empty at the start, each ante as it lands, then each blind as its chips go out, the figure
+               and the pile together (the pile is the whole pot, PILE_IS_WHOLE_POT). It began at the blinds' total, and the
+               pile at the whole pot. A stack the pile no longer has fades out as a copy (fadePileOut); a blind's new stack
+               fades in over two beats, since no chip lands on it to cover a quick one. The last step is the pot itself. */
+            let landed = 0;
+            const beat2 = 2 * st0.beat;
+            const potTo = (value, slow) => {
+              landed = Math.min(potCommitted, value);
+              motion.potBuilding = landed < potCommitted;
+              if (potTn) { potTn.data = landed > 0 ? fmtChips(landed) : ''; motion.wroteDigits = true; }
+              if (!motion.setPile) return;
+              const row = table.querySelector('.replayer-pot-main .replayer-pot-chips');
+              const keep = potStacksFor(landed).map(st => st.color);
+              const going = slow && row && layer0 ? [...row.children].filter(el => el.dataset.color && !keep.includes(el.dataset.color)) : [];
+              if (going.length) fadePileOut(motion, { set: springSet, rate: rate0, layer: layer0, layerRect: layer0.getBoundingClientRect(), duration: beat2, stacks: going.map(el => ({ el, rect: el.getBoundingClientRect() })) });
+              motion.setPile(landed, slow ? { fade: beat2 } : undefined);
+            };
+            if (anteJobs.length || pillJobs.length) potTo(0);
             anteJobs.forEach((j, ji) => {
               const chip = document.createElement('div');
               chip.className = 'replayer-flying-chip is-spring is-disc';
@@ -10310,15 +10338,21 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 { prop: 'scale', fn: (t) => { const q = t <= j.delay ? 0 : hand0.at((t - j.delay) * rate0); return 1 + lift * 4 * q * (1 - q); }, start: j.delay, end: arrive },
                 { prop: 'opacity', ramp: { from: 1, to: 0, delay: arrive, duration: st0.arrivalFade / rate0 } },
               ] });
-              const tick = () => { landed += ante; if (potTn) { potTn.data = fmtChips(Math.min(potCommitted, landed)); motion.wroteDigits = true; } };
+              const last = ji === anteJobs.length - 1 && !pillJobs.length;
+              const tick = () => potTo(last ? potCommitted : landed + ante);
               if (entry) motion.tick(arrive, tick, entry); else tick();
             });
-            pillJobs.forEach(j => {
-              motion.run(j.el, { prefix: 'translate(-50%, -50%)', size: { w: j.r.width, h: j.r.height }, channels: [
+            const postAt = timeTo(flick0, 0.98) / rate0;
+            pillJobs.forEach((j, k) => {
+              const entry = motion.run(j.el, { prefix: 'translate(-50%, -50%)', size: { w: j.r.width, h: j.r.height }, channels: [
                 { prop: 'opacity', ramp: { from: 0, to: 1, delay: j.delay, duration: st0.appear / rate0 } },
                 { prop: 'x', spring: flick0, from: j.ox, to: 0, delay: j.delay, timeScale: rate0 },
                 { prop: 'y', spring: flick0, from: j.oy, to: 0, delay: j.delay, timeScale: rate0 },
               ] });
+              // Its chips counted into the pot as they come to rest in front of the seat.
+              const posted = Math.max(0, j.from - j.to);
+              const tick = () => potTo(k === pillJobs.length - 1 ? potCommitted : landed + posted, true);
+              if (entry) motion.tick(j.delay + postAt, tick, entry); else tick();
               // No stack count-down as the blinds go in (owner, 2026-11-13: "remove the stack number animation at
               // the start"): the plaque shows the stack after its blind from the first frame.
             });
