@@ -1964,7 +1964,7 @@ function TitleEditor({ shown, typed, canEdit, onSave }) {
   );
 }
 
-function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, reverseZ, discardIdx, onCardTap, poseOf, playIds, holdSort = 0, anchor = 0 }) {
+function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, reverseZ, discardIdx, onCardTap, poseOf, playIds, holdSort = 0 }) {
   /* Draw-game re-sort. A card keeps its DOM element for as long as it stays in
      the hand (keyed by identity, below), so when a draw puts a new card among
      them this can see where each surviving card was and where it is now, and
@@ -2001,6 +2001,22 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
       if (Math.abs(from - to) > 1e-6) moves.push({ el, from, to, y: now.byKey.get(k).y });
     }
     if (!moves.length) return;
+    /* Every slide starts on the first frame painted after the commit (owner, 2026-11-22: "Opp 2's cards are jumping around
+       as the hand gets wider"): a stud street's commit runs about 190ms before that frame, and a slide started in it had
+       covered 85% of its way by the first frame anyone saw, a jump. Held at its first keyframe until then. */
+    const held = [];
+    const hold = (a) => { try { a.pause(); held.push(a); } catch (e) { /* plays as it was */ } return a; };
+    // Only what is still held: a card the moments effect deals in cancels its own (a cancelled one would play again).
+    /* Started once frames are flowing again, two in a row under 50ms apart: the frames after a stud street's commit are
+       themselves the moments' own work (300 to 600ms measured in WebKit), and a slide started in them was done by the
+       first one painted. At most 250ms' wait (a machine whose frames never come that close: headless WebKit). */
+    const go = () => held.forEach(a => { try { if (a.playState === 'paused') a.play(); } catch (e) { /* gone */ } });
+    let lastT = 0, firstT = 0;
+    const tick = (t) => {
+      if (!firstT) firstT = t;
+      if ((lastT && t - lastT < 50) || t - firstT > 250) go(); else { lastT = t; requestAnimationFrame(tick); }
+    };
+    requestAnimationFrame(tick);
     if (!now.splay) {
       /* Flat row: slots are a straight line one STEP apart (a card's width less
          the Overlap setting), centred like the arc, so the same re-expressed
@@ -2015,15 +2031,15 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
       if (!step) return;
       for (const m of moves) {
         const base = m.el.style.transform || '';
-        m.el.animate([
+        hold(m.el.animate([
           { transform: ('translateX(' + ((m.from - m.to) * step).toFixed(2) + 'px) ' + base).trim() },
           { transform: base || 'none' },
-        ], { duration: FAN_SLIDE_MS, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)', delay: holdSort, fill: 'backwards' });
+        ], { duration: FAN_SLIDE_MS, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)', delay: holdSort, fill: 'backwards' }));
       }
       // Held (Replayer animations 10): the new cards are dealt into the gaps by the moments effect.
       if (!holdSort) for (const el of arrivals) {
-        el.animate([{ opacity: 0 }, { opacity: 0, offset: 0.35 }, { opacity: 1 }],
-          { duration: FAN_SLIDE_MS, easing: 'ease-out' });
+        hold(el.animate([{ opacity: 0 }, { opacity: 0, offset: 0.35 }, { opacity: 1 }],
+          { duration: FAN_SLIDE_MS, easing: 'ease-out', fill: 'backwards' }));
       }
       return;
     }
@@ -2033,11 +2049,11 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
         const f = m.from + (m.to - m.from) * (s / FAN_SLIDE_SAMPLES);
         frames.push({ transform: getSplayStyle(f, now.total, now.splay, m.y, now.reverseZ, now.max, now.splayScale).transform });
       }
-      m.el.animate(frames, { duration: FAN_SLIDE_MS, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)', delay: holdSort, fill: 'backwards' });
+      hold(m.el.animate(frames, { duration: FAN_SLIDE_MS, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)', delay: holdSort, fill: 'backwards' }));
     }
     if (!holdSort) for (const el of arrivals) {
-      el.animate([{ opacity: 0 }, { opacity: 0, offset: 0.35 }, { opacity: 1 }],
-        { duration: FAN_SLIDE_MS, easing: 'ease-out' });
+      hold(el.animate([{ opacity: 0 }, { opacity: 0, offset: 0.35 }, { opacity: 1 }],
+        { duration: FAN_SLIDE_MS, easing: 'ease-out', fill: 'backwards' }));
     }
   });
   let cards = parseCardNotation(text);
@@ -2066,18 +2082,9 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
   const seenKey = {};
   const cardKeys = cards.map(c => { const id = c.rank + c.suit; seenKey[id] = (seenKey[id] || 0) + 1; return id + '#' + seenKey[id]; });
   const fanByKey = new Map();
-  /* `anchor`: the cards this row will hold when the hand is over (a stud seat's, owner, 2026-11-22: "Opp 2's cards are
-     jumping around as the hand gets wider, and the back button is making some cards slightly pulse up and back down").
-     The fan is laid out for that many from the first card, so each card sits in its final slot from the moment it is
-     dealt: a street adds a card and Back takes one away, and nothing else moves. Centred on the cards held, every card
-     already there jumped 13 to 19px along the arc (up or down as well as across) in one frame at each street. */
-  const fanCount = Math.max(cards.length, anchor || 0);
-  fanNow.current = { byKey: fanByKey, total: fanCount, splay, max, splayScale, reverseZ: rowReverseZ };
-  // A flat row is centred by its box: it keeps the room of the cards still to come on its right.
-  const flatRoom = !splay && fanCount > cards.length
-    ? { paddingRight: 'calc(' + (fanCount - cards.length) + ' * var(--card-h) * 0.7143 * (1 - var(--card-overlap, 0.52)))' } : null;
+  fanNow.current = { byKey: fanByKey, total: cards.length, splay, max, splayScale, reverseZ: rowReverseZ };
   return (
-    <div ref={rowRef} className={"card-row" + (splay ? " card-row-splay" : "")} style={flatRoom || undefined}>
+    <div ref={rowRef} className={"card-row" + (splay ? " card-row-splay" : "")}>
       {cards.map((c, i) => {
         const k = cardKeys[i];
         const isDown = downIdx && downIdx.has(i);
@@ -2105,8 +2112,8 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
            a full card's gap in it. */
         fanByKey.set(k, { i, y: studYOffset });
         const splayStyle = { '--ci': i, ...(splay
-          ? getSplayStyle(i, fanCount, splay, studYOffset, rowReverseZ, max, splayScale)
-          : getFlatStyle(i, fanCount, studYOffset, rowReverseZ)),
+          ? getSplayStyle(i, cards.length, splay, studYOffset, rowReverseZ, max, splayScale)
+          : getFlatStyle(i, cards.length, studYOffset, rowReverseZ)),
           ...(isDiscard ? { opacity: 0.4 } : null),
           // A card marked on the felt eases back when it is unmarked, as well as out.
           ...(isDiscard || onCardTap ? { transition: CARD_LIFTS ? 'transform 260ms var(--ease-out), opacity 260ms var(--ease-out)' : 'opacity 260ms var(--ease-out)' } : null) };
@@ -6720,22 +6727,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const finalCards = gameCfg.showCards || gameCfg.heroCards || 2;
   const feltBoard = category === 'community' || !!gameCfg.doorBoard;
   const totalStreets = hand.streets.length;
-  /* A stud seat's cards when the hand is over: 3rd street's three and one for each later street the hand reached while
-     the seat was in (a fold on a street keeps that street's card). Its fan is laid out for that many from the start
-     (CardRow `anchor`), so no card moves when the next is dealt or taken back. Plain loops, not a memo: this sits
-     after an early return. */
-  const studAnchor = gameCfg.isStud ? (() => {
-    const reached = (st) => st && ((st.actions || []).length > 0 || !!(st.cards && (st.cards.hero || (st.cards.opponents || []).some(Boolean))));
-    let last = 0;
-    hand.streets.forEach((st, si) => { if (reached(st)) last = si; });
-    return hand.players.map((_, pi) => {
-      let through = last;
-      for (let si = 0; si <= last; si++) {
-        if ((hand.streets[si].actions || []).some(a => (a.player != null ? a.player : a.playerIdx) === pi && a.action === 'fold')) { through = si; break; }
-      }
-      return Math.min(FAN_SLOTS, 3 + through);
-    });
-  })() : null;
   const currentStreet = hand.streets[streetIdx];
   const currentActions = currentStreet?.actions || [];
   const isDrawGame = hasDraws(category, gameCfg);
@@ -12912,7 +12903,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                     : 0}
                   splay={rSettings.cardSplay ? (gameCfg.heroCards <= 2 ? 12.5 : gameCfg.heroCards <= 4 ? 15 : gameCfg.heroCards <= 5 ? 18 : 22) : 0}
                   splayScale={(Number(rSettings.splayAmount) || 0) / 100}
-                  anchor={studAnchor ? studAnchor[pi] : 0}
                   reverseZ={pi !== replayHeroIdx}
                   discardIdx={discardIdx}
                   poseOf={cardPoses ? cardPoses.seats.get(pi) : undefined}
