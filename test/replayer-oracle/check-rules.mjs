@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { model, GAMES } from './model.mjs';
 import { streetState, checkAction } from '../../vite-app/src/utils/poker-rules/betting.js';
+import { settleHand } from '../../vite-app/src/utils/poker-rules/settle.js';
 
 const ROOT = path.join(import.meta.dirname, '..', '..');
 const args = process.argv.slice(2);
@@ -81,6 +82,12 @@ for (const rec of recs) {
     if (r.error) { if (!((m.openPair4 && ev.street === 1) || ev.halfBet)) fail(ev, `${ev.kind} refused: ${r.error}`); }
     else if (c(r.action.amount) !== ev.amount) fail(ev, `${ev.kind} stored as ${c(r.action.amount)} added, the corpus ${ev.amount}`);
   }
+  // The dealer's settlement (poker-rules/settle.js) leaves every seat on the oracle's stack.
+  try {
+    const { finals } = settleHand(rec.hand);
+    const off = rec.hand.players.map((p, i) => [p.name, finals[i]]).filter(([name, have]) => Math.abs(have - rec.expected[name]) > 0.004);
+    if (off.length) { g.fails++; fails.push(`${rec.id} settle: ${off.map(([nm, v]) => `${nm} ${v} (want ${rec.expected[nm]})`).join(', ')}`); }
+  } catch (e) { g.fails++; fails.push(`${rec.id} settle refused: ${e.message.split('\n')[0]}`); }
   // Each street the corpus finished: nobody left to act.
   const h = rec.hand;
   for (let si = 0; si < h.streets.length; si++) {
