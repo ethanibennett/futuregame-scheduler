@@ -6393,7 +6393,10 @@
   ],
   "text": "All bomb pots, ante 1, ~100 effective, no limit. It's \"big\" SOHE: seven hole cards split into four for the Omaha board and three for Super Hold'em, 6 handed. I have :ah::ac::kc::qc::th::5h::5d:. How do you split it? Only the split matters, not the rest of the hand.",
   "expect": {
-   "recordable": false
+   "recordable": false,
+   "mentioned": [
+    "AhAcKcQcTh5h5d"
+   ]
   },
   "expectGaps": [
    {
@@ -6403,7 +6406,7 @@
     "about": "not one recordable hand"
    }
   ],
-  "notes": "A split decision in a game the replayer does not have."
+  "notes": "A split decision in a game the replayer does not have. Mentioned (2026-11-22): the seven hole cards are named in the text, so a parse that records them is not inventing them."
  },
  {
   "id": "web-mtt-first-hand-four-hands-told",

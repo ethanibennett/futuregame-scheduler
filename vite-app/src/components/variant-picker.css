@@ -1,47 +1,6 @@
 /* The New Hand variant picker (VariantPicker.jsx). Every size in g and r; controls are whole g x whole
    r with their labels centred (owner rule); seated text sits on r lines. */
 
-/* ── The launcher: one 35g x 5r row ── */
-.vp-launcher {
-  display: flex;
-  align-items: center;
-  gap: var(--gu);
-  width: calc(var(--gu) * 35);
-  height: calc(var(--subrow) * 5);
-  box-sizing: border-box;
-  margin: var(--subrow) 0 0;
-  padding: 0 var(--gu);
-  border: 0;
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
-  color: var(--text);
-  cursor: pointer;
-  text-align: left;
-  font: inherit;
-}
-.vp-launcher-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-family: var(--font-condensed);
-  font-size: var(--fs-md);
-  font-weight: var(--fw-bold);
-  line-height: 1;
-}
-.vp-launcher-name > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-block: 0.25em; margin-block: -0.25em; }
-.vp-chev { flex: none; width: calc(var(--gu) * 2); height: calc(var(--subrow) * 2); color: var(--text-muted); }
-.vp-kbd {
-  flex: none;
-  display: flex; align-items: center; justify-content: center;
-  width: calc(var(--gu) * 4); height: calc(var(--subrow) * 3);
-  border-radius: var(--radius-xs);
-  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
-  color: var(--text-muted);
-  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
-}
-@media (hover: hover) and (pointer: fine) { .vp-launcher:hover { background-image: linear-gradient(var(--hover-overlay), var(--hover-overlay)); } }
-.vp-launcher:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
-
 /* The family tag: 5g x 2r, the saved hands' strip colour, the abbreviation centred. */
 .vp-tag {
   flex: none;
@@ -245,3 +204,155 @@
 .gto-board-slots .gto-runs-btn { flex-basis: calc(var(--gu) * 8); }
 /* A family's fold (UX pick 63): "+ 8 more Omaha games" in the brand colour, opening in place. */
 .vp-more .vp-row-check, .vp-more .vp-row-name { color: var(--brand); }
+
+/* ── The variant wheels (VariantWheels.jsx; owner, 2026-11-22, from docs/prototypes/variant-wheels.html) ──
+   35g wide, every row and gap whole r:
+     2r   RECENT / POPULAR                     the label's 2r line
+     1r
+     4r   three quick picks + Search           8g each, 1g apart (35g)
+     2r
+     2r   STRUCTURE | GAME | | <family> VARIANTS
+     1r
+     25r  the wheels: five 5r rows, the band on the middle one (10r..15r)
+     3r   the line under them
+     1r   (then Create)
+   Closed, the columns are structure 10g | game 22g | › 3g | variants 0; open, 6g | 11g | 3g | 15g, the
+   games a size down (--fs-md) and each row 0.5g in, so the longest names fit whole: "5-Card Draw" 9.06g
+   in 10g, "Stud Hi/Lo Regular" 13.84g in 14g (measured at 402). */
+.vw {
+  --vw-row: calc(var(--subrow) * 5);
+  --vw-cols: calc(var(--gu) * 10) calc(var(--gu) * 22) calc(var(--gu) * 3) calc(var(--gu) * 0);
+  width: calc(var(--gu) * 35);
+  margin: var(--subrow) 0;   /* 1r under the line, so its descenders clear Create */
+}
+.vw.is-open { --vw-cols: calc(var(--gu) * 6) calc(var(--gu) * 11) calc(var(--gu) * 3) calc(var(--gu) * 15); }
+.vw-label, .vw-cols .vw-col {
+  /* A grid, so the label's -0.3em margin (its painted room) stays inside and the baseline sits on the
+     cell's foot; a block let it collapse through .vw's top margin and lifted the whole picker 0.39r. */
+  display: grid; align-items: end;
+  height: calc(var(--subrow) * 2);
+  color: var(--text-muted);
+  font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps); text-transform: uppercase;
+}
+.vw-label > span, .vw-cols .vw-col > span {
+  display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: clip;
+  line-height: calc(var(--subrow) * 2);
+  padding-block: 0.3em; margin-block: -0.3em;
+  text-box-trim: trim-both; text-box-edge: cap alphabetic;
+}
+/* Quick picks: 8g x 4r, a family dot and the saved hands' abbreviation, centred. */
+.vw-quick { display: flex; gap: var(--gu); margin-top: var(--subrow); }
+.vw-chip {
+  flex: 0 0 calc(var(--gu) * 8);
+  display: flex; align-items: center; justify-content: center; gap: calc(var(--gu) * 0.5);
+  height: calc(var(--subrow) * 4);
+  box-sizing: border-box; margin: 0; padding: 0 calc(var(--gu) * 0.5);
+  border: 0; border-radius: var(--radius-sm);
+  background: transparent;
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps); text-transform: uppercase;
+  white-space: nowrap; cursor: pointer;
+}
+.vw-chip > i { flex: none; width: calc(var(--gu) * 0.6); height: calc(var(--gu) * 0.6); border-radius: var(--radius-circle); }
+/* The tracking after the last capital is not ink: taken back, so the dot and the letters centre as one. No
+   overflow clip: the labels are short, and a clip cut the tops of the capitals (check:clipping). */
+.vw-chip > span { white-space: nowrap; margin-right: calc(var(--track-caps) * -1); }
+.vw-chip.vw-search > span { margin-right: 0; }
+.vw-chip.is-on { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-hair) var(--brand); color: var(--brand-ink, var(--brand)); }
+.vw-chip.vw-search { color: var(--text); text-transform: none; letter-spacing: 0; font-weight: var(--fw-regular); font-size: var(--fs-sm); }
+.vw-chip.vw-search svg { flex: none; width: calc(var(--gu) * 1.5); height: calc(var(--gu) * 1.5); color: var(--text-muted); }
+@media (hover: hover) and (pointer: fine) { .vw-chip:hover { background-image: linear-gradient(var(--hover-overlay), var(--hover-overlay)); } }
+.vw-chip:focus-visible, .vw-exp:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+.vw-cols, .vw-wheels {
+  display: grid; grid-template-columns: var(--vw-cols);
+  transition: grid-template-columns var(--dur-base) var(--ease-out);
+}
+.vw-cols { margin-top: calc(var(--subrow) * 2); margin-bottom: var(--subrow); }
+/* The structure reads into the game: its label and rows sit on the column's right, 1g in (0.5g open). */
+.vw-cols .vw-col { min-width: 0; }
+.vw-cols .vw-col.is-struct { text-align: right; padding-right: var(--gu); }
+.vw.is-open .vw-cols .vw-col.is-struct { padding-right: calc(var(--gu) * 0.5); }
+.vw-cols .vw-col:not(.is-struct) { padding-left: var(--gu); }
+.vw.is-open .vw-cols .vw-col:not(.is-struct) { padding-left: calc(var(--gu) * 0.5); }
+.vw-cols .vw-col.is-var { opacity: 0; transition: opacity var(--dur-snap) var(--ease-standard); }
+.vw.is-open .vw-cols .vw-col.is-var { opacity: 1; }
+
+.vw-wheels { position: relative; height: calc(var(--vw-row) * 5); }
+/* The band: the middle row, the picked game's family colour down its left edge. */
+.vw-band {
+  position: absolute; left: 0; right: 0; top: calc(var(--vw-row) * 2); height: var(--vw-row);
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  box-shadow: inset var(--bw-2) 0 0 var(--vw-fam, var(--brand));
+  pointer-events: none;
+}
+.vw-wheel {
+  position: relative; min-width: 0; height: 100%;
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+  scroll-snap-type: y mandatory; scrollbar-width: none;
+  perspective: calc(var(--gu) * 38);
+  -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent);
+  mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+.vw-wheel::-webkit-scrollbar { display: none; }
+.vw-wheel:focus-visible { box-shadow: inset 0 0 0 var(--bw-1) var(--brand); -webkit-mask-image: none; mask-image: none; }
+.vw-wheel ul { list-style: none; margin: 0; padding: calc(var(--vw-row) * 2) 0; }
+.vw-wheel li {
+  display: flex; align-items: center; gap: calc(var(--gu) * 0.5);
+  height: var(--vw-row); box-sizing: border-box; padding: 0 var(--gu);
+  scroll-snap-align: center; cursor: pointer; white-space: nowrap;
+  transform-origin: center; will-change: transform, opacity;
+  user-select: none; -webkit-user-select: none;
+}
+.vw-wheel li > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; padding-block: 0.3em; margin-block: -0.3em; }
+.vw-struct li {
+  justify-content: flex-end;
+  font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text);
+}
+.vw.is-open .vw-wheel li { padding: 0 calc(var(--gu) * 0.5); }
+.vw-struct li.is-off { color: var(--text-muted); text-decoration: line-through; text-decoration-thickness: var(--bw-hair); cursor: default; }
+.vw-s-short, .vw.is-open .vw-s-long { display: none; }
+.vw.is-open .vw-s-short { display: inline; }
+.vw-game li, .vw-var li { font-family: var(--font-display); font-size: var(--fs-lg); color: var(--text); transition: font-size var(--dur-base) var(--ease-out); }
+.vw.is-open .vw-game li, .vw.is-open .vw-var li { font-size: var(--fs-md); }
+.vw-game .vw-more {
+  flex: none; margin-left: auto;
+  font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--text-muted);
+}
+.vw.is-open .vw-game .vw-more { display: none; }
+.vw-var { opacity: 0; transition: opacity var(--dur-snap) var(--ease-standard); }
+.vw.is-open .vw-var { opacity: 1; }
+.vw-var li.is-base { color: var(--text-muted); }
+/* ›: 3g x 5r, the band's height, over it; turns to ‹ when the variants are open. */
+.vw-exp {
+  position: relative; z-index: 1; align-self: center;
+  display: flex; align-items: center; justify-content: center;
+  width: calc(var(--gu) * 3); height: var(--vw-row);
+  box-sizing: border-box; margin: 0; padding: 0;
+  border: 0; border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--brand-ink, var(--brand));
+  cursor: pointer;
+}
+.vw-exp[hidden] { display: flex; visibility: hidden; }
+.vw-exp svg { width: calc(var(--gu) * 1.5); height: calc(var(--gu) * 1.5); transition: transform var(--dur-base) var(--ease-out); }
+.vw.is-open .vw-exp svg { transform: rotate(180deg); }
+/* The line under the wheels: a 3r cell, the text on its foot. */
+.vw-hint { display: grid; align-items: end; height: calc(var(--subrow) * 3); color: var(--text-muted); font-family: var(--font-condensed); font-size: var(--fs-xs); }
+.vw-hint > span {
+  display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  line-height: calc(var(--subrow) * 3);
+  padding-block: 0.3em; margin-block: -0.3em;
+  text-box-trim: trim-both; text-box-edge: cap alphabetic;
+}
+.vw-hint b { color: var(--warn); font-weight: var(--fw-bold); }
+.vw-sr { position: absolute; width: calc(var(--gu) * 0.1); height: calc(var(--gu) * 0.1); overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .vw-cols, .vw-wheels, .vw-var, .vw-exp svg, .vw-cols .vw-col.is-var, .vw-game li, .vw-var li { transition: none; } }

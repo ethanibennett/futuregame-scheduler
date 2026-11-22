@@ -102,6 +102,17 @@ sessions opened here own scheduler work.
   rules, sources and the owner's open defaults in `docs/replayer-hidden-games.md`; every Dramaha row has a Limit row beside it, and in a game of two different hands the odd chip goes to the half using the most of the player's own cards (owner, `oddChipToLo`). A new game type goes in `HAND_CONFIG`, `GAME_EVAL`, the
   variant strips, `GAME_CODES` and, for a draw game, the category lists. Hands is one tab for every account; Study, the Scanner and
   typing or saying a hand stay with admins.
+- **The New Hand picker is three wheels** (owner, 2026-11-22: "Let's build the wheels picker"; `components/VariantWheels.jsx`,
+  `utils/variant-wheels.js`, styles in `variant-picker.css`; the approved prototype is `docs/prototypes/variant-wheels.html`): a
+  structure wheel (No Limit, Pot Limit, Limit), a game wheel of families (Hold'em, Omaha, Stud, Razz, 2-7 Draw … OFC, then Custom
+  when the account has custom games) and a family's variants on a third wheel that › opens to the right. Over them, the last three
+  games picked (else NLH, PLO, 2-7 TD) and Search, which opens the palette (`VariantPicker.jsx` `Palette`: slang, the mixes, a game's
+  rules; ⌘K and / still open it). The wheels are a second view of `buildCatalog`: every position not struck through is a catalog
+  row and every row is one position (a structure the game has no row at is struck through and springs back; a rare row, NL Stud,
+  is a structure turn away, with an "Unusual" line under the wheels), and a pick goes through `pickVariant`, so the game type is
+  the palette's. `variant-wheels.test.mjs` (in `npm test`) holds that, and fails while a new catalog game sits outside the families
+  in `WHEEL_GAMES`. Scripts that pick a game open the palette with `.vw-search` (the launcher, `.vp-launcher`, is gone). Guards:
+  `hands-wheels-*` (controls), `hands-wheels` (clipping).
 - **The replayer is held to an outside engine** (owner, 2026-11-10: "This is something we can get perfect";
   `test/replayer-oracle/`, its README): PokerKit plays random hands of twenty games (heads-up to ten-handed, cash to the
   cent and tournament, straddles, short stacks), `generate.py` settles each to the TDA rules the app follows, and every
@@ -565,6 +576,8 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   (adaptive thinking, `output_config.effort`, `tool_choice` auto with one call, a refusal fallback) for Opus 5.5 /
   Sonnet 5.5, which 400 on a forced tool, or once `QUICK_ADD_EFFORT` is set; `QUICK_ADD_PARSE_MODEL`,
   `QUICK_ADD_ANSWER_MODEL`, `QUICK_ADD_ANSWER_EFFORT`, `QUICK_ADD_FALLBACKS=0`, and the boot log says which.
+  **futurega.me parses on Opus 5.5 at low effort since 2026-11-22** (owner; Render env `QUICK_ADD_PARSE_MODEL=claude-opus-5-5`,
+  `QUICK_ADD_EFFORT=low`; measured 91.8% fact recall, 1 invented card, $0.022 a hand, against Sonnet 5's 79.6%, 23, $0.011).
   `record_hand` cannot be `strict: true` (79 optional and 57 nullable fields against the grammar's 24 / 16).
   **The parse log** (`lib/quick-add/learn.js`, `quick_add_parses`, `QUICK_ADD_LOG=0` off): every parse with its
   text, model, cost and hand; the hand carries `quickAddParseId`, and the replayer's save routes pair the saved hand

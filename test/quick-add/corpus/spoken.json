@@ -3615,7 +3615,10 @@
     "flop": "5x5x6x",
     "turn": "6x",
     "river": "Jx"
-   }
+   },
+   "mentioned": [
+    "3x3x"
+   ]
   },
   "expectGaps": [
    {
@@ -3657,7 +3660,7 @@
     "about": "\"ace goose deuce 3-3\": A-2-3-3 or A-2-2-3? Asked"
    }
   ],
-  "notes": "Owner: ask both questions — is the hand A-2-3-3 or A-2-2-3 (\"goose deuce\" a doubled word?), and are \"michael norris\" and \"nori\" one player or two? \"big black\" is the big blind; \"flaw\" is flop."
+  "notes": "Owner: ask both questions — is the hand A-2-3-3 or A-2-2-3 (\"goose deuce\" a doubled word?), and are \"michael norris\" and \"nori\" one player or two? \"big black\" is the big blind; \"flaw\" is flop. Mentioned (2026-11-22): the pair of threes (\"3-3\", \"I call with threes\") is named whichever hand it is, so a parse that records them is not inventing them."
  },
  {
   "id": "sp-o8-akk2-five-bets-board-restated-zeus",

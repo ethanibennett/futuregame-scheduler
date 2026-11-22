@@ -10,7 +10,8 @@ import Icon from './Icon.jsx';
 import { API_URL, SITE_URL } from '../utils/api.js';
 import { HAND_CONFIG, HAND_CONFIG_DEFAULT, haptic, getVariantStrip, canonicalGameType, canonicalHand, getToday } from '../utils/utils.js';
 import { STRUCTURE_GAME_MAP, DEFAULT_STRUCTURE, RAZZ_VARIANTS as RAZZ_LIST, variantName, buildCatalog, buildMixes, bestGuess } from '../utils/variant-catalog.js';
-import { Palette, GuessCard, Launcher } from './VariantPicker.jsx';
+import { Palette, GuessCard } from './VariantPicker.jsx';
+import { VariantWheels } from './VariantWheels.jsx';
 import { buildDrawStudySpot } from '../utils/draw-study-spot';
 import { parseCardNotation, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL, gameEvalFor,
          bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestBadugiHand, scoreHalves, halvesWinnersAmong, halvesHandName, oddChipToLo,
@@ -1888,6 +1889,38 @@ function DealerGlyph() {
 
 const FAN_SLIDE_MS = 460;
 const FAN_SLIDE_SAMPLES = 16;
+
+/* A stud player's cards on the entry screens, streets 3rd to `uptoStreet`, in the order dealt, each marked down or
+   up (owner, 2026-11-22: "there is no indication of hero's upcards"; "show the hands up to this point" on the deal
+   screen). The hero's 3rd street is two down and the door, 4th to 6th up, 7th down. An opponent's hidden cards are
+   backs (the entry has not been told them yet), the door and the up cards as entered, a missing one a back. */
+function studRunFor(hand, pi, heroIdx, uptoStreet) {
+  const run = [];
+  const isHero = pi === heroIdx;
+  const oppSlot = pi < heroIdx ? pi : pi - 1;
+  for (let si = 0; si <= uptoStreet && si < (hand.streets || []).length; si++) {
+    const cs = (hand.streets[si] && hand.streets[si].cards) || {};
+    const raw = isHero ? (cs.hero || '') : ((cs.opponents || [])[oppSlot] || '');
+    const cards = raw === 'MUCK' ? [] : parseCardNotation(raw).filter(c => c.suit !== 'x').map(c => c.rank + c.suit);
+    if (si === 0) {
+      if (isHero) cards.slice(0, 3).forEach((c, k) => run.push({ card: c, down: k < 2 }));
+      else run.push({ card: null, down: true }, { card: null, down: true }, { card: cards.length ? cards[cards.length - 1] : null, down: false });
+    } else {
+      const seventh = si === 4;
+      run.push({ card: isHero || !seventh ? (cards[0] || null) : null, down: seventh });
+    }
+  }
+  return run;
+}
+function StudRun({ run }) {
+  return (
+    <div className="card-row gto-card-run">
+      {run.map((c, k) => c.card
+        ? <img key={k} className={'card-img' + (c.down ? ' is-down' : '')} src={cardFaceSrc(c.card)} alt={c.card + (c.down ? ', down' : ', up')} loading="eager" />
+        : <div key={k} className={'card-unknown' + (c.down ? ' is-down' : '')} />)}
+    </div>
+  );
+}
 
 function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, reverseZ, discardIdx, onCardTap, poseOf, playIds, holdSort = 0 }) {
   /* Draw-game re-sort. A card keeps its DOM element for as long as it stays in
@@ -4724,10 +4757,13 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
             const cardStr = getStudCardForPlayer(pi);
             const isTarget = studDealTarget === pi;
             return (
-              <button type="button" key={pi} className={'gto-deal-row is-pickable' + (isTarget ? ' is-target' : '')}
+              <button type="button" key={pi} className={'gto-deal-row is-pickable has-run' + (isTarget ? ' is-target' : '')}
                 aria-pressed={isTarget} onClick={() => setStudDealTarget(pi)}>
                 <span className="gto-deal-name">{p.name}</span>
-                {cardStr ? <CardRow text={cardStr} max={1} />
+                {/* The hand so far (owner, 2026-11-22: "show the hands up to this point here"), down cards 1r lower,
+                    then the card this street deals. */}
+                <span className="gto-deal-run"><StudRun run={studRunFor(hand, pi, heroIdxSD, currentStreetIdx)} /></span>
+                {cardStr ? <span className={'gto-deal-new' + (sdFaceDown ? ' is-down' : '')}><CardRow text={cardStr} max={1} /></span>
                   : <span className="gto-deal-meta is-unknown">{sdFaceDown && pi !== heroIdxSD ? 'face down' : '--'}</span>}
               </button>
             );
@@ -4789,7 +4825,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
         const isFolded = foldedSet.has(i);
         const foldedOnPriorStreet = isFolded && !(currentStreet.actions || []).some(a => a.player === i && a.action === 'fold');
         if (foldedOnPriorStreet && !isPreflop && category !== 'stud') return null;
-        const seatClass = 'gto-seat' + (isActive ? ' active' : '') + (isFolded ? ' folded' : (act && !isActive) ? ' acted-' + act.action : '');
+        const seatClass = 'gto-seat' + (gameCfg.isStud ? ' is-stud' : '') + (isActive ? ' active' : '') + (isFolded ? ' folded' : (act && !isActive) ? ' acted-' + act.action : '');
         const seatTotal = chipRound(streetBets.contrib[i] || 0);
         const actionLabel = !act ? ''
           : (act.action === 'raise' || (act.action === 'bet' && seatTotal > act.amount)) && act.amount > 0 ? 'Raise to ' + formatChipAmount(seatTotal)
@@ -4880,45 +4916,17 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                     );
                   })()}
                   {gameCfg.isStud && (() => {
-                    // Show accumulated board cards for stud players
-                    const isHero = i === heroIdx;
-                    const oppSlot = i < heroIdx ? i : i - 1;
-                    let accumulated = '';
-                    for (let si = 0; si <= currentStreetIdx; si++) {
-                      const st = hand.streets[si];
-                      if (!st) break;
-                      if (isHero) { accumulated += (st.cards.hero || ''); }
-                      else { accumulated += ((st.cards.opponents || [])[oppSlot] || ''); }
-                    }
-                    const dimStyle = isFolded ? {opacity: 0.4, filter: 'grayscale(60%)'} : {};
-                    // For opponents: show 2 face-down hole cards + visible upcards + 7th street face-down
-                    if (!isHero) {
-                      const oppVisible = parseCardNotation(accumulated).filter(c => c.suit !== 'x');
-                      if (isFolded) {
-                        if (oppVisible.length === 0) return null;
-                        return (
-                          <span className="gto-seat-hero-cards" style={dimStyle}>
-                            <div className="card-row gto-card-run">
-                              {oppVisible.map((c, ci) => <img key={ci} className="card-img" src={cardFaceSrc(c.rank + c.suit)} alt={c.rank+c.suit} loading="eager" />)}
-                            </div>
-                          </span>
-                        );
-                      }
-                      const downAfter = currentStreetIdx >= 4 ? 1 : 0;
-                      return (
-                        <span className="gto-seat-hero-cards">
-                          <div className="card-row gto-card-run">
-                            <div className="card-unknown" style={{marginTop:'var(--space-md)'}} />
-                            <div className="card-unknown" style={{marginTop:'var(--space-md)'}} />
-                            {oppVisible.map((c, ci) => <img key={ci} className="card-img" src={cardFaceSrc(c.rank + c.suit)} alt={c.rank+c.suit} loading="eager" />)}
-                            {downAfter > 0 && <div className="card-unknown" style={{marginTop:'var(--space-md)'}} />}
-                          </div>
-                        </span>
-                      );
-                    }
-                    // Hero folded: show cards dimmed
-                    if (!accumulated) return null;
-                    return <span className="gto-seat-hero-cards" style={dimStyle}><CardRow text={accumulated} stud={true} max={7} /></span>;
+                    /* The player's cards so far, the down ones 1r lower than the up ones, the hero's included (owner,
+                       2026-11-22: "there is no indication of hero's upcards"); studRunFor. A folded opponent keeps
+                       only the up cards everyone saw, dimmed; a folded hero, all of them, dimmed. */
+                    const run = studRunFor(hand, i, heroIdx, currentStreetIdx);
+                    const shown = isFolded && i !== heroIdx ? run.filter(c => c.card && !c.down) : run;
+                    if (!shown.some(c => c.card) && (isFolded || !shown.length)) return null;
+                    return (
+                      <span className={'gto-seat-hero-cards is-stud' + (isFolded ? ' is-folded' : '')}>
+                        <StudRun run={shown} />
+                      </span>
+                    );
                   })()}
                   {hasDraws(category, gameCfg) && !gameCfg.discardOnly && (() => {
                     const dh = [];
@@ -5397,6 +5405,11 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   useEffect(() => {
     if (initialHand) {
       setCurrentHand(canonicalHand(initialHand));
+      /* Not the hand that was open: a link opened over one of the account's own hands kept that hand's id, so
+         the replay (keyed by the id) stayed mounted with its Share sheet still open over the new hand, the list
+         kept the old row selected, and an Edit then Save would have PUT the shared hand over the saved one. */
+      setCurrentHandId(null);
+      setIsPublic(false);
       setMode('replay');
       setHandIsShared(true);
       setTitle('');
@@ -5689,7 +5702,13 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             the fixed replay layer and could never be read. Only a hand with notes shows it. */}
 
         <ReplayErrorBoundary onBack={() => { setMode('list'); fetchHands(); }}>
+          {/* One replay per saved hand (owner, 2026-11-22: "sometimes when changing from one saved hand to another there
+              is an animation of a bunch of cards going to the center of the felt as the button moves and the blinds come
+              out"): the desktop pane kept the replay mounted across hands, so the next hand opened on the step the last
+              was on and its moments played the change from one hand to the other. Keyed by the hand, it opens fresh, at
+              its start, as a hand opened from the list does; a save of notes or tags keeps the id and the place. */}
           <HandReplayerReplayView
+            key={currentHandId != null ? 'h' + currentHandId : 'unsaved'}
             hand={currentHand}
             notes={notes}
             token={token}
@@ -5952,11 +5971,12 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         <div className="replayer-list-head">
           <div className="replayer-list-title"><span>New Hand</span></div>
         </div>
-        {/* The variant picker (owner, 2026-10-20; VariantPicker.jsx, utils/variant-catalog.js): the best
-            guess from My Schedule, then the launcher that opens the palette. They replace the
-            favourites, the family tabs, More and the Structure block. */}
+        {/* The variant picker: the best guess from My Schedule (owner, 2026-10-20; VariantPicker.jsx), then the
+            variant wheels (owner, 2026-11-22: "Let's build the wheels picker"; VariantWheels.jsx,
+            utils/variant-wheels.js), whose Search opens the palette (search, mixes, a game's rules). */}
         <GuessCard guess={guess} current={currentRow} onPick={pickVariant} />
-        <Launcher current={currentRow} name={variantDisplayName + (selectedMix ? ' · ' + selectedMix : '')} onOpen={() => setPaletteOpen(true)} />
+        <VariantWheels rows={catalog} current={currentRow} onPick={pickVariant} history={gameHistory} hands={hands}
+          onSearch={() => setPaletteOpen(true)} name={variantDisplayName + (selectedMix ? ' · ' + selectedMix : '')} />
         {/* Double board moved to the hand's setup, beside Straddle (UX pick 62): it describes the hand. */}
         {false && currentRow && ['holdem', 'omaha'].includes(currentRow.family) && (
           <div className="game-picker vp-stud">
