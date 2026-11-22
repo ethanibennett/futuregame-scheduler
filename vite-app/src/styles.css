@@ -3362,8 +3362,10 @@
     .replayer-view.is-list .replayer-hand-strip { width: calc(var(--gu) * 2); }
     .replayer-view.is-list .replayer-hand-card-content {
       display:grid;
-      /* 3..10g cards | 2g | 12..26g text | 1g | 27..34g net (UX pick 55) | 2g right margin */
-      grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 2) minmax(0, 1fr) var(--gu) calc(var(--gu) * 7);
+      /* 3..11g cards (1g clear of the strip, then their 7g) | 1g | 12..26g text | 1g | 27..34g net (UX pick 55) |
+         2g right margin. The cards had the first 7g to themselves, centred, and a five-card hand (6.8g) reached the
+         strip (owner, 2026-11-22: "There should be at least 1g between the game strip and the cards"). */
+      grid-template-columns: calc(var(--gu) * 8) var(--gu) minmax(0, 1fr) var(--gu) calc(var(--gu) * 7);
       /* 8r in four 2r rows: title cell r2-r4, meta cell r4-r6, baselines 4r and 6r below the
          card top. The text block (title cap-top ~2.8r to meta baseline 6r) centres on 4.4r,
          the nearest whole-r seating to the card's 4r middle; the 4r cards and the 4r Delete
@@ -3381,6 +3383,9 @@
     .replayer-view.is-list .replayer-hand-card.outcome-split .replayer-hand-card-content { --hc-edge: var(--warn); }
     .replayer-view.is-list .replayer-hand-card-cards {
       grid-column: 1; grid-row: 1 / -1; align-self: stretch; width:auto; height:auto;
+      /* 1g clear of the strip; centred in the 7g after it, and from its start where a hand is wider (a six-card one),
+         so it never reaches back to the strip. */
+      box-sizing: border-box; padding-left: var(--gu); justify-content: safe center;
       /* Cards 4r tall (whole r) at the artwork's 0.7143 ratio: 2.857r = 2.03g wide. */
       --card-h: calc(var(--subrow) * 4);
       --card-w: calc(var(--subrow) * 2.857);
@@ -3404,7 +3409,10 @@
     .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-body { align-items: center; }
     .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-cards .card-unknown { height: calc(var(--subrow) * 4); width: calc(var(--subrow) * 2.857); }
     /* Loading: the card slot is 4g (5..9g, both valid lines) instead of a centred 2g. */
-    .replayer-view.is-list .replayer-hand-card-cards > .skeleton { margin-left: calc(var(--gu) * 2); margin-right: auto; }
+    .replayer-view.is-list .replayer-hand-card-cards > .skeleton { margin-left: var(--gu); margin-right: auto; }   /* + the column's 1g */
+    /* A six-card hand (PLO6, 6-card Omaha games) at the list's overlap and the row's gap is 7.7g, wider than its 7g, and
+       wrapped its sixth card onto a second line under the first (2026-11-22). Overlapped further it is 6.8g, on one line. */
+    .replayer-view.is-list .replayer-hand-card-cards .card-row:has(> :nth-child(6)) { --card-overlap: 0.62; flex-wrap: nowrap; }
 
 
     /* 76: the read-only view uses the editor's own type, so notes look the

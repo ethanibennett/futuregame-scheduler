@@ -38,7 +38,7 @@ import { useToast } from '../contexts/ToastContext.jsx';
 import QuickAddView from './QuickAddView.jsx';
 import { checkExportable } from '../utils/hand-history/index.js';
 import { heroNet } from '../utils/hand-net.js';
-import { autoTitle, displayTitle } from '../utils/hand-title.js';
+import { autoTitle as autoTitleOf, displayTitle as displayTitleOf, isBuiltTitle } from '../utils/hand-title.js';
 import { SAMPLE_HAND } from '../utils/sample-hand.js';
 import { exportHandHistory, playedAtOf, handOfRow, handsFileName } from '../utils/hand-history/save.js';
 import { chipInsertVars, applyChipInserts, WHITE_CHIP } from '../utils/chip-inserts.js';
@@ -864,6 +864,18 @@ function formatStakes(hand, { straddle = 0 } = {}) {
   const parts = limit ? [f(b.bb), f(b.bigBet || b.bb * 2)] : [f(b.sb), f(b.bb), ...(straddle ? [f(straddle)] : [])];
   return parts.join('/') + (b.ante ? '/(' + f(b.ante) + ')' : '');
 }
+
+/* A hand's title when none was typed: [game] | [pot type] | [MTT or Cash] | [blinds] (owner, 2026-11-22), the blinds as
+   the felt and the row write them (a limit game's two bet sizes), without the ante: the format names the blinds, and a
+   stud hand's "/($0.37)" ran the title off the row. utils/hand-title.js builds it; these give it the blinds. */
+const TITLE_OPTS = { stakes: (h) => formatStakes({ ...h, blinds: { ...((h && h.blinds) || {}), ante: 0 } }) };
+const autoTitle = (hand) => autoTitleOf(hand, TITLE_OPTS);
+const displayTitle = (row) => displayTitleOf(row, TITLE_OPTS);
+/** True where the list shows the built title, which carries the stakes, so the row's meta line need not. */
+const showsBuiltTitle = (row) => {
+  const t = (row && row.title) || '';
+  return !t || t === ((row && row.gameType) || '') + ' Hand' || isBuiltTitle(t);
+};
 
 /* Names a split share as the fraction of the pot it is. Deciding the share is
    the evaluator's job — this only rationalises the number it is handed, which
@@ -5400,7 +5412,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         setCurrentHand(handData);
         setCurrentHandId(data.id);
         setHandIsShared(false);
-        setTitle(data.title || '');
+        setTitle(isBuiltTitle(data.title) ? '' : (data.title || ''));
         setNotes(data.notes || '');
         setIsPublic(!!data.is_public);
         setMode('replay');
@@ -5540,7 +5552,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       setCurrentHand(handData);
       setCurrentHandId(h.id);
       setHandIsShared(false);
-      setTitle(h.title || '');
+      setTitle(isBuiltTitle(h.title) ? '' : (h.title || ''));
       setNotes(h.notes || '');
       setIsPublic(false);
       setOpeningId(null);
@@ -6146,9 +6158,13 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                       A fixed-limit hand is quoted in its two BET sizes, the way
                       the felt states it — a stud row read "100/40", a small
                       blind stud does not have over a small bet. */}
-                  {formatStakes(h)}
-                  {h.created_at ? ' \u00b7 ' + new Date(h.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(undefined, {month:'short', day:'numeric'}) : ''}
-                  {h.event && h.event.title ? ' \u00b7 ' + h.event.title : ''}
+                  {/* A built title already ends in the stakes (owner, 2026-11-22), so the line under it starts at
+                      the date; a typed title keeps them here. */}
+                  {[
+                    showsBuiltTitle(h) ? '' : formatStakes(h),
+                    h.created_at ? new Date(h.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(undefined, {month:'short', day:'numeric'}) : '',
+                    h.event && h.event.title ? h.event.title : '',
+                  ].filter(Boolean).join(' \u00b7 ')}
                   {Array.isArray(h.tags) && h.tags.length > 0 && <span className="hx-row-tag">{h.tags[0]}</span>}
                 </span>
                 {openingId === h.id && <span className="replayer-hand-card-meta is-opening-line">Opening…</span>}
