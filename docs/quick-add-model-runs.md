@@ -88,25 +88,29 @@ back.
 
 ## Measured (2026-11-21, futurega.me Admin, the 266-hand corpus)
 
-**The comparison to use** (commit 83512d3: the several-hands decision, the unwrap and the strict-enum fixes below;
-the same prompt and corpus for both):
+**The comparison to use** (the same prompt, corpus and scorer for both, d27cc1c: Sonnet 5 is run 15 rescored as
+run 16, Opus 5.5 low is run 13 rescored as run 17; the parses were made on 83512d3 and later, with the
+several-hands decision, the unwrap and the strict-enum fixes below):
 
 | Every hand | Sonnet 5 (today) | Opus 5.5 low |
 |---|---:|---:|
-| Fact recall | 81.5% | **91.8%** |
-| Fact precision | 85.2% | **89.3%** |
-| Wrong facts | 212 | **106** |
+| Fact recall | 79.6% | **91.8%** |
+| Fact precision | 84.2% | **89.3%** |
+| Wrong facts | 258 | **106** |
 | Perfect parses | 74 | **132** |
-| Complete hands: recall / perfect (of 58) | 89.9% / 21 | **99.1% / 51** |
+| Complete hands: recall / perfect (of 58) | 86.8% / 25 | **99.1% / 51** |
 | Complete hands asked a blocking question (of 58) | 28 | **4** |
-| Gap recall | 75.0% | **78.3%** |
-| Hallucinated cards | 79 (36 cases), old scorer | 80 (29 cases); **1** rescored |
-| Invented suits | 497, old scorer | 602; **0** rescored (+653 filled by the server) |
+| Gap recall | 72.7% | **78.3%** |
+| Hallucinated cards | 23 (19 cases) | **1** |
+| Invented suits | 27 (+511 filled by the server) | **0** (+653 filled by the server) |
 | Invented stacks | 31 | **26** |
-| Speech: recall / perfect (of 109) | 73.0% / 15 | **88.2% / 41** |
-| Cost a hand | **$0.012** | $0.022 |
-| Latency p50 / p90 / max | **5.6 s / 7.8 s / 11.4 s** | 6.3 s / 10.7 s / 17.4 s |
+| Speech: recall / perfect (of 109) | 74.5% / 18 | **88.2% / 41** |
+| Cost a hand | **$0.011** | $0.022 |
+| Latency p50 / p90 / max | **5.7 s / 7.7 s / 12.2 s** | 6.3 s / 10.7 s / 17.4 s |
 | Failed parses | 0 | 0 |
+
+Sonnet 5's run a day earlier (run 10, same request, old scorer) read 81.5% recall, 85.2% precision, 212 wrong, 74
+perfect: two runs of the same model differ by about two points, and Opus's lead is ten.
 
 Opus 5.5 at low effort is ahead on every fact measure. What is left against it: twice the cost, and three more
 seconds at p90 (well inside the app's 60 s). Two of its empty hands are judgements: a self-contradicting transcript
@@ -126,8 +130,15 @@ nothing): the two figures mostly measured the eval, not the model.
   text names outside the scored hand in `expect.mentioned` (28 cases), counted as stated, never scored.
 - **Rescored on that eval** (run 14, Opus 5.5 low, the same parses): recall 91.8%, precision 89.3%, 132 perfect,
   **1 hallucinated card, 0 invented suits** (653 filled by the server), 26 invented stacks, $5.84.
-- Sonnet 5's parses (run 10) were pruned before this, so its column is still on the old scorer. A fresh Sonnet 5 run
-  (about $3.20) gives it on the same footing; the same corpus gaps applied to it, so its 79 cards will fall too.
+- **Sonnet 5 on the same scorer** (run 15, $3.04, rescored as run 16 after two more corpus mentions: a SOHE
+  question's seven hole cards, a garbled O8 hand's threes): 23 hallucinated cards and 27 invented suits, read case by
+  case. 21 cards in 18 cases are its own: a suit the text gave written as another (Qh as Qs, Th as Ts, Td as Tc,
+  A5cc's ace as As), cards nobody named (Kh, As, Qc, the second draw's 9s, a Tc for the 9c the text says was never
+  dealt), "two diamonds" read as the 2d, "10 in" read as a ten, the player Jack read as a card, a Q for the second K.
+  2 more are the scorer's: it wrote the opponent's stated "Q6 of spades" with no suits, the server filled them, and
+  the flop's Q and 6 then counted as extra. The 27 suits are all its own choices where the text gave ranks or only a
+  count ("two clubs", "suited", 22 and 42o; "ace jack off suit" written suited), written as if stated, so the player
+  gets no note. Opus leaves those to the server, which says so.
 
 **Rescoring** (Admin › A run in full › Rescore this run, or `POST /api/admin/quick-add-eval { rescore: id }`): a new
 run that scores a finished run's kept parses with today's scorer and corpus (`eval.js --parses`), with their cost; no
