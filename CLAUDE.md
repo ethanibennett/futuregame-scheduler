@@ -1000,6 +1000,17 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   pixels: the 8-max bottom corners (1.05) walk toward the pot like the bottom seats (owner, 2026-11-22: level with the
   plaque their chips sat on the rail). Dead cards (stud, draw) are never on the felt (owner, 2026-11-22): every layout
   draws them in the strip at the table slot's foot (`.replayer-dead-strip`), landscape since that day.
+  Also 2026-11-22 (owner): a stud seat's fan is laid out for the cards that seat ends the hand with (`studAnchor`, CardRow
+  `anchor`), so a street adds a card and Back takes one and nothing else moves (it re-centred, 13-19px along the arc in
+  a frame); the hero's cards are 1.2 times the table's (`--seat-card-h`; not on a 9 or 10-seat phone) so its action label
+  sits on them instead of beside the plaque; in stud the rows (a split's shares, side pots) hang under the game pill, the
+  pot above the watermark; the 6-max landscape side seats are 3 cells in (`SIDE_X`), on the felt's edge; a stud fold's
+  down cards gather and shrink to nothing behind the plaque (`foldToStack`, target the plaque, `spin: 0`) while its up
+  cards fly to the dead strip, the ghost dimming to the strip's opacity and handing over in one frame (`ghostsTo`
+  `to.opacity`, `appearAt`); a split's share pills are solid gold with dark ink. A saved hand's built title is
+  `[game] | [Walk/Limped/SRP/3BP…] | [MTT/Cash] | [blinds]` (`utils/hand-title.js`; 1K/2K in a tournament, a stud hand
+  ante/bring-in/small/big), in Univers, renamed in place from the replay's header (`TitleEditor`); a share link carries the
+  names entered (`n` part) and the title (`t` part), base64url JSON, read by marker.
 - **Special showdowns** (owner, 2026-11-22: "special hand animations to play at showdown", "only when hero wins";
   `utils/showdown-specials.js` decides and simulates, `utils/showdown-moments.js` plays, `showdown-specials.css`; the
   catalogue of 100 ideas to pick from: `docs/catalogues/showdown-specials/`, https://claude.ai/artifact/MkvGpnepvimme8F7KKDCQn).

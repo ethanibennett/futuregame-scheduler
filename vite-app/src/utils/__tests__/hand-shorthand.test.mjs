@@ -145,3 +145,29 @@ test("a straddle's own size and a hand run twice survive a link", () => {
   // Twice the big blind writes no size, as before.
   assert.match(SH.encodeHand({ ...h, blinds: { ...h.blinds, straddleAmount: 4 } }), /^P86\.2-2!u~700/);
 });
+
+// Names and the title ride along in a link (owner, 2026-11-22: "If we enter names into the hand, shared links should
+// remember them. Same for if we edit the title of a hand"): the 'n' and 't' parts, base64url UTF-8.
+const nlh = (names, title) => ({
+  gameType: 'NLH', heroIdx: 1, blinds: { sb: 1, bb: 2 }, title,
+  players: names.map((name, i) => ({ name, position: ['BTN', 'SB', 'BB'][i], startingStack: 200 })),
+  streets: [{ name: 'Preflop', cards: { hero: 'AhKd', opponents: ['', ''], board: '' }, actions: [{ player: 0, action: 'fold', amount: 0 }] }],
+});
+test('entered names and the title come back from a link, whatever characters they hold', () => {
+  const names = ['Ana María', 'K. McCormack', 'Bo/the.Kid'];
+  const title = 'Day 2 · AK v QQ | "cooler" — 50/50';
+  const enc = SH.encodeHand(nlh(names, title));
+  const extra = enc.split('.').slice(5).filter((p) => p.charAt(0) === 'n' || p.charAt(0) === 't');
+  assert.equal(extra.length, 2, enc);
+  extra.forEach((p) => assert.match(p, /^[nt][A-Za-z0-9_-]+$/, 'fragment-safe, no separator'));
+  const dec = SH.decodeHand(enc);
+  assert.deepEqual(dec.players.map((p) => p.name), names);
+  assert.equal(dec.title, title);
+});
+test('default names add no part, and a link without one keeps the defaults', () => {
+  const enc = SH.encodeHand(nlh(['Opp 1', 'Hero', 'Opp 2'], ''));
+  assert.ok(!enc.split('.').some((p) => p.charAt(0) === 'n' || p.charAt(0) === 't'), enc);
+  const dec = SH.decodeHand(enc);
+  assert.deepEqual(dec.players.map((p) => p.name), ['Opp 1', 'Hero', 'Opp 2']);
+  assert.equal(dec.title, undefined);
+});

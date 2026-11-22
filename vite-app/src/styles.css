@@ -3140,6 +3140,19 @@
     .replayer-header { display:flex; justify-content:space-between; align-items:baseline; margin-bottom: calc(var(--subrow) * 2); }
     /* Grid: title box exactly 4 subrows tall (border-box); baseline seated via padding-top. */
     .replayer-header h2 { font-family: var(--font-title); font-size: var(--fs-lg); font-weight: var(--fw-regular); height: calc(var(--subrow) * 4); box-sizing:border-box; line-height: calc(var(--subrow) * 4); padding-top: var(--space-2xs); }
+    /* A saved hand's title in Univers (owner, 2026-11-22: "Let's render these titles in univers"), the list's own face
+       (condensed, bold), and a tap renames it (TitleEditor): the field takes the title's place, in the same face. */
+    .replayer-view.is-replay .replayer-header h2 { font-family: var(--font-condensed); font-weight: var(--fw-bold); min-width: 0; flex: 1 1 auto; }
+    .replayer-title-btn {
+      -webkit-appearance: none; appearance: none; border: 0; padding: 0; margin: 0; background: none; color: inherit;
+      font: inherit; text-align: left; cursor: text; max-width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
+    }
+    .replayer-title-input {
+      box-sizing: border-box; width: 100%; height: calc(var(--subrow) * 4); margin: 0; padding: 0 var(--gu);
+      font: inherit; color: var(--text); background: var(--surface2); border: 0; border-radius: var(--radius-sm);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--accent);
+    }
 
     /* Hand list */
     .replayer-hand-list { display:flex; flex-direction:column; gap: var(--space-md); margin-bottom: var(--space-xl); }
@@ -4367,27 +4380,24 @@
       line-height: 1; padding-top: calc(var(--subrow) * 2 - 1cap);
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
-    /* Each suit on two lines, A K Q J T 9 8 over 7 6 5 4 3 2 (UX pick 53, Fitts): cells 4g x 5r, twice
-       the 2g a rank had in one 13-wide row, where a mis-tap took the neighbouring rank and nothing
-       caught it, since that card was usually legal too. 7 x 4g = 28g, inside a phone's 29g or 31g
-       block, from its left edge. Each suit's ace starts a new line; the rows alternate 6r and 5r, the
-       first line's cell sitting at the foot of its 6r, so the suits are 1r apart. The art keeps its
-       old size, centred in the cell. Short Deck: nine ranks, A K Q J T over 9 8 7 6. */
+    /* Each suit one row of 13 again (owner, 2026-11-22: "Let's revert this to the old format"; UX pick 53 had put each
+       suit on two lines, A K Q J T 9 8 over 7 6 5 4 3 2, in 4g cells). 13 ranks, each a button whose box is on the g
+       lines: columns of the widest whole g the block allows, from its left edge (2g in a phone's 29g or 31g block, 3g on
+       desktop), whole-r rows. The 1fr line is the fallback where round() is unsupported (iOS < 15.4). Short Deck: nine
+       ranks, still one row. */
     .replayer-entry-view .card-picker-grid {
-      grid-template-columns: repeat(7, calc(var(--gu) * 4));
-      grid-auto-rows: calc(var(--subrow) * 6) calc(var(--subrow) * 5);
-      gap: 0; margin-top: 0;
+      grid-template-columns: repeat(13, minmax(0, 1fr));
+      grid-template-columns: repeat(13, round(down, 100% / 13, var(--gu)));
+      grid-auto-rows: calc(var(--subrow) * 5);
+      gap: 0; margin-top: var(--subrow);
     }
-    .replayer-entry-view .card-picker-btn {
-      aspect-ratio: auto; height: calc(var(--subrow) * 5); align-self: end; padding: 0;
-      border-radius: var(--radius-xs);
-    }
-    .replayer-entry-view .card-picker-grid > .card-picker-btn:nth-child(13n + 1) { grid-column-start: 1; }
-    .replayer-entry-view .card-picker-btn img { width: calc(var(--gu) * 1.8); height: 100%; }
+    .replayer-entry-view .card-picker-btn { aspect-ratio: auto; height: 100%; padding: 0 calc(var(--gu) * 0.1); border-radius: var(--radius-xs); }
+    .replayer-entry-view .card-picker-btn img { width: 100%; height: 100%; object-fit: contain; }
     .replayer-entry-view .card-picker-btn.selected { box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); background: var(--brand-quiet); }
-    .replayer-entry-view .card-picker-grid.is-short-deck { grid-template-columns: repeat(5, calc(var(--gu) * 4)); }
-    .replayer-entry-view .card-picker-grid.is-short-deck > .card-picker-btn:nth-child(13n + 1) { grid-column-start: auto; }
-    .replayer-entry-view .card-picker-grid.is-short-deck > .card-picker-btn:nth-child(9n + 1) { grid-column-start: 1; }
+    .replayer-entry-view .card-picker-grid.is-short-deck {
+      grid-template-columns: repeat(9, minmax(0, 1fr));
+      grid-template-columns: repeat(9, round(down, 100% / 9, var(--gu)));
+    }
 
     /* Action pad: 7r buttons; the icon over its label, the pair centred in the box as one group
        (owner rule, 2026-10-10: no baseline seat inside a control) — as .cal-action-btn. Each
@@ -5638,10 +5648,12 @@
       font-weight: var(--fw-bold);
       padding: 0.28em 0.9em;
       border-radius: var(--radius-pill);
-      background: linear-gradient(180deg, rgba(234,179,8,0.34), rgba(180,132,10,0.30));
-      border: var(--bw-1) solid rgba(255,224,138,0.55);
+      /* Solid gold with near-black ink (owner, 2026-11-22: "These should have sharper contrast between the text and the
+         pill"), as the action pills are: it was gold text on a third-opaque gold over the felt. */
+      background: #facc15;
+      border: var(--bw-hair) solid rgba(10,8,14,0.4);
       box-shadow: var(--plate-bevel);
-      color: #facc15;
+      color: var(--act-ink-dark);
       white-space: nowrap;
     }
     /* "2x HI 1/4": how many players, which half, what fraction. At the cell's
@@ -5649,7 +5661,7 @@
        3.8px on a phone — and inline in BOTH orientations, because the space a
        portrait label floats into is occupied here by the total's plaque. */
     .replayer-split-share-frac {
-      color: rgba(255,224,138,0.72);
+      color: var(--act-ink-dark); opacity: 0.72;
       text-transform: uppercase; letter-spacing: var(--track-caps);
       margin-right: 0.6em;
     }
@@ -8448,6 +8460,17 @@
        opponent's were 0.56 of the plaque, 13% smaller on a phone. The hand-size rules (seven, six, five community) are
        more specific and still set one size for every seat. */
     .replayer-seat { --card-h: clamp(20px, 15.625cqmin, 200px); --card-w: calc(var(--card-h) * 0.7143); }  /* 2.5 cells */
+    /* The hero's cards 1.2 times the table's (owner, 2026-11-22: "We can make hero's cards bigger so that the betting
+       pills don't have to go out to the right"): the action label sits on the plaque's top edge, and on a five-card
+       hand its top met the indexes of the hero's cards, so it went beside the plaque. Measured at 1440 on seven draw
+       and five-card hands: 2 labels beside at 1, 2 at 1.1, none at 1.2. Whichever rule sets the table's --card-h, the
+       seat hands it to its cards (--seat-card-h), and the hero's cards scale it; they grow up from the plaque. */
+    .replayer-seat { --seat-card-h: var(--card-h); }
+    .replayer-seat.is-hero .replayer-seat-cards { --card-h: calc(var(--seat-card-h) * 1.2); --card-w: calc(var(--card-h) * 0.7143); }
+    /* Not on a nine or ten-seat phone table, already a step smaller for room: there the bigger hand took height from the
+       table (placeTableFoot) and a side seat's cards met a split's shares under the board (check:replayer-collisions,
+       PLO8 9-max at 375x667). */
+    .replayer-fullbleed .replayer-table:is([data-seats="9"], [data-seats="10"]) .replayer-seat.is-hero .replayer-seat-cards { --card-h: var(--seat-card-h); }
     /* Nine or ten seats on a phone: every seat a step smaller together, the hero too (0.56 of the plaque, the
        opponents' old size), so one size still holds. At the hero's size a fan reached the next seat's plaque and left
        no cloth between seats for the wagers (check:replayer-collisions, 375x667 and 430x932). */
