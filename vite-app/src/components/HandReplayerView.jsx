@@ -7753,8 +7753,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     veil.removeAttribute('id');
     veil.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
     if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+    /* No transform of its own: the desktop table is lifted by one (translateY, its ink centred in the slot), the copy
+       carries the same class, and placed at the lifted box it was lifted again, 16.8px over the table in the Hands
+       pane at 1440x900, so every Back drew the table a step up and faded it down (owner, 2026-11-22: "the back arrow
+       in the desktop replayer causes the table to jump"). */
     Object.assign(veil.style, {
-      position: 'absolute', margin: '0', pointerEvents: 'none',
+      position: 'absolute', margin: '0', pointerEvents: 'none', transform: 'none', translate: 'none',
       left: (tr.left - hr.left - host.clientLeft + host.scrollLeft) + 'px', top: (tr.top - hr.top - host.clientTop + host.scrollTop) + 'px',
       width: tr.width + 'px', height: tr.height + 'px',
     });
@@ -12436,18 +12440,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         })()}
 
 
-        {/* Known dead cards, in the board's slot (stud and draw have no board).
-            Landscape only: portrait shows them in the 4r strip under the table. */}
-        {isLandscape && deadCards.length > 0 && (
-          <div className="replayer-board-area replayer-dead-area" aria-label={'Dead cards: ' + deadCards.join(' ')}>
-            <div className="replayer-dead-label">Dead cards</div>
-            <div className="card-row replayer-dead-row">
-              {deadCards.map(k => (
-                <img key={k} className="card-img" src={cardFaceSrc(k)} alt={k} loading="eager" />
-              ))}
-            </div>
-          </div>
-        )}
+        {/* (Known dead cards sat here, in the board's slot on the landscape felt, until 2026-11-22: owner, "dead cards on
+            desktop should not be on the felt". Every layout shows them in the strip under the table, below.) */}
 
         {/* Polish 38 drew a deck and a muck pile on the felt, so the deal
             and the muck had somewhere to come from and go to. At the table
@@ -13006,7 +13000,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           /* A side seat's wager goes straight in, level with its seat (owner, 2026-11-13: "move more directly
              horizontal"): toward the pot, a lower side seat's chips rose into the game and stakes pill under the
              board. Top and bottom seats keep the walk toward the pot. */
-          const sideSeat = Math.abs(pos[0] - 50) > 25;
+          /* On the landscape table a seat counts as a side seat only where its way to the pot runs more across than up
+             (1.25 to 1, in the table's own pixels): the 8-max table's two bottom corners sit on the bottom row, their
+             way to the pot as much up as across (1.05), and level with the plaque their chips sat on the rail beside it
+             (owner, 2026-11-22: "On desktop the location of Opp 1's bet here is wrong"). They walk toward the pot like
+             the bottom seats. Every other landscape side seat, 6 to 10-max, is 1.5 or more and keeps its level wager. */
+          const tableAspect = tableW && tableH ? tableW / tableH : LGX / LGY;
+          const sideSeat = Math.abs(pos[0] - 50) > 25
+            && (!isLandscape || Math.abs(pos[0] - 50) * tableAspect > 1.25 * Math.abs(POT_AT[1] - pos[1]));
           // Level with the plaque it clears that plaque only from further in: 0.6 of the way (a 6-max side plaque is
           // anchored on the table's edge and reaches ~24% in; at 0.42 the chips sat on its inner end).
           // (Portrait only: a landscape table is wide enough that 0.42 clears its plaques, and 0.6 reached the board.)
@@ -13091,12 +13092,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           });
         })}
       </div>
-      {/* Dead cards under the table (portrait): the label on its own 2r line, the
-          4r cards directly beneath it from the same left edge, on a 2.25g pitch
-          that tightens when the list would pass the full 2g..35g (33g). */}
+      {/* Dead cards under the table (every layout; landscape since 2026-11-22, off the felt): the label on its own 2r
+          line, the 4r cards directly beneath it from the same left edge, on a 2.25g pitch that tightens when the list
+          would pass the full 2g..35g (33g). */}
       {/* Not while the result line shows: both sit in the free band at the table's foot, and at the end of a stud
           hand the dead cards were drawn over "E. Bennett wins the 8,800 pot" (owner, 2026-11-13). */}
-      {!isLandscape && deadCards.length > 0
+      {deadCards.length > 0
         && !(showResult && potAwards && rSettings.showResults && !linkedReplay && hand.players.some((_, i) => (potAwards[i] || 0) > 0))
         && (() => {
         const CARD_G = 2.0286;   // 4r at the artwork's 0.7143 ratio, in g

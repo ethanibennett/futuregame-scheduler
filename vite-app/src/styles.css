@@ -5675,18 +5675,8 @@
     @media (prefers-reduced-motion: reduce) { .replayer-board-extra > * { animation: none; } }
     /* Under springs the second board is dealt like the first, a beat later (Replayer animations 12). */
     .replayer-board-area.is-sprung .replayer-board-extra > * { animation: none; }
-    /* Dead cards take the board's slot in stud and draw games. A stud hand can
-       fold a lot of up cards (7 seats x 4), so they are smaller than board cards
-       (about 2/3) and wrap inside 64% of the table instead of running into the
-       side seats; faces only, flat, dimmed a touch so they read as out of play. */
-    .replayer-dead-area { --card-h: clamp(14px, 7.3cqmin, 94px); max-width: 64%; gap: 0.6cqmin; }
-    .replayer-dead-area .card-row.replayer-dead-row { flex-wrap: wrap; justify-content: center; gap: 0.8cqmin; }
-    .replayer-dead-area .card-row.replayer-dead-row > * { opacity: 0.72; }
-    .replayer-dead-label {
-      font-family: var(--font-condensed); font-weight: var(--fw-bold);
-      font-size: clamp(7px, 2.4cqmin, 20px); letter-spacing: var(--track-caps); text-transform: uppercase;
-      color: var(--text-muted); line-height: 1;
-    }
+    /* (Dead cards took the board's slot on the landscape felt until 2026-11-22, owner: "dead cards on desktop should
+       not be on the felt". Every layout has them in the strip under the table now, .replayer-dead-strip.) */
     /* Board cards sit ON the felt. Without this they were the only cards with no shadow — hole
        cards already have one — so the board looked printed on while the hole cards floated.
        More vertical and softer than the hole-card shadow: light is overhead at the table centre. */
@@ -7191,6 +7181,12 @@
       /* no white outline around the card (owner, 2026-10-11) */
     }
     .replayer-dead-strip-cards > *:not(:first-child) { margin-left: calc(var(--gu) * var(--dead-ml, 0.2214)); }
+    /* Landscape (the desktop window and the Hands pane) too, off the felt (owner, 2026-11-22: "dead cards on desktop
+       should not be on the felt"): the same strip at the slot's foot, under the table's ink (the hero's lowest, its
+       hand name, ends 1.0775 table heights down at most; the slot holds that and 1r more), and over the strips' scrim
+       (.replayer-under, absolute in landscape over the same foot), which would dim the cards. */
+    .replayer-landscape .replayer-table-slot { position: relative; }
+    .replayer-landscape .replayer-dead-strip { z-index: calc(var(--z-flight, 60) + 1); }
     .replayer-fullbleed .replayer-seat-info { min-width: calc(var(--gu) * 8); box-sizing: border-box; }
 
     /* Bar: 1r pad, the 6r transport, 1r, the 4r action row, [the 2r note],

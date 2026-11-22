@@ -957,7 +957,9 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   opaque, at `--z-dealer` (over the table's pieces, under the settings button and `.replayer-under`, both 10). It holds
   until the new step is drawn and fades from the frame after that commit (started earlier, the 200ms commit ate most of
   it). Measured: the held copy is the screen it copied (PSNR 40.7 dB; slivers past the table's sides). The old rewind
-  dip (everything on the felt to 0.45 and back) is off on the spring path.
+  dip (everything on the felt to 0.45 and back) is off on the spring path. The copy takes no transform of its own: the
+  desktop table is lifted by a translateY, and the copy (same class) placed at the lifted box was lifted again, 16.8px
+  in the Hands pane, so every Back on desktop drew the table a step up (owner, 2026-11-22: "causes the table to jump").
   **The turn's blue glow** (owner, 2026-11-22: "THE PROBLEM IS THE BLUE GLOW", "abruptly pauses, dims, then pulses when
   the betting action happens"): every change of turn on a step forward is one path (HandReplayerView, `turnMoves`).
   Each drawn ring (`.replayer-turn-ring.is-in-plaque`) is replaced by one going on from the strength it shows NOW, so a
@@ -975,7 +977,11 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   2026-11-22: "Get rid of the Baskerville net gain/loss").
   A side seat's wager sits 1g further out than the 0.6 of the way to the pot, left on the left, right on the right
   (portrait; owner, 2026-11-22), and placeWagers keeps a wager only r/4 off its own seat's dealer button (a whole r
-  pushed the dealer seat's wager back in). check:replayer-collisions 0 in 7,055 steps after it.
+  pushed the dealer seat's wager back in). check:replayer-collisions 0 in 7,055 steps after it. On the landscape table a
+  seat is a side seat (a level wager) only where its way to the pot runs 1.25 times more across than up, in the table's
+  pixels: the 8-max bottom corners (1.05) walk toward the pot like the bottom seats (owner, 2026-11-22: level with the
+  plaque their chips sat on the rail). Dead cards (stud, draw) are never on the felt (owner, 2026-11-22): every layout
+  draws them in the strip at the table slot's foot (`.replayer-dead-strip`), landscape since that day.
 - **The action pills are solid** (owner, 2026-11-22: "a solid color with contrasting text"): `--act-pill` / `--act-pill-ink`
   per action, from `--act-*-solid` and `--act-ink-light` / `--act-ink-dark` (styles.css, beside `--act-*`): fold, call
   (blue-600) and raise (red-600) in white, check and bet in near-black, all-in as before; each pair measured at 4.8:1 or
