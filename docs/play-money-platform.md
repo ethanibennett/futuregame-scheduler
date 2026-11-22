@@ -333,7 +333,26 @@ What the answers change:
   tables are on for that account; on the desktop the table is the main pane and the chat and the
   table's hands the side pane (`.dk-pane-side`).
 
-## 12. Open decisions (as asked)
+## 12. As built: the first slice (2026-11-22)
+
+Two browsers at one private table play a full NLH hand, each seeing only their own cards, settled the way the
+oracle settles it, and the hand is saved to both players' Hands. Board games only (§8 wave 1); stud and draw next.
+
+| Piece | Where | Held by |
+|---|---|---|
+| The betting rules, one copy | `vite-app/src/utils/poker-rules/betting.js` | `test/replayer-oracle/check-rules.mjs`: 1,139 corpus hands, 22,272 actions, 0 fails (21 TDA/PokerKit differences named) |
+| Settlement | `poker-rules/settle.js` (the export's `prepareHand`) | the same check: every seat on the oracle's stack |
+| The live hand | `poker-rules/live-hand.js` | `live-hand.test.mjs` in `npm test` |
+| Dealer, runtime, service | `lib/tables/*.mjs`, `tables/server.mjs` | `npm run test:tables` (12 checks over the real routes and streams) |
+| The scheduler's half | `lib/play-tables.js` | the same |
+| The Tables tab | `components/TablesView.jsx`, `utils/play-tables.js` | `npm run check:tables` (two WebKit pages through one hand) |
+
+Not yet: §2 steps 3 and 4 (the entry and quick add reading the module, decision 11), the waiting-for-the-big-blind
+rule (a new seat is dealt in at once), chat (decision 6), the `tables` push kind, stud and the draw games, a
+Render service and a pm2 app for the tables service, and a guard pass (`check:controls`, `check:clipping`) on the
+Tables screens.
+
+## 13. Open decisions (as asked)
 
 1. **Where tables live.** Recommend **B**: their own service in this repo (`tables/server.js`, Render
    `futuregame-tables` with a build filter, a pm2 app here), with the scheduler issuing seat tickets

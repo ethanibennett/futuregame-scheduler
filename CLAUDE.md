@@ -118,6 +118,19 @@ sessions opened here own scheduler work.
   and the betting was reopened: a full raise, or shorts adding up to one, TDA rule 43; half a bet in limit); the smallest raise
   is the last FULL raise; a typed amount out of range is refused with the range, never cut; a folded hero is never scored.
   Amounts in the entry go through `parseAmount`/`AmountField` (cents in cash, whole chips in a tournament, "1,500", "25k").
+- **Play-money tables** (branch `play-money`, NOT on master: owner's yes needed, after the 5 Jan 2027 launch;
+  design and the owner's eleven answers: `docs/play-money-platform.md`). Free chips only, never bought, cashed out,
+  transferred or shown to others. One copy of the betting rules, `vite-app/src/utils/poker-rules/betting.js` (ported
+  from the entry's GTOEntryView), held to PokerKit in plain Node by `test/replayer-oracle/check-rules.mjs` (in
+  `test:replayer-oracle`; the PokerKit model now lives in `test/replayer-oracle/model.mjs`, shared with the entry
+  oracle); `live-hand.js` plays a hand from a deck it is given and settles it with the export's arithmetic
+  (`settle.js`); `viewFor`/`savedHandFor` never carry a card the seat has not seen. The tables run in their OWN
+  service, `tables/server.mjs` (`lib/tables/`: dealer with crypto.randomInt, runtime, SSE per viewer, a journal and an
+  outbox in the gitignored `tables-data/`; PORT default 3101, never 3001); the scheduler's half is `lib/play-tables.js`
+  (`TABLES=1` + `TABLES_URL` + `TABLES_SECRET`, app admins only; the chip balance, invites at `/play/<token>`, blocks
+  both ways, 2-minute seat tickets, every hand saved to each player's Hands). The client is the Tables tab
+  (`components/TablesView.jsx`, the replayer's felt in the drill's mode). `npm run test:tables` (ports 4940-4949),
+  `npm run check:tables` (two WebKit pages, ports 4950-4959; needs the built app and playwright in vite-app).
 - **Hands > Study** (owner, 2026-11-04: one training experience; `components/StudyHub.jsx`, `StudyHead.jsx`, `study-hub.css`):
   the Hands row is Replayer, Study, Scanner, and Study is one list of the solver tools: Practice (Play a hand, Hand trainer,
   Quick spots, Three-way Razz), Look up (Watch the solver, Solve a spot, Price a draw, Pre-draw ranges). Each opens under the same header and

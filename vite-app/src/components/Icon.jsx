@@ -60,6 +60,8 @@ const GLYPHS = {
   people: { filled: false, path: (<><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/> <circle cx="9" cy="7" r="4"/> <path d="M23 21v-2a4 4 0 00-3-3.87"/> <path d="M16 3.13a4 4 0 010 7.75"/></>) },
   play: { filled: false, path: (<><polygon points="5 3 19 12 5 21 5 3"/></>) },
   dollarSign: { filled: false, path: (<><line x1="12" y1="1" x2="12" y2="23"/> <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></>) },
+  /* A poker chip: the play-money Tables tab. */
+  chip: { filled: false, path: (<><circle cx="12" cy="12" r="10"/> <circle cx="12" cy="12" r="5"/> <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></>) },
   cards: { filled: false, path: (<><rect x="2" y="4" width="12" height="16" rx="1.5" transform="rotate(-8 8 12)"/> <rect x="10" y="4" width="12" height="16" rx="1.5" transform="rotate(8 16 12)"/></>) },
   bell: { filled: false, path: (<><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/> <path d="M13.73 21a2 2 0 01-3.46 0"/></>) },
   check: { filled: false, path: (<><polyline points="20 6 9 17 4 12"/></>) },

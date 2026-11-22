@@ -13423,3 +13423,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     </div>
   );
 }
+
+// The replay, for the play-money tables (TablesView.jsx), which play a live hand on it as the drill does.
+export { HandReplayerReplayView };

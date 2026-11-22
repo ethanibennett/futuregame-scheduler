@@ -1,0 +1,18 @@
+/* Play-money tables (TablesView.jsx). Whole g and r throughout, on the drill's 31g column and its .hs-* controls. */
+.tb-lobby, .tb-new { height: auto; overflow-y: visible; }
+.tb-field { width: 100%; }
+.tb-row { display: flex; column-gap: var(--gu); }
+.tb-row > .tb-field { flex: 1 1 0; }
+.tb-seats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.tb-item, .tb-invite { --hs-edge: var(--border); display: flex; flex-direction: column; row-gap: var(--subrow); padding: var(--subrow) var(--gu); }
+
+/* The raise box: the amount, Min, Pot or All-in, and the button, on one row of 5r. */
+.tb-raise { display: flex; column-gap: var(--gu); align-items: stretch; height: calc(var(--subrow) * 5); }
+.tb-amount {
+  box-sizing: border-box; width: calc(var(--gu) * 8); height: 100%; margin: 0; padding: 0 var(--gu);
+  border: var(--bw-hair) solid var(--border); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text); font-family: inherit; font-size: var(--fs-sm);
+}
+.tb-raise .tb-pill { --hs-h: 5; width: calc(var(--gu) * 5); }
+.tb-raise .tb-go { --hs-h: 5; width: calc(var(--gu) * 8); }
+.replayer-landscape .rd-bar.tb-bar { flex-wrap: wrap; }
