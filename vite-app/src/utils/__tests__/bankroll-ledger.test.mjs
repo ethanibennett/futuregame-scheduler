@@ -170,8 +170,9 @@ test('PBT preset: detected from the vendor sample; tournament, deposit, cash-gam
   assert.equal(det.headerRow, 1);
   const out = applyPreset(rows, det);
   assert.equal(out.length, 4);
-  assert.match(out[0].skip, /Cash game/);
-  assert.match(out[1].skip, /Cash game/);
+  // Cash games come in as cash sessions (2026-11-01, f83931a); they were skipped before.
+  assert.deepEqual([out[0].row.type, out[0].row.room, out[0].row.stakes, out[0].row.buyin, out[0].row.cashout], ['cash', 'Valentino', '0.5/0.5', 205, 687]);
+  assert.deepEqual([out[1].row.type, out[1].row.stakes, out[1].row.tags], ['cash', '1/2', ['BHD Asch 2024']]);
   const { note, ...t } = out[2].row;
   assert.deepEqual(t, {
     type: 'tournament', date: '2024-08-17', name: 'Super Freezeout', game: 'No Limit Holdem',

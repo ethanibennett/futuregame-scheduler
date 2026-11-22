@@ -5678,7 +5678,13 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             the fixed replay layer and could never be read. Only a hand with notes shows it. */}
 
         <ReplayErrorBoundary onBack={() => { setMode('list'); fetchHands(); }}>
+          {/* One replay per saved hand (owner, 2026-11-22: "sometimes when changing from one saved hand to another there
+              is an animation of a bunch of cards going to the center of the felt as the button moves and the blinds come
+              out"): the desktop pane kept the replay mounted across hands, so the next hand opened on the step the last
+              was on and its moments played the change from one hand to the other. Keyed by the hand, it opens fresh, at
+              its start, as a hand opened from the list does; a save of notes or tags keeps the id and the place. */}
           <HandReplayerReplayView
+            key={currentHandId != null ? 'h' + currentHandId : 'unsaved'}
             hand={currentHand}
             notes={notes}
             token={token}
