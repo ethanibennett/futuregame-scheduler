@@ -224,7 +224,13 @@
 .kind-toggles.results-kind-tabs .kind-toggle.active,
 .kind-toggles.results-kind-tabs .kind-toggle-caret.active {
   background: var(--brand-quiet); border-color: var(--brand); color: var(--brand-ink, var(--brand));
+  /* The lit outline is as wide as the unlit chips' (--bw-hair), not the base rule's --bw-fine (owner, 2026-11-22,
+     a third time: "Still cut off"). In the owner's iPhone screenshot the lit Cash chip's one-device-pixel line was
+     drawn on its top edge and missing on its bottom one, while the Overview chip's 3-device-pixel line on the same
+     edge drew whole. */
+  border-width: var(--bw-hair);
 }
+.kind-toggles.results-kind-tabs .kind-toggle-split > .kind-toggle.active { padding-right: var(--bw-hair); }
 .bd-seg2 .bk-seg-btn.is-on { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-fine) var(--brand); color: var(--brand-ink, var(--brand)); }
 
 /* The pointer (Bankroll design 3 and 88): one recipe for everything a pointer can press on the tab, the
