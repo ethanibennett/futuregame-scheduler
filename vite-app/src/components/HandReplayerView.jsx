@@ -10397,16 +10397,21 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               face.style.setProperty('--chip', anteColor);
               applyChipInserts(face, pipShift(full + 31, ji), anteColor);
               chip.appendChild(face);
-              Object.assign(chip.style, { left: (j.fx - L0.left) + 'px', top: (j.fy - L0.top) + 'px', transform: 'translate(-50%, -50%)' });
+              /* Unseen in its own right until it flies (owner, 2026-11-22: "Chip appears in front of BB as cards are dealt,
+                 then disappears before moving into the pot"): it waited out the deal at full in its own style, the
+                 animation's backwards fill not holding it at its first frame on the phone, then went to that first frame
+                 (0) as the flight began and faded in on the way. One opacity curve: in over appear as it leaves, out over
+                 arrivalFade as it lands. */
+              Object.assign(chip.style, { left: (j.fx - L0.left) + 'px', top: (j.fy - L0.top) + 'px', transform: 'translate(-50%, -50%)', opacity: '0' });
               layer0.appendChild(chip);
               const arrive = j.delay + timeTo(hand0, 0.98) / rate0;
               const lift = st0.crossLift || 0.12;
-              const entry = motion.run(chip, { transient: true, prefix: 'translate(-50%, -50%)', size: { w: chipD, h: chipD }, end: arrive + st0.arrivalFade / rate0, channels: [
-                { prop: 'opacity', ramp: { from: 0, to: 1, delay: j.delay, duration: st0.appear / rate0 } },
+              const inMs = st0.appear / rate0, outMs = st0.arrivalFade / rate0;
+              const entry = motion.run(chip, { transient: true, prefix: 'translate(-50%, -50%)', size: { w: chipD, h: chipD }, end: arrive + outMs, channels: [
+                { prop: 'opacity', fn: (t) => (t <= j.delay ? 0 : t < j.delay + inMs ? (t - j.delay) / inMs : t <= arrive ? 1 : Math.max(0, 1 - (t - arrive) / outMs)), start: j.delay, end: arrive + outMs },
                 { prop: 'x', spring: hand0, from: 0, to: j.px - j.fx, delay: j.delay, timeScale: rate0 },
                 { prop: 'y', spring: hand0, from: 0, to: j.py - j.fy, delay: j.delay, timeScale: rate0 },
                 { prop: 'scale', fn: (t) => { const q = t <= j.delay ? 0 : hand0.at((t - j.delay) * rate0); return 1 + lift * 4 * q * (1 - q); }, start: j.delay, end: arrive },
-                { prop: 'opacity', ramp: { from: 1, to: 0, delay: arrive, duration: st0.arrivalFade / rate0 } },
               ] });
               const last = ji === anteJobs.length - 1 && !pillJobs.length;
               const tick = () => potTo(last ? potCommitted : landed + ante);
@@ -10496,6 +10501,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       // board's own --card-h rule on this table's size, at the deck's aspect.
       const cardW = motion.boardCardW || Math.min(140, Math.max(18, 10.9375 * cq)) * 0.8366;
       const writes = [];
+      /* A copy of a stack's words hangs on the plaque, so it is drawn in the stack's own type, not the plaque's (owner,
+         2026-11-22: "the AT RISK text inexplicably jumps to another weight": the bust's AT RISK held in the plaque's face
+         and size until the pot landed, as did the ALL-IN crossing to AT RISK). */
+      const stackType = (st) => {
+        const cs = getComputedStyle(st);
+        return { fontFamily: cs.fontFamily, fontSize: cs.fontSize, fontWeight: cs.fontWeight, fontStyle: cs.fontStyle, fontStretch: cs.fontStretch,
+          letterSpacing: cs.letterSpacing, lineHeight: cs.lineHeight, color: cs.color, textTransform: cs.textTransform,
+          fontVariantNumeric: cs.fontVariantNumeric, fontFeatureSettings: cs.fontFeatureSettings, textAlign: cs.textAlign };
+      };
 
       /* (3b) The sweep: the wagers that were on the felt go into the pot, the chips first. Shared by a
          street press and the result press (the river's wagers are collected before the pot is
@@ -11440,7 +11454,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               if (getComputedStyle(plaque).position === 'static') plaque.style.position = 'relative';
               const ghost = document.createElement('span');
               ghost.className = 'replayer-stack-roll';
-              Object.assign(ghost.style, { left: el.offsetLeft + 'px', top: el.offsetTop + 'px', width: el.offsetWidth + 'px', height: el.offsetHeight + 'px', right: 'auto', bottom: 'auto' });
+              Object.assign(ghost.style, { left: el.offsetLeft + 'px', top: el.offsetTop + 'px', width: el.offsetWidth + 'px', height: el.offsetHeight + 'px', right: 'auto', bottom: 'auto' }, stackType(el));
               const mk = document.createElement('span');
               mk.className = 'replayer-allin-mark';
               mk.textContent = (motion.prevAtRisk || new Set()).has(pi) ? 'AT RISK' : 'ALL-IN';
@@ -11656,7 +11670,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           const ghost = document.createElement('span');
           ghost.className = 'replayer-stack-roll';
           ghost.textContent = 'ALL-IN';
-          Object.assign(ghost.style, { left: st.offsetLeft + 'px', top: st.offsetTop + 'px', width: st.offsetWidth + 'px', height: st.offsetHeight + 'px', right: 'auto', bottom: 'auto' });
+          Object.assign(ghost.style, { left: st.offsetLeft + 'px', top: st.offsetTop + 'px', width: st.offsetWidth + 'px', height: st.offsetHeight + 'px', right: 'auto', bottom: 'auto' }, stackType(st));
           plaque.appendChild(ghost);
           motion.run(ghost, { transient: true, property: 'individual', size: { w: st.offsetWidth, h: st.offsetHeight }, channels: [
             { prop: 'opacity', ramp: { from: 1, to: 0, delay: d, duration: S4.beat / rate, ease: easeIO } },
@@ -13113,20 +13127,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           <span className="rrs-line">{undecidedLine(parseCardNotation(boardCards))}</span>
         </div>
       )}
-      {showResult && potAwards && rSettings.showResults && !linkedReplay && (() => {
-        const winners = hand.players.map((_, i) => ({ i, won: potAwards[i] || 0 })).filter(w => w.won > 0);
-        if (!winners.length) return null;
-        /* Only the hero's net now (owner, 2026-11-14: "get rid of the result bar at the bottom at showdown, but
-           keep the net change number"): the sentence and the bar behind it went; the seats already say who won. */
-        const start = Number((hand.players[replayHeroIdx] || {}).startingStack) || 0;
-        const net = chipRound((shownStacks[replayHeroIdx] || 0) - start);
-        const tone = net > 0 ? 'is-won' : net < 0 ? 'is-lost' : 'is-even';
-        return (
-          <div className={'replayer-result-strip ' + tone} role="status" aria-label={'Your net: ' + (net > 0 ? 'plus ' : net < 0 ? 'minus ' : '') + fmtChips(Math.abs(net))}>
-            <span className="rrs-net">{(net > 0 ? '+' : net < 0 ? '\u2212' : '') + fmtChips(Math.abs(net))}</span>
-          </div>
-        );
-      })()}
+      {/* (The hero's net at the result, the display-face figure at the table's foot, went too: owner, 2026-11-22, "Get
+          rid of the Baskerville net gain/loss in the bottom right". The plaque's stack and the seats' readouts say it.) */}
 
       {/* Pot odds */}
       {rSettings.showPotOdds && (() => {

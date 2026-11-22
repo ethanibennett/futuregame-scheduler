@@ -968,6 +968,11 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   ring (`.is-hero.active-turn:not(.ring-wait)`; it stayed at 0.5 and dimmed at the hand-over), and the CSS arrival pulse
   is off on the spring path. Measured every frame in WebKit (arrive, act, act mid-arrival, step back, street start): no
   glow on the table changes but continuously. Swiss draws no ring (its ink line marks the turn).
+  A delayed flight that must not show before it leaves is unseen in its OWN style (inline opacity 0), not only by the
+  animation's backwards fill: on the phone the opening's ante chip waited out the deal at full in front of the big
+  blind (owner, 2026-11-22). A copy of a stack's words that hangs on the plaque takes the stack's type (`stackType`):
+  in the plaque's own face the bust's AT RISK changed weight. The hero's net figure at the result is gone (owner,
+  2026-11-22: "Get rid of the Baskerville net gain/loss").
 - **The action pills are solid** (owner, 2026-11-22: "a solid color with contrasting text"): `--act-pill` / `--act-pill-ink`
   per action, from `--act-*-solid` and `--act-ink-light` / `--act-ink-dark` (styles.css, beside `--act-*`): fold, call
   (blue-600) and raise (red-600) in white, check and bet in near-black, all-in as before; each pair measured at 4.8:1 or
