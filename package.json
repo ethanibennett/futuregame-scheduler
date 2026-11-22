@@ -76,7 +76,7 @@
     "test:money-import": "node test/money-import.test.js && cd vite-app && node --test src/utils/__tests__/bankroll-import-dashboard.test.mjs",
     "test:staking-settlement": "node test/staking-settlement.test.js && cd vite-app && node --test src/utils/__tests__/staking-settlement.test.mjs",
     "check:replayer-games": "node scripts/check-replayer-games.mjs",
-    "test:replayer-oracle": "node test/replayer-oracle/check-export.mjs && node test/replayer-oracle/check-shorthand.mjs && node test/replayer-oracle/check-rules.mjs",
+    "test:replayer-oracle": "node test/replayer-oracle/check-export.mjs && node test/replayer-oracle/check-shorthand.mjs && node test/replayer-oracle/check-rules.mjs && node test/replayer-oracle/check-quick-add.mjs",
     "check:replayer-oracle": "node scripts/check-replayer-oracle.mjs",
     "check:replayer-collisions": "node scripts/check-replayer-collisions.mjs",
     "check:replayer-smooth": "node scripts/check-replayer-smooth.mjs",

@@ -96,7 +96,10 @@ export function model(rec) {
       const ev = { type: 'act', street: si, index: ai, player: p, action: a.action, amount: amt, stackBefore: stacks[p], contribBefore: contrib[p],
         maxBet, oweFull, owe, pot, noRaise, minTo, potTo, allInTo, count, shortSeen, firstOfStreet: ai === 0, cbra, streetMin,
         // TDA rule 47-B: in a limit game half a bet reopens the betting. PokerKit asks for a whole one.
-        halfBet: betting === 'fl' && noRaise === 'not-reopened' && owe * 2 >= streetMin };
+        halfBet: betting === 'fl' && noRaise === 'not-reopened' && owe * 2 >= streetMin,
+        // TDA rule 43: a short all-in that is the round's only raise does not reopen the betting to players who
+        // have acted. PokerKit starts a round with no raise on record, so its first raise reopens at any size.
+        shortFirst: !noRaise && count > 0 && cbra > 0 && cbra < streetMin };
       if (noRaise === 'not-reopened') flags.add('closed-raise-spot');
       if (noRaise === 'cap') flags.add('capped');
       if (noRaise === 'no-one-to-call') flags.add('no-one-to-call');

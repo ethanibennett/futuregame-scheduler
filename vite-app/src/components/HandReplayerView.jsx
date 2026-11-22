@@ -38,6 +38,7 @@ import { useToast } from '../contexts/ToastContext.jsx';
 import QuickAddView from './QuickAddView.jsx';
 import { checkExportable } from '../utils/hand-history/index.js';
 import { heroNet } from '../utils/hand-net.js';
+import { streetState } from '../utils/poker-rules/betting.js';
 import { autoTitle, displayTitle } from '../utils/hand-title.js';
 import { SAMPLE_HAND } from '../utils/sample-hand.js';
 import { exportHandHistory, playedAtOf, handOfRow, handsFileName } from '../utils/hand-history/save.js';
@@ -221,9 +222,8 @@ function getStreetDef(gameType) {
 }
 /* A draw in a game with a board too (Dramaha, Pineapple) plays by the draw games' rules for the hand. */
 const hasDraws = (category, cfg) => category === 'draw_triple' || category === 'draw_single' || (cfg && cfg.drawAfter != null);
-/* The razz family: the highest door brings it in and the lowest board acts first. In the 2-7 games the ace is the worst card. */
+/* The razz family: the highest door brings it in (the bring-in and who acts first are poker-rules/betting.js's). */
 const LOW_STUD = /(^|\s)(2-7 )?Razz$|^Razzdugi$|^Razzdeucy$/;
-const ACE_HIGH_LOW_STUD = /2-7 Razz$|^Razzdeucy$/;
 
 // Sort a hand's cards for the replay display: rank high→low, then suit (spades
 // high), the way a stud hand already reads. Face-down backs sort equal, so an
@@ -381,136 +381,6 @@ function lastStraddleSeat(list) {
   return list.length ? list[list.length - 1].seat : -1;
 }
 
-// ── Action order ──
-function getActionOrder(players, isPreflop, studInfo, straddleSeat) {
-  const n = players.length;
-  if (n <= 0) return [];
-  const indices = [];
-  if (studInfo && studInfo.isStud) {
-    const startIdx = studInfo.is3rdStreet ? studInfo.bringInIdx : studInfo.bestBoardIdx;
-    if (startIdx >= 0) {
-      for (let i = 0; i < n; i++) indices.push((startIdx + i) % n);
-      return indices;
-    }
-    for (let i = 0; i < n; i++) indices.push(i);
-    return indices;
-  }
-  const btnIdx = n <= 3 ? 0 : n - 3;
-  const sbIdx = n <= 3 ? (n <= 2 ? 0 : 1) : n - 2;
-  const bbIdx = n <= 2 ? 1 : n - 1;
-  if (n === 2) {
-    return isPreflop ? [0, 1] : [1, 0];
-  } else if (isPreflop) {
-    /* Normally 0..n-1, which is UTG first and the big blind closing. A
-       straddle moves the close: the last straddler has the option, so the
-       round starts at the seat on their left and wraps round to them. With no
-       straddle, start is 0 and this is the loop it always was. */
-    const start = (straddleSeat >= 0 && straddleSeat < n) ? (straddleSeat + 1) % n : 0;
-    for (let i = 0; i < n; i++) indices.push((start + i) % n);
-  } else {
-    indices.push(sbIdx);
-    indices.push(bbIdx);
-    for (let i = 0; i < btnIdx; i++) indices.push(i);
-    indices.push(btnIdx);
-  }
-  return indices.filter(i => i < n);
-}
-
-// ── Stud helpers ──
-function findStudBringIn(hand, isRazz) {
-  const heroIdx = hand.heroIdx != null ? hand.heroIdx : 0;
-  const oppCards = (hand.streets[0] && hand.streets[0].cards.opponents) || [];
-  const heroCards = parseCardNotation((hand.streets[0] && hand.streets[0].cards.hero) || '');
-  const rankBadness = isRazz
-    ? (ACE_HIGH_LOW_STUD.test(hand.gameType || '')
-      ? { '2':0,'3':1,'4':2,'5':3,'6':4,'7':5,'8':6,'9':7,'T':8,'J':9,'Q':10,'K':11,'A':12 }
-      : { 'A':0,'2':1,'3':2,'4':3,'5':4,'6':5,'7':6,'8':7,'9':8,'T':9,'J':10,'Q':11,'K':12 })
-    : { 'A':0,'K':1,'Q':2,'J':3,'T':4,'9':5,'8':6,'7':7,'6':8,'5':9,'4':10,'3':11,'2':12 };
-  const suitBadness = isRazz ? { 'c':0,'d':1,'h':2,'s':3 } : { 's':0,'h':1,'d':2,'c':3 };
-  let worstIdx = -1, worstRank = -1, worstSuit = -1;
-  for (let pi = 0; pi < hand.players.length; pi++) {
-    let doorCard;
-    if (pi === heroIdx) {
-      doorCard = heroCards.length >= 3 ? heroCards[2] : null;
-    } else {
-      const oppSlot = pi < heroIdx ? pi : pi - 1;
-      const oCards = parseCardNotation(oppCards[oppSlot] || '');
-      doorCard = oCards.length ? oCards[0] : null;
-    }
-    if (!doorCard || doorCard.suit === 'x') continue;
-    const rv = rankBadness[doorCard.rank] || 0;
-    const sv = suitBadness[doorCard.suit] || 0;
-    if (worstIdx === -1 || rv > worstRank || (rv === worstRank && sv > worstSuit)) {
-      worstIdx = pi; worstRank = rv; worstSuit = sv;
-    }
-  }
-  return worstIdx;
-}
-
-/* A visible stud board's score: the category first (no pair < pair < two pair < trips < full house
-   < quads), then every rank, grouped ranks before kickers, highest first. Each category sits above
-   anything the ranks can add, so an unpaired A-K no longer outscores 9-9, and every kicker counts
-   (entry audit D2 / evaluation audit D7, 2026-10-20). aceLow: the ace is a one (Razz); a low game
-   takes the lowest score. */
-function scoreStudBoard(cards, aceLow = false) {
-  const rankValues = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':aceLow ? 1 : 14 };
-  if (!cards.length) return 0;
-  const counts = {};
-  cards.forEach(c => { const r = rankValues[c.rank] || 0; counts[r] = (counts[r] || 0) + 1; });
-  const groups = Object.keys(counts).map(Number).map(r => [r, counts[r]]).sort((a, b) => b[1] - a[1] || b[0] - a[0]);
-  const shape = groups.map(g => g[1]);
-  const cat = shape[0] === 4 ? 6 : shape[0] === 3 ? (shape[1] === 2 ? 5 : 4) : shape[0] === 2 ? (shape[1] === 2 ? 3 : 2) : 1;
-  const P = 15;
-  let score = cat * Math.pow(P, 5);
-  groups.forEach((g, i) => { score += g[0] * Math.pow(P, 4 - i); });
-  return score;
-}
-
-function findStudBestBoard(hand, streetIdx, foldedSet, isLowGame) {
-  const heroIdx = hand.heroIdx != null ? hand.heroIdx : 0;
-  const maxVisibleStreet = Math.min(streetIdx, 3);
-  let bestIdx = -1, bestScore = isLowGame ? Infinity : -Infinity;
-  for (let pi = 0; pi < hand.players.length; pi++) {
-    if (foldedSet.has(pi)) continue;
-    const visible = [];
-    for (let si = 0; si <= maxVisibleStreet; si++) {
-      if (pi === heroIdx) {
-        const hCards = parseCardNotation((hand.streets[si] && hand.streets[si].cards.hero) || '');
-        if (si === 0 && hCards.length >= 3) visible.push(hCards[2]);
-        if (si > 0) hCards.forEach(c => { if (c.suit !== 'x') visible.push(c); });
-      } else {
-        const oppSlot = pi < heroIdx ? pi : pi - 1;
-        const oCards = parseCardNotation(((hand.streets[si] && hand.streets[si].cards.opponents) || [])[oppSlot] || '');
-        oCards.forEach(c => { if (c.suit !== 'x') visible.push(c); });
-      }
-    }
-    const score = scoreStudBoard(visible, isLowGame && !ACE_HIGH_LOW_STUD.test(hand.gameType || ''));
-    if (isLowGame ? score < bestScore : score > bestScore) { bestIdx = pi; bestScore = score; }
-  }
-  return bestIdx;
-}
-
-function studHasOpenPairOn4th(hand) {
-  if (!hand.streets || !hand.streets[0] || !hand.streets[1]) return false;
-  const heroIdx = hand.heroIdx != null ? hand.heroIdx : 0;
-  for (let pi = 0; pi < hand.players.length; pi++) {
-    let doorCard = null, fourthCard = null;
-    if (pi === heroIdx) {
-      const s0Cards = parseCardNotation((hand.streets[0] && hand.streets[0].cards.hero) || '');
-      const s1Cards = parseCardNotation((hand.streets[1] && hand.streets[1].cards.hero) || '');
-      doorCard = s0Cards.length >= 3 ? s0Cards[2] : null;
-      fourthCard = s1Cards.length >= 1 ? s1Cards[0] : null;
-    } else {
-      const oppSlot = pi < heroIdx ? pi : pi - 1;
-      const s0Opp = parseCardNotation(((hand.streets[0] && hand.streets[0].cards.opponents) || [])[oppSlot] || '');
-      const s1Opp = parseCardNotation(((hand.streets[1] && hand.streets[1].cards.opponents) || [])[oppSlot] || '');
-      doorCard = s0Opp.length >= 1 ? s0Opp[0] : null;
-      fourthCard = s1Opp.length >= 1 ? s1Opp[0] : null;
-    }
-    if (doorCard && fourthCard && doorCard.suit !== 'x' && fourthCard.suit !== 'x' && doorCard.rank === fourthCard.rank) return true;
-  }
-  return false;
-}
 
 // ── "Solve this spot" → Solver handoff ──────────────────────
 // gameType → solver engine id. The live Solver supports only the
@@ -2566,130 +2436,16 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
   const currentPot = potAndStacks.pot;
   const currentStacks = potAndStacks.stacks;
 
-  const foldedSet = useMemo(() => {
-    const f = new Set();
-    for (let si = 0; si <= currentStreetIdx; si++) {
-      for (let ai = 0; ai < (hand.streets[si].actions || []).length; ai++) {
-        if (hand.streets[si].actions[ai].action === 'fold') f.add(hand.streets[si].actions[ai].player);
-      }
-    }
-    return f;
-  }, [hand.streets, currentStreetIdx]);
+  /* The rules of the street, from the one module the live tables use too (utils/poker-rules/betting.js, held
+     to PokerKit by check-rules): who has folded or is all in, the price, whose turn it is and what they may
+     do. The entry kept its own copy of all of this until the play-money branch moved it (decision 11). */
+  const rules = useMemo(() => streetState(hand, currentStreetIdx), [hand, currentStreetIdx]);
+  const foldedSet = rules.folded;
+  const allInSet = rules.allIn;
+  const seatOrder = rules.seatOrder; // this street's acting order (stud: from the bring-in or the best board)
 
-  const allInSet = useMemo(() => {
-    const a = new Set();
-    currentStacks.forEach((s, i) => { if (s <= 0 && !foldedSet.has(i)) a.add(i); });
-    return a;
-  }, [currentStacks, foldedSet]);
-
-  // NL and PL Razz are Razz too: they took the high game's bring-in and first actor (entry audit D3).
-  const isRazz = LOW_STUD.test(hand.gameType || '');
-  const isStudLow = isRazz;
-
-  const priorStreetFoldedSet = useMemo(() => {
-    const f = new Set();
-    for (let si = 0; si < currentStreetIdx; si++) {
-      for (let ai = 0; ai < (hand.streets[si].actions || []).length; ai++) {
-        if (hand.streets[si].actions[ai].action === 'fold') f.add(hand.streets[si].actions[ai].player);
-      }
-    }
-    return f;
-  }, [hand.streets, currentStreetIdx]);
-
-  const studInfo = useMemo(() => {
-    if (!gameCfg.isStud) return null;
-    const is3rdStreet = currentStreetIdx === 0;
-    const bringInIdx = is3rdStreet ? findStudBringIn(hand, isStudLow) : -1;
-    const bestBoardIdx = !is3rdStreet ? findStudBestBoard(hand, currentStreetIdx, priorStreetFoldedSet, isStudLow) : -1;
-    return { isStud: true, is3rdStreet, bringInIdx, bestBoardIdx };
-  }, [gameCfg.isStud, currentStreetIdx, hand, isStudLow, priorStreetFoldedSet]);
-
-  const preflopStraddleSeat = useMemo(
-    () => (isPreflop ? lastStraddleSeat(getStraddles(hand.players, hand.blinds)) : -1),
-    [isPreflop, hand.players, hand.blinds]);
-  const seatOrder = useMemo(
-    () => getActionOrder(hand.players, isPreflop, studInfo, preflopStraddleSeat),
-    [hand.players, isPreflop, studInfo, preflopStraddleSeat]);
-  const actionOrder = useMemo(() => seatOrder.filter(i => !foldedSet.has(i) && !allInSet.has(i)), [seatOrder, foldedSet, allInSet]);
-
-  const bringInAmount = gameCfg.isStud
-    ? ((hand.blinds || {}).bringIn || Math.floor(((hand.blinds || {}).bb || 200) / 4))
-    : 0;
-
-  const streetBets = useMemo(() => {
-    const contrib = new Array(hand.players.length).fill(0);
-    let maxBet = 0;
-    if (isPreflop && category !== 'stud') {
-      const sbIdx = hand.players.findIndex(p => p.position === 'SB' || p.position === 'BTN/SB');
-      const bbIdx = hand.players.findIndex(p => p.position === 'BB');
-      if (sbIdx >= 0) contrib[sbIdx] = (hand.blinds || {}).sb || 0;
-      if (bbIdx >= 0) contrib[bbIdx] = (hand.blinds || {}).bb || 0;
-      maxBet = (hand.blinds || {}).bb || 0;
-      /* Straddles post before the deal and set the preflop price: the largest
-         straddle IS the current bet, and each straddler is already in for
-         theirs. Without this, maxBet stayed at the BB — so calls, and every
-         pot-sized bet computed off it, came out short (POT 40 not 80 behind a
-         20 straddle). The pot total already counted the straddle; the betting
-         state did not. */
-      getStraddles(hand.players, hand.blinds).forEach(st => {
-        contrib[st.seat] = st.amount;
-        if (st.amount > maxBet) maxBet = st.amount;
-      });
-    }
-    (currentStreet.actions || []).forEach(act => {
-      if (act.action === 'fold') return;
-      if (act.action === 'bring-in') { contrib[act.player] = act.amount || bringInAmount; if (contrib[act.player] > maxBet) maxBet = contrib[act.player]; return; }
-      if (act.amount > 0) { contrib[act.player] = chipRound(contrib[act.player] + act.amount); if (contrib[act.player] > maxBet) maxBet = contrib[act.player]; }
-    });
-    return { contrib, maxBet };
-  }, [currentStreet.actions, isPreflop, hand.players, hand.blinds, category, bringInAmount]);
-
-  const currentActor = useMemo(() => {
-    const actions = currentStreet.actions || [];
-    if (actionOrder.length === 0) return -1;
-    /* Everyone else still in is all in: the one player with chips left acts only if a bet is still
-       theirs to call. Once they have matched it (or nobody bet), there is nobody left to bet into,
-       so the street needs no action from them (owner, 2026-10-21: the entry made the covering
-       player bet into an opponent with nothing left to call). */
-    if (actionOrder.length === 1 && streetBets.contrib[actionOrder[0]] >= streetBets.maxBet) return -1;
-    let lastRaiserPlayer = -1, lastRaiseIdx = -1;
-    /* The last aggression: a bet or raise, or an all-in that put in more than the price before it
-       (an all-in that only calls reopens nothing). */
-    const before = new Array(hand.players.length).fill(0);
-    let priceBefore = 0;
-    if (isPreflop && category !== 'stud') {
-      const blinds = hand.blinds || {};
-      const sbIdx = hand.players.findIndex(p => p.position === 'SB' || p.position === 'BTN/SB');
-      const bbIdx = hand.players.findIndex(p => p.position === 'BB');
-      if (sbIdx >= 0) before[sbIdx] = blinds.sb || 0;
-      if (bbIdx >= 0) before[bbIdx] = blinds.bb || 0;
-      priceBefore = blinds.bb || 0;
-      getStraddles(hand.players, hand.blinds).forEach(st => { before[st.seat] = st.amount; if (st.amount > priceBefore) priceBefore = st.amount; });
-    }
-    actions.forEach((a, i) => {
-      if (a.action === 'fold') return;
-      if (a.action === 'bring-in') { before[a.player] = a.amount || bringInAmount; priceBefore = Math.max(priceBefore, before[a.player]); return; }
-      const after = before[a.player] + (a.amount > 0 ? a.amount : 0);
-      if (a.action === 'raise' || a.action === 'bet' || (a.action === 'all-in' && after > priceBefore)) { lastRaiseIdx = i; lastRaiserPlayer = a.player; }
-      before[a.player] = after;
-      if (after > priceBefore) priceBefore = after;
-    });
-    /* Walk the FULL seat order from the seat after the raiser, skipping folded and all-in seats.
-       Searching the raiser in actionOrder failed whenever the raiser was all-in (they are not in it),
-       so the turn went back to the first seat: SB checks, BB shoves, and the SB was asked again
-       instead of the button (entry audit D1, 2026-10-20). */
-    let startOi = 0;
-    if (lastRaiserPlayer >= 0) { const raiserPos = seatOrder.indexOf(lastRaiserPlayer); if (raiserPos >= 0) startOi = raiserPos + 1; }
-    for (let count = 0; count < seatOrder.length; count++) {
-      const pidx = seatOrder[(startOi + count) % seatOrder.length];
-      if (foldedSet.has(pidx) || allInSet.has(pidx)) continue;
-      let lastActIdx = -1;
-      for (let j = actions.length - 1; j >= 0; j--) { if (actions[j].player === pidx) { lastActIdx = j; break; } }
-      if (lastActIdx < lastRaiseIdx) return pidx;
-      if (lastActIdx === -1) return pidx;
-    }
-    return -1;
-  }, [actionOrder, seatOrder, foldedSet, allInSet, currentStreet.actions, isPreflop, category, hand.players, hand.blinds, bringInAmount, streetBets]);
+  const streetBets = useMemo(() => ({ contrib: rules.contrib, maxBet: rules.maxBet }), [rules]);
+  const currentActor = rules.actor;
 
   const isBettingComplete = currentActor === -1;
   const activePlayers = hand.players.filter((_, i) => !foldedSet.has(i));
@@ -3009,98 +2765,21 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
   const bettingType = gameCfg.betting || 'nl';
   const isLimitGame = bettingType === 'fl';
   const isPotLimit = bettingType === 'pl';
-  const flSmallStreets = gameCfg.flSmallStreets || [0, 1];
-  const flRaiseCap = (hand.blinds || {}).betCap || gameCfg.raiseCap || 4;
-  let streetBetRaiseCount = 0;
-  (currentStreet.actions || []).forEach(a => { if (a.action === 'raise' || a.action === 'bet') streetBetRaiseCount++; });
-  const activePlayerCount = hand.players.filter((_, i) => !foldedSet.has(i) && !allInSet.has(i)).length;
-  const isHeadsUp = activePlayerCount <= 2;
-  const flIsSmall = flSmallStreets.includes(currentStreetIdx);
-  /* An open pair on 4th street: in stud high the first bet may be the small bet or the big one, and
-     the street goes on at the size it opened with. Hi-lo and the low games keep the small bet; this
-     made the big bet a must in every stud game (entry audit 18; entry vs oracle, cannot enter 3). */
-  const stud4thOpenPair = gameCfg.isStud && currentStreetIdx === 1
-    && (GAME_EVAL[hand.gameType] || {}).type === 'high' && studHasOpenPairOn4th(hand);
-  const flSmallBet = (hand.blinds || {}).bb || 100;
-  const flBigBet = (hand.blinds || {}).bigBet || flSmallBet * 2;
-  const flOpeningBet = (currentStreet.actions || []).find(a => a.action === 'bet');
-  const flBetSize = stud4thOpenPair
-    ? (flOpeningBet && chipRound(flOpeningBet.amount) >= flBigBet ? flBigBet : flSmallBet)
-    : (flIsSmall ? flSmallBet : flBigBet);
-  const flOpenPairChoice = stud4thOpenPair && !flOpeningBet;
-  const flRaiseToTotal = chipRound(streetBets.maxBet + flBetSize);
-  const flRaiseIncrement = chipRound(flRaiseToTotal - playerContrib);
-  /* Heads-up used to lift the cap on every street, which is one house rule but
-     not the one being asked for: uncapped heads up on the LAST street only,
-     and only when the hand says so. Off, the cap holds everywhere. */
-  const isLastStreet = currentStreetIdx === hand.streets.length - 1;
-  const uncapHeadsUp = (hand.blinds || {}).uncapHeadsUp !== false;
-  const flCanRaise = (uncapHeadsUp && isHeadsUp && isLastStreet) || streetBetRaiseCount < flRaiseCap;
-
-  /* Pot-limit: the pot is everything in the middle, a big-blind ante included. Before the flop the
-     ante was left out, so a legal pot raise was cut down to a smaller one without a word (entry vs
-     oracle, 1). PokerKit counts it, and so does the text quick add (utils/quick-add/betting.js). */
+  /* What the seat to act may do, from the shared rules (rules.legal; utils/poker-rules/betting.js has the
+     why of each: the last FULL raise as the smallest raise, TDA 43 reopening, pot limit counting a big-blind
+     ante, the limit size and cap, the stud bring-in, completion and open pair on 4th). Every amount there is
+     a "to"; the buttons store what is added, as the hand always has. */
+  const legal = rules.legal && rules.legal.player === currentActor ? rules.legal : null;
   const blinds = hand.blinds || { sb: 0, bb: 0, ante: 0 };
-  const plEffectivePot = chipRound(currentPot);
-  const plPotAfterCall = chipRound(plEffectivePot + callAmount);
-  const plRaiseToTotal = chipRound(streetBets.maxBet + plPotAfterCall);
-  const plMaxRaiseIncrement = chipRound(plRaiseToTotal - playerContrib);
-  const plMaxBet = plEffectivePot;
-
-  /* One walk over the street (entry vs oracle, 4c and 5): the price; the size of the last FULL raise,
-     which is the smallest raise allowed (a short all-in raises the price, not that size); and whether
-     the betting is open again to the player to act. A player who has acted may raise again only after
-     a full raise, or short ones adding up to one (TDA 2019 rule 43; in limit, half a bet). A straddle
-     is the new big blind: the smallest raise is its size. */
   const _bbAmt = blinds.bb || 0;
-  let _prevMax = 0, _lastRaiseSize = _bbAmt;
-  const _runContrib = new Array(hand.players.length).fill(0);
-  if (isPreflop && category !== 'stud') {
-    const _sbIdx = hand.players.findIndex(p => p.position === 'SB' || p.position === 'BTN/SB');
-    const _bbIdx = hand.players.findIndex(p => p.position === 'BB');
-    if (_sbIdx >= 0) _runContrib[_sbIdx] = blinds.sb || 0;
-    if (_bbIdx >= 0) _runContrib[_bbIdx] = _bbAmt;
-    _prevMax = _bbAmt;
-    getStraddles(hand.players, hand.blinds).forEach(st => {
-      _runContrib[st.seat] = st.amount;
-      _prevMax = Math.max(_prevMax, st.amount);
-      _lastRaiseSize = Math.max(_lastRaiseSize, st.amount);
-    });
-  }
-  let _myLastIdx = -1, _priceAtMine = 0, _fullSinceMine = false;
-  (currentStreet.actions || []).forEach((a, i) => {
-    if (a.action === 'fold') return;
-    if (a.action === 'bring-in') {
-      _runContrib[a.player] = a.amount || bringInAmount;
-      _prevMax = Math.max(_prevMax, _runContrib[a.player]);
-    } else {
-      if (a.amount > 0) _runContrib[a.player] = chipRound(_runContrib[a.player] + a.amount);
-      const to = _runContrib[a.player];
-      if (to > _prevMax) {
-        const size = chipRound(to - _prevMax);
-        const full = isLimitGame ? size * 2 >= flBetSize : size >= _lastRaiseSize;
-        if (full && !isLimitGame) _lastRaiseSize = Math.max(size, _bbAmt);
-        if (full) _fullSinceMine = true;
-        _prevMax = to;
-      }
-    }
-    if (a.player === currentActor) { _myLastIdx = i; _priceAtMine = _prevMax; _fullSinceMine = false; }
-  });
-  const minRaiseToTotal = chipRound(streetBets.maxBet + _lastRaiseSize);
-  const minRaiseIncrement = chipRound(minRaiseToTotal - playerContrib);
-  // A player who only checked faced no bet, so any bet opens it to them, short or not.
-  const reopened = _myLastIdx < 0 || _priceAtMine <= 0 || _fullSinceMine
-    || chipRound(_prevMax - _priceAtMine) >= (isLimitGame ? flBetSize / 2 : _lastRaiseSize);
-  /* A raise needs someone left who could call it, a stack that covers more than the call, and the
-     betting open to this player (entry vs oracle, 4a-c). A stack that covers no more than the call
-     has Call, which puts it all in; "All-in" saved that as a raise, and the round never closed (3). */
-  // Someone who could put in more than the bet now faced: a stack short of it can only call, all in.
-  const othersWithChips = hand.players.some((_, i) => i !== currentActor && !foldedSet.has(i) && !allInSet.has(i)
-    && chipRound((currentStacks[i] || 0) + (streetBets.contrib[i] || 0)) > chipRound(streetBets.maxBet));
-  const canRaiseHere = currentActor >= 0 && othersWithChips && reopened && chipRound(playerStack - callAmount) > 0;
+  const canRaiseHere = !!(legal && legal.canRaise);
+  const addedTo = (to) => (to == null ? 0 : chipRound(to - playerContrib));
+  // Pot limit's pills: the pot as it stands and after the call (the range itself is legal.minTo..maxTo).
+  const plMaxBet = chipRound(currentPot);
+  const plPotAfterCall = chipRound(plMaxBet + callAmount);
   // The legal range for the Bet / Raise box, as amounts put in.
-  const betMin = canCheck ? Math.min(_bbAmt || flSmallBet, playerStack) : Math.min(minRaiseIncrement, playerStack);
-  const betMax = isPotLimit ? (canCheck ? Math.min(plMaxBet, playerStack) : Math.min(plMaxRaiseIncrement, playerStack)) : playerStack;
+  const betMin = canRaiseHere ? addedTo(legal.minTo) : 0;
+  const betMax = canRaiseHere ? addedTo(legal.maxTo) : 0;
   const cashHand = hand.gameMode === 'cash';
   const roundAmt = (v) => (cashHand ? Math.round(v * 100) / 100 : Math.round(v));
   /* Confirm: a figure the field cannot read, one under the smallest raise or over the limit is
@@ -3852,13 +3531,22 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
     const isDrawShowdown = hasDraws(category, gameCfg);
     // Collect used cards
     const sdUsedCards = new Set();
+    const addUsed = (text) => parseCardNotation(text || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); });
     hand.streets.forEach(s => {
-      parseCardNotation(s.cards.hero || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); });
       // Every board: a double board's second and a run's were left out, so their cards could be shown in a hand.
-      ['board', 'board2', 'board3'].forEach(k => parseCardNotation(s.cards[k] || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); }));
-      (s.cards.opponents || []).forEach(opp => { parseCardNotation(opp || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); }); });
-      (s.draws || []).forEach(d => { parseCardNotation((d.discardedCards || '') + (d.newCards || '')).forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); }); });
+      ['board', 'board2', 'board3'].forEach(k => addUsed(s.cards[k]));
+      if (isDrawShowdown) return;
+      addUsed(s.cards.hero);
+      (s.cards.opponents || []).forEach(addUsed);
+      (s.draws || []).forEach(d => addUsed((d.discardedCards || '') + (d.newCards || '')));
     });
+    /* A draw game: only the cards still held block a shown hand. When the deck runs out the discards are shuffled
+       and dealt again (six-handed triple draw deals more than 52 cards), so a card the hero threw can be in an
+       opponent's final hand (2-7 TD#5 of the PokerKit corpus: the hero's Kc, thrown at the second draw, is in
+       the big blind's hand at the showdown; the screen refused it as already used). */
+    if (isDrawShowdown) {
+      addUsed(computeDrawHand(hand.streets[0].cards.hero || '', hand.streets.map(s => (s.draws || []).find(d => d.player === heroIdx)), hand.streets.length - 1, hand.gameType));
+    }
     const showdownPlayers = hand.players.map((p, i) => ({ player: p, idx: i })).filter(o => o.idx !== heroIdx && !foldedSet.has(o.idx));
     const sdMaxCards = gameCfg.showCards || gameCfg.heroCards || 2;
     const sdAllRanks = ranksFor(hand.gameType);
@@ -4901,30 +4589,30 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                 <div className="gto-seat-detail-wrap"><div className="gto-seat-detail-inner"><div className="gto-seat-detail">
                   {/* Hero card picker: open while the hero's cards are incomplete, or reopened from the seat */}
                   {i === heroIdx && !gameCfg.isStud && heroPicker()}
-                  {/* Stud bring-in: first action on 3rd street */}
-                  {gameCfg.isStud && currentStreetIdx === 0 && studInfo && studInfo.bringInIdx === currentActor && !(currentStreet.actions || []).length ? (
+                  {/* Stud bring-in: first action on 3rd street; then, while nobody has completed, the completion */}
+                  {legal && legal.bringIn != null ? (
                     <div className="gto-action-row">
-                      <button className="gto-action-btn" onClick={() => addAction('bring-in', bringInAmount)}><span className="gto-action-icon call">&#x2B24;</span><span className="gto-action-label">Bring In {formatChipAmount(bringInAmount)}</span></button>
-                      <button className="gto-action-btn" onClick={() => addAction('bet', Math.min(flBetSize, playerStack))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Complete {formatChipAmount(Math.min(flBetSize, playerStack))}</span></button>
+                      <button className="gto-action-btn" onClick={() => addAction('bring-in', legal.bringIn)}><span className="gto-action-icon call">&#x2B24;</span><span className="gto-action-label">Bring In {formatChipAmount(legal.bringIn)}</span></button>
+                      <button className="gto-action-btn" onClick={() => addAction('bet', addedTo(legal.minTo))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Complete {formatChipAmount(legal.minTo)}</span></button>
                     </div>
-                  ) : gameCfg.isStud && currentStreetIdx === 0 && (currentStreet.actions || []).length > 0 && streetBets.maxBet <= bringInAmount && streetBetRaiseCount === 0 ? (
+                  ) : legal && legal.raiseWord === 'Complete' ? (
                     <div className="gto-action-row">
                       <button className="gto-action-btn" onClick={() => addAction('fold')}><span className="gto-action-icon fold">&#x2715;</span><span className="gto-action-label">Fold</span></button>
                       <button className="gto-action-btn" onClick={() => addAction('call', Math.min(callAmount, playerStack))}><span className="gto-action-icon call">&#x2B24;</span><span className="gto-action-label">Call {formatChipAmount(Math.min(callAmount, playerStack))}</span></button>
-                      <button className="gto-action-btn" onClick={() => { const completeAmt = Math.min(flBetSize - playerContrib, playerStack); addAction('bet', completeAmt); }}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Complete {formatChipAmount(Math.min(flBetSize, playerStack + playerContrib))}</span></button>
-                      {!isLimitGame && playerStack > (flBetSize - playerContrib) && <button className="gto-action-btn" onClick={() => { setShowRaiseInput(true); setBetAmount(String(Math.min(flBetSize, chipRound(playerStack + playerContrib)))); }}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Raise</span></button>}
+                      {canRaiseHere && <button className="gto-action-btn" onClick={() => addAction('bet', addedTo(legal.minTo))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Complete {formatChipAmount(legal.minTo)}</span></button>}
+                      {canRaiseHere && legal.maxTo > legal.minTo && <button className="gto-action-btn" onClick={() => { setShowRaiseInput(true); setBetAmount(String(legal.minTo)); }}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Raise</span></button>}
                     </div>
                   ) : isLimitGame ? (
                     <div className="gto-action-row">
                       {!canCheck && <button className="gto-action-btn" onClick={() => addAction('fold')}><span className="gto-action-icon fold">&#x2715;</span><span className="gto-action-label">Fold</span></button>}
                       {canCheck ? <button className="gto-action-btn" onClick={() => addAction('check')}><span className="gto-action-icon check">&#x2713;</span><span className="gto-action-label">Check</span></button>
                         : <button className="gto-action-btn" onClick={() => addAction('call', Math.min(callAmount, playerStack))}><span className="gto-action-icon call">&#x2B24;</span><span className="gto-action-label">Call {formatChipAmount(Math.min(callAmount, playerStack))}</span></button>}
-                      {flCanRaise && canRaiseHere && (canCheck
-                        ? <button className="gto-action-btn" onClick={() => addAction('bet', Math.min(flBetSize, playerStack))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Bet {formatChipAmount(Math.min(flBetSize, playerStack))}</span></button>
-                        : <button className="gto-action-btn" onClick={() => addAction('raise', Math.min(flRaiseIncrement, playerStack))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Raise to {formatChipAmount(Math.min(flRaiseToTotal, playerStack + playerContrib))}</span></button>
+                      {canRaiseHere && (canCheck
+                        ? <button className="gto-action-btn" onClick={() => addAction('bet', addedTo(legal.fixedTo))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Bet {formatChipAmount(addedTo(legal.fixedTo))}</span></button>
+                        : <button className="gto-action-btn" onClick={() => addAction('raise', addedTo(legal.fixedTo))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Raise to {formatChipAmount(legal.fixedTo)}</span></button>
                       )}
-                      {flCanRaise && canRaiseHere && canCheck && flOpenPairChoice && flBigBet > flBetSize && (
-                        <button className="gto-action-btn" onClick={() => addAction('bet', Math.min(flBigBet, playerStack))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Bet {formatChipAmount(Math.min(flBigBet, playerStack))}</span></button>
+                      {canRaiseHere && canCheck && legal.bigTo != null && (
+                        <button className="gto-action-btn" onClick={() => addAction('bet', addedTo(legal.bigTo))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Bet {formatChipAmount(addedTo(legal.bigTo))}</span></button>
                       )}
                     </div>
                   ) : isPotLimit ? (
@@ -4937,7 +4625,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                           {canRaiseHere && <button className="gto-action-btn" onClick={() => { setShowRaiseInput(true); setBetAmount(String(totalOf(betMin))); }}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">{canCheck ? 'Bet' : 'Raise'}</span></button>}
                           {/* With nothing to call, the figure is what goes in, so it is capped at the stack;
                               facing a bet it is the total raised to (entry vs oracle, 7). */}
-                          {canRaiseHere && <button className="gto-action-btn" onClick={() => addAction(canCheck ? 'bet' : 'raise', betMax)}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Pot {formatChipAmount(canCheck ? betMax : Math.min(plRaiseToTotal, playerStack + playerContrib))}</span></button>}
+                          {canRaiseHere && <button className="gto-action-btn" onClick={() => addAction(canCheck ? 'bet' : 'raise', betMax)}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Pot {formatChipAmount(canCheck ? betMax : legal.maxTo)}</span></button>}
                         </div>
                       )}
                       {showRaiseInput && (

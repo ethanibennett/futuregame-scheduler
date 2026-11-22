@@ -5,7 +5,7 @@
 // state that is already wrong, so the next problem is only worth asking about
 // once this one is answered (findGaps re-runs after every answer).
 
-import { Table, seatOrder, straddles, lastStraddleSeat, findStudBringIn, findStudBestBoard, studUpCards, doorCard } from './betting.js';
+import { Table, clean, seatOrder, straddles, lastStraddleSeat, findStudBringIn, findStudBestBoard, studUpCards, doorCard } from './betting.js';
 import { referencedSeats, hasCards } from './seats.js';
 import { isLowStud } from './game.js';
 import { cardsOf } from './cards.js';
@@ -471,7 +471,7 @@ function nextActionGap(hand, env, t, si, p, id, streetEmpty) {
       add(act(p, 'bet', Math.min(env.betting === 'pl' ? sz.plMaxTotal : sz.potBefore, rem)));
     }
   }
-  if (env.betting !== 'fl' && Number.isFinite(rem) && rem > c && !(env.betting === 'pl' && t.contrib[p] + rem > sz.plMaxTotal)) {
+  if (env.betting !== 'fl' && Number.isFinite(rem) && rem > c && !(env.betting === 'pl' && clean(t.contrib[p] + rem) > sz.plMaxTotal)) {
     add(act(p, 'all-in', rem));
   }
   if (streetEmpty && t.live().length >= 2) {
@@ -525,7 +525,7 @@ function checkAmount(hand, env, t, si, ai, a, kind) {
   // Is x chips added a legal bet/raise right now?
   const legalWager = (x) => {
     if (!(x > 0) || x > rem) return false;
-    const total = contrib + x;
+    const total = clean(contrib + x);
     if (total <= t.maxBet) return false;
     const allIn = finiteRem && x === rem;
     if (fl) return allIn ? total <= sz.flTarget : (total === sz.flTarget || total === sz.flTargetAlt);
@@ -747,7 +747,7 @@ function checkAmount(hand, env, t, si, ai, a, kind) {
         };
       }
       if (finiteRem && A > rem) return exceed(A);
-      const total = contrib + A;
+      const total = clean(contrib + A);
       const allIn = (finiteRem && A === rem) || kind === 'all-in';
 
       // All-in with an amount that is not the stack.

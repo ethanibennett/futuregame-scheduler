@@ -62,7 +62,7 @@ for (const rec of recs) {
          and a short all-in that is the round's only raise. PokerKit starts a round with no raise on record, so
          its first raise reopens the betting at any size; under the TDA (rule 43) an all-in short of a full raise
          over the blind does not reopen it to players who have acted (NLH#21: the big blind all in for 0.07 more). */
-      const shortFirst = !L.canRaise && !ev.noRaise && ev.count > 0 && ev.cbra > 0 && ev.cbra < ev.streetMin;
+      const shortFirst = !L.canRaise && ev.shortFirst;
       const tdaParts = (m.betting === 'fl' && ev.halfBet) || (m.openPair4 && ev.street === 1) || shortFirst;
       if (L.canRaise !== !ev.noRaise) {
         if (tdaParts) parted++;

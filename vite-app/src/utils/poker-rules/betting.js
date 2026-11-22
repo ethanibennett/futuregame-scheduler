@@ -18,7 +18,7 @@
 //     raises a round (betCap), uncapped heads-up on the last street unless the hand says otherwise.
 
 import { gameConfig, gameCategory, isLowStud } from '../quick-add/game.js';
-import { straddles, lastStraddleSeat, findStudBringIn, findStudBestBoard, studHasOpenPairOn4th } from '../quick-add/betting.js';
+import { straddles, lastStraddleSeat, findStudBringIn, findStudBestBoard, studHasOpenPairOn4th } from './forced.js';
 import { GAME_EVAL } from '../poker-engine.js';
 
 /* Cent stakes summed in binary floating point leave residue (5.36 - 1.97 - 3.39 = 1.8e-15); every running

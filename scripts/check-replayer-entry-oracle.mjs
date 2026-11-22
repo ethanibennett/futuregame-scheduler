@@ -534,6 +534,9 @@ async function worker(w) {
             if (ev.halfBet) {
               // The two rule books part here, so neither answer is held against the screen.
               res.findings.push({ sev: 'note', cause: `limit, an all-in of half a bet or more: the TDA reopens the betting, PokerKit does not; the screen ${raising.length ? 'offers' : 'does not offer'} a raise`, at, detail: `${who(ev.player)} owes ${show(ev.owe)}; ${offered}` });
+            } else if (ev.shortFirst) {
+              // TDA rule 43 against PokerKit (check-rules.mjs, the same split): neither answer is held against the screen.
+              res.findings.push({ sev: 'note', cause: `a short all-in as the round's only raise: the TDA (rule 43) does not reopen the betting to players who have acted, PokerKit does; the screen ${raising.length ? 'offers' : 'does not offer'} a raise`, at, detail: `${who(ev.player)} owes ${show(ev.owe)}; ${offered}` });
             } else if (ev.noRaise && raising.length) {
               const why = { covered: 'the player cannot cover the call', 'no-one-to-call': 'nobody else has chips to call a raise', cap: 'the limit round is capped (4 bets and raises are in)', 'not-reopened': 'the all-in they face was less than a full raise, so the betting is not reopened to them' }[ev.noRaise];
               await find('offer', { covered: 'a raise is offered to a player who cannot cover the call', 'no-one-to-call': 'a raise is offered with nobody left to call it', cap: 'a raise is offered past the cap',
@@ -824,7 +827,9 @@ async function worker(w) {
         const want = rec.expected[pl.name];
         const seat = felt.find((x) => x.name === names[i]) || felt.find((x) => x.seat === i);
         if (!seat) { off.push(`${names[i]} is not on the felt`); return; }
-        const haveNow = /all-?in/i.test(seat.text) ? 0 : num(seat.text);
+        // ALL-IN and, at a tournament's result, OUT (a busted seat, Replayer animations 2026-11-11) are 0 chips, as
+        // check-replayer-oracle reads them; this script had not learned OUT, so every busted seat failed here.
+        const haveNow = /all-?in|^out$/i.test(seat.text.trim()) ? 0 : num(seat.text);
         if (!(AS_SHOWN ? Math.abs(haveNow - want) <= Math.max(0.5, want * 0.06) : Math.abs(haveNow - want) <= 0.005)) off.push(`${names[i]} (${pl.name}) ends on "${seat.text}", the corpus ${want}`);
       });
       res.chips = off.length === 0;

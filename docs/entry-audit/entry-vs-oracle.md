@@ -357,6 +357,10 @@ deals when the deck runs out, not something a room does (the round's own discard
 reshuffle); the other two happen at a full table. Code: `drawDeadCards` at 104 (116: `'already
 discarded'`) and `sdUsedCards` at 3766. It is written as a guard against a mistyped card, and is right
 until the deck runs out; the owner's call is whether a reshuffle is worth a way round it.
+*Branch `play-money` (2026-11-22), the showdown half only:* the showdown picker now greys out the boards and
+the hero's final hand alone, so an opponent can show a card the hero threw away (`2-7 TD#5` now passes). The
+draw's new-cards field still refuses a discard (`2-7 TD#19`, `#141`, `PL 2-7 TD#27`, `#51`, `#62`, `#85`,
+`Badugi#51` in the full run), pending the owner's answer.
 
 ## Rule choices (settings and house rules, not bugs)
 
