@@ -118,23 +118,6 @@ export const turnVariant = (wheels, g, v) => { const grp = wheels.groups[g]; ret
 /** The structure wheel turned: this game at that structure, or null where it is not played so. */
 export const turnStructure = (wheels, row, s) => (row ? rowAt(wheels, row.game, STRUCTURES[s]) : null);
 
-/** The line under the wheels: a game played one way only, an unusual structure, or the variants to open. */
-export function wheelHint(wheels, row, open) {
-  if (!row) return { text: '' };
-  const pos = positionOf(wheels, row);
-  const grp = pos ? wheels.groups[pos.g] : null;
-  const usual = usualRow(wheels, row.game);
-  if (row.rare && usual) return { warn: 'Unusual:', text: `${row.game} is usually ${usual.structure.toLowerCase()}.` };
-  if (grp && grp.games.length > 1 && !open) {
-    const n = grp.games.length - 1;
-    return { text: grp.custom ? `${n + 1} custom games: tap › to choose one.` : `${grp.label} has ${n} variant${n === 1 ? '' : 's'}: tap › to choose one.` };
-  }
-  if (!row.custom && row.game !== 'OFC' && structuresOf(wheels, row.game).size === 1) {
-    return { text: `${row.game} is only played ${row.structure.toLowerCase()}.` };
-  }
-  return { text: '' };
-}
-
 /** The quick picks over the wheels: the player's recent rows (recentRows' output) or, with none,
  *  the three games most hands are written in. */
 export function quickPicks(rows, recent, n = 3) {

@@ -110,10 +110,13 @@ sessions opened here own scheduler work.
   Draw's and A-5 Draw's Triple Draw, Single Draw; the label only, the row and its game type unchanged. Over them, the last three
   games picked (else NLH, PLO, 2-7 TD) and Search, which opens the palette (`VariantPicker.jsx` `Palette`: slang, the mixes, a game's
   rules; ⌘K and / still open it). The wheels are a second view of `buildCatalog`: every position not struck through is a catalog
-  row and every row is one position (a structure the game has no row at is struck through and springs back; a rare row, NL Stud,
-  is a structure turn away, with an "Unusual" line under the wheels), and a pick goes through `pickVariant`, so the game type is
-  the palette's. `variant-wheels.test.mjs` (in `npm test`) holds that, and fails while a new catalog game sits outside the families
-  in `WHEEL_GAMES`. Scripts that pick a game open the palette with `.vw-search` (the launcher, `.vp-launcher`, is gone). Guards:
+  row and every row is one position, and a pick goes through `pickVariant`, so the game type is the palette's. Turning a game puts
+  the structure on its usual one, and any structure the game has a game type for can be turned to, NL Stud and NL Razz included
+  (owner, 2026-11-22: "Default to the standard limit for each game but allow users to change it"; no line under the wheels). The
+  other 45 pairs (No Limit Badugi, Limit 5-Card Draw, PL Short Deck…) map in `STRUCTURE_GAME_MAP` to a game type that bets
+  otherwise, so they stay struck through until each has a game type of its own (a `HAND_CONFIG` row and the rest a new game
+  needs). `variant-wheels.test.mjs` (in `npm test`) holds all of it: every row reachable and none extra, every open structure
+  dealt with its own betting, and no catalog game outside the families in `WHEEL_GAMES`. Scripts that pick a game open the palette with `.vw-search` (the launcher, `.vp-launcher`, is gone). Guards:
   `hands-wheels-*` (controls), `hands-wheels` (clipping).
 - **The replayer is held to an outside engine** (owner, 2026-11-10: "This is something we can get perfect";
   `test/replayer-oracle/`, its README): PokerKit plays random hands of twenty games (heads-up to ten-handed, cash to the

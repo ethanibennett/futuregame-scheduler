@@ -9,6 +9,7 @@ globalThis.localStorage = globalThis.localStorage || { getItem: () => null, setI
 globalThis.window = globalThis.window || globalThis;
 const C = await import('../variant-catalog.js');
 const W = await import('../variant-wheels.js');
+const U = await import('../utils.js');
 
 const CUSTOM = ['Kansas Badugi', 'Irish'];
 const rows = C.buildCatalog(CUSTOM);
@@ -103,14 +104,37 @@ test('the variant wheel never repeats the game wheel (owner, 2026-11-22: "Let\'s
   }
 });
 
-test('the line under the wheels', () => {
-  const r = (k) => rows.find((x) => x.key === k);
-  assert.deepEqual(W.wheelHint(wheels, r('Stud Hi|No Limit'), false), { warn: 'Unusual:', text: 'Stud Hi is usually limit.' });
-  assert.equal(W.wheelHint(wheels, r("Hold'em|No Limit"), false).text, "Hold'em has 2 variants: tap › to choose one.");
-  assert.equal(W.wheelHint(wheels, r("Hold'em|No Limit"), true).text, '');
-  assert.equal(W.wheelHint(wheels, r('Short Deck|No Limit'), true).text, 'Short Deck is only played no limit.');
-  assert.equal(W.wheelHint(wheels, r('OFC|No Limit'), false).text, '');
-  assert.equal(W.wheelHint(wheels, r("Hold'em|Limit"), true).text, '', 'limit hold\'em is not unusual');
+/* Every structure the wheels let a player turn to is dealt with that structure's betting (owner, 2026-11-22: "Default
+   to the standard limit for each game but allow users to change it (NL A-5 Single Draw is a classic game)"). A pair
+   whose game type would bet otherwise (No Limit Badugi -> 'Badugi', a limit game) stays struck through: it needs a
+   game type of its own, never another game's. OFC has no betting structure (it is scored in points). */
+test('every structure the wheels offer plays with that betting', () => {
+  const BET = { 'No Limit': 'nl', 'Pot Limit': 'pl', Limit: 'fl' };
+  let open = 0, struck = 0;
+  wheels.groups.forEach((grp, g) => grp.games.forEach((game, v) => W.STRUCTURES.forEach((s, si) => {
+    const r = W.rowOfPosition(wheels, { g, v, s: si });
+    const t = C.gameTypeOf(game, s);
+    const cfg = t && U.HAND_CONFIG[t];
+    if (r) {
+      open += 1;
+      if (r.custom || game === 'OFC') return;
+      assert.ok(cfg, `${s} ${game}: ${t} has no rules`);
+      assert.equal(cfg.betting, BET[s], `${s} ${game} plays as ${t} (${cfg.betting})`);
+    } else {
+      if (grp.custom) return;   // a custom game is played as it was set up: its one row
+      struck += 1;
+      if (game !== 'OFC') assert.ok(!cfg || cfg.betting !== BET[s], `${s} ${game} has a ${BET[s]} game type (${t}) but is struck through`);
+    }
+  })));
+  // The owner's example, and the default.
+  const a5sd = rows.find((r) => r.game === 'A-5 Single Draw' && r.structure === 'No Limit');
+  assert.equal(a5sd.gameType, 'NL A-5 SD');
+  assert.equal(U.HAND_CONFIG['NL A-5 SD'].betting, 'nl');
+  assert.equal(W.usualRow(wheels, 'A-5 Single Draw'), a5sd);
+  // 60 positions pick a row (the catalog's 58, NL Razz and OFC among them, and the 2 custom games); 47 do not:
+  // 45 wait for a game type of their own, and OFC's Pot Limit and Limit, where no structure applies.
+  assert.equal(open, 60);
+  assert.equal(struck, 47);
 });
 
 test('quick picks: recent rows, else NLH, PLO and 2-7 TD', () => {

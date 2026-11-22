@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { rowStrip, recentRows, historyFromHands } from '../utils/variant-catalog.js';
-import { STRUCTURES, STRUCTURE_SHORT, buildWheels, positionOf, structuresOf, turnGame, turnVariant, turnStructure, wheelHint, quickPicks, variantLabel } from '../utils/variant-wheels.js';
+import { STRUCTURES, STRUCTURE_SHORT, buildWheels, positionOf, structuresOf, turnGame, turnVariant, turnStructure, quickPicks, variantLabel } from '../utils/variant-wheels.js';
 import './variant-picker.css';
 
 /*
@@ -14,7 +14,10 @@ import './variant-picker.css';
  *                 slang, the mixes, a game's rules.
  *   The wheels    flick, drag or mouse-wheel a wheel, tap a row, or focus a wheel and use the arrow
  *                 keys (Home / End). Turning the game or a variant brings the structure to its usual
- *                 one; a structure the game is not played at is struck through and springs back.
+ *                 one, and any structure the game has a game type for can be turned to (owner, 2026-11-22: "Default
+ *                 to the standard limit for each game but allow users to change it"); a structure it has none for
+ *                 (No Limit Badugi: it would be dealt with another game's betting) is struck through and springs back.
+ *                 No line under the wheels (owner, 2026-11-22: "get rid of the 'X is only played limit' etc line").
  *
  * Every position is a catalog row (utils/variant-wheels.js), and a pick goes through the same
  * onPick(row) the palette uses, so the hand made is the one the palette would make.
@@ -194,7 +197,6 @@ export function VariantWheels({ rows, current, onPick, history, hands, onSearch,
   const seeded = !(history && history.length) && !!(hands && hands.length);
   const recent = useMemo(() => recentRows(rows, seeded ? historyFromHands(rows, hands) : history), [rows, history, hands, seeded]);
   const quick = useMemo(() => quickPicks(rows, recent, 3), [rows, recent]);
-  const hint = wheelHint(wheels, current, isOpen);
   const band = current ? rowStrip(current).color : undefined;
 
   return (
@@ -235,9 +237,6 @@ export function VariantWheels({ rows, current, onPick, history, hands, onSearch,
         </button>
         <Wheel id={`vw-var-${uid}`} label={`${grp ? grp.label : ''} variants`} className="vw-var" items={varItems} index={isOpen ? pos.v : 0}
           listKey={grp ? grp.key : ''} hidden={!isOpen} onTurn={(i) => pick(turnVariant(wheels, pos.g, i))} />
-      </div>
-      <div className="vw-hint">
-        <span>{hint.warn && <b>{hint.warn}</b>}{hint.warn ? ' ' : ''}{hint.text}</span>
       </div>
       <span className="vw-sr" aria-live="polite">{name}</span>
     </div>
