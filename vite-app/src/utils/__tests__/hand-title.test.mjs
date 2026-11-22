@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { autoTitle, displayTitle, isBuiltTitle, potType } from '../hand-title.js';
+import { autoTitle, displayTitle, isBuiltTitle, potType, compactChips } from '../hand-title.js';
 
 const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../test/hh-io/fixtures');
 const fx = (name) => JSON.parse(fs.readFileSync(path.join(dir, fs.readdirSync(dir).find((f) => f.startsWith(name))), 'utf8')).hand;
@@ -29,7 +29,7 @@ const hand = (gameType, actions, extra = {}) => ({
 });
 
 test('the pot type counts raises, and an all-in only where it raises', () => {
-  assert.equal(potType(hand('NLH', [{ player: 0, action: 'call', amount: 2 }, { player: 1, action: 'call', amount: 1 }, { player: 2, action: 'check' }])), 'Limped pot');
+  assert.equal(potType(hand('NLH', [{ player: 0, action: 'call', amount: 2 }, { player: 1, action: 'call', amount: 1 }, { player: 2, action: 'check' }])), 'Limped');
   assert.equal(potType(hand('NLH', [{ player: 0, action: 'raise', amount: 6 }, { player: 1, action: 'fold' }, { player: 2, action: 'call', amount: 4 }])), 'SRP');
   assert.equal(potType(hand('NLH', [{ player: 0, action: 'raise', amount: 6 }, { player: 1, action: 'raise', amount: 19 }, { player: 2, action: 'fold' }, { player: 0, action: 'call', amount: 14 }])), '3BP');
   assert.equal(potType(hand('NLH', [{ player: 0, action: 'raise', amount: 6 }, { player: 1, action: 'raise', amount: 19 }, { player: 2, action: 'fold' }, { player: 0, action: 'raise', amount: 44 }, { player: 1, action: 'call', amount: 30 }])), '4BP');
@@ -41,7 +41,7 @@ test('the pot type counts raises, and an all-in only where it raises', () => {
 
 test('stud: the completion is the raise, the bring-in is not', () => {
   const s = (actions) => ({ gameType: 'Stud Hi', gameMode: 'mtt', blinds: { bb: 4 }, players: [{}, {}, {}], streets: [{ name: '3rd Street', actions }] });
-  assert.equal(potType(s([{ player: 0, action: 'bring-in', amount: 1 }, { player: 1, action: 'call', amount: 1 }, { player: 2, action: 'fold' }])), 'Limped pot');
+  assert.equal(potType(s([{ player: 0, action: 'bring-in', amount: 1 }, { player: 1, action: 'call', amount: 1 }, { player: 2, action: 'fold' }])), 'Limped');
   assert.equal(potType(s([{ player: 0, action: 'bring-in', amount: 1 }, { player: 1, action: 'raise', amount: 4 }, { player: 2, action: 'fold' }, { player: 0, action: 'call', amount: 3 }])), 'SRP');
 });
 
@@ -78,6 +78,10 @@ test('the list keeps a typed title and rebuilds the old defaults and every built
 });
 
 test('isBuiltTitle tells the app’s titles from typed ones', () => {
-  for (const t of ['2-7 TD | SRP | Cash | $40/$80', 'Badugi | Limped pot | MTT | 3,000/6,000', 'NLH | MTT', 'A♠K♦ · Raised pot', '6♥5♦3♣2♠ · v 6♠4♣3♦2♥']) assert.ok(isBuiltTitle(t), t);
+  for (const t of ['2-7 TD | SRP | Cash | $40/$80', 'Badugi | Limped | MTT | 3K/6K', 'Badugi | Limped pot | MTT | 3,000/6,000', 'NLH | MTT', 'A♠K♦ · Raised pot', '6♥5♦3♣2♠ · v 6♠4♣3♦2♥']) assert.ok(isBuiltTitle(t), t);
   for (const t of ['', 'Big pot', 'AA vs KK', 'PLO $2/2/5 - QQJ4ss vs AA', 'A♠K♦ in the big blind', 'Me | you']) assert.ok(!isBuiltTitle(t), t);
+});
+
+test('tournament chips written short: 300, 1K, 1.5K, 25K, 1.2M', () => {
+  assert.deepEqual([300, 1000, 1500, 2000, 25000, 1250, 1200000, 0].map(compactChips), ['300', '1K', '1.5K', '2K', '25K', '1.25K', '1.2M', '0']);
 });

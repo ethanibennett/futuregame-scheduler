@@ -2,8 +2,9 @@
 // "NLH Hand", ten times over, told the saved list nothing. A blank title is built from the hand:
 //   [game] | [pot type] | [MTT or Cash] | [stakes]        2-7 TD | SRP | Cash | $40/$80
 // No cards and no suits (owner, 2026-11-22: "take out the suits altogether"; the row's card thumbnails
-// already show the hero's hand). The pot type is read off the first street's raises: Walk, Limped pot,
+// already show the hero's hand). The pot type is read off the first street's raises: Walk, Limped,
 // SRP (one raise), 3BP, 4BP, 5BP. A stud hand's completion counts as its raise, the bring-in does not.
+// A tournament's blinds are written short (1K/2K, compactChips) so the title fits the row (owner, 2026-11-22).
 // The stakes are the caller's formatter (the felt's and the row's, formatStakes in HandReplayerView),
 // so they read the same everywhere. Pure, for the list, the entry's placeholder and the save alike.
 
@@ -11,7 +12,17 @@ const isStudGame = (g) => /stud|razz/i.test(g || '') && !/^(Five|5) Card/i.test(
 
 const handOf = (hand) => (hand && hand.handData && !hand.streets ? hand.handData : hand);
 
-/** The pot type off the first street: 'Walk', 'Limped pot', 'SRP', '3BP', '4BP', '5BP', or '' with no actions.
+/** Tournament chips the way the title writes them (owner, 2026-11-22: "1k/2k is also fine", so a long title fits the
+ *  row): 300, 1K, 1.5K, 25K, 1.2M. Up to two decimals, none trailing. */
+export function compactChips(v) {
+  const n = Number(v) || 0;
+  const trim = (x) => String(Math.round(x * 100) / 100);
+  if (Math.abs(n) >= 1e6) return trim(n / 1e6) + 'M';
+  if (Math.abs(n) >= 1e3) return trim(n / 1e3) + 'K';
+  return trim(n);
+}
+
+/** The pot type off the first street: 'Walk', 'Limped', 'SRP', '3BP', '4BP', '5BP', or '' with no actions.
  *  An all-in counts as a raise only where it puts in more than the bet it faces (an all-in call is a call). */
 export function potType(hand) {
   const h = handOf(hand);
@@ -41,7 +52,7 @@ export function potType(hand) {
   }
   const players = (h.players || []).length;
   if (!inPlay && players > 1 && folds === players - 1) return 'Walk';
-  if (!raises) return inPlay ? 'Limped pot' : '';
+  if (!raises) return inPlay ? 'Limped' : '';
   if (raises === 1) return 'SRP';
   return Math.min(raises + 1, 5) + 'BP';
 }
@@ -66,7 +77,7 @@ export function autoTitle(hand, opts = {}) {
    K♠7♦2♣"). Read off the text, not by rebuilding it, so a hand edited since it was saved still counts. */
 const CARDS = '(?:[2-9TJQKA][♠♥♦♣])+';
 const OLD_PART = new RegExp(`^(?:${CARDS}|v ${CARDS}(?: & ${CARDS})*|Walk|Limped pot|Raised pot|\\d-bet pot)$`);
-const NEW_FORM = /^[^|]+ \| (?:(?:Walk|Limped pot|SRP|\dBP) \| )?(?:MTT|Cash)(?: \| [^|]+)?$/;
+const NEW_FORM = /^[^|]+ \| (?:(?:Walk|Limped(?: pot)?|SRP|\dBP) \| )?(?:MTT|Cash)(?: \| [^|]+)?$/;   // "Limped pot" for the hour it was saved so
 export function isBuiltTitle(t) {
   const s = String(t || '').trim();
   if (!s) return false;

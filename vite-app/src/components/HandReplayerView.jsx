@@ -38,7 +38,7 @@ import { useToast } from '../contexts/ToastContext.jsx';
 import QuickAddView from './QuickAddView.jsx';
 import { checkExportable } from '../utils/hand-history/index.js';
 import { heroNet } from '../utils/hand-net.js';
-import { autoTitle as autoTitleOf, displayTitle as displayTitleOf, isBuiltTitle } from '../utils/hand-title.js';
+import { autoTitle as autoTitleOf, displayTitle as displayTitleOf, isBuiltTitle, compactChips } from '../utils/hand-title.js';
 import { SAMPLE_HAND } from '../utils/sample-hand.js';
 import { exportHandHistory, playedAtOf, handOfRow, handsFileName } from '../utils/hand-history/save.js';
 import { chipInsertVars, applyChipInserts, WHITE_CHIP } from '../utils/chip-inserts.js';
@@ -868,7 +868,16 @@ function formatStakes(hand, { straddle = 0 } = {}) {
 /* A hand's title when none was typed: [game] | [pot type] | [MTT or Cash] | [blinds] (owner, 2026-11-22), the blinds as
    the felt and the row write them (a limit game's two bet sizes), without the ante: the format names the blinds, and a
    stud hand's "/($0.37)" ran the title off the row. utils/hand-title.js builds it; these give it the blinds. */
-const TITLE_OPTS = { stakes: (h) => formatStakes({ ...h, blinds: { ...((h && h.blinds) || {}), ante: 0 } }) };
+const TITLE_OPTS = {
+  stakes: (h) => {
+    const b = (h && h.blinds) || {};
+    if (h && h.gameMode === 'cash') return formatStakes({ ...h, blinds: { ...b, ante: 0 } });
+    // A tournament's written short, 1K/2K (owner, 2026-11-22), so the title fits the row.
+    if (!b.bb) return '';
+    const limit = (HAND_CONFIG[h.gameType] || HAND_CONFIG_DEFAULT).betting === 'fl';
+    return (limit ? [b.bb, b.bigBet || b.bb * 2] : [b.sb, b.bb]).map(compactChips).join('/');
+  },
+};
 const autoTitle = (hand) => autoTitleOf(hand, TITLE_OPTS);
 const displayTitle = (row) => displayTitleOf(row, TITLE_OPTS);
 /** True where the list shows the built title, which carries the stakes, so the row's meta line need not. */
