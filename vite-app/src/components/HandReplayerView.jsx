@@ -1878,6 +1878,38 @@ function DealerGlyph() {
 const FAN_SLIDE_MS = 460;
 const FAN_SLIDE_SAMPLES = 16;
 
+/* A stud player's cards on the entry screens, streets 3rd to `uptoStreet`, in the order dealt, each marked down or
+   up (owner, 2026-11-22: "there is no indication of hero's upcards"; "show the hands up to this point" on the deal
+   screen). The hero's 3rd street is two down and the door, 4th to 6th up, 7th down. An opponent's hidden cards are
+   backs (the entry has not been told them yet), the door and the up cards as entered, a missing one a back. */
+function studRunFor(hand, pi, heroIdx, uptoStreet) {
+  const run = [];
+  const isHero = pi === heroIdx;
+  const oppSlot = pi < heroIdx ? pi : pi - 1;
+  for (let si = 0; si <= uptoStreet && si < (hand.streets || []).length; si++) {
+    const cs = (hand.streets[si] && hand.streets[si].cards) || {};
+    const raw = isHero ? (cs.hero || '') : ((cs.opponents || [])[oppSlot] || '');
+    const cards = raw === 'MUCK' ? [] : parseCardNotation(raw).filter(c => c.suit !== 'x').map(c => c.rank + c.suit);
+    if (si === 0) {
+      if (isHero) cards.slice(0, 3).forEach((c, k) => run.push({ card: c, down: k < 2 }));
+      else run.push({ card: null, down: true }, { card: null, down: true }, { card: cards.length ? cards[cards.length - 1] : null, down: false });
+    } else {
+      const seventh = si === 4;
+      run.push({ card: isHero || !seventh ? (cards[0] || null) : null, down: seventh });
+    }
+  }
+  return run;
+}
+function StudRun({ run }) {
+  return (
+    <div className="card-row gto-card-run">
+      {run.map((c, k) => c.card
+        ? <img key={k} className={'card-img' + (c.down ? ' is-down' : '')} src={cardFaceSrc(c.card)} alt={c.card + (c.down ? ', down' : ', up')} loading="eager" />
+        : <div key={k} className={'card-unknown' + (c.down ? ' is-down' : '')} />)}
+    </div>
+  );
+}
+
 function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, reverseZ, discardIdx, onCardTap, poseOf, playIds, holdSort = 0 }) {
   /* Draw-game re-sort. A card keeps its DOM element for as long as it stays in
      the hand (keyed by identity, below), so when a draw puts a new card among
@@ -4713,10 +4745,13 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
             const cardStr = getStudCardForPlayer(pi);
             const isTarget = studDealTarget === pi;
             return (
-              <button type="button" key={pi} className={'gto-deal-row is-pickable' + (isTarget ? ' is-target' : '')}
+              <button type="button" key={pi} className={'gto-deal-row is-pickable has-run' + (isTarget ? ' is-target' : '')}
                 aria-pressed={isTarget} onClick={() => setStudDealTarget(pi)}>
                 <span className="gto-deal-name">{p.name}</span>
-                {cardStr ? <CardRow text={cardStr} max={1} />
+                {/* The hand so far (owner, 2026-11-22: "show the hands up to this point here"), down cards 1r lower,
+                    then the card this street deals. */}
+                <span className="gto-deal-run"><StudRun run={studRunFor(hand, pi, heroIdxSD, currentStreetIdx)} /></span>
+                {cardStr ? <span className={'gto-deal-new' + (sdFaceDown ? ' is-down' : '')}><CardRow text={cardStr} max={1} /></span>
                   : <span className="gto-deal-meta is-unknown">{sdFaceDown && pi !== heroIdxSD ? 'face down' : '--'}</span>}
               </button>
             );
@@ -4778,7 +4813,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
         const isFolded = foldedSet.has(i);
         const foldedOnPriorStreet = isFolded && !(currentStreet.actions || []).some(a => a.player === i && a.action === 'fold');
         if (foldedOnPriorStreet && !isPreflop && category !== 'stud') return null;
-        const seatClass = 'gto-seat' + (isActive ? ' active' : '') + (isFolded ? ' folded' : (act && !isActive) ? ' acted-' + act.action : '');
+        const seatClass = 'gto-seat' + (gameCfg.isStud ? ' is-stud' : '') + (isActive ? ' active' : '') + (isFolded ? ' folded' : (act && !isActive) ? ' acted-' + act.action : '');
         const seatTotal = chipRound(streetBets.contrib[i] || 0);
         const actionLabel = !act ? ''
           : (act.action === 'raise' || (act.action === 'bet' && seatTotal > act.amount)) && act.amount > 0 ? 'Raise to ' + formatChipAmount(seatTotal)
@@ -4869,45 +4904,17 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                     );
                   })()}
                   {gameCfg.isStud && (() => {
-                    // Show accumulated board cards for stud players
-                    const isHero = i === heroIdx;
-                    const oppSlot = i < heroIdx ? i : i - 1;
-                    let accumulated = '';
-                    for (let si = 0; si <= currentStreetIdx; si++) {
-                      const st = hand.streets[si];
-                      if (!st) break;
-                      if (isHero) { accumulated += (st.cards.hero || ''); }
-                      else { accumulated += ((st.cards.opponents || [])[oppSlot] || ''); }
-                    }
-                    const dimStyle = isFolded ? {opacity: 0.4, filter: 'grayscale(60%)'} : {};
-                    // For opponents: show 2 face-down hole cards + visible upcards + 7th street face-down
-                    if (!isHero) {
-                      const oppVisible = parseCardNotation(accumulated).filter(c => c.suit !== 'x');
-                      if (isFolded) {
-                        if (oppVisible.length === 0) return null;
-                        return (
-                          <span className="gto-seat-hero-cards" style={dimStyle}>
-                            <div className="card-row gto-card-run">
-                              {oppVisible.map((c, ci) => <img key={ci} className="card-img" src={cardFaceSrc(c.rank + c.suit)} alt={c.rank+c.suit} loading="eager" />)}
-                            </div>
-                          </span>
-                        );
-                      }
-                      const downAfter = currentStreetIdx >= 4 ? 1 : 0;
-                      return (
-                        <span className="gto-seat-hero-cards">
-                          <div className="card-row gto-card-run">
-                            <div className="card-unknown" style={{marginTop:'var(--space-md)'}} />
-                            <div className="card-unknown" style={{marginTop:'var(--space-md)'}} />
-                            {oppVisible.map((c, ci) => <img key={ci} className="card-img" src={cardFaceSrc(c.rank + c.suit)} alt={c.rank+c.suit} loading="eager" />)}
-                            {downAfter > 0 && <div className="card-unknown" style={{marginTop:'var(--space-md)'}} />}
-                          </div>
-                        </span>
-                      );
-                    }
-                    // Hero folded: show cards dimmed
-                    if (!accumulated) return null;
-                    return <span className="gto-seat-hero-cards" style={dimStyle}><CardRow text={accumulated} stud={true} max={7} /></span>;
+                    /* The player's cards so far, the down ones 1r lower than the up ones, the hero's included (owner,
+                       2026-11-22: "there is no indication of hero's upcards"); studRunFor. A folded opponent keeps
+                       only the up cards everyone saw, dimmed; a folded hero, all of them, dimmed. */
+                    const run = studRunFor(hand, i, heroIdx, currentStreetIdx);
+                    const shown = isFolded && i !== heroIdx ? run.filter(c => c.card && !c.down) : run;
+                    if (!shown.some(c => c.card) && (isFolded || !shown.length)) return null;
+                    return (
+                      <span className={'gto-seat-hero-cards is-stud' + (isFolded ? ' is-folded' : '')}>
+                        <StudRun run={shown} />
+                      </span>
+                    );
                   })()}
                   {hasDraws(category, gameCfg) && !gameCfg.discardOnly && (() => {
                     const dh = [];
