@@ -973,6 +973,9 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   blind (owner, 2026-11-22). A copy of a stack's words that hangs on the plaque takes the stack's type (`stackType`):
   in the plaque's own face the bust's AT RISK changed weight. The hero's net figure at the result is gone (owner,
   2026-11-22: "Get rid of the Baskerville net gain/loss").
+  A side seat's wager sits 1g further out than the 0.6 of the way to the pot, left on the left, right on the right
+  (portrait; owner, 2026-11-22), and placeWagers keeps a wager only r/4 off its own seat's dealer button (a whole r
+  pushed the dealer seat's wager back in). check:replayer-collisions 0 in 7,055 steps after it.
 - **The action pills are solid** (owner, 2026-11-22: "a solid color with contrasting text"): `--act-pill` / `--act-pill-ink`
   per action, from `--act-*-solid` and `--act-ink-light` / `--act-ink-dark` (styles.css, beside `--act-*`): fold, call
   (blue-600) and raise (red-600) in white, check and bet in near-black, all-in as before; each pair measured at 4.8:1 or

@@ -9906,7 +9906,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const plaqueEl = seatEl && seatEl.querySelector('.replayer-seat-info');
       const cb = el.offsetParent;
       if (!plaqueEl || !cb) return;
-      const own = piecesOf(seatEl);
+      /* Its own seat's dealer button is kept a quarter r off, not a whole r: on a side seat the button hangs off the
+         plaque's inner corner, and at a whole r it pushed that seat's wager back toward the pot, so the dealer's pill
+         alone missed the 1g move out every other side seat took (owner, 2026-11-22: "move opp 1's bet pill 1g left";
+         Opp 1 had the button). The plaque and the cards keep their r. */
+      const ownAll = piecesOf(seatEl);
+      const btnEl = seatEl && seatEl.querySelector('.replayer-dealer-btn');
+      const btnBox = btnEl ? boxOf(btnEl) : null;
+      const own = btnBox ? ownAll.filter(b => !(b.left === btnBox.left && b.top === btnBox.top && b.width === btnBox.width)) : ownAll;
       const others = [...table.querySelectorAll('.replayer-seat[data-seat]')].filter(s => s !== seatEl).flatMap(piecesOf);
       const C = cb.getBoundingClientRect();
       const ox = C.left + cb.clientLeft, oy = C.top + cb.clientTop, W = cb.clientWidth, H = cb.clientHeight;
@@ -9915,7 +9922,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const hit = (list, x, y, g) => list.some(b => x - w / 2 < b.right + g && x + w / 2 > b.left - g && y - h / 2 < b.bottom + g && y + h / 2 > b.top - g);
       const box = (x, y) => ({ left: x - w / 2, right: x + w / 2, top: y - h / 2, bottom: y + h / 2 });
       const clearElsewhere = (x, y) => !hit(felt, x, y, r / 4) && !hit(others, x, y, r / 4) && !hit(placed, x, y, r / 4);
-      if (hit(own, cx, cy, r) || !clearElsewhere(cx, cy)) {
+      const hitOwn = (x, y, g) => hit(own, x, y, g) || (btnBox ? hit([btnBox], x, y, Math.min(g, r / 4)) : false);
+      if (hitOwn(cx, cy, r) || !clearElsewhere(cx, cy)) {
         const P = plaqueEl.getBoundingClientRect();
         const tx = ox + W * 0.5, ty = oy + H * 0.4;                   // POT_AT
         let ux, uy;
@@ -9936,7 +9944,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         for (const g of [r, r / 2, r / 4]) {
           for (const c of cands) {
             const q = at(c);
-            if (hit(own, q.x, q.y, g)) continue;
+            if (hitOwn(q.x, q.y, g)) continue;
             if (clearElsewhere(q.x, q.y)) { chosen = q; break; }
           }
           if (chosen) break;
@@ -9951,7 +9959,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 const t = a * Math.PI / 12;
                 const q = { x: cx + rad * Math.cos(t), y: cy + rad * Math.sin(t) };
                 if (q.x - w / 2 < ox || q.x + w / 2 > ox + W || q.y - h / 2 < oy || q.y + h / 2 > oy + H) continue;
-                if (hit(own, q.x, q.y, g)) continue;
+                if (hitOwn(q.x, q.y, g)) continue;
                 if (clearElsewhere(q.x, q.y)) { chosen = q; break outer; }
               }
             }
@@ -9966,7 +9974,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           let best = Infinity;
           for (const c of cands) {
             const q = at(c);
-            if (hit(own, q.x, q.y, r / 4)) continue;
+            if (hitOwn(q.x, q.y, r / 4)) continue;
             const o = over(q.x, q.y);
             if (o < best - 0.5) { best = o; fallback = q; }
           }
@@ -13002,7 +13010,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           // Level with the plaque it clears that plaque only from further in: 0.6 of the way (a 6-max side plaque is
           // anchored on the table's edge and reaches ~24% in; at 0.42 the chips sat on its inner end).
           // (Portrait only: a landscape table is wide enough that 0.42 clears its plaques, and 0.6 reached the board.)
-          const chipX = pos[0] + (POT_AT[0] - pos[0]) * (sideSeat && !isLandscape ? 0.6 : t);
+          /* A side seat's wager sits 1g further out, toward its own seat: left on the left, right on the right (owner,
+             2026-11-22: "move opp 1's bet pill 1g left and do the same for the other side seats"). Portrait only, as the
+             0.6 is. 1g is the table's (100cqmin / 35), here as a share of its width: left stays a percentage, the form
+             the placement passes and the push-out read. */
+          const gPct = (Math.min(tableW || 0, tableH || tableW || 0) / 35) / (tableW || 1) * 100 || 100 / 35;
+          const sideNudge = sideSeat && !isLandscape ? (pos[0] < 50 ? -gPct : gPct) : 0;
+          const chipX = pos[0] + (POT_AT[0] - pos[0]) * (sideSeat && !isLandscape ? 0.6 : t) + sideNudge;
           /* Top and bottom seats nearer their plaque (owner, 2026-11-14: "a bit closer to the seat"): 0.42 left ~10r between a
              bottom seat's cards and its chips and ~5r under a top seat's action pill; these leave ~2.3r and 2r (402 wide,
              6 and 9-max). Portrait only. */
