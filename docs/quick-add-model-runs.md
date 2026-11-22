@@ -12,6 +12,13 @@ real use so the corpus can grow from it. **Production does not change until the 
 Answers are unchanged. To go back, delete both variables (Sonnet 5, forced, is the default). The measurements
 behind it are below ("The comparison to use").
 
+**What a parse costs in use** (two test parses after the flip, Admin › Quick add log ids 1 and 2): the eval's
+$0.022 a hand is a WARM prompt cache, because a run sends 266 hands back to back. The system prompt is about 18,000
+tokens and its cache lasts five minutes, so the first parse after a quiet spell writes it: id 1 cost **$0.108**
+(7.9 s), id 2, 46 s later, **$0.018** (5.3 s). With quick add used now and then, most parses are the first:
+about $0.11 on Opus 5.5 against about $0.05 on Sonnet 5 (the same arithmetic at its prices). The two-to-one
+ratio holds; the eval's absolute figures do not.
+
 ## What changed
 
 **1. The parse can run on the current models, with thinking.** `lib/quick-add/prompt.js` has two request
