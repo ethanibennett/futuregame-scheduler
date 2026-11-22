@@ -420,6 +420,12 @@ export function ghostsTo(reg, { set, rate = 1, cards, lag, delay = 0 }) {
     host.appendChild(g);
     const d = delay + (i * step) / rate;
     const s = c.to.w && c.w ? c.to.w / c.w : 1;
+    const land = d + arrive(sp) / rate;
+    /* No flicker at the hand-over (owner, 2026-11-22: "dead cards sometimes flickering in brightness in stud replays,
+       we need to get rid of ALL flickers and pulses"): the ghost dims on the way to the strip card's own opacity
+       (`to.opacity`, the strip draws its cards at 0.85), and is gone in the frame its card is shown (appearAt, the same
+       instant). It used to land at full and stay on top of the card through its settle. */
+    const toOp = c.to.opacity != null ? c.to.opacity : 1;
     reg.run(g, {
       transient: true, size: { w: c.w, h: c.h }, tolPx: 0.25,
       channels: [
@@ -427,17 +433,25 @@ export function ghostsTo(reg, { set, rate = 1, cards, lag, delay = 0 }) {
         { prop: 'y', spring: sp, from: 0, to: c.to.cy - c.cy, delay: d, timeScale: rate },
         { prop: 'rotate', spring: sp, from: c.angle || 0, to: 0, delay: d, timeScale: rate },
         { prop: 'scale', spring: sp, from: 1, to: s, delay: d, timeScale: rate },
+        ...(toOp < 1 ? [{ prop: 'opacity', ramp: { from: 1, to: toOp, delay: d, duration: Math.max(1, land - d) } }] : []),
+        { prop: 'opacity', ramp: { from: 1, to: 0, delay: land, duration: 1 } },
       ],
     });
-    lands.push(d + arrive(sp) / rate);
+    lands.push(land);
   });
   return lands;
 }
 
-/** An element unseen until `at` ms, then shown in two frames (a dead strip's card under the ghost that lands on
-    it), or slid from `dx` px on the yield spring (a strip card making room). */
+/** An element unseen until `at` ms, then shown at once at its own opacity (a dead strip's card under the ghost that
+    lands on it, the ghost gone in the same frame). It faded in to 1 over two frames and then fell back to its own
+    0.85 when the fade ended: a flicker. */
 export function appearAt(reg, { set, rate = 1, el, at = 0, dx = 0, size }) {
-  const channels = [{ prop: 'opacity', ramp: { from: 0, to: 1, delay: at, duration: stage(set).appear / rate } }];
+  // Its own opacity, read with any earlier motion of it stopped (an animation would be read instead).
+  const key = keyOf(el, 'move');
+  try { reg.stop(key); } catch (e) { /* nothing running */ }
+  let own = 1;
+  try { own = parseFloat(getComputedStyle(el).opacity); if (!(own >= 0)) own = 1; } catch (e) { own = 1; }
+  const channels = [{ prop: 'opacity', ramp: { from: 0, to: own, delay: at, duration: 1 } }];
   return reg.run(el, { key: keyOf(el, 'move'), property: 'individual', size, channels, tolPx: 0.25 });
 }
 export function makeRoom(reg, { set, rate = 1, el, dx, size }) {

@@ -226,11 +226,12 @@ function collisions(m, slack) {
   return out;
 }
 
-const scratch = await createScratch({ ports: [4890, 4899], prefix: 'fg-collide-' });
+const PORTS = (opt('--ports') || '4890-4899').split('-').map(Number);
+const scratch = await createScratch({ ports: PORTS, prefix: 'fg-collide-' });
 // --build: serve another build folder (a folder at the repo root, or an absolute path), leaving public-vite to others.
 const BUILD = opt('--build', '');
 const srv = await boot(scratch.dbPath, BUILD ? { PUBLIC_VITE_DIR: BUILD } : {}, {
-  ports: [4890, 4899],
+  ports: PORTS,
   preloads: BUILD ? [path.join(import.meta.dirname, '..', 'test', 'helpers', 'public-dir-preload.js')] : [],
 });
 const base = `http://127.0.0.1:${srv.port}`;

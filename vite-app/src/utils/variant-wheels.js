@@ -30,6 +30,32 @@ export const WHEEL_GAMES = [
   { key: 'ofc', label: 'OFC', games: ['OFC'] },
 ];
 
+/* The variant wheel never repeats what the game wheel says (owner, 2026-11-22: "Let's try not to repeat here. in
+   stud the 3rd wheel can just say Hi, 8/b, hi/lo regular. 2-7 can just say triple draw, single draw"): each row is
+   what tells it apart from its family. A name that is one word of its own (Razzdugi, Badeucy, Dramadugi) stays whole;
+   a family's plain game is named by what it is beside the others (Texas Hold'em, Omaha Hi, A-5 Razz). The rows'
+   games, and so their game types, are unchanged: this is the label only. */
+export const VARIANT_LABEL = {
+  "Hold'em": 'Texas', 'Pineapple': 'Pineapple', 'Short Deck': 'Short Deck',
+  'Omaha': 'Hi', 'Omaha 8/b': '8/b', 'Big O': 'Big O', 'PLO5': '5-Card', 'PLO6': '6-Card', 'PLO6 8/b': '6-Card 8/b', 'Courchevel': 'Courchevel',
+  'Stud Hi': 'Hi', 'Stud 8/b': '8/b', 'Stud Hi/Lo Regular': 'Hi/Lo Regular',
+  'Razz': 'A-5', 'Razzdugi': 'Razzdugi', 'Razzdeucy': 'Razzdeucy', '2-7 Razz': '2-7',
+  '2-7 Triple Draw': 'Triple Draw', '2-7 Single Draw': 'Single Draw',
+  'A-5 Triple Draw': 'Triple Draw', 'A-5 Single Draw': 'Single Draw',
+  'Badugi': 'Standard', 'Badeucy': 'Badeucy', 'Badacey': 'Badacey',
+  'Archie 66': '66', 'Archie 99': '99',
+  'Dramaha Hi': 'Hi', 'Dramaha 2-7': '2-7', 'Dramaha 49': '49', 'Dramaha 0': '0', 'Dramadugi': 'Dramadugi',
+};
+
+/** A game's row on its family's variant wheel: VARIANT_LABEL, else the name less the family's ("Foo Hi" -> "Hi"),
+ *  else the name (a custom game). */
+export function variantLabel(group, game) {
+  if (VARIANT_LABEL[game]) return VARIANT_LABEL[game];
+  const fam = group && !group.custom ? group.label : '';
+  if (fam && game.toLowerCase().startsWith(fam.toLowerCase() + ' ')) return game.slice(fam.length + 1);
+  return game;
+}
+
 /** The wheels for a catalog (buildCatalog's rows, custom games included):
  *  { groups: [{ key, label, family, games }], byGame: Map(game -> its rows, the usual first) }.
  *  A catalog game no group names gets a group of its own at the end, so nothing is ever unreachable
@@ -91,23 +117,6 @@ export const turnGame = (wheels, g) => { const grp = wheels.groups[g]; return gr
 export const turnVariant = (wheels, g, v) => { const grp = wheels.groups[g]; return grp && grp.games[v] ? usualRow(wheels, grp.games[v]) : null; };
 /** The structure wheel turned: this game at that structure, or null where it is not played so. */
 export const turnStructure = (wheels, row, s) => (row ? rowAt(wheels, row.game, STRUCTURES[s]) : null);
-
-/** The line under the wheels: a game played one way only, an unusual structure, or the variants to open. */
-export function wheelHint(wheels, row, open) {
-  if (!row) return { text: '' };
-  const pos = positionOf(wheels, row);
-  const grp = pos ? wheels.groups[pos.g] : null;
-  const usual = usualRow(wheels, row.game);
-  if (row.rare && usual) return { warn: 'Unusual:', text: `${row.game} is usually ${usual.structure.toLowerCase()}.` };
-  if (grp && grp.games.length > 1 && !open) {
-    const n = grp.games.length - 1;
-    return { text: grp.custom ? `${n + 1} custom games: tap › to choose one.` : `${grp.label} has ${n} variant${n === 1 ? '' : 's'}: tap › to choose one.` };
-  }
-  if (!row.custom && row.game !== 'OFC' && structuresOf(wheels, row.game).size === 1) {
-    return { text: `${row.game} is only played ${row.structure.toLowerCase()}.` };
-  }
-  return { text: '' };
-}
 
 /** The quick picks over the wheels: the player's recent rows (recentRows' output) or, with none,
  *  the three games most hands are written in. */

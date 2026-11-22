@@ -105,13 +105,18 @@ sessions opened here own scheduler work.
 - **The New Hand picker is three wheels** (owner, 2026-11-22: "Let's build the wheels picker"; `components/VariantWheels.jsx`,
   `utils/variant-wheels.js`, styles in `variant-picker.css`; the approved prototype is `docs/prototypes/variant-wheels.html`): a
   structure wheel (No Limit, Pot Limit, Limit), a game wheel of families (Hold'em, Omaha, Stud, Razz, 2-7 Draw … OFC, then Custom
-  when the account has custom games) and a family's variants on a third wheel that › opens to the right. Over them, the last three
+  when the account has custom games) and a family's variants on a third wheel that › opens to the right, each row only what tells it
+  from its family (owner, 2026-11-22: "Let's try not to repeat here"; `VARIANT_LABEL`): Stud's read Hi, 8/b, Hi/Lo Regular, 2-7
+  Draw's and A-5 Draw's Triple Draw, Single Draw; the label only, the row and its game type unchanged. Over them, the last three
   games picked (else NLH, PLO, 2-7 TD) and Search, which opens the palette (`VariantPicker.jsx` `Palette`: slang, the mixes, a game's
   rules; ⌘K and / still open it). The wheels are a second view of `buildCatalog`: every position not struck through is a catalog
-  row and every row is one position (a structure the game has no row at is struck through and springs back; a rare row, NL Stud,
-  is a structure turn away, with an "Unusual" line under the wheels), and a pick goes through `pickVariant`, so the game type is
-  the palette's. `variant-wheels.test.mjs` (in `npm test`) holds that, and fails while a new catalog game sits outside the families
-  in `WHEEL_GAMES`. Scripts that pick a game open the palette with `.vw-search` (the launcher, `.vp-launcher`, is gone). Guards:
+  row and every row is one position, and a pick goes through `pickVariant`, so the game type is the palette's. Turning a game puts
+  the structure on its usual one, and any structure the game has a game type for can be turned to, NL Stud and NL Razz included
+  (owner, 2026-11-22: "Default to the standard limit for each game but allow users to change it"; no line under the wheels). The
+  other 45 pairs (No Limit Badugi, Limit 5-Card Draw, PL Short Deck…) map in `STRUCTURE_GAME_MAP` to a game type that bets
+  otherwise, so they stay struck through until each has a game type of its own (a `HAND_CONFIG` row and the rest a new game
+  needs). `variant-wheels.test.mjs` (in `npm test`) holds all of it: every row reachable and none extra, every open structure
+  dealt with its own betting, and no catalog game outside the families in `WHEEL_GAMES`. Scripts that pick a game open the palette with `.vw-search` (the launcher, `.vp-launcher`, is gone). Guards:
   `hands-wheels-*` (controls), `hands-wheels` (clipping).
 - **The replayer is held to an outside engine** (owner, 2026-11-10: "This is something we can get perfect";
   `test/replayer-oracle/`, its README): PokerKit plays random hands of twenty games (heads-up to ten-handed, cash to the
@@ -1042,6 +1047,32 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   pixels: the 8-max bottom corners (1.05) walk toward the pot like the bottom seats (owner, 2026-11-22: level with the
   plaque their chips sat on the rail). Dead cards (stud, draw) are never on the felt (owner, 2026-11-22): every layout
   draws them in the strip at the table slot's foot (`.replayer-dead-strip`), landscape since that day.
+  Also 2026-11-22 (owner): a stud seat's fan is laid out for the cards that seat ends the hand with (`studAnchor`, CardRow
+  `anchor`), so a street adds a card and Back takes one and nothing else moves (it re-centred, 13-19px along the arc in
+  a frame); the hero's cards are 1.2 times the table's (`--seat-card-h`; not on a 9 or 10-seat phone) so its action label
+  sits on them instead of beside the plaque; in stud the rows (a split's shares, side pots) hang under the game pill, the
+  pot above the watermark; the 6-max landscape side seats are 3 cells in (`SIDE_X`), on the felt's edge; a stud fold's
+  down cards gather and shrink to nothing behind the plaque (`foldToStack`, target the plaque, `spin: 0`) while its up
+  cards fly to the dead strip, the ghost dimming to the strip's opacity and handing over in one frame (`ghostsTo`
+  `to.opacity`, `appearAt`); a split's share pills are solid gold with dark ink. A saved hand's built title is
+  `[game] | [Walk/Limped/SRP/3BP…] | [MTT/Cash] | [blinds]` (`utils/hand-title.js`; 1K/2K in a tournament, a stud hand
+  ante/bring-in/small/big), in Univers, renamed in place from the replay's header (`TitleEditor`); a share link carries the
+  names entered (`n` part) and the title (`t` part), base64url JSON, read by marker.
+- **Special showdowns** (owner, 2026-11-22: "special hand animations to play at showdown", "only when hero wins";
+  `utils/showdown-specials.js` decides and simulates, `utils/showdown-moments.js` plays, `showdown-specials.css`; the
+  catalogue of 100 ideas to pick from: `docs/catalogues/showdown-specials/`, https://claude.ai/artifact/MkvGpnepvimme8F7KKDCQn).
+  Built: **the flush flood** ("a watermark-opacity flood of the suit symbol on the felt inside the rail, with simulated
+  physics allowing them to bounce off of each other"). When the hero is paid with a high hand that is a flush (not a
+  straight flush) and beats every hand shown (`showdownSpecial`; hi-lo: the high half), the suit pours onto the cloth a
+  beat after the result's press, bounces off itself and the rail, piles, holds and fades (about 4 s). It is drawn INSIDE
+  the felt label (`.replayer-flood`: clipped to the felt's corners, under its weave and vignette and every piece) in the
+  watermark's ink at 0.2 (0.32 in an export). The physics is worked out in advance (`simulateFlood`: seeded by the hand,
+  120 Hz, a symbol never moves 18px in a frame, a body at rest sleeps so a pile never shivers) and played as ONE registry
+  entry, the flood's fade, whose extras are the symbols' keyframes: Back, a jump and an export seek it. It is built in
+  the frame after the press (`motion.defer`), after the smooth audit's held pass has taken its animations, so that pass
+  never holds it; `check-replayer-smooth` reads it (kind `flood`) in its real-time pass, and both replayer guards take
+  `--ports lo-hi`. `warmSuitFlood` runs a small simulation at idle when the replay opens: a cold first run took 100 to
+  150ms where a warm one takes 20. Tests: `showdown-specials.test.mjs` in `npm test`.
 - **The action pills are solid** (owner, 2026-11-22: "a solid color with contrasting text"): `--act-pill` / `--act-pill-ink`
   per action, from `--act-*-solid` and `--act-ink-light` / `--act-ink-dark` (styles.css, beside `--act-*`): fold, call
   (blue-600) and raise (red-600) in white, check and bet in near-black, all-in as before; each pair measured at 4.8:1 or

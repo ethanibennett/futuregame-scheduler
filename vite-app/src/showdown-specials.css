@@ -1,0 +1,35 @@
+/* The special showdowns' pieces on the felt (utils/showdown-moments.js). */
+
+/* The flush flood: inside the felt, so it is cloth: clipped to the rail's shape, under the weave and the vignette (the
+   felt's ::after paints over its children), and under every seat, card and chip on the table. */
+.replayer-flood {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+/* The watermark's ink and strength (.replayer-watermark), so the flood reads as the cloth's own mark. */
+.replayer-flood-ink {
+  position: absolute;
+  inset: 0;
+  opacity: 0.2;
+  color: #fff6e6;
+}
+.replayer-table[data-capturing="1"] .replayer-flood-ink {
+  opacity: 0.32;
+  color: #fff;
+}
+.replayer-flood-suit {
+  position: absolute;
+  left: 0;
+  top: 0;
+  aspect-ratio: 1;
+  opacity: 0;
+}
+.replayer-flood-suit svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}

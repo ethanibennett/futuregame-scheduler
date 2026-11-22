@@ -214,8 +214,7 @@
      2r   STRUCTURE | GAME | | <family> VARIANTS
      1r
      25r  the wheels: five 5r rows, the band on the middle one (10r..15r)
-     3r   the line under them
-     1r   (then Create)
+     1r   (then Create; the line that stood under the wheels is gone, owner 2026-11-22)
    Closed, the columns are structure 10g | game 22g | › 3g | variants 0; open, 6g | 11g | 3g | 15g, the
    games a size down (--fs-md) and each row 0.5g in, so the longest names fit whole: "5-Card Draw" 9.06g
    in 10g, "Stud Hi/Lo Regular" 13.84g in 14g (measured at 402). */
@@ -223,7 +222,7 @@
   --vw-row: calc(var(--subrow) * 5);
   --vw-cols: calc(var(--gu) * 10) calc(var(--gu) * 22) calc(var(--gu) * 3) calc(var(--gu) * 0);
   width: calc(var(--gu) * 35);
-  margin: var(--subrow) 0;   /* 1r under the line, so its descenders clear Create */
+  margin: var(--subrow) 0;   /* 1r under the wheels before Create */
 }
 .vw.is-open { --vw-cols: calc(var(--gu) * 6) calc(var(--gu) * 11) calc(var(--gu) * 3) calc(var(--gu) * 15); }
 .vw-label, .vw-cols .vw-col {
@@ -345,14 +344,5 @@
 .vw-exp[hidden] { display: flex; visibility: hidden; }
 .vw-exp svg { width: calc(var(--gu) * 1.5); height: calc(var(--gu) * 1.5); transition: transform var(--dur-base) var(--ease-out); }
 .vw.is-open .vw-exp svg { transform: rotate(180deg); }
-/* The line under the wheels: a 3r cell, the text on its foot. */
-.vw-hint { display: grid; align-items: end; height: calc(var(--subrow) * 3); color: var(--text-muted); font-family: var(--font-condensed); font-size: var(--fs-xs); }
-.vw-hint > span {
-  display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-  line-height: calc(var(--subrow) * 3);
-  padding-block: 0.3em; margin-block: -0.3em;
-  text-box-trim: trim-both; text-box-edge: cap alphabetic;
-}
-.vw-hint b { color: var(--warn); font-weight: var(--fw-bold); }
 .vw-sr { position: absolute; width: calc(var(--gu) * 0.1); height: calc(var(--gu) * 0.1); overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .vw-cols, .vw-wheels, .vw-var, .vw-exp svg, .vw-cols .vw-col.is-var, .vw-game li, .vw-var li { transition: none; } }

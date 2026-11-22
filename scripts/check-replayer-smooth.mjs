@@ -24,7 +24,7 @@
 // ship or a board that waits for a chip, is not held: the real-time pass sees those).
 //
 //   node scripts/check-replayer-smooth.mjs [--ids "NLH#4,PLO#4"] [--shorthand "<hand link shorthand>"] [--build dir]
-//        [--width 402 --height 874] [--json file] [--strict]
+//        [--width 402 --height 874] [--json file] [--strict] [--ports 4920-4929]
 //
 // Boots its own scratch server (ports 4920-4929). Needs the built app. Reports only; --strict exits 1 on any issue.
 import { createRequire } from 'node:module';
@@ -68,6 +68,7 @@ const PIECES = [
   ['ghost', '.replayer-ghost-row > *, .replayer-motion-layer > *:not(.replayer-ghost-row)'],
   ['pill', '.replayer-game-pill, .replayer-pot-above'],
   ['ring', '.replayer-turn-ring'],
+  ['flood', '.replayer-flood-suit'],
 ];
 // In the page: every piece's centre, size, drawn opacity and first words, by element (a clone is another piece).
 const READ = (pieces) => {
@@ -183,7 +184,7 @@ function flashesOf(F) {
   return issues.filter((x) => x.k !== 'ring');
 }
 
-const PORTS = [4920, 4929];
+const PORTS = (opt('--ports') || '4920-4929').split('-').map(Number);
 const scratch = await createScratch({ ports: PORTS, prefix: 'fg-smooth-' });
 const srv = await boot(scratch.dbPath, { PUBLIC_VITE_DIR: BUILD }, { ports: PORTS, preloads: [path.join(ROOT, 'test', 'helpers', 'public-dir-preload.js')] });
 const base = `http://127.0.0.1:${srv.port}`;

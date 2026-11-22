@@ -259,7 +259,34 @@ export function encodeHand(hand) {
     parts.push('$' + (hand.currency || 'USD'));
   }
 
+  /* The names entered for the hand, and its title (owner, 2026-11-22: "If we enter names into the hand, shared links
+     should remember them. Same for if we edit the title of a hand"): 'n' + the names as UTF-8 JSON in base64url, only
+     when one of them differs from the decoder's own (Hero, Opp 1, ...), and 't' + the title the same way. base64url is
+     fragment-safe and holds no '.'. Read by marker; an older decoder ignores both. */
+  var hIdx = hand.heroIdx != null ? hand.heroIdx : 0;
+  var names = hand.players.map(function(p) { return String((p && p.name) || '').trim().slice(0, 40); });
+  if (names.some(function(nm, i) { return nm && nm !== defaultPlayerName(i, hIdx); })) parts.push('n' + b64urlOut(JSON.stringify(names)));
+  var titleOut = String(hand.title || '').trim().slice(0, 120);
+  if (titleOut) parts.push('t' + b64urlOut(titleOut));
+
   return parts.join('.');
+}
+
+function defaultPlayerName(pi, heroIdx) {
+  if (pi === heroIdx) return 'Hero';
+  return 'Opp ' + ((pi < heroIdx ? pi : pi - 1) + 1);
+}
+function b64urlOut(s) {
+  var bytes = new TextEncoder().encode(s), bin = '';
+  for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64urlIn(s) {
+  var b64 = String(s).replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
+  var bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
 }
 
 // ── Decode ──────────────────────────────────────────────────
@@ -525,10 +552,14 @@ export function decodeHand(str) {
      shorthands, in which case the viewer keeps their own felt. */
   // Trailing parts are read by their leading marker, not their index, so felt
   // ('f') and the cash marker ('$') can arrive in either order.
-  var feltColor = null, feltBright = false, gameMode = 'mtt', currency = 'USD', visuals = null;
+  var feltColor = null, feltBright = false, gameMode = 'mtt', currency = 'USD', visuals = null, namesIn = null, titleIn = '';
   for (var tpi = 5; tpi < parts.length; tpi++) {
     var tp = parts[tpi] || '';
-    if (tp.charAt(0) === 'f') {
+    if (tp.charAt(0) === 'n') {
+      try { var na = JSON.parse(b64urlIn(tp.slice(1))); if (Array.isArray(na)) namesIn = na; } catch (e) { /* a mangled part keeps the default names */ }
+    } else if (tp.charAt(0) === 't') {
+      try { titleIn = String(b64urlIn(tp.slice(1))).trim().slice(0, 120); } catch (e) { /* no title */ }
+    } else if (tp.charAt(0) === 'f') {
       var fb = tp.slice(1);
       if (fb.charAt(fb.length - 1) === 'b') { feltBright = true; fb = fb.slice(0, -1); }
       if (/^[0-9a-fA-F]{3,8}$/.test(fb)) feltColor = '#' + fb;
@@ -541,8 +572,15 @@ export function decodeHand(str) {
     }
   }
 
+  // The names the sharer entered (the 'n' part), over the defaults.
+  if (namesIn) players.forEach(function(p, i) {
+    var nm = typeof namesIn[i] === 'string' ? namesIn[i].trim().slice(0, 40) : '';
+    if (nm) p.name = nm;
+  });
+
   return {
     gameType: gameType,
+    ...(titleIn ? { title: titleIn } : {}),
     ...(chosen === SHORT_DECK_TRIPS_CODE ? { tripsBeatStraight: true } : chosen === 'SK' ? { tripsBeatStraight: false } : {}),
     players: players,
     feltColor: feltColor,

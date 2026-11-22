@@ -33,6 +33,8 @@ import {
 import { SPRING_SETS, spring, timeTo, tierSpring, keyframes as transportKeyframes, REPLAYER_PACE } from '../utils/spring.js';
 import { bestFive, halvesOf, counterfeitedNow, leaderOf, lowDecider, indexOfLowRank, streetChange } from '../utils/replayer-reading.js';
 import { turnOver, dealIn, liftOnce, poseTo, rap, ghostsAway, labelsAway, cardsAway, foldToStack, angleOf, cardTimes, slideRow, runOutBoard, runOutTimes, poseSequence, drawIn, ghostsTo, appearAt, makeRoom } from '../utils/replayer-card-moments.js';
+import { showdownSpecial } from '../utils/showdown-specials.js';
+import { playSuitFlood, warmSuitFlood } from '../utils/showdown-moments.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
 import { exportReplayGif } from '../utils/replay-gif-export.js';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -872,6 +874,16 @@ function formatStakes(hand, { straddle = 0 } = {}) {
 const TITLE_OPTS = {
   stakes: (h) => {
     const b = (h && h.blinds) || {};
+    const cfg = (h && HAND_CONFIG[h.gameType]) || HAND_CONFIG_DEFAULT;
+    /* Stud: ante / bring-in / small bet / big bet (owner, 2026-11-22: "in stud games the 'blind' structure should be
+       [ante]/[bring in]/[small bet]/[big bet]"); a tournament's short, a cash game's in its money. */
+    if (cfg.isStud && b.bb) {
+      const vals = [b.ante || 0, b.bringIn || 0, b.bb, b.bigBet || b.bb * 2];
+      if (h.gameMode !== 'cash') return vals.map(compactChips).join('/');
+      const sym = currencySymbol(h);
+      const cents = vals.some((v) => Math.round(Number(v) * 100) % 100 !== 0);
+      return vals.map((v) => { const n = Number(v) || 0; return sym + (cents && Math.round(n * 100) % 100 !== 0 ? n.toFixed(2) : n.toLocaleString('en-US', { maximumFractionDigits: 0 })); }).join('/');
+    }
     if (h && h.gameMode === 'cash') return formatStakes({ ...h, blinds: { ...b, ante: 0 } });
     // A tournament's written short, 1K/2K (owner, 2026-11-22), so the title fits the row.
     if (!b.bb) return '';
@@ -1922,7 +1934,37 @@ function StudRun({ run }) {
   );
 }
 
-function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, reverseZ, discardIdx, onCardTap, poseOf, playIds, holdSort = 0 }) {
+/* A saved hand's title, renamed in place (owner, 2026-11-22: "we should be able to edit the hand titles if we want
+   to"): a tap turns it into a field holding the typed title (empty where the app built it, the built one shown as the
+   placeholder); Enter or leaving the field saves, Escape keeps it. An emptied field goes back to the built title. */
+function TitleEditor({ shown, typed, canEdit, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState('');
+  const ref = useRef(null);
+  const cancelled = useRef(false);
+  useEffect(() => { if (editing && ref.current) { ref.current.focus(); ref.current.select(); } }, [editing]);
+  if (!canEdit) return <>{shown}</>;
+  if (!editing) {
+    return (
+      <button type="button" className="replayer-title-btn" title="Rename" aria-label={'Rename: ' + shown}
+        onClick={() => { cancelled.current = false; setVal(typed || ''); setEditing(true); }}>{shown}</button>
+    );
+  }
+  const done = (save) => {
+    if (cancelled.current) return;
+    cancelled.current = true;
+    setEditing(false);
+    const t = val.trim();
+    if (save && t !== (typed || '')) onSave(t);
+  };
+  return (
+    <input ref={ref} className="replayer-title-input" value={val} placeholder={shown} maxLength={120} aria-label="Hand title"
+      onChange={e => setVal(e.target.value)} onBlur={() => done(true)}
+      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); done(true); } else if (e.key === 'Escape') { e.preventDefault(); done(false); } }} />
+  );
+}
+
+function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, reverseZ, discardIdx, onCardTap, poseOf, playIds, holdSort = 0, anchor = 0 }) {
   /* Draw-game re-sort. A card keeps its DOM element for as long as it stays in
      the hand (keyed by identity, below), so when a draw puts a new card among
      them this can see where each surviving card was and where it is now, and
@@ -2024,9 +2066,18 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
   const seenKey = {};
   const cardKeys = cards.map(c => { const id = c.rank + c.suit; seenKey[id] = (seenKey[id] || 0) + 1; return id + '#' + seenKey[id]; });
   const fanByKey = new Map();
-  fanNow.current = { byKey: fanByKey, total: cards.length, splay, max, splayScale, reverseZ: rowReverseZ };
+  /* `anchor`: the cards this row will hold when the hand is over (a stud seat's, owner, 2026-11-22: "Opp 2's cards are
+     jumping around as the hand gets wider, and the back button is making some cards slightly pulse up and back down").
+     The fan is laid out for that many from the first card, so each card sits in its final slot from the moment it is
+     dealt: a street adds a card and Back takes one away, and nothing else moves. Centred on the cards held, every card
+     already there jumped 13 to 19px along the arc (up or down as well as across) in one frame at each street. */
+  const fanCount = Math.max(cards.length, anchor || 0);
+  fanNow.current = { byKey: fanByKey, total: fanCount, splay, max, splayScale, reverseZ: rowReverseZ };
+  // A flat row is centred by its box: it keeps the room of the cards still to come on its right.
+  const flatRoom = !splay && fanCount > cards.length
+    ? { paddingRight: 'calc(' + (fanCount - cards.length) + ' * var(--card-h) * 0.7143 * (1 - var(--card-overlap, 0.52)))' } : null;
   return (
-    <div ref={rowRef} className={"card-row" + (splay ? " card-row-splay" : "")}>
+    <div ref={rowRef} className={"card-row" + (splay ? " card-row-splay" : "")} style={flatRoom || undefined}>
       {cards.map((c, i) => {
         const k = cardKeys[i];
         const isDown = downIdx && downIdx.has(i);
@@ -2054,8 +2105,8 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
            a full card's gap in it. */
         fanByKey.set(k, { i, y: studYOffset });
         const splayStyle = { '--ci': i, ...(splay
-          ? getSplayStyle(i, cards.length, splay, studYOffset, rowReverseZ, max, splayScale)
-          : getFlatStyle(i, cards.length, studYOffset, rowReverseZ)),
+          ? getSplayStyle(i, fanCount, splay, studYOffset, rowReverseZ, max, splayScale)
+          : getFlatStyle(i, fanCount, studYOffset, rowReverseZ)),
           ...(isDiscard ? { opacity: 0.4 } : null),
           // A card marked on the felt eases back when it is unmarked, as well as out.
           ...(isDiscard || onCardTap ? { transition: CARD_LIFTS ? 'transform 260ms var(--ease-out), opacity 260ms var(--ease-out)' : 'opacity 260ms var(--ease-out)' } : null) };
@@ -5412,7 +5463,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       setIsPublic(false);
       setMode('replay');
       setHandIsShared(true);
-      setTitle('');
+      // A link carries the sharer's title (the shorthand's 't' part, 2026-11-22).
+      setTitle(initialHand.title || '');
       setNotes('');
       if (onClearInitialHand) onClearInitialHand();
     }
@@ -5462,9 +5514,11 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     if (!token) return;
     const handId = 'id' in over ? over.id : currentHandId;
     const saveNotes = 'notes' in over ? over.notes : notes;
+    // A rename from the replay's title (owner, 2026-11-22: "we should be able to edit the hand titles") saves it at once.
+    const saveTitle = 'title' in over ? over.title : title;
     setLoading(true);
     try {
-      const payload = { handData: hand, gameType: hand.gameType, title: title || autoTitle(hand) || (hand.gameType + ' Hand'), notes: saveNotes, isPublic };
+      const payload = { handData: hand, gameType: hand.gameType, title: saveTitle || autoTitle(hand) || (hand.gameType + ' Hand'), notes: saveNotes, isPublic };
       let res;
       if (handId) {
         res = await fetch(`${API_URL}/replayer/hands/${handId}`, {
@@ -5493,7 +5547,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     } catch (e) {
       if (e instanceof TypeError || !navigator.onLine) {
         // No signal: kept on this device, uploaded when requests succeed again (Features 46).
-        const payload = { handData: hand, gameType: hand.gameType, title: title || autoTitle(hand) || (hand.gameType + ' Hand'), notes: saveNotes, isPublic };
+        const payload = { handData: hand, gameType: hand.gameType, title: saveTitle || autoTitle(hand) || (hand.gameType + ' Hand'), notes: saveNotes, isPublic };
         addToOutbox(payload, handId || null);
         setWaiting(readOutbox());
         if (over.draft) clearDraft();
@@ -5690,7 +5744,9 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   const replayEl = mode === 'replay' && currentHand ? (
       <div className={'replayer-view is-replay' + (sidePane ? ' is-in-pane' : '')}>
         <div className="replayer-header">
-          <h2>{title || autoTitle(currentHand) || currentHand.gameType + ' Hand'}</h2>
+          <h2><TitleEditor shown={title || autoTitle(currentHand) || currentHand.gameType + ' Hand'} typed={title}
+            canEdit={!!(token && currentHandId && !handIsShared && !linkedReplay)}
+            onSave={(t) => { setTitle(t); saveHand(currentHand, { title: t }); }} /></h2>
           <span className="replayer-hand-card-game">{currentHand.gameType + (currentHand.blinds && currentHand.blinds.bb ? ' ' + formatStakes(currentHand) : '')}</span>
         </div>
         {/* 76: .replayer-notes-area — label, textarea, focus ring, all
@@ -5710,6 +5766,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
           <HandReplayerReplayView
             key={currentHandId != null ? 'h' + currentHandId : 'unsaved'}
             hand={currentHand}
+            handTitle={title || autoTitle(currentHand) || ''}
             notes={notes}
             token={token}
             heroName={heroName}
@@ -6332,7 +6389,7 @@ function HandHistoryExportSheet({ rows, heroName, toast, onClose }) {
 // ── Replay View Sub-component ────────────────────────────
 // ══════════════════════════════════════════════════════════
 function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, cardSplay, onSolveSpot, onStudyDraw, linkedReplay, heroName, playedAt, sharedHand, drill = null, inPane = false, notes = null,
-  onSaveExtras = null, allTags = [], question = null, onQuestionAnswered = null }) {
+  onSaveExtras = null, allTags = [], question = null, onQuestionAnswered = null, handTitle = '' }) {
   /* The GIF export's completion toasts referenced `toast` from inside this
      component, where it was never declared - the outer HandReplayerView owns
      the one call to useToast(). Optional chaining does not save an UNDECLARED
@@ -6663,6 +6720,22 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const finalCards = gameCfg.showCards || gameCfg.heroCards || 2;
   const feltBoard = category === 'community' || !!gameCfg.doorBoard;
   const totalStreets = hand.streets.length;
+  /* A stud seat's cards when the hand is over: 3rd street's three and one for each later street the hand reached while
+     the seat was in (a fold on a street keeps that street's card). Its fan is laid out for that many from the start
+     (CardRow `anchor`), so no card moves when the next is dealt or taken back. Plain loops, not a memo: this sits
+     after an early return. */
+  const studAnchor = gameCfg.isStud ? (() => {
+    const reached = (st) => st && ((st.actions || []).length > 0 || !!(st.cards && (st.cards.hero || (st.cards.opponents || []).some(Boolean))));
+    let last = 0;
+    hand.streets.forEach((st, si) => { if (reached(st)) last = si; });
+    return hand.players.map((_, pi) => {
+      let through = last;
+      for (let si = 0; si <= last; si++) {
+        if ((hand.streets[si].actions || []).some(a => (a.player != null ? a.player : a.playerIdx) === pi && a.action === 'fold')) { through = si; break; }
+      }
+      return Math.min(FAN_SLOTS, 3 + through);
+    });
+  })() : null;
   const currentStreet = hand.streets[streetIdx];
   const currentActions = currentStreet?.actions || [];
   const isDrawGame = hasDraws(category, gameCfg);
@@ -7393,6 +7466,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const side = new Set(layers.size > 1 ? [...paid].filter(s => !mainOf.has(s)) : []);
     return { hi, lo, side };
   }, [potAwards, hiLoHalves]);
+  /* A special showdown the hero won (utils/showdown-specials.js; owner, 2026-11-22: "only when hero wins"): a flush
+     floods the cloth with its suit, played by the result moment (playSuitFlood). */
+  const showdownSpecialNow = useMemo(() => (springOn && showResult && potAwards ? showdownSpecial({
+    cfg: gameEvalFor(hand.gameType, hand), hero: parseCardNotation(heroCards),
+    others: hand.players.map((_, pi) => pi).filter(pi => pi !== replayHeroIdx && !folded.has(pi))
+      .map(pi => parseCardNotation(opponentCards[pi] === 'MUCK' ? '' : (opponentCards[pi] || ''))),
+    board: feltBoard ? parseCardNotation(boardCards) : [], heroPaid: (potAwards[replayHeroIdx] || 0) > 0,
+  }) : null), [springOn, showResult, potAwards, hand, heroCards, opponentCards, folded, feltBoard, boardCards, replayHeroIdx]);
+  useEffect(() => { if (springOn) warmSuitFlood(); }, [springOn]);
 
   /* The plaque shows what a player HAS, and calcPotsAndStacks only ever
      subtracts: it takes every wager out and never puts a pot back, so at
@@ -8198,7 +8280,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      question that stops at the hero's next decision. Resolves to the link's id, or null. */
   const mintHandLink = useCallback(async (asQuestion) => {
     if (!token) return null;
-    const full = encodeHand({ ...hand, feltColor });
+    const full = encodeHand({ ...hand, title: handTitle || hand.title || '', feltColor });
     if (!full) return null;
     const b = hand.blinds || {};
     const title = `${hand.gameType} ${b.sb || 0}/${b.bb || 0}${b.ante ? '/' + b.ante : ''}`;
@@ -8214,7 +8296,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const d = await res.json();
       return d && d.id ? d.id : null;
     } catch { return null; }
-  }, [token, hand, feltColor, streetIdx, actionIdx]);
+  }, [token, hand, handTitle, feltColor, streetIdx, actionIdx]);
   const askQuestion = useCallback(async () => {
     const id = await mintHandLink(true);
     if (!id) { toast.error('The question link was not made; check the connection'); return; }
@@ -8231,7 +8313,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         theme: rSettings.theme, splayAmount: Number(rSettings.splayAmount) || 0, cardOverlap: Number(rSettings.cardOverlap ?? 52) || 0,
         ...Object.fromEntries(VISUAL_SWITCHES.map(k => [k, !!rSettings[k]])),
       };
-      const shorthand = encodeHand({ ...hand, feltColor, feltBright: rSettings.feltBright, visuals });
+      const shorthand = encodeHand({ ...hand, title: handTitle || hand.title || '', feltColor, feltBright: rSettings.feltBright, visuals });
       if (!shorthand) return;
       const b = hand.blinds || {};
       // The straddle is part of the stakes — a link that reads "10/10" for a
@@ -9295,7 +9377,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      16.44, 14.14 and 15.74 average to 15.13% of the width, which is 4.24 cells
      and snaps to 4. Symmetric by construction, since the right axis is the
      left one subtracted from the table. */
-  const SIDE_X = 4 * CELL_X;            // 14.286%
+  /* 3 cells, 10.7% (owner, 2026-11-22: "These seats seem too far in from the edge of the table"): at 4 the side
+     plaques sat wholly on the cloth, a cell inside its edge, while the top and bottom seats sit on the rail. */
+  const SIDE_X = 3 * CELL_X;            // 10.714%
   const LANDSCAPE_6 = [
     [50.0,          20.8 - CELL_Y],   // top centre        ref 50, 17
     [100 - SIDE_X,  35.0 + CELL_Y],   // upper right       ref 97.4, 33
@@ -9643,7 +9727,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const short = potEl.getBoundingClientRect().bottom - (board.getBoundingClientRect().top - r / 2);
       if (short > 0) potEl.style.marginTop = (-Math.ceil(short)) + 'px';
     }
-    const anchor = board && board.querySelector('.card-row > *') ? board : table.querySelector('.replayer-pot-display');
+    /* Stud has no board: the pot above the watermark, the game pill under it, and the rows (a split's shares, the side
+       pots) under the pill (owner, 2026-11-22: "in stud, since there's no board, let's put the game/limits under the
+       watermark, pot above the watermark, and the result pills under the game/limits"). They hung under the pot, on
+       the watermark. */
+    const studPill = gameCfg.isStud && !(board && board.querySelector('.card-row > *')) ? table.querySelector('.replayer-table-info') : null;
+    const anchor = board && board.querySelector('.card-row > *') ? board : (studPill || table.querySelector('.replayer-pot-display'));
     if (rows.length && anchor && rows[0].offsetParent) {
       const cb = rows[0].offsetParent;
       const oy = cb.getBoundingClientRect().top + cb.clientTop;
@@ -9655,6 +9744,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const seatBoxes = [...table.querySelectorAll('.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-dealer-btn, .replayer-seat-cards .card-row > *')]
         .map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
       let y = anchor.getBoundingClientRect().bottom + r * 0.75;
+      if (anchor === studPill) {
+        // The pill's own foot (not its 46% column), where it rests: placePill, after this, may move it for the step.
+        const kids = [...studPill.children].map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
+        const foot = kids.length ? Math.max(...kids.map(b => b.bottom)) : studPill.getBoundingClientRect().bottom;
+        y = foot - (parseFloat(studPill.style.marginTop) || 0) + r * 0.75;
+      }
       rows.forEach(el => {
         el.style.maxWidth = ''; el.style.flexWrap = '';
         el.style.top = (y - oy) + 'px';
@@ -9960,7 +10055,11 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const piecesOf = (seatEl) => (seatEl ? [...seatEl.querySelectorAll(PIECES)].map(boxOf).filter(b => b.width > 0 && b.height > 0) : []);
     // The middle of the felt: the pot (its figure and its chips), the board, the rows under the board. Not the game
     // pill: it is placed after the wagers, round them.
-    const felt = [...table.querySelectorAll('.replayer-pot-display, .replayer-pot-above:not([data-ghost]), .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-layers.is-placed:not([data-ghost]) > *, .replayer-split-shares.is-placed:not([data-ghost]) > *')]
+    /* In stud the game pill has its own place, under the watermark with the rows under it (2026-11-22): a wager keeps
+       off it too. Left to placePill, the pill moved up off a wager that had landed between it and the rows, onto the
+       watermark (check:replayer-collisions, Stud Hi 5 seats at 1440). */
+    const felt = [...table.querySelectorAll('.replayer-pot-display, .replayer-pot-above:not([data-ghost]), .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-layers.is-placed:not([data-ghost]) > *, .replayer-split-shares.is-placed:not([data-ghost]) > *'
+      + (gameCfg.isStud ? ', .replayer-table-info > *' : ''))]
       .map(boxOf).filter(b => b.width > 0 && b.height > 0);
     pills.forEach(el => {
       el.style.left = el.dataset.baseLeft;
@@ -11105,21 +11204,30 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             const flights = up.map(c => {
               const t = byAlt.get(altOf(c));
               const r = t.getBoundingClientRect();
-              return { ...c, target: t, size: { w: r.width, h: r.height }, to: { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width } };
+              // The strip's own opacity: the ghost dims to it on the way and hands over in one frame (no flicker).
+              const op = parseFloat(getComputedStyle(t).opacity);
+              return { ...c, target: t, size: { w: r.width, h: r.height }, to: { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width, opacity: op >= 0 ? op : 1 } };
             });
             const moves = stripEls.filter(el => prevDead.has(el.getAttribute('alt'))).map(el => {
               const r = el.getBoundingClientRect();
               return { el, dx: prevDead.get(el.getAttribute('alt')) - (r.left + r.width / 2), size: { w: r.width, h: r.height } };
             });
-            const m = ptOf(muckTarget);
-            const dcx = down.length ? down.reduce((a, c) => a + c.cx, 0) / down.length : 0;
-            const dcy = down.length ? down.reduce((a, c) => a + c.cy, 0) / down.length : 0;
+            /* The cards left (the down ones) gather into one stack and shrink to nothing behind the seat's plaque (owner,
+               2026-11-22: "in stud hands folded hands should become a single stack and just shrink to nothing behind
+               the seat box. dead card should still smoothly move to the corner"): foldToStack's gather, then the stack
+               goes to the plaque's centre, under it in the fold layer, shrinking and fading, without turning. They
+               drifted toward the muck and faded before. */
+            const plaque = table.querySelector('.replayer-seat[data-seat="' + act.player + '"] .replayer-seat-info');
+            const PQ = plaque ? plaque.getBoundingClientRect() : null;
+            const fl = foldLayer && FL ? foldLayer : layer, FLr = foldLayer && FL ? FL : L;
             writes.push(() => {
               const lands = ghostsTo(motion, { set, rate, cards: flights });
               flights.forEach((f, i) => appearAt(motion, { set, rate, el: f.target, at: lands[i] || 0, size: f.size }));
               moves.forEach(mv => makeRoom(motion, { set, rate, el: mv.el, dx: mv.dx, size: mv.size }));
-              // Toward the muck under the seats, as a gathered hand goes.
-              if (down.length && L) ghostsAway(motion, { set, rate, layer: foldLayer && FL ? foldLayer : layer, layerRect: foldLayer && FL ? FL : L, cards: down, tx: (m.x - dcx) * 0.45, ty: (m.y - dcy) * 0.45 });
+              if (down.length && fl && FLr && PQ) {
+                foldToStack(motion, { set, rate: rate * 0.75, layer: fl, layerRect: FLr, cards: down, back: backPaint,
+                  target: { x: PQ.left + PQ.width / 2 - FLr.left, y: PQ.top + PQ.height / 2 - FLr.top }, spin: 0, scaleTo: 0.05 });
+              }
             });
           }
         }
@@ -11957,6 +12065,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         });
       }
 
+      if (motionKind === 'result' && showdownSpecialNow && showdownSpecialNow.kind === 'flush') {
+        writes.push(() => playSuitFlood(motion, { table, suit: showdownSpecialNow.suit, seed: (hand.id || '') + heroCards + boardCards,
+          delay: S.beat / rate, timeScale: rate / REPLAYER_PACE }));
+      }
       // WRITE, once per step: however many layout passes this commit gets, a moment never runs
       // twice (an award counted into a stack twice read 0 on the plaque).
       const momentKey = motionKind + ':' + streetIdx + ':' + actionIdx + ':' + (showResult ? 1 : 0);
@@ -12041,7 +12153,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       return out;
     })();
     if (!ups.length) return null;
-    if (streetIdx === 0 || first.action === 'bring-in') return { seat: pi, text: ups[0].rank + ups[0].suit + ' brings it in' };
+    if (streetIdx === 0 || first.action === 'bring-in') return { seat: pi, text: ups[0].rank + ups[0].suit + ' brings in' };   // owner, 2026-11-22: "3c brings in"
     const counts = {};
     ups.forEach(c => { counts[c.rank] = (counts[c.rank] || 0) + 1; });
     const RW = { A: 'Aces', K: 'Kings', Q: 'Queens', J: 'Jacks', T: 'Tens', 9: '9s', 8: '8s', 7: '7s', 6: '6s', 5: '5s', 4: '4s', 3: '3s', 2: '2s' };
@@ -12800,6 +12912,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                     : 0}
                   splay={rSettings.cardSplay ? (gameCfg.heroCards <= 2 ? 12.5 : gameCfg.heroCards <= 4 ? 15 : gameCfg.heroCards <= 5 ? 18 : 22) : 0}
                   splayScale={(Number(rSettings.splayAmount) || 0) / 100}
+                  anchor={studAnchor ? studAnchor[pi] : 0}
                   reverseZ={pi !== replayHeroIdx}
                   discardIdx={discardIdx}
                   poseOf={cardPoses ? cardPoses.seats.get(pi) : undefined}
