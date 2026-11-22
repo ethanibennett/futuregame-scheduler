@@ -1000,6 +1000,21 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   pixels: the 8-max bottom corners (1.05) walk toward the pot like the bottom seats (owner, 2026-11-22: level with the
   plaque their chips sat on the rail). Dead cards (stud, draw) are never on the felt (owner, 2026-11-22): every layout
   draws them in the strip at the table slot's foot (`.replayer-dead-strip`), landscape since that day.
+- **Special showdowns** (owner, 2026-11-22: "special hand animations to play at showdown", "only when hero wins";
+  `utils/showdown-specials.js` decides and simulates, `utils/showdown-moments.js` plays, `showdown-specials.css`; the
+  catalogue of 100 ideas to pick from: `docs/catalogues/showdown-specials/`, https://claude.ai/artifact/MkvGpnepvimme8F7KKDCQn).
+  Built: **the flush flood** ("a watermark-opacity flood of the suit symbol on the felt inside the rail, with simulated
+  physics allowing them to bounce off of each other"). When the hero is paid with a high hand that is a flush (not a
+  straight flush) and beats every hand shown (`showdownSpecial`; hi-lo: the high half), the suit pours onto the cloth a
+  beat after the result's press, bounces off itself and the rail, piles, holds and fades (about 4 s). It is drawn INSIDE
+  the felt label (`.replayer-flood`: clipped to the felt's corners, under its weave and vignette and every piece) in the
+  watermark's ink at 0.2 (0.32 in an export). The physics is worked out in advance (`simulateFlood`: seeded by the hand,
+  120 Hz, a symbol never moves 18px in a frame, a body at rest sleeps so a pile never shivers) and played as ONE registry
+  entry, the flood's fade, whose extras are the symbols' keyframes: Back, a jump and an export seek it. It is built in
+  the frame after the press (`motion.defer`), after the smooth audit's held pass has taken its animations, so that pass
+  never holds it; `check-replayer-smooth` reads it (kind `flood`) in its real-time pass, and both replayer guards take
+  `--ports lo-hi`. `warmSuitFlood` runs a small simulation at idle when the replay opens: a cold first run took 100 to
+  150ms where a warm one takes 20. Tests: `showdown-specials.test.mjs` in `npm test`.
 - **The action pills are solid** (owner, 2026-11-22: "a solid color with contrasting text"): `--act-pill` / `--act-pill-ink`
   per action, from `--act-*-solid` and `--act-ink-light` / `--act-ink-dark` (styles.css, beside `--act-*`): fold, call
   (blue-600) and raise (red-600) in white, check and bet in near-black, all-in as before; each pair measured at 4.8:1 or

@@ -33,6 +33,8 @@ import {
 import { SPRING_SETS, spring, timeTo, tierSpring, keyframes as transportKeyframes, REPLAYER_PACE } from '../utils/spring.js';
 import { bestFive, halvesOf, counterfeitedNow, leaderOf, lowDecider, indexOfLowRank, streetChange } from '../utils/replayer-reading.js';
 import { turnOver, dealIn, liftOnce, poseTo, rap, ghostsAway, labelsAway, cardsAway, foldToStack, angleOf, cardTimes, slideRow, runOutBoard, runOutTimes, poseSequence, drawIn, ghostsTo, appearAt, makeRoom } from '../utils/replayer-card-moments.js';
+import { showdownSpecial } from '../utils/showdown-specials.js';
+import { playSuitFlood, warmSuitFlood } from '../utils/showdown-moments.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
 import { exportReplayGif } from '../utils/replay-gif-export.js';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -7376,6 +7378,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const side = new Set(layers.size > 1 ? [...paid].filter(s => !mainOf.has(s)) : []);
     return { hi, lo, side };
   }, [potAwards, hiLoHalves]);
+  /* A special showdown the hero won (utils/showdown-specials.js; owner, 2026-11-22: "only when hero wins"): a flush
+     floods the cloth with its suit, played by the result moment (playSuitFlood). */
+  const showdownSpecialNow = useMemo(() => (springOn && showResult && potAwards ? showdownSpecial({
+    cfg: gameEvalFor(hand.gameType, hand), hero: parseCardNotation(heroCards),
+    others: hand.players.map((_, pi) => pi).filter(pi => pi !== replayHeroIdx && !folded.has(pi))
+      .map(pi => parseCardNotation(opponentCards[pi] === 'MUCK' ? '' : (opponentCards[pi] || ''))),
+    board: feltBoard ? parseCardNotation(boardCards) : [], heroPaid: (potAwards[replayHeroIdx] || 0) > 0,
+  }) : null), [springOn, showResult, potAwards, hand, heroCards, opponentCards, folded, feltBoard, boardCards, replayHeroIdx]);
+  useEffect(() => { if (springOn) warmSuitFlood(); }, [springOn]);
 
   /* The plaque shows what a player HAS, and calcPotsAndStacks only ever
      subtracts: it takes every wager out and never puts a pot back, so at
@@ -11940,6 +11951,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         });
       }
 
+      if (motionKind === 'result' && showdownSpecialNow && showdownSpecialNow.kind === 'flush') {
+        writes.push(() => playSuitFlood(motion, { table, suit: showdownSpecialNow.suit, seed: (hand.id || '') + heroCards + boardCards,
+          delay: S.beat / rate, timeScale: rate / REPLAYER_PACE }));
+      }
       // WRITE, once per step: however many layout passes this commit gets, a moment never runs
       // twice (an award counted into a stack twice read 0 on the plaque).
       const momentKey = motionKind + ':' + streetIdx + ':' + actionIdx + ':' + (showResult ? 1 : 0);
