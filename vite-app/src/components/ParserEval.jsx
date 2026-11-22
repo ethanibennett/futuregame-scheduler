@@ -92,13 +92,20 @@ export default function ParserEval({ token }) {
   };
   const run = () => post({ model: pick.model, effort: pick.effort, corpus: pick.corpus, sample: pick.sample || null });
   const resume = () => post({ resume: interrupted.id });
+  // A finished run's kept parses scored again with today's scorer and corpus: no model call, no cost.
+  const rescore = (id) => post({ rescore: id });
+  const keptFor = (r) => {
+    if (!r) return 0;
+    const src = r.rescoreOf ? runs.find((x) => x.id === r.rescoreOf) : runs.find((x) => x.id === r.id);
+    return (src && src.keptCases) || 0;
+  };
   const showRun = async (id) => {
     if (!id) { setOpenRun(null); return; }
     const r = await fetch(`${API_URL}/admin/quick-add-eval/runs/${id}`, { headers: auth }).catch(() => null);
     const d = r && r.ok ? await r.json().catch(() => null) : null;
     setOpenRun(d);
   };
-  const runName = (r) => `${modelName(r.model)} ${effortLabel(r.model, r.effort)}${r.corpus === 'shorthand' ? ' · sh' : ''}${r.sample ? ` · ${r.cases || r.totalCases || r.sample}` : ''}`;
+  const runName = (r) => `${modelName(r.model)} ${effortLabel(r.model, r.effort)}${r.corpus === 'shorthand' ? ' · sh' : ''}${r.sample ? ` · ${r.cases || r.totalCases || r.sample}` : ''}${r.rescoreOf ? ` · rescored ${r.rescoreOf}` : ''}`;
   // The table is loaded when a run starts and ends; the run going now takes its count from the 5 s status poll.
   const progressOf = (r) => {
     const live = s && s.running && s.runId === r.id && s.progress ? s.progress : null;
@@ -188,8 +195,14 @@ export default function ParserEval({ token }) {
             </div>
             {openRun && (
               <div className="qa-detail">
-                <p className="an-p">{runName(openRun)}, {when(openRun.startedAt)} to {when(openRun.finishedAt)}: {openRun.cases} hands, {openRun.perfect} perfect, recall {pct(openRun.recall)}, precision {pct(openRun.precision)}, {openRun.hallucinatedCards} hallucinated cards, {openRun.inventedSuits ?? 0} invented suits, {openRun.hallucinatedStacks ?? 0} invented stacks, {openRun.errors ?? 0} errors. Latency p50 {secs(openRun.latencyP50)}, p90 {secs(openRun.latencyP90)}. Cost {usd(openRun.costUsd, 2)} ({usd(openRun.costPerCase, 4)} a hand, {openRun.outputTokensPerCase ?? '—'} output tokens a parse){openRun.fallbacks ? `, ${openRun.fallbacks} served by a fallback model` : ''}.{openRun.git ? ` Commit ${openRun.git}.` : ''}</p>
+                <p className="an-p">{runName(openRun)}, {when(openRun.startedAt)} to {when(openRun.finishedAt)}: {openRun.cases} hands, {openRun.perfect} perfect, recall {pct(openRun.recall)}, precision {pct(openRun.precision)}, {openRun.hallucinatedCards} hallucinated cards, {openRun.inventedSuits ?? 0} invented suits{openRun.filledSuits != null ? ` (the model's; ${openRun.filledSuits} more filled in by the server, which says so in a note)` : ''}, {openRun.hallucinatedStacks ?? 0} invented stacks, {openRun.errors ?? 0} errors. Latency p50 {secs(openRun.latencyP50)}, p90 {secs(openRun.latencyP90)}. Cost {usd(openRun.costUsd, 2)} ({usd(openRun.costPerCase, 4)} a hand, {openRun.outputTokensPerCase ?? '—'} output tokens a parse){openRun.fallbacks ? `, ${openRun.fallbacks} served by a fallback model` : ''}.{openRun.git ? ` Commit ${openRun.git}.` : ''}</p>
                 <details className="parser-eval-report"><summary className="an-p">The full report</summary><pre>{openRun.report || 'No report kept.'}</pre></details>
+                {!running && keptFor(openRun) > 0 && (
+                  <div className="parser-eval-actions">
+                    <p className="an-p">Rescore scores the {keptFor(openRun)} parses this run kept with today's scorer and corpus, as a new run: no model call, no cost.</p>
+                    <button type="button" className="parser-eval-btn ctl" onClick={() => rescore(openRun.id)}>Rescore this run</button>
+                  </div>
+                )}
               </div>
             )}
           </>

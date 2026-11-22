@@ -38,9 +38,7 @@ import { useToast } from '../contexts/ToastContext.jsx';
 import QuickAddView from './QuickAddView.jsx';
 import { checkExportable } from '../utils/hand-history/index.js';
 import { heroNet } from '../utils/hand-net.js';
-import { streetState } from '../utils/poker-rules/betting.js';
-import { deckRanOut } from '../utils/quick-add/cards.js';
-import { autoTitle, displayTitle } from '../utils/hand-title.js';
+import { autoTitle as autoTitleOf, displayTitle as displayTitleOf, isBuiltTitle, compactChips } from '../utils/hand-title.js';
 import { SAMPLE_HAND } from '../utils/sample-hand.js';
 import { exportHandHistory, playedAtOf, handOfRow, handsFileName } from '../utils/hand-history/save.js';
 import { chipInsertVars, applyChipInserts, WHITE_CHIP } from '../utils/chip-inserts.js';
@@ -126,15 +124,8 @@ function drawDeadCards(hand, streetIdx, playerIdx) {
       if (!dead.has(k)) dead.set(k, why);
     }
   };
-  /* A thrown card is dead until the deck runs out (owner, 2026-11-22: "a thrown card comes back only once the
-     deck can't cover the draw"); then every earlier discard is shuffled back in, all but this player's own
-     throw of this draw (deckRanOut, utils/quick-add/cards.js; quick add's drawDeadCards does the same). */
-  const reshuffled = deckRanOut(hand, streetIdx, playerIdx);
   for (let si = 0; si <= streetIdx && si < hand.streets.length; si++) {
-    for (const d of (hand.streets[si].draws || [])) {
-      if (reshuffled && !(si === streetIdx && d.player === playerIdx)) continue;
-      add(d.discardedCards, 'already discarded');
-    }
+    for (const d of (hand.streets[si].draws || [])) add(d.discardedCards, 'already discarded');
     add(hand.streets[si].cards && hand.streets[si].cards.board, 'on the board');
   }
   const s0 = (hand.streets[0] && hand.streets[0].cards) || {};
@@ -149,20 +140,9 @@ function drawDeadCards(hand, streetIdx, playerIdx) {
   // Cards dealt on earlier draws are in their drawer's hand even when that player's starting
   // cards are unknown (computeDrawHand returns nothing without them). Any later thrown away are
   // already in the map as discarded.
-  // Not a card that player threw away again later (after a reshuffle it is live, and before one it is in the
-  // map as discarded already).
-  const thrownAfter = (q, from) => {
-    const out = new Set();
-    for (let sj = from + 1; sj <= streetIdx && sj < hand.streets.length; sj++) {
-      for (const e of (hand.streets[sj].draws || [])) if (e.player === q) parseCardNotation(e.discardedCards || '').forEach(c => out.add(c.rank + c.suit));
-    }
-    return out;
-  };
   for (let si = 0; si < streetIdx && si < hand.streets.length; si++) {
     for (const d of (hand.streets[si].draws || [])) {
-      const later = thrownAfter(d.player, si);
-      const kept = parseCardNotation(d.newCards || '').filter(c => !later.has(c.rank + c.suit)).map(c => c.rank + c.suit).join('');
-      add(kept, d.player === playerIdx ? 'already in this hand' : 'in ' + nameOf(d.player) + "'s hand");
+      add(d.newCards, d.player === playerIdx ? 'already in this hand' : 'in ' + nameOf(d.player) + "'s hand");
     }
   }
   const cur = hand.streets[streetIdx];
@@ -241,8 +221,9 @@ function getStreetDef(gameType) {
 }
 /* A draw in a game with a board too (Dramaha, Pineapple) plays by the draw games' rules for the hand. */
 const hasDraws = (category, cfg) => category === 'draw_triple' || category === 'draw_single' || (cfg && cfg.drawAfter != null);
-/* The razz family: the highest door brings it in (the bring-in and who acts first are poker-rules/betting.js's). */
+/* The razz family: the highest door brings it in and the lowest board acts first. In the 2-7 games the ace is the worst card. */
 const LOW_STUD = /(^|\s)(2-7 )?Razz$|^Razzdugi$|^Razzdeucy$/;
+const ACE_HIGH_LOW_STUD = /2-7 Razz$|^Razzdeucy$/;
 
 // Sort a hand's cards for the replay display: rank high→low, then suit (spades
 // high), the way a stud hand already reads. Face-down backs sort equal, so an
@@ -400,6 +381,136 @@ function lastStraddleSeat(list) {
   return list.length ? list[list.length - 1].seat : -1;
 }
 
+// ── Action order ──
+function getActionOrder(players, isPreflop, studInfo, straddleSeat) {
+  const n = players.length;
+  if (n <= 0) return [];
+  const indices = [];
+  if (studInfo && studInfo.isStud) {
+    const startIdx = studInfo.is3rdStreet ? studInfo.bringInIdx : studInfo.bestBoardIdx;
+    if (startIdx >= 0) {
+      for (let i = 0; i < n; i++) indices.push((startIdx + i) % n);
+      return indices;
+    }
+    for (let i = 0; i < n; i++) indices.push(i);
+    return indices;
+  }
+  const btnIdx = n <= 3 ? 0 : n - 3;
+  const sbIdx = n <= 3 ? (n <= 2 ? 0 : 1) : n - 2;
+  const bbIdx = n <= 2 ? 1 : n - 1;
+  if (n === 2) {
+    return isPreflop ? [0, 1] : [1, 0];
+  } else if (isPreflop) {
+    /* Normally 0..n-1, which is UTG first and the big blind closing. A
+       straddle moves the close: the last straddler has the option, so the
+       round starts at the seat on their left and wraps round to them. With no
+       straddle, start is 0 and this is the loop it always was. */
+    const start = (straddleSeat >= 0 && straddleSeat < n) ? (straddleSeat + 1) % n : 0;
+    for (let i = 0; i < n; i++) indices.push((start + i) % n);
+  } else {
+    indices.push(sbIdx);
+    indices.push(bbIdx);
+    for (let i = 0; i < btnIdx; i++) indices.push(i);
+    indices.push(btnIdx);
+  }
+  return indices.filter(i => i < n);
+}
+
+// ── Stud helpers ──
+function findStudBringIn(hand, isRazz) {
+  const heroIdx = hand.heroIdx != null ? hand.heroIdx : 0;
+  const oppCards = (hand.streets[0] && hand.streets[0].cards.opponents) || [];
+  const heroCards = parseCardNotation((hand.streets[0] && hand.streets[0].cards.hero) || '');
+  const rankBadness = isRazz
+    ? (ACE_HIGH_LOW_STUD.test(hand.gameType || '')
+      ? { '2':0,'3':1,'4':2,'5':3,'6':4,'7':5,'8':6,'9':7,'T':8,'J':9,'Q':10,'K':11,'A':12 }
+      : { 'A':0,'2':1,'3':2,'4':3,'5':4,'6':5,'7':6,'8':7,'9':8,'T':9,'J':10,'Q':11,'K':12 })
+    : { 'A':0,'K':1,'Q':2,'J':3,'T':4,'9':5,'8':6,'7':7,'6':8,'5':9,'4':10,'3':11,'2':12 };
+  const suitBadness = isRazz ? { 'c':0,'d':1,'h':2,'s':3 } : { 's':0,'h':1,'d':2,'c':3 };
+  let worstIdx = -1, worstRank = -1, worstSuit = -1;
+  for (let pi = 0; pi < hand.players.length; pi++) {
+    let doorCard;
+    if (pi === heroIdx) {
+      doorCard = heroCards.length >= 3 ? heroCards[2] : null;
+    } else {
+      const oppSlot = pi < heroIdx ? pi : pi - 1;
+      const oCards = parseCardNotation(oppCards[oppSlot] || '');
+      doorCard = oCards.length ? oCards[0] : null;
+    }
+    if (!doorCard || doorCard.suit === 'x') continue;
+    const rv = rankBadness[doorCard.rank] || 0;
+    const sv = suitBadness[doorCard.suit] || 0;
+    if (worstIdx === -1 || rv > worstRank || (rv === worstRank && sv > worstSuit)) {
+      worstIdx = pi; worstRank = rv; worstSuit = sv;
+    }
+  }
+  return worstIdx;
+}
+
+/* A visible stud board's score: the category first (no pair < pair < two pair < trips < full house
+   < quads), then every rank, grouped ranks before kickers, highest first. Each category sits above
+   anything the ranks can add, so an unpaired A-K no longer outscores 9-9, and every kicker counts
+   (entry audit D2 / evaluation audit D7, 2026-10-20). aceLow: the ace is a one (Razz); a low game
+   takes the lowest score. */
+function scoreStudBoard(cards, aceLow = false) {
+  const rankValues = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':aceLow ? 1 : 14 };
+  if (!cards.length) return 0;
+  const counts = {};
+  cards.forEach(c => { const r = rankValues[c.rank] || 0; counts[r] = (counts[r] || 0) + 1; });
+  const groups = Object.keys(counts).map(Number).map(r => [r, counts[r]]).sort((a, b) => b[1] - a[1] || b[0] - a[0]);
+  const shape = groups.map(g => g[1]);
+  const cat = shape[0] === 4 ? 6 : shape[0] === 3 ? (shape[1] === 2 ? 5 : 4) : shape[0] === 2 ? (shape[1] === 2 ? 3 : 2) : 1;
+  const P = 15;
+  let score = cat * Math.pow(P, 5);
+  groups.forEach((g, i) => { score += g[0] * Math.pow(P, 4 - i); });
+  return score;
+}
+
+function findStudBestBoard(hand, streetIdx, foldedSet, isLowGame) {
+  const heroIdx = hand.heroIdx != null ? hand.heroIdx : 0;
+  const maxVisibleStreet = Math.min(streetIdx, 3);
+  let bestIdx = -1, bestScore = isLowGame ? Infinity : -Infinity;
+  for (let pi = 0; pi < hand.players.length; pi++) {
+    if (foldedSet.has(pi)) continue;
+    const visible = [];
+    for (let si = 0; si <= maxVisibleStreet; si++) {
+      if (pi === heroIdx) {
+        const hCards = parseCardNotation((hand.streets[si] && hand.streets[si].cards.hero) || '');
+        if (si === 0 && hCards.length >= 3) visible.push(hCards[2]);
+        if (si > 0) hCards.forEach(c => { if (c.suit !== 'x') visible.push(c); });
+      } else {
+        const oppSlot = pi < heroIdx ? pi : pi - 1;
+        const oCards = parseCardNotation(((hand.streets[si] && hand.streets[si].cards.opponents) || [])[oppSlot] || '');
+        oCards.forEach(c => { if (c.suit !== 'x') visible.push(c); });
+      }
+    }
+    const score = scoreStudBoard(visible, isLowGame && !ACE_HIGH_LOW_STUD.test(hand.gameType || ''));
+    if (isLowGame ? score < bestScore : score > bestScore) { bestIdx = pi; bestScore = score; }
+  }
+  return bestIdx;
+}
+
+function studHasOpenPairOn4th(hand) {
+  if (!hand.streets || !hand.streets[0] || !hand.streets[1]) return false;
+  const heroIdx = hand.heroIdx != null ? hand.heroIdx : 0;
+  for (let pi = 0; pi < hand.players.length; pi++) {
+    let doorCard = null, fourthCard = null;
+    if (pi === heroIdx) {
+      const s0Cards = parseCardNotation((hand.streets[0] && hand.streets[0].cards.hero) || '');
+      const s1Cards = parseCardNotation((hand.streets[1] && hand.streets[1].cards.hero) || '');
+      doorCard = s0Cards.length >= 3 ? s0Cards[2] : null;
+      fourthCard = s1Cards.length >= 1 ? s1Cards[0] : null;
+    } else {
+      const oppSlot = pi < heroIdx ? pi : pi - 1;
+      const s0Opp = parseCardNotation(((hand.streets[0] && hand.streets[0].cards.opponents) || [])[oppSlot] || '');
+      const s1Opp = parseCardNotation(((hand.streets[1] && hand.streets[1].cards.opponents) || [])[oppSlot] || '');
+      doorCard = s0Opp.length >= 1 ? s0Opp[0] : null;
+      fourthCard = s1Opp.length >= 1 ? s1Opp[0] : null;
+    }
+    if (doorCard && fourthCard && doorCard.suit !== 'x' && fourthCard.suit !== 'x' && doorCard.rank === fourthCard.rank) return true;
+  }
+  return false;
+}
 
 // ── "Solve this spot" → Solver handoff ──────────────────────
 // gameType → solver engine id. The live Solver supports only the
@@ -753,6 +864,27 @@ function formatStakes(hand, { straddle = 0 } = {}) {
   const parts = limit ? [f(b.bb), f(b.bigBet || b.bb * 2)] : [f(b.sb), f(b.bb), ...(straddle ? [f(straddle)] : [])];
   return parts.join('/') + (b.ante ? '/(' + f(b.ante) + ')' : '');
 }
+
+/* A hand's title when none was typed: [game] | [pot type] | [MTT or Cash] | [blinds] (owner, 2026-11-22), the blinds as
+   the felt and the row write them (a limit game's two bet sizes), without the ante: the format names the blinds, and a
+   stud hand's "/($0.37)" ran the title off the row. utils/hand-title.js builds it; these give it the blinds. */
+const TITLE_OPTS = {
+  stakes: (h) => {
+    const b = (h && h.blinds) || {};
+    if (h && h.gameMode === 'cash') return formatStakes({ ...h, blinds: { ...b, ante: 0 } });
+    // A tournament's written short, 1K/2K (owner, 2026-11-22), so the title fits the row.
+    if (!b.bb) return '';
+    const limit = (HAND_CONFIG[h.gameType] || HAND_CONFIG_DEFAULT).betting === 'fl';
+    return (limit ? [b.bb, b.bigBet || b.bb * 2] : [b.sb, b.bb]).map(compactChips).join('/');
+  },
+};
+const autoTitle = (hand) => autoTitleOf(hand, TITLE_OPTS);
+const displayTitle = (row) => displayTitleOf(row, TITLE_OPTS);
+/** True where the list shows the built title, which carries the stakes, so the row's meta line need not. */
+const showsBuiltTitle = (row) => {
+  const t = (row && row.title) || '';
+  return !t || t === ((row && row.gameType) || '') + ' Hand' || isBuiltTitle(t);
+};
 
 /* Names a split share as the fraction of the pot it is. Deciding the share is
    the evaluator's job — this only rationalises the number it is handed, which
@@ -1405,7 +1537,7 @@ function PotChipLive({ amount, motion, set, shipped = false }) {
     motion.setPile = (value, opts) => {
       const update = () => setLive({
         seq: motion.renderSeq, value, shipped: !!(opts && opts.shipped), hidden: (opts && opts.hidden) || null,
-        layout: (opts && opts.layout) || null, delay: (opts && opts.delay) || 0,
+        layout: (opts && opts.layout) || null, delay: (opts && opts.delay) || 0, fade: (opts && opts.fade) || 0,
       });
       // Same frame as the digits: synchronously, except inside a commit (React flushes it there).
       if (motion.inCommit) update(); else { try { flushSync(update); } catch (e) { update(); } }
@@ -1416,8 +1548,9 @@ function PotChipLive({ amount, motion, set, shipped = false }) {
   const layoutKey = layout ? layout.join(',') : '';
   useLayoutEffect(() => {
     const colors = stacks.map(s => s.color);
+    const counts = stacks.map(s => Math.min(s.count, 6));
     const prev = prevRef.current;
-    prevRef.current = { colors, shipped: isShipped, hidden: hidden || [] };
+    prevRef.current = { colors, counts, shipped: isShipped, hidden: hidden || [] };
     const row = rowRef.current;
     if (!isLive || !row || row.children.length !== colors.length || colors.length < 1) return;
     const kids = [...row.children];
@@ -1447,7 +1580,16 @@ function PotChipLive({ amount, motion, set, shipped = false }) {
       if (j < 0 || prev.hidden.includes(c)) reveals.push({ el: kids[i], size });
       if (j >= 0) moves.push({ el: kids[i], dx: (slot(j, prev.colors.length) - slot(i, colors.length)) * pitch, size });
     });
-    if (moves.length || reveals.length) settlePile(motion, { set, rate: motion.rate || 1, moves, reveals, delay: (isLive && live.delay) || 0 });
+    if (moves.length || reveals.length) settlePile(motion, { set, rate: motion.rate || 1, moves, reveals, delay: (isLive && live.delay) || 0, fade: (isLive && live.fade) || 0 });
+    /* A stack that stays and grows, where no chip lands on it (the opening's blinds): its new chips fade in rather
+       than appear (owner, 2026-11-22). */
+    if (isLive && live.fade > 0 && prev.counts) colors.forEach((c, i) => {
+      const j = prev.colors.indexOf(c);
+      if (j < 0 || !(counts[i] > prev.counts[j])) return;
+      [...kids[i].children].slice(prev.counts[j]).forEach(d => motion.run(d, { key: { el: d, kind: 'disc-in' }, property: 'individual', size: { w: d.offsetWidth || 1, h: d.offsetHeight || 1 }, channels: [
+        { prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: live.fade / (motion.rate || 1), ease: (q) => q * q * (3 - 2 * q) } },
+      ] }));
+    });
   }, [shown, isShipped, hiddenKey, layoutKey]);
   return (
     <div className={'replayer-pot-chips' + (isShipped ? ' is-shipped' : '')} ref={rowRef}>
@@ -2455,16 +2597,130 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
   const currentPot = potAndStacks.pot;
   const currentStacks = potAndStacks.stacks;
 
-  /* The rules of the street, from the one module the live tables use too (utils/poker-rules/betting.js, held
-     to PokerKit by check-rules): who has folded or is all in, the price, whose turn it is and what they may
-     do. The entry kept its own copy of all of this until the play-money branch moved it (decision 11). */
-  const rules = useMemo(() => streetState(hand, currentStreetIdx), [hand, currentStreetIdx]);
-  const foldedSet = rules.folded;
-  const allInSet = rules.allIn;
-  const seatOrder = rules.seatOrder; // this street's acting order (stud: from the bring-in or the best board)
+  const foldedSet = useMemo(() => {
+    const f = new Set();
+    for (let si = 0; si <= currentStreetIdx; si++) {
+      for (let ai = 0; ai < (hand.streets[si].actions || []).length; ai++) {
+        if (hand.streets[si].actions[ai].action === 'fold') f.add(hand.streets[si].actions[ai].player);
+      }
+    }
+    return f;
+  }, [hand.streets, currentStreetIdx]);
 
-  const streetBets = useMemo(() => ({ contrib: rules.contrib, maxBet: rules.maxBet }), [rules]);
-  const currentActor = rules.actor;
+  const allInSet = useMemo(() => {
+    const a = new Set();
+    currentStacks.forEach((s, i) => { if (s <= 0 && !foldedSet.has(i)) a.add(i); });
+    return a;
+  }, [currentStacks, foldedSet]);
+
+  // NL and PL Razz are Razz too: they took the high game's bring-in and first actor (entry audit D3).
+  const isRazz = LOW_STUD.test(hand.gameType || '');
+  const isStudLow = isRazz;
+
+  const priorStreetFoldedSet = useMemo(() => {
+    const f = new Set();
+    for (let si = 0; si < currentStreetIdx; si++) {
+      for (let ai = 0; ai < (hand.streets[si].actions || []).length; ai++) {
+        if (hand.streets[si].actions[ai].action === 'fold') f.add(hand.streets[si].actions[ai].player);
+      }
+    }
+    return f;
+  }, [hand.streets, currentStreetIdx]);
+
+  const studInfo = useMemo(() => {
+    if (!gameCfg.isStud) return null;
+    const is3rdStreet = currentStreetIdx === 0;
+    const bringInIdx = is3rdStreet ? findStudBringIn(hand, isStudLow) : -1;
+    const bestBoardIdx = !is3rdStreet ? findStudBestBoard(hand, currentStreetIdx, priorStreetFoldedSet, isStudLow) : -1;
+    return { isStud: true, is3rdStreet, bringInIdx, bestBoardIdx };
+  }, [gameCfg.isStud, currentStreetIdx, hand, isStudLow, priorStreetFoldedSet]);
+
+  const preflopStraddleSeat = useMemo(
+    () => (isPreflop ? lastStraddleSeat(getStraddles(hand.players, hand.blinds)) : -1),
+    [isPreflop, hand.players, hand.blinds]);
+  const seatOrder = useMemo(
+    () => getActionOrder(hand.players, isPreflop, studInfo, preflopStraddleSeat),
+    [hand.players, isPreflop, studInfo, preflopStraddleSeat]);
+  const actionOrder = useMemo(() => seatOrder.filter(i => !foldedSet.has(i) && !allInSet.has(i)), [seatOrder, foldedSet, allInSet]);
+
+  const bringInAmount = gameCfg.isStud
+    ? ((hand.blinds || {}).bringIn || Math.floor(((hand.blinds || {}).bb || 200) / 4))
+    : 0;
+
+  const streetBets = useMemo(() => {
+    const contrib = new Array(hand.players.length).fill(0);
+    let maxBet = 0;
+    if (isPreflop && category !== 'stud') {
+      const sbIdx = hand.players.findIndex(p => p.position === 'SB' || p.position === 'BTN/SB');
+      const bbIdx = hand.players.findIndex(p => p.position === 'BB');
+      if (sbIdx >= 0) contrib[sbIdx] = (hand.blinds || {}).sb || 0;
+      if (bbIdx >= 0) contrib[bbIdx] = (hand.blinds || {}).bb || 0;
+      maxBet = (hand.blinds || {}).bb || 0;
+      /* Straddles post before the deal and set the preflop price: the largest
+         straddle IS the current bet, and each straddler is already in for
+         theirs. Without this, maxBet stayed at the BB — so calls, and every
+         pot-sized bet computed off it, came out short (POT 40 not 80 behind a
+         20 straddle). The pot total already counted the straddle; the betting
+         state did not. */
+      getStraddles(hand.players, hand.blinds).forEach(st => {
+        contrib[st.seat] = st.amount;
+        if (st.amount > maxBet) maxBet = st.amount;
+      });
+    }
+    (currentStreet.actions || []).forEach(act => {
+      if (act.action === 'fold') return;
+      if (act.action === 'bring-in') { contrib[act.player] = act.amount || bringInAmount; if (contrib[act.player] > maxBet) maxBet = contrib[act.player]; return; }
+      if (act.amount > 0) { contrib[act.player] = chipRound(contrib[act.player] + act.amount); if (contrib[act.player] > maxBet) maxBet = contrib[act.player]; }
+    });
+    return { contrib, maxBet };
+  }, [currentStreet.actions, isPreflop, hand.players, hand.blinds, category, bringInAmount]);
+
+  const currentActor = useMemo(() => {
+    const actions = currentStreet.actions || [];
+    if (actionOrder.length === 0) return -1;
+    /* Everyone else still in is all in: the one player with chips left acts only if a bet is still
+       theirs to call. Once they have matched it (or nobody bet), there is nobody left to bet into,
+       so the street needs no action from them (owner, 2026-10-21: the entry made the covering
+       player bet into an opponent with nothing left to call). */
+    if (actionOrder.length === 1 && streetBets.contrib[actionOrder[0]] >= streetBets.maxBet) return -1;
+    let lastRaiserPlayer = -1, lastRaiseIdx = -1;
+    /* The last aggression: a bet or raise, or an all-in that put in more than the price before it
+       (an all-in that only calls reopens nothing). */
+    const before = new Array(hand.players.length).fill(0);
+    let priceBefore = 0;
+    if (isPreflop && category !== 'stud') {
+      const blinds = hand.blinds || {};
+      const sbIdx = hand.players.findIndex(p => p.position === 'SB' || p.position === 'BTN/SB');
+      const bbIdx = hand.players.findIndex(p => p.position === 'BB');
+      if (sbIdx >= 0) before[sbIdx] = blinds.sb || 0;
+      if (bbIdx >= 0) before[bbIdx] = blinds.bb || 0;
+      priceBefore = blinds.bb || 0;
+      getStraddles(hand.players, hand.blinds).forEach(st => { before[st.seat] = st.amount; if (st.amount > priceBefore) priceBefore = st.amount; });
+    }
+    actions.forEach((a, i) => {
+      if (a.action === 'fold') return;
+      if (a.action === 'bring-in') { before[a.player] = a.amount || bringInAmount; priceBefore = Math.max(priceBefore, before[a.player]); return; }
+      const after = before[a.player] + (a.amount > 0 ? a.amount : 0);
+      if (a.action === 'raise' || a.action === 'bet' || (a.action === 'all-in' && after > priceBefore)) { lastRaiseIdx = i; lastRaiserPlayer = a.player; }
+      before[a.player] = after;
+      if (after > priceBefore) priceBefore = after;
+    });
+    /* Walk the FULL seat order from the seat after the raiser, skipping folded and all-in seats.
+       Searching the raiser in actionOrder failed whenever the raiser was all-in (they are not in it),
+       so the turn went back to the first seat: SB checks, BB shoves, and the SB was asked again
+       instead of the button (entry audit D1, 2026-10-20). */
+    let startOi = 0;
+    if (lastRaiserPlayer >= 0) { const raiserPos = seatOrder.indexOf(lastRaiserPlayer); if (raiserPos >= 0) startOi = raiserPos + 1; }
+    for (let count = 0; count < seatOrder.length; count++) {
+      const pidx = seatOrder[(startOi + count) % seatOrder.length];
+      if (foldedSet.has(pidx) || allInSet.has(pidx)) continue;
+      let lastActIdx = -1;
+      for (let j = actions.length - 1; j >= 0; j--) { if (actions[j].player === pidx) { lastActIdx = j; break; } }
+      if (lastActIdx < lastRaiseIdx) return pidx;
+      if (lastActIdx === -1) return pidx;
+    }
+    return -1;
+  }, [actionOrder, seatOrder, foldedSet, allInSet, currentStreet.actions, isPreflop, category, hand.players, hand.blinds, bringInAmount, streetBets]);
 
   const isBettingComplete = currentActor === -1;
   const activePlayers = hand.players.filter((_, i) => !foldedSet.has(i));
@@ -2784,21 +3040,98 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
   const bettingType = gameCfg.betting || 'nl';
   const isLimitGame = bettingType === 'fl';
   const isPotLimit = bettingType === 'pl';
-  /* What the seat to act may do, from the shared rules (rules.legal; utils/poker-rules/betting.js has the
-     why of each: the last FULL raise as the smallest raise, TDA 43 reopening, pot limit counting a big-blind
-     ante, the limit size and cap, the stud bring-in, completion and open pair on 4th). Every amount there is
-     a "to"; the buttons store what is added, as the hand always has. */
-  const legal = rules.legal && rules.legal.player === currentActor ? rules.legal : null;
+  const flSmallStreets = gameCfg.flSmallStreets || [0, 1];
+  const flRaiseCap = (hand.blinds || {}).betCap || gameCfg.raiseCap || 4;
+  let streetBetRaiseCount = 0;
+  (currentStreet.actions || []).forEach(a => { if (a.action === 'raise' || a.action === 'bet') streetBetRaiseCount++; });
+  const activePlayerCount = hand.players.filter((_, i) => !foldedSet.has(i) && !allInSet.has(i)).length;
+  const isHeadsUp = activePlayerCount <= 2;
+  const flIsSmall = flSmallStreets.includes(currentStreetIdx);
+  /* An open pair on 4th street: in stud high the first bet may be the small bet or the big one, and
+     the street goes on at the size it opened with. Hi-lo and the low games keep the small bet; this
+     made the big bet a must in every stud game (entry audit 18; entry vs oracle, cannot enter 3). */
+  const stud4thOpenPair = gameCfg.isStud && currentStreetIdx === 1
+    && (GAME_EVAL[hand.gameType] || {}).type === 'high' && studHasOpenPairOn4th(hand);
+  const flSmallBet = (hand.blinds || {}).bb || 100;
+  const flBigBet = (hand.blinds || {}).bigBet || flSmallBet * 2;
+  const flOpeningBet = (currentStreet.actions || []).find(a => a.action === 'bet');
+  const flBetSize = stud4thOpenPair
+    ? (flOpeningBet && chipRound(flOpeningBet.amount) >= flBigBet ? flBigBet : flSmallBet)
+    : (flIsSmall ? flSmallBet : flBigBet);
+  const flOpenPairChoice = stud4thOpenPair && !flOpeningBet;
+  const flRaiseToTotal = chipRound(streetBets.maxBet + flBetSize);
+  const flRaiseIncrement = chipRound(flRaiseToTotal - playerContrib);
+  /* Heads-up used to lift the cap on every street, which is one house rule but
+     not the one being asked for: uncapped heads up on the LAST street only,
+     and only when the hand says so. Off, the cap holds everywhere. */
+  const isLastStreet = currentStreetIdx === hand.streets.length - 1;
+  const uncapHeadsUp = (hand.blinds || {}).uncapHeadsUp !== false;
+  const flCanRaise = (uncapHeadsUp && isHeadsUp && isLastStreet) || streetBetRaiseCount < flRaiseCap;
+
+  /* Pot-limit: the pot is everything in the middle, a big-blind ante included. Before the flop the
+     ante was left out, so a legal pot raise was cut down to a smaller one without a word (entry vs
+     oracle, 1). PokerKit counts it, and so does the text quick add (utils/quick-add/betting.js). */
   const blinds = hand.blinds || { sb: 0, bb: 0, ante: 0 };
+  const plEffectivePot = chipRound(currentPot);
+  const plPotAfterCall = chipRound(plEffectivePot + callAmount);
+  const plRaiseToTotal = chipRound(streetBets.maxBet + plPotAfterCall);
+  const plMaxRaiseIncrement = chipRound(plRaiseToTotal - playerContrib);
+  const plMaxBet = plEffectivePot;
+
+  /* One walk over the street (entry vs oracle, 4c and 5): the price; the size of the last FULL raise,
+     which is the smallest raise allowed (a short all-in raises the price, not that size); and whether
+     the betting is open again to the player to act. A player who has acted may raise again only after
+     a full raise, or short ones adding up to one (TDA 2019 rule 43; in limit, half a bet). A straddle
+     is the new big blind: the smallest raise is its size. */
   const _bbAmt = blinds.bb || 0;
-  const canRaiseHere = !!(legal && legal.canRaise);
-  const addedTo = (to) => (to == null ? 0 : chipRound(to - playerContrib));
-  // Pot limit's pills: the pot as it stands and after the call (the range itself is legal.minTo..maxTo).
-  const plMaxBet = chipRound(currentPot);
-  const plPotAfterCall = chipRound(plMaxBet + callAmount);
+  let _prevMax = 0, _lastRaiseSize = _bbAmt;
+  const _runContrib = new Array(hand.players.length).fill(0);
+  if (isPreflop && category !== 'stud') {
+    const _sbIdx = hand.players.findIndex(p => p.position === 'SB' || p.position === 'BTN/SB');
+    const _bbIdx = hand.players.findIndex(p => p.position === 'BB');
+    if (_sbIdx >= 0) _runContrib[_sbIdx] = blinds.sb || 0;
+    if (_bbIdx >= 0) _runContrib[_bbIdx] = _bbAmt;
+    _prevMax = _bbAmt;
+    getStraddles(hand.players, hand.blinds).forEach(st => {
+      _runContrib[st.seat] = st.amount;
+      _prevMax = Math.max(_prevMax, st.amount);
+      _lastRaiseSize = Math.max(_lastRaiseSize, st.amount);
+    });
+  }
+  let _myLastIdx = -1, _priceAtMine = 0, _fullSinceMine = false;
+  (currentStreet.actions || []).forEach((a, i) => {
+    if (a.action === 'fold') return;
+    if (a.action === 'bring-in') {
+      _runContrib[a.player] = a.amount || bringInAmount;
+      _prevMax = Math.max(_prevMax, _runContrib[a.player]);
+    } else {
+      if (a.amount > 0) _runContrib[a.player] = chipRound(_runContrib[a.player] + a.amount);
+      const to = _runContrib[a.player];
+      if (to > _prevMax) {
+        const size = chipRound(to - _prevMax);
+        const full = isLimitGame ? size * 2 >= flBetSize : size >= _lastRaiseSize;
+        if (full && !isLimitGame) _lastRaiseSize = Math.max(size, _bbAmt);
+        if (full) _fullSinceMine = true;
+        _prevMax = to;
+      }
+    }
+    if (a.player === currentActor) { _myLastIdx = i; _priceAtMine = _prevMax; _fullSinceMine = false; }
+  });
+  const minRaiseToTotal = chipRound(streetBets.maxBet + _lastRaiseSize);
+  const minRaiseIncrement = chipRound(minRaiseToTotal - playerContrib);
+  // A player who only checked faced no bet, so any bet opens it to them, short or not.
+  const reopened = _myLastIdx < 0 || _priceAtMine <= 0 || _fullSinceMine
+    || chipRound(_prevMax - _priceAtMine) >= (isLimitGame ? flBetSize / 2 : _lastRaiseSize);
+  /* A raise needs someone left who could call it, a stack that covers more than the call, and the
+     betting open to this player (entry vs oracle, 4a-c). A stack that covers no more than the call
+     has Call, which puts it all in; "All-in" saved that as a raise, and the round never closed (3). */
+  // Someone who could put in more than the bet now faced: a stack short of it can only call, all in.
+  const othersWithChips = hand.players.some((_, i) => i !== currentActor && !foldedSet.has(i) && !allInSet.has(i)
+    && chipRound((currentStacks[i] || 0) + (streetBets.contrib[i] || 0)) > chipRound(streetBets.maxBet));
+  const canRaiseHere = currentActor >= 0 && othersWithChips && reopened && chipRound(playerStack - callAmount) > 0;
   // The legal range for the Bet / Raise box, as amounts put in.
-  const betMin = canRaiseHere ? addedTo(legal.minTo) : 0;
-  const betMax = canRaiseHere ? addedTo(legal.maxTo) : 0;
+  const betMin = canCheck ? Math.min(_bbAmt || flSmallBet, playerStack) : Math.min(minRaiseIncrement, playerStack);
+  const betMax = isPotLimit ? (canCheck ? Math.min(plMaxBet, playerStack) : Math.min(plMaxRaiseIncrement, playerStack)) : playerStack;
   const cashHand = hand.gameMode === 'cash';
   const roundAmt = (v) => (cashHand ? Math.round(v * 100) / 100 : Math.round(v));
   /* Confirm: a figure the field cannot read, one under the smallest raise or over the limit is
@@ -3550,23 +3883,13 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
     const isDrawShowdown = hasDraws(category, gameCfg);
     // Collect used cards
     const sdUsedCards = new Set();
-    const addUsed = (text) => parseCardNotation(text || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); });
-    /* A draw game whose deck ran out (deckRanOut): the discards were shuffled and dealt again (six-handed triple
-       draw can deal more than 52 cards), so only the cards still held block a shown hand (2-7 TD#5 of the PokerKit
-       corpus: the hero's Kc, thrown at the second draw, is in the big blind's hand at the showdown). Until then a
-       thrown card is dead here too (owner, 2026-11-22). */
-    const sdReshuffled = isDrawShowdown && deckRanOut(hand, null, null);
     hand.streets.forEach(s => {
+      parseCardNotation(s.cards.hero || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); });
       // Every board: a double board's second and a run's were left out, so their cards could be shown in a hand.
-      ['board', 'board2', 'board3'].forEach(k => addUsed(s.cards[k]));
-      if (sdReshuffled) return;
-      addUsed(s.cards.hero);
-      (s.cards.opponents || []).forEach(addUsed);
-      (s.draws || []).forEach(d => addUsed((d.discardedCards || '') + (d.newCards || '')));
+      ['board', 'board2', 'board3'].forEach(k => parseCardNotation(s.cards[k] || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); }));
+      (s.cards.opponents || []).forEach(opp => { parseCardNotation(opp || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); }); });
+      (s.draws || []).forEach(d => { parseCardNotation((d.discardedCards || '') + (d.newCards || '')).forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); }); });
     });
-    if (sdReshuffled) {
-      addUsed(computeDrawHand(hand.streets[0].cards.hero || '', hand.streets.map(s => (s.draws || []).find(d => d.player === heroIdx)), hand.streets.length - 1, hand.gameType));
-    }
     const showdownPlayers = hand.players.map((p, i) => ({ player: p, idx: i })).filter(o => o.idx !== heroIdx && !foldedSet.has(o.idx));
     const sdMaxCards = gameCfg.showCards || gameCfg.heroCards || 2;
     const sdAllRanks = ranksFor(hand.gameType);
@@ -4609,30 +4932,30 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                 <div className="gto-seat-detail-wrap"><div className="gto-seat-detail-inner"><div className="gto-seat-detail">
                   {/* Hero card picker: open while the hero's cards are incomplete, or reopened from the seat */}
                   {i === heroIdx && !gameCfg.isStud && heroPicker()}
-                  {/* Stud bring-in: first action on 3rd street; then, while nobody has completed, the completion */}
-                  {legal && legal.bringIn != null ? (
+                  {/* Stud bring-in: first action on 3rd street */}
+                  {gameCfg.isStud && currentStreetIdx === 0 && studInfo && studInfo.bringInIdx === currentActor && !(currentStreet.actions || []).length ? (
                     <div className="gto-action-row">
-                      <button className="gto-action-btn" onClick={() => addAction('bring-in', legal.bringIn)}><span className="gto-action-icon call">&#x2B24;</span><span className="gto-action-label">Bring In {formatChipAmount(legal.bringIn)}</span></button>
-                      <button className="gto-action-btn" onClick={() => addAction('bet', addedTo(legal.minTo))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Complete {formatChipAmount(legal.minTo)}</span></button>
+                      <button className="gto-action-btn" onClick={() => addAction('bring-in', bringInAmount)}><span className="gto-action-icon call">&#x2B24;</span><span className="gto-action-label">Bring In {formatChipAmount(bringInAmount)}</span></button>
+                      <button className="gto-action-btn" onClick={() => addAction('bet', Math.min(flBetSize, playerStack))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Complete {formatChipAmount(Math.min(flBetSize, playerStack))}</span></button>
                     </div>
-                  ) : legal && legal.raiseWord === 'Complete' ? (
+                  ) : gameCfg.isStud && currentStreetIdx === 0 && (currentStreet.actions || []).length > 0 && streetBets.maxBet <= bringInAmount && streetBetRaiseCount === 0 ? (
                     <div className="gto-action-row">
                       <button className="gto-action-btn" onClick={() => addAction('fold')}><span className="gto-action-icon fold">&#x2715;</span><span className="gto-action-label">Fold</span></button>
                       <button className="gto-action-btn" onClick={() => addAction('call', Math.min(callAmount, playerStack))}><span className="gto-action-icon call">&#x2B24;</span><span className="gto-action-label">Call {formatChipAmount(Math.min(callAmount, playerStack))}</span></button>
-                      {canRaiseHere && <button className="gto-action-btn" onClick={() => addAction('bet', addedTo(legal.minTo))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Complete {formatChipAmount(legal.minTo)}</span></button>}
-                      {canRaiseHere && legal.maxTo > legal.minTo && <button className="gto-action-btn" onClick={() => { setShowRaiseInput(true); setBetAmount(String(legal.minTo)); }}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Raise</span></button>}
+                      <button className="gto-action-btn" onClick={() => { const completeAmt = Math.min(flBetSize - playerContrib, playerStack); addAction('bet', completeAmt); }}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Complete {formatChipAmount(Math.min(flBetSize, playerStack + playerContrib))}</span></button>
+                      {!isLimitGame && playerStack > (flBetSize - playerContrib) && <button className="gto-action-btn" onClick={() => { setShowRaiseInput(true); setBetAmount(String(Math.min(flBetSize, chipRound(playerStack + playerContrib)))); }}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Raise</span></button>}
                     </div>
                   ) : isLimitGame ? (
                     <div className="gto-action-row">
                       {!canCheck && <button className="gto-action-btn" onClick={() => addAction('fold')}><span className="gto-action-icon fold">&#x2715;</span><span className="gto-action-label">Fold</span></button>}
                       {canCheck ? <button className="gto-action-btn" onClick={() => addAction('check')}><span className="gto-action-icon check">&#x2713;</span><span className="gto-action-label">Check</span></button>
                         : <button className="gto-action-btn" onClick={() => addAction('call', Math.min(callAmount, playerStack))}><span className="gto-action-icon call">&#x2B24;</span><span className="gto-action-label">Call {formatChipAmount(Math.min(callAmount, playerStack))}</span></button>}
-                      {canRaiseHere && (canCheck
-                        ? <button className="gto-action-btn" onClick={() => addAction('bet', addedTo(legal.fixedTo))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Bet {formatChipAmount(addedTo(legal.fixedTo))}</span></button>
-                        : <button className="gto-action-btn" onClick={() => addAction('raise', addedTo(legal.fixedTo))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Raise to {formatChipAmount(legal.fixedTo)}</span></button>
+                      {flCanRaise && canRaiseHere && (canCheck
+                        ? <button className="gto-action-btn" onClick={() => addAction('bet', Math.min(flBetSize, playerStack))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Bet {formatChipAmount(Math.min(flBetSize, playerStack))}</span></button>
+                        : <button className="gto-action-btn" onClick={() => addAction('raise', Math.min(flRaiseIncrement, playerStack))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Raise to {formatChipAmount(Math.min(flRaiseToTotal, playerStack + playerContrib))}</span></button>
                       )}
-                      {canRaiseHere && canCheck && legal.bigTo != null && (
-                        <button className="gto-action-btn" onClick={() => addAction('bet', addedTo(legal.bigTo))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Bet {formatChipAmount(addedTo(legal.bigTo))}</span></button>
+                      {flCanRaise && canRaiseHere && canCheck && flOpenPairChoice && flBigBet > flBetSize && (
+                        <button className="gto-action-btn" onClick={() => addAction('bet', Math.min(flBigBet, playerStack))}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Bet {formatChipAmount(Math.min(flBigBet, playerStack))}</span></button>
                       )}
                     </div>
                   ) : isPotLimit ? (
@@ -4645,7 +4968,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                           {canRaiseHere && <button className="gto-action-btn" onClick={() => { setShowRaiseInput(true); setBetAmount(String(totalOf(betMin))); }}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">{canCheck ? 'Bet' : 'Raise'}</span></button>}
                           {/* With nothing to call, the figure is what goes in, so it is capped at the stack;
                               facing a bet it is the total raised to (entry vs oracle, 7). */}
-                          {canRaiseHere && <button className="gto-action-btn" onClick={() => addAction(canCheck ? 'bet' : 'raise', betMax)}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Pot {formatChipAmount(canCheck ? betMax : legal.maxTo)}</span></button>}
+                          {canRaiseHere && <button className="gto-action-btn" onClick={() => addAction(canCheck ? 'bet' : 'raise', betMax)}><span className="gto-action-icon raise">&#x25B2;</span><span className="gto-action-label">Pot {formatChipAmount(canCheck ? betMax : Math.min(plRaiseToTotal, playerStack + playerContrib))}</span></button>}
                         </div>
                       )}
                       {showRaiseInput && (
@@ -5098,7 +5421,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         setCurrentHand(handData);
         setCurrentHandId(data.id);
         setHandIsShared(false);
-        setTitle(data.title || '');
+        setTitle(isBuiltTitle(data.title) ? '' : (data.title || ''));
         setNotes(data.notes || '');
         setIsPublic(!!data.is_public);
         setMode('replay');
@@ -5238,7 +5561,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       setCurrentHand(handData);
       setCurrentHandId(h.id);
       setHandIsShared(false);
-      setTitle(h.title || '');
+      setTitle(isBuiltTitle(h.title) ? '' : (h.title || ''));
       setNotes(h.notes || '');
       setIsPublic(false);
       setOpeningId(null);
@@ -5844,9 +6167,13 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                       A fixed-limit hand is quoted in its two BET sizes, the way
                       the felt states it — a stud row read "100/40", a small
                       blind stud does not have over a small bet. */}
-                  {formatStakes(h)}
-                  {h.created_at ? ' \u00b7 ' + new Date(h.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(undefined, {month:'short', day:'numeric'}) : ''}
-                  {h.event && h.event.title ? ' \u00b7 ' + h.event.title : ''}
+                  {/* A built title already ends in the stakes (owner, 2026-11-22), so the line under it starts at
+                      the date; a typed title keeps them here. */}
+                  {[
+                    showsBuiltTitle(h) ? '' : formatStakes(h),
+                    h.created_at ? new Date(h.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(undefined, {month:'short', day:'numeric'}) : '',
+                    h.event && h.event.title ? h.event.title : '',
+                  ].filter(Boolean).join(' \u00b7 ')}
                   {Array.isArray(h.tags) && h.tags.length > 0 && <span className="hx-row-tag">{h.tags[0]}</span>}
                 </span>
                 {openingId === h.id && <span className="replayer-hand-card-meta is-opening-line">Opening…</span>}
@@ -6916,11 +7243,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
 
     const scores = {};
     const parsedBy = {};
-    /* A hand mucked at the showdown gives up its claim (TDA), as in the export (hand-history/prepare.js): the pot
-       goes by the cards among the rest. 'MUCK' in any of the seat's slots (stud keeps the door and marks 7th). */
-    const muckedSeats = new Set(contesting.filter(pi => pi !== replayHeroIdx && hand.streets.some(s =>
-      ((s.cards && s.cards.opponents) || [])[pi > replayHeroIdx ? pi - 1 : pi] === 'MUCK')));
-    const contenders = muckedSeats.size < contesting.length ? contesting.filter(pi => !muckedSeats.has(pi)) : contesting;
+    /* A play-money table's hand (hand.table): one mucked at the showdown gives up its claim (TDA), as the export settles
+       it (hand-history/prepare.js), and the pot goes by the cards among the rest. 'MUCK' in any of the seat's slots (stud
+       keeps the door and marks 7th). Only the tables' hands, until the app moves onto the shared rules after launch. */
+    const muckedSeats = hand.table ? new Set(contesting.filter(pi => pi !== replayHeroIdx && hand.streets.some(s =>
+      ((s.cards && s.cards.opponents) || [])[pi > replayHeroIdx ? pi - 1 : pi] === 'MUCK'))) : new Set();
+    const contenders = muckedSeats.size && muckedSeats.size < contesting.length ? contesting.filter(pi => !muckedSeats.has(pi)) : contesting;
     let readable = !!cfg && cfg.type !== 'split-badugi';
     if (readable) {
       contenders.forEach(pi => {
@@ -7384,7 +7712,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     if (!motion.wroteDigits) return;
     motion.wroteDigits = false;
     const tn = potTextNode();
-    if (tn && tn.data !== rendered.pot) tn.data = rendered.pot;
+    // Not while the opening builds the pot (motion.potBuilding): a commit with no moment put the whole pot back.
+    if (tn && !motion.potBuilding && tn.data !== rendered.pot) tn.data = rendered.pot;
     hand.players.forEach((_, pi) => {
       if (motion.countingStacks.has(pi)) return;
       const sn = stackTextNode(pi);
@@ -7434,27 +7763,101 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   /* Rewinding reconstructs state; only forward motion performs it. Every running spring finishes
      before the new state commits — ghosts and shipped chips leave, the pot and stacks land — and
      nothing ever plays backwards. */
+  /* A jump (Back, a street's label, Start, End) crossfades the whole table (owner, 2026-11-22, of a screen recording
+     stepping back from the hero's bet: "Jittery. Terrible."): the pill, the wager, the stack, the turn ring all cut to
+     the step before in one frame, while the old rewind dimmed everything on the felt to 0.45 and back. A still copy of
+     the table as it stood (after finishAll, so at rest) is laid over it and fades out as the new step is drawn under
+     it: what changed crosses over, what did not stays still. Animations and transitions are off in the copy (its CSS
+     ones would start again from their first frame). A newer jump's copy covers an older one, which goes. */
+  const jumpVeilRef = useRef(null);
+  const crossfadeJump = useCallback(() => {
+    const t = tableRef.current;
+    if (!t || !springOn || motion.capture) return;
+    try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) { /* no matchMedia */ }
+    const host = t.parentElement;
+    if (!host) return;
+    const tr = t.getBoundingClientRect(), hr = host.getBoundingClientRect();
+    if (!(tr.width > 0 && tr.height > 0)) return;
+    const veil = t.cloneNode(true);
+    veil.classList.add('replayer-jump-veil');
+    veil.setAttribute('aria-hidden', 'true');
+    veil.removeAttribute('id');
+    veil.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
+    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+    /* No transform of its own: the desktop table is lifted by one (translateY, its ink centred in the slot), the copy
+       carries the same class, and placed at the lifted box it was lifted again, 16.8px over the table in the Hands
+       pane at 1440x900, so every Back drew the table a step up and faded it down (owner, 2026-11-22: "the back arrow
+       in the desktop replayer causes the table to jump"). */
+    Object.assign(veil.style, {
+      position: 'absolute', margin: '0', pointerEvents: 'none', transform: 'none', translate: 'none',
+      left: (tr.left - hr.left - host.clientLeft + host.scrollLeft) + 'px', top: (tr.top - hr.top - host.clientTop + host.scrollTop) + 'px',
+      width: tr.width + 'px', height: tr.height + 'px',
+    });
+    /* Over the table's own pieces and under what lies over the table: the table is no stacking context of its own, so
+       its seats (4) to its dealer button (9) drew over a copy on z auto and the copy never showed; at 11 it covered the
+       settings button and the scrim at the table's foot (.replayer-quick-btn, .replayer-under, both 10). At the dealer
+       button's level, after the table: over everything on it at rest (the flight layer, 10, is empty after finishAll). */
+    const z = getComputedStyle(t).zIndex;
+    veil.style.zIndex = z !== 'auto' ? String(Number(z) + 1) : 'var(--z-dealer)';
+    /* On the ground the table stands on, so it is opaque and the very screen it copied: over the live table, every
+       see-through pixel (the rail's shade, a plaque's 0.93) drew twice and the first frame was darker. The first
+       ground behind the table, when it is one flat colour (a gradient there, and it keeps none). */
+    for (let e = host; e && e !== document.documentElement; e = e.parentElement) {
+      const cs = getComputedStyle(e);
+      if (cs.backgroundImage && cs.backgroundImage !== 'none') break;
+      if (cs.backgroundColor && !/rgba\([^)]*,\s*0\)|transparent/.test(cs.backgroundColor)) { veil.style.backgroundColor = cs.backgroundColor; break; }
+    }
+    t.after(veil);
+    if (jumpVeilRef.current) jumpVeilRef.current.remove();
+    jumpVeilRef.current = veil;
+    // It holds until the new step is drawn under it (the next commit, below), then fades: started at the press, most of
+    // the fade ran over the old step while the table re-rendered (200ms in headless WebKit), and the new one cut in.
+    veil.dataset.pending = '1';
+    veil.dataset.dur = String((1.4 * SPRING_SETS[springSet].stage.beat) / REPLAYER_PACE);
+    veil._fallback = setTimeout(() => fadeJumpVeil(veil), 800);
+  }, [springOn, springSet, motion]);
+  const fadeJumpVeil = (veil) => {
+    if (!veil || !veil.isConnected || !veil.dataset.pending) return;
+    delete veil.dataset.pending;
+    clearTimeout(veil._fallback);
+    try {
+      const a = veil.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Number(veil.dataset.dur) || 300, easing: 'cubic-bezier(0.4, 0, 0.6, 1)', fill: 'forwards' });
+      a.onfinish = () => { veil.remove(); if (jumpVeilRef.current === veil) jumpVeilRef.current = null; };
+    } catch (e) { veil.remove(); }
+  };
+  /* On the first frame after the commit: started in the commit, the fade ran on through the rest of its work (the
+     placement passes, 200ms in headless WebKit), and the first frame painted already showed it a fifth of the way in. */
+  useLayoutEffect(() => {
+    const v = jumpVeilRef.current;
+    if (!v || !v.dataset.pending || v.dataset.queued) return;
+    v.dataset.queued = '1';
+    requestAnimationFrame(() => fadeJumpVeil(v));
+  });
+  useEffect(() => () => { if (jumpVeilRef.current) { clearTimeout(jumpVeilRef.current._fallback); jumpVeilRef.current.remove(); } }, []);
+
   const stepBack = useCallback(() => {
     motion.finishAll();
+    crossfadeJump();
     markRewind();
     if (showResult) { setShowResult(false); setHiloAnimate(false); }
     else if (actionIdx >= 0) setActionIdx(a => a - 1);
     else if (streetIdx > 0) { const prevStreet = hand.streets[streetIdx - 1]; setStreetIdx(s => s - 1); setActionIdx((prevStreet?.actions?.length || 0) - 1); }
-  }, [actionIdx, streetIdx, showResult, hand, markRewind, motion]);
+  }, [actionIdx, streetIdx, showResult, hand, markRewind, motion, crossfadeJump]);
 
   // 79: a held Back runs through this (the hold's interval outlives the render that started it).
   const stepBackRef = useRef(null);
   stepBackRef.current = stepBack;
 
-  const goToStart = () => { motion.finishAll(); setStreetIdx(0); setActionIdx(-1); setShowResult(false); setHiloAnimate(false); };
+  const goToStart = () => { motion.finishAll(); crossfadeJump(); setStreetIdx(0); setActionIdx(-1); setShowResult(false); setHiloAnimate(false); };
   // The street track's labels (UX pick 67): the start of that street.
-  const goToStreet = (si) => { motion.finishAll(); setStreetIdx(si); setActionIdx(-1); setShowResult(false); setHiloAnimate(false); };
+  const goToStreet = (si) => { motion.finishAll(); crossfadeJump(); setStreetIdx(si); setActionIdx(-1); setShowResult(false); setHiloAnimate(false); };
   /* 51: this set the last street and the last action and stopped one step
      short of the showdown, so "End" landed on the river's final bet with the
      opponents' cards still face down. stepForward's final branch is what
      actually ends a hand; End does the same thing now. */
   const goToEnd = () => {
     motion.finishAll();
+    crossfadeJump();
     const lastStreet = hand.streets.length - 1;
     setStreetIdx(lastStreet);
     setActionIdx((hand.streets[lastStreet]?.actions?.length || 0) - 1);
@@ -9538,7 +9941,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const plaqueEl = seatEl && seatEl.querySelector('.replayer-seat-info');
       const cb = el.offsetParent;
       if (!plaqueEl || !cb) return;
-      const own = piecesOf(seatEl);
+      /* Its own seat's dealer button is kept a quarter r off, not a whole r: on a side seat the button hangs off the
+         plaque's inner corner, and at a whole r it pushed that seat's wager back toward the pot, so the dealer's pill
+         alone missed the 1g move out every other side seat took (owner, 2026-11-22: "move opp 1's bet pill 1g left";
+         Opp 1 had the button). The plaque and the cards keep their r. */
+      const ownAll = piecesOf(seatEl);
+      const btnEl = seatEl && seatEl.querySelector('.replayer-dealer-btn');
+      const btnBox = btnEl ? boxOf(btnEl) : null;
+      const own = btnBox ? ownAll.filter(b => !(b.left === btnBox.left && b.top === btnBox.top && b.width === btnBox.width)) : ownAll;
       const others = [...table.querySelectorAll('.replayer-seat[data-seat]')].filter(s => s !== seatEl).flatMap(piecesOf);
       const C = cb.getBoundingClientRect();
       const ox = C.left + cb.clientLeft, oy = C.top + cb.clientTop, W = cb.clientWidth, H = cb.clientHeight;
@@ -9547,7 +9957,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const hit = (list, x, y, g) => list.some(b => x - w / 2 < b.right + g && x + w / 2 > b.left - g && y - h / 2 < b.bottom + g && y + h / 2 > b.top - g);
       const box = (x, y) => ({ left: x - w / 2, right: x + w / 2, top: y - h / 2, bottom: y + h / 2 });
       const clearElsewhere = (x, y) => !hit(felt, x, y, r / 4) && !hit(others, x, y, r / 4) && !hit(placed, x, y, r / 4);
-      if (hit(own, cx, cy, r) || !clearElsewhere(cx, cy)) {
+      const hitOwn = (x, y, g) => hit(own, x, y, g) || (btnBox ? hit([btnBox], x, y, Math.min(g, r / 4)) : false);
+      if (hitOwn(cx, cy, r) || !clearElsewhere(cx, cy)) {
         const P = plaqueEl.getBoundingClientRect();
         const tx = ox + W * 0.5, ty = oy + H * 0.4;                   // POT_AT
         let ux, uy;
@@ -9568,7 +9979,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         for (const g of [r, r / 2, r / 4]) {
           for (const c of cands) {
             const q = at(c);
-            if (hit(own, q.x, q.y, g)) continue;
+            if (hitOwn(q.x, q.y, g)) continue;
             if (clearElsewhere(q.x, q.y)) { chosen = q; break; }
           }
           if (chosen) break;
@@ -9583,7 +9994,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 const t = a * Math.PI / 12;
                 const q = { x: cx + rad * Math.cos(t), y: cy + rad * Math.sin(t) };
                 if (q.x - w / 2 < ox || q.x + w / 2 > ox + W || q.y - h / 2 < oy || q.y + h / 2 > oy + H) continue;
-                if (hit(own, q.x, q.y, g)) continue;
+                if (hitOwn(q.x, q.y, g)) continue;
                 if (clearElsewhere(q.x, q.y)) { chosen = q; break outer; }
               }
             }
@@ -9598,7 +10009,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           let best = Infinity;
           for (const c of cands) {
             const q = at(c);
-            if (hit(own, q.x, q.y, r / 4)) continue;
+            if (hitOwn(q.x, q.y, r / 4)) continue;
             const o = over(q.x, q.y);
             if (o < best - 0.5) { best = o; fallback = q; }
           }
@@ -9996,8 +10407,25 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             motion.momentKey = 'open';
             const full = shownPot;
             // The figure counts the antes up as they land, to the whole pot (potCommitted: the blinds already in it).
-            let landed = potCommitted - anteJobs.length * ante;
-            if (potTn && anteJobs.length) { potTn.data = landed > 0 ? fmtChips(landed) : ''; motion.wroteDigits = true; }
+            /* The pot builds as the hand opens (owner, 2026-11-22: "Build the pot starting with the ante and then the small
+               and big blinds"): empty at the start, each ante as it lands, then each blind as its chips go out, the figure
+               and the pile together (the pile is the whole pot, PILE_IS_WHOLE_POT). It began at the blinds' total, and the
+               pile at the whole pot. A stack the pile no longer has fades out as a copy (fadePileOut); a blind's new stack
+               fades in over two beats, since no chip lands on it to cover a quick one. The last step is the pot itself. */
+            let landed = 0;
+            const beat2 = 2 * st0.beat;
+            const potTo = (value, slow) => {
+              landed = Math.min(potCommitted, value);
+              motion.potBuilding = landed < potCommitted;
+              if (potTn) { potTn.data = landed > 0 ? fmtChips(landed) : ''; motion.wroteDigits = true; }
+              if (!motion.setPile) return;
+              const row = table.querySelector('.replayer-pot-main .replayer-pot-chips');
+              const keep = potStacksFor(landed).map(st => st.color);
+              const going = slow && row && layer0 ? [...row.children].filter(el => el.dataset.color && !keep.includes(el.dataset.color)) : [];
+              if (going.length) fadePileOut(motion, { set: springSet, rate: rate0, layer: layer0, layerRect: layer0.getBoundingClientRect(), duration: beat2, stacks: going.map(el => ({ el, rect: el.getBoundingClientRect() })) });
+              motion.setPile(landed, slow ? { fade: beat2 } : undefined);
+            };
+            if (anteJobs.length || pillJobs.length) potTo(0);
             anteJobs.forEach((j, ji) => {
               const chip = document.createElement('div');
               chip.className = 'replayer-flying-chip is-spring is-disc';
@@ -10012,26 +10440,37 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               face.style.setProperty('--chip', anteColor);
               applyChipInserts(face, pipShift(full + 31, ji), anteColor);
               chip.appendChild(face);
-              Object.assign(chip.style, { left: (j.fx - L0.left) + 'px', top: (j.fy - L0.top) + 'px', transform: 'translate(-50%, -50%)' });
+              /* Unseen in its own right until it flies (owner, 2026-11-22: "Chip appears in front of BB as cards are dealt,
+                 then disappears before moving into the pot"): it waited out the deal at full in its own style, the
+                 animation's backwards fill not holding it at its first frame on the phone, then went to that first frame
+                 (0) as the flight began and faded in on the way. One opacity curve: in over appear as it leaves, out over
+                 arrivalFade as it lands. */
+              Object.assign(chip.style, { left: (j.fx - L0.left) + 'px', top: (j.fy - L0.top) + 'px', transform: 'translate(-50%, -50%)', opacity: '0' });
               layer0.appendChild(chip);
               const arrive = j.delay + timeTo(hand0, 0.98) / rate0;
               const lift = st0.crossLift || 0.12;
-              const entry = motion.run(chip, { transient: true, prefix: 'translate(-50%, -50%)', size: { w: chipD, h: chipD }, end: arrive + st0.arrivalFade / rate0, channels: [
-                { prop: 'opacity', ramp: { from: 0, to: 1, delay: j.delay, duration: st0.appear / rate0 } },
+              const inMs = st0.appear / rate0, outMs = st0.arrivalFade / rate0;
+              const entry = motion.run(chip, { transient: true, prefix: 'translate(-50%, -50%)', size: { w: chipD, h: chipD }, end: arrive + outMs, channels: [
+                { prop: 'opacity', fn: (t) => (t <= j.delay ? 0 : t < j.delay + inMs ? (t - j.delay) / inMs : t <= arrive ? 1 : Math.max(0, 1 - (t - arrive) / outMs)), start: j.delay, end: arrive + outMs },
                 { prop: 'x', spring: hand0, from: 0, to: j.px - j.fx, delay: j.delay, timeScale: rate0 },
                 { prop: 'y', spring: hand0, from: 0, to: j.py - j.fy, delay: j.delay, timeScale: rate0 },
                 { prop: 'scale', fn: (t) => { const q = t <= j.delay ? 0 : hand0.at((t - j.delay) * rate0); return 1 + lift * 4 * q * (1 - q); }, start: j.delay, end: arrive },
-                { prop: 'opacity', ramp: { from: 1, to: 0, delay: arrive, duration: st0.arrivalFade / rate0 } },
               ] });
-              const tick = () => { landed += ante; if (potTn) { potTn.data = fmtChips(Math.min(potCommitted, landed)); motion.wroteDigits = true; } };
+              const last = ji === anteJobs.length - 1 && !pillJobs.length;
+              const tick = () => potTo(last ? potCommitted : landed + ante);
               if (entry) motion.tick(arrive, tick, entry); else tick();
             });
-            pillJobs.forEach(j => {
-              motion.run(j.el, { prefix: 'translate(-50%, -50%)', size: { w: j.r.width, h: j.r.height }, channels: [
+            const postAt = timeTo(flick0, 0.98) / rate0;
+            pillJobs.forEach((j, k) => {
+              const entry = motion.run(j.el, { prefix: 'translate(-50%, -50%)', size: { w: j.r.width, h: j.r.height }, channels: [
                 { prop: 'opacity', ramp: { from: 0, to: 1, delay: j.delay, duration: st0.appear / rate0 } },
                 { prop: 'x', spring: flick0, from: j.ox, to: 0, delay: j.delay, timeScale: rate0 },
                 { prop: 'y', spring: flick0, from: j.oy, to: 0, delay: j.delay, timeScale: rate0 },
               ] });
+              // Its chips counted into the pot as they come to rest in front of the seat.
+              const posted = Math.max(0, j.from - j.to);
+              const tick = () => potTo(k === pillJobs.length - 1 ? potCommitted : landed + posted, true);
+              if (entry) motion.tick(j.delay + postAt, tick, entry); else tick();
               // No stack count-down as the blinds go in (owner, 2026-11-13: "remove the stack number animation at
               // the start"): the plaque shows the stack after its blind from the first frame.
             });
@@ -10105,6 +10544,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       // board's own --card-h rule on this table's size, at the deck's aspect.
       const cardW = motion.boardCardW || Math.min(140, Math.max(18, 10.9375 * cq)) * 0.8366;
       const writes = [];
+      /* A copy of a stack's words hangs on the plaque, so it is drawn in the stack's own type, not the plaque's (owner,
+         2026-11-22: "the AT RISK text inexplicably jumps to another weight": the bust's AT RISK held in the plaque's face
+         and size until the pot landed, as did the ALL-IN crossing to AT RISK). */
+      const stackType = (st) => {
+        const cs = getComputedStyle(st);
+        return { fontFamily: cs.fontFamily, fontSize: cs.fontSize, fontWeight: cs.fontWeight, fontStyle: cs.fontStyle, fontStretch: cs.fontStretch,
+          letterSpacing: cs.letterSpacing, lineHeight: cs.lineHeight, color: cs.color, textTransform: cs.textTransform,
+          fontVariantNumeric: cs.fontVariantNumeric, fontFeatureSettings: cs.fontFeatureSettings, textAlign: cs.textAlign };
+      };
 
       /* (3b) The sweep: the wagers that were on the felt go into the pot, the chips first. Shared by a
          street press and the result press (the river's wagers are collected before the pot is
@@ -11049,7 +11497,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               if (getComputedStyle(plaque).position === 'static') plaque.style.position = 'relative';
               const ghost = document.createElement('span');
               ghost.className = 'replayer-stack-roll';
-              Object.assign(ghost.style, { left: el.offsetLeft + 'px', top: el.offsetTop + 'px', width: el.offsetWidth + 'px', height: el.offsetHeight + 'px', right: 'auto', bottom: 'auto' });
+              Object.assign(ghost.style, { left: el.offsetLeft + 'px', top: el.offsetTop + 'px', width: el.offsetWidth + 'px', height: el.offsetHeight + 'px', right: 'auto', bottom: 'auto' }, stackType(el));
               const mk = document.createElement('span');
               mk.className = 'replayer-allin-mark';
               mk.textContent = (motion.prevAtRisk || new Set()).has(pi) ? 'AT RISK' : 'ALL-IN';
@@ -11095,15 +11543,24 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         /* 51: the turn passes by a crossfade (owner, 2026-11-13: "it shouldn't jump from seat to seat, it should fade
            out and fade in"): the ring fades out on the plaque that acted as it fades in on the next one to act. */
         const toSeat = turnIdx != null && turnIdx >= 0 ? seatOf(turnIdx) : null;
-        if ((motionKind === 'action' || motionKind === 'street') && prevS.turn && toSeat && prevS.turn.seat !== turnIdx) {
-          const info = toSeat.querySelector('.replayer-seat-info');
-          /* Three beats (owner, 2026-11-19: "the crossfade between player seats is not smooth"; it was two), and each
-             drawn ring is a child of its plaque, not a box on the layer at the plaque's old place: the seat that acted
-             and folded shrinks to 0.88 and greys while its ring fades, and the ring now shrinks and greys with it (it
-             had hung full size round a shrinking plaque). It has the plaque's own hairline border (.is-in-plaque), so
-             the hand-over at the end changes nothing (the drawn ring's 1.6px border thinned to the hairline). */
+        /* One path for every change of turn on a step forward (owner, 2026-11-22, of the hero's seat: "THE PROBLEM IS THE
+           BLUE GLOW", "The crossfade to hero's seat abruptly pauses, dims, then pulses when the betting action
+           happens"): the glow leaves the seat that had it from the strength it shows NOW (a ring still arriving when
+           its seat acted started its leave at full: 0.53 to 1, a pulse), and arrives on the next seat by a drawn ring
+           too when no seat had it before (a street's first to act took it by a CSS transition, its strength unknown to
+           the next step). A newer change of turn retires an older hand-over (it fired mid-way through the next fade),
+           and the seat-level classes of an older one are cleared. */
+        const fromTurn = prevS.turn && prevS.turn.seat !== turnIdx ? prevS.turn.seat : null;
+        const turnMoves = (motionKind === 'action' || motionKind === 'street' || motionKind === 'result')
+          && (fromTurn != null || (toSeat && !(prevS.turn && prevS.turn.seat === turnIdx)));
+        if (turnMoves) {
           const fade = (3 * S4.beat) / rate;
+          const fromSeat = fromTurn != null ? seatOf(fromTurn) : null;
+          const fromInfo = fromSeat && fromSeat.querySelector('.replayer-seat-info');
+          const info = toSeat && toSeat.querySelector('.replayer-seat-info');
           writes.push(() => {
+            const gen = (motion.turnGen = (motion.turnGen || 0) + 1);
+            const ease = (q) => q * q * (3 - 2 * q);
             const ringIn = (plaque) => {
               const ring = document.createElement('div');
               ring.className = 'replayer-turn-ring is-in-plaque';
@@ -11111,51 +11568,48 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               plaque.appendChild(ring);
               return ring;
             };
-            const ease = (p) => p * p * (3 - 2 * p);
-            // The seat that acted drops its own ring at once, under the drawn one fading out (see .ring-leave).
-            const fromSeat = seatOf(prevS.turn.seat);
-            const fromInfo = fromSeat && fromSeat.querySelector('.replayer-seat-info');
-            table.querySelectorAll('.replayer-seat.ring-leave, .replayer-seat.ring-hand').forEach(s => s.classList.remove('ring-leave', 'ring-hand'));
-            table.querySelectorAll('.replayer-turn-ring.is-in-plaque').forEach(r => r.remove());
-            if (fromSeat) fromSeat.classList.add('ring-leave');
-            if (fromInfo) motion.run(ringIn(fromInfo), { transient: true, size: { w: fromInfo.offsetWidth, h: fromInfo.offsetHeight }, end: fade, channels: [
-              { prop: 'opacity', ramp: { from: 1, to: 0, delay: 0, duration: fade, ease } },
+            // Every drawn ring on the table and the strength it shows now; each is replaced by one going on from there.
+            const rings = [...table.querySelectorAll('.replayer-turn-ring.is-in-plaque')].map(r => ({ r, plaque: r.parentElement, op: Math.max(0, Math.min(1, Number(getComputedStyle(r).opacity) || 0)) }));
+            rings.forEach(x => x.r.remove());
+            const opOn = (plaque) => { const x = rings.find(y => y.plaque === plaque); return x ? x.op : null; };
+            table.querySelectorAll('.replayer-seat.ring-leave, .replayer-seat.ring-hand, .replayer-seat.ring-wait').forEach(s2 => s2.classList.remove('ring-leave', 'ring-hand', 'ring-wait'));
+            // A drawn ring fading out from `op`, at the full fade's pace (a ring half in goes in half the time).
+            const leave = (plaque, op) => motion.run(ringIn(plaque), { transient: true, size: { w: plaque.offsetWidth, h: plaque.offsetHeight }, end: fade * op, channels: [
+              { prop: 'opacity', ramp: { from: op, to: 0, delay: 0, duration: fade * op, ease } },
             ] });
+            // The seat that had the turn: what it shows now (its drawn ring while one is still arriving, else its own,
+            // whole). It drops its own ring at once, under the drawn one (see .ring-leave).
+            const fromOp = fromInfo ? (opOn(fromInfo) ?? 1) : 0;
+            if (fromSeat && fromInfo && fromOp > 0.01) {
+              fromSeat.classList.add('ring-leave');
+              const out = leave(fromInfo, fromOp);
+              const left = () => { if (motion.turnGen === gen) fromSeat.classList.remove('ring-leave'); };
+              if (out) motion.tick(fade * fromOp, left, out); else left();
+            }
+            // Any other seat whose ring is still going (an earlier leave, cut short by this press) goes on going.
+            rings.filter(x => x.plaque !== fromInfo && x.plaque !== info && x.op > 0.01 && x.plaque.isConnected).forEach(x => leave(x.plaque, x.op));
+            if (!toSeat || !info) return;
+            // The seat to act: from what it shows (a ring of its own still leaving, when the turn comes straight back).
+            const toOp = opOn(info) ?? 0;
             toSeat.classList.add('ring-wait');
-            const entry = motion.run(ringIn(info), { transient: true, size: { w: info.offsetWidth, h: info.offsetHeight }, end: fade, channels: [
-              { prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: fade, ease } },
+            /* Not transient: the registry took a transient away when its animation finished, and the hand-over ran on its
+               own timer, so for a frame or more there was no ring at all, or the drawn one and the plaque's own both. It
+               rests at full when its fade ends (its own opacity is 1) and the hand-over removes it in the same task as the
+               plaque takes its ring. */
+            const ringNew = ringIn(info);
+            const inMs = Math.max(1, fade * (1 - toOp));
+            const entry = motion.run(ringNew, { size: { w: info.offsetWidth, h: info.offsetHeight }, end: inMs, channels: [
+              { prop: 'opacity', ramp: { from: toOp, to: 1, delay: 0, duration: inMs, ease } },
             ] });
             // The seat to act takes its ring at once, as the drawn one goes: no transition, no arrival pulse.
             const take = () => {
-              if (fromSeat) fromSeat.classList.remove('ring-leave');
+              if (motion.turnGen !== gen) return;
               toSeat.classList.add('ring-hand');
               toSeat.classList.remove('ring-wait');
-              const info2 = toSeat.querySelector('.replayer-seat-info');
-              if (info2 && info2.getAnimations) info2.getAnimations({ subtree: true }).forEach(a => { if (a.animationName === 'replayerTurnArrive') a.cancel(); });
+              ringNew.remove();
               requestAnimationFrame(() => toSeat.classList.remove('ring-hand'));
             };
-            if (entry) motion.tick(fade, take, entry); else take();
-          });
-        } else if ((motionKind === 'action' || motionKind === 'street' || motionKind === 'result') && prevS.turn && !toSeat) {
-          /* 51b: the turn ends with nobody to take it (the street's last action, the result): the ring fades out on the
-             plaque that had it, as it does when it passes. It went off in a frame (owner, 2026-11-22: "Hero's seat box
-             is STILL flickering"; measured on the street-ending check of futurega.me/h/dSXeHmQt). */
-          const fade = (3 * S4.beat) / rate;
-          const fromSeat = seatOf(prevS.turn.seat);
-          const fromInfo = fromSeat && fromSeat.querySelector('.replayer-seat-info');
-          if (fromInfo && !fromSeat.classList.contains('active-turn')) writes.push(() => {
-            table.querySelectorAll('.replayer-seat.ring-leave, .replayer-seat.ring-hand').forEach(s => s.classList.remove('ring-leave', 'ring-hand'));
-            table.querySelectorAll('.replayer-turn-ring.is-in-plaque').forEach(r => r.remove());
-            const ring = document.createElement('div');
-            ring.className = 'replayer-turn-ring is-in-plaque';
-            ring.style.borderRadius = getComputedStyle(fromInfo).borderRadius;
-            fromInfo.appendChild(ring);
-            fromSeat.classList.add('ring-leave');
-            const entry = motion.run(ring, { transient: true, size: { w: fromInfo.offsetWidth, h: fromInfo.offsetHeight }, end: fade, channels: [
-              { prop: 'opacity', ramp: { from: 1, to: 0, delay: 0, duration: fade, ease: easeIO } },
-            ] });
-            const done = () => fromSeat.classList.remove('ring-leave');
-            if (entry) motion.tick(fade, done, entry); else done();
+            if (entry) motion.tick(inMs, take, entry); else take();
           });
         }
         /* 53: the action label fades in on its plaque. It rose 1r out of the plaque on the yield spring, visible within
@@ -11259,7 +11713,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           const ghost = document.createElement('span');
           ghost.className = 'replayer-stack-roll';
           ghost.textContent = 'ALL-IN';
-          Object.assign(ghost.style, { left: st.offsetLeft + 'px', top: st.offsetTop + 'px', width: st.offsetWidth + 'px', height: st.offsetHeight + 'px', right: 'auto', bottom: 'auto' });
+          Object.assign(ghost.style, { left: st.offsetLeft + 'px', top: st.offsetTop + 'px', width: st.offsetWidth + 'px', height: st.offsetHeight + 'px', right: 'auto', bottom: 'auto' }, stackType(st));
           plaque.appendChild(ghost);
           motion.run(ghost, { transient: true, property: 'individual', size: { w: st.offsetWidth, h: st.offsetHeight }, channels: [
             { prop: 'opacity', ramp: { from: 1, to: 0, delay: d, duration: S4.beat / rate, ease: easeIO } },
@@ -12017,18 +12471,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         })()}
 
 
-        {/* Known dead cards, in the board's slot (stud and draw have no board).
-            Landscape only: portrait shows them in the 4r strip under the table. */}
-        {isLandscape && deadCards.length > 0 && (
-          <div className="replayer-board-area replayer-dead-area" aria-label={'Dead cards: ' + deadCards.join(' ')}>
-            <div className="replayer-dead-label">Dead cards</div>
-            <div className="card-row replayer-dead-row">
-              {deadCards.map(k => (
-                <img key={k} className="card-img" src={cardFaceSrc(k)} alt={k} loading="eager" />
-              ))}
-            </div>
-          </div>
-        )}
+        {/* (Known dead cards sat here, in the board's slot on the landscape felt, until 2026-11-22: owner, "dead cards on
+            desktop should not be on the felt". Every layout shows them in the strip under the table, below.) */}
 
         {/* Polish 38 drew a deck and a muck pile on the felt, so the deal
             and the muck had somewhere to come from and go to. At the table
@@ -12587,11 +13031,24 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           /* A side seat's wager goes straight in, level with its seat (owner, 2026-11-13: "move more directly
              horizontal"): toward the pot, a lower side seat's chips rose into the game and stakes pill under the
              board. Top and bottom seats keep the walk toward the pot. */
-          const sideSeat = Math.abs(pos[0] - 50) > 25;
+          /* On the landscape table a seat counts as a side seat only where its way to the pot runs more across than up
+             (1.25 to 1, in the table's own pixels): the 8-max table's two bottom corners sit on the bottom row, their
+             way to the pot as much up as across (1.05), and level with the plaque their chips sat on the rail beside it
+             (owner, 2026-11-22: "On desktop the location of Opp 1's bet here is wrong"). They walk toward the pot like
+             the bottom seats. Every other landscape side seat, 6 to 10-max, is 1.5 or more and keeps its level wager. */
+          const tableAspect = tableW && tableH ? tableW / tableH : LGX / LGY;
+          const sideSeat = Math.abs(pos[0] - 50) > 25
+            && (!isLandscape || Math.abs(pos[0] - 50) * tableAspect > 1.25 * Math.abs(POT_AT[1] - pos[1]));
           // Level with the plaque it clears that plaque only from further in: 0.6 of the way (a 6-max side plaque is
           // anchored on the table's edge and reaches ~24% in; at 0.42 the chips sat on its inner end).
           // (Portrait only: a landscape table is wide enough that 0.42 clears its plaques, and 0.6 reached the board.)
-          const chipX = pos[0] + (POT_AT[0] - pos[0]) * (sideSeat && !isLandscape ? 0.6 : t);
+          /* A side seat's wager sits 1g further out, toward its own seat: left on the left, right on the right (owner,
+             2026-11-22: "move opp 1's bet pill 1g left and do the same for the other side seats"). Portrait only, as the
+             0.6 is. 1g is the table's (100cqmin / 35), here as a share of its width: left stays a percentage, the form
+             the placement passes and the push-out read. */
+          const gPct = (Math.min(tableW || 0, tableH || tableW || 0) / 35) / (tableW || 1) * 100 || 100 / 35;
+          const sideNudge = sideSeat && !isLandscape ? (pos[0] < 50 ? -gPct : gPct) : 0;
+          const chipX = pos[0] + (POT_AT[0] - pos[0]) * (sideSeat && !isLandscape ? 0.6 : t) + sideNudge;
           /* Top and bottom seats nearer their plaque (owner, 2026-11-14: "a bit closer to the seat"): 0.42 left ~10r between a
              bottom seat's cards and its chips and ~5r under a top seat's action pill; these leave ~2.3r and 2r (402 wide,
              6 and 9-max). Portrait only. */
@@ -12666,12 +13123,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           });
         })}
       </div>
-      {/* Dead cards under the table (portrait): the label on its own 2r line, the
-          4r cards directly beneath it from the same left edge, on a 2.25g pitch
-          that tightens when the list would pass the full 2g..35g (33g). */}
+      {/* Dead cards under the table (every layout; landscape since 2026-11-22, off the felt): the label on its own 2r
+          line, the 4r cards directly beneath it from the same left edge, on a 2.25g pitch that tightens when the list
+          would pass the full 2g..35g (33g). */}
       {/* Not while the result line shows: both sit in the free band at the table's foot, and at the end of a stud
           hand the dead cards were drawn over "E. Bennett wins the 8,800 pot" (owner, 2026-11-13). */}
-      {!isLandscape && deadCards.length > 0
+      {deadCards.length > 0
         && !(showResult && potAwards && rSettings.showResults && !linkedReplay && hand.players.some((_, i) => (potAwards[i] || 0) > 0))
         && (() => {
         const CARD_G = 2.0286;   // 4r at the artwork's 0.7143 ratio, in g
@@ -12716,20 +13173,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           <span className="rrs-line">{undecidedLine(parseCardNotation(boardCards))}</span>
         </div>
       )}
-      {showResult && potAwards && rSettings.showResults && !linkedReplay && (() => {
-        const winners = hand.players.map((_, i) => ({ i, won: potAwards[i] || 0 })).filter(w => w.won > 0);
-        if (!winners.length) return null;
-        /* Only the hero's net now (owner, 2026-11-14: "get rid of the result bar at the bottom at showdown, but
-           keep the net change number"): the sentence and the bar behind it went; the seats already say who won. */
-        const start = Number((hand.players[replayHeroIdx] || {}).startingStack) || 0;
-        const net = chipRound((shownStacks[replayHeroIdx] || 0) - start);
-        const tone = net > 0 ? 'is-won' : net < 0 ? 'is-lost' : 'is-even';
-        return (
-          <div className={'replayer-result-strip ' + tone} role="status" aria-label={'Your net: ' + (net > 0 ? 'plus ' : net < 0 ? 'minus ' : '') + fmtChips(Math.abs(net))}>
-            <span className="rrs-net">{(net > 0 ? '+' : net < 0 ? '\u2212' : '') + fmtChips(Math.abs(net))}</span>
-          </div>
-        );
-      })()}
+      {/* (The hero's net at the result, the display-face figure at the table's foot, went too: owner, 2026-11-22, "Get
+          rid of the Baskerville net gain/loss in the bottom right". The plaque's stack and the seats' readouts say it.) */}
 
       {/* Pot odds */}
       {rSettings.showPotOdds && (() => {

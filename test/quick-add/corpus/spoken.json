@@ -651,7 +651,10 @@
       4500
      ]
     ]
-   }
+   },
+   "mentioned": [
+    "Qx"
+   ]
   },
   "expectGaps": [
    {
@@ -693,7 +696,7 @@
     "about": "no stakes are given"
    }
   ],
-  "notes": "\"KK\" is a player's nickname, not pocket kings. \">>\" marks the table talk."
+  "notes": "\"KK\" is a player's nickname, not pocket kings. \">>\" marks the table talk. Mentioned (2026-11-22): the river queen, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "sp-straddle-aj-queen-105-two-clubs",
@@ -3210,7 +3213,10 @@
    "board": {
     "flop": "KxQxJx",
     "turn": "6x"
-   }
+   },
+   "mentioned": [
+    "AxQx"
+   ]
   },
   "expectGaps": [
    {
@@ -3255,7 +3261,7 @@
     "about": "the hand stops with the hero facing the raise"
    }
   ],
-  "notes": "\"the small queens\" is the small blind with queens. The 8K turn bet is the big bet, so the limits are 4K/8K. Ray and Tom may be one player."
+  "notes": "\"the small queens\" is the small blind with queens. The 8K turn bet is the big bet, so the limits are 4K/8K. Ray and Tom may be one player. Mentioned (2026-11-22): the ace-queen Sal says he folded, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "sp-lhe-ajcc-telegraphic-raises-call",
@@ -3807,7 +3813,10 @@
    "board": {
     "flop": "KxKxTx",
     "turn": "Qx"
-   }
+   },
+   "mentioned": [
+    "AxKx"
+   ]
   },
   "expectGaps": [
    {
@@ -3849,7 +3858,7 @@
     "about": "the river is only \"a blank\""
    }
   ],
-  "notes": "The opening repairs itself (a raise and callers, no, limps and a raise to about 5,200). \"coin\" is queen; \"15\" is 15,000; \"double suited spades and diamonds\" is two of each."
+  "notes": "The opening repairs itself (a raise and callers, no, limps and a raise to about 5,200). \"coin\" is queen; \"15\" is 15,000; \"double suited spades and diamonds\" is two of each. Mentioned (2026-11-22): the opponent's ace-king, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "sp-plo8-one-two-three-queen-like7500-or7000",
@@ -3874,7 +3883,10 @@
     "flop": "3x4x5x",
     "turn": "Ax",
     "river": "2x"
-   }
+   },
+   "mentioned": [
+    "Ax3x9xTx"
+   ]
   },
   "expectGaps": [
    {
@@ -3917,7 +3929,7 @@
     "about": "no stakes are given"
    }
   ],
-  "notes": "\"one\" is an ace in a low game. \"three four five two spades\" is 3-4-5 with two spades. \"ace3 910\" is the villain's A-3-9-T."
+  "notes": "\"one\" is an ace in a low game. \"three four five two spades\" is 3-4-5 with two spades. \"ace3 910\" is the villain's A-3-9-T. Mentioned (2026-11-22): the opponent's A-3-9-T, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "sp-razz-eight-seat-completes-up-and-hole",
@@ -4055,7 +4067,10 @@
   "expect": {
    "gameType": "2-7 TD",
    "gameMode": "mtt",
-   "observer": true
+   "observer": true,
+   "mentioned": [
+    "2x3x5x9xKx"
+   ]
   },
   "expectGaps": [
    {
@@ -4084,7 +4099,7 @@
     "about": "only the button is placed"
    }
   ],
-  "notes": "\"the 2359 king\" is 2-3-5-9-K. \"D2, D1, pat\" are draw-two, draw-one and stand pat, describing a range, not this hand."
+  "notes": "\"the 2359 king\" is 2-3-5-9-K. \"D2, D1, pat\" are draw-two, draw-one and stand pat, describing a range, not this hand. Mentioned (2026-11-22): the coach's 2-3-5-9-K, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "sp-sd27-broadcast-one-draw-pat-jack-ten",
@@ -4154,7 +4169,12 @@
     "bb": 20,
     "bigBet": 40
    },
-   "otherHands": 1
+   "otherHands": 1,
+   "mentioned": [
+    "6c",
+    "8x6x4x3x2x",
+    "KxQx9x7x4x"
+   ]
   },
   "expectGaps": [
    {
@@ -4195,7 +4215,7 @@
     "about": "only the hand after the second draw is told"
    }
   ],
-  "notes": "\"8643 deuce\" is 8-6-4-3-2. \"king queen 9 74\" is the next hand, not this one."
+  "notes": "\"8643 deuce\" is 8-6-4-3-2. \"king queen 9 74\" is the next hand, not this one. Mentioned (2026-11-22): the six of clubs drawn, the 8-6-4-3-2 it made and the next hand's K-Q-9-7-4, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "sp-lhe-big-line-races-editing-increment",
@@ -4288,7 +4308,11 @@
       50
      ]
     ]
-   }
+   },
+   "mentioned": [
+    "Qx",
+    "9c"
+   ]
   },
   "expectGaps": [
    {
@@ -4317,7 +4341,7 @@
     "about": "only the big blind is given"
    }
   ],
-  "notes": "\"the big line races\" is the big blind raises; \"editing increment\" is the betting increment, so the limits are 25/50. The hero checks before the big blind after the flop: the small blind."
+  "notes": "\"the big line races\" is the big blind raises; \"editing increment\" is the betting increment, so the limits are 25/50. The hero checks before the big blind after the flop: the small blind. Mentioned (2026-11-22): the queen turn and the nine of clubs river, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "sp-lhe-two-nines-block-kkj-boat-on-turn",
@@ -4914,7 +4938,10 @@
   "expect": {
    "gameType": "NLH",
    "gameMode": "cash",
-   "heroCards": "JxJx"
+   "heroCards": "JxJx",
+   "mentioned": [
+    "KxKx"
+   ]
   },
   "expectGaps": [
    {
@@ -4957,7 +4984,7 @@
     "about": "no stakes are given"
    }
   ],
-  "notes": "The host tells the guest his own hand: \"you\" is the hero. The open size comes after the three-bet in the telling."
+  "notes": "The host tells the guest his own hand: \"you\" is the hero. The open size comes after the three-bet in the telling. Mentioned (2026-11-22): Al's kings, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "sp-callin-straddle-next-hack-position-on-request",
@@ -5504,7 +5531,11 @@
   "text": "four card flop ace king all in against ace nine and of course the king gets shuffled back in and then the ace king loses to the ace nine devastating",
   "expect": {
    "gameType": "NLH",
-   "recordable": false
+   "recordable": false,
+   "mentioned": [
+    "AxKx",
+    "Ax9x"
+   ]
   },
   "expectGaps": [
    {
@@ -5514,7 +5545,7 @@
     "about": "not one recordable hand"
    }
   ],
-  "notes": "A misdeal story: the flop was dealt with four cards and redealt."
+  "notes": "A misdeal story: the flop was dealt with four cards and redealt. Mentioned (2026-11-22): the ace-king and the ace-nine, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "sp-plo-bb-ace-king-deuce-nut-suit-later-kings",

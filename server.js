@@ -1133,9 +1133,9 @@ const quickAddLearn = require('./lib/quick-add/learn');
 adminEval.init({ getDb: () => db, saveDatabase: () => saveDatabase() });
 app.post('/api/admin/quick-add-eval', authenticateToken, requireAppAdmin, (req, res) => {
   const body = req.body || {};
-  const r = adminEval.start({ options: body, resume: body.resume != null ? Number(body.resume) : null });
+  const r = adminEval.start({ options: body, resume: body.resume != null ? Number(body.resume) : null, rescore: body.rescore != null ? Number(body.rescore) : null });
   if (r.error) return res.status(r.status).json({ error: r.error });
-  console.log('[quick-add eval] started by', req.user.username, JSON.stringify(r.options), r.resumed ? `resuming run ${r.runId} (${r.resumed} hands kept)` : '');
+  console.log('[quick-add eval] started by', req.user.username, JSON.stringify(r.options), r.resumed ? `resuming run ${r.runId} (${r.resumed} hands kept)` : '', r.rescored ? `rescoring ${r.rescored} kept parses` : '');
   res.status(202).json(adminEval.status());
 });
 app.get('/api/admin/quick-add-eval', authenticateToken, requireAppAdmin, (req, res) => {

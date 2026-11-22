@@ -43,7 +43,8 @@ Modes (pick one; the first that applies wins):
                          that the scorer gives every case 100% against its own oracle.
   --oracle               Use each case's expectations as the parsed hand. Scores the
                          GAPS ENGINE in isolation (the parse is perfect by construction).
-  --parses <file.json>   Re-score the parsed hands saved in an earlier JSON report.
+  --parses <file.json>   Re-score the parsed hands saved in an earlier JSON report (or the Admin
+                         runner's kept parses), with their cost; only the cases it holds.
   --url <base> --token <jwt>
                          POST each case to <base>/api/quick-add/parse.
   (default)              Call lib/quick-add.js directly; needs ANTHROPIC_API_KEY.
@@ -375,6 +376,11 @@ const EXPECT_KEYS = new Set([
   // hands: "I had A4, he had A2"): one string per such opponent, flop and draw games only.
   // Scored as "some opponent holds them"; they count as stated, never as invented.
   'shown',
+  // Cards the text names that are not facts of the hand scored (2026-11-22): another hand in the
+  // story, a holding a player said he folded, a board told as a result, a strategy question's hand.
+  // Card strings, ranks alone where no suit was said ("KxQx", "9c"). They count as stated, so a parse
+  // that records them is not inventing them; nothing is scored for leaving them out.
+  'mentioned',
 ]);
 /* sourceUrl: where a paraphrased case came from (the corpus never carries the raw
    text of a forum post or a video; `source` is already text|speech). */
@@ -467,6 +473,7 @@ function validateCase(c, seenIds) {
   if (ex.unsupported != null && ex.unsupported !== true) E('unsupported, when given, is true');
   if (ex.otherHands != null && !(Number.isInteger(ex.otherHands) && ex.otherHands >= 1)) E('otherHands is the number of other hands told');
   if (ex.shown != null && !(Array.isArray(ex.shown) && ex.shown.length && ex.shown.every(x => typeof x === 'string' && x))) E('shown is a list of card strings, one per opponent whose seat is not told');
+  if (ex.mentioned != null && !(Array.isArray(ex.mentioned) && ex.mentioned.length && ex.mentioned.every(x => typeof x === 'string' && x))) E('mentioned is a list of card strings');
   if (c.expectGaps != null) {
     if (!Array.isArray(c.expectGaps)) E('expectGaps must be an array');
     else c.expectGaps.forEach((g, i) => {
@@ -680,6 +687,8 @@ function validateCards(c, ex, cat, cfg, heroRef) {
     if (cs.length !== cfg.heroCards) errs.push(`shown[${k}] has ${cs.length} cards; ${c.game} wants ${cfg.heroCards}`);
     add('opp:shown' + k, cs);
   });
+
+  (ex.mentioned || []).forEach((v, k) => { parse(`mentioned[${k}]`, v); });
 
   // Cross-owner duplicates (dedupe within an owner: a stud up card also listed in a showdown is one card).
   const where = new Map();
@@ -1227,7 +1236,28 @@ function lcsAlign(E, Pp, eq) {
   return pairs;
 }
 
-function scoreCase(c, v, hand) {
+/* The suits the server picked for cards said by rank alone (lib/quick-add/normalize.js pickSuits and
+   settlePartialSuits), read from the notes it adds, which name each one: "Suits that were not given were
+   filled in: the flop 8h 4c 2d; your hand Ah Kc. Edit the hand if they matter.", "... does not say which
+   cards had the suits given, so Ac Tc were taken." and "... were taken as Qs Qh." That is the product's
+   design (the player is told and can edit them), so the eval counts them apart from a suit the model
+   picked itself (2026-11-22: 598 of Opus 5.5's 602 "invented suits" were these).
+   test/quick-add/scorer-filled.test.js holds the notes' wording to this reader. */
+const SERVER_SUIT_NOTES = [/filled in: (.*?)\. Edit the hand/, /were taken as (.*)$/, /, so (.*?) were taken\.$/];
+function filledByServer(notes) {
+  const out = new Set();
+  for (const n of Array.isArray(notes) ? notes : []) {
+    const text = String(n);
+    for (const re of SERVER_SUIT_NOTES) {
+      const m = re.exec(text);
+      if (m) for (const k of m[1].match(/\b[2-9TJQKA][hdcs]\b/g) || []) out.add(k);
+    }
+  }
+  return out;
+}
+
+/* opts.notes: the parse's notes (which say the suits the server filled in). */
+function scoreCase(c, v, hand, opts = {}) {
   const ex = c.expect;
   const cat = v.cat;
   const keys = STREET_KEYS[cat];
@@ -1426,6 +1456,7 @@ function scoreCase(c, v, hand) {
   Object.values(ex.board || {}).forEach(noteCards);
   Object.values(ex.showdown || {}).forEach(noteCards);
   (ex.shown || []).forEach(noteCards);
+  (ex.mentioned || []).forEach(noteCards);
   Object.values(ex.studUp || {}).forEach(noteCards);
   Object.keys(ex.studUp || {}).concat([...collectRefs(ex)]).filter(r => r.startsWith('@')).forEach(r => noteCards(r.slice(1)));
   Object.values(ex.draws || {}).forEach(list => list.forEach(d => { if (d[2]) noteCards(d[2]); if (d[3]) noteCards(d[3]); }));
@@ -1439,13 +1470,15 @@ function scoreCase(c, v, hand) {
   const seenParsed = new Set();
   const inventedCards = [];
   const inventedSuits = [];
+  const filledSuits = [];
+  const filled = filledByServer(opts.notes);
   const rankPool = { ...statedRanks };
   for (const x of parsedCards.filter(isConcrete)) {
     const k = cardKey(x);
     if (seenParsed.has(k)) continue; // one physical card may legitimately appear on two streets (stud showdowns)
     seenParsed.add(k);
     if (statedConcrete.has(k)) continue;
-    if (rankPool[x.r] > 0) { rankPool[x.r]--; inventedSuits.push(k); continue; }
+    if (rankPool[x.r] > 0) { rankPool[x.r]--; (filled.has(k) ? filledSuits : inventedSuits).push(k); continue; }
     inventedCards.push(k);
   }
   const inventedStacks = [];
@@ -1472,7 +1505,7 @@ function scoreCase(c, v, hand) {
     inventedActions,
     recall: expected ? ok / expected : 1,
     precision: asserted ? ok / asserted : (expected ? 0 : 1),
-    hallucinations: { cards: inventedCards, suits: inventedSuits, stacks: inventedStacks, actions: inventedActions },
+    hallucinations: { cards: inventedCards, suits: inventedSuits, filledSuits, stacks: inventedStacks, actions: inventedActions },
     diagnostics: actionDiag,
   };
 }
@@ -1552,8 +1585,10 @@ async function makeParser(o, validated) {
         const r = byId.get(c.id);
         if (!r) throw new Error('no saved parse for this case');
         if (r.error) throw new Error('saved run errored: ' + r.error);
-        return { hand: r.hand, notes: r.notes || [], latencyMs: r.latencyMs };
+        return { hand: r.hand, notes: r.notes || [], latencyMs: r.latencyMs, usage: r.usage || null, meta: r.meta || null };
       },
+      has: id => byId.has(id),
+      model: saved.model || null, effort: saved.effort || null,
     };
   }
   if (o.url) {
@@ -1811,6 +1846,8 @@ async function main() {
   }
 
   // ── Evaluation ──
+  // Saved parses (--parses): only the cases they hold, so a pilot's parses rescore as that pilot.
+  if (parser.has) cases = cases.filter(c => parser.has(c.id));
   const gapsMod = await loadGaps(o);
   console.log(`Parser: ${parser.name}`);
   console.log(`Gaps engine: ${gapsMod.findGaps ? gapsMod.name : 'n/a — ' + gapsMod.unavailable}`);
@@ -1860,7 +1897,7 @@ async function main() {
           console.log('@@case ' + JSON.stringify({ id: r.id, hand: r.hand, notes: r.notes || [], latencyMs: r.latencyMs, usage: r.usage || null, meta: r.meta || null, error: r.error || null }));
         }
       }
-      r.score = scoreCase(c, v, r.hand);
+      r.score = scoreCase(c, v, r.hand, { notes: r.notes });
       if (gapsMod.findGaps && r.hand) {
         try {
           const g = gapsMod.findGaps(JSON.parse(JSON.stringify(r.hand)));
@@ -1988,6 +2025,7 @@ function aggregate(results) {
     halluc: {
       cards: sum(results, r => r.score.hallucinations.cards.length),
       suits: sum(results, r => r.score.hallucinations.suits.length),
+      filledSuits: sum(results, r => (r.score.hallucinations.filledSuits || []).length),
       stacks: sum(results, r => r.score.hallucinations.stacks.length),
       actions: sum(results, r => r.score.hallucinations.actions),
       casesWithCards: results.filter(r => r.score.hallucinations.cards.length).length,
@@ -2018,6 +2056,7 @@ function summaryText(agg) {
     `Fact precision  ${pct(o.precision)}`,
     `Perfect parses  ${o.perfect}/${o.cases}`,
     `Hallucinated    ${agg.halluc.cards} card(s) in ${agg.halluc.casesWithCards} case(s), ${agg.halluc.suits} invented suit(s), ${agg.halluc.stacks} stack(s) in ${agg.halluc.casesWithStacks} case(s), ${agg.halluc.actions} action(s)`,
+    `Suits filled    ${agg.halluc.filledSuits || 0} by the server for cards said by rank alone (by design: a note tells the player)`,
   ];
   if (agg.gaps) {
     const g = agg.gaps;
@@ -2127,5 +2166,5 @@ if (require.main === module) {
 module.exports = {
   parseCardsStrict, parseCardsLoose, cardsMatch, positionLabels, validateCase, simulate,
   buildOracleHand, scoreCase, scoreGaps, fieldMatches, gapMatches, loadCorpus, categoryOf,
-  semanticIndex, loadHandConfig, aggregate, summaryText,
+  semanticIndex, loadHandConfig, aggregate, summaryText, filledByServer,
 };

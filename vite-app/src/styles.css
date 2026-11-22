@@ -3362,8 +3362,10 @@
     .replayer-view.is-list .replayer-hand-strip { width: calc(var(--gu) * 2); }
     .replayer-view.is-list .replayer-hand-card-content {
       display:grid;
-      /* 3..10g cards | 2g | 12..26g text | 1g | 27..34g net (UX pick 55) | 2g right margin */
-      grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 2) minmax(0, 1fr) var(--gu) calc(var(--gu) * 7);
+      /* 3..11g cards (1g clear of the strip, then their 7g) | 1g | 12..26g text | 1g | 27..34g net (UX pick 55) |
+         2g right margin. The cards had the first 7g to themselves, centred, and a five-card hand (6.8g) reached the
+         strip (owner, 2026-11-22: "There should be at least 1g between the game strip and the cards"). */
+      grid-template-columns: calc(var(--gu) * 8) var(--gu) minmax(0, 1fr) var(--gu) calc(var(--gu) * 7);
       /* 8r in four 2r rows: title cell r2-r4, meta cell r4-r6, baselines 4r and 6r below the
          card top. The text block (title cap-top ~2.8r to meta baseline 6r) centres on 4.4r,
          the nearest whole-r seating to the card's 4r middle; the 4r cards and the 4r Delete
@@ -3381,6 +3383,9 @@
     .replayer-view.is-list .replayer-hand-card.outcome-split .replayer-hand-card-content { --hc-edge: var(--warn); }
     .replayer-view.is-list .replayer-hand-card-cards {
       grid-column: 1; grid-row: 1 / -1; align-self: stretch; width:auto; height:auto;
+      /* 1g clear of the strip; centred in the 7g after it, and from its start where a hand is wider (a six-card one),
+         so it never reaches back to the strip. */
+      box-sizing: border-box; padding-left: var(--gu); justify-content: safe center;
       /* Cards 4r tall (whole r) at the artwork's 0.7143 ratio: 2.857r = 2.03g wide. */
       --card-h: calc(var(--subrow) * 4);
       --card-w: calc(var(--subrow) * 2.857);
@@ -3404,7 +3409,10 @@
     .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-body { align-items: center; }
     .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-cards .card-unknown { height: calc(var(--subrow) * 4); width: calc(var(--subrow) * 2.857); }
     /* Loading: the card slot is 4g (5..9g, both valid lines) instead of a centred 2g. */
-    .replayer-view.is-list .replayer-hand-card-cards > .skeleton { margin-left: calc(var(--gu) * 2); margin-right: auto; }
+    .replayer-view.is-list .replayer-hand-card-cards > .skeleton { margin-left: var(--gu); margin-right: auto; }   /* + the column's 1g */
+    /* A six-card hand (PLO6, 6-card Omaha games) at the list's overlap and the row's gap is 7.7g, wider than its 7g, and
+       wrapped its sixth card onto a second line under the first (2026-11-22). Overlapped further it is 6.8g, on one line. */
+    .replayer-view.is-list .replayer-hand-card-cards .card-row:has(> :nth-child(6)) { --card-overlap: 0.62; flex-wrap: nowrap; }
 
 
     /* 76: the read-only view uses the editor's own type, so notes look the
@@ -5675,18 +5683,8 @@
     @media (prefers-reduced-motion: reduce) { .replayer-board-extra > * { animation: none; } }
     /* Under springs the second board is dealt like the first, a beat later (Replayer animations 12). */
     .replayer-board-area.is-sprung .replayer-board-extra > * { animation: none; }
-    /* Dead cards take the board's slot in stud and draw games. A stud hand can
-       fold a lot of up cards (7 seats x 4), so they are smaller than board cards
-       (about 2/3) and wrap inside 64% of the table instead of running into the
-       side seats; faces only, flat, dimmed a touch so they read as out of play. */
-    .replayer-dead-area { --card-h: clamp(14px, 7.3cqmin, 94px); max-width: 64%; gap: 0.6cqmin; }
-    .replayer-dead-area .card-row.replayer-dead-row { flex-wrap: wrap; justify-content: center; gap: 0.8cqmin; }
-    .replayer-dead-area .card-row.replayer-dead-row > * { opacity: 0.72; }
-    .replayer-dead-label {
-      font-family: var(--font-condensed); font-weight: var(--fw-bold);
-      font-size: clamp(7px, 2.4cqmin, 20px); letter-spacing: var(--track-caps); text-transform: uppercase;
-      color: var(--text-muted); line-height: 1;
-    }
+    /* (Dead cards took the board's slot on the landscape felt until 2026-11-22, owner: "dead cards on desktop should
+       not be on the felt". Every layout has them in the strip under the table now, .replayer-dead-strip.) */
     /* Board cards sit ON the felt. Without this they were the only cards with no shadow — hole
        cards already have one — so the board looked printed on while the hole cards floated.
        More vertical and softer than the hole-card shadow: light is overhead at the table centre. */
@@ -6876,6 +6874,10 @@
     .replayer-turn-ring.is-in-plaque { inset: calc(var(--bw-hair) * -1); border-width: var(--bw-hair); z-index: 2; }
     .replayer-seat.ring-wait .replayer-seat-info { border-color: rgba(255,255,255,0.22); box-shadow: none; transition: none; }
     .replayer-seat.ring-wait .replayer-seat-info::before { animation: none; }
+    /* No arrival pulse where the turn moves by crossfade (the spring path): it fired after the drawn ring handed over (a
+       second ring, scaling out), and on every step back, and its cancel in the hand-over reached a pseudo-element's
+       animation only where getAnimations({ subtree }) lists one (owner, 2026-11-22: "dims, then pulses"). */
+    .replayer-table[data-springs] .replayer-seat.active-turn .replayer-seat-info::before { animation: none; }
     /* While the turn crossfades (owner, 2026-11-13: "not smooth at all"), neither plaque runs its own CSS transition:
        the seat that acted drops its ring at once under the drawn one fading out (its border and glow had faded at
        their own two speeds UNDER it, a doubled glow), and the seat to act takes its ring at once as the drawn one
@@ -7187,6 +7189,12 @@
       /* no white outline around the card (owner, 2026-10-11) */
     }
     .replayer-dead-strip-cards > *:not(:first-child) { margin-left: calc(var(--gu) * var(--dead-ml, 0.2214)); }
+    /* Landscape (the desktop window and the Hands pane) too, off the felt (owner, 2026-11-22: "dead cards on desktop
+       should not be on the felt"): the same strip at the slot's foot, under the table's ink (the hero's lowest, its
+       hand name, ends 1.0775 table heights down at most; the slot holds that and 1r more), and over the strips' scrim
+       (.replayer-under, absolute in landscape over the same foot), which would dim the cards. */
+    .replayer-landscape .replayer-table-slot { position: relative; }
+    .replayer-landscape .replayer-dead-strip { z-index: calc(var(--z-flight, 60) + 1); }
     .replayer-fullbleed .replayer-seat-info { min-width: calc(var(--gu) * 8); box-sizing: border-box; }
 
     /* Bar: 1r pad, the 6r transport, 1r, the 4r action row, [the 2r note],
@@ -7874,10 +7882,22 @@
          RESTS below 1 (the wordmark is 0.26) was driven 0.45 -> 1 and flashed
          bright on every step back. Anything else that rests dimmed on the felt
          needs the same exclusion. */
-      .replayer-replay.is-rewinding .replayer-table-felt ~ *:not(.replayer-watermark) {
+      /* Not on the spring path: there a jump crossfades the whole table from a still copy (.replayer-jump-veil), and
+         this dip dimmed everything on the felt to 0.45 on every step back (owner, 2026-11-22: "Jittery. Terrible."). */
+      .replayer-replay.is-rewinding .replayer-table:not([data-springs]) > .replayer-table-felt ~ *:not(.replayer-watermark) {
         animation: rewindFade var(--dur-snap) var(--ease-label) both;
       }
     }
+    /* The jump's still copy of the table (HandReplayerView crossfadeJump): nothing in it moves, so it shows the step it
+       copied at rest while it fades. Its CSS animations would start again from their first frame. */
+    .replayer-jump-veil,
+    .replayer-jump-veil *,
+    .replayer-jump-veil *::before,
+    .replayer-jump-veil *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+    .replayer-jump-veil { pointer-events: none; }
 
     /* ── Chip icon for bet animation ── */
     .replayer-flying-chip {
@@ -8424,6 +8444,19 @@
          before 16.2 cannot parse it). */
       border-color: rgba(60,200,224,0.5);
     }
+    /* The hero to act carries the full ring, the edge included, as every other seat does (.active-turn) and as the turn's
+       crossfading ring draws it: this rule out-ranked .active-turn's border, so the hero's edge stayed at 0.5 and the
+       glow dimmed the moment the drawn ring handed over (owner, 2026-11-22: "THE PROBLEM IS THE BLUE GLOW"). Not while
+       the ring is still arriving (.ring-wait), when the plaque keeps its resting edge under the drawn ring. */
+    .replayer-seat.is-hero.active-turn:not(.ring-wait) .replayer-seat-info { border-color: var(--brand-on-dark); }
+    /* The hero's seat and plaque each keep one layer for the whole hand (owner, 2026-11-22: "Something is jittering now in
+       the K. McCormack text, which should be absolutely static the entire hand"). In the owner's screen recording the
+       name's glyph edges and the plaque's ground behind them changed together for a few frames at a time, its box never
+       moving (measured to 0.01px in WebKit): the phone re-drawing the seat as a neighbour's animation (a drawn ring, a
+       fold's cards under the seats, a label's fade, the bust's dim) moved it into a layer of its own and out again. With
+       a layer of its own throughout, nothing next to it changes how it is drawn. */
+    .replayer-table[data-springs] .replayer-seat.is-hero,
+    .replayer-table[data-springs] .replayer-seat.is-hero .replayer-seat-info { will-change: opacity; }
     .replayer-seat.is-hero .replayer-seat-stack { font-size: clamp(10px, 4.3cqmin, 54px); }
     /* The hero's slant is gone. It marked whose hand this is, but the hero is
        already the seat at the bottom of the table, a size larger than the

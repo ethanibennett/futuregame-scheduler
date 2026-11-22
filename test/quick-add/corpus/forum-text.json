@@ -2371,7 +2371,16 @@
     "flop": "5x5x4x"
    },
    "unsupported": true,
-   "otherHands": 1
+   "otherHands": 1,
+   "mentioned": [
+    "Kh5h",
+    "8c",
+    "TxTx",
+    "Tx9x4x",
+    "Jx",
+    "8x7x",
+    "KxQx"
+   ]
   },
   "expectGaps": [
    {
@@ -2419,7 +2428,7 @@
     "about": "the two donkeys' seats are never named"
    }
   ],
-  "notes": "Two hands; the second has more detail. A button blind cannot be stored."
+  "notes": "Two hands; the second has more detail. A button blind cannot be stored. Mentioned (2026-11-22): D2's K5 of hearts, the eight of clubs river, and the first hand's cards, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-mtt-kq-sb-3bet-ante-pot-95k",
@@ -3347,7 +3356,10 @@
       "fold"
      ]
     ]
-   }
+   },
+   "mentioned": [
+    "6x6x"
+   ]
   },
   "expectGaps": [
    {
@@ -3369,7 +3381,7 @@
     "about": "the 56,158 turn pot is 5,610 more than the actions: someone called the turn bet before \"everyone folds\""
    }
   ],
-  "notes": "The 17,000 preflop pot shows the 3,000 ante is a big blind ante. \"MP\" at a six-max table is the HJ."
+  "notes": "The 17,000 preflop pot shows the 3,000 ante is a big blind ante. \"MP\" at a six-max table is the HJ. Mentioned (2026-11-22): the button's sixes, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-mtt-flop-shove-j10d-two-outer",
@@ -3385,7 +3397,11 @@
   "expect": {
    "gameType": "NLH",
    "gameMode": "mtt",
-   "heroCards": "JdTd"
+   "heroCards": "JdTd",
+   "mentioned": [
+    "Jx",
+    "Jx"
+   ]
   },
   "expectGaps": [
    {
@@ -3440,7 +3456,7 @@
     "about": "the hand that dominated is never named"
    }
   ],
-  "notes": "Owner reading: one suit letter after a two-card holding means both cards (\"J 10d\" = JdTd); the player can edit it."
+  "notes": "Owner reading: one suit letter after a two-card holding means both cards (\"J 10d\" = JdTd); the player can edit it. Mentioned (2026-11-22): the jack turn and the jack river, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-plo-aa65-lj-pots-river-other-two-fold",
@@ -3931,7 +3947,13 @@
     "turn": "Kx",
     "river": "Tx"
    },
-   "unsupported": true
+   "unsupported": true,
+   "mentioned": [
+    "6x7x8xJx",
+    "5d9hTd",
+    "6d",
+    "Ax"
+   ]
   },
   "expectGaps": [
    {
@@ -3966,7 +3988,7 @@
     "about": "no stakes are given"
    }
   ],
-  "notes": "A double-board bomb pot: the replayer keeps the first board only and has no bomb pot."
+  "notes": "A double-board bomb pot: the replayer keeps the first board only and has no bomb pot. Mentioned (2026-11-22): the opponent's 678J and board 2, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-plo8-btn-flat-flop-raise-river-fold",
@@ -4181,7 +4203,10 @@
       null
      ]
     ]
-   }
+   },
+   "mentioned": [
+    "AdKs9h8s7h"
+   ]
   },
   "expectGaps": [
    {
@@ -4209,7 +4234,7 @@
     "about": "five hole cards in a four-card game"
    }
   ],
-  "notes": "PLO5 is recorded as PLO, so the fifth hole card cannot be kept."
+  "notes": "PLO5 is recorded as PLO, so the fifth hole card cannot be kept. Mentioned (2026-11-22): the hero's five cards, which PLO cannot hold, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-plo5-double-board-three-mp-callers",
@@ -4234,7 +4259,13 @@
     "turn": "Jh",
     "river": "Js"
    },
-   "unsupported": true
+   "unsupported": true,
+   "mentioned": [
+    "Ah7hTs7c3c",
+    "7d2s3s",
+    "Qs",
+    "3s"
+   ]
   },
   "expectGaps": [
    {
@@ -4281,7 +4312,7 @@
     "about": "five hole cards in a four-card game"
    }
   ],
-  "notes": "Board B and the bomb pot cannot be stored; \"three MP players call\" is a group of three."
+  "notes": "Board B and the bomb pot cannot be stored; \"three MP players call\" is a group of three. Mentioned (2026-11-22): the hero's five cards and board B, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-plo-private-game-6jqq-rainbow-fold",
@@ -4309,7 +4340,11 @@
    "board": {
     "flop": "2xTx9x",
     "turn": "Qx"
-   }
+   },
+   "mentioned": [
+    "TxTx",
+    "JxJxKx"
+   ]
   },
   "expectGaps": [
    {
@@ -4350,7 +4385,7 @@
     "about": "the table size is never said"
    }
   ],
-  "notes": "\"6JQQ rain bow\" is a holding with four different suits, not a board."
+  "notes": "\"6JQQ rain bow\" is a holding with four different suits, not a board. Mentioned (2026-11-22): the button's TT and the cutoff's JJK, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-observer-plo-bigo-split-dark-bet",
@@ -4376,7 +4411,11 @@
    "board": {
     "flop": "2h3hJd",
     "turn": "4h"
-   }
+   },
+   "mentioned": [
+    "JxJx",
+    "Ah5h"
+   ]
   },
   "expectGaps": [
    {
@@ -4408,7 +4447,7 @@
     "about": "only Guy 1's seat is named"
    }
   ],
-  "notes": "A PLO/Big O split game: the two cards shown cannot say which game this hand was. Nobody here is the narrator."
+  "notes": "A PLO/Big O split game: the two cards shown cannot say which game this hand was. Nobody here is the narrator. Mentioned (2026-11-22): Guy 1's JJ and Guy 2's Ah 5h, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-plo-5nl-bomb-pot-cumulative-boards",
@@ -4624,7 +4663,11 @@
   ],
   "text": "PLO HI: all in on the flop, then a 7 turn and an 8 river; he had the J-high flush draw. Are my odds right?",
   "expect": {
-   "gameType": "PLO"
+   "gameType": "PLO",
+   "mentioned": [
+    "7x",
+    "8x"
+   ]
   },
   "expectGaps": [
    {
@@ -4653,7 +4696,7 @@
     "about": "no stakes are given"
    }
   ],
-  "notes": "Too little to replay: no cards, flop or seats."
+  "notes": "Too little to replay: no cards, flop or seats. Mentioned (2026-11-22): the 7 turn and the 8 river, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-plo8-4-card-we-3x-button",
@@ -6388,7 +6431,16 @@
     "flop": "9x7x4x",
     "turn": "Tx"
    },
-   "otherHands": 3
+   "otherHands": 3,
+   "mentioned": [
+    "AhKh",
+    "QxTx",
+    "Qx",
+    "Tx3x",
+    "AsAc",
+    "5x2x2x",
+    "Th2d"
+   ]
   },
   "expectGaps": [
    {
@@ -6432,7 +6484,7 @@
   "flaws": [
    "seating"
   ],
-  "notes": "Four hands; the first is recorded (no actions expected: its players are never named). In the first hand of a tournament the starting stack is everyone's stack, but the text does not tie it to this hand."
+  "notes": "Four hands; the first is recorded (no actions expected: its players are never named). In the first hand of a tournament the starting stack is everyone's stack, but the text does not tie it to this hand. Mentioned (2026-11-22): the other three hands' cards, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-mtt-jj-4bet-shove-calls-for-less-exposed",
@@ -6519,7 +6571,10 @@
       16000
      ]
     ]
-   }
+   },
+   "mentioned": [
+    "Ah2h"
+   ]
   },
   "expectGaps": [
    {
@@ -6563,7 +6618,7 @@
     "about": "a tournament hand with no ante said"
    }
   ],
-  "notes": "\"BB: unknown 18k\" is a player with no reads and 18k, not an unknown stack. \"Calls for less\" is an all-in call. The 78k average is not a stack. UTG+1 exposed Ah2h mid-hand (not a showdown)."
+  "notes": "\"BB: unknown 18k\" is a player with no reads and 18k, not an unknown stack. \"Calls for less\" is an all-in call. The 78k average is not a stack. UTG+1 exposed Ah2h mid-hand (not a showdown). Mentioned (2026-11-22): UTG1's Ah 2h, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-a6s-btn-impossible-bb-limp-order",
@@ -6774,7 +6829,10 @@
     "turn": "Qx",
     "river": "Jx"
    },
-   "otherHands": 1
+   "otherHands": 1,
+   "mentioned": [
+    "KxQx"
+   ]
   },
   "expectGaps": [
    {
@@ -6809,7 +6867,7 @@
     "about": "no stakes are given"
    }
   ],
-  "notes": "\"QQQKK\" and \"JJJQQ\" are made hands, not cards. \"KQ6Q => KQ6QJ\" restates the board."
+  "notes": "\"QQQKK\" and \"JJJQQ\" are made hands, not cards. \"KQ6Q => KQ6QJ\" restates the board. Mentioned (2026-11-22): the opponent's KQ, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-27td-five-handed-utg-plus-two",
@@ -7667,7 +7725,10 @@
       "fold"
      ]
     ]
-   }
+   },
+   "mentioned": [
+    "Tx5x"
+   ]
   },
   "expectGaps": [
    {
@@ -7705,7 +7766,7 @@
   "flaws": [
    "seating"
   ],
-  "notes": "A bomb pot: no preflop betting, which the validator reads as everyone folding preflop."
+  "notes": "A bomb pot: no preflop betting, which the validator reads as everyone folding preflop. Mentioned (2026-11-22): the T5 the opponent folded, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-aa-btn-3bet-emoji-cumulative-river-overbet",
@@ -8298,7 +8359,12 @@
    "gameType": "NLH",
    "gameMode": "cash",
    "currency": "USD",
-   "heroCards": "KxKx"
+   "heroCards": "KxKx",
+   "mentioned": [
+    "AxAx",
+    "Kx",
+    "Kx"
+   ]
   },
   "expectGaps": [
    {
@@ -8340,7 +8406,7 @@
     "about": "no stakes are given"
    }
   ],
-  "notes": "\"aipf\" is all in preflop."
+  "notes": "\"aipf\" is all in preflop. Mentioned (2026-11-22): the opponent's aces and the kings on the flop and river, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-25nl-ak-vs-kq-aipf-story",
@@ -8356,7 +8422,11 @@
   "expect": {
    "gameType": "NLH",
    "gameMode": "cash",
-   "heroCards": "AxKx"
+   "heroCards": "AxKx",
+   "mentioned": [
+    "KxQx",
+    "Qx"
+   ]
   },
   "expectGaps": [
    {
@@ -8397,7 +8467,8 @@
     "id": "blinds",
     "about": "no stakes are given"
    }
-  ]
+  ],
+  "notes": "Mentioned (2026-11-22): the KQ and the river queen, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-3-handed-aa-lost-to-t4cc-behind",
@@ -9363,7 +9434,10 @@
    "heroCards": "KxKx",
    "board": {
     "flop": "Qx6x2x"
-   }
+   },
+   "mentioned": [
+    "Qs6s"
+   ]
   },
   "expectGaps": [
    {
@@ -9405,7 +9479,7 @@
     "about": "the turn and river are never given"
    }
   ],
-  "notes": "\"4 ways to a flop\" says four saw it, not who. The Hendon Mob winnings are noise."
+  "notes": "\"4 ways to a flop\" says four saw it, not who. The Hendon Mob winnings are noise. Mentioned (2026-11-22): the OMC's Q6 of spades, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-observer-straight-flush-three-way-chop",
@@ -9432,7 +9506,10 @@
    "showdown": {
     "UTG": "9h9s",
     "BB": "8d8h"
-   }
+   },
+   "mentioned": [
+    "7d3d"
+   ]
   },
   "expectGaps": [
    {
@@ -9464,7 +9541,7 @@
   "flaws": [
    "seating"
   ],
-  "notes": "Told by a spectator. The chop is three ways, including a player with no seat."
+  "notes": "Told by a spectator. The chop is three ways, including a player with no seat. Mentioned (2026-11-22): the maniac's 7d 3d, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-bb-3bet-bluff-big-blinds-only-no-cards",
@@ -9484,7 +9561,10 @@
     "flop": "4cQd3c",
     "turn": "Ts",
     "river": "6h"
-   }
+   },
+   "mentioned": [
+    "6x6x"
+   ]
   },
   "expectGaps": [
    {
@@ -9519,7 +9599,7 @@
     "about": "no stakes are given"
    }
   ],
-  "notes": "Every size is in big blinds and the hero's cards are never said."
+  "notes": "Every size is in big blinds and the hero's cards are never said. Mentioned (2026-11-22): the opponent's 66, named in the text but not scored, so a parse that records them is not inventing them."
  },
  {
   "id": "web-55-sb-straddle-late-position-jam-90-something",

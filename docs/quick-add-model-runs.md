@@ -100,19 +100,39 @@ the same prompt and corpus for both):
 | Complete hands: recall / perfect (of 58) | 89.9% / 21 | **99.1% / 51** |
 | Complete hands asked a blocking question (of 58) | 28 | **4** |
 | Gap recall | 75.0% | **78.3%** |
-| Hallucinated cards | 79 (36 cases) | 80 (29 cases) |
-| Invented suits | **497** | 602 |
+| Hallucinated cards | 79 (36 cases), old scorer | 80 (29 cases); **1** rescored |
+| Invented suits | 497, old scorer | 602; **0** rescored (+653 filled by the server) |
 | Invented stacks | 31 | **26** |
 | Speech: recall / perfect (of 109) | 73.0% / 15 | **88.2% / 41** |
 | Cost a hand | **$0.012** | $0.022 |
 | Latency p50 / p90 / max | **5.6 s / 7.8 s / 11.4 s** | 6.3 s / 10.7 s / 17.4 s |
 | Failed parses | 0 | 0 |
 
-Opus 5.5 at low effort is ahead on every fact measure and level on invented cards; none of its invented cards is
-in a complete hand. What is left against it: **more invented suits** (602 to 497: a suit picked where the text gave
-only the rank), twice the cost, and three more seconds at p90 (well inside the app's 60 s). Two of its empty hands
-are judgements: a self-contradicting transcript it called "too garbled to follow", and the three rules questions
-every model leaves empty.
+Opus 5.5 at low effort is ahead on every fact measure. What is left against it: twice the cost, and three more
+seconds at p90 (well inside the app's 60 s). Two of its empty hands are judgements: a self-contradicting transcript
+it called "too garbled to follow", and the three rules questions every model leaves empty.
+
+**What the invented suits and cards were** (2026-11-22, read from run 13's kept parses, then rescored as run 14 for
+nothing): the two figures mostly measured the eval, not the model.
+- **Suits:** 598 of the 602 were the server filling in suits for cards said by rank alone (`pickSuits`, by design:
+  a note tells the player, who can edit them). The figure grew with every rank-only card a parse recorded, so the
+  better parse read worse. The model picked 4 suits itself, 3 of them stated in the text ("Q6 of spades", "K5 of
+  hearts") but missing from the corpus.
+- **Cards:** 79 of the 80 were named in the text but not in the corpus's expectations: an opponent's shown hand
+  ("he has Q6 of spades", "calls with 66"), a river, another hand of the story, a strategy question's holding. One
+  was a real slip: "jack nine offsuit" written as J-T.
+- **The eval now** counts the server's suits apart ("Suits filled", `hallucinations.filledSuits`, read from its
+  notes by `filledByServer`, which `scorer-filled.test.js` holds to normalize.js's wording), and lists the cards a
+  text names outside the scored hand in `expect.mentioned` (28 cases), counted as stated, never scored.
+- **Rescored on that eval** (run 14, Opus 5.5 low, the same parses): recall 91.8%, precision 89.3%, 132 perfect,
+  **1 hallucinated card, 0 invented suits** (653 filled by the server), 26 invented stacks, $5.84.
+- Sonnet 5's parses (run 10) were pruned before this, so its column is still on the old scorer. A fresh Sonnet 5 run
+  (about $3.20) gives it on the same footing; the same corpus gaps applied to it, so its 79 cards will fall too.
+
+**Rescoring** (Admin › A run in full › Rescore this run, or `POST /api/admin/quick-add-eval { rescore: id }`): a new
+run that scores a finished run's kept parses with today's scorer and corpus (`eval.js --parses`), with their cost; no
+model call, no key, no cost. A rescore keeps no copy of the parses, and the newest three runs that hold parses keep
+them, so a rescore never pushes a paid run's out.
 
 **Two bugs this run found, fixed before it** (both only on the thinking shape, so production never saw them):
 - **Opus wrapped the hand in one more key** about one parse in twenty-five (`{ "record_hand": { ... } }`,
