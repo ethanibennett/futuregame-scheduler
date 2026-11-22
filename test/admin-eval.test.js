@@ -16,7 +16,11 @@ const runner = require('../lib/admin-eval');
   const plain = runner.readOptions({ model: 'claude-sonnet-5', effort: '' });
   assert.deepStrictEqual(plain.options, { model: 'claude-sonnet-5', effort: null, corpus: 'main', sample: null });
   assert.ok(plain.args.includes('off') && !plain.args.includes('--corpus'), 'no effort = the model\'s own request, on the main corpus');
-  for (const bad of [{ model: 'gpt-5' }, { model: 'claude-opus-5-5; rm -rf /' }, { effort: 'extreme' }, { corpus: 'mine' }, { sample: 0 }, { sample: 2.5 }]) {
+  // Named cases: a rerun of the hands one run got wrong, each id one --filter.
+  const named = runner.readOptions({ model: 'claude-opus-5-5', effort: 'low', cases: 'web-rigged-rant-jj-vs-j5-555, sp-lhe-four-hands-four-sentences' });
+  assert.deepStrictEqual(named.options.cases, ['web-rigged-rant-jj-vs-j5-555', 'sp-lhe-four-hands-four-sentences']);
+  assert.deepStrictEqual(named.args.slice(-4), ['--filter', 'web-rigged-rant-jj-vs-j5-555', '--filter', 'sp-lhe-four-hands-four-sentences']);
+  for (const bad of [{ model: 'gpt-5' }, { model: 'claude-opus-5-5; rm -rf /' }, { effort: 'extreme' }, { corpus: 'mine' }, { sample: 0 }, { sample: 2.5 }, { cases: ['--module'] }, { cases: 'a b' }, { cases: Array(61).fill('web-x-y') }]) {
     assert.ok(runner.readOptions(bad).error, JSON.stringify(bad));
   }
   assert.strictEqual(runner.start({ env: { ANTHROPIC_API_KEY: 'k' }, options: { effort: 'extreme' } }).status, 400);
@@ -53,7 +57,13 @@ const runner = require('../lib/admin-eval');
   assert.strictEqual(list[0].cases, s.summary.cases);
   assert.ok(!('report' in list[0]), 'the list leaves the reports out');
   assert.ok(/recall/i.test(runner.run(list[0].id).report));
-  assert.strictEqual(db.exec('SELECT COUNT(*) FROM quick_add_eval_cases')[0].values[0][0], 0, 'a done run drops its kept parses');
+  // A done run keeps its parses (the newest few runs), to be read one by one.
+  const parses = runner.runCases(list[0].id);
+  assert.strictEqual(parses.length, s.summary.cases, 'a done run keeps its parses');
+  assert.ok(parses.every((p) => !p.error && 'gameType' in p && Number.isInteger(p.actions)), JSON.stringify(parses[0]));
+  const one = runner.runCase(list[0].id, parses[0].id);
+  assert.ok(one && one.hand && Array.isArray(one.hand.streets), 'one parse in full');
+  assert.strictEqual(runner.runCase(list[0].id, 'no-such-case'), null);
   assert.strictEqual(runner.run(999), null);
   assert.ok(saved >= 1, 'the database is saved');
 
@@ -87,5 +97,14 @@ const runner = require('../lib/admin-eval');
   assert.deepStrictEqual([after.status, after.cases, after.recall, after.resumed], ['done', cases.length, 1, 50]);
   assert.match(after.report, /Resumed: 50 case\(s\)/);
   assert.strictEqual(runner.runs().length, 2);
+
+  // Only the newest three runs keep their parses (an interrupted one keeps its own): two more done runs and a
+  // third finishing leave the first two runs with none.
+  realRun("INSERT INTO quick_add_eval_runs (started_at, finished_at, options, summary, status) VALUES ('2026-11-21T21:00:00Z', '2026-11-21T21:10:00Z', '{}', '{}', 'done')");
+  realRun("INSERT INTO quick_add_eval_runs (started_at, finished_at, options, summary, status) VALUES ('2026-11-21T22:00:00Z', '2026-11-21T22:10:00Z', '{}', '{}', 'done')");
+  const third = await new Promise((resolve) => runner.start({ args: ['--oracle', '--filter', 'web-rigged-rant-jj-vs-j5-555'], onDone: resolve, keepRun: true }));
+  assert.strictEqual(third.exitCode, 0, third.log.slice(-800));
+  const newest = runner.runs()[0];
+  assert.deepStrictEqual([runner.runCases(list[0].id).length, runner.runCases(cut).length, runner.runCases(newest.id).length], [0, 0, 1]);
   console.log(`admin-eval.test.js - passed (${s.progress.total} cases, run ${list[0].id} kept as it went; run ${cut} resumed with 50 kept)`);
 })().catch((e) => { console.error(e); process.exit(1); });

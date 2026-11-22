@@ -1152,6 +1152,19 @@ app.get('/api/admin/quick-add-eval/runs/:id', authenticateToken, requireAppAdmin
   res.set('Cache-Control', 'no-store');
   res.json(run);
 });
+// A kept run's parses (the newest few runs, and an interrupted one): the list, and one in full.
+app.get('/api/admin/quick-add-eval/runs/:id/cases', authenticateToken, requireAppAdmin, (req, res) => {
+  const list = adminEval.runCases(Number(req.params.id));
+  if (!list) return res.status(404).json({ error: 'Not found' });
+  res.set('Cache-Control', 'no-store');
+  res.json({ cases: list });
+});
+app.get('/api/admin/quick-add-eval/runs/:id/cases/:caseId', authenticateToken, requireAppAdmin, (req, res) => {
+  const c = adminEval.runCase(Number(req.params.id), String(req.params.caseId));
+  if (!c) return res.status(404).json({ error: 'Not found' });
+  res.set('Cache-Control', 'no-store');
+  res.json(c);
+});
 
 // The weekly cohort report (lib/growth.js report): app admins only. ?weeks= up to 52 (default 13).
 app.get('/api/admin/growth', authenticateToken, requireAppAdmin, (req, res) => {
