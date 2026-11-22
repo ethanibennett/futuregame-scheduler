@@ -171,10 +171,11 @@ sandbox URL `https://futurega.me/api/subscription/apple/webhook`. The server sid
   (BWPO, WSOP 2027) per the plan's section 12.
 - Ratings prompt: after the third saved event or after logging a bag, never after a bust.
 
-## When the play-money tables ship (a build after launch; branch `play-money`, `docs/play-money-platform.md`)
+## If the play-money tables ever come into the app (`docs/play-money-platform.md`)
 
-Not for the 11 December submission. The build that turns the tables on for players (they are off unless the server
-says so, and admins only until the owner opens them) changes two answers. The owner confirms both before submitting.
+They do not today: the tables are play.futurega.me's alone (owner, 2026-11-22: "deploy to play.futurega.me, no effect on
+the mobile app"), and the app carries no tab, link or push of theirs, so the answers above stand. Only a build that
+brings the tables into the app changes two answers. The owner confirms both before submitting.
 
 - **Age rating, Simulated Gambling:** "Frequent/Intense" (players play poker hands against each other for chips).
   The rating stays 18+. Real-money gambling stays "None".

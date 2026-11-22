@@ -137,8 +137,16 @@ export function encodeHand(hand) {
   /* Several boards (owner, 2026-10-20) ride at the end of the blind field after a '*': D for a double
      board, R2 or R3 for a hand run twice or three times. Each street's extra boards are its 'y' (board
      2) and 'z' (board 3) tokens; neither letter starts a card ('x' is a face-down card). */
-  if (hand.doubleBoard) blindStr += '*D';
-  else if (Number(hand.runs) > 1) blindStr += '*R' + Number(hand.runs);
+  var flags = hand.doubleBoard ? 'D' : Number(hand.runs) > 1 ? 'R' + Number(hand.runs) : '';
+  /* A post to come in at once (players[i].post, a play-money table's new seat: a live big blind from its own seat)
+     rides in the same suffix as 'P' + the seat + '@' + the amount, after any board flag. A hand with none (every
+     hand but a table's) is written as before; an older decoder drops the post. */
+  if (_shGetGameCategory(hand.gameType) !== 'stud') {
+    (hand.players || []).forEach(function(p, i) { if (p && Number(p.post) > 0) flags += 'P' + i + '@' + amountOut(p.post); });
+  }
+  // A play-money table's hand (hand.table) adds 'T': the felt settles a hand mucked at its showdown by the TDA there.
+  if (hand.table) flags += 'T';
+  if (flags) blindStr += '*' + flags;
   parts.push(blindStr);
 
   var streets = hand.streets || [];
@@ -322,6 +330,12 @@ export function decodeHand(str) {
   var boardFlags = '';
   var starAt = blindsStr.indexOf('*');
   if (starAt >= 0) { boardFlags = blindsStr.slice(starAt + 1); blindsStr = blindsStr.slice(0, starAt); }
+  // Posts to come in at once ('P' seat '@' amount), taken out of the flags before the board's are read.
+  var posts = {};
+  boardFlags = boardFlags.replace(/P([0-9])@([0-9_]+)/g, function(_, seat, amt) { posts[Number(seat)] = amountIn(amt); return ''; });
+  // A play-money table's hand ('T').
+  var tableHand = /T$/.test(boardFlags);
+  if (tableHand) boardFlags = boardFlags.slice(0, -1);
   var straddleCode = '';
   var bangAt = blindsStr.indexOf('!');
   if (bangAt >= 0) {
@@ -379,6 +393,7 @@ export function decodeHand(str) {
       position: positions[pi] || '',
       startingStack: playerStacks[pi] || 50000
     });
+    if (posts[pi] > 0 && !gameCfg.isStud) players[pi].post = posts[pi];
   }
 
   var streetDef = _shGetStreetDef(gameType);
@@ -559,6 +574,7 @@ export function decodeHand(str) {
     heroIdx: heroIdx,
     result: result,
     ...(boardFlags === 'D' ? { doubleBoard: true } : {}),
+    ...(tableHand ? { table: {} } : {}),
     ...(/^R[23]$/.test(boardFlags) ? (function() {
       var runs = Number(boardFlags.charAt(1));
       var from = streets.findIndex(function(s) { return !!s.cards.board2; });

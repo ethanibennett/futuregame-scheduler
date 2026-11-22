@@ -1259,6 +1259,14 @@ function blindPosted(hand, playerIdx) {
   if (p.position === 'BB') return capPost(b.bb, p.startingStack);
   return 0;
 }
+/* A post to come in at once (players[i].post: a seat taken at a play-money table that did not wait for the big
+   blind), a live big blind from its own seat, capped at the stack. A hand with none (every hand but a table's) is
+   as it was. */
+function postIn(hand, playerIdx) {
+  const p = hand.players[playerIdx];
+  if (!p || !(Number(p.post) > 0) || getGameCategory(hand.gameType) === 'stud') return 0;
+  return capPost(Number(p.post), p.startingStack);
+}
 /* Antes in the pot that are in no seat's street contribution: stud's from every seat, a big blind's once. */
 function antesPosted(hand) {
   const ante = (hand.blinds && hand.blinds.ante) || 0;
@@ -1324,6 +1332,7 @@ function calcPotsAndStacks(hand, upToStreet, upToAction) {
       }
       /* Straddles post with the blinds, before a card is dealt. */
       getStraddles(hand.players, blinds).forEach(st => post(st.seat, st.amount));
+      hand.players.forEach((_, i) => { const x = postIn(hand, i); if (x > 0) post(i, x); });
     }
   }
   const folded = new Set();
@@ -1369,6 +1378,8 @@ function computePlayerContrib(hand, streetIdx, actions, upToIdx, playerIdx) {
        can be both, so this never doubles a blind. */
     const st = getStraddles(hand.players, hand.blinds).find(x => x.seat === playerIdx);
     if (st) total = capPost(st.amount, hand.players[playerIdx].startingStack);
+    const posted = postIn(hand, playerIdx);
+    if (posted > 0) total = posted;
   }
   for (let i = 0; i <= upToIdx && i < actions.length; i++) {
     if (actions[i].player === playerIdx) {

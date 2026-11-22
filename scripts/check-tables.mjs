@@ -1,6 +1,7 @@
 // Two browsers at one play-money table (docs/play-money-platform.md §9; the brief's "done"): a scratch scheduler
-// (ports 4950-4954) serving the built app, the tables service beside it (4955-4959), and two WebKit pages signed
-// in as two accounts. Ava makes a table in the Tables tab; Bo opens her /play/ link; both sit; they play a full
+// (ports 4950-4954) serving the built play page as play.futurega.me does (PLAY_HOSTS: the scratch host), the tables
+// service beside it (4955-4959), and two WebKit pages signed in as two accounts. Ava makes a table in the lobby; Bo
+// opens her /join/ link; both sit; they play a full
 // NLH hand from a fixed deck by pressing the action bar on the replayer's felt. After every step each page's felt
 // is read: neither may ever show a card its player has not seen. At the end the winner's cards are shown to the
 // loser, the loser's never to the winner, the stacks are the settlement's, and each keeps the hand in Hands.
@@ -30,7 +31,7 @@ const problems = [];
 const fail = (m) => { problems.push(m); console.log('  FAIL ' + m); };
 const ok = (m) => console.log('  ok   ' + m);
 
-if (!fs.existsSync(path.join(ROOT, 'public-vite', 'index.html'))) { console.error('Build the app first (vite-app: npm run build).'); process.exit(2); }
+if (!fs.existsSync(path.join(ROOT, 'public-vite', 'play.html'))) { console.error('Build the app first (vite-app: npm run build).'); process.exit(2); }
 
 const scratch = await createScratch({ ports: [4950, 4954], prefix: 'fg-check-tables-' });
 const db = scratch.open();
@@ -40,7 +41,8 @@ const tok = (id, username) => jwt.sign({ id, username }, JWT_SECRET, { expiresIn
 const AVA = tok(101, 'ham'), BO = tok(102, 'ham5');
 
 const tport = await freePort([4955, 4959]);
-const srv = await boot(scratch.dbPath, { TABLES: '1', TABLES_URL: `http://127.0.0.1:${tport}`, TABLES_SECRET: SECRET }, { ports: [4950, 4954] });
+// The scratch host is the play host: every page is play.html, and an invite is <host>/join/<token>.
+const srv = await boot(scratch.dbPath, { TABLES: '1', TABLES_URL: `http://127.0.0.1:${tport}`, TABLES_SECRET: SECRET, PLAY_HOSTS: '127.0.0.1' }, { ports: [4950, 4954] });
 const S = `http://127.0.0.1:${srv.port}`;
 const tables = spawn(process.execPath, [path.join(ROOT, 'tables', 'server.mjs')], {
   cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
@@ -89,13 +91,14 @@ async function press(p, name, who) {
 }
 const yourTurn = (p) => p.getByText(/^Your turn/).first().waitFor({ state: 'visible', timeout: 15000 });
 
+let pages = [];
 try {
   const ava = await page(AVA, 'ham');
   const bo = await page(BO, 'ham5');
+  pages = [['ava', ava], ['bo', bo]];
 
-  // Ava makes the table in the Tables tab.
+  // Ava makes the table in the lobby: play.futurega.me opens on it.
   await ava.goto(S + '/');
-  await ava.getByRole('button', { name: 'Tables', exact: true }).first().click();
   await ava.getByText(/20,000 chips/).waitFor({ timeout: 15000 });
   ok('Ava sees 20,000 chips');
   await ava.getByRole('button', { name: 'New table' }).click();
@@ -104,10 +107,10 @@ try {
   await ava.getByText('Check table').waitFor();
   ok('Ava made a table');
   const list = await api('GET', '/api/tables', null, AVA);
-  const invite = list.tables[0].invite.split('/play/')[1];
+  const invite = list.tables[0].invite.split('/join/')[1];
 
   // Bo opens the invite link, joins and sits first (seat 0: the button, the aces).
-  await bo.goto(`${S}/play/${invite}`);
+  await bo.goto(`${S}/join/${invite}`);
   await bo.getByRole('button', { name: 'Join the table' }).click();
   await bo.getByRole('button', { name: 'Sit down' }).click();
   ok('Bo took the invite and sat down');
@@ -167,6 +170,12 @@ try {
   for (const [game, label] of [['Stud Hi', 'Seven Card Stud'], ['2-7 TD', '2-7 Triple Draw']]) await otherGame(ava, bo, game, label);
 } catch (e) {
   fail(e.message.split('\n')[0]);
+  // Where each page stood when it stopped.
+  for (const [who, p] of pages) {
+    const text = await p.evaluate(() => document.body.innerText.replace(/\s+/g, ' ').slice(0, 300)).catch(() => '?');
+    console.log(`  ${who} at ${p.url()}: ${text}`);
+    if (SHOTS) { fs.mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: path.join(SHOTS, `tables-stopped-${who}.png`) }).catch(() => {}); }
+  }
 } finally {
   await browser.close();
   tables.kill();
@@ -192,7 +201,7 @@ async function otherGame(ava, bo, game, label) {
   const t = list.tables.find((x) => x.name === name);
   if (!t) { fail(`${game}: the table is not in Ava's list`); return; }
   const before = { ava: (await api('GET', '/api/hands', null, AVA)).length, bo: (await api('GET', '/api/hands', null, BO)).length };
-  await bo.goto(`${S}/play/${t.invite.split('/play/')[1]}`);
+  await bo.goto(`${S}/join/${t.invite.split('/join/')[1]}`);
   await bo.getByRole('button', { name: 'Join the table' }).click();
   await bo.getByRole('button', { name: 'Sit down' }).click();
   await ava.locator('.tb-item', { hasText: name }).getByRole('button', { name: 'Open' }).click();

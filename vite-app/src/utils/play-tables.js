@@ -29,10 +29,10 @@ export const tablesApi = {
   hidden: () => fetchApi('/blocks').then(json).then((d) => new Set((d && d.hidden) || [])),
 };
 
-/* The invite a /play/<token> link carried, kept until the Tables tab takes it. */
+/* The invite a play.futurega.me/join/<token> link carried, kept until the lobby takes it (across a sign-in). */
 const PENDING = 'pendingTableInvite';
 export function rememberTableInvite(pathname) {
-  const m = /^\/play\/([A-Za-z0-9_-]{16,64})$/.exec(pathname || '');
+  const m = /^\/join\/([A-Za-z0-9_-]{16,64})$/.exec(pathname || '');
   if (m) { try { sessionStorage.setItem(PENDING, m[1]); } catch { /* storage off */ } }
   return m ? m[1] : null;
 }
@@ -95,6 +95,8 @@ export function openTable(tableId, { onView, onStatus }) {
     rebuy: (amount) => call('rebuy', { amount }),
     sitOut: () => call('sit-out'),
     sitIn: () => call('sit-in'),
+    // Waiting for the big blind: post one to come in at once (true), or wait again (false).
+    post: (on) => call('post', { on }),
     leave: () => call('leave'),
     say: (text) => call('chat', { text }),
     mute: (userId, muted) => call('mute', { userId, muted }),

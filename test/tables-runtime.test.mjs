@@ -277,3 +277,56 @@ test('a draw table: the clock runs at a draw too, and a draw timed out (or a sea
   const drew = table.hand.streets[0].draws.map((d) => d.discarded);
   assert.deepEqual(drew, [0, 0]);
 });
+
+/* Posting to come in at once (owner, 2026-11-22): a waiting seat that posts is dealt the next hand that does not put it
+   in the small blind, with a live big blind (players[i].post) unless that hand makes it the big blind anyway. */
+test('a waiting seat that posts comes in on the next hand that does not make it the small blind', () => {
+  for (const startButtons of [0, 1, 2, 3]) {
+    const { table, advance, done } = harness();
+    for (let i = 0; i < 4; i++) table.sit(i + 1, 'P' + i, 5000, i);
+    advance(1000);
+    for (let h = 0; h < startButtons; h++) { playOut(table); advance(1000); }
+    table.sit(9, 'Dee', 5000, 4);
+    assert.equal(table.seats[4].waiting, true);
+    assert.equal(table.postIn(1, true).error, 'You are already dealt in', 'only a waiting seat posts');
+    assert.ok(table.postIn(9, true).ok);
+    assert.equal(table.viewFor(9).table.seats[4].postNow, true);
+    playOut(table);
+    let cameIn = false;
+    for (let h = 0; h < 3 && !cameIn; h++) {
+      advance(1000);
+      const p = table.handSeats.indexOf(4);
+      if (p < 0) {
+        // Out only where the hand would have made Dee the small blind: the next seat after the button.
+        assert.equal([1, 2, 3, 4].map((k) => (table.button + k) % 6).find((i) => table.seats[i]), 4, `button ${table.button}: Dee waits only for the small blind`);
+      } else {
+        cameIn = true;
+        const player = table.hand.players[p];
+        if (roles(table).bb === 4) assert.equal(player.post, undefined, 'on the big blind there is nothing to post');
+        else assert.equal(player.post, 100, 'a live big blind from her own seat');
+        assert.equal(table.seats[4].waiting, false);
+        assert.equal(table.seats[4].postNow, false);
+      }
+      playOut(table);
+    }
+    assert.ok(cameIn, `button run ${startButtons}: Dee was dealt in`);
+    // Every hand kept its chips.
+    for (const rec of done) assert.equal(rec.players.reduce((a, x) => a + x.net, 0), 0);
+  }
+});
+
+test('a seat can take its post back and wait for the big blind again', () => {
+  const { table, advance } = harness();
+  for (let i = 0; i < 4; i++) table.sit(i + 1, 'P' + i, 5000, i);
+  advance(1000);
+  table.sit(9, 'Dee', 5000, 4);
+  table.postIn(9, true);
+  assert.ok(table.postIn(9, false).ok);
+  playOut(table);
+  for (let h = 0; h < 4; h++) {
+    advance(1000);
+    const p = table.handSeats.indexOf(4);
+    if (p >= 0) { assert.equal(roles(table).bb, 4, 'back to waiting: only on the big blind'); break; }
+    playOut(table);
+  }
+});

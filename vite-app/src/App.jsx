@@ -15,7 +15,6 @@ import AlternatingSubtitle from './components/AlternatingSubtitle.jsx';
 import { createPortal } from 'react-dom';
 
 import { API_URL } from './utils/api.js';
-import { rememberTableInvite, tablesApi } from './utils/play-tables.js';
 import { parseDeepLink } from './utils/deep-links.js';
 import { resetPath } from './utils/reset-results.js';
 import { initialName } from './utils/names.js';
@@ -79,7 +78,6 @@ import MilestoneCelebration from './components/MilestoneCelebration.jsx';
 // its tab; subsequent visits are cached by the browser.
 const HandReplayerView = lazy(() => import('./components/HandReplayerView.jsx'));
 const StudyHub = lazy(() => import('./components/StudyHub.jsx'));
-const TablesView = lazy(() => import('./components/TablesView.jsx'));
 const StakingView = lazy(() => import('./components/StakingView.jsx'));
 const AdminView = lazy(() => import('./components/AdminView.jsx'));
 // The Features catalogue's sheets (2026-11-11): loaded when first opened.
@@ -127,8 +125,6 @@ const PACKAGE_MATCH = window.location.pathname.match(/^\/p\/([A-Za-z0-9_-]{10,40
 const PACKAGE_TOKEN = PACKAGE_MATCH ? PACKAGE_MATCH[1] : null;
 const INVITE_PATH_MATCH = window.location.pathname.match(/^\/i\/([A-Za-z0-9_-]{6,40})$/);
 if (INVITE_PATH_MATCH) { try { sessionStorage.setItem('pendingInvite', INVITE_PATH_MATCH[1]); } catch { /* storage off */ } }
-// A play-money table's invite (/play/<token>): kept for the Tables tab, which takes it once tables are on.
-const PLAY_INVITE = rememberTableInvite(window.location.pathname);
 const pendingInvite = () => { try { return sessionStorage.getItem('pendingInvite'); } catch { return null; } };
 const clearInvite = () => { try { sessionStorage.removeItem('pendingInvite'); } catch { /* storage off */ } };
 // Which device a sign-in is from, for Settings' list of devices (Features 42). The web is told by its browser.
@@ -2037,19 +2033,6 @@ function App() {
   // 'claude' rather than fix anything.
   // Read from the signed token's claim (authUsername), not the editable 'username' storage key.
   const isAdmin = !isGuest && APP_ADMIN_USERNAMES.includes(authUsername);
-  // Play-money tables (docs/play-money-platform.md): a tab only where the server says they are on for this
-  // account (TABLES=1, app admins while the owner's decision 3 stands). A /play/<token> link opens it.
-  const [tablesOn, setTablesOn] = useState(false);
-  useEffect(() => {
-    if (!token || isGuest) { setTablesOn(false); return; }
-    let live = true;
-    tablesApi.availability().then((a) => {
-      if (!live) return;
-      setTablesOn(!!(a && a.on));
-      if (a && a.on && PLAY_INVITE) { setVisitedTabs((s) => new Set([...s, 'tables'])); setCurrentView('tables'); }
-    }).catch(() => { if (live) setTablesOn(false); });
-    return () => { live = false; };
-  }, [token, isGuest]); // eslint-disable-line react-hooks/exhaustive-deps
   // A deep link opens its view once an admin is signed in, then the hash is cleared (§11.5).
   useEffect(() => {
     if (!deepLink || !isAdmin) return;
@@ -2609,16 +2592,6 @@ function App() {
             </TabErrorBoundary>
             </div>
 
-            {tablesOn && (
-              <div className={'tab-panel' + (currentView === 'tables' ? ' tab-active' : '')} data-tab="tables" style={{display: currentView === 'tables' ? undefined : 'none', height: currentView === 'tables' ? '100%' : undefined}}>
-              <TabErrorBoundary name="Tables" onSchedule={() => setCurrentView('tournaments')}>
-              {visitedTabs.has('tables') && (
-                <Suspense fallback={<LazyFallback />}><TablesView heroName={realName || username || 'Hero'} cardSplay={cardSplay} active={currentView === 'tables'} /></Suspense>
-              )}
-              </TabErrorBoundary>
-              </div>
-            )}
-
             <div className={'tab-panel' + (currentView === 'settings' ? ' tab-active' : '')} data-tab="settings" style={{display: currentView === 'settings' ? undefined : 'none', height: currentView === 'settings' ? '100%' : undefined}}>
             <TabErrorBoundary name="Settings" onSchedule={() => setCurrentView('tournaments')}>
             {visitedTabs.has('settings') && (
@@ -3087,7 +3060,6 @@ function App() {
           {isDesktop && (
             <DesktopRail
               isAdmin={isAdmin}
-              tablesOn={tablesOn}
               evalPct={evalPct}
               current={(navPending || currentView) === 'schedule' || (navPending || currentView) === 'calendar' ? 'tournaments' : (navPending || currentView)}
               onChange={v => (v === 'batches' ? openBatch(null) : onNavChange(v))}
@@ -3145,7 +3117,6 @@ function App() {
       {!isDesktop && (
         <BottomNav
           isAdmin={isAdmin}
-          tablesOn={tablesOn}
           current={(() => {
             const cv = navPending || currentView;
             if (cv === 'hands' && isAdmin) return 'hands';

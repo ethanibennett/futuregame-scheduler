@@ -4,7 +4,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { startHand, act, viewFor, savedHandFor, timeoutMove, currentState, toAct, maxSeatsFor } from '../poker-rules/live-hand.js';
 import { settleHand } from '../poker-rules/settle.js';
-import { deckRanOut, drawDeadCards } from '../quick-add/cards.js';
 
 const RANKS = '23456789TJQKA', SUITS = 'hdcs';
 const FULL = [...RANKS].flatMap((r) => [...SUITS].map((s) => r + s));
@@ -186,35 +185,6 @@ test('a draw game reshuffles the discards when the stub runs out, never the draw
   assert.equal(s.result.finals.reduce((a, b) => a + b, 0), 60000);
 });
 
-test('the entry screens: a thrown card is dead until the deck runs out, then live again, but never the drawer\'s own throw of that draw', () => {
-  // Six seats of 2-7 TD (30 cards dealt). First draw: everyone throws 3 (48 dealt). Second draw: seat 0 throws
-  // 2 (50), seat 1 throws 3: 53, past the deck.
-  const players = [0, 1, 2, 3, 4, 5].map((i) => ({ name: 'P' + i, startingStack: 100 }));
-  const throwN = (p, k, out = '', inn = '') => ({ player: p, discarded: k, discardedCards: out, newCards: inn });
-  const hand = {
-    gameType: '2-7 TD', players, heroIdx: 1,
-    streets: [
-      { cards: { hero: 'KhQhJh9h8c', opponents: [] }, actions: [], draws: [throwN(0, 3, 'AsKsQs'), throwN(1, 3, 'KhQhJh', '2c3c4d'), throwN(2, 3), throwN(3, 3), throwN(4, 3), throwN(5, 3)] },
-      { cards: { hero: '', opponents: [] }, actions: [], draws: [throwN(0, 2, 'JsTs'), throwN(1, 3, '9h8c4d', '')] },
-      { cards: { hero: '', opponents: [] }, actions: [], draws: [throwN(1, 1, '2c', '')] },
-      { cards: { hero: '', opponents: [] }, actions: [], draws: [] },
-    ],
-  };
-  // Seat 1 was dealt 4d at the first draw and threw it at the second: at the third (after the reshuffle) it is live.
-  assert.equal(drawDeadCards(hand, 2, 1).has('4d'), false, 'a card dealt and then thrown is not still in the hand');
-  assert.equal(deckRanOut(hand, 0, 1), false, 'the first draw: 33 dealt');
-  assert.equal(deckRanOut(hand, 1, 0), false, 'seat 0 at the second draw: 50');
-  assert.equal(deckRanOut(hand, 1, 1), true, 'seat 1 at the second draw: 53');
-  assert.equal(deckRanOut(hand, null, null), true, 'the showdown: the deck ran out at some draw');
-  // Seat 0's thrown As is dead to seat 0's own second draw (no reshuffle yet) ...
-  assert.equal(drawDeadCards(hand, 1, 0).get('As'), 'already discarded');
-  // ... and live to seat 1's, after the reshuffle; seat 1's own throw of this draw stays dead.
-  const dead = drawDeadCards(hand, 1, 1);
-  assert.equal(dead.has('As'), false);
-  assert.equal(dead.has('Js'), false, 'seat 0 threw it this draw, before the reshuffle: back in');
-  assert.equal(dead.get('9h'), 'already discarded', "seat 1's own throw of this draw is never dealt back to it");
-});
-
 test('seat limits: stud seven, the draw games six', () => {
   assert.equal(maxSeatsFor('Razz'), 7);
   assert.equal(maxSeatsFor('Badugi'), 6);
@@ -279,4 +249,108 @@ test('random hands of every stud and draw game: no view ever holds an unseen car
       }
     }
   }
+});
+
+// ── Posting to come in at once (owner, 2026-11-22: "Build the post to come in now too") ──
+// A seat that did not wait for the big blind posts one from where it sits: a live blind, its bet on the first street.
+// It acts in its own turn, and with no raise it has the option. Nobody's order changes.
+const SIX = ['A', 'B', 'C', 'D', 'E', 'F'].map((name, i) => ({ id: i + 1, name, stack: 1000 }));
+
+test('a post: the poster acts in turn, checks its option when nobody raised, and the pot counts the post', () => {
+  // Six-handed [UTG, MP, CO, BTN, SB, BB]; MP (seat 1) posts 10.
+  const seats = SIX.map((x, i) => (i === 1 ? { ...x, post: 10 } : x));
+  const s = startHand({ gameType: 'NLH', blinds: BL, seats, deck: FULL.slice() });
+  assert.equal(s.players[1].post, 10);
+  assert.equal(currentState(s).pot, 25, 'the blinds and the post');
+  assert.equal(currentState(s).actor, 0, 'UTG still acts first');
+  act(s, 0, { action: 'call' });
+  const t = toAct(s);
+  assert.equal(t.player, 1);
+  assert.equal(t.legal.canCheck, true, 'in for the big blind already: the option');
+  assert.equal(t.legal.canFold, false);
+  assert.equal(t.legal.minTo, 20, 'a raise is to the same sizes as anyone');
+  act(s, 1, { action: 'check' });
+  for (const p of [2, 3]) act(s, p, { action: 'fold' });
+  act(s, 4, { action: 'call' });
+  act(s, 5, { action: 'check' });
+  assert.equal(s.si, 1, 'the flop: everyone in for 10');
+  assert.equal(currentState(s).pot, 40);
+});
+
+test('a post facing a raise: the call is the raise less the post; folded, the post stays in the pot', () => {
+  const seats = SIX.map((x, i) => (i === 2 ? { ...x, post: 10 } : x));
+  const s = startHand({ gameType: 'NLH', blinds: BL, seats, deck: FULL.slice() });
+  act(s, 0, { action: 'raise', to: 40 });
+  act(s, 1, { action: 'fold' });
+  assert.equal(toAct(s).legal.call, 30, 'CO, in for 10, calls 30 more');
+  act(s, 2, { action: 'fold' });
+  for (const p of [3, 4, 5]) act(s, p, { action: 'fold' });
+  assert.equal(s.phase, 'over');
+  assert.deepEqual(s.result.finals, [1000 + 5 + 10 + 10, 1000, 990, 1000, 995, 990], 'UTG wins the blinds and the post');
+});
+
+test('a post is written as PokerStars writes a new player\'s, and the saved hand settles through the export', async () => {
+  const { writePokerStarsHand } = await import('../hand-history/index.js');
+  const seats = SIX.map((x, i) => (i === 0 ? { ...x, post: 10 } : x));
+  const s = startHand({ gameType: 'NLH', blinds: BL, seats, deck: FULL.slice() });
+  act(s, 0, { action: 'raise', to: 30 });
+  for (const p of [1, 2, 3, 4]) act(s, p, { action: 'fold' });
+  act(s, 5, { action: 'call' });
+  while (s.phase !== 'over') { const t = toAct(s); act(s, t.player, { action: t.legal.canCheck ? 'check' : 'call' }); }
+  const saved = savedHandFor(s, 0);
+  const { text } = writePokerStarsHand(saved, { heroName: 'A', playedAt: new Date('2026-11-22T20:00:00Z') });
+  const posts = text.split('\n').filter((l) => /posts (small|big) blind/.test(l));
+  assert.deepEqual(posts.map((l) => l.replace(/\r$/, '')), ['E: posts small blind 5', 'F: posts big blind 10', 'A: posts big blind 10']);
+  settleHand(saved).finals.forEach((f, q) => assert.equal(f, s.result.finals[q]));
+});
+
+/* The same hand without the post, the poster putting the chips in with its first action instead: a check on its
+   option is a call of the big blind, a call or a raise is to the same total. Every chip is the same at the end, and
+   that hand settles by the export PokerKit holds (check-export.mjs); every other seat is offered the same. */
+test('random hands with posts settle as the same hands without them, the posts paid as calls', () => {
+  const games = { NLH: BL, PLO: BL, LHE: LIMIT_BL };
+  let played = 0;
+  for (const [game, blinds] of Object.entries(games)) {
+    for (let seed = 1; seed <= 60; seed++) {
+      const r = rng(seed * 104729 + game.length);
+      const n = 4 + Math.floor(r() * 6);  // 4 to 9: a post is never from the blinds' or the button's seat
+      const posters = new Set(Array.from({ length: n - 3 }, (_, i) => i).filter(() => r() < 0.4));
+      if (!posters.size) posters.add(Math.floor(r() * (n - 3)));
+      const base = Array.from({ length: n }, (_, i) => ({ id: i + 1, name: 'P' + i, stack: 60 + Math.floor(r() * 400) }));
+      const deck = shuffled(r);
+      const s = startHand({ gameType: game, blinds, seats: base.map((x, i) => (posters.has(i) ? { ...x, post: blinds.bb } : x)), deck: deck.slice() });
+      const plain = startHand({ gameType: game, blinds, seats: base, deck: deck.slice() });
+      const total = base.reduce((a, x) => a + x.stack, 0);
+      const firstDone = new Set();
+      let skip = false;
+      for (let k = 0; k < 400 && s.phase !== 'over' && !skip; k++) {
+        const t = toAct(s), u = toAct(plain);
+        assert.ok(t && u && t.player === u.player, `${game} seed ${seed}: the turn differs (${t && t.player} / ${u && u.player})`);
+        const L = t.legal, x = r();
+        const poster = posters.has(t.player) && s.si === 0 && !firstDone.has(t.player);
+        if (!poster && game !== 'PLO') {
+          for (const key of ['canFold', 'canCheck', 'call', 'canRaise', 'minTo', 'maxTo', 'fixedTo']) assert.equal(L[key], u.legal[key], `${game} seed ${seed}: ${key} for seat ${t.player}`);
+        }
+        let move;
+        if (L.canRaise && x < 0.3) move = { action: L.raiseWord === 'Bet' ? 'bet' : 'raise', to: L.fixedTo != null ? L.fixedTo : L.minTo + Math.floor(r() * (L.maxTo - L.minTo + 1)) };
+        else if (L.canFold && x > 0.8) move = { action: 'fold' };
+        else move = { action: L.canCheck ? 'check' : 'call' };
+        if (poster && move.action === 'fold') { skip = true; break; }  // a post folded is dead money: no hand without it
+        // The hand without the post: the poster's check on its option is a call of the big blind.
+        const mirror = poster && move.action === 'check' ? { action: 'call' } : move;
+        if (poster) firstDone.add(t.player);
+        const a = act(s, t.player, move), b = act(plain, u.player, mirror);
+        assert.ok(a.ok, `${game} seed ${seed}: ${JSON.stringify(move)} refused: ${a.error}`);
+        if (!b.ok) { skip = true; break; }  // pot limit before the poster acts: the post is in the pot, so a bigger raise
+      }
+      if (skip) continue;
+      played++;
+      assert.equal(s.phase, 'over', `${game} seed ${seed}: did not end`);
+      assert.equal(plain.phase, 'over');
+      assert.ok(Math.abs(s.result.finals.reduce((a, b) => a + b, 0) - total) < 1e-6, `${game} seed ${seed}: chips`);
+      s.result.finals.forEach((f, q) => assert.ok(Math.abs(f - plain.result.finals[q]) < 1e-6, `${game} seed ${seed}: seat ${q} ends on ${f}, without the post ${plain.result.finals[q]}`));
+      for (let p = 0; p < n; p++) settleHand(savedHandFor(s, p)).finals.forEach((f, q) => assert.ok(Math.abs(f - s.result.finals[q]) < 1e-6, `${game} seed ${seed}: seat ${p}'s saved hand`));
+    }
+  }
+  assert.ok(played >= 120, `only ${played} hands played through`);
 });

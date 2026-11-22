@@ -392,6 +392,13 @@ export function prepareHand(input, opts = {}) {
         if (s.amount > t.maxBet) t.maxBet = s.amount;
       }
       if (prevLevel > 0) t.lastRaise = Math.max(env.bb, t.maxBet - prevLevel);
+      /* A post to come in at once (players[i].post, the play-money tables' new seats): a live big blind from the
+         poster's own seat, written as PokerStars writes a new player's ("posts big blind"), after the blinds. It
+         moves nobody's turn, and with no raise the poster has the option. A hand with none writes nothing new. */
+      for (let p = 0; p < n; p++) {
+        const amt = toCents(h.players[p].post);
+        if (amt > 0 && p !== sbIdx && p !== bbIdx) post(p, 'bb', amt);
+      }
     }
 
     const sev = { si, order, actions: [], uncalled: null, draws: [] };
@@ -510,15 +517,15 @@ export function prepareHand(input, opts = {}) {
 
   // No card twice among the cards the text shows: the board, the hero's, every
   // hand tabled (a draw's discards can be dealt again from a reshuffled stub,
-  // so only the final hands count there, and a hero who folded a draw hand
-  // mucked it into that stub: the play-money tables deal such hands).
+  // so only the final hands count there, and, in a play-money table's hand
+  // (h.table), a hero who folded a draw hand mucked it into that stub).
   {
     const seen = new Set();
     const add = (arr) => { for (const c of arr || []) { if (!known(c)) continue; const k = key(c); if (seen.has(k)) throw new HandExportError('duplicate-cards', { card: k }); seen.add(k); } };
     add(board);
     if (isStud) { for (let p = 0; p < n; p++) add(stud.visible[p]); }
     else {
-      if (!env.isDraw || live.includes(heroIdx)) add(env.isDraw ? draw.heroFinal : heroBase);
+      if (!env.isDraw || !h.table || live.includes(heroIdx)) add(env.isDraw ? draw.heroFinal : heroBase);
       for (let p = 0; p < n; p++) if (p !== heroIdx && showdown && live.includes(p)) add(holeOf(p));
     }
   }
@@ -529,9 +536,10 @@ export function prepareHand(input, opts = {}) {
   // them can be scored) and its description goes in the text.
   let scores = null;
   const descs = {};
-  /* A hand mucked at the showdown gives up its claim (TDA): the pot goes by the cards among the rest. 'MUCK' in
-     any of the seat's slots (a stud hand keeps its door on 3rd street and is marked on 7th). */
-  const mucked = new Set(live.filter(p => p !== heroIdx && h.streets.some((_, si) => isMuck(oppStr(p, si)))));
+  /* In a play-money table's hand (h.table), one mucked at the showdown gives up its claim (TDA): the pot goes by the
+     cards among the rest. 'MUCK' in any of the seat's slots (a stud hand keeps its door on 3rd street and is marked
+     on 7th). Only the tables' hands until the app moves onto the shared rules after launch. */
+  const mucked = !h.table ? new Set() : new Set(live.filter(p => p !== heroIdx && h.streets.some((_, si) => isMuck(oppStr(p, si)))));
   const contenders = mucked.size < live.length ? live.filter(p => !mucked.has(p)) : live;
   if (showdown && evalCfg) {
     const sc = {};
@@ -707,7 +715,7 @@ function studCards(h, n, heroIdx, names, reachedBy, oppStr, heroCardsAt, stLabel
     up[p] = ups;
     // Down cards: 3rd street before the door holds them newest pick first.
     const hidden = s0.slice(0, -1).reverse();             // h1, h2 (, h7) in pick order
-    const seventh = isMuck(oppStr(p, 4)) ? [] : cardsOf(oppStr(p, 4));
+    const seventh = h.table && isMuck(oppStr(p, 4)) ? [] : cardsOf(oppStr(p, 4));
     let dn = null;
     if (seventh.length) dn = hidden.length >= 2 ? [hidden[0], hidden[1], seventh[0]] : null;
     else if (hidden.length >= 3) dn = [hidden[0], hidden[1], hidden[2]];

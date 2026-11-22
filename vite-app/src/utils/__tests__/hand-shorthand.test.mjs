@@ -145,3 +145,26 @@ test("a straddle's own size and a hand run twice survive a link", () => {
   // Twice the big blind writes no size, as before.
   assert.match(SH.encodeHand({ ...h, blinds: { ...h.blinds, straddleAmount: 4 } }), /^P86\.2-2!u~700/);
 });
+
+// A post to come in at once (a play-money table's new seat, players[i].post) rides in the link, after any board
+// flag, and a hand without one is written exactly as before.
+test('a post round-trips through the link, with or without a board flag', () => {
+  const hand = {
+    gameType: 'NLH', blinds: { sb: 50, bb: 100, ante: 0 }, heroIdx: 0,
+    players: [{ name: 'A', position: 'CO', startingStack: 5000, post: 100 }, { name: 'B', position: 'BTN', startingStack: 5000 },
+      { name: 'C', position: 'SB', startingStack: 5000 }, { name: 'D', position: 'BB', startingStack: 5000 }],
+    streets: [{ cards: { hero: 'AhKh', opponents: ['', '', ''] }, actions: [{ player: 0, action: 'check', amount: 0 }] },
+      { cards: { board: '' }, actions: [] }, { cards: {}, actions: [] }, { cards: {}, actions: [] }],
+  };
+  const link = SH.encodeHand(hand);
+  assert.match(link, /\*P0@100\./);
+  assert.deepEqual(SH.decodeHand(link).players.map((p) => p.post), [100, undefined, undefined, undefined]);
+  const twice = SH.decodeHand(SH.encodeHand({ ...hand, runs: 2 }));
+  assert.equal(twice.runs, 2);
+  assert.equal(twice.players[0].post, 100);
+  const table = SH.decodeHand(SH.encodeHand({ ...hand, table: { handId: 'x' } }));
+  assert.deepEqual(table.table, {}, 'a table hand is marked as one');
+  assert.equal(table.players[0].post, 100);
+  const plain = { ...hand, players: hand.players.map(({ post, ...p }) => p) };
+  assert.doesNotMatch(SH.encodeHand(plain), /\*/, 'no post, no suffix');
+});

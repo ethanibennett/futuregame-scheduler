@@ -217,6 +217,16 @@ app.use(express.json({ limit: '50mb' }));
 // Health check for zero-downtime deploys
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
+// The two sites keep their own pages (play.futurega.me, below): the play page's file is not served on futurega.me, and
+// no page of the app's is served on the play host.
+const PLAY_HOSTS = new Set(String(process.env.PLAY_HOSTS || 'play.futurega.me').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean));
+const isPlayHost = (req) => PLAY_HOSTS.has(String(req.hostname || '').toLowerCase());
+app.use((req, res, next) => {
+  if (!req.path.endsWith('.html')) return next();
+  if (isPlayHost(req)) return req.path === '/play.html' ? next() : res.redirect(302, '/');
+  return req.path === '/play.html' ? res.status(404).end() : next();
+});
+
 // Serve frontend — now the Vite build output in public-vite/.
 // Vite fingerprints bundled JS/CSS under /assets/*, so those are safe to cache
 // aggressively; HTML stays uncached so new deploys pick up new asset hashes.
@@ -236,6 +246,25 @@ app.use(express.static(path.join(__dirname, 'public-vite'), {
     }
   }
 }));
+
+// ── play.futurega.me: the play-money tables' own site (owner, 2026-11-22: "deploy to play.futurega.me, no effect on the
+// mobile app"). The same server and API on another host: every page there is play.html (vite-app/src/play-main.jsx, the
+// sign-in and the tables; an invite is /join/<token>), never the app. The build's files were answered above, the API is
+// below. PLAY_HOSTS (above) lists the hosts (comma separated; a scratch server's test names its own). Not indexed.
+function servePlay(req, res) {
+  let html;
+  try { html = fsSync.readFileSync(path.join(__dirname, 'public-vite', 'play.html'), 'utf8'); }
+  catch (err) { console.error('Play page: no play.html in public-vite:', err.message); return res.status(503).send('Unavailable'); }
+  html = html.replace('</head>', `<meta name="build-version" content="${BUILD_VERSION}">\n<meta name="robots" content="noindex">\n</head>`);
+  res.set({ 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' });
+  res.type('html').send(html);
+}
+app.use((req, res, next) => {
+  if (!isPlayHost(req)) return next();
+  if (req.path.startsWith('/api/') || req.path === '/health') return next();
+  if (req.method !== 'GET' && req.method !== 'HEAD') return res.status(404).end();
+  return servePlay(req, res);
+});
 
 // ── The owner's gate (requireHamBasic) and the shared session cookie ──
 // requireHamBasic guards what a browser reaches by navigation or the dashboard calls server to server,
@@ -14923,7 +14952,6 @@ app.post('/api/admin/discord-settle/test', authenticateToken, async (req, res) =
 app.get('/shared/:token', serveIndex);
 // An invite link (Features 37): the app reads the token from the path.
 app.get('/i/:token', serveIndex);
-app.get('/play/:token', serveIndex); // a play-money table's invite (lib/play-tables.js)
 // A package's page (Features 20): the app shell; the link is the whole of the access.
 app.get('/p/:token', (req, res, next) => { res.set({ 'X-Robots-Tag': 'noindex', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store' }); next(); }, serveIndex);
 // A preparer's read-only tax report (Features 19): the app shell, the link the whole of the access.

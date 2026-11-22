@@ -14,6 +14,7 @@
  */
 const assert = require('assert');
 const path = require('path');
+const http = require('http');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const jwt = require('jsonwebtoken');
@@ -89,7 +90,7 @@ async function waitFor(fn, what, ms = 10000) {
   const AVA = tok(101, 'ham'), BO = tok(102, 'ham5'), BLOCKED = tok(103, 'claude'), PAT = tok(104, 'pat');
 
   const tport = await freePort([4945, 4949]);
-  const srv = await boot(scratch.dbPath, { TABLES: '1', TABLES_URL: `http://127.0.0.1:${tport}`, TABLES_SECRET: SECRET }, { ports: [4940, 4944] });
+  const srv = await boot(scratch.dbPath, { TABLES: '1', TABLES_URL: `http://127.0.0.1:${tport}`, TABLES_SECRET: SECRET, PLAY_HOSTS: 'play.test' }, { ports: [4940, 4944] });
   const dataDir = path.join(scratch.tmp, 'tables-data');
   const tables = await bootTables(tport, srv.port, dataDir);
   const S = `http://127.0.0.1:${srv.port}`, T = `http://127.0.0.1:${tport}`;
@@ -112,10 +113,9 @@ async function waitFor(fn, what, ms = 10000) {
       const a = await call(S, 'GET', '/api/tables/availability', null, AVA);
       assert.equal(a.body.on, true);
       assert.equal(a.body.url, T);
-      // The "your turn" push setting shows where the tables do, and nowhere else.
+      // The app is untouched (owner, 2026-11-22: "no effect on the mobile app"): no tables row in its Notifications.
       const kinds = async (bearer) => (await call(S, 'GET', '/api/notification-prefs', null, bearer)).body.kinds.map((k) => k.kind);
-      assert.ok((await kinds(AVA)).includes('tables'));
-      assert.ok(!(await kinds(PAT)).includes('tables'));
+      assert.ok(!(await kinds(AVA)).includes('tables'));
     });
 
     await t.test('the balance starts at 20,000', async () => {
@@ -134,7 +134,8 @@ async function waitFor(fn, what, ms = 10000) {
       const r = await call(S, 'POST', '/api/tables', { name: 'Test table', gameType: 'NLH', sb: 5, bb: 10, maxSeats: 6, buyIn: { min: 200, max: 1000 }, decision: 30, bank: 0 }, AVA);
       assert.equal(r.status, 201, JSON.stringify(r.body));
       table = r.body;
-      invite = table.invite.split('/play/')[1];
+      assert.ok(table.invite.startsWith('https://play.futurega.me/join/'), 'an invite opens play.futurega.me');
+      invite = table.invite.split('/join/')[1];
       assert.ok(invite && invite.length > 20);
     });
 
@@ -266,6 +267,31 @@ async function waitFor(fn, what, ms = 10000) {
       assert.equal((await call(T, 'POST', `/tables/${table.id}/mute`, { userId: 102 }, seats.ava)).status, 200);
       assert.equal((await call(T, 'POST', `/tables/${table.id}/chat`, { text: 'hi' }, seats.bo)).status, 400);
       assert.equal((await call(T, 'POST', `/tables/${table.id}/mute`, { userId: 102, muted: false }, seats.ava)).status, 200);
+    });
+
+    await t.test('posting to come in: only a seat waiting for the big blind may', async () => {
+      const r = await call(T, 'POST', `/tables/${table.id}/post`, { on: true }, seats.ava);
+      assert.equal(r.status, 409);
+      assert.equal(r.body.error, 'You are already dealt in');
+    });
+
+    await t.test('play.futurega.me answers with the play page, never the app; its API is the same server', async () => {
+      const get = (host, p, bearer) => new Promise((resolve, reject) => {
+        http.get({ host: '127.0.0.1', port: srv.port, path: p, headers: { host, ...(bearer ? { authorization: 'Bearer ' + bearer } : {}) } }, (res) => {
+          let b = ''; res.on('data', (d) => { b += d; }); res.on('end', () => resolve({ status: res.statusCode, body: b, robots: res.headers['x-robots-tag'] }));
+        }).on('error', reject);
+      });
+      for (const p of ['/', `/join/${invite}`, '/anything']) {
+        const r = await get('play.test', p);
+        assert.equal(r.status, 200, p);
+        assert.ok(r.body.includes('<title>futurega.me | play</title>'), `${p}: the play page`);
+        assert.equal(r.robots, 'noindex');
+      }
+      const app = await get(`127.0.0.1:${srv.port}`, '/');
+      assert.ok(!app.body.includes('futurega.me | play'), 'futurega.me itself is the app');
+      assert.equal((await get(`127.0.0.1:${srv.port}`, '/play.html')).status, 404, 'the play page is not on futurega.me');
+      const api = await get('play.test', '/api/tables/availability', AVA);
+      assert.equal(JSON.parse(api.body).on, true, 'the API answers on the play host');
     });
 
     await t.test('leaving returns the stack to the balance', async () => {

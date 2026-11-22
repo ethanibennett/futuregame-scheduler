@@ -118,33 +118,49 @@ sessions opened here own scheduler work.
   and the betting was reopened: a full raise, or shorts adding up to one, TDA rule 43; half a bet in limit); the smallest raise
   is the last FULL raise; a typed amount out of range is refused with the range, never cut; a folded hero is never scored.
   Amounts in the entry go through `parseAmount`/`AmountField` (cents in cash, whole chips in a tournament, "1,500", "25k").
-- **Play-money tables** (branch `play-money`, NOT on master: owner's yes needed, after the 5 Jan 2027 launch;
-  design and the owner's eleven answers: `docs/play-money-platform.md`). Free chips only, never bought, cashed out,
-  transferred or shown to others. One copy of the betting rules, `vite-app/src/utils/poker-rules/betting.js` (ported
-  from the entry's GTOEntryView, which now reads it: `rules = streetState(hand, si)`, `legal` for every offer), held to
-  PokerKit in plain Node by `test/replayer-oracle/check-rules.mjs` (in `test:replayer-oracle`; the PokerKit model now
-  lives in `test/replayer-oracle/model.mjs`, shared with the entry oracle). The straddles, stud bring-in, best board,
-  open pair and seat order are `poker-rules/forced.js`, which quick add re-exports; quick add's `Table` stays its own
-  reader of described hands (unknown stacks, out-of-turn seats) and is held to the corpus by `check-quick-add.mjs` (no
-  legal hand questioned, a raise under the smallest always questioned). `live-hand.js` plays a hand from a deck it is given and settles it with the export's arithmetic
-  (`settle.js`); `viewFor`/`savedHandFor` never carry a card the seat has not seen. It deals the twenty games the
-  oracle holds (board, then Stud Hi / Stud 8 / Razz, then 2-7 TD, PL 2-7 TD, Badugi, NL 2-7 SD, PL 5CD Hi): stud street
-  by street, a draw phase after each betting round (`{ action: 'draw', discard }`; `toAct` says bet or draw), the muck
-  reshuffled under a short stub (never the drawer's own throw). `test/replayer-oracle/check-live.mjs` deals the corpus
-  through it to PokerKit's stacks. A hand mucked at a showdown is saved as `MUCK`, and a `MUCK` hand gives up its claim
-  in the export and the felt's pot awards (TDA), so a side pot is never split by the winners list. The entry screens
-  take a thrown card back only once the deck can't cover the draw (owner, `deckRanOut` in `quick-add/cards.js`). The tables run in their OWN
-  service, `tables/server.mjs` (`lib/tables/`: dealer with crypto.randomInt, runtime, SSE per viewer, a journal and an
-  outbox in the gitignored `tables-data/`; PORT default 3101, never 3001); the scheduler's half is `lib/play-tables.js`
-  (`TABLES=1` + `TABLES_URL` + `TABLES_SECRET`, app admins only; the chip balance, invites at `/play/<token>`, blocks
-  both ways, 2-minute seat tickets, every hand saved to each player's Hands). A seat taken mid-game waits for the big
-  blind (`Table.lineUp`). Chat (decision 6): the runtime keeps it, the host mutes, a report is a `reports` row of kind
-  `'table-message'` whose text the scheduler reads from the service, and Admin's Remove reaches the service through
-  `play_chat_reports`. On SIGTERM the service drains (no new hand, up to `TABLES_DRAIN_MS`). The deploy runbook is the
-  doc's §12. The client is the Tables tab
-  (`components/TablesView.jsx`, the replayer's felt in the drill's mode). `npm run test:tables` (ports 4940-4949;
-  with `test/tables-runtime.test.mjs`, a fake clock),
-  `npm run check:tables` (two WebKit pages through an NLH, a Stud Hi and a 2-7 TD hand, ports 4950-4959; needs the built app and playwright in vite-app).
+- **Play-money tables** at **play.futurega.me** (owner, 2026-11-22: "deploy to play.futurega.me, no effect on the mobile
+  app"; design, the owner's eleven answers and the deploy runbook: `docs/play-money-platform.md` §11-12). Free chips only,
+  never bought, cashed out, transferred or shown to others; app admins only (`TABLES=1`).
+  **Its own site, never the app.** `vite-app/play.html` (generated from index.html by `scripts/make-play-html.mjs`,
+  gitignored, like live.html) loads `src/play-main.jsx` → `components/PlayApp.jsx`: a sign-in by email and password
+  (its own origin, so its own `localStorage` token), then `TablesView`. `server.js` answers every page on a host in
+  `PLAY_HOSTS` (default `play.futurega.me`; a test names its own) with `play.html`, the API as usual, and never serves
+  `play.html` on futurega.me. The app (`main.jsx`, `App.jsx`) imports none of it: no Tables tab, no settings row, and the
+  "your turn" push sends nothing until play.futurega.me has a push of its own. An invite is
+  `play.futurega.me/join/<token>` (`PLAY_URL`).
+  **The app's entry and quick add are untouched until after launch** (owner's pick, 2026-11-22): they keep their own
+  copies of the rules. Moving them onto `poker-rules/` (decision 11, with the fixes it brought: the owner's `deckRanOut`
+  rule for a thrown card, quick add questioning 56 legal corpus hands over a rounding slip, the shared PokerKit model) is
+  on branch `play-money-rules-move`, to merge after 5 Jan 2027. What the tables need from shared code is gated on the
+  hand being a table's (`hand.table`, set by `live-hand.js`): a `MUCK` hand gives up its claim (TDA) in the export and
+  the felt's pot awards, and a hero's folded draw hand is out of the export's no-card-twice check. Every other hand
+  settles exactly as before.
+  **The rules**: `vite-app/src/utils/poker-rules/betting.js` (ported from the entry), held to PokerKit in plain Node by
+  `test/replayer-oracle/check-rules.mjs` (its model is `test/replayer-oracle/model.mjs`); `forced.js` the straddles,
+  bring-in, best board, open pair, seat order. `live-hand.js` deals from a deck it is given and settles with the
+  export's arithmetic (`settle.js`); `viewFor`/`savedHandFor` never carry a card the seat has not seen. Twenty games:
+  board, Stud Hi / Stud 8 / Razz, 2-7 TD, PL 2-7 TD, Badugi, NL 2-7 SD, PL 5CD Hi (a draw after each betting round,
+  the muck reshuffled under a short stub, never the drawer's own throw). `check-live.mjs` deals the corpus through it.
+  **Posting to come in at once** (owner, 2026-11-22): a seat waiting for the big blind may post one (`Table.postIn`,
+  `POST /tables/:id/post { on }`, the bar's Post now / Wait) and is dealt the next hand that does not make it the small
+  blind. The post is `players[i].post`, a LIVE big blind from its own seat: its bet on the first street, nobody's turn
+  moves, and with no raise it has the option (`betting.js postOf`). It is written as PokerStars writes a new player's
+  ("posts big blind", after the blinds; `prepare.js`), drawn on the felt as a wager at the opening (`postIn` in
+  HandReplayerView), and carried in a share link (`*P<seat>@<amount>` in the blind field, with `T` for a table's hand).
+  PokerKit has no such hands: `live-hand.test.mjs` plays 120+ random NLH, PLO and LHE hands with posts and holds each to
+  the same hand without them (the post paid as a call), every other seat offered the same; `npm run check:tables-felt`
+  deals table hands (posts, mucked showdowns) through the felt oracle, opened from Hands and from a share link.
+  **The service**: `tables/server.mjs` (`lib/tables/`: dealer with crypto.randomInt, runtime, SSE per viewer, a journal
+  and an outbox in the gitignored `tables-data/`; PORT default 3101, never 3001), its own Render service; the
+  scheduler's half is `lib/play-tables.js` (`TABLES=1` + `TABLES_URL` + `TABLES_SECRET`; the chip balance, invites,
+  blocks both ways, 2-minute seat tickets, every hand saved to each player's Hands). A seat taken mid-game waits for the
+  big blind (`Table.lineUp`). Chat: the runtime keeps it, the host mutes, a report is a `reports` row of kind
+  `'table-message'` whose text the scheduler reads from the service; Admin's Remove reaches the service through
+  `play_chat_reports`. On SIGTERM the service drains (no new hand, up to `TABLES_DRAIN_MS`).
+  Tests: `npm run test:tables` (ports 4940-4949; with `test/tables-runtime.test.mjs`, a fake clock), `npm run
+  check:tables` (two WebKit pages on the play page through an NLH, a Stud Hi and a 2-7 TD hand, ports 4950-4959),
+  `npm run check:tables-felt` (ports 4840-4849); the guards' `tables-*` views stage the play page from the build
+  (`scripts/tables-states.mjs`). All need the built app.
 - **Hands > Study** (owner, 2026-11-04: one training experience; `components/StudyHub.jsx`, `StudyHead.jsx`, `study-hub.css`):
   the Hands row is Replayer, Study, Scanner, and Study is one list of the solver tools: Practice (Play a hand, Hand trainer,
   Quick spots, Three-way Razz), Look up (Watch the solver, Solve a spot, Price a draw, Pre-draw ranges). Each opens under the same header and
@@ -692,6 +708,10 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   ```bash
   Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -match 'stub-solver-preload' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
   ```
+  With several sessions on this box, one of those servers may be ANOTHER session's, still in use: check its parent
+  process before killing it. `test/helpers/scratch-server.js` `freePort` probes 0.0.0.0 as well as 127.0.0.1 (since
+  2026-11-22): Windows let a probe of 127.0.0.1 bind a port another session's server held on 0.0.0.0, and the test's
+  requests then reached that other server.
 - The MTT-feed mirror reconciles deletions: the push carries `feedVenues` (the series we
   still hold) and the receiver prunes feed rows outside it. Pruning **never** touches a row
   referenced by `user_schedules`, `tracking_entries`, `live_updates`, `schedule_conditions`,

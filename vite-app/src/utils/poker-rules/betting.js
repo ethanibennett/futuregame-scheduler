@@ -9,6 +9,9 @@
 //
 // The rules (TDA 2019, as the entry follows them):
 //   - the forced bets are capped at the stack, the blind before a big-blind ante;
+//   - a player who posts to come in at once (players[i].post, the play-money tables; owner, 2026-11-22) has posted
+//     a LIVE big blind from their own seat: it is their bet on the first street, they act in their turn, and with
+//     no raise they have the option, as the big blind does. It changes nobody's order;
 //   - the smallest raise is the last FULL raise (a short all-in raises the price, not that size);
 //   - a player who has acted may raise again only after a full raise, or short ones adding up to one
 //     (rule 43); in limit, half a bet;
@@ -44,6 +47,17 @@ export function blindPosted(hand, i) {
   return 0;
 }
 
+/* A seat's post to come in at once (players[i].post), as it really takes: capped at the stack. Never in stud. */
+export function postOf(hand, i) {
+  const p = hand.players[i];
+  if (!p || !(Number(p.post) > 0) || gameCategory(hand.gameType) === 'stud') return 0;
+  return capPost(Number(p.post), p.startingStack);
+}
+/* Every post, [{ seat, amount }], in seat order. */
+export function postsOf(hand) {
+  return hand.players.map((_, i) => ({ seat: i, amount: postOf(hand, i) })).filter((x) => x.amount > 0);
+}
+
 /* Stacks and the pot after action `upToAction` of street `upToStreet` (-1: before the street's first
    action). The replayer's calcPotsAndStacks. */
 export function potAndStacks(hand, upToStreet, upToAction) {
@@ -64,6 +78,7 @@ export function potAndStacks(hand, upToStreet, upToAction) {
       if (isBBante && !(hadChips && stacks[bbIdx] <= 0)) post(bbIdx, blinds.ante);
     }
     straddles(hand.players, blinds).forEach((st) => post(st.seat, st.amount));
+    postsOf(hand).forEach((x) => post(x.seat, x.amount));
   }
   const folded = new Set();
   for (let si = 0; si <= upToStreet && si < hand.streets.length; si++) {
@@ -140,6 +155,7 @@ export function streetState(hand, si) {
       : { is3rdStreet: false, bringInIdx: -1, bestBoardIdx: findStudBestBoard(hand, si, priorFolded, lowStud) })
     : null;
   const straddleList = !isStud ? straddles(hand.players, blinds) : [];
+  const postList = !isStud ? postsOf(hand) : [];
   const seatOrder = seatOrderFor(n, isPreflop, studInfo, isPreflop ? lastStraddleSeat(straddleList) : -1);
   const actionOrder = seatOrder.filter((i) => !folded.has(i) && !allIn.has(i));
   const bringInAmount = isStud ? (blinds.bringIn || Math.floor((blinds.bb || 200) / 4)) : 0;
@@ -154,6 +170,7 @@ export function streetState(hand, si) {
     if (bbIdx >= 0) contrib[bbIdx] = blinds.bb || 0;
     maxBet = blinds.bb || 0;
     straddleList.forEach((st) => { contrib[st.seat] = st.amount; if (st.amount > maxBet) maxBet = st.amount; });
+    postList.forEach((x) => { contrib[x.seat] = x.amount; });
   }
   for (const a of actions) {
     if (a.action === 'fold') continue;
@@ -175,6 +192,7 @@ export function streetState(hand, si) {
       if (bbIdx >= 0) before[bbIdx] = blinds.bb || 0;
       priceBefore = blinds.bb || 0;
       straddleList.forEach((st) => { before[st.seat] = st.amount; if (st.amount > priceBefore) priceBefore = st.amount; });
+      postList.forEach((x) => { before[x.seat] = x.amount; });
     }
     actions.forEach((a, i) => {
       if (a.action === 'fold') return;
@@ -221,6 +239,7 @@ export function streetState(hand, si) {
       if (sbIdx >= 0) inFor[sbIdx] = blinds.sb || 0;
       if (bbIdx >= 0) inFor[bbIdx] = blinds.bb || 0;
       straddleList.forEach((s) => { inFor[s.seat] = s.amount; });
+      postList.forEach((x) => { inFor[x.seat] = x.amount; });
     }
     for (const a of actions) {
       if (a.action === 'fold') continue;
@@ -258,6 +277,7 @@ export function streetState(hand, si) {
     if (bbIdx >= 0) run[bbIdx] = bbAmt;
     prevMax = bbAmt;
     straddleList.forEach((st) => { run[st.seat] = st.amount; prevMax = Math.max(prevMax, st.amount); lastRaiseSize = Math.max(lastRaiseSize, st.amount); });
+    postList.forEach((x) => { run[x.seat] = x.amount; });
   }
   let myLast = -1, priceAtMine = 0, fullSinceMine = false;
   actions.forEach((a, i) => {

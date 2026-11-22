@@ -24,13 +24,16 @@ const ROOT = path.join(__dirname, '..', '..');
 const PORTS = [4540, 4549];
 
 async function freePort(range = PORTS) {
+  const probe = (p, host) => new Promise((res) => {
+    const s = net.createServer();
+    s.once('error', () => res(false));
+    s.listen(p, host, () => s.close(() => res(true)));
+  });
   for (let p = range[0]; p <= range[1]; p++) {
-    const ok = await new Promise((res) => {
-      const s = net.createServer();
-      s.once('error', () => res(false));
-      s.listen(p, '127.0.0.1', () => s.close(() => res(true)));
-    });
-    if (ok) return p;
+    /* Free on 0.0.0.0 as well as 127.0.0.1: Windows lets 127.0.0.1:p (and [::]:p) bind while another process holds
+       0.0.0.0:p, so a probe of 127.0.0.1 alone took a port in use, and the test's requests to 127.0.0.1 reached
+       that other server (2026-11-22: a second session's scratch server on 4950 answered check:tables). */
+    if (await probe(p, '0.0.0.0') && await probe(p, '127.0.0.1')) return p;
   }
   throw new Error(`no free port in ${range[0]}-${range[1]}`);
 }

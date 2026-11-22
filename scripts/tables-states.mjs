@@ -3,7 +3,10 @@
 // runtime Table (lib/tables/runtime.mjs) built here with a fixed deck, so each view is the service's own view, the
 // same every run, and needs no tables service. The real thing is covered by npm run test:tables and check:tables.
 //
-//   await stageTables(p, 'lobby' | 'new' | 'seats' | 'turn' | 'waiting' | 'chat' | 'over')
+//   await stageTables(p, 'lobby' | 'new' | 'seats' | 'turn' | 'waiting' | 'post' | 'chat' | 'over' | 'stud' | 'draw')
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Table } from '../lib/tables/runtime.mjs';
 import { currentState, toAct as handToAct } from '../vite-app/src/utils/poker-rules/live-hand.js';
 
@@ -50,6 +53,8 @@ function tableFor(stage) {
   for (const [who, text] of [[OTHER, 'gl all'], [HOST, 'thanks, you too'], [OTHER, 'that river though']]) { now += 20000; t.say(who, who === HOST ? 'Ava' : 'Bo', text); }
   const toAct = () => t.seats[t.handSeats[currentState(t.hand).legal.player]].userId;
   if (stage === 'turn') return { t, viewer: toAct() };
+  // A seat taken mid-hand, waiting for the big blind: its bar offers Post now.
+  if (stage === 'post') { t.sit(3, 'Cy', 10000, 2); return { t, viewer: 3 }; }
   if (stage === 'over') { t.act(toAct(), { action: 'fold' }); return { t, viewer: HOST }; }
   // waiting, chat: the host, whose turn it is not.
   if (toAct() === HOST) t.act(HOST, { action: 'call' });
@@ -69,7 +74,7 @@ async function routeTables(p, stage) {
     const path = u.pathname;
     if (path.endsWith('/api/tables/availability')) return json(route, { on: true, url: svc });
     if (path.endsWith('/api/tables/chips')) return json(route, { balance: 20000, floor: 5000, start: 20000 });
-    if (path.endsWith('/api/tables')) return json(route, { tables: [{ ...summary, invite: `${origin}/play/guardinvitetoken0001` }] });
+    if (path.endsWith('/api/tables')) return json(route, { tables: [{ ...summary, invite: 'https://play.futurega.me/join/guardinvitetoken0001' }] });
     if (/\/api\/tables\/[^/]+\/ticket$/.test(path)) return json(route, { ticket: 'guard', url: svc, table: summary });
     if (path.endsWith('/api/blocks')) return json(route, { blocked: [], hidden: [] });
     if (path.endsWith('/join')) return json(route, { token: 'guard', view: view() });
@@ -81,30 +86,35 @@ async function routeTables(p, stage) {
   });
 }
 
-// From a fresh load: the Tables tab shows once the scheduler says tables are on, so the page is loaded again
-// under the routes. `force` for the guards' overlay runs.
+/* The tables are play.futurega.me's, not the app's (owner, 2026-11-22): the page is play.html, the built play page,
+   given to the browser at <origin>/__play from this tree's build (public-vite/play.html), so the guards need no play
+   host. Its scripts and styles are the server's own: run the guards against a server of this build. */
+const PLAY_HTML = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public-vite', 'play.html');
+
+// From a fresh load: the play page, under the routes. `force` for the guards' overlay runs.
 export async function stageTables(p, stage, { force = false } = {}) {
+  const origin = new URL(p.url()).origin;
+  await p.route(`${origin}/__play`, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: fs.readFileSync(PLAY_HTML, 'utf8') }));
   await routeTables(p, stage);
-  await p.reload({ waitUntil: 'domcontentloaded' });
-  // Visible ones only: a forced click on .first() takes the hidden twin (the rail's Tables on a phone, the bottom
-  // nav's on the desktop).
+  await p.goto(`${origin}/__play`, { waitUntil: 'domcontentloaded' });
   const click = (loc) => loc.filter({ visible: true }).first().click({ timeout: 10000, force });
-  // The tab with an ordinary click, retried: a forced one fired while the app was still settling after the reload
-  // and was lost (the guards' overlay runs force every click).
-  const balance = p.getByText(/20,000 chips/).first();
-  for (let k = 0; ; k++) {
-    await p.getByRole('button', { name: 'Tables', exact: true }).filter({ visible: true }).first().click({ timeout: 10000 });
-    try { await balance.waitFor({ timeout: 5000 }); break; } catch (e) { if (k >= 2) throw e; }
-  }
+  await p.getByText(/20,000 chips/).first().waitFor({ timeout: 15000 });
   await p.waitForTimeout(400);
   if (stage === 'lobby') return;
   if (stage === 'new') { await click(p.getByRole('button', { name: 'New table' })); await p.waitForTimeout(400); return; }
-  await click(p.getByRole('button', { name: 'Open' }));
-  if (stage === 'seats') { await p.getByRole('button', { name: 'Sit down' }).waitFor({ timeout: 15000 }); await p.waitForTimeout(400); return; }
-  await p.locator('.tb-bar').first().waitFor({ timeout: 15000 });
+  /* Open with an ordinary click, looked for again if the table did not open: a forced click (the guards' overlay runs
+     force theirs) could land while the lobby's list was still settling and be lost (the clipping guard's over, stud and
+     draw stayed in the lobby, 2026-11-22). */
+  const opened = stage === 'seats' ? p.getByRole('button', { name: 'Sit down' }) : p.locator('.tb-bar');
+  for (let k = 0; ; k++) {
+    if (await opened.first().isVisible().catch(() => false)) break;
+    await p.getByRole('button', { name: 'Open' }).filter({ visible: true }).first().click({ timeout: 10000 }).catch(() => {});
+    try { await opened.first().waitFor({ timeout: 6000 }); break; } catch (e) { if (k >= 2) throw e; }
+  }
+  if (stage === 'seats') { await p.waitForTimeout(400); return; }
   // The felt plays the hand to where it stands; let it settle before measuring.
   await p.waitForTimeout(stage === 'over' ? 4000 : 2500);
   if (stage === 'chat') { await click(p.locator('.tb-chat-btn')); await p.locator('.tb-chat').waitFor({ timeout: 5000 }); await p.waitForTimeout(400); }
 }
 
-export const TABLE_STAGES = ['lobby', 'new', 'seats', 'turn', 'waiting', 'chat', 'over', 'stud', 'draw'];
+export const TABLE_STAGES = ['lobby', 'new', 'seats', 'turn', 'waiting', 'post', 'chat', 'over', 'stud', 'draw'];

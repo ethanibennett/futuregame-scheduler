@@ -122,8 +122,20 @@ function Field({ label, children }) {
   return <label className="tb-field"><span className="tb-field-label">{label}</span>{children}</label>;
 }
 
+/* A seat waiting for the big blind may post one to come in at once (owner, 2026-11-22), or go back to waiting.
+   The server deals it in on the next hand that does not put it in the small blind. */
+function PostButton({ me, busy, onPost }) {
+  if (!me || !me.waiting || !onPost) return null;
+  return (
+    <button type="button" className="hs-btn" disabled={busy} onClick={() => onPost(!me.postNow)} data-testid="post-now">
+      <span className="hs-t" style={T(3)}>{me.postNow ? 'Wait' : 'Post now'}</span>
+    </button>
+  );
+}
+const waitingWords = (me) => (me.postNow ? "You'll post a big blind to come in" : 'Waiting for the big blind');
+
 // ── The action bar: what the view says this player may do ──
-function TableBar({ view, busy, onAct, left, chat, thrown }) {
+function TableBar({ view, busy, onAct, onPost, left, chat, thrown }) {
   const h = view.hand;
   const L = h.live.legal;
   const names = h.hand.players.map((p) => p.name);
@@ -153,9 +165,11 @@ function TableBar({ view, busy, onAct, left, chat, thrown }) {
     const me = view.table.you >= 0 ? view.table.seats[view.table.you] : null;
     return (
       <div className="hs-view rd-bar tb-bar snap-place">
-        {me && me.waiting && <div className="hs-t hs-sm rd-status" style={T(2)}>Waiting for the big blind</div>}
+        {me && me.waiting && <div className="hs-t hs-sm rd-status" style={T(2)}>{waitingWords(me)}</div>}
         <div className="hs-t hs-sm rd-status" style={T(2)}>{who ? `${who} to ${h.live.drawing ? 'draw' : 'act'}${clock}` : 'Dealing…'}</div>
-        {chat}
+        {me && me.waiting
+          ? <div className="hs-cols" style={{ '--hs-n': 2 }}><PostButton me={me} busy={busy} onPost={onPost} />{chat}</div>
+          : chat}
       </div>
     );
   }
@@ -201,15 +215,16 @@ function TableBar({ view, busy, onAct, left, chat, thrown }) {
 }
 
 // ── After the hand: the result, and what the player can do between hands ──
-function OverBar({ view, busy, onLeave, onRebuy, onSitIn, chat }) {
+function OverBar({ view, busy, onLeave, onRebuy, onSitIn, onPost, chat }) {
   const me = view.table.you >= 0 ? view.table.seats[view.table.you] : null;
   return (
     <div className="hs-view rd-bar tb-bar snap-place">
       {/* The felt shows who won as the replay reaches the result; the bar does not say it first. */}
-      <div className="hs-t hs-sm rd-status" style={T(2)}>{me && me.status === 'busted' ? 'Out of chips' : 'Hand over'}{me && me.status === 'playing' ? (me.waiting ? ' · you come in on the big blind' : ' · next hand soon') : ''}</div>
+      <div className="hs-t hs-sm rd-status" style={T(2)}>{me && me.status === 'busted' ? 'Out of chips' : 'Hand over'}{me && me.status === 'playing' ? (me.waiting ? (me.postNow ? " · you'll post to come in" : ' · you come in on the big blind') : ' · next hand soon') : ''}</div>
       <div className="hs-cols3" style={{ '--hs-n': 2 }}>
         {me && me.status === 'busted' && <button type="button" className="hs-btn rd-primary" disabled={busy} onClick={onRebuy}><span className="hs-t" style={T(3)}>Buy in again</span></button>}
         {me && me.status === 'sitting-out' && <button type="button" className="hs-btn rd-primary" disabled={busy} onClick={onSitIn}><span className="hs-t" style={T(3)}>Sit in</span></button>}
+        {me && me.status === 'playing' && <PostButton me={me} busy={busy} onPost={onPost} />}
         <button type="button" className="hs-btn" disabled={busy} onClick={onLeave}><span className="hs-t" style={T(3)}>Leave</span></button>
         {chat}
       </div>
@@ -237,6 +252,7 @@ function LiveTable({ tableId, heroName, cardSplay, onBack }) {
     try { await fn(seat.current); } catch (e) { setError(e.message || 'That did not go through'); } finally { setBusy(false); }
   }, []);
   const act = useCallback((move) => run((s) => s.act({ ...move, seq: view && view.hand ? view.hand.live.seq : undefined })), [run, view]);
+  const post = useCallback((on) => run((s) => s.post(on)), [run]);
 
   const hand = useMemo(() => liveReplayHand(view), [view]);
   const handNo = view && view.hand ? view.hand.handNo : 0;
@@ -278,8 +294,8 @@ function LiveTable({ tableId, heroName, cardSplay, onBack }) {
       over,
       startAtEnd: false,
       discard: view.hand.live.draw ? { thrown, toggle: toggleThrown, disabled: busy } : null,
-      bar: <TableBar view={view} busy={busy} onAct={act} left={left} chat={chatButton} thrown={thrown} />,
-      overBar: <OverBar view={view} busy={busy} chat={chatButton}
+      bar: <TableBar view={view} busy={busy} onAct={act} onPost={post} left={left} chat={chatButton} thrown={thrown} />,
+      overBar: <OverBar view={view} busy={busy} chat={chatButton} onPost={post}
         onLeave={() => run((s) => s.leave()).then(onBack)}
         onSitIn={() => run((s) => s.sitIn())}
         onRebuy={() => run((s) => s.rebuy(table.buyIn.max))} />,
@@ -456,7 +472,7 @@ export default function TablesView({ heroName, cardSplay, active = true }) {
       ))}
       {error && <div className="hs-t hs-sm rd-wrap rd-warn">{error}</div>}
       <button type="button" className="hs-btn" onClick={() => setScreen({ kind: 'new' })}><span className="hs-t" style={T(3)}>New table</span></button>
-      <div className="hs-t hs-xs hs-mut rd-wrap">{`Invites open ${SITE_URL.replace(/^https?:\/\//, '')}/play/… links.`}</div>
+      <div className="hs-t hs-xs hs-mut rd-wrap">{`Invites open ${SITE_URL.replace(/^https?:\/\//, '')}/join/… links.`}</div>
     </div>
   );
 }

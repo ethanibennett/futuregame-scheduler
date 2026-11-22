@@ -3,12 +3,15 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 import { writeLiveHtml } from './scripts/make-live-html.mjs';
 import { writeLiveCss } from './scripts/make-live-css.mjs';
+import { writePlayHtml } from './scripts/make-play-html.mjs';
 import { writeCardFaces } from './scripts/make-card-faces.mjs';
 
 // futurega.me/live's page, generated from index.html whenever Vite starts (scripts/make-live-html.mjs).
 writeLiveHtml();
 // ...and its stylesheet, the part of styles.css the page uses (scripts/make-live-css.mjs).
 writeLiveCss();
+// ...and play.futurega.me's page, the play-money tables' own site (scripts/make-play-html.mjs).
+writePlayHtml();
 // ...and the card faces, in the code rather than a request each (scripts/make-card-faces.mjs).
 writeCardFaces();
 
@@ -49,10 +52,10 @@ export default defineConfig({
   build: {
     outDir: '../public-vite',
     emptyOutDir: true,
-    // Two pages: the app, and futurega.me/live, the ads' landing page, with its own small entry
+    // Three pages: the app, play.futurega.me (src/play-main.jsx, the play-money tables), and futurega.me/live, the ads' landing page, with its own small entry
     // (src/live-main.jsx; live.html is generated from index.html by scripts/make-live-html.mjs).
     rollupOptions: {
-      input: { main: resolve(__dirname, 'index.html'), live: resolve(__dirname, 'live.html') },
+      input: { main: resolve(__dirname, 'index.html'), live: resolve(__dirname, 'live.html'), play: resolve(__dirname, 'play.html') },
     },
   },
 });

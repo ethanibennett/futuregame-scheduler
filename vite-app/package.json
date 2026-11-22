@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "prebuild": "node scripts/make-live-html.mjs"
+    "prebuild": "node scripts/make-live-html.mjs && node scripts/make-play-html.mjs"
   },
   "dependencies": {
     "@capacitor/cli": "^8.3.0",

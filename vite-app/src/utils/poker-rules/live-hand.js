@@ -58,7 +58,8 @@ const joinCards = (list) => (list || []).join('');
 /**
  * A new hand. `seats` are the players dealt in, IN POSITION ORDER (the replayer's: index 0 is UTG, or the
  * button three-handed, or the button/small blind heads-up; the last three are BTN, SB, BB; in stud, table
- * order), each { id, name, stack, position? }. `deck` is 52 cards ('Ah', 'Td', ...), already shuffled.
+ * order), each { id, name, stack, position?, post? }: `post`, a seat coming in at once with a live big blind from
+ * where it sits (never the blinds' own seats). `deck` is 52 cards ('Ah', 'Td', ...), already shuffled.
  */
 export function startHand({ gameType, gameMode = 'mtt', currency, blinds, seats, deck, handId = null }) {
   if (!canDeal(gameType)) throw new Error(`not dealt live yet: ${gameType}`);
@@ -80,7 +81,9 @@ export function startHand({ gameType, gameMode = 'mtt', currency, blinds, seats,
     gameMode,
     currency: gameMode === 'cash' ? (currency || 'USD') : undefined,
     blinds: { ...blinds },
-    players: seats.map((s, i) => ({ name: s.name, position: s.position || labels[i], startingStack: s.stack })),
+    // A seat that posted to come in at once carries its post (a live big blind; betting.js postOf).
+    players: seats.map((s, i) => ({ name: s.name, position: s.position || labels[i], startingStack: s.stack,
+      ...(kind !== 'stud' && Number(s.post) > 0 ? { post: Number(s.post) } : {}) })),
     ids: seats.map((s) => s.id),
     holes,                               // board: the hole cards; stud: every card dealt, in order; draw: the hand now
     start: holes.map((h) => h.slice()),  // the cards first dealt (a draw game's starting hands)
@@ -130,6 +133,9 @@ function storedHand(state, hero, sees, heroSeated = true, mucked = new Set()) {
   return {
     gameType: state.gameType, gameMode: state.gameMode, ...(state.currency ? { currency: state.currency } : {}),
     blinds: state.blinds, players: state.players.map((p) => ({ ...p })), heroIdx: hero, streets,
+    // A table's hand: the export and the felt settle a MUCK hand by the TDA only in one (the scheduler adds the
+    // table's name and number when it saves the hand).
+    table: { handId: state.handId },
   };
 }
 

@@ -66,3 +66,16 @@
 .tb-chat-say .tb-go { --hs-h: 5; flex: none; width: calc(var(--gu) * 8); }
 /* A label in the panel's buttons paints over its line box, as the drill's do (replayer-drill.css). */
 .tb-chat.hs-view .hs-btn > .hs-t { overflow: visible; }
+
+/* play.futurega.me's frame (PlayApp.jsx): a 6r bar with the wordmark and Sign out, then the page, which scrolls. */
+.play-shell { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; height: 100%; background: var(--bg); }
+/* The bar is an .hs-view (the .hs-* controls are styled only inside one), 6r tall: the wordmark's baseline on its 4th r,
+   Sign out a 4r button from its 1st r line to its 5th. */
+.play-top.hs-view { flex: 0 0 auto; display: flex; align-items: flex-start; justify-content: space-between; column-gap: var(--gu);
+  height: calc(var(--subrow) * 6); overflow: visible; margin: 0; padding: 0 var(--gu);
+  /* Whole g wide, so Sign out, on its right edge, sits on a g line in a window that is not a whole number of g. */
+  width: round(down, 100%, var(--gu)); align-self: flex-start; border-bottom: var(--bw-hair) solid var(--border); box-sizing: border-box; }
+.play-mark { font-family: var(--font-display); white-space: nowrap; }
+.play-mark-sub { color: var(--text-muted); }
+.play-top .play-out { --hs-h: 4; width: calc(var(--gu) * 8); margin-top: var(--subrow); }
+.play-main { flex: 1 1 auto; min-height: 0; overflow-y: auto; position: relative; display: flex; flex-direction: column; }

@@ -103,9 +103,8 @@ bring-in), 2 to 9 seats, a starting stack, a clock, and an invite token.
 **Seats.** `{ userId, name, stack, state: 'playing' | 'sitting-out' | 'waiting', timeBank,
 missedTimeouts }`. A player sits with the starting stack. A seat that joins mid-orbit is `waiting`
 until the big blind reaches it: no dead-button bookkeeping, and nobody can dodge the blinds by
-moving. (Posting a big blind to come in at once was in this draft and is out of v1, 2026-11-22: it is a
-forced bet from any seat, which the rules module, the saved hand, the PokerTracker export and the
-replayer's felt would all have to learn, with no PokerKit hands to hold them to.)
+moving. (Posting a big blind to come in at once was left out of the first passes and built in the fourth,
+2026-11-22, at the owner's word: §12, "The fourth pass".)
 
 **The button** moves one occupied, dealt-in seat each hand. Heads-up the button posts the small blind
 and acts first before the flop; going from three players to two moves the button so nobody posts the
@@ -381,18 +380,20 @@ their next reconnect; until then each hides the other's messages in the app (`/a
 
 **Waiting for the big blind, as built.** A seat taken while a game is going waits until the hand would make it the
 big blind, and never takes the button before it has been dealt in. With fewer than two regular players the waits
-are cleared and a fresh game starts. "Post a big blind to come in now" is out of v1 (§3).
+are cleared and a fresh game starts. Posting to come in at once came in the fourth pass (below).
 
-**Deploying the tables service** (after the owner's yes to merge; nothing here is done yet):
+**Deploying the tables service** (the owner's yes, 2026-11-22: "deploy to play.futurega.me, no effect on the mobile
+app"; the fourth pass below says what changed for that):
 
 1. Render: a new web service `futuregame-tables` from this repo, start command `node tables/server.mjs`, a build
    filter on `tables/**`, `lib/tables/**`, `vite-app/src/utils/poker-rules/**`, `vite-app/src/utils/quick-add/**`,
    `vite-app/src/utils/hand-history/**` and `vite-app/src/utils/poker-engine.js` (what it imports), a disk mounted
-   for `TABLES_DATA_DIR`, the shutdown delay at its maximum (300 s), and the custom domain `tables.futurega.me`.
-   Env: `TABLES_SECRET` (generated, never in chat or a repo), `TABLES_SCHEDULER_URL=https://futurega.me`,
-   `TABLES_ORIGINS=https://futurega.me,capacitor://localhost` (and the Mac app's origin).
-2. futurega.me's service: `TABLES=1`, `TABLES_URL` (the service's internal URL), `TABLES_PUBLIC_URL=https://tables.futurega.me`,
-   the same `TABLES_SECRET`. Its boot logs `[tables] play-money tables are ON`.
+   for `TABLES_DATA_DIR`, the shutdown delay at its maximum (300 s). Its own `onrender.com` address is its public
+   one (no `tables.futurega.me`: one DNS record fewer). Env: `TABLES_SECRET` (generated, never in chat or a repo),
+   `TABLES_SCHEDULER_URL=https://futurega.me`, `TABLES_ORIGINS=https://play.futurega.me`.
+2. futurega.me's service: `TABLES=1`, `TABLES_URL` and `TABLES_PUBLIC_URL` (the tables service's address), the same
+   `TABLES_SECRET`, and the custom domain `play.futurega.me` (a CNAME at the registrar to the service's
+   `onrender.com` host). Its boot logs `[tables] play-money tables are ON`.
 3. This box (optional, for a local game): a pm2 app `futuregame-tables` running `node tables/server.mjs` on
    PORT 3101 (never 3001) with `kill_timeout: 290000` so a restart drains, and the scheduler's pm2 env pointed at it.
    Both are in the gitignored `ecosystem.config.cjs`.
@@ -428,8 +429,29 @@ What the third pass found and fixed on the way:
 - **The service dropped the throw.** `POST /tables/:id/act` passed on only `action`, `to` and `seq`, so every draw from
   the app stood pat; `check:tables` caught it.
 
-Not yet: the deploy above (it needs the owner's yes to merge), and the picker's games no oracle holds (A-5 TD,
-the mixed and hidden games), which stay off the tables until one does.
+Not yet: the picker's games no oracle holds (A-5 TD, the mixed and hidden games), which stay off the tables until
+one does.
+
+### The fourth pass: posting to come in, and play.futurega.me (2026-11-22)
+
+The owner: "Build the post to come in now too, and deploy to play.futurega.me, no effect on the mobile app", and, asked
+whether the app's entry and quick add should move onto the shared rules now, "Keep app untouched".
+
+| Piece | Where | Held by |
+|---|---|---|
+| The post | `players[i].post`, a live big blind from the poster's own seat: its bet on the first street (`betting.js postOf`, in `potAndStacks` and every running total of `streetState`); it moves nobody's turn, and with no raise the poster has the option | `live-hand.test.mjs`: the poster's option and the price facing a raise; 120+ random NLH, PLO and LHE hands with posts, each held to the same hand without them (the post paid as a call by the poster's first action), every other seat offered the same at every step |
+| Who posts | `Table.postIn(userId, on)`, `POST /tables/:id/post { on }`; `lineUp` deals a posting seat in on the next hand that does not make it the small blind (or the button); on the big blind it is simply the big blind | `tables-runtime.test.mjs` (from every button position); `test:tables` (the route) |
+| The saved hand, the export, the felt, a link | the saved hand carries `post`; the export writes "X: posts big blind 100" after the blinds, as PokerStars writes a new player's (`prepare.js`); the felt counts it in the pot, the stacks and the opening's wagers (`postIn` in HandReplayerView); a share link carries `*P<seat>@<amount>` (and `T` for a table's hand) | the export text and settlement in `live-hand.test.mjs`; the link in `hand-shorthand.test.mjs`; `npm run check:tables-felt`: table hands (posts, mucked showdowns) opened from Hands and from a share link in WebKit, every seat on what the table paid |
+| The bar | Post now / Wait, under "Waiting for the big blind" (TableBar, OverBar) | the guards' `tables-post` view |
+| play.futurega.me | `play.html` (`scripts/make-play-html.mjs`) → `src/play-main.jsx` → `PlayApp.jsx` (its own sign-in, then `TablesView`); `server.js` serves it for every page on a `PLAY_HOSTS` host and never on futurega.me; an invite is `play.futurega.me/join/<token>` (`PLAY_URL`) | `test:tables` (the hosts); `check:tables` (two browsers on the play page) |
+| The app untouched | no Tables tab, no notifications row; the "your turn" push sends nothing (it would open the phone app, which has no table: a push of play.futurega.me's own is the follow-up); the entry and quick add on their own rules, the move kept on branch `play-money-rules-move` for after launch; the tables' fixes to shared readers (a `MUCK` hand's claim, a folded draw hand) gated on `hand.table` | the app's bundle holds no tables code (the build: `TablesView` only in `play-*.js`); every existing test and oracle unchanged |
+
+PokerKit cannot hold a post: it treats any forced bet past the big blind as a straddle and starts the action after it.
+The equivalence above is the check instead: a post changes who has put what in when, never how a pot is settled.
+
+Found on the way: the scratch servers' port picker (`test/helpers/scratch-server.js` `freePort`) probed 127.0.0.1 only,
+which Windows lets bind while another process holds 0.0.0.0 on the same port; `check:tables` took a port another
+session's server held and its browser talked to that server. It probes 0.0.0.0 too now.
 
 ## 13. Open decisions (as asked)
 

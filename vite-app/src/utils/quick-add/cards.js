@@ -223,32 +223,6 @@ export function getPlayerDrawsByStreet(hand, playerIdx) {
   return result;
 }
 
-/* Whether the deck had run out by `playerIdx`'s draw at `streetIdx` (owner, 2026-11-22, the entry audit's
-   reshuffle item: "a thrown card comes back only once the deck can't cover the draw"). Every seat was dealt a
-   full hand; each draw round burns a card; each draw before this one dealt as many as it threw; this one needs as many as it throws (its
-   recorded count, else up to the whole hand). Past 52, the discards were shuffled and dealt again. With
-   `playerIdx` null: whether the deck ran out at any draw of the hand (the showdown's question). */
-export function deckRanOut(hand, streetIdx, playerIdx) {
-  const players = (hand && hand.players) || [];
-  const streets = (hand && hand.streets) || [];
-  const cfg = HAND_CONFIG[hand && hand.gameType] || {};
-  const size = cfg.heroCards || 5;
-  let dealt = players.length * size;
-  const last = playerIdx == null ? streets.length - 1 : streetIdx;
-  for (let si = 0; si <= last && si < streets.length; si++) {
-    const draws = ((streets[si] && streets[si].draws) || []).filter(Boolean);
-    if (draws.length) dealt += 1;   // the dealer burns a card before each draw round (PokerKit does too)
-    for (const d of draws) {
-      if (!d) continue;
-      const need = Number(d.discarded) || 0;
-      if (playerIdx != null && si === streetIdx && d.player === playerIdx) return dealt + need > 52;
-      dealt += need;
-      if (dealt > 52) return true;
-    }
-  }
-  return playerIdx == null ? false : dealt + size > 52;
-}
-
 /* Mirrors drawDeadCards: the cards that cannot be dealt to `playerIdx` on the
    draw recorded at `streetIdx`, each with the reason. One deliberate difference:
    an OPPONENT's stored cards are their showdown hand, which already contains the
@@ -267,14 +241,8 @@ export function drawDeadCards(hand, streetIdx, playerIdx) {
       if (!dead.has(k)) dead.set(k, why);
     }
   };
-  // A thrown card is dead until the deck runs out; then every earlier discard is shuffled back in, all but this
-  // player's own throw of this draw (deckRanOut).
-  const reshuffled = deckRanOut(hand, streetIdx, playerIdx);
   for (let si = 0; si <= streetIdx && si < streets.length; si++) {
-    for (const d of ((streets[si] && streets[si].draws) || [])) {
-      if (!d || (reshuffled && !(si === streetIdx && d.player === playerIdx))) continue;
-      add(d.discardedCards, 'already discarded');
-    }
+    for (const d of ((streets[si] && streets[si].draws) || [])) if (d) add(d.discardedCards, 'already discarded');
   }
   const s0 = (streets[0] && streets[0].cards) || {};
   players.forEach((_, pi) => {
@@ -283,21 +251,11 @@ export function drawDeadCards(hand, streetIdx, playerIdx) {
     const held = pi === heroIdx ? computeDrawHand(base, getPlayerDrawsByStreet(hand, pi), streetIdx - 1, hand.gameType) : base;
     add(held, pi === playerIdx ? 'already in this hand' : 'in ' + nameOf(pi) + "'s hand");
   });
-  // Not a card that player threw away again later (mirrors drawDeadCards in HandReplayerView.jsx).
-  const thrownAfter = (q, from) => {
-    const out = new Set();
-    for (let sj = from + 1; sj <= streetIdx && sj < streets.length; sj++) {
-      for (const e of ((streets[sj] && streets[sj].draws) || [])) if (e && e.player === q) for (const c of cardsOf(e.discardedCards)) out.add(c.rank + c.suit);
-    }
-    return out;
-  };
   for (let si = 0; si < streetIdx && si < streets.length; si++) {
     for (const d of ((streets[si] && streets[si].draws) || [])) {
       if (!d) continue;
       if (d.player !== heroIdx && d.player === playerIdx) continue; // in their stored hand, see above
-      const later = thrownAfter(d.player, si);
-      const kept = cardsOf(d.newCards).filter((c) => !later.has(c.rank + c.suit)).map((c) => c.rank + c.suit).join('');
-      add(kept, d.player === playerIdx ? 'already in this hand' : 'in ' + nameOf(d.player) + "'s hand");
+      add(d.newCards, d.player === playerIdx ? 'already in this hand' : 'in ' + nameOf(d.player) + "'s hand");
     }
   }
   const cur = streets[streetIdx];
