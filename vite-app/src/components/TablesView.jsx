@@ -20,7 +20,20 @@ const GAMES = [
   ['NLH', "No Limit Hold'em"], ['PLO', 'Pot Limit Omaha'], ['LHE', "Limit Hold'em"], ['PLH', "Pot Limit Hold'em"],
   ['PLO5', 'PLO5'], ['PLO6', 'PLO6'], ['PLO8', 'PLO8'], ['NLO8', 'NLO8'], ['O8', 'O8'], ['LO Hi', 'Limit Omaha Hi'],
   ['Big O', 'Big O'], ['PLO6 8/b', 'PLO6 8/b'],
+  ['Stud Hi', 'Seven Card Stud'], ['Stud 8', 'Stud Hi-Lo'], ['Razz', 'Razz'],
+  ['2-7 TD', '2-7 Triple Draw'], ['PL 2-7 TD', 'PL 2-7 Triple Draw'], ['Badugi', 'Badugi'],
+  ['NL 2-7 SD', 'NL 2-7 Single Draw'], ['PL 5CD Hi', 'PL Five Card Draw'],
 ];
+// The server decides (live-hand.js gameKind, maxSeatsFor); these only label the form and its seat list.
+const STUD = new Set(['Stud Hi', 'Stud 8', 'Razz']);
+const DRAW = new Set(['2-7 TD', 'PL 2-7 TD', 'Badugi', 'NL 2-7 SD', 'PL 5CD Hi']);
+const seatsFor = (g) => (STUD.has(g) ? 7 : DRAW.has(g) ? 6 : 9);
+
+/* A table's stakes in words: blinds (and ante) for the board and draw games; ante, bring-in and the bets in stud. */
+function stakesText(gameType, b) {
+  if (STUD.has(gameType)) return `ante ${chips(b.ante)} · bring-in ${chips(b.bringIn)} · ${chips(b.bb)}/${chips(b.bigBet || b.bb * 2)}`;
+  return `${chips(b.sb)}/${chips(b.bb)}${b.ante ? ` · ante ${chips(b.ante)}` : ''}`;
+}
 
 const secs = (ms) => Math.max(0, Math.ceil(ms / 1000));
 
@@ -110,7 +123,7 @@ function Field({ label, children }) {
 }
 
 // ── The action bar: what the view says this player may do ──
-function TableBar({ view, busy, onAct, left, chat }) {
+function TableBar({ view, busy, onAct, left, chat, thrown }) {
   const h = view.hand;
   const L = h.live.legal;
   const names = h.hand.players.map((p) => p.name);
@@ -119,13 +132,29 @@ function TableBar({ view, busy, onAct, left, chat }) {
   useEffect(() => { setAmount(L && L.canRaise && L.minTo != null ? String(L.minTo) : ''); setErr(''); }, [h.live.seq]); // eslint-disable-line react-hooks/exhaustive-deps
   const clock = left == null ? '' : ` · ${secs(left)}s`;
 
+  // A draw: the cards are marked on the felt (the drill's tap-to-throw), the bar sends them.
+  if (h.live.draw) {
+    const n = thrown ? thrown.size : 0;
+    return (
+      <div className="hs-view rd-bar tb-bar snap-place">
+        <div className="hs-t hs-sm rd-status" style={T(2)}>{`Tap your cards to throw${clock}`}</div>
+        <div className="hs-cols3" style={{ '--hs-n': 2 }}>
+          <button type="button" className="hs-btn rd-primary" disabled={busy} onClick={() => onAct({ action: 'draw', discard: [...(thrown || [])] })}>
+            <span className="hs-t" style={T(3)}>{n === 0 ? 'Stand pat' : `Draw ${n}`}</span>
+          </button>
+          {chat}
+        </div>
+      </div>
+    );
+  }
+
   if (!L) {
     const who = h.live.toAct >= 0 ? names[h.live.toAct] : '';
     const me = view.table.you >= 0 ? view.table.seats[view.table.you] : null;
     return (
       <div className="hs-view rd-bar tb-bar snap-place">
         {me && me.waiting && <div className="hs-t hs-sm rd-status" style={T(2)}>Waiting for the big blind</div>}
-        <div className="hs-t hs-sm rd-status" style={T(2)}>{who ? `${who} to act${clock}` : 'Dealing…'}</div>
+        <div className="hs-t hs-sm rd-status" style={T(2)}>{who ? `${who} to ${h.live.drawing ? 'draw' : 'act'}${clock}` : 'Dealing…'}</div>
         {chat}
       </div>
     );
@@ -139,17 +168,23 @@ function TableBar({ view, busy, onAct, left, chat }) {
     if (to < L.minTo || to > L.maxTo) { setErr(`From ${chips(L.minTo)} to ${chips(L.maxTo)}`); return; }
     raiseTo(to);
   };
+  // The buttons this turn offers, each [label, act].
+  const buttons = [];
+  if (L.canFold) buttons.push(['Fold', () => onAct({ action: 'fold' })]);
+  if (L.bringIn) buttons.push([`Bring in ${chips(L.bringIn)}`, () => onAct({ action: 'bring-in' })]);
+  else if (L.canCheck) buttons.push(['Check', () => onAct({ action: 'check' })]);
+  else buttons.push([`Call ${chips(L.call)}`, () => onAct({ action: 'call' })]);
+  if (L.canRaise && L.fixedTo != null) buttons.push([`${L.raiseWord} ${chips(L.fixedTo)}`, () => raiseTo(L.fixedTo)]);
+  /* Three short labels share a row of three (9g each on a phone); two, or a long label ("Complete 100",
+     "Call 12,500"), take a row of two 15g columns, a third going under. Every width whole g. */
+  const three = buttons.length === 3 && buttons.every(([label]) => label.length <= 9);
   return (
     <div className="hs-view rd-bar tb-bar snap-place">
       <div className="hs-t hs-sm rd-status" style={T(2)}>{`Your turn${clock}`}</div>
-      <div className="hs-cols3" style={{ '--hs-n': 2 }}>
-        {L.canFold && <button type="button" className="hs-btn rd-act" disabled={busy} onClick={() => onAct({ action: 'fold' })}><span className="hs-t" style={T(3)}>Fold</span></button>}
-        {L.canCheck
-          ? <button type="button" className="hs-btn rd-act" disabled={busy} onClick={() => onAct({ action: 'check' })}><span className="hs-t" style={T(3)}>Check</span></button>
-          : <button type="button" className="hs-btn rd-act" disabled={busy} onClick={() => onAct({ action: 'call' })}><span className="hs-t" style={T(3)}>{`Call ${chips(L.call)}`}</span></button>}
-        {L.canRaise && L.fixedTo != null && (
-          <button type="button" className="hs-btn rd-act" disabled={busy} onClick={() => raiseTo(L.fixedTo)}><span className="hs-t" style={T(3)}>{`${L.raiseWord} ${chips(L.fixedTo)}`}</span></button>
-        )}
+      <div className={three ? 'hs-cols3' : 'hs-cols'} style={{ '--hs-n': 2 }}>
+        {buttons.map(([label, onClick]) => (
+          <button key={label} type="button" className="hs-btn rd-act" disabled={busy} onClick={onClick}><span className="hs-t" style={T(3)}>{label}</span></button>
+        ))}
       </div>
       {L.canRaise && L.fixedTo == null && (
         <div className="tb-raise">
@@ -226,20 +261,30 @@ function LiveTable({ tableId, heroName, cardSplay, onBack }) {
       onReport={(msgId) => tablesApi.report(tableId, msgId)} />
   );
 
+  // A draw: the cards this player has marked to throw, cleared with every new view of the hand.
+  const [thrown, setThrown] = useState(() => new Set());
+  const seq = view && view.hand ? `${handNo}:${view.hand.live.seq}` : '';
+  useEffect(() => { setThrown(new Set()); }, [seq]);
+  const toggleThrown = useCallback((c) => setThrown((prev) => {
+    const next = new Set(prev);
+    if (next.has(c)) next.delete(c); else next.add(c);
+    return next;
+  }), []);
+
   const drill = useMemo(() => {
     if (!view || !view.hand) return null;
     return {
       rev: `${handNo}:${view.hand.live.seq}`,
       over,
       startAtEnd: false,
-      discard: null,
-      bar: <TableBar view={view} busy={busy} onAct={act} left={left} chat={chatButton} />,
+      discard: view.hand.live.draw ? { thrown, toggle: toggleThrown, disabled: busy } : null,
+      bar: <TableBar view={view} busy={busy} onAct={act} left={left} chat={chatButton} thrown={thrown} />,
       overBar: <OverBar view={view} busy={busy} chat={chatButton}
         onLeave={() => run((s) => s.leave()).then(onBack)}
         onSitIn={() => run((s) => s.sitIn())}
         onRebuy={() => run((s) => s.rebuy(table.buyIn.max))} />,
     };
-  }, [view, busy, act, left, over, handNo, run, onBack, table, unread]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [view, busy, act, left, over, handNo, run, onBack, table, unread, thrown, toggleThrown]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (status === 'gone') {
     return (
@@ -261,7 +306,7 @@ function LiveTable({ tableId, heroName, cardSplay, onBack }) {
     return (
       <div className="hs-view rd-setup tb-lobby">
         <h2 className="screen-title hs-t hs-title" style={T(4)}>{table.name}</h2>
-        <div className="hs-t hs-sm hs-mut" style={T(3)}>{`${table.gameType} · ${chips(table.blinds.sb)}/${chips(table.blinds.bb)}${table.blinds.ante ? ` · ante ${chips(table.blinds.ante)}` : ''} · ${table.clock.decision}s a decision`}</div>
+        <div className="hs-t hs-sm hs-mut" style={T(3)}>{`${table.gameType} · ${stakesText(table.gameType, table.blinds)} · ${table.clock.decision}s a decision`}</div>
         <ul className="tb-seats">
           {table.seats.map((s, i) => (
             <li key={i} className="hs-t hs-sm" style={T(3)}>{`Seat ${i + 1}: `}{s ? `${s.name} · ${chips(s.stack)}${s.status !== 'playing' ? ` (${s.status.replace('-', ' ')})` : s.waiting ? ' (waiting for the big blind)' : ''}` : 'open'}</li>
@@ -307,6 +352,13 @@ function NewTable({ onMade, onCancel }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
+  const stud = STUD.has(f.gameType);
+  const most = seatsFor(f.gameType);
+  // A game with fewer seats takes the seat count down with it; stud's stakes start with an ante.
+  const pickGame = (e) => {
+    const g = e.target.value;
+    setF((p) => ({ ...p, gameType: g, maxSeats: String(Math.min(Number(p.maxSeats), seatsFor(g))), ...(STUD.has(g) && !Number(p.ante) ? { ante: '10' } : {}) }));
+  };
   const make = async () => {
     setBusy(true); setError('');
     try {
@@ -322,15 +374,15 @@ function NewTable({ onMade, onCancel }) {
       <h2 className="screen-title hs-t hs-title" style={T(4)}>New table</h2>
       <Field label="Name"><input value={f.name} placeholder="Friday game" onChange={set('name')} /></Field>
       <Field label="Game">
-        <select value={f.gameType} onChange={set('gameType')}>{GAMES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>
+        <select value={f.gameType} onChange={pickGame}>{GAMES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>
       </Field>
       <div className="tb-row is-3">
-        <Field label="Small blind"><input inputMode="numeric" value={f.sb} onChange={set('sb')} /></Field>
-        <Field label="Big blind"><input inputMode="numeric" value={f.bb} onChange={set('bb')} /></Field>
+        <Field label={stud ? 'Bring-in' : 'Small blind'}><input inputMode="numeric" value={f.sb} onChange={set('sb')} /></Field>
+        <Field label={stud ? 'Small bet' : 'Big blind'}><input inputMode="numeric" value={f.bb} onChange={set('bb')} /></Field>
         <Field label="Ante"><input inputMode="numeric" value={f.ante} onChange={set('ante')} /></Field>
       </div>
       <div className="tb-row is-3">
-        <Field label="Seats"><select value={f.maxSeats} onChange={set('maxSeats')}>{[2, 3, 4, 5, 6, 7, 8, 9].map((n) => <option key={n}>{n}</option>)}</select></Field>
+        <Field label="Seats"><select value={f.maxSeats} onChange={set('maxSeats')}>{Array.from({ length: most - 1 }, (_, i) => i + 2).map((n) => <option key={n}>{n}</option>)}</select></Field>
         <Field label="Buy-in from"><input inputMode="numeric" value={f.min} onChange={set('min')} /></Field>
         <Field label="to"><input inputMode="numeric" value={f.max} onChange={set('max')} /></Field>
       </div>
@@ -386,7 +438,7 @@ export default function TablesView({ heroName, cardSplay, active = true }) {
       {invite && (
         <div className="hs-panel hs-stack tb-invite">
           <div className="hs-t hs-sm" style={T(3)}>{`You're invited to ${invite.table.name}`}</div>
-          <div className="hs-t hs-xs hs-mut" style={T(2)}>{`${invite.table.gameType} · ${chips(invite.table.blinds.sb)}/${chips(invite.table.blinds.bb)}`}</div>
+          <div className="hs-t hs-xs hs-mut" style={T(2)}>{`${invite.table.gameType} · ${stakesText(invite.table.gameType, invite.table.blinds)}`}</div>
           <button type="button" className="hs-btn rd-primary" onClick={async () => {
             try { const t = await tablesApi.accept(invite.token); setInvite(null); setScreen({ kind: 'table', id: t.id }); } catch (e) { setError(e.message); }
           }}><span className="hs-t" style={T(3)}>Join the table</span></button>
@@ -395,7 +447,7 @@ export default function TablesView({ heroName, cardSplay, active = true }) {
       {list.map((t) => (
         <div key={t.id} className="hs-panel hs-stack tb-item">
           <div className="hs-t hs-sm hs-bold" style={T(3)}>{t.name}</div>
-          <div className="hs-t hs-xs hs-mut" style={T(2)}>{`${t.gameType} · ${chips(t.blinds.sb)}/${chips(t.blinds.bb)} · ${t.maxSeats} seats`}</div>
+          <div className="hs-t hs-xs hs-mut" style={T(2)}>{`${t.gameType} · ${stakesText(t.gameType, t.blinds)} · ${t.maxSeats} seats`}</div>
           <div className="hs-cols" style={{ '--hs-n': 2 }}>
             <button type="button" className="hs-btn rd-primary" onClick={() => setScreen({ kind: 'table', id: t.id })}><span className="hs-t" style={T(3)}>Open</span></button>
             {t.invite && <button type="button" className="hs-btn" onClick={() => copy(t)}><span className="hs-t" style={T(3)}>{copied === t.id ? 'Link copied' : 'Copy invite'}</span></button>}

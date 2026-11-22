@@ -123,8 +123,14 @@ async function waitFor(fn, what, ms = 10000) {
       assert.equal(c.body.balance, 20000);
     });
 
-    await t.test('the host creates a private NLH table; a game not dealt live is refused', async () => {
-      assert.equal((await call(S, 'POST', '/api/tables', { gameType: 'Razz', sb: 5, bb: 10 }, AVA)).status, 400);
+    await t.test('the host creates a private NLH table; a game not dealt live is refused; stud takes its own stakes', async () => {
+      assert.equal((await call(S, 'POST', '/api/tables', { gameType: 'A-5 TD', sb: 5, bb: 10 }, AVA)).status, 400);
+      // Stud: the first figure is the bring-in, the second the small bet; seven seats at most.
+      const razz = await call(S, 'POST', '/api/tables', { name: 'Razz table', gameType: 'Razz', sb: 5, bb: 10, ante: 2, maxSeats: 9, buyIn: { min: 200, max: 1000 }, decision: 30, bank: 0 }, AVA);
+      assert.equal(razz.status, 201, JSON.stringify(razz.body));
+      assert.deepEqual(razz.body.blinds, { sb: 0, bb: 10, ante: 2, bringIn: 5, bigBet: 20 });
+      assert.equal(razz.body.maxSeats, 7);
+      assert.equal((await call(S, 'POST', `/api/tables/${razz.body.id}/close`, null, AVA)).status, 200);
       const r = await call(S, 'POST', '/api/tables', { name: 'Test table', gameType: 'NLH', sb: 5, bb: 10, maxSeats: 6, buyIn: { min: 200, max: 1000 }, decision: 30, bank: 0 }, AVA);
       assert.equal(r.status, 201, JSON.stringify(r.body));
       table = r.body;
@@ -208,8 +214,16 @@ async function waitFor(fn, what, ms = 10000) {
         const over = e.view.hand && e.view.hand.live && e.view.hand.live.over;
         if (!over) assert.ok(!/Ah|Ad/.test(e.raw), "Bo's stream holds Ava's aces before the showdown");
       }
-      const undealt = DECK.slice(TOP.length);
-      for (const e of [...seats.avaStream.events, ...seats.boStream.events]) for (const c of undealt) assert.ok(!e.raw.includes(`"${c}`) && !e.raw.includes(c + '"'), `undealt ${c} sent`);
+      // Cards only from strings made of cards: the table's id is random hex, which can begin or end with "5d" or
+      // "9c" (a quoted-text search failed about one run in eight on that).
+      const cardsIn = (v, out = []) => {
+        if (typeof v === 'string') { if (/^(?:[2-9TJQKA][hdcsx])+$/.test(v)) out.push(...(v.match(/[2-9TJQKA][hdcs]/g) || [])); }
+        else if (Array.isArray(v)) v.forEach((x) => cardsIn(x, out));
+        else if (v && typeof v === 'object') Object.values(v).forEach((x) => cardsIn(x, out));
+        return out;
+      };
+      const undealt = new Set(DECK.slice(TOP.length));
+      for (const e of [...seats.avaStream.events, ...seats.boStream.events]) for (const c of cardsIn(e.view)) assert.ok(!undealt.has(c), `undealt ${c} sent`);
     });
 
     await t.test('each player keeps the hand in Hands, as they saw it', async () => {
@@ -220,7 +234,7 @@ async function waitFor(fn, what, ms = 10000) {
       const avaHand = JSON.parse((await call(S, 'GET', `/api/hands/${avaList[0].id}`, null, AVA)).body.hand_data);
       const boHand = JSON.parse((await call(S, 'GET', `/api/hands/${boList[0].id}`, null, BO)).body.hand_data);
       assert.equal(avaHand.streets[0].cards.hero, 'AhAd');
-      assert.equal(avaHand.streets[0].cards.opponents[0], '', "Bo's mucked kings are not in Ava's copy");
+      assert.equal(avaHand.streets[0].cards.opponents[0], 'MUCK', "Bo's mucked kings are not in Ava's copy: marked mucked");
       assert.equal(boHand.streets[0].cards.hero, 'KcKs');
       assert.equal(boHand.streets[0].cards.opponents[0], 'AhAd', 'the winner showed');
       assert.equal(avaHand.table.handNo, 1);

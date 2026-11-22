@@ -2,7 +2,9 @@
 // the showdown's auto-muck, and that no seat's view or saved hand ever holds a card that seat did not see.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { startHand, act, viewFor, savedHandFor, timeoutMove, currentState } from '../poker-rules/live-hand.js';
+import { startHand, act, viewFor, savedHandFor, timeoutMove, currentState, toAct, maxSeatsFor } from '../poker-rules/live-hand.js';
+import { settleHand } from '../poker-rules/settle.js';
+import { deckRanOut, drawDeadCards } from '../quick-add/cards.js';
 
 const RANKS = '23456789TJQKA', SUITS = 'hdcs';
 const FULL = [...RANKS].flatMap((r) => [...SUITS].map((s) => r + s));
@@ -12,7 +14,18 @@ const deckWith = (...top) => [...top, ...FULL.filter((c) => !top.includes(c))];
 const HU = [{ id: 11, name: 'Ava', stack: 1000 }, { id: 22, name: 'Bo', stack: 1000 }];
 const BL = { sb: 5, bb: 10, ante: 0 };
 
-const cardsIn = (obj) => JSON.stringify(obj).match(/[2-9TJQKA][hdcs]/g) || [];
+/* Every card in a view: from string values made only of cards (a back is 'Ax'), so a key such as "toAct" is not
+   read as the ace of clubs. */
+const cardsIn = (obj) => {
+  const out = [];
+  const walk = (v) => {
+    if (typeof v === 'string') { if (/^(?:[2-9TJQKA][hdcsx])+$/.test(v)) out.push(...(v.match(/[2-9TJQKA][hdcs]/g) || [])); }
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === 'object') Object.values(v).forEach(walk);
+  };
+  walk(obj);
+  return out;
+};
 
 test('heads-up NLH to a showdown: turns, settlement, auto-muck', () => {
   // Ava (BTN/SB) AhAd, Bo (BB) KcKs; board 2c 7d 9h | 3s | 4d: aces hold.
@@ -33,7 +46,7 @@ test('heads-up NLH to a showdown: turns, settlement, auto-muck', () => {
   assert.deepEqual(s.result.shown, [0], 'the winner shows, the loser mucks');
   // Bo's saved hand shows Ava's aces (shown); Ava's never shows Bo's kings (mucked).
   assert.equal(savedHandFor(s, 1).streets[0].cards.opponents[0], 'AhAd');
-  assert.equal(savedHandFor(s, 0).streets[0].cards.opponents[0], '');
+  assert.equal(savedHandFor(s, 0).streets[0].cards.opponents[0], 'MUCK', 'marked mucked, as the replayer marks one');
   assert.ok(!cardsIn(savedHandFor(s, 0)).includes('Kc'));
 });
 
@@ -98,4 +111,172 @@ test('PLO deals four each and pot-limits the raise', () => {
   assert.equal(s.holes[0].length, 4);
   const L = currentState(s).legal;
   assert.equal(L.maxTo, 30, 'the button may raise to three big blinds heads-up');
+});
+
+// ── Stud and the draw games (decision 10: board, then stud, then draw) ──
+const STUD_BL = { sb: 0, bb: 20, bigBet: 40, ante: 5, bringIn: 10 };
+const LIMIT_BL = { sb: 10, bb: 20, bigBet: 40, ante: 0 };
+
+test('stud: two down and one up, the low door brings it in, 7th street dealt down and never shown to the others', () => {
+  // Seat order Ava, Bo, Cy: Ava's door Kd, Bo's 2c (brings in), Cy's 9h.
+  const deck = deckWith('Ah', 'As', 'Kd', '3h', '3d', '2c', '8h', '8d', '9h');
+  const s = startHand({ gameType: 'Stud Hi', blinds: STUD_BL, seats: [{ id: 1, name: 'Ava', stack: 1000 }, { id: 2, name: 'Bo', stack: 1000 }, { id: 3, name: 'Cy', stack: 1000 }], deck });
+  assert.deepEqual(s.players.map((p) => p.position), ['Seat 1', 'Seat 2', 'Seat 3']);
+  const t = toAct(s);
+  assert.equal(t.player, 1, 'the lowest door card brings it in');
+  assert.equal(t.legal.bringIn, 10);
+  // Bo sees his own three, and only the others' doors.
+  assert.equal(viewFor(s, 1).hand.streets[0].cards.hero, '3h3d2c');
+  assert.deepEqual(cardsIn(viewFor(s, 1)).sort(), ['3h', '3d', '2c', 'Kd', '9h'].sort());
+  // Everyone calls along to 7th street: each has seven cards; nobody sees another's 7th.
+  for (let k = 0; k < 40 && s.phase !== 'over'; k++) {
+    const a = toAct(s);
+    const L = a.legal;
+    assert.ok(act(s, a.player, L.bringIn ? { action: 'bring-in' } : L.canCheck ? { action: 'check' } : { action: 'call' }).ok);
+    if (s.si === 4 && s.phase !== 'over') {
+      for (let p = 0; p < 3; p++) for (let q = 0; q < 3; q++) if (p !== q) assert.ok(!cardsIn(viewFor(s, p)).includes(s.holes[q][6]), `seat ${p} sees seat ${q}'s 7th`);
+    }
+  }
+  assert.equal(s.phase, 'over');
+  assert.ok(s.holes.every((h) => h.length === 7));
+  assert.equal(s.result.finals.reduce((a, b) => a + b, 0), 3000);
+});
+
+test('triple draw: each draws in turn after the betting, the hero sees his own new cards and only counts of the others', () => {
+  const s = startHand({ gameType: '2-7 TD', blinds: LIMIT_BL, seats: HU, deck: FULL.slice() });
+  act(s, 0, { action: 'call' });
+  act(s, 1, { action: 'check' });
+  assert.equal(s.phase, 'drawing');
+  assert.deepEqual(toAct(s), { player: 1, kind: 'draw', max: 5 }, 'the big blind draws first heads-up');
+  assert.deepEqual(timeoutMove(s), { action: 'draw', discard: [] }, 'a draw timed out stands pat');
+  assert.equal(act(s, 0, { action: 'draw', discard: [] }).error, 'It is not your draw');
+  assert.equal(act(s, 1, { action: 'check' }).error, 'Draw or stand pat');
+  assert.equal(act(s, 1, { action: 'draw', discard: ['Ah'] }).error, 'Throw cards from your hand');
+  const thrown = s.holes[1].slice(0, 2);
+  assert.ok(act(s, 1, { action: 'draw', discard: thrown }).ok);
+  const got = s.holes[1].slice(-2);
+  assert.ok(act(s, 0, { action: 'draw', discard: [] }).ok);
+  assert.equal(s.phase, 'betting');
+  assert.equal(s.si, 1);
+  const mine = viewFor(s, 1).hand.streets[0].draws.find((d) => d.player === 1);
+  assert.equal(mine.newCards, got.join(''));
+  const theirs = viewFor(s, 0).hand.streets[0].draws.find((d) => d.player === 1);
+  assert.deepEqual(theirs, { player: 1, discarded: 2, discardedCards: '', newCards: '' });
+  for (const c of [...thrown, ...got]) assert.ok(!cardsIn(viewFor(s, 0)).includes(c));
+});
+
+test('a draw game reshuffles the discards when the stub runs out, never the drawer\'s own discards of that draw', () => {
+  const seats = [1, 2, 3, 4, 5, 6].map((id) => ({ id, name: 'P' + id, stack: 10000 }));
+  const s = startHand({ gameType: '2-7 TD', blinds: LIMIT_BL, seats, deck: FULL.slice() });
+  let reshuffled = 0;
+  const reshuffle = (cards) => { reshuffled++; return cards.slice().reverse(); };
+  for (let k = 0; k < 200 && s.phase !== 'over'; k++) {
+    const t = toAct(s);
+    if (t.kind === 'draw') {
+      const thrown = s.holes[t.player].slice();
+      assert.ok(act(s, t.player, { action: 'draw', discard: thrown }, { reshuffle }).ok);
+      assert.ok(s.holes[t.player].every((c) => !thrown.includes(c)), 'a drawer is never dealt back what they just threw');
+    } else assert.ok(act(s, t.player, t.legal.canCheck ? { action: 'check' } : { action: 'call' }).ok);
+    // No card is in two hands, or in a hand and the stub.
+    const held = s.holes.flat().concat(s.stub);
+    assert.equal(new Set(held).size, held.length);
+  }
+  assert.equal(s.phase, 'over');
+  assert.ok(reshuffled >= 1 && s.reshuffles >= 1, 'six players drawing five three times run the stub out');
+  assert.equal(s.result.finals.reduce((a, b) => a + b, 0), 60000);
+});
+
+test('the entry screens: a thrown card is dead until the deck runs out, then live again, but never the drawer\'s own throw of that draw', () => {
+  // Six seats of 2-7 TD (30 cards dealt). First draw: everyone throws 3 (48 dealt). Second draw: seat 0 throws
+  // 2 (50), seat 1 throws 3: 53, past the deck.
+  const players = [0, 1, 2, 3, 4, 5].map((i) => ({ name: 'P' + i, startingStack: 100 }));
+  const throwN = (p, k, out = '', inn = '') => ({ player: p, discarded: k, discardedCards: out, newCards: inn });
+  const hand = {
+    gameType: '2-7 TD', players, heroIdx: 1,
+    streets: [
+      { cards: { hero: 'KhQhJh9h8c', opponents: [] }, actions: [], draws: [throwN(0, 3, 'AsKsQs'), throwN(1, 3, 'KhQhJh', '2c3c4d'), throwN(2, 3), throwN(3, 3), throwN(4, 3), throwN(5, 3)] },
+      { cards: { hero: '', opponents: [] }, actions: [], draws: [throwN(0, 2, 'JsTs'), throwN(1, 3, '9h8c4d', '')] },
+      { cards: { hero: '', opponents: [] }, actions: [], draws: [throwN(1, 1, '2c', '')] },
+      { cards: { hero: '', opponents: [] }, actions: [], draws: [] },
+    ],
+  };
+  // Seat 1 was dealt 4d at the first draw and threw it at the second: at the third (after the reshuffle) it is live.
+  assert.equal(drawDeadCards(hand, 2, 1).has('4d'), false, 'a card dealt and then thrown is not still in the hand');
+  assert.equal(deckRanOut(hand, 0, 1), false, 'the first draw: 33 dealt');
+  assert.equal(deckRanOut(hand, 1, 0), false, 'seat 0 at the second draw: 50');
+  assert.equal(deckRanOut(hand, 1, 1), true, 'seat 1 at the second draw: 53');
+  assert.equal(deckRanOut(hand, null, null), true, 'the showdown: the deck ran out at some draw');
+  // Seat 0's thrown As is dead to seat 0's own second draw (no reshuffle yet) ...
+  assert.equal(drawDeadCards(hand, 1, 0).get('As'), 'already discarded');
+  // ... and live to seat 1's, after the reshuffle; seat 1's own throw of this draw stays dead.
+  const dead = drawDeadCards(hand, 1, 1);
+  assert.equal(dead.has('As'), false);
+  assert.equal(dead.has('Js'), false, 'seat 0 threw it this draw, before the reshuffle: back in');
+  assert.equal(dead.get('9h'), 'already discarded', "seat 1's own throw of this draw is never dealt back to it");
+});
+
+test('seat limits: stud seven, the draw games six', () => {
+  assert.equal(maxSeatsFor('Razz'), 7);
+  assert.equal(maxSeatsFor('Badugi'), 6);
+  assert.equal(maxSeatsFor('NLH'), 10);
+  const eight = [1, 2, 3, 4, 5, 6, 7, 8].map((id) => ({ id, name: 'P' + id, stack: 100 }));
+  assert.throws(() => startHand({ gameType: 'Stud Hi', blinds: STUD_BL, seats: eight, deck: FULL.slice() }), /2 to 7/);
+});
+
+/* A small seeded PRNG, so a failure names its seed. */
+function rng(seed) { let x = seed >>> 0 || 1; return () => { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; }
+function shuffled(r) { const d = FULL.slice(); for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [d[i], d[j]] = [d[j], d[i]]; } return d; }
+
+/* What seat p may know at this moment: every card it was ever dealt, every up card and board card dealt, and at
+   the end the cards of the hands shown. */
+function allowed(s, p) {
+  const ok = new Set([...s.start[p], ...s.holes[p]]);
+  for (const st of s.streets) for (const d of st.draws) if (d.player === p) for (const c of (d.newCards.match(/../g) || [])) ok.add(c);
+  if (s.kind === 'stud') for (const h of s.holes) for (const c of h.slice(2, 6)) ok.add(c);
+  if (s.kind === 'board') for (const c of s.board.slice(0, s.si + 1).flat()) ok.add(c);
+  if (s.result) for (const q of s.result.shown) for (const c of s.holes[q]) ok.add(c);
+  return ok;
+}
+
+test('random hands of every stud and draw game: no view ever holds an unseen card, every hand ends, chips are kept', () => {
+  const games = { 'Stud Hi': STUD_BL, 'Stud 8': STUD_BL, Razz: STUD_BL, '2-7 TD': LIMIT_BL, 'PL 2-7 TD': BL, Badugi: LIMIT_BL, 'NL 2-7 SD': BL, 'PL 5CD Hi': BL };
+  for (const [game, blinds] of Object.entries(games)) {
+    for (let seed = 1; seed <= 40; seed++) {
+      const r = rng(seed * 7919 + game.length);
+      const n = 2 + Math.floor(r() * (maxSeatsFor(game) - 1));
+      const seats = Array.from({ length: n }, (_, i) => ({ id: i + 1, name: 'P' + i, stack: 50 + Math.floor(r() * 400) }));
+      const s = startHand({ gameType: game, blinds, seats, deck: shuffled(r) });
+      const total = seats.reduce((a, x) => a + x.stack, 0);
+      for (let k = 0; k < 400 && s.phase !== 'over'; k++) {
+        const t = toAct(s);
+        assert.ok(t, `${game} seed ${seed}: stuck with nobody to act`);
+        let move;
+        if (t.kind === 'draw') move = { action: 'draw', discard: s.holes[t.player].filter(() => r() < 0.4) };
+        else {
+          const L = t.legal, x = r();
+          if (L.bringIn) move = x < 0.6 || !L.canRaise ? { action: 'bring-in' } : { action: 'complete', to: L.minTo };
+          else if (L.canRaise && x < 0.25) move = { action: L.raiseWord === 'Bet' ? 'bet' : L.raiseWord === 'Complete' ? 'complete' : 'raise', to: L.fixedTo != null ? L.fixedTo : L.minTo + Math.floor(r() * (L.maxTo - L.minTo + 1)) };
+          else if (L.canFold && x > 0.85) move = { action: 'fold' };
+          else move = { action: L.canCheck ? 'check' : 'call' };
+        }
+        const res = act(s, t.player, move, { reshuffle: (c) => c.slice().sort(() => r() - 0.5) });
+        assert.ok(res.ok, `${game} seed ${seed}: ${JSON.stringify(move)} refused: ${res.error}; offered ${JSON.stringify(t.legal)}; street ${s.si}, ${JSON.stringify(s.streets[s.si].actions)}`);
+        for (let p = 0; p < n; p++) {
+          const ok = allowed(s, p);
+          for (const c of cardsIn(viewFor(s, p))) assert.ok(ok.has(c), `${game} seed ${seed}: seat ${p} sees ${c}`);
+        }
+      }
+      assert.equal(s.phase, 'over', `${game} seed ${seed}: did not end`);
+      assert.ok(Math.abs(s.result.finals.reduce((a, b) => a + b, 0) - total) < 1e-6, `${game} seed ${seed}: chips`);
+      for (let p = 0; p < n; p++) {
+        const ok = allowed(s, p);
+        const saved = savedHandFor(s, p);
+        for (const c of cardsIn(saved)) assert.ok(ok.has(c), `${game} seed ${seed}: seat ${p} keeps ${c}`);
+        // What Hands keeps settles, through the export's arithmetic, to what the table paid.
+        let finals;
+        try { finals = settleHand(saved).finals; } catch (e) { assert.fail(`${game} seed ${seed}: seat ${p}'s saved hand does not settle: ${e.message}`); }
+        finals.forEach((f, q) => assert.ok(Math.abs(f - s.result.finals[q]) < 1e-6, `${game} seed ${seed}: seat ${p}'s saved hand pays seat ${q} ${f}, the table ${s.result.finals[q]}`));
+      }
+    }
+  }
 });

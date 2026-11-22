@@ -357,10 +357,13 @@ deals when the deck runs out, not something a room does (the round's own discard
 reshuffle); the other two happen at a full table. Code: `drawDeadCards` at 104 (116: `'already
 discarded'`) and `sdUsedCards` at 3766. It is written as a guard against a mistyped card, and is right
 until the deck runs out; the owner's call is whether a reshuffle is worth a way round it.
-*Branch `play-money` (2026-11-22), the showdown half only:* the showdown picker now greys out the boards and
-the hero's final hand alone, so an opponent can show a card the hero threw away (`2-7 TD#5` now passes). The
-draw's new-cards field still refuses a discard (`2-7 TD#19`, `#141`, `PL 2-7 TD#27`, `#51`, `#62`, `#85`,
-`Badugi#51` in the full run), pending the owner's answer.
+*Answered (owner, 2026-11-22, branch `play-money`): "a thrown card comes back only once the deck can't cover
+the draw."* `deckRanOut` (utils/quick-add/cards.js) counts the cards dealt: a full hand to every seat, then as
+many as each draw threw; when a draw needs more than are left of 52, the discards were shuffled back. From that
+draw on, every earlier discard is live again in the new-cards field, all but the drawer's own throw of that
+same draw (a room keeps it out; PokerKit deals it back, the 24 hands above stay refused). The showdown picker
+asks the same question of the whole hand: a thrown card is dead there until the deck has run out. The replayer's
+`drawDeadCards` and quick add's mirror both apply it; tests in `live-hand.test.mjs` (`npm test`).
 
 ## Rule choices (settings and house rules, not bugs)
 

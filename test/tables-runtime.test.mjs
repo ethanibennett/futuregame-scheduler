@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Table } from '../lib/tables/runtime.mjs';
-import { currentState } from '../vite-app/src/utils/poker-rules/live-hand.js';
+import { currentState, toAct } from '../vite-app/src/utils/poker-rules/live-hand.js';
 
 const FULL = [...'23456789TJQKA'].flatMap((r) => [...'hdcs'].map((s) => r + s));
 
@@ -44,13 +44,14 @@ function harness(over = {}) {
   return { table, env, advance, done, cashOuts };
 }
 
-// Everyone checks or folds until the hand is over.
+// Everyone checks or folds (stud: brings it in; a draw: stands pat) until the hand is over.
 function playOut(table) {
-  for (let k = 0; k < 200 && table.hand && table.hand.phase === 'betting'; k++) {
-    const st = currentState(table.hand);
-    const p = st.legal.player;
-    const userId = table.seats[table.handSeats[p]].userId;
-    const r = table.act(userId, { action: st.legal.canCheck ? 'check' : 'fold' });
+  for (let k = 0; k < 200 && table.hand && table.hand.phase !== 'over'; k++) {
+    const t = toAct(table.hand);
+    const userId = table.seats[table.handSeats[t.player]].userId;
+    const move = t.kind === 'draw' ? { action: 'draw', discard: [] }
+      : t.legal.bringIn ? { action: 'bring-in' } : { action: t.legal.canCheck ? 'check' : 'fold' };
+    const r = table.act(userId, move);
     assert.ok(!r.error, r.error);
   }
 }
@@ -227,4 +228,52 @@ test('each new turn is offered to the service (which pushes only to a player who
   assert.ok(again.hand);
   assert.equal(turns.length, before);
   again.clearTimers();
+});
+
+test('a stud table: no button, each player named by their seat, and a new seat is dealt the next hand', () => {
+  const { table, advance, done } = harness({ gameType: 'Stud Hi', blinds: { sb: 0, bb: 100, ante: 10, bringIn: 50, bigBet: 200 } });
+  table.sit(1, 'Ava', 5000, 0);
+  table.sit(2, 'Bo', 5000, 3);
+  advance(1000);
+  assert.equal(table.button, -1);
+  assert.deepEqual(table.hand.players.map((p) => p.position), ['Seat 1', 'Seat 4']);
+  assert.equal(toAct(table.hand).legal.bringIn, 50, 'the low door brings it in');
+  table.sit(3, 'Cy', 5000, 1);
+  assert.equal(table.seats[1].waiting, false, 'stud has no big blind to wait for');
+  playOut(table);
+  assert.equal(done.length, 1);
+  advance(1000);
+  assert.deepEqual(table.handSeats, [0, 1, 3], 'Cy is dealt in, in table order');
+  playOut(table);
+  const sum = table.seats.filter(Boolean).reduce((a, s) => a + s.stack, 0);
+  assert.equal(sum, 15000);
+});
+
+test('a draw table: the clock runs at a draw too, and a draw timed out (or a seat sitting out) stands pat', () => {
+  const { table, advance } = harness({ gameType: '2-7 TD', blinds: { sb: 50, bb: 100, ante: 0, bigBet: 200 } });
+  table.sit(1, 'Ava', 5000, 0);
+  table.sit(2, 'Bo', 5000, 1);
+  advance(1000);
+  // Before the draw: the button calls, the big blind checks.
+  for (const move of [{ action: 'call' }, { action: 'check' }]) {
+    const t = toAct(table.hand);
+    assert.ok(table.act(table.seats[table.handSeats[t.player]].userId, move).ok);
+  }
+  assert.equal(table.hand.phase, 'drawing');
+  const t = toAct(table.hand);
+  assert.equal(t.kind, 'draw');
+  const seat = table.seats[table.handSeats[t.player]];
+  const before = table.hand.holes[t.player].slice();
+  assert.ok(table.deadline != null, 'the clock is running on the draw');
+  advance(30 * 1000 + 60 * 1000);
+  assert.deepEqual(table.hand.holes[t.player], before, 'timed out: stood pat');
+  assert.equal(seat.timeouts, 1);
+  // The other player sits out: their draw is made for them at once, standing pat.
+  const other = toAct(table.hand);
+  const otherSeat = table.seats[table.handSeats[other.player]];
+  table.sitOut(otherSeat.userId);
+  assert.equal(table.hand.phase, 'betting');
+  assert.equal(table.hand.si, 1);
+  const drew = table.hand.streets[0].draws.map((d) => d.discarded);
+  assert.deepEqual(drew, [0, 0]);
 });

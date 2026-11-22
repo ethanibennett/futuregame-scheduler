@@ -102,8 +102,10 @@ bring-in), 2 to 9 seats, a starting stack, a clock, and an invite token.
 
 **Seats.** `{ userId, name, stack, state: 'playing' | 'sitting-out' | 'waiting', timeBank,
 missedTimeouts }`. A player sits with the starting stack. A seat that joins mid-orbit is `waiting`
-until the big blind reaches it (or it chooses to post one to come in now): no dead-button
-bookkeeping, and nobody can dodge the blinds by moving.
+until the big blind reaches it: no dead-button bookkeeping, and nobody can dodge the blinds by
+moving. (Posting a big blind to come in at once was in this draft and is out of v1, 2026-11-22: it is a
+forced bet from any seat, which the rules module, the saved hand, the PokerTracker export and the
+replayer's felt would all have to learn, with no PokerKit hands to hold them to.)
 
 **The button** moves one occupied, dealt-in seat each hand. Heads-up the button posts the small blind
 and acts first before the flop; going from three players to two moves the button so nobody posts the
@@ -321,7 +323,8 @@ What the answers change:
   the buy-in waits for the next day's floor. The App Store notes must say the chips cannot be
   bought, sold, transferred, won as a prize or exchanged for anything, and §10's "not a currency" now
   rests on those guardrails rather than on the chips dying with the table. The floor and the starting
-  balance are settings to fix before the first slice (proposed: 20,000 starting, floor 5,000).
+  balance are settings to fix before the first slice: **20,000 starting, a daily floor of 5,000** (owner,
+  2026-11-22: "Fine").
 - **Chat (6)** is free text, so it carries the moderation guideline 1.2 asks for: each message can be
   reported (`reports` kind `'table-message'`, its text copied into `snapshot` as group messages are),
   a block hides the two people's messages from each other as in groups, the host can mute a seat,
@@ -365,8 +368,9 @@ What the second pass found and fixed on the way:
 - **The entry oracle had stopped reading a busted seat.** Since the felt shows a busted seat as OUT (2026-11-11), the
   entry oracle read OUT as a stack and failed every hand with a bust; `check-replayer-oracle` already read it as 0.
 - **A draw game's showdown refused a legal card.** Six-handed triple draw deals more than 52 cards, so the discards
-  are shuffled and dealt again; a card the hero threw can be in an opponent's final hand (2-7 TD#5). The showdown's
-  card picker now blocks only the cards still held: the board, the hero's hand after the draws, the hands shown.
+  are shuffled and dealt again; a card the hero threw can be in an opponent's final hand (2-7 TD#5). The owner's
+  rule (2026-11-22): a thrown card comes back only once the deck can't cover the draw (`deckRanOut`), in the draw's
+  new-cards field and the showdown's picker alike (docs/entry-audit/entry-vs-oracle.md 4).
 
 **Chat, as built.** Anyone at the table may write (280 characters, five messages in ten seconds); the table keeps the
 last 100 and each view carries 50. The host can mute a player and sees whom they muted; nobody else is told. Report
@@ -377,8 +381,7 @@ their next reconnect; until then each hides the other's messages in the app (`/a
 
 **Waiting for the big blind, as built.** A seat taken while a game is going waits until the hand would make it the
 big blind, and never takes the button before it has been dealt in. With fewer than two regular players the waits
-are cleared and a fresh game starts. "Post a big blind to come in now" is not built (it needs an extra post in the
-hand engine).
+are cleared and a fresh game starts. "Post a big blind to come in now" is out of v1 (§3).
 
 **Deploying the tables service** (after the owner's yes to merge; nothing here is done yet):
 
@@ -398,8 +401,35 @@ On SIGTERM the service deals no new hand, lets the hands in progress play out wi
 it owes the scheduler, for up to `TABLES_DRAIN_MS` (280 s), then exits; anything still going is in the journal and
 resumes after the restart. A second signal exits at once.
 
-Not yet: the `tables` push kind, stud and the draw games at the table, "post to come in now", the deploy above,
-and a guard pass (`check:controls`, `check:clipping`) on the Tables screens.
+### The third pass: stud and the draw games (2026-11-22)
+
+The tables deal the twenty games the oracle holds: the twelve board games, Stud Hi, Stud 8 and Razz (decision 10's
+second wave), and 2-7 TD, PL 2-7 TD, Badugi, NL 2-7 SD and PL Five Card Draw (the third).
+
+| Piece | Where | Held by |
+|---|---|---|
+| The live hand, stud and draw | `live-hand.js`: stud dealt street by street to the players still in (two down and the door, three up, 7th down); a draw phase after each betting round but the last, each player in the post-flop order throwing any cards (`{ action: 'draw', discard }`); `toAct` names who decides and whether it is a bet or a draw | `test/replayer-oracle/check-live.mjs` (in `test:replayer-oracle`): every corpus hand the deck can lay out, dealt and played through the dealer, every seat on PokerKit's stack: 773 hands of the 20 games (90 stud, 64 draw), 0 fails |
+| The reshuffle | when the stub cannot cover a draw, the muck (discards and folded hands) is shuffled under it, never the drawer's own throw of that draw; the runtime orders it by a fresh CSPRNG deck | `live-hand.test.mjs`: six players drawing five three times run it out, no card is ever in two places |
+| Privacy | an opponent's down cards and draws are never sent: stud shows the door and the up cards, a draw shows counts; at the showdown a hand that won nothing is `MUCK` | `live-hand.test.mjs`: 320 random hands of the eight games, every view and saved hand checked at every step |
+| The stakes | `tableStakes`: stud's first figure is the bring-in and the second the small bet (big bet twice it); a limit game's big bet is twice the small | `test:tables` |
+| Seats | `maxSeatsFor`: stud 7 (49 cards, never short), the draw games 6 | the same |
+| The runtime | stud has no button and no big blind to wait for (players in table order, named by seat); the clock and a seat sitting out act at a draw too (stand pat) | `test/tables-runtime.test.mjs` (9) |
+| The client | the game list and its stakes words; Bring in on the bar; at a draw the felt's tap-to-throw (the drill's) and Draw N / Stand pat | `check:tables`: two WebKit pages play NLH, Stud Hi and 2-7 TD hands through the bar, a card tapped and thrown; the felt ends on the settlement of the hand each player keeps |
+
+What the third pass found and fixed on the way:
+
+- **A mucked hand split a pot it never won.** Auto-muck (decision 5) leaves a loser's cards out of the saved hand, so the
+  export and the felt could not score every hand and fell back on the winners list, which gives a winner every pot
+  they are in for: with a side pot, a main pot one player won outright was split. Now a hand marked `MUCK` gives up
+  its claim (TDA) in both (`prepare.js` and HandReplayerView's pot awards), and the pot goes by the cards among the
+  rest; the tables write `MUCK` (stud on the 7th-street slot, so the door stays).
+- **A folded draw hand counted as shown.** The export's no-card-twice check counted a hero's folded hand in a draw game;
+  after a reshuffle its cards can be in a winner's hand.
+- **The service dropped the throw.** `POST /tables/:id/act` passed on only `action`, `to` and `seq`, so every draw from
+  the app stood pat; `check:tables` caught it.
+
+Not yet: the deploy above (it needs the owner's yes to merge), and the picker's games no oracle holds (A-5 TD,
+the mixed and hidden games), which stay off the tables until one does.
 
 ## 13. Open decisions (as asked)
 

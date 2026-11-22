@@ -510,14 +510,15 @@ export function prepareHand(input, opts = {}) {
 
   // No card twice among the cards the text shows: the board, the hero's, every
   // hand tabled (a draw's discards can be dealt again from a reshuffled stub,
-  // so only the final hands count there).
+  // so only the final hands count there, and a hero who folded a draw hand
+  // mucked it into that stub: the play-money tables deal such hands).
   {
     const seen = new Set();
     const add = (arr) => { for (const c of arr || []) { if (!known(c)) continue; const k = key(c); if (seen.has(k)) throw new HandExportError('duplicate-cards', { card: k }); seen.add(k); } };
     add(board);
     if (isStud) { for (let p = 0; p < n; p++) add(stud.visible[p]); }
     else {
-      add(env.isDraw ? draw.heroFinal : heroBase);
+      if (!env.isDraw || live.includes(heroIdx)) add(env.isDraw ? draw.heroFinal : heroBase);
       for (let p = 0; p < n; p++) if (p !== heroIdx && showdown && live.includes(p)) add(holeOf(p));
     }
   }
@@ -528,10 +529,14 @@ export function prepareHand(input, opts = {}) {
   // them can be scored) and its description goes in the text.
   let scores = null;
   const descs = {};
+  /* A hand mucked at the showdown gives up its claim (TDA): the pot goes by the cards among the rest. 'MUCK' in
+     any of the seat's slots (a stud hand keeps its door on 3rd street and is marked on 7th). */
+  const mucked = new Set(live.filter(p => p !== heroIdx && h.streets.some((_, si) => isMuck(oppStr(p, si)))));
+  const contenders = mucked.size < live.length ? live.filter(p => !mucked.has(p)) : live;
   if (showdown && evalCfg) {
     const sc = {};
     let ok = ['high', 'hilo', 'low', 'badugi'].includes(evalCfg.type);
-    for (const p of live) {
+    for (const p of contenders) {
       const c = holeOf(p);
       const full = c && c.length >= holeCount && c.every(known);
       const evs = full ? evaluate(evalCfg, c, board) : null;
@@ -550,7 +555,7 @@ export function prepareHand(input, opts = {}) {
     const kinds = evalCfg.type === 'high' ? ['high', null] : evalCfg.type === 'hilo' ? ['high', evalCfg.anyLow ? 'a5' : 'a5-8']
       : evalCfg.type === 'low' ? [null, evalCfg.lowType === '27' ? '27' : 'a5'] : null;
     if (kinds) {
-      const keyed = (kind) => (kind ? Object.fromEntries(live.map(p => [p, studOddChipKey(holeOf(p), kind)])) : null);
+      const keyed = (kind) => (kind ? Object.fromEntries(contenders.map(p => [p, studOddChipKey(holeOf(p), kind)])) : null);
       oddKeys = { hi: keyed(kinds[0]), lo: keyed(kinds[1]) };
     }
   }
@@ -702,7 +707,7 @@ function studCards(h, n, heroIdx, names, reachedBy, oppStr, heroCardsAt, stLabel
     up[p] = ups;
     // Down cards: 3rd street before the door holds them newest pick first.
     const hidden = s0.slice(0, -1).reverse();             // h1, h2 (, h7) in pick order
-    const seventh = cardsOf(oppStr(p, 4));
+    const seventh = isMuck(oppStr(p, 4)) ? [] : cardsOf(oppStr(p, 4));
     let dn = null;
     if (seventh.length) dn = hidden.length >= 2 ? [hidden[0], hidden[1], seventh[0]] : null;
     else if (hidden.length >= 3) dn = [hidden[0], hidden[1], hidden[2]];

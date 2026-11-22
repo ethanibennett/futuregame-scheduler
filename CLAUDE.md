@@ -127,7 +127,13 @@ sessions opened here own scheduler work.
   open pair and seat order are `poker-rules/forced.js`, which quick add re-exports; quick add's `Table` stays its own
   reader of described hands (unknown stacks, out-of-turn seats) and is held to the corpus by `check-quick-add.mjs` (no
   legal hand questioned, a raise under the smallest always questioned). `live-hand.js` plays a hand from a deck it is given and settles it with the export's arithmetic
-  (`settle.js`); `viewFor`/`savedHandFor` never carry a card the seat has not seen. The tables run in their OWN
+  (`settle.js`); `viewFor`/`savedHandFor` never carry a card the seat has not seen. It deals the twenty games the
+  oracle holds (board, then Stud Hi / Stud 8 / Razz, then 2-7 TD, PL 2-7 TD, Badugi, NL 2-7 SD, PL 5CD Hi): stud street
+  by street, a draw phase after each betting round (`{ action: 'draw', discard }`; `toAct` says bet or draw), the muck
+  reshuffled under a short stub (never the drawer's own throw). `test/replayer-oracle/check-live.mjs` deals the corpus
+  through it to PokerKit's stacks. A hand mucked at a showdown is saved as `MUCK`, and a `MUCK` hand gives up its claim
+  in the export and the felt's pot awards (TDA), so a side pot is never split by the winners list. The entry screens
+  take a thrown card back only once the deck can't cover the draw (owner, `deckRanOut` in `quick-add/cards.js`). The tables run in their OWN
   service, `tables/server.mjs` (`lib/tables/`: dealer with crypto.randomInt, runtime, SSE per viewer, a journal and an
   outbox in the gitignored `tables-data/`; PORT default 3101, never 3001); the scheduler's half is `lib/play-tables.js`
   (`TABLES=1` + `TABLES_URL` + `TABLES_SECRET`, app admins only; the chip balance, invites at `/play/<token>`, blocks
@@ -138,7 +144,7 @@ sessions opened here own scheduler work.
   doc's §12. The client is the Tables tab
   (`components/TablesView.jsx`, the replayer's felt in the drill's mode). `npm run test:tables` (ports 4940-4949;
   with `test/tables-runtime.test.mjs`, a fake clock),
-  `npm run check:tables` (two WebKit pages, ports 4950-4959; needs the built app and playwright in vite-app).
+  `npm run check:tables` (two WebKit pages through an NLH, a Stud Hi and a 2-7 TD hand, ports 4950-4959; needs the built app and playwright in vite-app).
 - **Hands > Study** (owner, 2026-11-04: one training experience; `components/StudyHub.jsx`, `StudyHead.jsx`, `study-hub.css`):
   the Hands row is Replayer, Study, Scanner, and Study is one list of the solver tools: Practice (Play a hand, Hand trainer,
   Quick spots, Three-way Razz), Look up (Watch the solver, Solve a spot, Price a draw, Pre-draw ranges). Each opens under the same header and

@@ -22,7 +22,7 @@ finding.
 | A figure with cents typed key by key ("0.5" read 5) | Every amount field keeps what is typed until it is left (`parseAmount`, `AmountField`) |
 | A face-down 7th-street card nobody saw | Only the hero's 7th-street card is needed |
 | Stud, an open pair on 4th street: only the big bet | Stud high offers both; hi-lo and the low games keep the small bet |
-| A card back from a reshuffle of the discards (draw games) | **Not changed: the owner's call.** The entry keeps a thrown card out of the deck on purpose |
+| A card back from a reshuffle of the discards (draw games) | **Owner, 2026-11-22: a thrown card comes back only once the deck can't cover the draw** (`deckRanOut`; entry-vs-oracle.md 4) |
 
 **Where it stands** (2026-11-10, `npm run check:replayer-entry-oracle -- --per-game 5`): 97 of 100
 corpus hands entered clean and 98 saved and replayed to PokerKit's stacks; the three others are draw

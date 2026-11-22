@@ -160,6 +160,11 @@ try {
     await ava.screenshot({ path: path.join(SHOTS, 'tables-ava.png') });
     await bo.screenshot({ path: path.join(SHOTS, 'tables-bo.png') });
   }
+
+  // Stud and a draw game (decision 10): both leave, Ava makes the next table, and they play one hand through.
+  await press(bo, 'Leave', 'Bo');
+  await press(ava, 'Leave', 'Ava');
+  for (const [game, label] of [['Stud Hi', 'Seven Card Stud'], ['2-7 TD', '2-7 Triple Draw']]) await otherGame(ava, bo, game, label);
 } catch (e) {
   fail(e.message.split('\n')[0]);
 } finally {
@@ -168,5 +173,106 @@ try {
   await srv.stop();
   scratch.cleanup();
 }
-console.log(problems.length ? `\ncheck-tables: ${problems.length} problem(s)` : '\ncheck-tables: two browsers, one hand, nothing leaked');
+console.log(problems.length ? `\ncheck-tables: ${problems.length} problem(s)` : '\ncheck-tables: two browsers, NLH, stud and triple draw, nothing leaked');
 process.exit(problems.length ? 1 : 0);
+
+/* One hand of `game` at a new table: each player answers what their bar offers (a check, a call, the bring-in;
+   at a draw, one card tapped on the felt and thrown), the felt ends on the stacks the export's settlement of the
+   hand each keeps says, and the hand is kept with the throw in it. */
+async function otherGame(ava, bo, game, label) {
+  const name = `${game} table`;
+  await ava.getByRole('button', { name: 'New table' }).waitFor({ timeout: 15000 });
+  await ava.getByRole('button', { name: 'New table' }).click();
+  await ava.locator('.tb-new').getByLabel('Name').fill(name);
+  await ava.locator('.tb-new').getByLabel('Game').selectOption(game);
+  await ava.getByRole('button', { name: 'Create' }).click();
+  await ava.getByText(name).first().waitFor();
+  ok(`Ava made a ${label} table`);
+  const list = await api('GET', '/api/tables', null, AVA);
+  const t = list.tables.find((x) => x.name === name);
+  if (!t) { fail(`${game}: the table is not in Ava's list`); return; }
+  const before = { ava: (await api('GET', '/api/hands', null, AVA)).length, bo: (await api('GET', '/api/hands', null, BO)).length };
+  await bo.goto(`${S}/play/${t.invite.split('/play/')[1]}`);
+  await bo.getByRole('button', { name: 'Join the table' }).click();
+  await bo.getByRole('button', { name: 'Sit down' }).click();
+  await ava.locator('.tb-item', { hasText: name }).getByRole('button', { name: 'Open' }).click();
+  await ava.getByRole('button', { name: 'Sit down' }).click();
+  ok(`${game}: both sat down`);
+
+  const threw = { ava: false, bo: false };
+  const bar = async (p) => (await p.locator('.tb-bar').allInnerTexts().catch(() => [])).join(' ');
+  let over = false;
+  for (let k = 0; k < 400 && !over; k++) {
+    let moved = false;
+    for (const [who, p] of [['Bo', bo], ['Ava', ava]]) {
+      const text = await bar(p);
+      if (/Tap your cards to throw/.test(text)) {
+        const key = who === 'Bo' ? 'bo' : 'ava';
+        if (!threw[key]) {
+          const card = p.locator('.card-tap').first();
+          await card.waitFor({ state: 'visible', timeout: 10000 });
+          // The hero's cards are fanned and tilted: the next one covers this one's middle, and the corners of its
+          // box are off the card. Tap where its rank shows, as a player does.
+          const box = await card.boundingBox();
+          try { await card.click({ timeout: 8000, position: { x: box ? box.width * 0.3 : 10, y: box ? box.height * 0.3 : 10 } }); } catch (e) {
+            const top = await card.evaluate((el) => {
+              const r = el.getBoundingClientRect();
+              const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+              return `card ${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}; on top: ${at ? at.tagName.toLowerCase() + '.' + [...at.classList].join('.') : 'nothing'}`;
+            });
+            if (SHOTS) await p.screenshot({ path: path.join(SHOTS, `tables-draw-tap-${who}.png`) });
+            const why = (e.message.match(/- .*(intercepts|not stable|not visible|outside|detached|waiting for).*/g) || []).slice(-3).join(' / ');
+            throw new Error(`${who} cannot tap a card to throw: ${top}; ${why}`);
+          }
+          await p.getByRole('button', { name: 'Draw 1', exact: true }).waitFor({ timeout: 5000 });
+          await press(p, 'Draw 1', who);
+          threw[key] = true;
+          moved = true;
+        } else {
+          // The bar may have moved on since it was read: press Stand pat if it is still there.
+          const b = p.locator('.tb-bar .hs-btn:not([disabled])').filter({ hasText: /^Stand pat$/ }).first();
+          if (await b.click({ timeout: 3000 }).then(() => true, () => false)) { ok(`${who} presses Stand pat`); moved = true; }
+        }
+      } else if (/Your turn/.test(text)) {
+        // The bar may move on between a look and a press: click what is there now, or look again.
+        const btn = p.locator('.tb-bar .hs-btn:not([disabled])').filter({ hasText: /^(Check|Call .*|Bring in .*)$/ }).first();
+        const label = await btn.innerText({ timeout: 2000 }).catch(() => '');
+        if (label && await btn.click({ timeout: 3000 }).then(() => true, () => false)) { ok(`${who} presses ${label}`); moved = true; }
+      }
+    }
+    over = /Hand over/.test(await bar(ava)) && /Hand over/.test(await bar(bo));
+    if (!moved && !over) await sleep(200);
+  }
+  if (!over) { fail(`${game}: the hand did not finish`); return; }
+  ok(`${game}: both bars say Hand over`);
+
+  const avaHands = await api('GET', '/api/hands', null, AVA);
+  const boHands = await api('GET', '/api/hands', null, BO);
+  if (avaHands.length !== before.ava + 1 || boHands.length !== before.bo + 1) { fail(`${game}: saved hands ${avaHands.length - before.ava}, ${boHands.length - before.bo}`); return; }
+  ok(`${game}: each keeps the hand in Hands`);
+  // The newest of Ava's kept hands (the list carries no cards; the hand's own route does).
+  const newest = avaHands.slice().sort((a, b) => b.id - a.id)[0];
+  const avaHand = JSON.parse((await api('GET', `/api/hands/${newest.id}`, null, AVA)).hand_data);
+  if (avaHand.gameType !== game) { fail(`${game}: Ava's newest kept hand is ${avaHand.gameType}`); return; }
+  const { settleHand } = await import('../vite-app/src/utils/poker-rules/settle.js');
+  const finals = settleHand(avaHand).finals.map((v) => Number(v).toLocaleString('en-US'));
+  if (game === '2-7 TD') {
+    const mine = avaHand.streets.flatMap((s) => s.draws || []).find((d) => d.player === avaHand.heroIdx && d.discarded === 1);
+    if (!mine || mine.newCards.length !== 2 || mine.discardedCards.length !== 2) fail(`${game}: Ava's kept hand does not hold her one-card draw (hero ${avaHand.heroIdx}; draws ${JSON.stringify(avaHand.streets.map((s) => s.draws))})`); else ok(`${game}: Ava's kept hand holds her draw (${mine.discardedCards} for ${mine.newCards})`);
+  }
+  let stacks = [];
+  for (let i = 0; i < 80; i++) {
+    stacks = await bo.locator('.replayer-seat-stack, [class*="seat-stack"]').allInnerTexts().catch(() => []);
+    if (finals.every((f) => stacks.some((s) => s.includes(f)))) break;
+    await sleep(250);
+  }
+  if (!finals.every((f) => stacks.some((s) => s.includes(f)))) fail(`${game}: the felt's stacks ${stacks.join(' | ')}, the settlement ${finals.join(', ')}`);
+  else ok(`${game}: the felt ends on the settlement (${finals.join(', ')})`);
+  if (SHOTS) {
+    await ava.screenshot({ path: path.join(SHOTS, `tables-${game.replace(/\W+/g, '')}-ava.png`) });
+    await bo.screenshot({ path: path.join(SHOTS, `tables-${game.replace(/\W+/g, '')}-bo.png`) });
+  }
+  await press(bo, 'Leave', 'Bo');
+  await press(ava, 'Leave', 'Ava');
+}
+

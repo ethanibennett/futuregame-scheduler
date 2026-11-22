@@ -39,6 +39,7 @@ import QuickAddView from './QuickAddView.jsx';
 import { checkExportable } from '../utils/hand-history/index.js';
 import { heroNet } from '../utils/hand-net.js';
 import { streetState } from '../utils/poker-rules/betting.js';
+import { deckRanOut } from '../utils/quick-add/cards.js';
 import { autoTitle, displayTitle } from '../utils/hand-title.js';
 import { SAMPLE_HAND } from '../utils/sample-hand.js';
 import { exportHandHistory, playedAtOf, handOfRow, handsFileName } from '../utils/hand-history/save.js';
@@ -125,8 +126,15 @@ function drawDeadCards(hand, streetIdx, playerIdx) {
       if (!dead.has(k)) dead.set(k, why);
     }
   };
+  /* A thrown card is dead until the deck runs out (owner, 2026-11-22: "a thrown card comes back only once the
+     deck can't cover the draw"); then every earlier discard is shuffled back in, all but this player's own
+     throw of this draw (deckRanOut, utils/quick-add/cards.js; quick add's drawDeadCards does the same). */
+  const reshuffled = deckRanOut(hand, streetIdx, playerIdx);
   for (let si = 0; si <= streetIdx && si < hand.streets.length; si++) {
-    for (const d of (hand.streets[si].draws || [])) add(d.discardedCards, 'already discarded');
+    for (const d of (hand.streets[si].draws || [])) {
+      if (reshuffled && !(si === streetIdx && d.player === playerIdx)) continue;
+      add(d.discardedCards, 'already discarded');
+    }
     add(hand.streets[si].cards && hand.streets[si].cards.board, 'on the board');
   }
   const s0 = (hand.streets[0] && hand.streets[0].cards) || {};
@@ -141,9 +149,20 @@ function drawDeadCards(hand, streetIdx, playerIdx) {
   // Cards dealt on earlier draws are in their drawer's hand even when that player's starting
   // cards are unknown (computeDrawHand returns nothing without them). Any later thrown away are
   // already in the map as discarded.
+  // Not a card that player threw away again later (after a reshuffle it is live, and before one it is in the
+  // map as discarded already).
+  const thrownAfter = (q, from) => {
+    const out = new Set();
+    for (let sj = from + 1; sj <= streetIdx && sj < hand.streets.length; sj++) {
+      for (const e of (hand.streets[sj].draws || [])) if (e.player === q) parseCardNotation(e.discardedCards || '').forEach(c => out.add(c.rank + c.suit));
+    }
+    return out;
+  };
   for (let si = 0; si < streetIdx && si < hand.streets.length; si++) {
     for (const d of (hand.streets[si].draws || [])) {
-      add(d.newCards, d.player === playerIdx ? 'already in this hand' : 'in ' + nameOf(d.player) + "'s hand");
+      const later = thrownAfter(d.player, si);
+      const kept = parseCardNotation(d.newCards || '').filter(c => !later.has(c.rank + c.suit)).map(c => c.rank + c.suit).join('');
+      add(kept, d.player === playerIdx ? 'already in this hand' : 'in ' + nameOf(d.player) + "'s hand");
     }
   }
   const cur = hand.streets[streetIdx];
@@ -3532,19 +3551,20 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
     // Collect used cards
     const sdUsedCards = new Set();
     const addUsed = (text) => parseCardNotation(text || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); });
+    /* A draw game whose deck ran out (deckRanOut): the discards were shuffled and dealt again (six-handed triple
+       draw can deal more than 52 cards), so only the cards still held block a shown hand (2-7 TD#5 of the PokerKit
+       corpus: the hero's Kc, thrown at the second draw, is in the big blind's hand at the showdown). Until then a
+       thrown card is dead here too (owner, 2026-11-22). */
+    const sdReshuffled = isDrawShowdown && deckRanOut(hand, null, null);
     hand.streets.forEach(s => {
       // Every board: a double board's second and a run's were left out, so their cards could be shown in a hand.
       ['board', 'board2', 'board3'].forEach(k => addUsed(s.cards[k]));
-      if (isDrawShowdown) return;
+      if (sdReshuffled) return;
       addUsed(s.cards.hero);
       (s.cards.opponents || []).forEach(addUsed);
       (s.draws || []).forEach(d => addUsed((d.discardedCards || '') + (d.newCards || '')));
     });
-    /* A draw game: only the cards still held block a shown hand. When the deck runs out the discards are shuffled
-       and dealt again (six-handed triple draw deals more than 52 cards), so a card the hero threw can be in an
-       opponent's final hand (2-7 TD#5 of the PokerKit corpus: the hero's Kc, thrown at the second draw, is in
-       the big blind's hand at the showdown; the screen refused it as already used). */
-    if (isDrawShowdown) {
+    if (sdReshuffled) {
       addUsed(computeDrawHand(hand.streets[0].cards.hero || '', hand.streets.map(s => (s.draws || []).find(d => d.player === heroIdx)), hand.streets.length - 1, hand.gameType));
     }
     const showdownPlayers = hand.players.map((p, i) => ({ player: p, idx: i })).filter(o => o.idx !== heroIdx && !foldedSet.has(o.idx));
@@ -6896,9 +6916,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
 
     const scores = {};
     const parsedBy = {};
+    /* A hand mucked at the showdown gives up its claim (TDA), as in the export (hand-history/prepare.js): the pot
+       goes by the cards among the rest. 'MUCK' in any of the seat's slots (stud keeps the door and marks 7th). */
+    const muckedSeats = new Set(contesting.filter(pi => pi !== replayHeroIdx && hand.streets.some(s =>
+      ((s.cards && s.cards.opponents) || [])[pi > replayHeroIdx ? pi - 1 : pi] === 'MUCK')));
+    const contenders = muckedSeats.size < contesting.length ? contesting.filter(pi => !muckedSeats.has(pi)) : contesting;
     let readable = !!cfg && cfg.type !== 'split-badugi';
     if (readable) {
-      contesting.forEach(pi => {
+      contenders.forEach(pi => {
         if (!readable) return;
         const raw = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
         const parsed = raw && raw !== 'MUCK' ? parseCardNotation(raw).filter(c => c.suit !== 'x') : [];
@@ -6930,7 +6955,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     }
     if (shaped) {
       // settled above
-    } else if (readable && Object.keys(scores).length === contesting.length) {
+    } else if (readable && Object.keys(scores).length === contenders.length) {
       // Cards shown for everyone still in: they are the authority, per layer.
       shaped = layers.map(l => ({ amount: l.amount, ...(cfg.type === 'halves' ? halvesWinnersAmong(cfg, scores, l.players || contesting) : hiLoWinnersAmong(scores, l.players || contesting)) }));
     } else {
@@ -6948,12 +6973,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     let oddChipped = shaped.map(s => ({ ...s, oddToLo: oddChipToLo(cfg, scores, s.hiWinners || [], s.loWinners || []) }));
     /* Stud has no button: a tie's odd chip goes to the high card by suit in the best five-card hand for
        that half (TDA; studOddChipKey), from the cards when everyone still in shows them. */
-    const studKinds = gameCfg.isStud && cfg && readable && Object.keys(parsedBy).length === contesting.length
+    const studKinds = gameCfg.isStud && cfg && readable && Object.keys(parsedBy).length === contenders.length
       ? (cfg.type === 'high' ? ['high', null] : cfg.type === 'hilo' ? ['high', cfg.anyLow ? 'a5' : 'a5-8']
         : cfg.type === 'low' ? [null, cfg.lowType === '27' ? '27' : 'a5'] : null)
       : null;
     if (studKinds) {
-      const keys = studKinds.map(kind => (kind ? Object.fromEntries(contesting.map(pi => [pi, studOddChipKey(parsedBy[pi], kind)])) : null));
+      const keys = studKinds.map(kind => (kind ? Object.fromEntries(contenders.map(pi => [pi, studOddChipKey(parsedBy[pi], kind)])) : null));
       oddChipped = oddChipped.map(s => ({
         ...s,
         ...(keys[0] ? { hiOrder: studOddChipOrder(s.hiWinners || [], keys[0]) } : {}),

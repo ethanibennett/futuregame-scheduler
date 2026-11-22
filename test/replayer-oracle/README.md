@@ -116,8 +116,18 @@ node scripts/check-replayer-entry-oracle.mjs --ids "PLO#0,PLH#186,NL 2-7 SD#65,N
 build folder; `--trace` prints each step; `--all-in-button` presses All-in for an all-in call. It
 types figures key by key, and in limit games it sets the cap to 4 and turns "Uncapped heads-up" off
 to match PokerKit. It does not enter straddles. A draw hand where a card comes back from a
-reshuffle of the discards is refused: the entry keeps a thrown card out of the deck on purpose, and
-whether to let it back is an open question for the owner.
+reshuffle of the discards is taken once the deck has run out (owner, 2026-11-22: `deckRanOut`), all
+but a card the drawer threw in that same draw, which PokerKit deals back and a room does not.
+
+## The play-money dealer
+
+`check-live.mjs` (in `npm run test:replayer-oracle`) deals every corpus hand of the games the tables
+deal again through `utils/poker-rules/live-hand.js`, from a deck laid out to give each seat PokerKit's
+cards (a card the corpus does not show is any spare one), and plays the corpus's moves through it: the
+bets, and in a draw game each draw. The dealer must name the same player at every step, take every
+move, and leave every seat on PokerKit's stack. Left out and counted: the TDA/PokerKit splits (as in
+`check-rules.mjs`) and hands that needed more cards than one deck (PokerKit reshuffled its discards);
+the dealer's own reshuffle is held by `live-hand.test.mjs`.
 
 ## Not covered
 

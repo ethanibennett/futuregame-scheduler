@@ -5,7 +5,7 @@
 //
 //   await stageTables(p, 'lobby' | 'new' | 'seats' | 'turn' | 'waiting' | 'chat' | 'over')
 import { Table } from '../lib/tables/runtime.mjs';
-import { currentState } from '../vite-app/src/utils/poker-rules/live-hand.js';
+import { currentState, toAct as handToAct } from '../vite-app/src/utils/poker-rules/live-hand.js';
 
 const FULL = [...'23456789TJQKA'].flatMap((r) => [...'hdcs'].map((s) => r + s));
 const TOP = ['Ah', 'Kd', 'Qs', 'Jc', '2c', '7d', '9h', '3s', '4d'];
@@ -14,6 +14,12 @@ const HOST = 1, OTHER = 2;
 const CFG = {
   id: 'guard1', name: 'Thursday game', hostId: HOST, gameType: 'NLH', blinds: { sb: 50, bb: 100, ante: 0 }, maxSeats: 6,
   buyIn: { min: 2000, max: 10000 }, clock: { decision: 30, bank: 60 },
+};
+
+// Stud and a draw game (decision 10): the bring-in's bar, and the draw's (tap the cards on the felt, then Draw or Stand pat).
+const GAME_CFG = {
+  stud: { ...CFG, gameType: 'Stud Hi', blinds: { sb: 0, bb: 100, ante: 10, bringIn: 50, bigBet: 200 } },
+  draw: { ...CFG, gameType: '2-7 TD', blinds: { sb: 50, bb: 100, ante: 0, bigBet: 200 } },
 };
 
 /* A table in the state a stage needs, and whose view the page is shown. */
@@ -25,7 +31,18 @@ function tableFor(stage) {
     shuffle: () => DECK.slice(), commit: () => ({ salt: 's', hash: 'h' }),
     onChange: () => {}, onHandDone: () => {}, onCashOut: () => {}, handGapMs: 1000,
   };
-  const t = new Table(CFG, env);
+  const t = new Table(GAME_CFG[stage] || CFG, env);
+  if (GAME_CFG[stage]) {
+    t.sit(HOST, 'Ava', 10000, 0);
+    t.sit(OTHER, 'Bo', 10000, 1);
+    timers.shift().fn();   // deal
+    const who = () => t.seats[t.handSeats[handToAct(t.hand).player]].userId;
+    if (stage === 'draw') {
+      // Before the draw: a call and a check, then the viewer is the one to draw.
+      for (const move of [{ action: 'call' }, { action: 'check' }]) t.act(who(), move);
+    }
+    return { t, viewer: who() };
+  }
   if (stage === 'seats') { t.sit(OTHER, 'Bo', 10000, 2); return { t, viewer: HOST }; }
   t.sit(HOST, 'Ava', 10000, 0);
   t.sit(OTHER, 'Bo', 10000, 1);
@@ -44,7 +61,8 @@ async function routeTables(p, stage) {
   const svc = `${origin}/__tables`;
   const { t, viewer } = stage === 'lobby' || stage === 'new' ? { t: null, viewer: HOST } : tableFor(stage);
   const view = () => t.viewFor(viewer);
-  const summary = { id: CFG.id, name: CFG.name, gameType: CFG.gameType, blinds: CFG.blinds, maxSeats: CFG.maxSeats, buyIn: CFG.buyIn, clock: CFG.clock, status: 'open', hostId: HOST };
+  const c = GAME_CFG[stage] || CFG;
+  const summary = { id: c.id, name: c.name, gameType: c.gameType, blinds: c.blinds, maxSeats: c.maxSeats, buyIn: c.buyIn, clock: c.clock, status: 'open', hostId: HOST };
   const json = (route, body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
   await p.route((url) => /\/api\/(tables|blocks)(\/|$)|\/__tables\//.test(url.pathname), async (route) => {
     const u = new URL(route.request().url());
@@ -89,4 +107,4 @@ export async function stageTables(p, stage, { force = false } = {}) {
   if (stage === 'chat') { await click(p.locator('.tb-chat-btn')); await p.locator('.tb-chat').waitFor({ timeout: 5000 }); await p.waitForTimeout(400); }
 }
 
-export const TABLE_STAGES = ['lobby', 'new', 'seats', 'turn', 'waiting', 'chat', 'over'];
+export const TABLE_STAGES = ['lobby', 'new', 'seats', 'turn', 'waiting', 'chat', 'over', 'stud', 'draw'];
