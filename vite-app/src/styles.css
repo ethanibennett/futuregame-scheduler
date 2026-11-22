@@ -6876,6 +6876,10 @@
     .replayer-turn-ring.is-in-plaque { inset: calc(var(--bw-hair) * -1); border-width: var(--bw-hair); z-index: 2; }
     .replayer-seat.ring-wait .replayer-seat-info { border-color: rgba(255,255,255,0.22); box-shadow: none; transition: none; }
     .replayer-seat.ring-wait .replayer-seat-info::before { animation: none; }
+    /* No arrival pulse where the turn moves by crossfade (the spring path): it fired after the drawn ring handed over (a
+       second ring, scaling out), and on every step back, and its cancel in the hand-over reached a pseudo-element's
+       animation only where getAnimations({ subtree }) lists one (owner, 2026-11-22: "dims, then pulses"). */
+    .replayer-table[data-springs] .replayer-seat.active-turn .replayer-seat-info::before { animation: none; }
     /* While the turn crossfades (owner, 2026-11-13: "not smooth at all"), neither plaque runs its own CSS transition:
        the seat that acted drops its ring at once under the drawn one fading out (its border and glow had faded at
        their own two speeds UNDER it, a doubled glow), and the seat to act takes its ring at once as the drawn one
@@ -8436,6 +8440,11 @@
          before 16.2 cannot parse it). */
       border-color: rgba(60,200,224,0.5);
     }
+    /* The hero to act carries the full ring, the edge included, as every other seat does (.active-turn) and as the turn's
+       crossfading ring draws it: this rule out-ranked .active-turn's border, so the hero's edge stayed at 0.5 and the
+       glow dimmed the moment the drawn ring handed over (owner, 2026-11-22: "THE PROBLEM IS THE BLUE GLOW"). Not while
+       the ring is still arriving (.ring-wait), when the plaque keeps its resting edge under the drawn ring. */
+    .replayer-seat.is-hero.active-turn:not(.ring-wait) .replayer-seat-info { border-color: var(--brand-on-dark); }
     .replayer-seat.is-hero .replayer-seat-stack { font-size: clamp(10px, 4.3cqmin, 54px); }
     /* The hero's slant is gone. It marked whose hand this is, but the hero is
        already the seat at the bottom of the table, a size larger than the

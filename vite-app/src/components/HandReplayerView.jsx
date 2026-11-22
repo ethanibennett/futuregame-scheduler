@@ -11486,15 +11486,24 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         /* 51: the turn passes by a crossfade (owner, 2026-11-13: "it shouldn't jump from seat to seat, it should fade
            out and fade in"): the ring fades out on the plaque that acted as it fades in on the next one to act. */
         const toSeat = turnIdx != null && turnIdx >= 0 ? seatOf(turnIdx) : null;
-        if ((motionKind === 'action' || motionKind === 'street') && prevS.turn && toSeat && prevS.turn.seat !== turnIdx) {
-          const info = toSeat.querySelector('.replayer-seat-info');
-          /* Three beats (owner, 2026-11-19: "the crossfade between player seats is not smooth"; it was two), and each
-             drawn ring is a child of its plaque, not a box on the layer at the plaque's old place: the seat that acted
-             and folded shrinks to 0.88 and greys while its ring fades, and the ring now shrinks and greys with it (it
-             had hung full size round a shrinking plaque). It has the plaque's own hairline border (.is-in-plaque), so
-             the hand-over at the end changes nothing (the drawn ring's 1.6px border thinned to the hairline). */
+        /* One path for every change of turn on a step forward (owner, 2026-11-22, of the hero's seat: "THE PROBLEM IS THE
+           BLUE GLOW", "The crossfade to hero's seat abruptly pauses, dims, then pulses when the betting action
+           happens"): the glow leaves the seat that had it from the strength it shows NOW (a ring still arriving when
+           its seat acted started its leave at full: 0.53 to 1, a pulse), and arrives on the next seat by a drawn ring
+           too when no seat had it before (a street's first to act took it by a CSS transition, its strength unknown to
+           the next step). A newer change of turn retires an older hand-over (it fired mid-way through the next fade),
+           and the seat-level classes of an older one are cleared. */
+        const fromTurn = prevS.turn && prevS.turn.seat !== turnIdx ? prevS.turn.seat : null;
+        const turnMoves = (motionKind === 'action' || motionKind === 'street' || motionKind === 'result')
+          && (fromTurn != null || (toSeat && !(prevS.turn && prevS.turn.seat === turnIdx)));
+        if (turnMoves) {
           const fade = (3 * S4.beat) / rate;
+          const fromSeat = fromTurn != null ? seatOf(fromTurn) : null;
+          const fromInfo = fromSeat && fromSeat.querySelector('.replayer-seat-info');
+          const info = toSeat && toSeat.querySelector('.replayer-seat-info');
           writes.push(() => {
+            const gen = (motion.turnGen = (motion.turnGen || 0) + 1);
+            const ease = (q) => q * q * (3 - 2 * q);
             const ringIn = (plaque) => {
               const ring = document.createElement('div');
               ring.className = 'replayer-turn-ring is-in-plaque';
@@ -11502,51 +11511,48 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               plaque.appendChild(ring);
               return ring;
             };
-            const ease = (p) => p * p * (3 - 2 * p);
-            // The seat that acted drops its own ring at once, under the drawn one fading out (see .ring-leave).
-            const fromSeat = seatOf(prevS.turn.seat);
-            const fromInfo = fromSeat && fromSeat.querySelector('.replayer-seat-info');
-            table.querySelectorAll('.replayer-seat.ring-leave, .replayer-seat.ring-hand').forEach(s => s.classList.remove('ring-leave', 'ring-hand'));
-            table.querySelectorAll('.replayer-turn-ring.is-in-plaque').forEach(r => r.remove());
-            if (fromSeat) fromSeat.classList.add('ring-leave');
-            if (fromInfo) motion.run(ringIn(fromInfo), { transient: true, size: { w: fromInfo.offsetWidth, h: fromInfo.offsetHeight }, end: fade, channels: [
-              { prop: 'opacity', ramp: { from: 1, to: 0, delay: 0, duration: fade, ease } },
+            // Every drawn ring on the table and the strength it shows now; each is replaced by one going on from there.
+            const rings = [...table.querySelectorAll('.replayer-turn-ring.is-in-plaque')].map(r => ({ r, plaque: r.parentElement, op: Math.max(0, Math.min(1, Number(getComputedStyle(r).opacity) || 0)) }));
+            rings.forEach(x => x.r.remove());
+            const opOn = (plaque) => { const x = rings.find(y => y.plaque === plaque); return x ? x.op : null; };
+            table.querySelectorAll('.replayer-seat.ring-leave, .replayer-seat.ring-hand, .replayer-seat.ring-wait').forEach(s2 => s2.classList.remove('ring-leave', 'ring-hand', 'ring-wait'));
+            // A drawn ring fading out from `op`, at the full fade's pace (a ring half in goes in half the time).
+            const leave = (plaque, op) => motion.run(ringIn(plaque), { transient: true, size: { w: plaque.offsetWidth, h: plaque.offsetHeight }, end: fade * op, channels: [
+              { prop: 'opacity', ramp: { from: op, to: 0, delay: 0, duration: fade * op, ease } },
             ] });
+            // The seat that had the turn: what it shows now (its drawn ring while one is still arriving, else its own,
+            // whole). It drops its own ring at once, under the drawn one (see .ring-leave).
+            const fromOp = fromInfo ? (opOn(fromInfo) ?? 1) : 0;
+            if (fromSeat && fromInfo && fromOp > 0.01) {
+              fromSeat.classList.add('ring-leave');
+              const out = leave(fromInfo, fromOp);
+              const left = () => { if (motion.turnGen === gen) fromSeat.classList.remove('ring-leave'); };
+              if (out) motion.tick(fade * fromOp, left, out); else left();
+            }
+            // Any other seat whose ring is still going (an earlier leave, cut short by this press) goes on going.
+            rings.filter(x => x.plaque !== fromInfo && x.plaque !== info && x.op > 0.01 && x.plaque.isConnected).forEach(x => leave(x.plaque, x.op));
+            if (!toSeat || !info) return;
+            // The seat to act: from what it shows (a ring of its own still leaving, when the turn comes straight back).
+            const toOp = opOn(info) ?? 0;
             toSeat.classList.add('ring-wait');
-            const entry = motion.run(ringIn(info), { transient: true, size: { w: info.offsetWidth, h: info.offsetHeight }, end: fade, channels: [
-              { prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: fade, ease } },
+            /* Not transient: the registry took a transient away when its animation finished, and the hand-over ran on its
+               own timer, so for a frame or more there was no ring at all, or the drawn one and the plaque's own both. It
+               rests at full when its fade ends (its own opacity is 1) and the hand-over removes it in the same task as the
+               plaque takes its ring. */
+            const ringNew = ringIn(info);
+            const inMs = Math.max(1, fade * (1 - toOp));
+            const entry = motion.run(ringNew, { size: { w: info.offsetWidth, h: info.offsetHeight }, end: inMs, channels: [
+              { prop: 'opacity', ramp: { from: toOp, to: 1, delay: 0, duration: inMs, ease } },
             ] });
             // The seat to act takes its ring at once, as the drawn one goes: no transition, no arrival pulse.
             const take = () => {
-              if (fromSeat) fromSeat.classList.remove('ring-leave');
+              if (motion.turnGen !== gen) return;
               toSeat.classList.add('ring-hand');
               toSeat.classList.remove('ring-wait');
-              const info2 = toSeat.querySelector('.replayer-seat-info');
-              if (info2 && info2.getAnimations) info2.getAnimations({ subtree: true }).forEach(a => { if (a.animationName === 'replayerTurnArrive') a.cancel(); });
+              ringNew.remove();
               requestAnimationFrame(() => toSeat.classList.remove('ring-hand'));
             };
-            if (entry) motion.tick(fade, take, entry); else take();
-          });
-        } else if ((motionKind === 'action' || motionKind === 'street' || motionKind === 'result') && prevS.turn && !toSeat) {
-          /* 51b: the turn ends with nobody to take it (the street's last action, the result): the ring fades out on the
-             plaque that had it, as it does when it passes. It went off in a frame (owner, 2026-11-22: "Hero's seat box
-             is STILL flickering"; measured on the street-ending check of futurega.me/h/dSXeHmQt). */
-          const fade = (3 * S4.beat) / rate;
-          const fromSeat = seatOf(prevS.turn.seat);
-          const fromInfo = fromSeat && fromSeat.querySelector('.replayer-seat-info');
-          if (fromInfo && !fromSeat.classList.contains('active-turn')) writes.push(() => {
-            table.querySelectorAll('.replayer-seat.ring-leave, .replayer-seat.ring-hand').forEach(s => s.classList.remove('ring-leave', 'ring-hand'));
-            table.querySelectorAll('.replayer-turn-ring.is-in-plaque').forEach(r => r.remove());
-            const ring = document.createElement('div');
-            ring.className = 'replayer-turn-ring is-in-plaque';
-            ring.style.borderRadius = getComputedStyle(fromInfo).borderRadius;
-            fromInfo.appendChild(ring);
-            fromSeat.classList.add('ring-leave');
-            const entry = motion.run(ring, { transient: true, size: { w: fromInfo.offsetWidth, h: fromInfo.offsetHeight }, end: fade, channels: [
-              { prop: 'opacity', ramp: { from: 1, to: 0, delay: 0, duration: fade, ease: easeIO } },
-            ] });
-            const done = () => fromSeat.classList.remove('ring-leave');
-            if (entry) motion.tick(fade, done, entry); else done();
+            if (entry) motion.tick(inMs, take, entry); else take();
           });
         }
         /* 53: the action label fades in on its plaque. It rose 1r out of the plaque on the yield spring, visible within
