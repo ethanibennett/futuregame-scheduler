@@ -1111,6 +1111,9 @@ function strictProblems(schema) {
     if (s.type === 'object' || (Array.isArray(s.type) && s.type.includes('object'))) {
       if (s.properties && s.additionalProperties !== false) problems.push(`${at}: open object`);
     }
+    // The strict check refuses an enum beside a list of types (a 400 on every hand history, 2026-11-21).
+    if (Array.isArray(s.type) && Array.isArray(s.enum)) problems.push(`${at}: enum with types ${s.type.join('|')}`);
+    for (const alt of s.anyOf || []) walk(alt, at + '|');
     if (s.properties) {
       const req = new Set(s.required || []);
       for (const [k, v] of Object.entries(s.properties)) {
@@ -1134,7 +1137,12 @@ test('strict: read_lines is strict in the thinking shape and fits the grammar; r
   eq(tool.strict, true);
   eq(strictProblems(tool.input_schema), []);
   eq(tool.input_schema.properties.lines.items.required, ['index', 'skip', 'player', 'action', 'toAmount', 'amount']);
-  eq(tool.input_schema.properties.lines.items.properties.action.type, ['string', 'null']); // nullable stays nullable
+  // Nullable stays nullable; a nullable enum goes as its values or null (a type list beside an enum is a 400).
+  const action = tool.input_schema.properties.lines.items.properties.action;
+  eq([action.type, action.anyOf.length, action.anyOf[0].type, action.anyOf[1]], [undefined, 2, 'string', { type: 'null' }]);
+  assert.ok(action.anyOf[0].enum.includes('fold') && !action.anyOf[0].enum.includes(null), JSON.stringify(action));
+  eq(tool.input_schema.properties.lines.items.properties.player.type, ['string', 'null']);
+  eq(P.toStrictSchema({ type: ['string', 'null'], enum: ['a', null], description: 'd' }), { description: 'd', anyOf: [{ type: 'string', enum: ['a'] }, { type: 'null' }] });
   assert.ok(!('strict' in P.buildLineRequest({ lines: [], model: 'claude-sonnet-5' }).tools[0]), 'the forced shape is unchanged');
   // Why the other two are checked in code instead: they break the grammar's limits as written.
   const hand = strictProblems(P.toStrictSchema(HAND_TOOL.input_schema));
@@ -1148,6 +1156,15 @@ const thinkingTool = (name, input, extra = {}) => ({
   content: [{ type: 'thinking', thinking: '', signature: 'sig' }, { type: 'tool_use', id: 'toolu_1', name, input }], ...extra,
 });
 const OPUS = { model: 'claude-opus-5-5' };
+
+test('parseHand: a tool call that normalizes to nothing says what it sent, by shape', async () => {
+  // Opus 5.5, thinking shape, 2026-11-21: now and then a long call that left no game, player or action.
+  const wrapped = await QA.parseHand({ client: stubClient(thinkingTool('record_hand', { hand: { gameType: 'NLH', players: [{ position: 'BTN' }] }, notes: [] })), text: 'x', ...OPUS });
+  eq(wrapped.hand.gameType, null);
+  eq(wrapped.meta.inputShape, { hand: { gameType: 'string(3): NLH', players: 'array(1)' }, notes: 'array(0)' });
+  const fine = await QA.parseHand({ client: stubClient(thinkingTool('record_hand', { gameType: 'NLH', players: [{ position: 'BTN', isHero: true }], streets: [] })), text: 'x', ...OPUS });
+  assert.ok(!('inputShape' in fine.meta), 'a parse with something in it carries no shape');
+});
 
 test('callTool: a thinking reply with no tool call is asked once more, as a continuation, then 502', async () => {
   const text = { id: 'm', type: 'message', role: 'assistant', model: 'claude-opus-5-5', stop_reason: 'end_turn',
