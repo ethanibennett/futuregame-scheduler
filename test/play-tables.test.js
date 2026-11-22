@@ -112,6 +112,10 @@ async function waitFor(fn, what, ms = 10000) {
       const a = await call(S, 'GET', '/api/tables/availability', null, AVA);
       assert.equal(a.body.on, true);
       assert.equal(a.body.url, T);
+      // The "your turn" push setting shows where the tables do, and nowhere else.
+      const kinds = async (bearer) => (await call(S, 'GET', '/api/notification-prefs', null, bearer)).body.kinds.map((k) => k.kind);
+      assert.ok((await kinds(AVA)).includes('tables'));
+      assert.ok(!(await kinds(PAT)).includes('tables'));
     });
 
     await t.test('the balance starts at 20,000', async () => {
@@ -221,6 +225,33 @@ async function waitFor(fn, what, ms = 10000) {
       assert.equal(boHand.streets[0].cards.opponents[0], 'AhAd', 'the winner showed');
       assert.equal(avaHand.table.handNo, 1);
       assert.equal(avaHand.streets[3].cards.board, '4d');
+    });
+
+    await t.test("chat: a reported message reaches Admin's inbox as the service holds it, and Remove takes it off the table", async () => {
+      const said = await call(T, 'POST', `/tables/${table.id}/chat`, { text: 'rude words' }, seats.bo);
+      assert.equal(said.status, 200, JSON.stringify(said.body));
+      const msgId = said.body.id;
+      const seen = (await call(T, 'GET', `/tables/${table.id}/state`, null, seats.ava)).body.chat;
+      assert.equal(seen.find((m) => m.id === msgId).text, 'rude words');
+      // Bo cannot report his own; Ava reports it, and the snapshot is the service's text, not anything she sends.
+      assert.equal((await call(S, 'POST', `/api/tables/${table.id}/report`, { msgId }, BO)).status, 400);
+      assert.equal((await call(S, 'POST', `/api/tables/${table.id}/report`, { msgId, text: 'abusive', snapshot: 'forged' }, AVA)).status, 201);
+      assert.equal((await call(S, 'POST', `/api/tables/${table.id}/report`, { msgId: 1 }, AVA)).status, 404);
+      const inbox = (await call(S, 'GET', '/api/admin/reports', null, AVA)).body.reports;
+      const rep = inbox.find((r) => r.kind === 'table-message' && r.ref_id === msgId);
+      assert.ok(rep, 'the report is in the inbox');
+      assert.equal(rep.snapshot, 'rude words');
+      assert.equal(rep.target_user_id, 102);
+      assert.equal(rep.text, 'abusive');
+      const rm = await call(S, 'PUT', `/api/admin/reports/${rep.id}`, { action: 'remove' }, AVA);
+      assert.equal(rm.status, 200, JSON.stringify(rm.body));
+      const after = (await call(T, 'GET', `/tables/${table.id}/state`, null, seats.bo)).body.chat;
+      assert.ok(!after.some((m) => m.id === msgId), 'gone from the table');
+      // The host mutes; a muted player cannot write.
+      assert.equal((await call(T, 'POST', `/tables/${table.id}/mute`, { userId: 101 }, seats.bo)).status, 403);
+      assert.equal((await call(T, 'POST', `/tables/${table.id}/mute`, { userId: 102 }, seats.ava)).status, 200);
+      assert.equal((await call(T, 'POST', `/tables/${table.id}/chat`, { text: 'hi' }, seats.bo)).status, 400);
+      assert.equal((await call(T, 'POST', `/tables/${table.id}/mute`, { userId: 102, muted: false }, seats.ava)).status, 200);
     });
 
     await t.test('leaving returns the stack to the balance', async () => {

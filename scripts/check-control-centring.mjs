@@ -163,6 +163,7 @@ import { createRequire } from 'node:module';
 import { stageHome, routeHomeLayout } from './home-states.mjs';
 import { stageNotify } from './notify-states.mjs';
 import { stageDrill } from './drill-states.mjs';
+import { stageTables, TABLE_STAGES } from './tables-states.mjs';
 
 // The Bankroll sections are grouped (owner, 2026-10-20; CashLive.jsx ResultsKindTabs): a section is a
 // chip, or the shown label of its group's split chip, or an item in that group's caret menu. On desktop the
@@ -2392,6 +2393,10 @@ function finalize(c) {
   // The replayer drill, on canned answers (drill-states.mjs): every state of its controls.
   for (const stage of ['setup', 'bet', 'draw', 'over', 'review']) {
     step('replayer-drill-' + stage, async () => { await nav('Hands'); await stageDrill(p, stage, { force: overlay || desktop }); }, stage === 'review' ? 2 : 0);
+  }
+  // Play-money tables, on a canned table (tables-states.mjs): the lobby, a new table, the seats, the bars, the chat.
+  for (const stage of TABLE_STAGES) {
+    step('tables-' + stage, async () => { await stageTables(p, stage, { force: overlay || desktop }); }, 0);
   }
   const openHand = async () => { await nav('Hands'); await tap('.replayer-hand-card.is-row', 2000); };
   step('replayer', async () => {

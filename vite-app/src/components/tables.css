@@ -1,8 +1,27 @@
 /* Play-money tables (TablesView.jsx). Whole g and r throughout, on the drill's 31g column and its .hs-* controls. */
 .tb-lobby, .tb-new { height: auto; overflow-y: visible; }
-.tb-field { width: 100%; }
-.tb-row { display: flex; column-gap: var(--gu); }
-.tb-row > .tb-field { flex: 1 1 0; }
+/* Centred, but on a whole g: in a desktop pane auto margins put the 31g column half a g off the grid. */
+.hs-view.rd-setup.tb-lobby, .hs-view.rd-setup.tb-new { margin-left: round(down, calc((100% - var(--gu) * 31) / 2), var(--gu)); margin-right: 0; }
+/* A field: its label on a 2r line over a 5r box, 7r in all. Its own rules, not Study's .ds-field: study-hub.css
+   loads only with Study, so here the label and box ran inline and every row under them left the r lines. */
+.tb-field { display: flex; flex-direction: column; min-width: 0; width: 100%; }
+.tb-field-label { display: block; height: calc(var(--subrow) * 2); font-size: var(--fs-xs); line-height: calc(var(--subrow) * 2); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-field input, .tb-field select {
+  box-sizing: border-box; display: block; width: 100%; height: calc(var(--subrow) * 5); margin: 0; padding: 0 var(--gu);
+  border: none; border-radius: var(--radius-sm); box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  background-color: var(--bg); color: var(--text); font-family: inherit; font-size: var(--fs-sm);
+}
+/* WebKit sizes a native select to its own content whatever its height says: drawn plain, with a caret of two
+   gradients, so it takes its 5r. */
+.tb-field select {
+  -webkit-appearance: none; appearance: none; padding-right: calc(var(--gu) * 3);
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position: calc(100% - var(--gu) * 1.5) 50%, calc(100% - var(--gu)) 50%;
+  background-size: calc(var(--gu) * 0.5) calc(var(--gu) * 0.5); background-repeat: no-repeat;
+}
+/* Rows of fields on whole-g columns of the 31g column: two of 15g, or three of 9g, 10g and 10g. */
+.tb-row { display: grid; column-gap: var(--gu); grid-template-columns: calc(var(--gu) * 15) calc(var(--gu) * 15); }
+.tb-row.is-3 { grid-template-columns: calc(var(--gu) * 9) calc(var(--gu) * 10) calc(var(--gu) * 10); }
 .tb-seats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .tb-item, .tb-invite { --hs-edge: var(--border); display: flex; flex-direction: column; row-gap: var(--subrow); padding: var(--subrow) var(--gu); }
 
@@ -15,4 +34,35 @@
 }
 .tb-raise .tb-pill { --hs-h: 5; width: calc(var(--gu) * 5); }
 .tb-raise .tb-go { --hs-h: 5; width: calc(var(--gu) * 8); }
-.replayer-landscape .rd-bar.tb-bar { flex-wrap: wrap; }
+/* The raise row wraps under the buttons 1r down (the replayer's landscape bar has 0.75r between rows). */
+.replayer-landscape .rd-bar.tb-bar { flex-wrap: wrap; row-gap: var(--subrow); }
+
+/* Table chat: a panel over the foot of the screen, 31g wide (the drill's column) and up to 36r tall, its list
+   scrolling; every size whole g and r. Portalled to the body, so it sets the type and colours it needs. */
+.tb-chat-btn { --hs-h: 5; }
+.tb-chat {
+  /* 36r tall, its top on a whole r (from the bottom, the top fell between the r lines), 2r above the foot. */
+  position: fixed; z-index: var(--z-panel); left: 50%;
+  top: calc(100dvh - env(safe-area-inset-bottom, 0px) - var(--subrow) * 38);
+  top: round(down, calc(100dvh - env(safe-area-inset-bottom, 0px) - var(--subrow) * 38), var(--subrow));
+  transform: translateX(-50%); box-sizing: border-box; width: calc(var(--gu) * 33); height: calc(var(--subrow) * 36);
+  display: flex; flex-direction: column; row-gap: var(--subrow); padding: var(--subrow) var(--gu);
+  background: var(--surface); color: var(--text); border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-3);
+}
+/* The panel is portalled to the body, outside the table's .hs-view, so it is one itself (the .hs-btn and .hs-t
+   rules are scoped to it), with the view's own box undone. The edge is a shadow, not a border, so the content
+   starts on the g line. */
+.tb-chat.hs-view { height: auto; overflow: hidden; margin: 0; padding: var(--subrow) var(--gu); }
+.tb-chat-head { display: flex; align-items: center; justify-content: space-between; column-gap: var(--gu); }
+.tb-chat-close { --hs-h: 4; width: calc(var(--gu) * 7); }
+.tb-chat-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1 1 auto; min-height: calc(var(--subrow) * 6);
+  display: flex; flex-direction: column; row-gap: var(--subrow); }
+.tb-chat-msg { display: flex; flex-direction: column; row-gap: var(--subrow); }
+.tb-chat-acts { display: flex; column-gap: var(--gu); }
+.tb-chat-act { --hs-h: 3; width: calc(var(--gu) * 6); }
+.tb-chat-say { display: flex; column-gap: var(--gu); height: calc(var(--subrow) * 5); }
+.tb-chat-input { flex: 1 1 auto; width: auto; }
+.tb-chat-say .tb-go { --hs-h: 5; flex: none; width: calc(var(--gu) * 8); }
+/* A label in the panel's buttons paints over its line box, as the drill's do (replayer-drill.css). */
+.tb-chat.hs-view .hs-btn > .hs-t { overflow: visible; }

@@ -170,3 +170,23 @@ sandbox URL `https://futurega.me/api/subscription/apple/webhook`. The server sid
 - Custom product pages (Schedule, Clocks, Planner, Mixed games; Tracker at Gate 1) and In-App Events
   (BWPO, WSOP 2027) per the plan's section 12.
 - Ratings prompt: after the third saved event or after logging a bag, never after a bust.
+
+## When the play-money tables ship (a build after launch; branch `play-money`, `docs/play-money-platform.md`)
+
+Not for the 11 December submission. The build that turns the tables on for players (they are off unless the server
+says so, and admins only until the owner opens them) changes two answers. The owner confirms both before submitting.
+
+- **Age rating, Simulated Gambling:** "Frequent/Intense" (players play poker hands against each other for chips).
+  The rating stays 18+. Real-money gambling stays "None".
+- **Review notes:** the first sentence above becomes the paragraph below, because a chip balance kept on the account
+  could otherwise read as the "in-app currency" the old sentence denies.
+
+```
+futurega.me is a schedule, planner and record-keeping app for live poker tournaments. It offers no real-money gaming, wagering or prizes, and nothing in it can be played for money.
+
+Play-money tables: signed-in players can play poker at private tables with friends they invite by link. The chips are free and have no value: every account starts with 20,000 and is topped up to 5,000 once a day, and chips cannot be bought, sold, transferred to another player, won as a prize, cashed out or exchanged for anything. No balances are shown to anyone else and there is no leaderboard. Table chat can be reported (to our moderation inbox, which can remove a message), the host can mute a player, and blocking a person keeps them out of your tables.
+```
+
+Guideline 5.3 again means a slower review, and guideline 1.2 (user-generated content) applies to the chat: report,
+block, host mute and Admin's Remove are its four answers (`lib/safety.js`, `lib/play-tables.js`). If the 20,000 /
+5,000 figures change (`TABLES_CHIPS_START`, `TABLES_CHIPS_FLOOR`), change them here too.

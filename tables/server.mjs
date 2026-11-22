@@ -26,8 +26,19 @@ const svc = createTablesService({
 });
 
 const server = svc.app.listen(port, () => console.log(`Tables running on port ${port}${testDeck ? ' (TEST DECK)' : ''}`));
-const shutdown = () => {
-  console.log('[tables] shutting down: hands in progress are journalled and resume after the restart');
+/* A restart (a deploy, pm2): stop dealing and let the hands in progress finish, up to TABLES_DRAIN_MS (default
+   280 s, inside Render's longest shutdown delay of 300 s; pm2's kill_timeout must allow it too), then go. A hand
+   still going then is in the journal and resumes after the restart. A second signal goes at once. */
+const drainMs = process.env.TABLES_DRAIN_MS != null ? Number(process.env.TABLES_DRAIN_MS) : 280000;
+let stopping = false;
+const shutdown = async () => {
+  if (stopping) { svc.shutdown(); process.exit(0); }
+  stopping = true;
+  console.log(`[tables] stopping: no new hands; waiting up to ${Math.round(drainMs / 1000)}s for the hands in progress`);
+  const left = await svc.drain(drainMs);
+  console.log(left.playing || left.owed
+    ? `[tables] ${left.playing} hand(s) still going and ${left.owed} item(s) owed: journalled, they resume after the restart`
+    : '[tables] every hand finished and nothing is owed');
   svc.shutdown();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 3000).unref();

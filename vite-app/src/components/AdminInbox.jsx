@@ -22,8 +22,8 @@ export default function AdminInbox({ token }) {
     fetch(`${API_URL}/admin/feedback`, { headers: { Authorization: 'Bearer ' + token } }).then((r) => (r.ok ? r.json() : null)).then((d) => setFeedback(d ? d.feedback : [])).catch(() => setFeedback([]));
   }, [token]);
   useEffect(() => { load(); }, [load]);
-  const act = async (id, action) => {
-    if (action === 'remove' && !window.confirm('Remove this message from the group for everyone?')) return;
+  const act = async (id, action, where = 'the group') => {
+    if (action === 'remove' && !window.confirm(`Remove this message from ${where} for everyone?`)) return;
     await fetch(`${API_URL}/admin/reports/${id}`, { method: 'PUT', headers: hdr, body: JSON.stringify({ action }) }).catch(() => {});
     load();
   };
@@ -44,13 +44,13 @@ export default function AdminInbox({ token }) {
       {reports && reports.length === 0 && <p className="an-p">No reports.</p>}
       {(reports || []).slice(0, 40).map((r) => (
         <div key={r.id} className={'adm-item' + (r.status !== 'open' ? ' is-done' : '')}>
-          <div className="adm-line"><b>{r.kind === 'message' ? `Message in ${r.group_name || 'a group'}` : 'A person'}</b>{` · by ${r.reporter || '?'} about ${r.target || '?'} · ${ago(r.created_at)}${r.status !== 'open' ? ` · ${r.status}` : ''}`}</div>
+          <div className="adm-line"><b>{r.kind === 'message' ? `Message in ${r.group_name || 'a group'}` : r.kind === 'table-message' ? 'Message at a play-money table' : 'A person'}</b>{` · by ${r.reporter || '?'} about ${r.target || '?'} · ${ago(r.created_at)}${r.status !== 'open' ? ` · ${r.status}` : ''}`}</div>
           {r.snapshot && <div className="adm-quote">{r.snapshot}</div>}
           {r.text && <div className="adm-why">{`Why: ${r.text}`}</div>}
           {Number(r.blocked_by) > 0 && <div className="adm-why">{`Blocked by ${r.blocked_by} account${Number(r.blocked_by) === 1 ? '' : 's'}`}</div>}
           {r.status === 'open' && (
             <div className="adm-actions">
-              {r.kind === 'message' && <button type="button" className="btn btn-sm ctl adm-btn adm-btn--danger" onClick={() => act(r.id, 'remove')}><span>Remove</span></button>}
+              {(r.kind === 'message' || r.kind === 'table-message') && <button type="button" className="btn btn-sm ctl adm-btn adm-btn--danger" onClick={() => act(r.id, 'remove', r.kind === 'table-message' ? 'the table' : 'the group')}><span>Remove</span></button>}
               <button type="button" className="btn btn-ghost btn-sm ctl adm-btn" onClick={() => act(r.id, 'dismiss')}><span>Dismiss</span></button>
             </div>
           )}

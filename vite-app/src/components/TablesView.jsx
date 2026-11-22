@@ -6,6 +6,7 @@
 // Nothing here decides what is legal: the bar offers what the server's view says this player may do, and the
 // server checks it again.
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { T } from './StudyHead.jsx';
 import { tablesApi, openTable, liveReplayHand, takeTableInvite, chips } from '../utils/play-tables.js';
 import { parseMoney } from '../utils/money.js';
@@ -35,12 +36,81 @@ function useCountdown(view) {
   return deadlineIn == null ? null : Math.max(0, deadlineIn - (performance.now() - got));
 }
 
+// ── Chat (owner, 2026-11-22, decision 6: free text, with the moderation App Review asks for) ──
+/* The button on the table's bars and in the lobby: "Chat", and how many messages came since it was last open. */
+function ChatButton({ unread, onOpen }) {
+  return (
+    <button type="button" className="hs-btn tb-chat-btn" onClick={onOpen} aria-label={unread ? `Chat, ${unread} new` : 'Chat'}>
+      <span className="hs-t" style={T(3)}>{unread ? `Chat · ${unread}` : 'Chat'}</span>
+    </button>
+  );
+}
+
+/* The panel: the table's last messages (never from anyone blocked either way), Report on another's, Mute for the
+   host, and a box to write in. Portalled to the body, over the felt, as the app's sheets are. */
+function TableChat({ view, hidden, onSay, onMute, onReport, onClose }) {
+  const [text, setText] = useState('');
+  const [note, setNote] = useState('');
+  const [sending, setSending] = useState(false);
+  const list = useRef(null);
+  const msgs = (view.chat || []).filter((m) => m.mine || !hidden.has(m.userId));
+  const host = view.table.mutedIds != null;
+  const mutedIds = new Set(view.table.mutedIds || []);
+  useEffect(() => { if (list.current) list.current.scrollTop = list.current.scrollHeight; }, [msgs.length]);
+  const send = async () => {
+    if (!text.trim() || sending) return;
+    setSending(true); setNote('');
+    try { await onSay(text); setText(''); } catch (e) { setNote(e.message); } finally { setSending(false); }
+  };
+  const report = async (m) => {
+    setNote('');
+    try { await onReport(m.id); setNote(`Reported. Thank you: an admin will look at ${m.name}'s message.`); } catch (e) { setNote(e.message); }
+  };
+  return createPortal(
+    <div className="tb-chat hs-view" role="dialog" aria-label="Table chat">
+      <div className="tb-chat-head">
+        <div className="hs-t hs-sm" style={T(3)}>Table chat</div>
+        <button type="button" className="hs-btn tb-chat-close" onClick={onClose}><span className="hs-t" style={T(3)}>Close</span></button>
+      </div>
+      <ul className="tb-chat-list" ref={list}>
+        {!msgs.length && <li className="hs-t hs-sm hs-mut" style={T(3)}>No messages yet.</li>}
+        {msgs.map((m) => (
+          <li key={m.id} className="tb-chat-msg">
+            <div className="hs-t hs-sm rd-wrap"><b>{m.mine ? 'You' : m.name}</b>{` ${m.text}`}</div>
+            {!m.mine && (
+              <div className="tb-chat-acts">
+                <button type="button" className="hs-btn tb-chat-act" onClick={() => report(m)}><span className="hs-t" style={T(2)}>Report</span></button>
+                {host && (
+                  <button type="button" className="hs-btn tb-chat-act" onClick={() => onMute(m.userId, !mutedIds.has(m.userId)).catch((e) => setNote(e.message))}>
+                    <span className="hs-t" style={T(2)}>{mutedIds.has(m.userId) ? 'Unmute' : 'Mute'}</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      {note && <div className="hs-t hs-xs rd-wrap hs-mut">{note}</div>}
+      {view.table.muted
+        ? <div className="hs-t hs-sm hs-mut" style={T(3)}>The host has muted you at this table.</div>
+        : (
+          <div className="tb-chat-say">
+            <input className="tb-amount tb-chat-input" aria-label="Message" maxLength={280} value={text} disabled={sending}
+              onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') send(); }} />
+            <button type="button" className="hs-btn rd-primary tb-go" disabled={sending || !text.trim()} onClick={send}><span className="hs-t" style={T(3)}>Send</span></button>
+          </div>
+        )}
+    </div>,
+    document.body,
+  );
+}
+
 function Field({ label, children }) {
-  return <label className="ds-field tb-field"><span>{label}</span>{children}</label>;
+  return <label className="tb-field"><span className="tb-field-label">{label}</span>{children}</label>;
 }
 
 // ── The action bar: what the view says this player may do ──
-function TableBar({ view, busy, onAct, left }) {
+function TableBar({ view, busy, onAct, left, chat }) {
   const h = view.hand;
   const L = h.live.legal;
   const names = h.hand.players.map((p) => p.name);
@@ -51,9 +121,12 @@ function TableBar({ view, busy, onAct, left }) {
 
   if (!L) {
     const who = h.live.toAct >= 0 ? names[h.live.toAct] : '';
+    const me = view.table.you >= 0 ? view.table.seats[view.table.you] : null;
     return (
       <div className="hs-view rd-bar tb-bar snap-place">
+        {me && me.waiting && <div className="hs-t hs-sm rd-status" style={T(2)}>Waiting for the big blind</div>}
         <div className="hs-t hs-sm rd-status" style={T(2)}>{who ? `${who} to act${clock}` : 'Dealing…'}</div>
+        {chat}
       </div>
     );
   }
@@ -93,16 +166,17 @@ function TableBar({ view, busy, onAct, left }) {
 }
 
 // ── After the hand: the result, and what the player can do between hands ──
-function OverBar({ view, busy, onLeave, onRebuy, onSitIn }) {
+function OverBar({ view, busy, onLeave, onRebuy, onSitIn, chat }) {
   const me = view.table.you >= 0 ? view.table.seats[view.table.you] : null;
   return (
     <div className="hs-view rd-bar tb-bar snap-place">
       {/* The felt shows who won as the replay reaches the result; the bar does not say it first. */}
-      <div className="hs-t hs-sm rd-status" style={T(2)}>{me && me.status === 'busted' ? 'Out of chips' : 'Hand over'}{me && me.status === 'playing' ? ' · next hand soon' : ''}</div>
+      <div className="hs-t hs-sm rd-status" style={T(2)}>{me && me.status === 'busted' ? 'Out of chips' : 'Hand over'}{me && me.status === 'playing' ? (me.waiting ? ' · you come in on the big blind' : ' · next hand soon') : ''}</div>
       <div className="hs-cols3" style={{ '--hs-n': 2 }}>
         {me && me.status === 'busted' && <button type="button" className="hs-btn rd-primary" disabled={busy} onClick={onRebuy}><span className="hs-t" style={T(3)}>Buy in again</span></button>}
         {me && me.status === 'sitting-out' && <button type="button" className="hs-btn rd-primary" disabled={busy} onClick={onSitIn}><span className="hs-t" style={T(3)}>Sit in</span></button>}
         <button type="button" className="hs-btn" disabled={busy} onClick={onLeave}><span className="hs-t" style={T(3)}>Leave</span></button>
+        {chat}
       </div>
     </div>
   );
@@ -135,6 +209,23 @@ function LiveTable({ tableId, heroName, cardSplay, onBack }) {
   const table = view && view.table;
   const me = table && table.you >= 0 ? table.seats[table.you] : null;
 
+  // Chat: who is hidden (blocked either way), whether the panel is open, and the last message seen in it.
+  const [hidden, setHidden] = useState(() => new Set());
+  useEffect(() => { tablesApi.hidden().then(setHidden).catch(() => {}); }, []);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [seenId, setSeenId] = useState(0);
+  const shown = useMemo(() => ((view && view.chat) || []).filter((m) => m.mine || !hidden.has(m.userId)), [view, hidden]);
+  const lastId = shown.length ? shown[shown.length - 1].id : 0;
+  useEffect(() => { if (chatOpen) setSeenId(lastId); }, [chatOpen, lastId]);
+  const unread = shown.filter((m) => !m.mine && m.id > seenId).length;
+  const chatButton = <ChatButton unread={unread} onOpen={() => setChatOpen(true)} />;
+  const chatPanel = chatOpen && view && (
+    <TableChat view={view} hidden={hidden} onClose={() => setChatOpen(false)}
+      onSay={(text) => seat.current.say(text)}
+      onMute={(userId, muted) => seat.current.mute(userId, muted)}
+      onReport={(msgId) => tablesApi.report(tableId, msgId)} />
+  );
+
   const drill = useMemo(() => {
     if (!view || !view.hand) return null;
     return {
@@ -142,13 +233,13 @@ function LiveTable({ tableId, heroName, cardSplay, onBack }) {
       over,
       startAtEnd: false,
       discard: null,
-      bar: <TableBar view={view} busy={busy} onAct={act} left={left} />,
-      overBar: <OverBar view={view} busy={busy}
+      bar: <TableBar view={view} busy={busy} onAct={act} left={left} chat={chatButton} />,
+      overBar: <OverBar view={view} busy={busy} chat={chatButton}
         onLeave={() => run((s) => s.leave()).then(onBack)}
         onSitIn={() => run((s) => s.sitIn())}
         onRebuy={() => run((s) => s.rebuy(table.buyIn.max))} />,
     };
-  }, [view, busy, act, left, over, handNo, run, onBack, table]);
+  }, [view, busy, act, left, over, handNo, run, onBack, table, unread]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (status === 'gone') {
     return (
@@ -173,7 +264,7 @@ function LiveTable({ tableId, heroName, cardSplay, onBack }) {
         <div className="hs-t hs-sm hs-mut" style={T(3)}>{`${table.gameType} · ${chips(table.blinds.sb)}/${chips(table.blinds.bb)}${table.blinds.ante ? ` · ante ${chips(table.blinds.ante)}` : ''} · ${table.clock.decision}s a decision`}</div>
         <ul className="tb-seats">
           {table.seats.map((s, i) => (
-            <li key={i} className="hs-t hs-sm" style={T(3)}>{`Seat ${i + 1}: `}{s ? `${s.name} · ${chips(s.stack)}${s.status !== 'playing' ? ` (${s.status.replace('-', ' ')})` : ''}` : 'open'}</li>
+            <li key={i} className="hs-t hs-sm" style={T(3)}>{`Seat ${i + 1}: `}{s ? `${s.name} · ${chips(s.stack)}${s.status !== 'playing' ? ` (${s.status.replace('-', ' ')})` : s.waiting ? ' (waiting for the big blind)' : ''}` : 'open'}</li>
           ))}
         </ul>
         {!me && (
@@ -187,10 +278,12 @@ function LiveTable({ tableId, heroName, cardSplay, onBack }) {
         {me && <div className="hs-t hs-sm hs-mut" style={T(3)}>Waiting for another player…</div>}
         {error && <div className="hs-t hs-sm rd-wrap rd-warn">{error}</div>}
         {status !== 'live' && <div className="hs-t hs-xs hs-mut" style={T(2)}>{status === 'connecting' ? 'Connecting…' : 'Reconnecting…'}</div>}
-        <div className="hs-cols" style={{ '--hs-n': 2 }}>
+        <div className="hs-cols" style={{ '--hs-n': me ? 3 : 2 }}>
           <button type="button" className="hs-btn" onClick={onBack}><span className="hs-t" style={T(3)}>Back</span></button>
           {me && <button type="button" className="hs-btn" disabled={busy} onClick={() => run((s) => s.leave()).then(onBack)}><span className="hs-t" style={T(3)}>Leave</span></button>}
+          {chatButton}
         </div>
+        {chatPanel}
       </div>
     );
   }
@@ -203,6 +296,7 @@ function LiveTable({ tableId, heroName, cardSplay, onBack }) {
         <Replay key={`${tableId}:${handNo}`} hand={hand} token={null} heroName={heroName} cardSplay={cardSplay}
           onBack={onBack} onEdit={() => {}} drill={drill} />
       </Suspense>
+      {chatPanel}
     </div>
   );
 }
@@ -230,12 +324,12 @@ function NewTable({ onMade, onCancel }) {
       <Field label="Game">
         <select value={f.gameType} onChange={set('gameType')}>{GAMES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>
       </Field>
-      <div className="tb-row">
+      <div className="tb-row is-3">
         <Field label="Small blind"><input inputMode="numeric" value={f.sb} onChange={set('sb')} /></Field>
         <Field label="Big blind"><input inputMode="numeric" value={f.bb} onChange={set('bb')} /></Field>
         <Field label="Ante"><input inputMode="numeric" value={f.ante} onChange={set('ante')} /></Field>
       </div>
-      <div className="tb-row">
+      <div className="tb-row is-3">
         <Field label="Seats"><select value={f.maxSeats} onChange={set('maxSeats')}>{[2, 3, 4, 5, 6, 7, 8, 9].map((n) => <option key={n}>{n}</option>)}</select></Field>
         <Field label="Buy-in from"><input inputMode="numeric" value={f.min} onChange={set('min')} /></Field>
         <Field label="to"><input inputMode="numeric" value={f.max} onChange={set('max')} /></Field>

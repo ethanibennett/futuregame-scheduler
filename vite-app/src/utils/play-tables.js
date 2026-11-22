@@ -24,6 +24,9 @@ export const tablesApi = {
   accept: (token) => fetchApi(`/tables/invite/${encodeURIComponent(token)}/accept`, { method: 'POST' }).then(json),
   ticket: (id) => fetchApi(`/tables/${encodeURIComponent(id)}/ticket`, { method: 'POST' }).then(json),
   close: (id) => fetchApi(`/tables/${encodeURIComponent(id)}/close`, { method: 'POST' }).then(json),
+  report: (id, msgId, text) => fetchApi(`/tables/${encodeURIComponent(id)}/report`, { method: 'POST', body: { msgId, text } }).then(json),
+  // Everyone blocked either way (lib/safety.js): their table messages are not shown.
+  hidden: () => fetchApi('/blocks').then(json).then((d) => new Set((d && d.hidden) || [])),
 };
 
 /* The invite a /play/<token> link carried, kept until the Tables tab takes it. */
@@ -93,6 +96,8 @@ export function openTable(tableId, { onView, onStatus }) {
     sitOut: () => call('sit-out'),
     sitIn: () => call('sit-in'),
     leave: () => call('leave'),
+    say: (text) => call('chat', { text }),
+    mute: (userId, muted) => call('mute', { userId, muted }),
     close() { closed = true; clearTimeout(retry); if (es) es.close(); },
   };
 }

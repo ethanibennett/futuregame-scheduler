@@ -121,15 +121,23 @@ sessions opened here own scheduler work.
 - **Play-money tables** (branch `play-money`, NOT on master: owner's yes needed, after the 5 Jan 2027 launch;
   design and the owner's eleven answers: `docs/play-money-platform.md`). Free chips only, never bought, cashed out,
   transferred or shown to others. One copy of the betting rules, `vite-app/src/utils/poker-rules/betting.js` (ported
-  from the entry's GTOEntryView), held to PokerKit in plain Node by `test/replayer-oracle/check-rules.mjs` (in
-  `test:replayer-oracle`; the PokerKit model now lives in `test/replayer-oracle/model.mjs`, shared with the entry
-  oracle); `live-hand.js` plays a hand from a deck it is given and settles it with the export's arithmetic
+  from the entry's GTOEntryView, which now reads it: `rules = streetState(hand, si)`, `legal` for every offer), held to
+  PokerKit in plain Node by `test/replayer-oracle/check-rules.mjs` (in `test:replayer-oracle`; the PokerKit model now
+  lives in `test/replayer-oracle/model.mjs`, shared with the entry oracle). The straddles, stud bring-in, best board,
+  open pair and seat order are `poker-rules/forced.js`, which quick add re-exports; quick add's `Table` stays its own
+  reader of described hands (unknown stacks, out-of-turn seats) and is held to the corpus by `check-quick-add.mjs` (no
+  legal hand questioned, a raise under the smallest always questioned). `live-hand.js` plays a hand from a deck it is given and settles it with the export's arithmetic
   (`settle.js`); `viewFor`/`savedHandFor` never carry a card the seat has not seen. The tables run in their OWN
   service, `tables/server.mjs` (`lib/tables/`: dealer with crypto.randomInt, runtime, SSE per viewer, a journal and an
   outbox in the gitignored `tables-data/`; PORT default 3101, never 3001); the scheduler's half is `lib/play-tables.js`
   (`TABLES=1` + `TABLES_URL` + `TABLES_SECRET`, app admins only; the chip balance, invites at `/play/<token>`, blocks
-  both ways, 2-minute seat tickets, every hand saved to each player's Hands). The client is the Tables tab
-  (`components/TablesView.jsx`, the replayer's felt in the drill's mode). `npm run test:tables` (ports 4940-4949),
+  both ways, 2-minute seat tickets, every hand saved to each player's Hands). A seat taken mid-game waits for the big
+  blind (`Table.lineUp`). Chat (decision 6): the runtime keeps it, the host mutes, a report is a `reports` row of kind
+  `'table-message'` whose text the scheduler reads from the service, and Admin's Remove reaches the service through
+  `play_chat_reports`. On SIGTERM the service drains (no new hand, up to `TABLES_DRAIN_MS`). The deploy runbook is the
+  doc's §12. The client is the Tables tab
+  (`components/TablesView.jsx`, the replayer's felt in the drill's mode). `npm run test:tables` (ports 4940-4949;
+  with `test/tables-runtime.test.mjs`, a fake clock),
   `npm run check:tables` (two WebKit pages, ports 4950-4959; needs the built app and playwright in vite-app).
 - **Hands > Study** (owner, 2026-11-04: one training experience; `components/StudyHub.jsx`, `StudyHead.jsx`, `study-hub.css`):
   the Hands row is Replayer, Study, Scanner, and Study is one list of the solver tools: Practice (Play a hand, Hand trainer,

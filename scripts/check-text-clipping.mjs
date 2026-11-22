@@ -37,6 +37,7 @@ import { createRequire } from 'node:module';
 import { stageHome, routeHomeLayout } from './home-states.mjs';
 import { stageNotify } from './notify-states.mjs';
 import { stageDrill } from './drill-states.mjs';
+import { stageTables } from './tables-states.mjs';
 
 // The Bankroll sections are grouped (owner, 2026-10-20; CashLive.jsx ResultsKindTabs): a section is a
 // chip, or the shown label of its group's split chip, or an item in that group's caret menu. On desktop the
@@ -457,6 +458,15 @@ function scan(rootSel) {
       await stageDrill(p, stage, { force: true });
       await run('replayer drill, ' + stage, root);
     } catch (e) { console.log(`  (replayer drill ${stage} skipped: ${e.message.split('\n')[0]})`); }
+  }
+  // Play-money tables, on a canned table (tables-states.mjs): the lobby, a new table, the seats, the bars, the chat.
+  for (const [stage, root] of [['lobby', '.tb-lobby'], ['new', '.tb-new'], ['seats', '.tb-lobby'], ['turn', '.tb-bar'], ['waiting', '.tb-bar'], ['chat', '.tb-chat'], ['over', '.tb-bar']]) {
+    if (on('tables')) try {
+      await p.goto(p.url().split('#')[0]);
+      await p.waitForTimeout(1200);
+      await stageTables(p, stage, { force: true });
+      await run('tables, ' + stage, root);
+    } catch (e) { console.log(`  (tables ${stage} skipped: ${e.message.split('\n')[0]})`); }
   }
   // Hands: the New Hand variant picker (VariantPicker.jsx): its launcher, then the palette open, then
   // a search ("o8": rows and the mixes that deal it).

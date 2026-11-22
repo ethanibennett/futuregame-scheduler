@@ -347,10 +347,59 @@ oracle settles it, and the hand is saved to both players' Hands. Board games onl
 | The scheduler's half | `lib/play-tables.js` | the same |
 | The Tables tab | `components/TablesView.jsx`, `utils/play-tables.js` | `npm run check:tables` (two WebKit pages through one hand) |
 
-Not yet: §2 steps 3 and 4 (the entry and quick add reading the module, decision 11), the waiting-for-the-big-blind
-rule (a new seat is dealt in at once), chat (decision 6), the `tables` push kind, stud and the draw games, a
-Render service and a pm2 app for the tables service, and a guard pass (`check:controls`, `check:clipping`) on the
-Tables screens.
+### The second pass (2026-11-22)
+
+| Piece | Where | Held by |
+|---|---|---|
+| The entry reads the rules (decision 11, step 3) | `GTOEntryView` takes the turn, the price and every offer from `streetState`; its own copies (the turn, the last full raise, the limit sizes and cap, pot limit, the stud helpers) are gone | `check:replayer-entry-oracle` |
+| Quick add shares the rules (step 4) | the straddles, stud bring-in, best board, open pair on 4th and seat order moved to `poker-rules/forced.js`; quick add and the module both import them | `test/replayer-oracle/check-quick-add.mjs` (in `test:replayer-oracle`): none of the corpus's 1,200 legal hands questioned, 630 raises cut below the smallest all questioned |
+| Waiting for the big blind | `Table.lineUp` in `lib/tables/runtime.mjs` | `test/tables-runtime.test.mjs` (in `test:tables`, a fake clock) |
+| Chat (decision 6) | `say` / `mute` / `removeMessage` in the runtime; `POST /tables/:id/chat`, `/mute`; `POST /api/tables/:id/report`; Admin's Remove through `play_chat_reports` | the runtime test, and `test:tables` end to end (13 checks) |
+| A restart drains | `svc.drain`, `tables/server.mjs` on SIGTERM | by hand (below) |
+
+What the second pass found and fixed on the way:
+
+- **Quick add questioned legal hands.** 56 of the 1,200 corpus hands drew a question like "raised to 82.55, but
+  the minimum raise was to 82.55": the totals were compared before their float tails were cleaned. Fixed in
+  `Table.sizing` and `checkAmount`; the corpus check holds it.
+- **The entry oracle had stopped reading a busted seat.** Since the felt shows a busted seat as OUT (2026-11-11), the
+  entry oracle read OUT as a stack and failed every hand with a bust; `check-replayer-oracle` already read it as 0.
+- **A draw game's showdown refused a legal card.** Six-handed triple draw deals more than 52 cards, so the discards
+  are shuffled and dealt again; a card the hero threw can be in an opponent's final hand (2-7 TD#5). The showdown's
+  card picker now blocks only the cards still held: the board, the hero's hand after the draws, the hands shown.
+
+**Chat, as built.** Anyone at the table may write (280 characters, five messages in ten seconds); the table keeps the
+last 100 and each view carries 50. The host can mute a player and sees whom they muted; nobody else is told. Report
+sends a message to Admin's inbox as kind `'table-message'`, with the text read from the tables service, never from
+the reporter; Remove takes it off the table for everyone. Blocks: a player blocked either way already cannot get a
+seat ticket (they are told the table is full), so two people who block each other mid-session are both shut out at
+their next reconnect; until then each hides the other's messages in the app (`/api/blocks`' `hidden`).
+
+**Waiting for the big blind, as built.** A seat taken while a game is going waits until the hand would make it the
+big blind, and never takes the button before it has been dealt in. With fewer than two regular players the waits
+are cleared and a fresh game starts. "Post a big blind to come in now" is not built (it needs an extra post in the
+hand engine).
+
+**Deploying the tables service** (after the owner's yes to merge; nothing here is done yet):
+
+1. Render: a new web service `futuregame-tables` from this repo, start command `node tables/server.mjs`, a build
+   filter on `tables/**`, `lib/tables/**`, `vite-app/src/utils/poker-rules/**`, `vite-app/src/utils/quick-add/**`,
+   `vite-app/src/utils/hand-history/**` and `vite-app/src/utils/poker-engine.js` (what it imports), a disk mounted
+   for `TABLES_DATA_DIR`, the shutdown delay at its maximum (300 s), and the custom domain `tables.futurega.me`.
+   Env: `TABLES_SECRET` (generated, never in chat or a repo), `TABLES_SCHEDULER_URL=https://futurega.me`,
+   `TABLES_ORIGINS=https://futurega.me,capacitor://localhost` (and the Mac app's origin).
+2. futurega.me's service: `TABLES=1`, `TABLES_URL` (the service's internal URL), `TABLES_PUBLIC_URL=https://tables.futurega.me`,
+   the same `TABLES_SECRET`. Its boot logs `[tables] play-money tables are ON`.
+3. This box (optional, for a local game): a pm2 app `futuregame-tables` running `node tables/server.mjs` on
+   PORT 3101 (never 3001) with `kill_timeout: 290000` so a restart drains, and the scheduler's pm2 env pointed at it.
+   Both are in the gitignored `ecosystem.config.cjs`.
+
+On SIGTERM the service deals no new hand, lets the hands in progress play out with their clocks running, sends what
+it owes the scheduler, for up to `TABLES_DRAIN_MS` (280 s), then exits; anything still going is in the journal and
+resumes after the restart. A second signal exits at once.
+
+Not yet: the `tables` push kind, stud and the draw games at the table, "post to come in now", the deploy above,
+and a guard pass (`check:controls`, `check:clipping`) on the Tables screens.
 
 ## 13. Open decisions (as asked)
 
