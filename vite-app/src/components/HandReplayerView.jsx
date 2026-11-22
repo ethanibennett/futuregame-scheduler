@@ -7671,6 +7671,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const tn = potTextNode();
     if (tn && tn.data !== rendered.pot) tn.data = rendered.pot;
     hand.players.forEach((_, pi) => {
+      if (motion.countingStacks.has(pi)) return;
       const sn = stackTextNode(pi);
       if (sn && sn.data !== rendered.stack(pi)) sn.data = rendered.stack(pi);
     });
@@ -10110,7 +10111,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           seatsNow.labels.push({ node: el, seat: Number(el.dataset.actSeat), cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: el.offsetWidth || r.width, h: el.offsetHeight || r.height, angle: 0,
             dx: pr ? (r.left + r.width / 2 - (pr.left + pr.width / 2)) / (ps || 1) : null, dy: pr ? (r.top + r.height / 2 - (pr.top + pr.height / 2)) / (ps || 1) : null });
         });
-        table.querySelectorAll('[data-run-name]').forEach(el => seatsNow.runNames.set(Number(el.dataset.nameSeat), { text: el.dataset.runName, lead: !el.classList.contains('is-trailing') }));
+        table.querySelectorAll('[data-run-name]').forEach(el => {
+          const cs = getComputedStyle(el);
+          seatsNow.runNames.set(Number(el.dataset.nameSeat), { text: el.dataset.runName, lead: !el.classList.contains('is-trailing'), color: cs.color, border: cs.borderColor });
+        });
         /* What may leave without a moment of its own (a readout or the stud note, the main and side pots' row, a split's
            shares, the pile), with where it hangs: the next press fades a copy of whatever went out where it stood. */
         seatsNow.leavers = [...table.querySelectorAll(LEAVERS)].map(el => ({
@@ -11223,11 +11227,18 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             if (!mark) {
               // 31: the figure rides the wager's flick spring down to what is left.
               const tn = el.firstChild && el.firstChild.nodeType === 3 ? el.firstChild : null;
-              if (tn) writes.push(() => motion.sample((t) => {
-                const v = t >= flickEnd ? to : from - (from - to) * flickSp.at(t * rate);
-                tn.data = fmtChips(t >= flickEnd ? to : roundU(v));
-                motion.wroteDigits = true;
-              }, { end: flickEnd }));
+              /* It starts on the figure that was showing and ends on the new one: what it takes off is rounded to the
+                 table's smallest chip, never the figure itself (58,100 read 58,000 as the count began and 58,100 again
+                 as it ended). While it counts, a later commit of the same step leaves it alone (resyncDigits). */
+              if (tn) writes.push(() => {
+                motion.countingStacks.add(pi);
+                motion.sample((t) => {
+                  const done = t >= flickEnd;
+                  tn.data = fmtChips(done ? to : Math.max(to, from - roundU((from - to) * flickSp.at(t * rate))));
+                  if (done) motion.countingStacks.delete(pi);
+                  motion.wroteDigits = true;
+                }, { end: flickEnd });
+              });
             } else {
               /* 33: down to 0 first, then the 0 crossfades to All-in where it stands. It rolled, both 1r up in 90ms, in
                  the plaque (owner, 2026-11-21: "Still some jittery shit on hero's seat box"). */
@@ -11236,7 +11247,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 const ghost = document.createElement('span');
                 ghost.className = 'replayer-stack-roll';
                 el.appendChild(ghost);
-                motion.sample((t) => { ghost.textContent = fmtChips(t >= flickArrive ? 0 : Math.max(0, roundU(from - from * flickSp.at(t * rate)))); }, { end: flickArrive });
+                motion.sample((t) => { ghost.textContent = fmtChips(t >= flickArrive ? 0 : Math.max(0, from - roundU(from * flickSp.at(t * rate)))); }, { end: flickArrive });
                 const S2 = SPRING_SETS[set].stage;
                 const ease2 = (p) => p * p * (3 - 2 * p);
                 motion.run(ghost, { transient: true, property: 'individual', size: { w: el.offsetWidth, h: el.offsetHeight }, channels: [
@@ -11540,6 +11551,30 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 x.el.getAnimations().forEach(a => { if (a instanceof CSSAnimation) a.cancel(); });
                 const own = Number(getComputedStyle(x.el).opacity);
                 const from = was.lead ? 1 : 0.55, to = Number.isFinite(own) ? own : 1;
+                /* The same words in another colour (the run-out's gold "Wheel" taking the loser's red): the old copy
+                   fades out where it stood as the new one fades in. Kept, the colour changed in one frame (owner,
+                   2026-11-22: "Hero's seat box is STILL flickering"). */
+                /* The colour is the one it was shown in (recorded with the run's names): the seat's result class (a
+                   loser's red) reaches a copy too. */
+                const old = (prevS.leavers || []).find(l => !l.cls && !l.node.isConnected && l.parent && l.parent.isConnected
+                  && l.node.dataset.nameSeat === String(x.pi));
+                if (old && was.color && was.color !== getComputedStyle(x.el).color) {
+                  const g = old.node.cloneNode(true);
+                  g.dataset.ghost = '1';
+                  g.removeAttribute('data-name-seat');
+                  g.removeAttribute('data-run-name');
+                  g.setAttribute('aria-hidden', 'true');
+                  Object.assign(g.style, { pointerEvents: 'none', color: was.color, borderColor: was.border || '' });
+                  old.parent.appendChild(g);
+                  g.getAnimations({ subtree: true }).forEach(a => a.cancel());
+                  motion.run(g, { transient: true, property: 'individual', size: { w: g.offsetWidth || 1, h: g.offsetHeight || 1 }, channels: [
+                    { prop: 'opacity', ramp: { from, to: 0, delay: 0, duration: 2 * S4.beat / rate, ease: easeIO } },
+                  ] });
+                  motion.run(x.el, { key: { el: x.el, kind: 'drop' }, property: 'individual', size: { w: x.el.offsetWidth, h: x.el.offsetHeight }, channels: [
+                    { prop: 'opacity', ramp: { from: 0, to, delay: 0, duration: 2 * S4.beat / rate, ease: easeIO } },
+                  ] });
+                  return;
+                }
                 if (Math.abs(from - to) > 0.01) motion.run(x.el, { key: { el: x.el, kind: 'drop' }, property: 'individual', size: { w: x.el.offsetWidth, h: x.el.offsetHeight }, channels: [
                   { prop: 'opacity', ramp: { from, to, delay: 0, duration: S4.beat / rate, ease: easeIO } },
                 ] });
@@ -11695,8 +11730,11 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       motion.beginMoment(motionKind);
       motion.momentKey = momentKey;
       motion.potFloor = potFloorNow;
-      for (const w of writes) w();
+      /* The rendered figures go back BEFORE this moment's writes: after them, they put the new stack over the count
+         that had just written the old one, so a bettor's plaque showed what was left for a frame, then what it had,
+         then counted down (owner, 2026-11-22: "Hero's seat box is STILL flickering"). */
       resyncDigits();
+      for (const w of writes) w();
       /* Render subtracted what it expected to fly; if nothing could (no layer, no element to copy),
          one render puts the full figures back. */
       const planned = motion.pendingPot > 0 || motion.pendingStacks.size > 0;

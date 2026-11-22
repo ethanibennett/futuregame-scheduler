@@ -77,6 +77,8 @@ export class MotionRegistry {
     this.momentKey = null;
     this.pendingPot = 0;
     this.pendingStacks = new Map();
+    // The seats whose stack figure a sampler is counting: a commit's resync leaves their digits alone.
+    this.countingStacks = new Set();
     // Supplied by the component: write the pot / a stack's digits, and one React render when
     // everything pending has landed so React's value matches the DOM again.
     this.writePot = null;
@@ -433,6 +435,7 @@ export class MotionRegistry {
     this.pendingPot = 0;
     this.potFloor = 0;
     this.pendingStacks.clear();
+    this.countingStacks.clear();
     this.momentKind = null;
     this.momentKey = null;
     this.captureNow = 0;

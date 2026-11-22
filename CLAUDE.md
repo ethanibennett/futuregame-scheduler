@@ -932,7 +932,11 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   (ports 4920-4929; `--shorthand` for a shared hand, `--ids` for corpus hands, `--strict` to fail): every piece's box
   and drawn opacity at 60fps, the press's animations held and sought together. It cannot hold a motion built after the
   press (the ship, a board that waits for a chip), so check those in real time; a fold's rotated copies still read as
-  "appears ghost".
+  "appears ghost". A bettor's stack counts down from the figure it showed (owner, 2026-11-22: "Hero's seat box is STILL
+  flickering"): `resyncDigits` puts React's figures back BEFORE a moment's writes and leaves a stack still counting alone
+  (`motion.countingStacks`); after them, every bet showed the new figure for a frame, then the old, then counted. A
+  run-out's name the result recolours (the gold "Wheel" taking a loser's red) crossfades from a copy in the colour it was
+  shown in (`runNames` records it). Real-time check of one seat: sample its subtree on every frame across every press.
 - **The chips are casino clay** (owner, 2026-11-13: pick 1 of `docs/catalogues/replayer-chips`, gallery
   https://claude.ai/artifact/UrZPCY5D5q7TBcnwG49ZBY): `.chip-disc` / `.replayer-pot-chip-disc` in `styles.css`, six white
   edge inserts placed per chip by `utils/chip-inserts.js` (`chipInsertVars` / `applyChipInserts` from the chip's
