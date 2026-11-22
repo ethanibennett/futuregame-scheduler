@@ -155,3 +155,6 @@ vite-app/src/card-faces.generated.js
 
 # The session bridge's token on this PC (docs/session-bridge.md)
 .session-bridge.env
+
+# Play-money tables service: journal and outbox (hold live decks)
+tables-data/

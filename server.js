@@ -14923,6 +14923,7 @@ app.post('/api/admin/discord-settle/test', authenticateToken, async (req, res) =
 app.get('/shared/:token', serveIndex);
 // An invite link (Features 37): the app reads the token from the path.
 app.get('/i/:token', serveIndex);
+app.get('/play/:token', serveIndex); // a play-money table's invite (lib/play-tables.js)
 // A package's page (Features 20): the app shell; the link is the whole of the access.
 app.get('/p/:token', (req, res, next) => { res.set({ 'X-Robots-Tag': 'noindex', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store' }); next(); }, serveIndex);
 // A preparer's read-only tax report (Features 19): the app shell, the link the whole of the access.
