@@ -951,6 +951,13 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   meanwhile (a commit with no moment put the whole pot back, so it read 5,000 from the first frame); the pile steps by
   `setPile(value, { fade })`, a stack leaving it fading out as a copy (`fadePileOut`'s `duration`) and a new or grown
   stack fading in over two beats.
+  **A jump crossfades** (owner, 2026-11-22, of a recording stepping back from the hero's bet: "Jittery. Terrible."):
+  Back, Start, End and a street's label (`crossfadeJump`, after `motion.finishAll()`) lay a still copy of the table as it
+  stood (`.replayer-jump-veil`, animations and transitions off) over it, on the first flat ground behind it so it is
+  opaque, at `--z-dealer` (over the table's pieces, under the settings button and `.replayer-under`, both 10). It holds
+  until the new step is drawn and fades from the frame after that commit (started earlier, the 200ms commit ate most of
+  it). Measured: the held copy is the screen it copied (PSNR 40.7 dB; slivers past the table's sides). The old rewind
+  dip (everything on the felt to 0.45 and back) is off on the spring path.
 - **The action pills are solid** (owner, 2026-11-22: "a solid color with contrasting text"): `--act-pill` / `--act-pill-ink`
   per action, from `--act-*-solid` and `--act-ink-light` / `--act-ink-dark` (styles.css, beside `--act-*`): fold, call
   (blue-600) and raise (red-600) in white, check and bet in near-black, all-in as before; each pair measured at 4.8:1 or

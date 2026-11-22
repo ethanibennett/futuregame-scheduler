@@ -7874,10 +7874,22 @@
          RESTS below 1 (the wordmark is 0.26) was driven 0.45 -> 1 and flashed
          bright on every step back. Anything else that rests dimmed on the felt
          needs the same exclusion. */
-      .replayer-replay.is-rewinding .replayer-table-felt ~ *:not(.replayer-watermark) {
+      /* Not on the spring path: there a jump crossfades the whole table from a still copy (.replayer-jump-veil), and
+         this dip dimmed everything on the felt to 0.45 on every step back (owner, 2026-11-22: "Jittery. Terrible."). */
+      .replayer-replay.is-rewinding .replayer-table:not([data-springs]) > .replayer-table-felt ~ *:not(.replayer-watermark) {
         animation: rewindFade var(--dur-snap) var(--ease-label) both;
       }
     }
+    /* The jump's still copy of the table (HandReplayerView crossfadeJump): nothing in it moves, so it shows the step it
+       copied at rest while it fades. Its CSS animations would start again from their first frame. */
+    .replayer-jump-veil,
+    .replayer-jump-veil *,
+    .replayer-jump-veil *::before,
+    .replayer-jump-veil *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+    .replayer-jump-veil { pointer-events: none; }
 
     /* ── Chip icon for bet animation ── */
     .replayer-flying-chip {

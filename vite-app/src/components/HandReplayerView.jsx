@@ -7732,27 +7732,97 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   /* Rewinding reconstructs state; only forward motion performs it. Every running spring finishes
      before the new state commits — ghosts and shipped chips leave, the pot and stacks land — and
      nothing ever plays backwards. */
+  /* A jump (Back, a street's label, Start, End) crossfades the whole table (owner, 2026-11-22, of a screen recording
+     stepping back from the hero's bet: "Jittery. Terrible."): the pill, the wager, the stack, the turn ring all cut to
+     the step before in one frame, while the old rewind dimmed everything on the felt to 0.45 and back. A still copy of
+     the table as it stood (after finishAll, so at rest) is laid over it and fades out as the new step is drawn under
+     it: what changed crosses over, what did not stays still. Animations and transitions are off in the copy (its CSS
+     ones would start again from their first frame). A newer jump's copy covers an older one, which goes. */
+  const jumpVeilRef = useRef(null);
+  const crossfadeJump = useCallback(() => {
+    const t = tableRef.current;
+    if (!t || !springOn || motion.capture) return;
+    try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) { /* no matchMedia */ }
+    const host = t.parentElement;
+    if (!host) return;
+    const tr = t.getBoundingClientRect(), hr = host.getBoundingClientRect();
+    if (!(tr.width > 0 && tr.height > 0)) return;
+    const veil = t.cloneNode(true);
+    veil.classList.add('replayer-jump-veil');
+    veil.setAttribute('aria-hidden', 'true');
+    veil.removeAttribute('id');
+    veil.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
+    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+    Object.assign(veil.style, {
+      position: 'absolute', margin: '0', pointerEvents: 'none',
+      left: (tr.left - hr.left - host.clientLeft + host.scrollLeft) + 'px', top: (tr.top - hr.top - host.clientTop + host.scrollTop) + 'px',
+      width: tr.width + 'px', height: tr.height + 'px',
+    });
+    /* Over the table's own pieces and under what lies over the table: the table is no stacking context of its own, so
+       its seats (4) to its dealer button (9) drew over a copy on z auto and the copy never showed; at 11 it covered the
+       settings button and the scrim at the table's foot (.replayer-quick-btn, .replayer-under, both 10). At the dealer
+       button's level, after the table: over everything on it at rest (the flight layer, 10, is empty after finishAll). */
+    const z = getComputedStyle(t).zIndex;
+    veil.style.zIndex = z !== 'auto' ? String(Number(z) + 1) : 'var(--z-dealer)';
+    /* On the ground the table stands on, so it is opaque and the very screen it copied: over the live table, every
+       see-through pixel (the rail's shade, a plaque's 0.93) drew twice and the first frame was darker. The first
+       ground behind the table, when it is one flat colour (a gradient there, and it keeps none). */
+    for (let e = host; e && e !== document.documentElement; e = e.parentElement) {
+      const cs = getComputedStyle(e);
+      if (cs.backgroundImage && cs.backgroundImage !== 'none') break;
+      if (cs.backgroundColor && !/rgba\([^)]*,\s*0\)|transparent/.test(cs.backgroundColor)) { veil.style.backgroundColor = cs.backgroundColor; break; }
+    }
+    t.after(veil);
+    if (jumpVeilRef.current) jumpVeilRef.current.remove();
+    jumpVeilRef.current = veil;
+    // It holds until the new step is drawn under it (the next commit, below), then fades: started at the press, most of
+    // the fade ran over the old step while the table re-rendered (200ms in headless WebKit), and the new one cut in.
+    veil.dataset.pending = '1';
+    veil.dataset.dur = String((1.4 * SPRING_SETS[springSet].stage.beat) / REPLAYER_PACE);
+    veil._fallback = setTimeout(() => fadeJumpVeil(veil), 800);
+  }, [springOn, springSet, motion]);
+  const fadeJumpVeil = (veil) => {
+    if (!veil || !veil.isConnected || !veil.dataset.pending) return;
+    delete veil.dataset.pending;
+    clearTimeout(veil._fallback);
+    try {
+      const a = veil.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Number(veil.dataset.dur) || 300, easing: 'cubic-bezier(0.4, 0, 0.6, 1)', fill: 'forwards' });
+      a.onfinish = () => { veil.remove(); if (jumpVeilRef.current === veil) jumpVeilRef.current = null; };
+    } catch (e) { veil.remove(); }
+  };
+  /* On the first frame after the commit: started in the commit, the fade ran on through the rest of its work (the
+     placement passes, 200ms in headless WebKit), and the first frame painted already showed it a fifth of the way in. */
+  useLayoutEffect(() => {
+    const v = jumpVeilRef.current;
+    if (!v || !v.dataset.pending || v.dataset.queued) return;
+    v.dataset.queued = '1';
+    requestAnimationFrame(() => fadeJumpVeil(v));
+  });
+  useEffect(() => () => { if (jumpVeilRef.current) { clearTimeout(jumpVeilRef.current._fallback); jumpVeilRef.current.remove(); } }, []);
+
   const stepBack = useCallback(() => {
     motion.finishAll();
+    crossfadeJump();
     markRewind();
     if (showResult) { setShowResult(false); setHiloAnimate(false); }
     else if (actionIdx >= 0) setActionIdx(a => a - 1);
     else if (streetIdx > 0) { const prevStreet = hand.streets[streetIdx - 1]; setStreetIdx(s => s - 1); setActionIdx((prevStreet?.actions?.length || 0) - 1); }
-  }, [actionIdx, streetIdx, showResult, hand, markRewind, motion]);
+  }, [actionIdx, streetIdx, showResult, hand, markRewind, motion, crossfadeJump]);
 
   // 79: a held Back runs through this (the hold's interval outlives the render that started it).
   const stepBackRef = useRef(null);
   stepBackRef.current = stepBack;
 
-  const goToStart = () => { motion.finishAll(); setStreetIdx(0); setActionIdx(-1); setShowResult(false); setHiloAnimate(false); };
+  const goToStart = () => { motion.finishAll(); crossfadeJump(); setStreetIdx(0); setActionIdx(-1); setShowResult(false); setHiloAnimate(false); };
   // The street track's labels (UX pick 67): the start of that street.
-  const goToStreet = (si) => { motion.finishAll(); setStreetIdx(si); setActionIdx(-1); setShowResult(false); setHiloAnimate(false); };
+  const goToStreet = (si) => { motion.finishAll(); crossfadeJump(); setStreetIdx(si); setActionIdx(-1); setShowResult(false); setHiloAnimate(false); };
   /* 51: this set the last street and the last action and stopped one step
      short of the showdown, so "End" landed on the river's final bet with the
      opponents' cards still face down. stepForward's final branch is what
      actually ends a hand; End does the same thing now. */
   const goToEnd = () => {
     motion.finishAll();
+    crossfadeJump();
     const lastStreet = hand.streets.length - 1;
     setStreetIdx(lastStreet);
     setActionIdx((hand.streets[lastStreet]?.actions?.length || 0) - 1);
