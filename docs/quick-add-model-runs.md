@@ -88,6 +88,45 @@ back.
 
 ## Measured (2026-11-21, futurega.me Admin, the 266-hand corpus)
 
+**The comparison to use** (commit 83512d3: the several-hands decision, the unwrap and the strict-enum fixes below;
+the same prompt and corpus for both):
+
+| Every hand | Sonnet 5 (today) | Opus 5.5 low |
+|---|---:|---:|
+| Fact recall | 81.5% | **91.8%** |
+| Fact precision | 85.2% | **89.3%** |
+| Wrong facts | 212 | **106** |
+| Perfect parses | 74 | **132** |
+| Complete hands: recall / perfect (of 58) | 89.9% / 21 | **99.1% / 51** |
+| Complete hands asked a blocking question (of 58) | 28 | **4** |
+| Gap recall | 75.0% | **78.3%** |
+| Hallucinated cards | 79 (36 cases) | 80 (29 cases) |
+| Invented suits | **497** | 602 |
+| Invented stacks | 31 | **26** |
+| Speech: recall / perfect (of 109) | 73.0% / 15 | **88.2% / 41** |
+| Cost a hand | **$0.012** | $0.022 |
+| Latency p50 / p90 / max | **5.6 s / 7.8 s / 11.4 s** | 6.3 s / 10.7 s / 17.4 s |
+| Failed parses | 0 | 0 |
+
+Opus 5.5 at low effort is ahead on every fact measure and level on invented cards; none of its invented cards is
+in a complete hand. What is left against it: **more invented suits** (602 to 497: a suit picked where the text gave
+only the rank), twice the cost, and three more seconds at p90 (well inside the app's 60 s). Two of its empty hands
+are judgements: a self-contradicting transcript it called "too garbled to follow", and the three rules questions
+every model leaves empty.
+
+**Two bugs this run found, fixed before it** (both only on the thinking shape, so production never saw them):
+- **Opus wrapped the hand in one more key** about one parse in twenty-five (`{ "record_hand": { ... } }`,
+  `{ "arguments": { ... } }`; 10 of 266 in the run above), and the hand normalized to nothing. `callTool` now
+  unwraps it (`meta.unwrapped`). Before the fix a full run read 85.1% recall with 17 hands empty.
+- **Every hand history got a 400**: `read_lines` is strict there, and the strict check refuses a nullable enum
+  written as a type list; `toStrictSchema` sends it as `anyOf`.
+
+A finished run now keeps its parses (the newest three runs): `GET /api/admin/quick-add-eval/runs/:id/cases` and
+`…/cases/:caseId`; a run can take named cases only (`{ cases: [ids] }`) to rerun what one run got wrong. A parse that
+still normalizes to nothing carries `meta.inputShape`.
+
+**The first runs** (before the several-hands decision, on the old corpus and prompt, and before the unwrap):
+
 | Every hand | Sonnet 5 (today) | Opus 5.5 low | Haiku 5.5 low |
 |---|---:|---:|---:|
 | Fact recall | 83.2% | **90.1%** | 83.3% |
@@ -126,7 +165,7 @@ montages of fragments), and six corpus cases that expected a refusal now expect 
 two hands, a rant with one hand among counts of others, a run of three results, two commentated hands, a stud montage
 and three hands in four sentences. Their opponents' seats are never told, so the eval gained `shown`: cards an
 unseated opponent shows, one fact ("some opponent holds them"), never counted as invented
-(`test/quick-add/scorer-shown.test.js`). The runs above were scored on the old corpus and prompt.
+(`test/quick-add/scorer-shown.test.js`). The first runs were scored on the old corpus and prompt.
 
 ## The runs to make from Admin
 
