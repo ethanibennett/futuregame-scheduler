@@ -77,6 +77,7 @@
     "test:replayer-oracle": "node test/replayer-oracle/check-export.mjs && node test/replayer-oracle/check-shorthand.mjs",
     "check:replayer-oracle": "node scripts/check-replayer-oracle.mjs",
     "check:replayer-collisions": "node scripts/check-replayer-collisions.mjs",
+    "check:replayer-smooth": "node scripts/check-replayer-smooth.mjs",
     "check:replayer-entry-oracle": "node scripts/check-replayer-entry-oracle.mjs",
     "check:clipping": "node scripts/check-text-clipping.mjs && node scripts/check-text-clipping.mjs --width 1440 --height 900",
     "check:controls": "node scripts/check-control-centring.mjs && node scripts/check-control-centring.mjs --width 1440 --height 900",

@@ -31,7 +31,7 @@ import {
 } from '../utils/replayer-motion.js';
 import { SPRING_SETS, spring, timeTo, tierSpring, keyframes as transportKeyframes, REPLAYER_PACE } from '../utils/spring.js';
 import { bestFive, halvesOf, counterfeitedNow, leaderOf, lowDecider, indexOfLowRank, streetChange } from '../utils/replayer-reading.js';
-import { turnOver, dealIn, liftOnce, poseTo, rap, ghostsAway, foldToStack, angleOf, cardTimes, slideRow, runOutBoard, runOutTimes, poseSequence, drawIn, ghostsTo, appearAt, makeRoom } from '../utils/replayer-card-moments.js';
+import { turnOver, dealIn, liftOnce, poseTo, rap, ghostsAway, labelsAway, cardsAway, foldToStack, angleOf, cardTimes, slideRow, runOutBoard, runOutTimes, poseSequence, drawIn, ghostsTo, appearAt, makeRoom } from '../utils/replayer-card-moments.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
 import { exportReplayGif } from '../utils/replay-gif-export.js';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -1273,6 +1273,12 @@ const CARD_LIFTS = false;
    "jittering" the owner saw round the hero's plaque (2026-11-21: "the highlight around hero's seat box is jittering
    and not smooth"). The plaque takes its purple border and glow in place, on its own transition. */
 const RING_CLOSES = false;
+/* Nothing on the felt goes or comes in a frame (owner, 2026-11-21: "Every single animation should be ultra smooth"):
+   what may leave with no moment of its own fades out as a copy put back where it stood (a readout or the stud note,
+   the main and side pots' row, a split's shares, the pile), and a pot pill new to the row fades in. A copy carries
+   data-ghost, which every placement pass leaves out. */
+const LEAVERS = '[data-name-seat], .replayer-pot-layers.is-placed:not([data-ghost]), .replayer-split-shares.is-placed:not([data-ghost]), .replayer-pot-above:not([data-ghost])';
+const POT_PILLS = '.replayer-pot-layers.is-placed:not([data-ghost]) > *, .replayer-split-shares.is-placed:not([data-ghost]) > *';
 /* The pot's pile draws the whole pot, as its figure does (owner, 2026-11-15: "This stack of chips should change to reflect the
    number in the pot"): wagers in front of the seats included, so a sweep moves chips into it without changing it. */
 const PILE_IS_WHOLE_POT = true;
@@ -6515,6 +6521,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const committedStepRef = useRef(null);   // the step the last commit showed
   const revealRef = useRef(false);          // the spring path's showdown reveal is on (see springReveal)
   const prevWagersRef = useRef(new Map());  // seat -> that commit's wager: { el, geo, topColor }
+  // Where placeWagers last put each wager, as a share of its container (so a resize moves nothing): a wager it moves
+  // again glides there instead of jumping.
+  const wagerSpotsRef = useRef(new WeakMap());
   const boardDeltaRef = useRef(null);       // this commit's board FLIP measurement, for the springs
   const potTotalRef = useRef(null);
   const sweepLayerRef = useRef(null);
@@ -9365,7 +9374,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       parent.appendChild(e); stand.push(e);
     };
     if (isDrawGame && !gameCfg.discardOnly && !plaque.querySelector('.replayer-seat-draw-badge')) standIn(plaque, 'replayer-seat-draw-badge', 'D3/D3/PAT');
-    const names = [...low.querySelectorAll('.replayer-seat-hand-name')];
+    const names = [...low.querySelectorAll('.replayer-seat-hand-name:not([data-ghost])')];
     names.forEach(e => { e.style.marginLeft = ''; e.style.marginTop = ''; delete e.dataset.spot; });
     if (!names.length) standIn(low, 'replayer-seat-hand-name', isHiLo ? 'Hi: Two Pair' + String.fromCharCode(10) + 'Lo: 8 6 4 3 2 low' : 'Two Pair, Ks & 9s');
     // Where each piece rests: its laid-out box under its positioned parent (a reveal's or a pop's transform aside).
@@ -9375,7 +9384,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       return op.getBoundingClientRect().top + op.clientTop + e.offsetTop + e.offsetHeight;
     };
     const stackBottom = () => Math.max(plaque.getBoundingClientRect().bottom,
-      ...[...low.querySelectorAll('.replayer-seat-draw-badge, .replayer-seat-hand-name')].map(restBottom));
+      ...[...low.querySelectorAll('.replayer-seat-draw-badge, .replayer-seat-hand-name:not([data-ghost])')].map(restBottom));
     const probe = document.createElement('div');
     probe.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)';
     slot.appendChild(probe);
@@ -9447,7 +9456,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const edge = host.getBoundingClientRect();
     const others = [...table.querySelectorAll('.replayer-seat[data-seat]')].filter(x => x !== seat)
       .flatMap(x => [...x.querySelectorAll('.replayer-seat-info, .replayer-seat-cards .card-row > *, .replayer-action-badge-outer, .replayer-seat-draw-badge')])
-      .concat([...table.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-above')])
+      .concat([...table.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-above:not([data-ghost])')])
       .map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
     const touches = () => {
       const b = btn.getBoundingClientRect();
@@ -9471,7 +9480,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   useLayoutEffect(() => {
     const table = tableRef.current;
     if (!table) return;
-    const rows = [...table.querySelectorAll('.replayer-pot-layers.is-placed, .replayer-split-shares.is-placed')];
+    const rows = [...table.querySelectorAll('.replayer-pot-layers.is-placed:not([data-ghost]), .replayer-split-shares.is-placed:not([data-ghost])')];
     const r = subrowPx(table);
     const board = table.querySelector('.replayer-board-area:not(.replayer-dead-area)');
     /* The pot 0.5r clear above the board's cards: both sit at a share of the table's height (40.6% and 47%), and on
@@ -9602,9 +9611,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       }
       const pad = gu / 4;
       const others = [...table.querySelectorAll('.replayer-seat[data-seat]')].filter(x => x !== seat)
-        .flatMap(x => [...x.querySelectorAll('.replayer-seat-info, .replayer-seat-cards .card-row > *, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn')])
-        .concat([...seat.querySelectorAll('.replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn')])
-        .concat([...table.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-above, .replayer-pot-layers.is-placed > *, .replayer-split-shares.is-placed > *')])
+        .flatMap(x => [...x.querySelectorAll('.replayer-seat-info, .replayer-seat-cards .card-row > *, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name:not([data-ghost]), .replayer-dealer-btn')])
+        .concat([...seat.querySelectorAll('.replayer-seat-draw-badge, .replayer-seat-hand-name:not([data-ghost]), .replayer-dealer-btn')])
+        .concat([...table.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-above:not([data-ghost]), .replayer-pot-layers.is-placed:not([data-ghost]) > *, .replayer-split-shares.is-placed:not([data-ghost]) > *')])
         .map(box).filter(b => b.width > 0 && b.height > 0);
       const ranks = rankBoxesOf(seat);
       const inward = (P.left + P.width / 2) < (edge.left + edge.width / 2) ? 1 : -1;
@@ -9621,7 +9630,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   };
   useLayoutEffect(() => { if (tableRef.current) placeLabels(tableRef.current); });
   const placeNames = (table, settle) => {
-    const names = table.querySelectorAll('.replayer-seat-hand-name');
+    const names = table.querySelectorAll('.replayer-seat-hand-name:not([data-ghost])');
     /* Kept for the step at this size of table: the desktop pane draws the table at 0 x 0 for its first commits, and a
        spot found against nothing was kept once the table had its size (2026-11-16). */
     if (!table.clientWidth || !table.clientHeight) return;
@@ -9636,7 +9645,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
        where it rests is placed again; the others stay where they are. */
     if (settle) {
       const live = (e) => { const q = e.getBoundingClientRect(); return q.width > 0 && q.height > 0 ? q : null; };
-      const felt = [...table.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-above, .replayer-pot-layers.is-placed > *, .replayer-split-shares.is-placed > *')].map(live).filter(Boolean);
+      const felt = [...table.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-above:not([data-ghost]), .replayer-pot-layers.is-placed:not([data-ghost]) > *, .replayer-split-shares.is-placed:not([data-ghost]) > *')].map(live).filter(Boolean);
       names.forEach(el => {
         const seat = el.closest('.replayer-seat');
         if (!seat) return;
@@ -9646,7 +9655,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         if (!b) return;
         const own = [...seat.querySelectorAll('.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-dealer-btn' + (el.dataset.spot === 'cards' ? '' : ', .replayer-seat-cards .card-row > *'))];
         const rest = [...table.querySelectorAll('.replayer-seat[data-seat]')].filter(x => x !== seat)
-          .flatMap(x => [...x.querySelectorAll('.replayer-seat-info, .replayer-seat-cards .card-row > *, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn')]);
+          .flatMap(x => [...x.querySelectorAll('.replayer-seat-info, .replayer-seat-cards .card-row > *, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name:not([data-ghost]), .replayer-dealer-btn')]);
         const list = own.concat(rest).map(live).filter(Boolean).concat(felt).concat(el.dataset.spot === 'cards' ? rankBoxesOf(seat) : []);
         if (list.some(o => Math.min(b.right, o.right) - Math.max(b.left, o.left) > 0.5 && Math.min(b.bottom, o.bottom) - Math.max(b.top, o.top) > 0.5)) spots.delete(key);
       });
@@ -9720,7 +9729,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const besides = [...table.querySelectorAll('.replayer-seat[data-seat]')].filter(s => s !== seat)
         .flatMap(s => [...s.querySelectorAll('.replayer-seat-info, ' + SEAT_PIECES)])
         .concat([...seat.querySelectorAll(SEAT_PIECES)].filter(e => !ownCards.includes(e)))
-        .concat([...table.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-above, .replayer-pot-layers.is-placed > *, .replayer-split-shares.is-placed > *')])
+        .concat([...table.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-above:not([data-ghost]), .replayer-pot-layers.is-placed:not([data-ghost]) > *, .replayer-split-shares.is-placed:not([data-ghost]) > *')])
         .map(rectOf).filter(b => b.width > 0 && b.height > 0).concat(placed, [...pending.values()]);
       const others = besides.concat(ownCards.map(rectOf).filter(b => b.width > 0 && b.height > 0));
       if (!hits(r, others)) { placed.push(r); return; }
@@ -9797,11 +9806,11 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const mx = b.left + b.width / 2, my = b.top + b.height / 2;
       return { left: mx - bw / 2, right: mx + bw / 2, top: my - bh / 2, bottom: my + bh / 2, width: bw, height: bh };
     };
-    const PIECES = '.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn, .replayer-seat-cards .card-row > *';
+    const PIECES = '.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name:not([data-ghost]), .replayer-dealer-btn, .replayer-seat-cards .card-row > *';
     const piecesOf = (seatEl) => (seatEl ? [...seatEl.querySelectorAll(PIECES)].map(boxOf).filter(b => b.width > 0 && b.height > 0) : []);
     // The middle of the felt: the pot (its figure and its chips), the board, the rows under the board. Not the game
     // pill: it is placed after the wagers, round them.
-    const felt = [...table.querySelectorAll('.replayer-pot-display, .replayer-pot-above, .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-layers.is-placed > *, .replayer-split-shares.is-placed > *')]
+    const felt = [...table.querySelectorAll('.replayer-pot-display, .replayer-pot-above:not([data-ghost]), .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-layers.is-placed:not([data-ghost]) > *, .replayer-split-shares.is-placed:not([data-ghost]) > *')]
       .map(boxOf).filter(b => b.width > 0 && b.height > 0);
     pills.forEach(el => {
       el.style.left = el.dataset.baseLeft;
@@ -9884,6 +9893,23 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       placed.push(box(cx, cy));
       el.style.left = ((cx - ox) / W * 100).toFixed(3) + '%';
       el.style.top = ((cy - oy) / H * 100).toFixed(3) + '%';
+      /* A wager already on the felt that this pass moves (something new took its cloth) glides to its new spot on the
+         slide spring: it jumped there in a frame, 31px in a PLO hand (owner, 2026-11-21: "Every single animation should
+         be ultra smooth"). Not while a motion of its own carries it (the push-out, a squash). */
+      const now = { x: (cx - ox) / W, y: (cy - oy) / H };
+      const was = wagerSpotsRef.current.get(el);
+      wagerSpotsRef.current.set(el, now);
+      if (springOn && springSet && was) {
+        const dx = (was.x - now.x) * W, dy = (was.y - now.y) * H;
+        if (Math.hypot(dx, dy) > 1.5 && !el.getAnimations().some(a => a.playState === 'running')) {
+          const sl = tierSpring(springSet, 'slide');
+          const rate0 = motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1) * REPLAYER_PACE;
+          motion.run(el, { key: { el, kind: 'glide' }, prefix: 'translate(-50%, -50%)', size: { w, h }, channels: [
+            { prop: 'x', spring: sl, from: dx, to: 0, timeScale: rate0 },
+            { prop: 'y', spring: sl, from: dy, to: 0, timeScale: rate0 },
+          ] });
+        }
+      }
     });
   };
   useLayoutEffect(() => { if (tableRef.current) placeWagers(tableRef.current); });
@@ -9897,7 +9923,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     tags.forEach(t => { delete t.dataset.side; });
     const r = subrowPx(table), g = r / 4;
     const T = table.getBoundingClientRect();
-    const others = [...table.querySelectorAll('.replayer-seat-info, .replayer-seat-cards .card-row > *, .replayer-seat-hand-name, .replayer-action-badge-outer, .replayer-dealer-btn, .replayer-bet-chip')]
+    const others = [...table.querySelectorAll('.replayer-seat-info, .replayer-seat-cards .card-row > *, .replayer-seat-hand-name:not([data-ghost]), .replayer-action-badge-outer, .replayer-dealer-btn, .replayer-bet-chip')]
       .map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
     const clear = (b) => b.left >= T.left && b.right <= T.right
       && !others.some(o => b.left < o.right + g && b.right > o.left - g && b.top < o.bottom + g && b.bottom > o.top - g);
@@ -9925,7 +9951,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     if (info) { info.style.marginTop = ''; delete info.dataset.away; }
     const r = subrowPx(table);
     if (!info || !info.getBoundingClientRect().width) return;
-    const boxes = [...table.querySelectorAll('.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name, .replayer-dealer-btn, .replayer-seat-cards .card-row > *, .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-layers.is-placed > *, .replayer-split-shares.is-placed > *, .replayer-watermark, .replayer-bet-chip')]
+    const boxes = [...table.querySelectorAll('.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-seat-hand-name:not([data-ghost]), .replayer-dealer-btn, .replayer-seat-cards .card-row > *, .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-layers.is-placed:not([data-ghost]) > *, .replayer-split-shares.is-placed:not([data-ghost]) > *, .replayer-watermark, .replayer-bet-chip')]
       .map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
     /* The pill itself (and the tournament line under it), not the 46% column that centres them: that column reached
        a side seat's cards on a small table, and the pill moved off cards it was nowhere near, onto the watermark. */
@@ -9965,11 +9991,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       placeButton(table);
       placeLabels(table);
       placeNames(table, true);
-      const before = new Map([...table.querySelectorAll('.replayer-bet-chip[data-seat]')].map(el => [el, el.getBoundingClientRect()]));
+      /* Where each wager rests (its laid-out place, not its drawn one: a wager this pass moves glides there, and drawn
+         it is still where it was). */
+      const restAt = (el) => ({ x: el.offsetLeft, y: el.offsetTop });
+      const before = new Map([...table.querySelectorAll('.replayer-bet-chip[data-seat]')].map(el => [el, restAt(el)]));
       placeWagers(table);
       before.forEach((b, el) => {
-        const a = el.getBoundingClientRect();
-        const dx = (a.left + a.width / 2) - (b.left + b.width / 2), dy = (a.top + a.height / 2) - (b.top + b.height / 2);
+        const a = restAt(el);
+        const dx = a.x - b.x, dy = a.y - b.y;
         const rec = prevWagersRef.current.get(Number(el.dataset.seat));
         if ((dx || dy) && rec && rec.el === el && rec.geo) { rec.geo.cx += dx; rec.geo.cy += dy; }
       });
@@ -10059,18 +10088,35 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           const m = /rotate\(([-\d.]+)deg\)/.exec(el.style.transform || '');
           let list = seatCardsNow.get(seat);
           if (!list) seatCardsNow.set(seat, list = []);
-          list.push({ node: el, cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: el.offsetWidth || r.width, h: el.offsetHeight || r.height, angle: m ? Number(m[1]) : 0, back: el.tagName !== 'IMG' });
+          list.push({ node: el, cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: el.offsetWidth || r.width, h: el.offsetHeight || r.height, angle: m ? Number(m[1]) : 0, back: el.tagName !== 'IMG',
+            // How strongly it is drawn (a draw game's thrown card dims to 0.4 before it goes): what a copy fades from. Its
+            // own style first: the computed value is still easing there in the commit that dims it.
+            o: el.style.opacity !== '' ? Number(el.style.opacity) : Number(getComputedStyle(el).opacity) });
           cardElsNow.add(el);
         });
         table.querySelectorAll('.card-row > [data-pose]').forEach(el => posedNow.push(el));
         // The seats (51-71): the plaque with the turn, every action label, every name under a plaque.
         const turnInfo = turnIdx != null && turnIdx >= 0 ? table.querySelector('.replayer-seat[data-seat="' + turnIdx + '"] .replayer-seat-info') : null;
         seatsNow.turn = turnInfo ? { seat: turnIdx, rect: turnInfo.getBoundingClientRect() } : null;
+        /* Each label's place is kept against its plaque, in the plaque's own units (dx, dy), so a copy fading where
+           the label stood is placed by the plaque as it is THEN: a seat folded on the street's last action shrinks to
+           0.88 after this commit, and the label with it. */
         table.querySelectorAll('.replayer-action-badge-outer[data-act-seat]').forEach(el => {
           const r = el.getBoundingClientRect();
-          if (r.width > 0) seatsNow.labels.push({ node: el, seat: Number(el.dataset.actSeat), cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: el.offsetWidth || r.width, h: el.offsetHeight || r.height, angle: 0 });
+          if (!(r.width > 0)) return;
+          const plaque = el.closest('.replayer-seat-info');
+          const pr = plaque ? plaque.getBoundingClientRect() : null;
+          const ps = pr && plaque.offsetWidth ? pr.width / plaque.offsetWidth : 1;
+          seatsNow.labels.push({ node: el, seat: Number(el.dataset.actSeat), cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: el.offsetWidth || r.width, h: el.offsetHeight || r.height, angle: 0,
+            dx: pr ? (r.left + r.width / 2 - (pr.left + pr.width / 2)) / (ps || 1) : null, dy: pr ? (r.top + r.height / 2 - (pr.top + pr.height / 2)) / (ps || 1) : null });
         });
         table.querySelectorAll('[data-run-name]').forEach(el => seatsNow.runNames.set(Number(el.dataset.nameSeat), { text: el.dataset.runName, lead: !el.classList.contains('is-trailing') }));
+        /* What may leave without a moment of its own (a readout or the stud note, the main and side pots' row, a split's
+           shares, the pile), with where it hangs: the next press fades a copy of whatever went out where it stood. */
+        seatsNow.leavers = [...table.querySelectorAll(LEAVERS)].map(el => ({
+          node: el, parent: el.parentElement,
+          cls: el.matches('[data-name-seat]') ? null : ['.replayer-pot-layers', '.replayer-split-shares', '.replayer-pot-above'].find(c => el.matches(c)),
+        }));
         // The Dead cards strip (7), under the table in portrait, in the board's slot in landscape.
         const deadRoot = table.closest('.replayer-replay') || table.parentElement;
         if (deadRoot) deadRoot.querySelectorAll('.replayer-dead-strip-cards > img, .replayer-dead-row > img').forEach(el => {
@@ -10112,6 +10158,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           motion.prevAtRisk = new Set(atRiskSeats);
           motion.prevStaleEls = new Set(table ? table.querySelectorAll('.replayer-action-badge-outer.is-stale') : []);
           motion.prevNameEls = new Set(table ? table.querySelectorAll('[data-name-seat]') : []);
+          motion.prevPotPills = new Set(table ? table.querySelectorAll(POT_PILLS) : []);
           motion.prevBadges = new Set(table ? table.querySelectorAll('.replayer-seat-draw-badge') : []);
           motion.prevDead = deadNow;
           // Each stack's figure as drawn (31, 33): what a countdown starts from.
@@ -10159,7 +10206,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             motion.beginMoment('deal');
             motion.momentKey = 'deal';
             jobs.forEach(j => { j.el.getAnimations().forEach(a => a.cancel()); dealIn(motion, { set: springSet, rate: rate0, el: j.el, dx: j.dx, dy: j.dy, delay: j.delay, size: j.size }); });
-            dealEnds = jobs[jobs.length - 1].delay + cardTimes(springSet).handArrive / rate0;
+            dealEnds = jobs[jobs.length - 1].delay + cardTimes(springSet).armArrive / rate0;   // dealIn's spring
           }
         }
       }
@@ -10628,7 +10675,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             if (!info) return null;
             const plaque = info.getBoundingClientRect();
             const cards = [...seatEl.querySelectorAll('.replayer-seat-cards .card-row > *')].map(c => c.getBoundingClientRect()).filter(r => r.width > 0);
-            const handNameEl = seatEl.querySelector('.replayer-seat-hand-name');
+            const handNameEl = seatEl.querySelector('.replayer-seat-hand-name:not([data-ghost])');
             const handName = handNameEl ? handNameEl.getBoundingClientRect() : null;
             const nameEl = seatEl.querySelector('.replayer-seat-name');
             let name = null;
@@ -10708,6 +10755,21 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           if (!ship) return;
           ship.seatsRead.forEach(s => motion.pendingStacks.set(s.d.seat, (motion.pendingStacks.get(s.d.seat) || 0) + s.d.award));
           motion.pileHeld = true;
+          /* The pot's figure and its pile are hidden by .is-emptied from this commit, and the ship that counts the figure
+             down and fades it is built a frame or two later: in between the pot was gone, then back at full, then faded,
+             about 300ms of blink at every result (owner, 2026-11-21: "Every single animation should be ultra smooth").
+             It is held at full from the press; the ship's own fade takes over under the same key. Should the ship never
+             be built (a step taken first), the hold still ends in a fade. */
+          {
+            const tn0 = !potLayers.length ? potTextNode() : null;
+            const box0 = tn0 && tn0.parentElement && tn0.parentElement.closest('.replayer-pot-display.is-emptied');
+            // Its own key, kept: the registry knows a motion by the key object itself, so the ship stops this one by it.
+            const holdKey = { el: box0, kind: 'empty' };
+            motion.potHoldKey = box0 ? holdKey : null;
+            if (box0) motion.run(box0, { key: holdKey, property: 'individual', size: { w: box0.offsetWidth, h: box0.offsetHeight }, channels: [
+              { prop: 'opacity', ramp: { from: 1, to: 0, delay: tShip + 4000 / rate, duration: 2 * S.beat / rate } },
+            ] });
+          }
           /* The ship itself is built after the press when it leaves later than that (after the
              river's wagers have landed), in two frames: where it lands, then the chips. The press
              frame is the one an old phone can least afford, and it carries the sweep already; built
@@ -10747,8 +10809,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               potTn.data = fmtChips(into >= endAt ? 0 : Math.max(0, Math.round(left / unit0) * unit0));
               motion.wroteDigits = true;
             }, { end: tStart + endAt });
+            if (motion.potHoldKey) { motion.stop(motion.potHoldKey); motion.potHoldKey = null; }
             motion.run(potBox, { key: { el: potBox, kind: 'empty' }, property: 'individual', size: { w: potBox.offsetWidth, h: potBox.offsetHeight }, channels: [
-              { prop: 'opacity', ramp: { from: 1, to: 0, delay: tStart + endAt, duration: S.labelFade / rate } },
+              { prop: 'opacity', ramp: { from: 1, to: 0, delay: tStart + endAt, duration: 2 * S.beat / rate, ease: (p) => p * p * (3 - 2 * p) } },
             ] });
           }
           shipPot(motion, {
@@ -10815,8 +10878,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         }
 
         /* 7: a stud fold: the up cards travel to their places in the Dead cards strip (whose cards make room), the
-           down cards leave toward the muck. */
-        if (act && act.action === 'fold' && gameCfg.isStud && rSettings.animateDeal && !rowEls(act.player).length) {
+           down cards leave toward the muck. The hero's too: its cards stay in the page, hidden at once by .fold-sprung,
+           and with neither moment taking them they vanished in a frame, seven cards at razz (owner, 2026-11-21: "Every
+           single animation should be ultra smooth"). */
+        if (act && act.action === 'fold' && gameCfg.isStud && rSettings.animateDeal && (!rowEls(act.player).length || act.player === replayHeroIdx)) {
           const was = (prevCards.get(act.player) || []).filter(c => c.node);
           const root = table.closest('.replayer-replay') || table.parentElement;
           const strip = root && root.querySelector('.replayer-dead-strip-cards, .replayer-dead-row');
@@ -10920,7 +10985,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             writes.push(() => jobs.forEach(j => {
               j.el.getAnimations().forEach(a => a.cancel());
               dealIn(motion, { set, rate, el: j.el, dx: j.dx, dy: j.dy, delay: j.delay, size: j.size });
-              if (j.turn) turnOver(motion, { set, rate, el: j.el, prefix: j.turn.prefix === 'none' ? '' : j.turn.prefix, delay: j.delay + (CT.handArrive + S.beat) / rate, lift, size: j.size, back: backPaint });
+              if (j.turn) turnOver(motion, { set, rate, el: j.el, prefix: j.turn.prefix === 'none' ? '' : j.turn.prefix, delay: j.delay + (CT.armArrive + S.beat) / rate, lift, size: j.size, back: backPaint });
             }));
           }
         }
@@ -10982,6 +11047,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               jobs.push({ el: row, dx: vx / len * r, dy: vy / len * r, size: { w: rr.width, h: rr.height } });
             });
             if (jobs.length) writes.push(() => jobs.forEach(j => rap(motion, { set, rate, el: j.el, dx: j.dx, dy: j.dy, size: j.size })));
+          }
+          /* The cards thrown at the draw (dimmed to 0.4 as the street's betting closed) go as the new ones come: copies
+             fade out where they lay, from their dim. They went in a frame (owner, 2026-11-21: "Every single animation
+             should be ultra smooth"). Only dimmed ones: a kept card the row re-made is still on the table. */
+          if (motionKind === 'street' && layer && L) {
+            const gone = [];
+            prevCards.forEach(list => list.forEach(c => { if (c.node && !c.node.isConnected && c.o < 0.6) gone.push(c); }));
+            if (gone.length) writes.push(() => cardsAway(motion, { rate, layer, layerRect: L, cards: gone, duration: 2 * S.beat }));
           }
           // 10: the hero's draw: the new cards come from the dealer spot into the raised gaps, then the hand sorts.
           if (heroDrawHold) {
@@ -11140,7 +11213,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         const flickEnd = flickSp.settleMs(1e-3) / rate;
         const flickArrive = timeTo(flickSp, 0.98) / rate;
         const prevVals = motion.prevStackVals || new Map();
-        const r1 = (() => { const p = document.createElement('div'); p.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)'; table.appendChild(p); const v = p.getBoundingClientRect().height / 100 || 8; table.removeChild(p); return v; })();
         const act = motionKind === 'action' ? currentActions[actionIdx] : null;
         if (act && act.amount && prevVals.has(act.player)) {
           const pi = act.player;
@@ -11157,7 +11229,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 motion.wroteDigits = true;
               }, { end: flickEnd }));
             } else {
-              // 33: down to 0 first, then the 0 rolls up out as All-in rolls in from below.
+              /* 33: down to 0 first, then the 0 crossfades to All-in where it stands. It rolled, both 1r up in 90ms, in
+                 the plaque (owner, 2026-11-21: "Still some jittery shit on hero's seat box"). */
               writes.push(() => {
                 if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
                 const ghost = document.createElement('span');
@@ -11165,13 +11238,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 el.appendChild(ghost);
                 motion.sample((t) => { ghost.textContent = fmtChips(t >= flickArrive ? 0 : Math.max(0, roundU(from - from * flickSp.at(t * rate)))); }, { end: flickArrive });
                 const S2 = SPRING_SETS[set].stage;
+                const ease2 = (p) => p * p * (3 - 2 * p);
                 motion.run(ghost, { transient: true, property: 'individual', size: { w: el.offsetWidth, h: el.offsetHeight }, channels: [
-                  { prop: 'y', spring: flickSp, from: 0, to: -r1, delay: flickArrive, timeScale: rate },
-                  { prop: 'opacity', ramp: { from: 1, to: 0, delay: flickArrive, duration: S2.labelFade / rate } },
+                  { prop: 'opacity', ramp: { from: 1, to: 0, delay: flickArrive, duration: S2.beat / rate, ease: ease2 } },
                 ] });
                 motion.run(mark, { key: { el: mark, kind: 'roll' }, property: 'individual', size: { w: mark.offsetWidth, h: mark.offsetHeight }, channels: [
-                  { prop: 'y', spring: flickSp, from: r1, to: 0, delay: flickArrive, timeScale: rate },
-                  { prop: 'opacity', ramp: { from: 0, to: 1, delay: flickArrive, duration: S2.labelFade / rate } },
+                  { prop: 'opacity', ramp: { from: 0, to: 1, delay: flickArrive, duration: S2.beat / rate, ease: ease2 } },
                 ] });
               });
             }
@@ -11219,15 +11291,20 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               span.textContent = gn.text;
               Object.assign(span.style, { left: gn.x + 'px', top: (gn.y - gn.h / 2) + 'px', font: gn.font, color: gn.color, height: gn.h + 'px', lineHeight: gn.h + 'px' });
               layer.appendChild(span);
+              // It fades in where it stands and out again; it rose 2r on the hand spring (owner, 2026-11-21: "Every
+              // single animation should be ultra smooth"; the words on a seat fade, never slide).
               const hold = tLand + timeTo(hand_, 0.98) / rate + 800 / rate;
+              const ease2 = (p) => p * p * (3 - 2 * p);
               motion.run(span, { transient: true, property: 'individual', size: { w: 40, h: gn.h }, channels: [
-                { prop: 'y', spring: hand_, from: 2 * r1, to: 0, delay: tLand, timeScale: rate },
-                { prop: 'opacity', ramp: { from: 0, to: 1, delay: tLand, duration: S2.appear / rate } },
-                { prop: 'opacity', ramp: { from: 1, to: 0, delay: hold, duration: S2.labelFade / rate } },
-              ], end: hold + S2.labelFade / rate });
+                { prop: 'opacity', ramp: { from: 0, to: 1, delay: tLand, duration: 2 * S2.beat / rate, ease: ease2 } },
+                { prop: 'opacity', ramp: { from: 1, to: 0, delay: hold, duration: 2 * S2.beat / rate, ease: ease2 } },
+              ], end: hold + 2 * S2.beat / rate });
             });
-            busts.forEach(({ el }) => {
-              // The ALL-IN that leaves is drawn over the stack line in the plaque: the line itself waits unseen.
+            busts.forEach(({ el, pi }) => {
+              /* The mark that leaves is drawn over the stack line in the plaque: the line itself waits unseen. It is the
+                 mark the seat showed (AT RISK where it was covered; it read ALL-IN, a change of word at the press), and the
+                 two crossfade where they stand: they rolled, both 1r up in 90ms (owner, 2026-11-21: "Still some jittery
+                 shit on hero's seat box"). */
               const plaque = el.parentElement;
               if (!plaque) return;
               if (getComputedStyle(plaque).position === 'static') plaque.style.position = 'relative';
@@ -11236,19 +11313,18 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               Object.assign(ghost.style, { left: el.offsetLeft + 'px', top: el.offsetTop + 'px', width: el.offsetWidth + 'px', height: el.offsetHeight + 'px', right: 'auto', bottom: 'auto' });
               const mk = document.createElement('span');
               mk.className = 'replayer-allin-mark';
-              mk.textContent = 'ALL-IN';
+              mk.textContent = (motion.prevAtRisk || new Set()).has(pi) ? 'AT RISK' : 'ALL-IN';
               ghost.appendChild(mk);
               plaque.appendChild(ghost);
               const tn = (el.firstChild && el.firstChild.nodeType === 3) || el.querySelector('.replayer-out-mark') ? el.firstChild : null;
+              const ease2 = (p) => p * p * (3 - 2 * p);
               motion.run(ghost, { transient: true, property: 'individual', size: { w: el.offsetWidth, h: el.offsetHeight }, channels: [
-                { prop: 'y', spring: flickSp, from: 0, to: -r1, delay: tLand, timeScale: rate },
-                { prop: 'opacity', ramp: { from: 1, to: 0, delay: tLand, duration: S2.labelFade / rate } },
+                { prop: 'opacity', ramp: { from: 1, to: 0, delay: tLand, duration: S2.beat / rate, ease: ease2 } },
               ] });
               if (tn) {
                 // The figure itself waits under the mark: a span would change React's text node, so its colour fades in.
                 motion.run(el, { key: { el, kind: 'roll' }, property: 'individual', size: { w: el.offsetWidth, h: el.offsetHeight }, channels: [
-                  { prop: 'y', spring: flickSp, from: r1, to: 0, delay: tLand, timeScale: rate },
-                  { prop: 'opacity', ramp: { from: 0, to: 1, delay: tLand, duration: S2.labelFade / rate } },
+                  { prop: 'opacity', ramp: { from: 0, to: 1, delay: tLand, duration: S2.beat / rate, ease: ease2 } },
                 ] });
               }
             });
@@ -11259,16 +11335,22 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       /* (8) The seats (Replayer animations 51, 53-55, 57, 58, 60, 61, 63, 66, 67, 71). */
       {
         const S4 = SPRING_SETS[set].stage;
-        const ySp = tierSpring(set, 'yield'), armSp = tierSpring(set, 'arm'), inertiaSp = tierSpring(set, 'inertia');
-        const r4 = (() => { const pr = document.createElement('div'); pr.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)'; table.appendChild(pr); const v = pr.getBoundingClientRect().height / 100 || 8; table.removeChild(pr); return v; })();
+        const armSp = tierSpring(set, 'arm'), inertiaSp = tierSpring(set, 'inertia');
         const prevS = motion.prevSeats || { turn: null, labels: [], runNames: new Map() };
         const seatOf = (pi) => table.querySelector('.replayer-seat[data-seat="' + pi + '"]');
         const act4 = motionKind === 'action' ? currentActions[actionIdx] : null;
-        const drop = (el, delay, from = -0.75 * r4, fade = S4.arrivalFade) => {
+        /* A seat's words (a readout at the showdown, a draw's badge, the stud note) fade in where they stand. They dropped
+           0.75r from above in 70ms (owner, 2026-11-21: "Still some jittery shit on hero's seat box"; the words on a seat
+           now come and go by fading, never by sliding). */
+        const easeIO = (p) => p * p * (3 - 2 * p);
+        // Readouts a moment below has taken in hand, so the last pass (any new readout fades in) leaves them alone.
+        const namesHandled = new Set();
+        const drop = (el, delay, to) => {
           el.getAnimations().forEach(a => { if (a instanceof CSSAnimation) a.cancel(); });
+          // To the element's own opacity (a trailing name rests at 0.55): ramped to 1, it would dim a notch as it ended.
+          if (to == null) { const own = Number(getComputedStyle(el).opacity); to = Number.isFinite(own) ? own : 1; }
           return motion.run(el, { key: { el, kind: 'drop' }, property: 'individual', size: { w: el.offsetWidth, h: el.offsetHeight }, channels: [
-            { prop: 'y', spring: ySp, from, to: 0, delay, timeScale: rate },
-            { prop: 'opacity', ramp: { from: 0, to: 1, delay, duration: fade / rate } },
+            { prop: 'opacity', ramp: { from: 0, to, delay, duration: S4.beat / rate, ease: easeIO } },
           ] });
         };
         /* 51: the turn passes by a crossfade (owner, 2026-11-13: "it shouldn't jump from seat to seat, it should fade
@@ -11316,36 +11398,69 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             if (entry) motion.tick(fade, take, entry); else take();
           });
         }
-        // 53: the action label rises out of its plaque and settles.
+        /* 53: the action label fades in on its plaque. It rose 1r out of the plaque on the yield spring, visible within
+           90ms (owner, 2026-11-21: "Still some jittery shit on hero's seat box": the words on a seat fade, never slide). */
         if (act4) {
           const lab = table.querySelector('.replayer-action-badge-outer[data-act-seat="' + act4.player + '"]');
           if (lab) writes.push(() => {
             lab.getAnimations().forEach(a => { if (a instanceof CSSAnimation) a.cancel(); });
             // To the label's own opacity (a check or fold rests at 0.85): ramped to 1, it dimmed a notch the frame the
-            // rise ended (owner, 2026-11-21: "make all of this kind of jittery stuff go away").
+            // fade ended (owner, 2026-11-21: "make all of this kind of jittery stuff go away").
             const own = Number(getComputedStyle(lab).opacity);
             motion.run(lab, { key: { el: lab, kind: 'rise' }, property: 'individual', size: { w: lab.offsetWidth, h: lab.offsetHeight }, channels: [
-              { prop: 'y', spring: ySp, from: r4, to: 0, timeScale: rate },
-              { prop: 'opacity', ramp: { from: 0, to: Number.isFinite(own) ? own : 1, delay: 0, duration: 60 / rate } },
+              { prop: 'opacity', ramp: { from: 0, to: Number.isFinite(own) ? own : 1, delay: 0, duration: S4.beat / rate, ease: easeIO } },
             ] });
           });
         }
-        // 54: at a new street the last street's labels sink into their plaques round the table from the small blind.
-        if (motionKind === 'street' && prevS.labels.length && layer && L) {
+        /* 54: labels the commit no longer draws fade out where they stood: the last street's at a new street, round the
+           table from the small blind, and a seat's at the result or when its run-out name takes its place. Nothing
+           moves (owner, 2026-11-21: "the fold action buttons should fade away, not violently disappear"; they sank by
+           their height and were gone in about 100ms), and each copy is drawn as the label was, its plaque's scale,
+           grey and dimming included (labelsAway). A seat that acted again is skipped: its new label takes the place. */
+        if (motionKind && prevS.labels.length && layer && L) {
           const order = (pi) => dealOrder.indexOf(pi);
-          const gone = prevS.labels.filter(l => !l.node.isConnected).sort((a, b) => order(a.seat) - order(b.seat));
+          // A seat that acted again crossfades: its old label goes over the beat its new one fades in over (it went in a
+          // frame, a dimmed answer at 0.4 or a bet at full).
+          const shown = new Set([...table.querySelectorAll('.replayer-action-badge-outer[data-act-seat]')].map(el => Number(el.dataset.actSeat)));
+          const gone = prevS.labels.filter(l => !l.node.isConnected).map(l => (shown.has(l.seat) ? { ...l, duration: S4.beat } : l))
+            .sort((a, b) => order(a.seat) - order(b.seat));
           if (gone.length) {
-            const stagger = gone.length > 1 ? Math.min(S4.sweepStagger, S4.sweepCap / (gone.length - 1)) : 0;
-            writes.push(() => gone.forEach((l, k) => ghostsAway(motion, { set, rate, layer, layerRect: L, cards: [l], tx: 0, ty: l.h, turn: 0, scaleTo: 1, tier: 'yield', delay: (k * stagger) / rate })));
+            const stagger = motionKind === 'street' && gone.length > 1 ? Math.min(S4.sweepStagger, S4.sweepCap / (gone.length - 1)) : 0;
+            writes.push(() => labelsAway(motion, { rate, layer, layerRect: L, duration: 2 * S4.beat, stagger, labels: gone.map(l => {
+              const plaque = seatOf(l.seat) && seatOf(l.seat).querySelector('.replayer-seat-info');
+              if (!plaque || l.dx == null) return l;
+              const pr = plaque.getBoundingClientRect();
+              const scale = (plaque.offsetWidth ? pr.width / plaque.offsetWidth : 1) || 1;
+              let opacity = 1;
+              for (let n = plaque; n && n !== table; n = n.parentElement) opacity *= Number(getComputedStyle(n).opacity) || 0;
+              return { ...l, plaque, cx: pr.left + pr.width / 2 + l.dx * scale, cy: pr.top + pr.height / 2 + l.dy * scale, scale, filter: getComputedStyle(plaque).filter, opacity };
+            }) }));
           }
         }
-        // 55: a bet makes the earlier answers stale: they dim in acting order.
+        /* 55: a bet makes the earlier answers stale: they dim in acting order, from where they rest (a check or a fold
+           at 0.85). The ramp started at 1, so every earlier answer flashed up to full before it dimmed; and since every
+           label was re-made at every step, the ones already stale did it again at every bet after (owner, 2026-11-21:
+           "Still some jittery shit on hero's seat box": the hero's check, on its plaque, at each raise). */
         const staleNew = [...table.querySelectorAll('.replayer-action-badge-outer.is-stale')].filter(el => !(motion.prevStaleEls || new Set()).has(el));
         if (staleNew.length && act4 && ['bet', 'raise', 'all-in'].includes(act4.action)) {
           const ordered = staleNew.sort((a, b) => ((Number(a.dataset.actSeat) - act4.player + 99) % hand.players.length) - ((Number(b.dataset.actSeat) - act4.player + 99) % hand.players.length));
-          writes.push(() => ordered.forEach((el, k) => motion.run(el, { key: { el, kind: 'stale' }, property: 'individual', size: { w: el.offsetWidth, h: el.offsetHeight }, channels: [
-            { prop: 'opacity', ramp: { from: 1, to: 0.4, delay: (60 + k * 25) / rate, duration: S4.beat / rate } },
-          ] })));
+          // Read from a hidden copy without the class: toggling the label's own class would start its 1ms transition
+          // under Reduce Motion and read back 0.4.
+          const restOf = (el) => {
+            const c = el.cloneNode(false);
+            c.classList.remove('is-stale');
+            c.style.visibility = 'hidden';
+            el.parentElement.appendChild(c);
+            const v = Number(getComputedStyle(c).opacity);
+            c.remove();
+            return Number.isFinite(v) && v > 0 ? v : 1;
+          };
+          writes.push(() => ordered.forEach((el, k) => {
+            const rest = restOf(el);
+            motion.run(el, { key: { el, kind: 'stale' }, property: 'individual', size: { w: el.offsetWidth, h: el.offsetHeight }, channels: [
+              { prop: 'opacity', ramp: { from: rest, to: 0.4, delay: (60 + k * 25) / rate, duration: S4.beat / rate } },
+            ] });
+          }));
         }
         // 57: an all-in's ring closes onto its plaque from 1.35 times its size. Off (RING_CLOSES).
         if (RING_CLOSES && act4 && act4.action === 'all-in' && layer && L) {
@@ -11371,7 +11486,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             });
           }
         }
-        // 58: ALL-IN rolls to AT RISK at each covered seat, a beat apart in seat order.
+        /* 58: ALL-IN crossfades to AT RISK at each covered seat, a beat apart in seat order. It rolled, both words 0.75r
+           up in 90ms, in the plaque itself (owner, 2026-11-21: "Still some jittery shit on hero's seat box"). */
         const riskNew = [...atRiskSeats].filter(pi => !(motion.prevAtRisk || new Set()).has(pi)).sort((a, b) => a - b);
         if (riskNew.length) writes.push(() => riskNew.forEach((pi, k) => {
           const st = seatOf(pi) && seatOf(pi).querySelector('.replayer-seat-stack');
@@ -11386,12 +11502,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           Object.assign(ghost.style, { left: st.offsetLeft + 'px', top: st.offsetTop + 'px', width: st.offsetWidth + 'px', height: st.offsetHeight + 'px', right: 'auto', bottom: 'auto' });
           plaque.appendChild(ghost);
           motion.run(ghost, { transient: true, property: 'individual', size: { w: st.offsetWidth, h: st.offsetHeight }, channels: [
-            { prop: 'y', spring: ySp, from: 0, to: -0.75 * r4, delay: d, timeScale: rate },
-            { prop: 'opacity', ramp: { from: 1, to: 0, delay: d, duration: 60 / rate } },
+            { prop: 'opacity', ramp: { from: 1, to: 0, delay: d, duration: S4.beat / rate, ease: easeIO } },
           ] });
           motion.run(mark, { key: { el: mark, kind: 'roll' }, property: 'individual', size: { w: mark.offsetWidth, h: mark.offsetHeight }, channels: [
-            { prop: 'y', spring: ySp, from: 0.75 * r4, to: 0, delay: d, timeScale: rate },
-            { prop: 'opacity', ramp: { from: 0, to: 1, delay: d, duration: 60 / rate } },
+            { prop: 'opacity', ramp: { from: 0, to: 1, delay: d, duration: S4.beat / rate, ease: easeIO } },
           ] });
         }));
         // 60 / 61: at the showdown the names arrive weakest first and the winner's last; a split's low half 420ms
@@ -11414,7 +11528,25 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               .sort((a, b) => won(a.pi) - won(b.pi) || loHalf(a.pi) - loHalf(b.pi) || strength(a.pi) - strength(b.pi));
             const step = list.length > 1 ? 800 / (list.length - 1) : 0;
             const base = Math.max(0, (motion.shipArriveMs || 0) - 800);
-            writes.push(() => list.forEach((x, k) => drop(x.el, (base + k * step) / rate + (loHalf(x.pi) && won(x.pi) ? 3 * S4.beat / rate : 0))));
+            /* A name a run-out already showed (the same words) stays: it went out at the result and came back in the
+               same place, a blink on the seat. It only takes its new strength, from the run-out's (0.55 trailing). */
+            const prevRN = prevS.runNames || new Map();
+            const wordsOf = (el) => [...el.childNodes].filter(n => !(n.classList && n.classList.contains('hn-eq'))).map(n => n.textContent).join('').trim();
+            writes.push(() => list.forEach((x, k) => {
+              const was = prevRN.get(x.pi);
+              namesHandled.add(x.el);
+              if (was && was.text === wordsOf(x.el)) {
+                // Not the winner's CSS reveal either (showdownRevealCentred): it holds the name at 0 for 0.8s.
+                x.el.getAnimations().forEach(a => { if (a instanceof CSSAnimation) a.cancel(); });
+                const own = Number(getComputedStyle(x.el).opacity);
+                const from = was.lead ? 1 : 0.55, to = Number.isFinite(own) ? own : 1;
+                if (Math.abs(from - to) > 0.01) motion.run(x.el, { key: { el: x.el, kind: 'drop' }, property: 'individual', size: { w: x.el.offsetWidth, h: x.el.offsetHeight }, channels: [
+                  { prop: 'opacity', ramp: { from, to, delay: 0, duration: S4.beat / rate, ease: easeIO } },
+                ] });
+                return;
+              }
+              drop(x.el, (base + k * step) / rate + (loHalf(x.pi) && won(x.pi) ? 3 * S4.beat / rate : 0));
+            }));
           }
         }
         // 63: a tournament seat that lost everything reads OUT; a beat later its plaque dims. It no longer shrinks (owner,
@@ -11460,23 +11592,64 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 const ghost = j.el.cloneNode(true);
                 ghost.removeAttribute('data-name-seat');
                 ghost.removeAttribute('data-run-name');
+                /* Out of every placement pass (`:not([data-ghost])`): it keeps the readout's class to keep its look, and
+                   placeNames took it for a readout standing under the plaque, so the new name rolling in beside it was
+                   "on" it and jumped beside the plaque a moment after it showed (owner, 2026-11-21: "Still some jittery
+                   shit on hero's seat box"). */
+                ghost.dataset.ghost = '1';
                 ghost.textContent = j.was.text;
                 ghost.classList.toggle('is-trailing', !j.was.lead);
                 host.appendChild(ghost);
+                // The old words fade out where they stood as the new ones fade in: a crossfade, no roll (it moved both
+                // 0.75r up in 90ms; owner, 2026-11-21: the words on a seat fade, never slide).
                 motion.run(ghost, { transient: true, property: 'individual', size: { w: j.el.offsetWidth, h: j.el.offsetHeight }, channels: [
-                  { prop: 'y', spring: ySp, from: 0, to: -0.75 * r4, delay: d, timeScale: rate },
-                  { prop: 'opacity', ramp: { from: j.was.lead ? 1 : 0.55, to: 0, delay: d, duration: 60 / rate } },
+                  { prop: 'opacity', ramp: { from: j.was.lead ? 1 : 0.55, to: 0, delay: d, duration: S4.beat / rate, ease: easeIO } },
                 ] });
               }
               motion.run(j.el, { key: { el: j.el, kind: 'roll' }, property: 'individual', size: { w: j.el.offsetWidth, h: j.el.offsetHeight }, channels: [
-                { prop: 'y', spring: ySp, from: 0.75 * r4, to: 0, delay: d, timeScale: rate },
-                { prop: 'opacity', ramp: { from: 0, to: j.now.lead ? 1 : 0.55, delay: d, duration: 60 / rate } },
+                { prop: 'opacity', ramp: { from: 0, to: j.now.lead ? 1 : 0.55, delay: d, duration: S4.beat / rate, ease: easeIO } },
               ] });
             } else if (j.was.lead !== j.now.lead) {
               motion.run(j.el, { key: { el: j.el, kind: 'lead' }, property: 'individual', size: { w: j.el.offsetWidth, h: j.el.offsetHeight }, channels: [
                 { prop: 'opacity', ramp: { from: j.was.lead ? 1 : 0.55, to: j.now.lead ? 1 : 0.55, delay: d, duration: S4.beat / rate } },
               ] });
             }
+          }));
+        }
+        /* Last: a seat's words new this commit that no moment above brings in (a run-out's names as the hands are
+           tabled, an equity figure, a readout a step brings) fade in where they stand. They appeared at full in a frame
+           ("Wheel" at the river call; owner, 2026-11-21: "Every single animation should be ultra smooth"). */
+        writes.push(() => table.querySelectorAll('[data-name-seat]').forEach(el => {
+          if ((motion.prevNameEls || new Set()).has(el) || namesHandled.has(el)) return;
+          if (el.getAnimations().some(a => !(a instanceof CSSAnimation))) return;
+          drop(el, 0);
+        }));
+        // A pot pill new to the main and side pots' row (or a split's shares) fades in where it stands.
+        writes.push(() => table.querySelectorAll(POT_PILLS).forEach(el => {
+          if ((motion.prevPotPills || new Set()).has(el)) return;
+          if (el.getAnimations().some(a => !(a instanceof CSSAnimation))) return;
+          drop(el, 0);
+        }));
+        /* And what went with no moment of its own (LEAVERS) fades out where it stood: a copy of it, put back in the place
+           it hung from with its own placement, held out of every placement pass. A seat whose readout is replaced keeps
+           the new one (a moment above takes the change); a row with a successor is replaced, not left. */
+        if (prevS.leavers && prevS.leavers.length) {
+          const named = new Set([...table.querySelectorAll('[data-name-seat]')].map(el => el.dataset.nameSeat));
+          const gone = prevS.leavers.filter(l => !l.node.isConnected && l.parent && l.parent.isConnected
+            && (l.cls ? !table.querySelector(l.cls + ':not([data-ghost])') : !named.has(l.node.dataset.nameSeat)));
+          if (gone.length) writes.push(() => gone.forEach(l => {
+            const g = l.node.cloneNode(true);
+            g.dataset.ghost = '1';
+            g.removeAttribute('data-name-seat');
+            g.removeAttribute('data-run-name');
+            g.setAttribute('aria-hidden', 'true');
+            g.style.pointerEvents = 'none';
+            l.parent.appendChild(g);
+            g.getAnimations({ subtree: true }).forEach(a => a.cancel());
+            const own = Number(getComputedStyle(g).opacity);
+            motion.run(g, { transient: true, property: 'individual', size: { w: g.offsetWidth || 1, h: g.offsetHeight || 1 }, channels: [
+              { prop: 'opacity', ramp: { from: Number.isFinite(own) ? own : 1, to: 0, delay: 0, duration: 2 * S4.beat / rate, ease: easeIO } },
+            ] });
           }));
         }
       }
@@ -12475,8 +12648,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                     label += ' ' + formatChipAmount(computePlayerContrib(hand, streetIdx, currentActions, lastAct._ai, pi));
                   }
                   // 58: re-keying is what makes the entrance replay when the
-                  // same player acts twice in one street.
-                  return <div key={streetIdx + '-' + actionIdx} data-act-seat={pi} className={'replayer-action-badge-outer action-' + actText + (stale ? ' is-stale' : '')}>{label}</div>;
+                  // same player acts twice in one street. By the action's own index, not the replay's step: keyed by
+                  // the step, every label at the table was re-made at every press, so a label's motions (its dimming
+                  // when a bet made it stale) found a new element each time and started again.
+                  return <div key={streetIdx + '-' + lastAct._ai} data-act-seat={pi} className={'replayer-action-badge-outer action-' + actText + (stale ? ' is-stale' : '')}>{label}</div>;
                 })()}
                 {/* On a corner of the name box rather than at a percentage
                     offset from the seat point — the plaque is sized by its

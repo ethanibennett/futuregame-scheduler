@@ -21,12 +21,13 @@ const SPEC = {
     inertia: { os: 1.5, t95: 269, settle: 674 },
     yield:   { os: 0,   t95: 181, settle: 351 },
   },
+  // k 420 since 2026-11-21 (was 640: t95 110/149/188/230/139, settle 257/347/439/537/271).
   B: {
-    flick:   { os: 0.5, t95: 110, settle: 257 },
-    hand:    { os: 0.5, t95: 149, settle: 347 },
-    arm:     { os: 0.5, t95: 188, settle: 439 },
-    inertia: { os: 0.5, t95: 230, settle: 537 },
-    yield:   { os: 0,   t95: 139, settle: 271 },
+    flick:   { os: 0.5, t95: 136, settle: 318 },
+    hand:    { os: 0.5, t95: 182, settle: 428 },
+    arm:     { os: 0.5, t95: 231, settle: 541 },
+    inertia: { os: 0.5, t95: 283, settle: 663 },
+    yield:   { os: 0,   t95: 172, settle: 335 },
   },
 };
 

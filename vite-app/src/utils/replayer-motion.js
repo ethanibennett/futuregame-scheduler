@@ -758,10 +758,15 @@ export function pushOut(reg, { set, rate = 1, el, dir, pushPx, addOn = false, si
   if (d2 < 0.25) { reg.stop(el); return null; }
   const vp = d2 > 0 ? (-(v.x * from.x + v.y * from.y) / d2) / rate : 0;
   const sp = vp ? spring({ ...SPRING_SETS[set].tiers.flick, velocity: vp }) : tierOf(set, 'flick');
+  /* A new wager fades in as it leaves its player's plaque: it was drawn at full on the plaque's edge the frame it was
+     made (owner, 2026-11-21: "Every single animation should be ultra smooth"). One already on the felt keeps its
+     strength. */
+  const fresh = !(addOn && s);
   return reg.run(el, {
     channels: [
       { prop: 'x', spring: sp, from: from.x, to: 0, timeScale: rate },
       { prop: 'y', spring: sp, from: from.y, to: 0, timeScale: rate },
+      ...(fresh ? [{ prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: stageOf(set).appear / rate, ease: (p) => p * p * (3 - 2 * p) } }] : []),
     ],
     size,
     prefix: 'translate(-50%, -50%)',
@@ -870,7 +875,10 @@ export function planSweep(reg, { set, rate = 1, wagers, pile, board = null }) {
     const dX = target.x - start.x, dY = target.y - start.y, travel = Math.hypot(dX, dY);
     const vAlong = travel > 0.5 ? (vx * dX + vy * dY) / travel : 0;
     const vp = travel > 0.5 ? (vAlong / travel) / rate : 0;
-    const hand = vp ? spring({ ...SPRING_SETS[set].tiers.hand, velocity: vp }) : tierOf(set, 'hand');
+    /* On the arm, not the hand (owner, 2026-11-21: "Every single animation should be ultra smooth"): a swept wager crossed
+       the felt at 25-30px a frame on the hand spring; the arm, the pot's own spring to its winner, pushes off with two thirds
+       the force. (The name stays: every reader of the plan calls it the wager's hand.) */
+    const hand = vp ? spring({ ...SPRING_SETS[set].tiers.arm, velocity: vp }) : tierOf(set, 'arm');
     const d = (i * stagger) / rate;
     const arrive = d + timeTo(hand, 0.98) / rate;
     // A path over the board: the chips are airborne over it (a bigger lift that holds), and the
@@ -1163,7 +1171,7 @@ export function shipStartAfterSweep(set, rate = 1, nWagers = 0) {
   if (!nWagers) return 0;
   const st = stageOf(set);
   const stagger = nWagers > 1 ? Math.min(st.sweepStagger, st.sweepCap / (nWagers - 1)) : 0;
-  const lastArrive = ((nWagers - 1) * stagger + timeTo(tierOf(set, 'hand'), 0.98)) / rate;
+  const lastArrive = ((nWagers - 1) * stagger + timeTo(tierOf(set, 'arm'), 0.98)) / rate;   // the sweep's spring (planSweep)
   return lastArrive + (st.arrivalFade + (st.shipAfterSweep || 0)) / rate;
 }
 

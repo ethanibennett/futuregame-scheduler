@@ -21,13 +21,15 @@ const stage = (set) => SPRING_SETS[set].stage;
 const settle = (sp) => sp.settleMs(1e-3);
 const arrive = (sp) => timeTo(sp, 0.98);
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
+/** How long a card takes to turn over (turnOver), in the replay's own ms: 2.2 beats (308ms in set B). */
+const turnMs = (set) => 2.2 * stage(set).beat;
 
 /** The motion's clock values a caller lays moments out with (ms, at rate 1). */
 export function cardTimes(set) {
   const hand = tierSpring(set, 'hand');
   const flick = tierSpring(set, 'flick');
   return {
-    turn: settle(hand), turnHalf: timeTo(hand, 0.5), handArrive: arrive(hand),
+    turn: turnMs(set), turnHalf: turnMs(set) / 2, handArrive: arrive(hand), armArrive: arrive(tierSpring(set, 'arm')),
     flickArrive: arrive(flick), beat: stage(set).beat, cardLag: stage(set).cardLag, place: stage(set).place,
   };
 }
@@ -40,10 +42,13 @@ export function cardTimes(set) {
  * the table: { image, color, ring, size, position, repeat }.
  */
 export function turnOver(reg, { set, rate = 1, el, prefix = '', delay = 0, lift = 0, size, back }) {
-  const sp = tierSpring(set, 'hand');
-  const half = timeTo(sp, 0.5) / rate;
-  const end = delay + settle(sp) / rate;
-  const at = (t) => sp.at((t - delay) * rate);
+  /* An even turn: an ease in and out over turnMs (owner, 2026-11-21: "Every single animation should be ultra smooth").
+     On the hand spring the card lost half its width in the first 90ms and crept through the rest, 7px a frame at the
+     start. Swapped at the half turn, as before. */
+  const dur = turnMs(set) / rate;
+  const half = dur / 2;
+  const end = delay + dur;
+  const at = (t) => { const p = clamp01((t - delay) / dur); return p * p * (3 - 2 * p); };
   const channels = [
     { prop: 'scaleX', fn: (t) => (t < delay ? 1 : Math.max(0.002, Math.abs(1 - 2 * at(t)))), start: delay, end, key: 'turnX:' + set + ':' + rate + ':' + delay },
   ];
@@ -71,9 +76,11 @@ export function turnOver(reg, { set, rate = 1, el, prefix = '', delay = 0, lift 
   });
 }
 
-/** A card dealt from the dealer spot: (dx, dy) px from where it rests, travelling on the hand spring, landing
-    from 1.05 scale, opaque within the arrival fade. On the separate properties, so a fanned card keeps its tilt. */
-export function dealIn(reg, { set, rate = 1, el, dx, dy, delay = 0, size, tier = 'hand' }) {
+/** A card dealt from the dealer spot: (dx, dy) px from where it rests, travelling on the arm spring, landing
+    from 1.05 scale, opaque within the arrival fade. On the separate properties, so a fanned card keeps its tilt.
+    The arm since 2026-11-21 (owner: "Every single animation should be ultra smooth"): on the hand spring a stud card
+    crossed the felt at 26px a frame. Its landing is cardTimes().armArrive. */
+export function dealIn(reg, { set, rate = 1, el, dx, dy, delay = 0, size, tier = 'arm' }) {
   const st = stage(set);
   const sp = tierSpring(set, tier, st.placeVelocity || 0);
   return reg.run(el, {
@@ -182,6 +189,104 @@ export function ghostsAway(reg, { set, rate = 1, layer, layerRect, cards, tx, ty
         { prop: 'scale', spring: sp, from: 1, to: scaleTo, delay: d, timeScale: rate },
         { prop: 'opacity', spring: sp, from: 1, to: fadeTo, delay: d, timeScale: rate },
       ],
+    });
+    return g;
+  });
+}
+
+/**
+ * Copies of cards the commit no longer draws and no moment takes away (a draw game's thrown cards, gone as the new
+ * ones come), each where it lay with its tilt, fading out from how strongly it was drawn (`o`: a thrown card's 0.4).
+ * They went in a frame (owner, 2026-11-21: "Every single animation should be ultra smooth").
+ * `cards`: [{ node, cx, cy, w, h, angle, o }]; `duration` in the replay's own ms.
+ */
+export function cardsAway(reg, { rate = 1, layer, layerRect, cards, duration }) {
+  if (!layer || !layerRect || !cards.length) return [];
+  let host = layer.querySelector(':scope > .replayer-ghost-row');
+  if (!host) {
+    host = document.createElement('div');
+    host.className = 'card-row replayer-ghost-row';
+    layer.appendChild(host);
+  }
+  const ease = (p) => p * p * (3 - 2 * p);
+  return cards.map((c, i) => {
+    const g = c.node.cloneNode(true);
+    ['data-ck', 'data-slot', 'data-pose'].forEach((a) => g.removeAttribute(a));
+    g.style.cssText = '';
+    g.className = c.node.className;
+    Object.assign(g.style, {
+      position: 'absolute', left: (c.cx - layerRect.left - c.w / 2) + 'px', top: (c.cy - layerRect.top - c.h / 2) + 'px',
+      width: c.w + 'px', height: c.h + 'px', margin: '0', transformOrigin: '50% 50%', zIndex: String(i + 1),
+      transform: 'rotate(' + (c.angle || 0).toFixed(2) + 'deg)', pointerEvents: 'none',
+    });
+    host.appendChild(g);
+    reg.run(g, {
+      transient: true, property: 'individual', size: { w: c.w, h: c.h },
+      channels: [{ prop: 'opacity', ramp: { from: c.o != null && Number.isFinite(c.o) ? c.o : 1, to: 0, delay: 0, duration: duration / rate, ease } }],
+    });
+    return g;
+  });
+}
+
+/**
+ * Copies of the action labels the commit no longer draws (the last street's at a new street, a seat's at the result),
+ * in a layer over the table, each drawn exactly as it was seen and fading out where it stood: no move, no turn, no
+ * size change (owner, 2026-11-21: "the fold action buttons should fade away, not violently disappear"). They had sunk
+ * by their own height on the yield spring and gone in about 100ms, and each copy also lost what its plaque did to it:
+ * a folded plaque's 0.88 and its grey, and a check's or fold's 0.85 or an earlier answer's 0.4 (the copy started at
+ * 1), so every label first brightened and grew, then dropped away.
+ * `labels`: [{ node, cx, cy, w, h, scale, filter, opacity, plaque }] (opacity: the plaque's, multiplied into the
+ * label's own; plaque: where the label stood, to read its look from).
+ * The copy is a plain element with the label's look written on it, not a clone with the label's classes: the layer is
+ * inside the table, and every placement pass (labels, readouts, wagers, the pill) and the stale dimming find labels by
+ * that class, so for its half second a cloned copy was an obstacle they placed things round, and a stale one dimmed.
+ * `duration` and `stagger` are in ms of the replay's own time (divided by `rate` here).
+ */
+const LABEL_LOOK = ['display', 'alignItems', 'justifyContent', 'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'fontStretch',
+  'fontVariantNumeric', 'letterSpacing', 'textTransform', 'lineHeight', 'whiteSpace', 'color', 'backgroundColor', 'backgroundImage',
+  'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'borderTopStyle', 'borderRightStyle', 'borderBottomStyle',
+  'borderLeftStyle', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor', 'borderTopLeftRadius',
+  'borderTopRightRadius', 'borderBottomLeftRadius', 'borderBottomRightRadius', 'paddingTop', 'paddingRight', 'paddingBottom',
+  'paddingLeft', 'textShadow', 'boxShadow', 'textAlign'];
+export function labelsAway(reg, { rate = 1, layer, layerRect, labels, duration, stagger = 0, delay = 0 }) {
+  if (!layer || !layerRect || !labels.length) return [];
+  let host = layer.querySelector(':scope > .replayer-ghost-row');
+  if (!host) {
+    host = document.createElement('div');
+    host.className = 'card-row replayer-ghost-row';
+    layer.appendChild(host);
+  }
+  const ease = (p) => p * p * (3 - 2 * p);
+  return labels.map((c, i) => {
+    // The label's look, read from a hidden copy put back where it stood (its plaque), so every rule that styles it
+    // there (its action, a stale answer's 0.4, the table's card count, the theme) applies.
+    const probe = c.node.cloneNode(true);
+    probe.removeAttribute('data-act-seat');
+    probe.style.visibility = 'hidden';
+    (c.plaque && c.plaque.isConnected ? c.plaque : host).appendChild(probe);
+    const cs = getComputedStyle(probe);
+    const look = {};
+    LABEL_LOOK.forEach((k) => { look[k] = cs[k]; });
+    const own = Number(cs.opacity);
+    probe.remove();
+    const g = document.createElement('div');
+    g.className = 'replayer-label-copy';
+    g.setAttribute('aria-hidden', 'true');
+    g.textContent = c.node.textContent;
+    Object.assign(g.style, look, {
+      position: 'absolute', boxSizing: 'border-box', left: (c.cx - layerRect.left - c.w / 2) + 'px', top: (c.cy - layerRect.top - c.h / 2) + 'px',
+      width: c.w + 'px', height: c.h + 'px', margin: '0', transformOrigin: '50% 50%', zIndex: String(i + 1),
+      transform: 'scale(' + (c.scale || 1).toFixed(4) + ')', filter: c.filter || 'none', pointerEvents: 'none',
+    });
+    host.appendChild(g);
+    const from = (Number.isFinite(own) ? own : 1) * (c.opacity != null ? c.opacity : 1);
+    // A label replaced by its seat's next answer leaves at once, over its own `duration` (the new one's fade-in).
+    const d = c.duration != null ? 0 : (delay + i * stagger) / rate;
+    // On the individual properties, so the copy's own transform (its plaque's scale) stands: the registry's frames
+    // carry a transform even for a fade.
+    reg.run(g, {
+      transient: true, property: 'individual', size: { w: c.w, h: c.h },
+      channels: [{ prop: 'opacity', ramp: { from, to: 0, delay: d, duration: (c.duration != null ? c.duration : duration) / rate, ease } }],
     });
     return g;
   });

@@ -195,7 +195,8 @@ test('sweep plan: chips land on their own colour\'s stack of the pile as it will
   assert.deepEqual(plan[0].start, { x: 180, y: 400 }, 'from the chips, not the pill');
   assert.equal(plan[0].target.x, 195, 'the orange stack: left of centre by half a pitch');
   assert.equal(plan[0].target.y, 153, 'chips bottom on the pile bottom');
-  assert.ok(Math.abs(plan[0].arrive - timeToOf(tierSpring('A', 'hand'), 0.98)) < 1e-9);
+  // The sweep rides the arm (2026-11-21: "ultra smooth"; it was the hand).
+  assert.ok(Math.abs(plan[0].arrive - timeToOf(tierSpring('A', 'arm'), 0.98)) < 1e-9);
 });
 
 test('sweep plan: a path over the board holds the board until the chips have cleared it', () => {
@@ -208,7 +209,7 @@ test('sweep plan: a path over the board holds the board until the chips have cle
   });
   assert.ok(p.crosses, 'straight up through the board');
   // It clears the board's top (plus half a chip) at y = 293: progress (500 - 293) / 350.
-  const want = timeToOf(tierSpring('A', 'hand'), (500 - 293) / 350);
+  const want = timeToOf(tierSpring('A', 'arm'), (500 - 293) / 350);
   assert.ok(Math.abs(p.clear - want) < 0.5, `clears at ${p.clear} (want ${want})`);
   const [q] = planSweep(reg, {
     set: 'A', wagers: [{ seat: 1, amount: 5000, el: fakeEl(), geo: { ...geo, cx: 40, cy: 120 }, topColor: 'O' }],
@@ -353,7 +354,7 @@ test('sweep plan: a wager crossing the board leaves first', () => {
 test('the ship leaves once the river\'s wagers have landed and faded', () => {
   assert.equal(shipStartAfterSweep('A', 1, 0), 0);
   const two = shipStartAfterSweep('A', 1, 2);
-  near(two, 40 + timeToOf(tierSpring('A', 'hand'), 0.98) + 50, 1e-9, 'two wagers');
+  near(two, 40 + timeToOf(tierSpring('A', 'arm'), 0.98) + 50, 1e-9, 'two wagers');
   near(shipStartAfterSweep('A', 2, 2), two / 2, 1e-9, 'at 4x');
 });
 

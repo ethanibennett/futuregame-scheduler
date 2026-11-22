@@ -76,27 +76,32 @@ export const SPRING_SETS = {
       stackOut: 16,
     },
   },
-  // Set B, "Snappy": k 640, zeta 0.86, 0.5% overshoot. A broadcast graphic.
+  // Set B, "Snappy": k 420 (640 until 2026-11-21), zeta 0.86, 0.5% overshoot. A broadcast graphic.
+  // Softer (owner, 2026-11-21: "Every single animation should be ultra smooth"): the same damping ratios, the stiffness
+  // two thirds of what it was, so every start pushes off with two thirds the force and every flight peaks at 0.81 of
+  // the speed (a swept wager crossed the felt at 30px a frame). The damping is scaled by sqrt(420 / 640) to keep zeta.
   B: {
     name: 'snappy',
     tiers: {
-      flick:    { stiffness: 640, damping: 32.3, mass: 0.55 },
-      hand:     { stiffness: 640, damping: 43.5, mass: 1 },
-      arm:      { stiffness: 640, damping: 55.0, mass: 1.6 },
-      inertia:  { stiffness: 640, damping: 67.4, mass: 2.4 },
-      yield:    { stiffness: 640, damping: 37.5, mass: 0.55 },
-      slide:    { stiffness: 640, damping: 46.4, mass: 1 },
-      armLight: { stiffness: 640, damping: 54.2, mass: 1.55 },
-      armHeavy: { stiffness: 640, damping: 55.9, mass: 1.65 },
+      flick:    { stiffness: 420, damping: 26.2, mass: 0.55 },
+      hand:     { stiffness: 420, damping: 35.2, mass: 1 },
+      arm:      { stiffness: 420, damping: 44.6, mass: 1.6 },
+      inertia:  { stiffness: 420, damping: 54.6, mass: 2.4 },
+      yield:    { stiffness: 420, damping: 30.4, mass: 0.55 },
+      slide:    { stiffness: 420, damping: 37.6, mass: 1 },
+      armLight: { stiffness: 420, damping: 43.9, mass: 1.55 },
+      armHeavy: { stiffness: 420, damping: 45.3, mass: 1.65 },
     },
     stage: {
       sweepStagger: 25, sweepCap: 120,
       place: 40, beat: 140, midLag: 25, yieldAfterSweep: 25, cardLag: 20, boardWaitMax: 60, shipAfterSweep: 0,
       // Calmer (owner, 2026-11-19: "Some of the replayer animations are still too violent"): things fade in over
       // 60-70ms, not 33-40 (they popped), and a card enters its landing at half the speed it did (5 progress a second).
-      appear: 60, placeVelocity: 2.5,
-      arrivalFade: 70, labelFade: 60,
-      pileIn: 33, pileOut: 40,
+      // Twice that since 2026-11-21 ("Every single animation should be ultra smooth"): a 60-70ms fade is four frames,
+      // still a pop; 120-140ms is a fade. pileIn stays: a stack fades in UNDER the chip landing on it.
+      appear: 120, placeVelocity: 2.5,
+      arrivalFade: 140, labelFade: 140,
+      pileIn: 33, pileOut: 80,
       placeScale: 1.05, placeDrop: 0.10,
       rot: { flop: -2, turn: 1.5, river: -1.5 },
       push: 0.4, addOn: 0.22,

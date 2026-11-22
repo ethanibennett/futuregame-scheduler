@@ -816,7 +816,7 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   transform/opacity, computed once per moment. `localStorage.replayerSprings` unset is Set B
   "snappy" (the default, owner 2026-10-13); '1' Set A, '2' Set B, '0' the old code paths. On screen every
   moment and the autoplay tempo run at `REPLAYER_PACE` (spring.js, 0.65 since 2026-11-19, owner: "still too violent";
-  0.8 from 2026-11-13, "very chaotic"; set B's fades are 60-70ms, its landing squash and chip stretch halved, and the
+  0.8 from 2026-11-13, "very chaotic"; set B's fades are 120-140ms since 2026-11-21 (60-70 before), its stiffness 420, its landing squash and chip stretch halved, and the
   turn's crossfade rings live in the plaques, `.replayer-turn-ring.is-in-plaque`);
   exports keep their own rate. Exports
   seek them frame by frame (the bet push-outs export settled). Work a moment builds after its press
@@ -908,6 +908,31 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   door lift, turn-over rise, pat rap, thrown-card rise, run-twice row slide; no all-in ring closing, OUT only dims).
   Every new wager's push starts at its player's plaque (`rayToRect`). Showdown Equity is `computeOdds` on its worker,
   shown in the seat's readout while an all-in's cards are to come, never at the result.
+  **The words on a seat fade, never slide** (owner, 2026-11-21: "Still some jittery shit on hero's seat box, and the fold
+  action buttons should fade away, not violently disappear"): an action label fades in on its plaque; one the commit no
+  longer draws (a street's, a seat's at the result) leaves as a plain copy drawn as it was, its plaque's 0.88, grey and
+  0.85/0.4 included, fading where it stood (`labelsAway`, utils/replayer-card-moments.js; a clone with the label's class
+  was an obstacle to every placement pass); a stale answer dims from where it rests; readouts, draw badges, ALL-IN to AT
+  RISK and a run-out name's change crossfade in place. A label is keyed by its action's index, not the step (keyed by the
+  step every label was re-made at every press). A readout's outgoing copy carries `data-ghost`, and every query for
+  `.replayer-seat-hand-name` in a placement pass takes `:not([data-ghost])`: placeNames took the copy for a readout and
+  moved the new name beside the plaque a moment after it showed.
+  **Every animation smooth** (owner, 2026-11-21, of futurega.me/h/dSXeHmQt: "Every single animation should be ultra
+  smooth"): nothing on the felt appears or goes in one frame, and no fade is shorter than ~120ms. Set B is k 420 (was
+  640; the same damping ratios), its `appear` 120, `arrivalFade` and `labelFade` 140; the sweep rides the arm, not the
+  hand (a swept wager crossed at 30px a frame); a new wager fades in as it leaves its plaque (`pushOut`); a stack's
+  ALL-IN, AT RISK and OUT crossfade showing what was on screen; the winner's "+gain" fades beside the plaque; the pot is
+  held at full from the result's press (`motion.potHoldKey`), since `.is-emptied` hid it for the frames before the ship
+  was built. ⚠ The registry knows a motion by its key OBJECT: two `{ el, kind }` literals never replace each other, so
+  to stop or replace one keep the key you ran it with. Also faded, not cut: a stale label replaced by its seat's next
+  answer (crossfade), a draw game's thrown cards at the draw (`cardsAway`), and whatever leaves with no moment of its
+  own (`LEAVERS`: a readout, the stud note, the pots' row, a split's shares, the pile) as a `data-ghost` copy in place;
+  a pot pill new to the row fades in; a wager placeWagers moves glides there (`wagerSpotsRef`); a card turns over on an
+  even ease over 2.2 beats (`turnMs`), and a dealt card rides the arm. The audit: `npm run check:replayer-smooth`
+  (ports 4920-4929; `--shorthand` for a shared hand, `--ids` for corpus hands, `--strict` to fail): every piece's box
+  and drawn opacity at 60fps, the press's animations held and sought together. It cannot hold a motion built after the
+  press (the ship, a board that waits for a chip), so check those in real time; a fold's rotated copies still read as
+  "appears ghost".
 - **The chips are casino clay** (owner, 2026-11-13: pick 1 of `docs/catalogues/replayer-chips`, gallery
   https://claude.ai/artifact/UrZPCY5D5q7TBcnwG49ZBY): `.chip-disc` / `.replayer-pot-chip-disc` in `styles.css`, six white
   edge inserts placed per chip by `utils/chip-inserts.js` (`chipInsertVars` / `applyChipInserts` from the chip's
