@@ -533,6 +533,8 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   (adaptive thinking, `output_config.effort`, `tool_choice` auto with one call, a refusal fallback) for Opus 5.5 /
   Sonnet 5.5, which 400 on a forced tool, or once `QUICK_ADD_EFFORT` is set; `QUICK_ADD_PARSE_MODEL`,
   `QUICK_ADD_ANSWER_MODEL`, `QUICK_ADD_ANSWER_EFFORT`, `QUICK_ADD_FALLBACKS=0`, and the boot log says which.
+  **futurega.me parses on Opus 5.5 at low effort since 2026-11-22** (owner; Render env `QUICK_ADD_PARSE_MODEL=claude-opus-5-5`,
+  `QUICK_ADD_EFFORT=low`; measured 91.8% fact recall, 1 invented card, $0.022 a hand, against Sonnet 5's 79.6%, 23, $0.011).
   `record_hand` cannot be `strict: true` (79 optional and 57 nullable fields against the grammar's 24 / 16).
   **The parse log** (`lib/quick-add/learn.js`, `quick_add_parses`, `QUICK_ADD_LOG=0` off): every parse with its
   text, model, cost and hand; the hand carries `quickAddParseId`, and the replayer's save routes pair the saved hand

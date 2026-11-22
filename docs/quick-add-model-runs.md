@@ -6,6 +6,12 @@ starts with a measurement. The model behind quick add has **never been scored**:
 could not run at all. This branch makes the newer models usable, lets Admin measure each one, and logs
 real use so the corpus can grow from it. **Production does not change until the env is flipped.**
 
+**Flipped 2026-11-22** (owner: "switch production to Opus 5.5 low"): futurega.me's Render service has
+`QUICK_ADD_PARSE_MODEL=claude-opus-5-5` and `QUICK_ADD_EFFORT=low`; its boot log reads
+`[QuickAdd] parse: claude-opus-5-5, thinking at effort low · answer: claude-haiku-4-5-20251001, forced tool (no thinking)`.
+Answers are unchanged. To go back, delete both variables (Sonnet 5, forced, is the default). The measurements
+behind it are below ("The comparison to use").
+
 ## What changed
 
 **1. The parse can run on the current models, with thinking.** `lib/quick-add/prompt.js` has two request
