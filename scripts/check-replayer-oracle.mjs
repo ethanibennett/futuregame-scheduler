@@ -171,7 +171,7 @@ async function worker(w) {
               await q.waitForTimeout(t ? 800 : 500);
               await q.locator('button[title="End"]').first().click({ force: true });
               await q.waitForTimeout(700);
-              if (await q.locator('button[title="Forward"]').first().isDisabled().catch(() => false)) break;
+              if (await q.locator('button[title^="Forward"]').first().isDisabled().catch(() => false)) break;
             }
             await q.waitForTimeout(1500);
             const shared = await readSeats(q);
