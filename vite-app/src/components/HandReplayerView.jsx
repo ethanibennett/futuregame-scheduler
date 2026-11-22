@@ -6527,6 +6527,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const boardDeltaRef = useRef(null);       // this commit's board FLIP measurement, for the springs
   const potTotalRef = useRef(null);
   const sweepLayerRef = useRef(null);
+  // The folded cards' flights: under every seat, so a hand gathers and goes behind its plaque (.replayer-fold-layer).
+  const foldLayerRef = useRef(null);
   useEffect(() => () => motion.dispose(), [motion]);
   // Which parent render the pot's pile last saw: a live arrival on the pile holds only until the next.
   motion.renderSeq = (motion.renderSeq || 0) + 1;
@@ -10289,7 +10291,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               chip.setAttribute('aria-hidden', 'true');
               const face = document.createElement('div');
               face.className = 'replayer-pot-chip-disc';
-              applyChipInserts(face, pipShift(full + 31, ji));
+              /* In its denomination's colour, the ante's largest chip, as a wager's flight is. With none it took the
+                 table's text colour (--chip: currentColor): a plain off-white disc, its white inserts lost on it, flying
+                 from the big blind at the start of every hand with an ante (owner, 2026-11-22: "Something weird flying
+                 from the BB seat at the start of the hand"). */
+              const anteColor = getChipBreakdown(ante)[0];
+              face.style.setProperty('--chip', anteColor);
+              applyChipInserts(face, pipShift(full + 31, ji), anteColor);
               chip.appendChild(face);
               Object.assign(chip.style, { left: (j.fx - L0.left) + 'px', top: (j.fy - L0.top) + 'px', transform: 'translate(-50%, -50%)' });
               layer0.appendChild(chip);
@@ -10366,6 +10374,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
          over everything at --z-flight: a table-sized element above every moving one. */
       const layer = sweepLayerRef.current;
       const L = layer ? layer.getBoundingClientRect() : null;
+      const foldLayer = foldLayerRef.current;
+      const FL = foldLayer ? foldLayer.getBoundingClientRect() : null;
       const potFigure = potTotalRef.current;
       const pileEl = table.querySelector('.replayer-pot-main .replayer-pot-chips');
       const pileRect = pileEl ? pileEl.getBoundingClientRect() : null;
@@ -10877,7 +10887,11 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           if (was.length) {
             const m = ptOf([50, 54]);
             // At 3/4 of the replay's pace (owner, 2026-11-21: "Let's go 3/4 speed").
-            writes.push(() => foldToStack(motion, { set, rate: rate * 0.75, layer, layerRect: L, cards: was, target: { x: m.x - L.left, y: m.y - L.top }, back: backPaint }));
+            /* Under the seats (owner, 2026-11-22: "When the cards slide together before mucking that should happen behind
+               the seat box and they should always be below it in the z dimension"): in the flight layer they gathered
+               over the plaque. */
+            const fl = foldLayer && FL ? foldLayer : layer, FLr = foldLayer && FL ? FL : L;
+            writes.push(() => foldToStack(motion, { set, rate: rate * 0.75, layer: fl, layerRect: FLr, cards: was, target: { x: m.x - FLr.left, y: m.y - FLr.top }, back: backPaint }));
           }
         }
 
@@ -10912,7 +10926,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               const lands = ghostsTo(motion, { set, rate, cards: flights });
               flights.forEach((f, i) => appearAt(motion, { set, rate, el: f.target, at: lands[i] || 0, size: f.size }));
               moves.forEach(mv => makeRoom(motion, { set, rate, el: mv.el, dx: mv.dx, size: mv.size }));
-              if (down.length && L) ghostsAway(motion, { set, rate, layer, layerRect: L, cards: down, tx: (m.x - dcx) * 0.45, ty: (m.y - dcy) * 0.45 });
+              // Toward the muck under the seats, as a gathered hand goes.
+              if (down.length && L) ghostsAway(motion, { set, rate, layer: foldLayer && FL ? foldLayer : layer, layerRect: foldLayer && FL ? FL : L, cards: down, tx: (m.x - dcx) * 0.45, ty: (m.y - dcy) * 0.45 });
             });
           }
         }
@@ -11407,6 +11422,27 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               requestAnimationFrame(() => toSeat.classList.remove('ring-hand'));
             };
             if (entry) motion.tick(fade, take, entry); else take();
+          });
+        } else if ((motionKind === 'action' || motionKind === 'street' || motionKind === 'result') && prevS.turn && !toSeat) {
+          /* 51b: the turn ends with nobody to take it (the street's last action, the result): the ring fades out on the
+             plaque that had it, as it does when it passes. It went off in a frame (owner, 2026-11-22: "Hero's seat box
+             is STILL flickering"; measured on the street-ending check of futurega.me/h/dSXeHmQt). */
+          const fade = (3 * S4.beat) / rate;
+          const fromSeat = seatOf(prevS.turn.seat);
+          const fromInfo = fromSeat && fromSeat.querySelector('.replayer-seat-info');
+          if (fromInfo && !fromSeat.classList.contains('active-turn')) writes.push(() => {
+            table.querySelectorAll('.replayer-seat.ring-leave, .replayer-seat.ring-hand').forEach(s => s.classList.remove('ring-leave', 'ring-hand'));
+            table.querySelectorAll('.replayer-turn-ring.is-in-plaque').forEach(r => r.remove());
+            const ring = document.createElement('div');
+            ring.className = 'replayer-turn-ring is-in-plaque';
+            ring.style.borderRadius = getComputedStyle(fromInfo).borderRadius;
+            fromInfo.appendChild(ring);
+            fromSeat.classList.add('ring-leave');
+            const entry = motion.run(ring, { transient: true, size: { w: fromInfo.offsetWidth, h: fromInfo.offsetHeight }, end: fade, channels: [
+              { prop: 'opacity', ramp: { from: 1, to: 0, delay: 0, duration: fade, ease: easeIO } },
+            ] });
+            const done = () => fromSeat.classList.remove('ring-leave');
+            if (entry) motion.tick(fade, done, entry); else done();
           });
         }
         /* 53: the action label fades in on its plaque. It rose 1r out of the plaque on the yield spring, visible within
@@ -12897,6 +12933,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         {springOn && <div className="replayer-flying-chip replayer-chip-probe is-disc" aria-hidden="true"><div className="replayer-pot-chip-disc" /></div>}
         {springOn && <div className="replayer-flying-chip replayer-chip-probe" aria-hidden="true" />}
         {springOn && <div className="replayer-motion-layer replayer-sweep-layer" ref={sweepLayerRef} aria-hidden="true" />}
+        {springOn && <div className="replayer-fold-layer" ref={foldLayerRef} aria-hidden="true" />}
 
         {/* Draw discard animations */}
         {drawDiscardAnims.length > 0 && drawDiscardAnims.map(anim => {

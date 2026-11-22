@@ -1114,6 +1114,17 @@
       --act-bet:   #f59e0b;
       --act-raise: #ef4444;
       --act-allin: #a855f7;
+      /* The action pills on the felt are solid (owner, 2026-11-22: "Let's make the pills for betting actions a solid
+         color with contrasting text"): each its action's colour, a step deeper where white needs it (call, raise),
+         and whichever of white and near-black reads better on it. Measured (WCAG): fold white 4.8, check dark 7.8,
+         call white 5.2, bet dark 9.2, raise white 4.8; all-in keeps its purple and white (4.0, bold). */
+      --act-ink-light: #ffffff;
+      --act-ink-dark:  #0a080e;
+      --act-fold-solid:  #6b7280;
+      --act-check-solid: #9ca3af;
+      --act-call-solid:  #2563eb;
+      --act-bet-solid:   #f59e0b;
+      --act-raise-solid: #dc2626;
     }
 
 
@@ -6500,9 +6511,13 @@
        input makes contrast unguaranteeable. They carry their own dark ground
        now and use the action colour as border and text, exactly the argument
        the pot plaque makes. The in-chrome badges keep the tint. */
+    /* Solid since 2026-11-22 (owner: "a solid color with contrasting text"): the action's colour is the ground, so it
+       stays opaque over any felt, as the dark ground did, and the text is the ink that contrasts with it (--act-pill,
+       --act-pill-ink, set per action below). The hairline is a darker edge that holds it off a felt of its own hue. */
     .replayer-action-badge-outer {
-      background: rgba(10,8,14,0.82) !important;
-      border: var(--bw-hair) solid currentColor;
+      background: var(--act-pill, var(--act-check-solid)) !important;
+      color: var(--act-pill-ink, var(--act-ink-dark));
+      border: var(--bw-hair) solid rgba(10,8,14,0.4);
       letter-spacing: var(--track-caps);
     }
     /* 47: 'ALL-IN' — the stakes-defining action a hand can contain — was set
@@ -6548,8 +6563,8 @@
       letter-spacing: var(--track-tight);
       font-variant-numeric: var(--num-tabular);
     }
-    .replayer-action-badge-outer.action-fold { background: rgba(107,114,128,0.22); color: var(--act-fold); }
-    .replayer-action-badge-outer.action-check { background: rgba(156,163,175,0.2); color: var(--act-check); }
+    .replayer-action-badge-outer.action-fold { --act-pill: var(--act-fold-solid); --act-pill-ink: var(--act-ink-light); }
+    .replayer-action-badge-outer.action-check { --act-pill: var(--act-check-solid); --act-pill-ink: var(--act-ink-dark); }
     /* The felt pills — the action bubble over the fan ("raise 3,330") and the
        draw run on the plaque corner ("D1/PAT/PAT") — are exactly 2r tall. The
        cqmin clamps above put a bet at ~6.7px on a phone-portrait table, too
@@ -6601,10 +6616,10 @@
       font-size: var(--fs-xs);
       line-height: 1;
     }
-    .replayer-action-badge-outer.action-call { background: rgba(59,130,246,0.2); color: var(--act-call); }
-    .replayer-action-badge-outer.action-bet { background: rgba(245,158,11,0.2); color: var(--act-bet); }
-    .replayer-action-badge-outer.action-raise { background: rgba(239,68,68,0.2); color: var(--act-raise); }
-    .replayer-action-badge-outer.action-allin { color: #fff; }
+    .replayer-action-badge-outer.action-call { --act-pill: var(--act-call-solid); --act-pill-ink: var(--act-ink-light); }
+    .replayer-action-badge-outer.action-bet { --act-pill: var(--act-bet-solid); --act-pill-ink: var(--act-ink-dark); }
+    .replayer-action-badge-outer.action-raise { --act-pill: var(--act-raise-solid); --act-pill-ink: var(--act-ink-light); }
+    .replayer-action-badge-outer.action-allin { --act-pill: var(--act-allin); --act-pill-ink: var(--act-ink-light); color: var(--act-ink-light); }
 
 
     /* Board card street spacing */
@@ -7920,6 +7935,15 @@
        shipped to a winner flies here too, under the pot's figure, the wagers and the button, so it
        never covers a figure on its way; it comes out from under the pile as the pile empties. */
     .replayer-motion-layer.replayer-sweep-layer { z-index: var(--z-sweep); }
+    /* A folded hand's flight (foldToStack, a stud fold's down cards to the muck): under every seat, so the cards slide
+       together and go behind the plaque, never over it (owner, 2026-11-22: "they should always be below it in the z
+       dimension"). On the strip's level and after it in the table, so over the dead cards strip and the felt. */
+    .replayer-fold-layer {
+      position: absolute;
+      inset: 0;
+      z-index: var(--z-strip);
+      pointer-events: none;
+    }
     /* The pile once the pot has gone to the winner: its stacks are not drawn (each goes as its chip
        leaves; utils/replayer-motion.js emptyPile), so the money is never on the felt twice. */
     .replayer-pot-chips.is-shipped > .replayer-pot-chip-stack { opacity: 0; }
@@ -7981,10 +8005,13 @@
        landing, a third of the way 100ms after it and still ramping once the chips were gone. Over it
        a gold glow, a ::after that animates its opacity only (the compositor's), at full by two
        frames after the landing and fading as the stack settles. */
+    /* Smooth, not a snap (owner, 2026-11-22: every animation smooth; measured, the border went grey to gold within a
+       frame or two and the glow reached full in 34ms): the gold eases in over 200ms on an even curve, the glow rises over
+       a third of its 480ms. */
     .replayer-table[data-springs] .replayer-seat.ship-hit:is(.winner, .split) .replayer-seat-info {
       transition-delay: var(--spring-gold-at, var(--spring-ship-arrive, 245ms));
-      transition-duration: var(--dur-fast);
-      transition-timing-function: var(--ease-emphatic);
+      transition-duration: var(--dur-snap);
+      transition-timing-function: var(--ease-standard);
     }
     .replayer-table[data-springs] .replayer-seat.ship-hit:is(.winner, .split) .replayer-seat-info::after {
       content: '';
@@ -7997,8 +8024,8 @@
       animation: plaqueGoldHit var(--dur-slow) var(--ease-linear) var(--spring-ship-arrive, 245ms) both;
     }
     @keyframes plaqueGoldHit {
-      0%   { opacity: 0; }
-      7%   { opacity: 1; }
+      0%   { opacity: 0; animation-timing-function: var(--ease-standard); }
+      30%  { opacity: 1; animation-timing-function: var(--ease-standard); }
       100% { opacity: 0; }
     }
     .replayer-table[data-anim-winner="0"] .replayer-seat.ship-hit:is(.winner, .split) .replayer-seat-info::after { animation: none; }

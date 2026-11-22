@@ -936,7 +936,19 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   flickering"): `resyncDigits` puts React's figures back BEFORE a moment's writes and leaves a stack still counting alone
   (`motion.countingStacks`); after them, every bet showed the new figure for a frame, then the old, then counted. A
   run-out's name the result recolours (the gold "Wheel" taking a loser's red) crossfades from a copy in the colour it was
-  shown in (`runNames` records it). Real-time check of one seat: sample its subtree on every frame across every press.
+  shown in (`runNames` records it). A turn nobody takes (a street's last action, the result) fades its ring out on the
+  plaque that had it, as a handover does (51b; it went off in a frame). The audit walks each hand twice: held, as above,
+  plus `recolours` (a colour, ground or border, or a swap into another colour, in one frame); then in real time, every
+  painted frame of every press, for `flashes text`, `flashes colour` and `flickers` (a value that changes and comes back
+  within 12 frames), which only that pass can see: a stack's count is code writing digits, not an animation it can hold.
+  A folded hand gathers and goes on `.replayer-fold-layer`, under every seat (z on the strip's level), so the cards slide
+  together behind the plaque, never over it (owner, 2026-11-22; foldToStack, and a stud fold's down cards). The opening's
+  ante chip is in its denomination's colour (`getChipBreakdown(ante)[0]`): with none it drew the text colour, a plain
+  white disc. The winner's gold eases in over 200ms (it was most of the way in two frames).
+- **The action pills are solid** (owner, 2026-11-22: "a solid color with contrasting text"): `--act-pill` / `--act-pill-ink`
+  per action, from `--act-*-solid` and `--act-ink-light` / `--act-ink-dark` (styles.css, beside `--act-*`): fold, call
+  (blue-600) and raise (red-600) in white, check and bet in near-black, all-in as before; each pair measured at 4.8:1 or
+  more but all-in's 4.0. Swiss keeps its own.
 - **The chips are casino clay** (owner, 2026-11-13: pick 1 of `docs/catalogues/replayer-chips`, gallery
   https://claude.ai/artifact/UrZPCY5D5q7TBcnwG49ZBY): `.chip-disc` / `.replayer-pot-chip-disc` in `styles.css`, six white
   edge inserts placed per chip by `utils/chip-inserts.js` (`chipInsertVars` / `applyChipInserts` from the chip's
