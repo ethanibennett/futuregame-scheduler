@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { rowStrip, recentRows, historyFromHands } from '../utils/variant-catalog.js';
-import { STRUCTURES, STRUCTURE_SHORT, buildWheels, positionOf, structuresOf, turnGame, turnVariant, turnStructure, wheelHint, quickPicks } from '../utils/variant-wheels.js';
+import { STRUCTURES, STRUCTURE_SHORT, buildWheels, positionOf, structuresOf, turnGame, turnVariant, turnStructure, wheelHint, quickPicks, variantLabel } from '../utils/variant-wheels.js';
 import './variant-picker.css';
 
 /*
@@ -188,7 +188,7 @@ export function VariantWheels({ rows, current, onPick, history, hands, onSearch,
     node: <><span className="vw-name">{g.label}</span>{g.games.length > 1 && <span className="vw-more" aria-hidden="true">{g.games.length - 1} ›</span>}</>,
   }));
   const varItems = (grp ? grp.games : []).map((game, i) => ({
-    key: game, cls: i === 0 ? 'is-base' : '', node: <span className="vw-name">{game}</span>,
+    key: game, cls: i === 0 ? 'is-base' : '', node: <span className="vw-name">{variantLabel(grp, game)}</span>,
   }));
 
   const seeded = !(history && history.length) && !!(hands && hands.length);
@@ -229,7 +229,7 @@ export function VariantWheels({ rows, current, onPick, history, hands, onSearch,
         <Wheel id={`vw-game-${uid}`} label="Game" className="vw-game" items={gameItems} index={pos.g}
           listKey={wheels.groups.length} onTurn={(i) => pick(turnGame(wheels, i))} />
         <button type="button" className="vw-exp ctl" hidden={!hasVariants} aria-expanded={isOpen} aria-controls={`vw-var-${uid}`}
-          aria-label={isOpen ? `Hide ${grp.label} variants` : `Show ${grp ? grp.label : ''} variants${grp ? ': ' + grp.games.slice(1).join(', ') : ''}`}
+          aria-label={isOpen ? `Hide ${grp.label} variants` : `Show ${grp ? grp.label : ''} variants${grp ? ': ' + grp.games.slice(1).map((g) => variantLabel(grp, g)).join(', ') : ''}`}
           onClick={toggle}>
           <Chevron />
         </button>

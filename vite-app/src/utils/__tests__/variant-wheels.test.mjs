@@ -83,6 +83,26 @@ test('a game or variant turned lands on its usual structure; a structure turned 
   }
 });
 
+test('the variant wheel never repeats the game wheel (owner, 2026-11-22: "Let\'s try not to repeat here")', () => {
+  const labels = (key) => { const g = wheels.groups.find((x) => x.key === key); return g.games.map((game) => W.variantLabel(g, game)); };
+  assert.deepEqual(labels('stud'), ['Hi', '8/b', 'Hi/Lo Regular']);
+  assert.deepEqual(labels('27draw'), ['Triple Draw', 'Single Draw']);
+  assert.deepEqual(labels('a5draw'), ['Triple Draw', 'Single Draw']);
+  assert.deepEqual(labels('holdem'), ['Texas', 'Pineapple', 'Short Deck']);
+  assert.deepEqual(labels('razz'), ['A-5', 'Razzdugi', 'Razzdeucy', '2-7']);
+  assert.deepEqual(labels('custom'), CUSTOM, 'a custom game keeps its own name');
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+  for (const g of wheels.groups) {
+    if (g.games.length < 2 || g.custom) continue;
+    const ls = g.games.map((game) => W.variantLabel(g, game));
+    assert.equal(new Set(ls).size, ls.length, `${g.label}: two rows read the same`);
+    // The family's name ("2-7" of 2-7 Draw, "Stud"), as a word of its own: "Razzdugi" is one word, not "Razz" again,
+    // and "Triple Draw" is the owner's own example under 2-7 Draw.
+    const word = g.label.split(' ')[0];
+    for (const l of ls) assert.ok(!new RegExp(`(^|\\s)${esc(word)}(\\s|$)`, 'i').test(l), `${g.label} wheel repeats "${word}" in "${l}"`);
+  }
+});
+
 test('the line under the wheels', () => {
   const r = (k) => rows.find((x) => x.key === k);
   assert.deepEqual(W.wheelHint(wheels, r('Stud Hi|No Limit'), false), { warn: 'Unusual:', text: 'Stud Hi is usually limit.' });

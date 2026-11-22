@@ -105,7 +105,9 @@ sessions opened here own scheduler work.
 - **The New Hand picker is three wheels** (owner, 2026-11-22: "Let's build the wheels picker"; `components/VariantWheels.jsx`,
   `utils/variant-wheels.js`, styles in `variant-picker.css`; the approved prototype is `docs/prototypes/variant-wheels.html`): a
   structure wheel (No Limit, Pot Limit, Limit), a game wheel of families (Hold'em, Omaha, Stud, Razz, 2-7 Draw … OFC, then Custom
-  when the account has custom games) and a family's variants on a third wheel that › opens to the right. Over them, the last three
+  when the account has custom games) and a family's variants on a third wheel that › opens to the right, each row only what tells it
+  from its family (owner, 2026-11-22: "Let's try not to repeat here"; `VARIANT_LABEL`): Stud's read Hi, 8/b, Hi/Lo Regular, 2-7
+  Draw's and A-5 Draw's Triple Draw, Single Draw; the label only, the row and its game type unchanged. Over them, the last three
   games picked (else NLH, PLO, 2-7 TD) and Search, which opens the palette (`VariantPicker.jsx` `Palette`: slang, the mixes, a game's
   rules; ⌘K and / still open it). The wheels are a second view of `buildCatalog`: every position not struck through is a catalog
   row and every row is one position (a structure the game has no row at is struck through and springs back; a rare row, NL Stud,
