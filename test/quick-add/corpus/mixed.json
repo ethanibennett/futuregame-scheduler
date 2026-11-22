@@ -123,7 +123,8 @@
         "turn": [["SB", "check"], ["BB", "bet", null], ["SB", "call", null]],
         "river": [["SB", "check"], ["BB", "bet", null], ["SB", "call", null]]
       },
-      "winners": ["BB"]
+      "winners": ["BB"],
+      "mentioned": ["AxAx"]
     },
     "expectGaps": [
       { "kind": ["ambiguous", "missing"], "field": "gameType", "id": "game", "about": "HORSE without the round: blinds and three postflop streets fit hold'em or O8" },

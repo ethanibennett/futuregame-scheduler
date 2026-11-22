@@ -98,13 +98,48 @@ const runner = require('../lib/admin-eval');
   assert.match(after.report, /Resumed: 50 case\(s\)/);
   assert.strictEqual(runner.runs().length, 2);
 
-  // Only the newest three runs keep their parses (an interrupted one keeps its own): two more done runs and a
-  // third finishing leave the first two runs with none.
-  realRun("INSERT INTO quick_add_eval_runs (started_at, finished_at, options, summary, status) VALUES ('2026-11-21T21:00:00Z', '2026-11-21T21:10:00Z', '{}', '{}', 'done')");
-  realRun("INSERT INTO quick_add_eval_runs (started_at, finished_at, options, summary, status) VALUES ('2026-11-21T22:00:00Z', '2026-11-21T22:10:00Z', '{}', '{}', 'done')");
+  // A rescore (2026-11-22): a finished run's kept parses scored again with today's scorer and corpus, as a new
+  // run, with no model call and so no key; their cost carried; no copy of the parses kept.
+  realRun("INSERT INTO quick_add_eval_runs (started_at, finished_at, options, summary, status) VALUES ('2026-11-22T09:00:00Z', '2026-11-22T09:10:00Z', ?, '{}', 'done')", [JSON.stringify({ model: 'claude-opus-5-5', effort: 'low', corpus: 'main' })]);
+  const paid = Number(db.exec('SELECT last_insert_rowid()')[0].values[0][0]);
+  for (const c of cases.slice(0, 2)) {
+    const v = E.validateCase(c, new Map());
+    realRun('INSERT INTO quick_add_eval_cases (run_id, case_id, result) VALUES (?, ?, ?)', [paid, c.id, JSON.stringify({ id: c.id, hand: E.buildOracleHand(c, v), notes: [], latencyMs: 4000, usage: { input_tokens: 400, output_tokens: 900 }, meta: { model: 'claude-opus-5-5', calls: 1, costUsd: 0.02 }, error: null })]);
+  }
+  const noKey = { ...process.env };
+  delete noKey.ANTHROPIC_API_KEY;
+  assert.strictEqual(runner.start({ rescore: 999, env: noKey }).status, 404);
+  keptParses = 0;
+  const rescoredRun = await new Promise((resolve) => {
+    const r = runner.start({ rescore: paid, env: noKey, onDone: resolve });
+    assert.deepStrictEqual([r.started, r.rescored], [true, 2], JSON.stringify(r));
+  });
+  assert.strictEqual(rescoredRun.exitCode, 0, rescoredRun.log.slice(-800));
+  assert.strictEqual(keptParses, 0, 'a rescore keeps no copy of the parses');
+  const re = runner.runs()[0];
+  assert.deepStrictEqual([re.rescoreOf, re.model, re.effort, re.cases, re.recall, re.perfect, re.keptCases], [paid, 'claude-opus-5-5', 'low', 2, 1, 2, 0], JSON.stringify(re));
+  assert.strictEqual(re.costUsd, 0.04, 'the parses\' own cost is carried');
+  assert.match(runner.run(re.id).report, new RegExp(`saved parses from run-${paid}-parses\\.json`));
+  assert.strictEqual(runner.runCases(paid).length, 2, 'the run it scored keeps its parses');
+  // A rescore of a rescore scores the same parses; a run with none kept is refused.
+  const again = await new Promise((resolve) => runner.start({ rescore: re.id, env: noKey, onDone: resolve }));
+  assert.deepStrictEqual([again.exitCode, runner.runs()[0].rescoreOf, runner.runs()[0].cases], [0, paid, 2]);
+  realRun("INSERT INTO quick_add_eval_runs (started_at, finished_at, options, summary, status) VALUES ('2026-11-22T10:00:00Z', '2026-11-22T10:10:00Z', '{}', '{}', 'done')");
+  const empty = Number(db.exec('SELECT last_insert_rowid()')[0].values[0][0]);
+  assert.strictEqual(runner.start({ rescore: empty, env: noKey }).status, 409);
+  await new Promise((resolve) => assert.strictEqual(runner.start({ rescore: cut, env: noKey, onDone: resolve }).started, true, 'a resumed run, done now, is rescored'));
+  assert.deepStrictEqual([runner.runs()[0].rescoreOf, runner.runs()[0].cases, runner.runs()[0].recall], [cut, cases.length, 1]);
+
+  // Only the newest three runs that keep parses keep them (an interrupted one keeps its own; a rescore keeps
+  // none and pushes nobody's out): two more runs with parses and a third finishing leave the first three with none.
+  for (const t of ['2026-11-22T21:00:00Z', '2026-11-22T22:00:00Z']) {
+    realRun("INSERT INTO quick_add_eval_runs (started_at, finished_at, options, summary, status) VALUES (?, ?, '{}', '{}', 'done')", [t, t]);
+    const id = Number(db.exec('SELECT last_insert_rowid()')[0].values[0][0]);
+    realRun('INSERT INTO quick_add_eval_cases (run_id, case_id, result) VALUES (?, ?, ?)', [id, cases[0].id, JSON.stringify({ id: cases[0].id, hand: null, notes: [] })]);
+  }
   const third = await new Promise((resolve) => runner.start({ args: ['--oracle', '--filter', 'web-rigged-rant-jj-vs-j5-555'], onDone: resolve, keepRun: true }));
   assert.strictEqual(third.exitCode, 0, third.log.slice(-800));
   const newest = runner.runs()[0];
-  assert.deepStrictEqual([runner.runCases(list[0].id).length, runner.runCases(cut).length, runner.runCases(newest.id).length], [0, 0, 1]);
-  console.log(`admin-eval.test.js - passed (${s.progress.total} cases, run ${list[0].id} kept as it went; run ${cut} resumed with 50 kept)`);
+  assert.deepStrictEqual([list[0].id, cut, paid, newest.id].map((id) => runner.runCases(id).length), [0, 0, 0, 1]);
+  console.log(`admin-eval.test.js - passed (${s.progress.total} cases, run ${list[0].id} kept as it went; run ${cut} resumed with 50 kept; run ${paid} rescored for nothing)`);
 })().catch((e) => { console.error(e); process.exit(1); });
