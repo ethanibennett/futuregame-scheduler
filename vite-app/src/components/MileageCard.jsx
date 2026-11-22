@@ -80,7 +80,7 @@ export default function MileageCard({ token, events, year }) {
       {!home ? (
         <>
           <p className="mi-note">Set your home once (it stays on this device) and every room you played this year becomes a round trip in the log.</p>
-          <button type="button" className="btn btn-ghost ctl mi-btn" onClick={setHere}><span>Use where I am as home</span></button>
+          <button type="button" className="btn btn-ghost ctl mi-btn snap-g" onClick={setHere}><span>Use where I am as home</span></button>
         </>
       ) : (
         <>

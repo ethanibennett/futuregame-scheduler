@@ -115,7 +115,7 @@ function PreparerLinkCard({ token, year }) {
       ))}
       <div className="tl-new">
         <input value={label} maxLength={60} placeholder="Who it is for, e.g. Dana, CPA" onChange={(e) => setLabel(e.target.value)} />
-        <button type="button" className="tq-mark" onClick={make}><span>Make a link</span></button>
+        <button type="button" className="tq-mark ctl snap-g" onClick={make}><span>Make a link</span></button>
       </div>
     </div>
   );
