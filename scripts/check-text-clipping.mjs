@@ -518,6 +518,9 @@ function scan(rootSel) {
     await p.goto(base + '/#h/' + encodeURIComponent(SHARED_HAND_CODE), { waitUntil: 'domcontentloaded' });
     await p.waitForTimeout(4500);
     await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000 }).catch(() => {});
+    // The pass before leaves its own hand's sheet open, and the link is only a change of hash: a sheet still up here
+    // is that hand's, kept over the shared one (fixed 2026-11-22), and measuring it would pass for the wrong sheet.
+    if (await p.locator('.replayer-share-sheet').count()) throw new Error("the last hand's Share sheet is still open over the shared hand");
     await p.locator('.rab-share').first().click({ timeout: 4000, force: true });
     await p.locator('.replayer-share-sheet').waitFor({ timeout: 3000 });
     await p.waitForTimeout(500);

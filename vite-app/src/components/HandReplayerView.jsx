@@ -5394,6 +5394,11 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   useEffect(() => {
     if (initialHand) {
       setCurrentHand(canonicalHand(initialHand));
+      /* Not the hand that was open: a link opened over one of the account's own hands kept that hand's id, so
+         the replay (keyed by the id) stayed mounted with its Share sheet still open over the new hand, the list
+         kept the old row selected, and an Edit then Save would have PUT the shared hand over the saved one. */
+      setCurrentHandId(null);
+      setIsPublic(false);
       setMode('replay');
       setHandIsShared(true);
       setTitle('');
