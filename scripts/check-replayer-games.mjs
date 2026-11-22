@@ -219,7 +219,7 @@ async function runRow(browser, row) {
     await p.waitForTimeout(900);
 
     // ── The picker ──
-    await p.locator('.vp-launcher').first().click();
+    await p.locator('.vw-search').first().click();
     await p.locator('input[aria-label="Search games"]').fill(row.mix || row.name);
     await p.waitForTimeout(150);
     const target = row.mix
@@ -590,7 +590,7 @@ async function runOfc() {
     await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 700 }).catch(() => {});
     await p.locator(W >= 1024 ? '.dk-rail-item:has-text("Hands")' : '.bottom-nav .nav-tab:has-text("Hands")').first().click();
     await p.waitForTimeout(900);
-    await p.locator('.vp-launcher').first().click();
+    await p.locator('.vw-search').first().click();
     await p.locator('input[aria-label="Search games"]').fill('OFC');
     await p.waitForTimeout(150);
     await p.locator('.vp-list button').filter({ has: p.locator('.vp-row-name:text-is("OFC")') }).first().click();

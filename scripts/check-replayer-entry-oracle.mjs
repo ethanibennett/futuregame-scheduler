@@ -501,10 +501,10 @@ async function worker(w) {
         try {
           await skipSheet();
           await p.locator('.bottom-nav .nav-tab:has-text("Hands")').first().click({ timeout: 3000 });
-          await p.waitForSelector('.vp-launcher', { timeout: 10000 });
+          await p.waitForSelector('.vw-search', { timeout: 10000 });
           await p.waitForTimeout(300);
           await skipSheet();
-          await p.locator('.vp-launcher').first().click({ timeout: 3000 });
+          await p.locator('.vw-search').first().click({ timeout: 3000 });
           await p.locator('input[aria-label="Search games"]').fill(rowName, { timeout: 3000 });
           await p.waitForTimeout(150);
           if (!(await row.count())) await stop('cannot', 'the game is not in the picker', 'setup', `no picker row named "${rowName}"`);

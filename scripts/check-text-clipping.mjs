@@ -458,11 +458,31 @@ function scan(rootSel) {
       await run('replayer drill, ' + stage, root);
     } catch (e) { console.log(`  (replayer drill ${stage} skipped: ${e.message.split('\n')[0]})`); }
   }
-  // Hands: the New Hand variant picker (VariantPicker.jsx): its launcher, then the palette open, then
+  // Hands: the variant wheels (VariantWheels.jsx): closed, with Hold'em's variants open, then on Razz's (turned
+  // by the keys) at No Limit, whose line under the wheels says it is unusual.
+  if (on('hands-wheels')) try {
+    await openTab('Hands');
+    await p.waitForTimeout(600);
+    await run('hands wheels', '.vw');
+    await p.locator('.vw-exp').filter({ visible: true }).first().click({ timeout: 4000 });
+    await p.waitForTimeout(800);
+    await run("hands wheels, Hold'em open", '.vw');
+    await p.locator('.vw-game').filter({ visible: true }).first().focus();
+    for (const want of ['Omaha', 'Stud Hi', 'Razz']) {
+      await p.keyboard.press('ArrowDown');
+      await p.locator(`.replayer-list-create button:has-text("${want} Hand")`).filter({ visible: true }).first().waitFor({ timeout: 5000 });
+    }
+    await p.locator('.vw-struct').filter({ visible: true }).first().focus();
+    await p.keyboard.press('Home');
+    await p.locator('.replayer-list-create button:has-text("Create No Limit Razz")').filter({ visible: true }).first().waitFor({ timeout: 5000 });
+    await p.waitForTimeout(600);
+    await run('hands wheels, No Limit Razz', '.vw');
+  } catch (e) { console.log(`  (hands wheels skipped: ${e.message.split('\n')[0]})`); }
+  // Hands: the New Hand variant picker (VariantPicker.jsx): the palette open (the wheels' Search), then
   // a search ("o8": rows and the mixes that deal it).
   if (on('hands-palette')) try {
     await openTab('Hands');
-    await p.locator('.vp-launcher').first().click({ timeout: 4000 });
+    await p.locator('.vw-search').first().click({ timeout: 4000 });
     await p.waitForTimeout(800);
     await run('hands palette', '.vp-sheet');
     await p.locator('.vp-search input').fill('o8');

@@ -102,6 +102,17 @@ sessions opened here own scheduler work.
   rules, sources and the owner's open defaults in `docs/replayer-hidden-games.md`; every Dramaha row has a Limit row beside it, and in a game of two different hands the odd chip goes to the half using the most of the player's own cards (owner, `oddChipToLo`). A new game type goes in `HAND_CONFIG`, `GAME_EVAL`, the
   variant strips, `GAME_CODES` and, for a draw game, the category lists. Hands is one tab for every account; Study, the Scanner and
   typing or saying a hand stay with admins.
+- **The New Hand picker is three wheels** (owner, 2026-11-22: "Let's build the wheels picker"; `components/VariantWheels.jsx`,
+  `utils/variant-wheels.js`, styles in `variant-picker.css`; the approved prototype is `docs/prototypes/variant-wheels.html`): a
+  structure wheel (No Limit, Pot Limit, Limit), a game wheel of families (Hold'em, Omaha, Stud, Razz, 2-7 Draw … OFC, then Custom
+  when the account has custom games) and a family's variants on a third wheel that › opens to the right. Over them, the last three
+  games picked (else NLH, PLO, 2-7 TD) and Search, which opens the palette (`VariantPicker.jsx` `Palette`: slang, the mixes, a game's
+  rules; ⌘K and / still open it). The wheels are a second view of `buildCatalog`: every position not struck through is a catalog
+  row and every row is one position (a structure the game has no row at is struck through and springs back; a rare row, NL Stud,
+  is a structure turn away, with an "Unusual" line under the wheels), and a pick goes through `pickVariant`, so the game type is
+  the palette's. `variant-wheels.test.mjs` (in `npm test`) holds that, and fails while a new catalog game sits outside the families
+  in `WHEEL_GAMES`. Scripts that pick a game open the palette with `.vw-search` (the launcher, `.vp-launcher`, is gone). Guards:
+  `hands-wheels-*` (controls), `hands-wheels` (clipping).
 - **The replayer is held to an outside engine** (owner, 2026-11-10: "This is something we can get perfect";
   `test/replayer-oracle/`, its README): PokerKit plays random hands of twenty games (heads-up to ten-handed, cash to the
   cent and tournament, straddles, short stacks), `generate.py` settles each to the TDA rules the app follows, and every

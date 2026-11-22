@@ -41,9 +41,9 @@ function RulesSheet({ row, onCreate, onClose }) {
  *
  *   The best-guess card   what the player is in on My Schedule (playing now, starting soon, earlier
  *                         today), with the reason; a mix shows its rotation as chips. Tapping the card
- *                         or a chip picks it (the Create under the launcher makes the hand).
- *   The launcher          one 35g x 5r row: the family tag, the game, a chevron (⌘K on desktop). Opens
- *                         the palette.
+ *                         or a chip picks it (the Create under the wheels makes the hand).
+ *   The wheels            VariantWheels.jsx (owner, 2026-11-22), which replaced the launcher; their Search
+ *                         opens the palette.
  *   The palette           a bottom sheet on the phone, a centred 46g modal on desktop (⌘K or /).
  *                         Search (names, abbreviations, slang: "o8", "deuce", "27td"), jump chips to a
  *                         family, Recent, every family, the rotations (a mix opens into its games).
@@ -253,19 +253,6 @@ export function GuessCard({ guess, current, onPick }) {
         </div>
       )}
     </div>
-  );
-}
-
-/** The launcher: the current pick, opening the palette. */
-export function Launcher({ current, name, onOpen }) {
-  const desktop = isDesktopNow();
-  return (
-    <button type="button" className="vp-launcher" onClick={onOpen} aria-haspopup="dialog" aria-label={`Game: ${name}. Change the game`}>
-      {current && <Tag row={current} />}
-      <span className="vp-launcher-name"><span>{name}</span></span>
-      {desktop ? <span className="vp-kbd" aria-hidden="true">⌘K</span>
-        : <svg className="vp-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>}
-    </button>
   );
 }
 

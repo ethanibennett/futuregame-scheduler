@@ -1811,9 +1811,29 @@ function finalize(c) {
   // On desktop the heatmaps sit beside Live in the Cash tab's second pane (UX pick 107): no switch.
   step('cash-heatmaps', async () => { await nav('Cash'); if (desktop) await p.waitForTimeout(1500); else await click('.cash-mode-tabs button:has-text("Heatmaps")', 1500); }, 1);
   step('hands', () => nav('Hands'), 1);
-  // The New Hand variant picker's palette (VariantPicker.jsx), open; then with a search typed.
-  step('hands-palette', async () => { await nav('Hands'); await tap('.vp-launcher', 800); }, 1);
-  step('hands-palette-search', async () => { await nav('Hands'); await tap('.vp-launcher', 800); await p.locator('.vp-search input').fill('o8'); await p.waitForTimeout(400); }, 1);
+  // The New Hand variant picker's palette (VariantPicker.jsx, opened by the wheels' Search), open; then with a search typed.
+  // The variant wheels (VariantWheels.jsx): Hold'em's variants open; then Razz's, turned by the keys, on an
+  // unusual structure (No Limit). The wheel is blurred after, so its focus ring is not taken for a control.
+  step('hands-wheels-open', async () => { await nav('Hands'); await tap('.vw-exp', 900); }, 1);
+  step('hands-wheels-razz', async () => {
+    await nav('Hands');
+    // Each key waits for its pick to reach the Create button (a key pressed while the page is still busy
+    // was lost on the desktop run).
+    await vis('.vw-game').first().focus();
+    for (const want of ['Omaha', 'Stud Hi', 'Razz']) {
+      await p.keyboard.press('ArrowDown');
+      await vis(`.replayer-list-create button:has-text("${want} Hand")`).first().waitFor({ timeout: 5000 });
+    }
+    await tap('.vw-exp', 900);
+    await vis('.vw-struct').first().focus();
+    await p.keyboard.press('Home');
+    await vis('.replayer-list-create button:has-text("Create No Limit Razz")').first().waitFor({ timeout: 5000 }).catch(() => {});
+    await p.evaluate(() => document.activeElement && document.activeElement.blur());
+    await p.waitForTimeout(900);
+    if (!(await exists('button:has-text("Create No Limit Razz")'))) throw new Error('the wheels did not reach No Limit Razz');
+  }, 1);
+  step('hands-palette', async () => { await nav('Hands'); await tap('.vw-search', 800); }, 1);
+  step('hands-palette-search', async () => { await nav('Hands'); await tap('.vw-search', 800); await p.locator('.vp-search input').fill('o8'); await p.waitForTimeout(400); }, 1);
   step('calendar', async () => { await nav('Schedule'); await click('.sched-switch-seg:has-text("Calendar")', 1500); }, 1);
   step('calendar-filters', async () => {
     await nav('Schedule');
@@ -2369,7 +2389,7 @@ function finalize(c) {
   }, 1);
   step('hands-entry-plo', async () => {
     await nav('Hands');
-    await tap('.vp-launcher', 800);
+    await tap('.vw-search', 800);
     await p.locator('.vp-search input').fill('PLO8');
     await p.waitForTimeout(400);
     await tap('.vp-list button:has(.vp-row-name:text-is("PLO8"))', 1500);
@@ -2377,7 +2397,7 @@ function finalize(c) {
   // Choosing Short Deck asks the room's rule (ShortDeckRuleDialog.jsx): the question and its two answers.
   step('hands-short-deck-rule', async () => {
     await nav('Hands');
-    await tap('.vp-launcher', 800);
+    await tap('.vw-search', 800);
     await p.locator('.vp-search input').fill('Short Deck');
     await p.waitForTimeout(400);
     await tap('.vp-list button:has(.vp-row-name:text-is("Short Deck"))', 900);

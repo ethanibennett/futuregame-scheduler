@@ -10,7 +10,8 @@ import Icon from './Icon.jsx';
 import { API_URL, SITE_URL } from '../utils/api.js';
 import { HAND_CONFIG, HAND_CONFIG_DEFAULT, haptic, getVariantStrip, canonicalGameType, canonicalHand, getToday } from '../utils/utils.js';
 import { STRUCTURE_GAME_MAP, DEFAULT_STRUCTURE, RAZZ_VARIANTS as RAZZ_LIST, variantName, buildCatalog, buildMixes, bestGuess } from '../utils/variant-catalog.js';
-import { Palette, GuessCard, Launcher } from './VariantPicker.jsx';
+import { Palette, GuessCard } from './VariantPicker.jsx';
+import { VariantWheels } from './VariantWheels.jsx';
 import { buildDrawStudySpot } from '../utils/draw-study-spot';
 import { parseCardNotation, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL, gameEvalFor,
          bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestBadugiHand, scoreHalves, halvesWinnersAmong, halvesHandName, oddChipToLo,
@@ -5954,11 +5955,12 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         <div className="replayer-list-head">
           <div className="replayer-list-title"><span>New Hand</span></div>
         </div>
-        {/* The variant picker (owner, 2026-10-20; VariantPicker.jsx, utils/variant-catalog.js): the best
-            guess from My Schedule, then the launcher that opens the palette. They replace the
-            favourites, the family tabs, More and the Structure block. */}
+        {/* The variant picker: the best guess from My Schedule (owner, 2026-10-20; VariantPicker.jsx), then the
+            variant wheels (owner, 2026-11-22: "Let's build the wheels picker"; VariantWheels.jsx,
+            utils/variant-wheels.js), whose Search opens the palette (search, mixes, a game's rules). */}
         <GuessCard guess={guess} current={currentRow} onPick={pickVariant} />
-        <Launcher current={currentRow} name={variantDisplayName + (selectedMix ? ' · ' + selectedMix : '')} onOpen={() => setPaletteOpen(true)} />
+        <VariantWheels rows={catalog} current={currentRow} onPick={pickVariant} history={gameHistory} hands={hands}
+          onSearch={() => setPaletteOpen(true)} name={variantDisplayName + (selectedMix ? ' · ' + selectedMix : '')} />
         {/* Double board moved to the hand's setup, beside Straddle (UX pick 62): it describes the hand. */}
         {false && currentRow && ['holdem', 'omaha'].includes(currentRow.family) && (
           <div className="game-picker vp-stud">
