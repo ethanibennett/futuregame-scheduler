@@ -1157,11 +1157,18 @@ const thinkingTool = (name, input, extra = {}) => ({
 });
 const OPUS = { model: 'claude-opus-5-5' };
 
-test('parseHand: a tool call that normalizes to nothing says what it sent, by shape', async () => {
-  // Opus 5.5, thinking shape, 2026-11-21: now and then a long call that left no game, player or action.
-  const wrapped = await QA.parseHand({ client: stubClient(thinkingTool('record_hand', { hand: { gameType: 'NLH', players: [{ position: 'BTN' }] }, notes: [] })), text: 'x', ...OPUS });
+test('parseHand: a hand sent inside one more key is unwrapped; one that still normalizes to nothing says what it sent', async () => {
+  // Opus 5.5, thinking shape, 2026-11-21: about one parse in fifteen came as { record_hand: { ... } } or { argument: { ... } }.
+  for (const key of ['record_hand', 'argument']) {
+    const out = await QA.parseHand({ client: stubClient(thinkingTool('record_hand', { [key]: { gameType: 'PLO', players: [{ position: 'BTN', isHero: true }, { position: 'BB' }], streets: [], notes: ['n'] } })), text: 'x', ...OPUS });
+    eq([out.hand.gameType, out.hand.players.length, out.meta.unwrapped, 'inputShape' in out.meta], ['PLO', 2, key, false]);
+  }
+  // Two candidates, or the tool's own fields at the top: left as sent.
+  const two = await QA.parseHand({ client: stubClient(thinkingTool('record_hand', { a: { gameType: 'NLH' }, b: { gameType: 'PLO' } })), text: 'x', ...OPUS });
+  eq([two.hand.gameType, two.meta.unwrapped], [null, undefined]);
+  const wrapped = await QA.parseHand({ client: stubClient(thinkingTool('record_hand', { hand: 'NLH, BTN opens', extra: { size: 3 } })), text: 'x', ...OPUS });
   eq(wrapped.hand.gameType, null);
-  eq(wrapped.meta.inputShape, { hand: { gameType: 'string(3): NLH', players: 'array(1)' }, notes: 'array(0)' });
+  eq(wrapped.meta.inputShape, { hand: 'string(14): NLH, BTN opens', extra: { size: 3 } });
   const fine = await QA.parseHand({ client: stubClient(thinkingTool('record_hand', { gameType: 'NLH', players: [{ position: 'BTN', isHero: true }], streets: [] })), text: 'x', ...OPUS });
   assert.ok(!('inputShape' in fine.meta), 'a parse with something in it carries no shape');
 });
