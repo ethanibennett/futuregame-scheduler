@@ -859,8 +859,11 @@ function currencySymbol(hand) {
 function linkTitle(hand) {
   if (!hand) return '';
   const b = hand.blinds || {};
-  const straddle = getStraddles(hand.players || [], b).reduce((m, st) => Math.max(m, st.amount || 0), 0);
-  const stakes = formatStakes(hand, { straddle });
+  // A limit game is its small and big bet alone, no ante (owner, 2026-11-22: "In limit games this should just be small
+  // bet/big bet without the ante"): "Stud 8 200K/400K". The felt's pill keeps its ante.
+  const limit = (HAND_CONFIG[hand.gameType] || HAND_CONFIG_DEFAULT).betting === 'fl';
+  const straddle = limit ? 0 : getStraddles(hand.players || [], b).reduce((m, st) => Math.max(m, st.amount || 0), 0);
+  const stakes = formatStakes(limit ? { ...hand, blinds: { ...b, ante: 0 } } : hand, { straddle });
   return (hand.gameType || 'Poker hand') + (stakes ? ' ' + stakes : '');
 }
 
