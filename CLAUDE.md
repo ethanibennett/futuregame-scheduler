@@ -971,7 +971,15 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
 - **No card moves up or down on its own** (owner, 2026-11-21: "cards in the replayer are STILL sliding up and down.
   STOP IT"): `CARD_LIFTS` and `RING_CLOSES` in HandReplayerView are off beside `SHOWDOWN_SLIDES` (no made-hand lift,
   door lift, turn-over rise, pat rap, thrown-card rise, run-twice row slide; no all-in ring closing, OUT only dims).
-  Every new wager's push starts at its player's plaque (`rayToRect`). Showdown Equity is `computeOdds` on its worker,
+  **Every chip that comes out comes from under its seat** (owner, 2026-11-22: "When the chips come out for antes or bets,
+  let's have them originate from behind the cards and seat box"): a new wager, a blind and a chip added to a wager start
+  on the middle of their player's plaque, under the seats' level, and go back over the felt's pieces once clear of the
+  plaque and the cards (`emergeTimes`; `seatCoverOf` names what covers and what must also be left: the action label, the
+  button, a readout). A wager is lifted by a tick (`data-under`, `.replayer-bet-chip[data-under]` at `--z-strip`); an
+  ante's or an added chip is a copy on `.replayer-fold-layer` handed to its sweep-layer copy two frames before it goes.
+  Each fades in only while hidden (to `peek`), since the plaque is 0.93 opaque. Each chip's own turn (`pipShift`) is the
+  random rotation the owner asked for (2026-11-13; "If they're already random no need to change anything", 2026-11-22).
+  Showdown Equity is `computeOdds` on its worker,
   shown in the seat's readout while an all-in's cards are to come, never at the result.
   **The words on a seat fade, never slide** (owner, 2026-11-21: "Still some jittery shit on hero's seat box, and the fold
   action buttons should fade away, not violently disappear"): an action label fades in on its plaque; one the commit no
@@ -1052,7 +1060,8 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   slide is held at its first frame until frames flow again (two under 50ms apart, 250ms at most), since a stud street's
   commit and the frames after it run 200-600ms and a slide started in the commit was over by the first frame painted
   (it read as a jump); the hero's cards are 1.2 times the table's (`--seat-card-h`; not on a 9 or 10-seat phone) so its action label
-  sits on them instead of beside the plaque; in stud the rows (a split's shares, side pots) hang under the game pill, the
+  sits on them instead of beside the plaque, a fanned stud hand 1.6 on the phone (its tilted outer cards bring their indexes
+  down to the label), but not with the splay off, where 1.2 keeps every bet on the cards (owner, 2026-11-22); in stud the rows (a split's shares, side pots) hang under the game pill, the
   pot above the watermark; the 6-max landscape side seats are 3 cells in (`SIDE_X`), on the felt's edge; a stud fold's
   down cards gather and shrink to nothing behind the plaque (`foldToStack`, target the plaque, `spin: 0`) while its up
   cards fly to the dead strip, the ghost dimming to the strip's opacity and handing over in one frame (`ghostsTo`

@@ -739,6 +739,42 @@ export function yieldBoard(reg, { set, rate = 1, stayed, added, tYield = 0, stre
 }
 
 /**
+ * A piece that comes out from under its seat (owner, 2026-11-22: "When the chips come out for antes or bets, let's
+ * have them originate from behind the cards and seat box"): it starts under the plaque and flies on a level below
+ * the seats, so the plaque and the cards cover it, and it is put back over the felt's other pieces once it has left
+ * them. Given its flight (`channels`: x and y move `box`, a scale grows it about its centre) and the rects that cover
+ * it (the plaque, each card), `peek` is when some of it first shows (0: in sight from the start) and `clear` when it
+ * touches none of them nor the seat's other pieces in `also` (the action label and the button, which may still be
+ * fading in, so they hide nothing) (null: never, before `end`). ms on the channels' clock, sampled every 1/240 s. Pure.
+ */
+export function emergeTimes(channels, box, cover, { end, step = 1000 / 240, also = [] } = {}) {
+  const ok = (r) => r && r.right > r.left && r.bottom > r.top;
+  const rects = (cover || []).filter(ok);
+  const touch = [...rects, ...(also || []).filter(ok)];
+  const w = box.right - box.left, h = box.bottom - box.top;
+  const cx0 = (box.left + box.right) / 2, cy0 = (box.top + box.bottom) / 2;
+  const stop = end != null ? end : Math.max(0, ...channels.map(ch => channelEnd(ch)));
+  const covered = (x, y) => rects.some(r => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom);
+  const N = 4;   // a 5 x 5 grid of the box's points: seen when one of them is on no cover
+  let peek = null;
+  for (let t = 0; t <= stop + step; t += step) {
+    const v = composeAt(channels, Math.min(t, stop));
+    const k = (v.scale || 1);
+    const cx = cx0 + v.x, cy = cy0 + v.y, hw = w * k / 2, hh = h * k / 2;
+    if (peek == null) {
+      let seen = false;
+      for (let i = 0; i <= N && !seen; i++) for (let j = 0; j <= N && !seen; j++) {
+        if (!covered(cx - hw + (2 * hw * i) / N, cy - hh + (2 * hh * j) / N)) seen = true;
+      }
+      if (seen) peek = Math.min(t, stop);
+    }
+    const touches = touch.some(r => cx + hw > r.left && cx - hw < r.right && cy + hh > r.top && cy - hh < r.bottom);
+    if (!touches) return { peek: peek == null ? Math.min(t, stop) : peek, clear: Math.min(t, stop) };
+  }
+  return { peek, clear: null };
+}
+
+/**
  * A wager pushed out from its seat: the stack translates from 0.55 card widths back toward the
  * seat to its spot on the flick spring. Fully opaque and legible from the press frame — a wager is
  * a fact, not an event — the motion only says where it came from. An add-on (a raise over chips
@@ -748,10 +784,14 @@ export function yieldBoard(reg, { set, rate = 1, stayed, added, tYield = 0, stre
  * @param {{x:number,y:number}} p.dir  unit vector from the wager toward its seat (px space)
  * @param {number} p.pushPx           already shortened for clearance
  * @param {{w:number,h:number}} p.size the wager's box
+ * @param {{x:number,y:number}} [p.from] where a new wager starts, as an offset from its rest (its plaque's centre:
+ *   it comes out from under the seat), in place of dir * pushPx
+ * @param {{left,top,right,bottom}} [p.box] the wager's box at rest, and [p.cover] the rects of its seat that cover
+ *   it: the returned entry's `emerge` says when it shows and when it is clear of them (emergeTimes)
  */
-export function pushOut(reg, { set, rate = 1, el, dir, pushPx, addOn = false, size }) {
+export function pushOut(reg, { set, rate = 1, el, dir, pushPx, addOn = false, size, from: start = null, box = null, cover = null, also = [] }) {
   const s = reg.state(el);
-  let from = { x: dir.x * pushPx, y: dir.y * pushPx };
+  let from = start && !(addOn && s) ? { x: start.x, y: start.y } : { x: dir.x * pushPx, y: dir.y * pushPx };
   let v = { x: 0, y: 0 };
   if (addOn && s) {
     const p = { x: s.val.x, y: s.val.y };
@@ -768,15 +808,24 @@ export function pushOut(reg, { set, rate = 1, el, dir, pushPx, addOn = false, si
      made (owner, 2026-11-21: "Every single animation should be ultra smooth"). One already on the felt keeps its
      strength. */
   const fresh = !(addOn && s);
-  return reg.run(el, {
+  const xy = [
+    { prop: 'x', spring: sp, from: from.x, to: 0, timeScale: rate },
+    { prop: 'y', spring: sp, from: from.y, to: 0, timeScale: rate },
+  ];
+  /* A new wager fades in over `appear` as it comes out, never faster (no fade on the felt is shorter, and the smooth
+     audit holds it); one that stays hidden under its seat for longer than that fades until it first shows (`peek`). */
+  const emerge = fresh && start && box && cover ? emergeTimes(xy, box, cover, { also, end: Math.max(channelEnd(xy[0]), channelEnd(xy[1])) }) : null;
+  const fadeMs = Math.max(stageOf(set).appear / rate, emerge && emerge.peek > 0 ? emerge.peek : 0);
+  const entry = reg.run(el, {
     channels: [
-      { prop: 'x', spring: sp, from: from.x, to: 0, timeScale: rate },
-      { prop: 'y', spring: sp, from: from.y, to: 0, timeScale: rate },
-      ...(fresh ? [{ prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: stageOf(set).appear / rate, ease: (p) => p * p * (3 - 2 * p) } }] : []),
+      ...xy,
+      ...(fresh ? [{ prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: fadeMs, ease: (p) => p * p * (3 - 2 * p) } }] : []),
     ],
     size,
     prefix: 'translate(-50%, -50%)',
   });
+  if (entry) entry.emerge = emerge;
+  return entry;
 }
 
 /**

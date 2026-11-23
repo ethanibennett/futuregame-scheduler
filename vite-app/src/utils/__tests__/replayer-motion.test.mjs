@@ -680,3 +680,30 @@ test('rayToRect: the distance to where a ray enters a rect, null when it misses'
   // Starting inside: 0.
   assert.equal(rayToRect(150, 320, { x: 1, y: 0 }, rect), 0);
 });
+
+import { emergeTimes } from '../replayer-motion.js';
+
+test('emergeTimes: a chip from under its seat shows past the cover, then clears it and the seat\'s other pieces', () => {
+  const sp = tierSpring('B', 'flick');
+  const path = [{ prop: 'x', spring: sp, from: 0, to: 100, timeScale: 1 }];
+  const box = { left: -5, right: 5, top: -5, bottom: 5 };
+  const plaque = { left: -20, right: 20, top: -20, bottom: 20 };
+  const e = emergeTimes(path, box, [plaque]);
+  assert.ok(e.peek > 0 && e.clear > e.peek, `peek ${e.peek} then clear ${e.clear}`);
+  // It shows once its right edge passes the plaque's (x > 15), and is clear once its left edge has (x >= 25).
+  const at = (t) => composeAt(path, t).x;
+  assert.ok(at(e.peek) > 15 && at(e.peek - 1000 / 240) <= 15 + 1e-9, 'peek is the first sample past the edge');
+  assert.ok(at(e.clear) >= 25 && at(e.clear - 1000 / 240) < 25, 'clear is the first sample past the plaque');
+  // The action label beyond the plaque keeps it under the seat longer, but hides nothing: peek is unchanged.
+  const label = { left: 24, right: 30, top: -4, bottom: 4 };
+  const e2 = emergeTimes(path, box, [plaque], { also: [label] });
+  assert.equal(e2.peek, e.peek);
+  assert.ok(e2.clear > e.clear && at(e2.clear) >= 35, 'clear of the label too');
+  // In sight from the start (no cover over it): shown and clear at once.
+  assert.deepEqual(emergeTimes(path, box, []), { peek: 0, clear: 0 });
+  // Under a cover it never leaves: shown never, clear never.
+  assert.deepEqual(emergeTimes(path, box, [{ left: -500, right: 500, top: -500, bottom: 500 }]), { peek: null, clear: null });
+  // A delayed flight is timed on its own clock: both times move by the delay.
+  const late = emergeTimes([{ ...path[0], delay: 300 }], box, [plaque]);
+  assert.ok(Math.abs(late.clear - 300 - e.clear) <= 1000 / 240 + 1e-9);
+});

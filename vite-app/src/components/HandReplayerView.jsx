@@ -26,7 +26,7 @@ import { loadCardImages, ensureExportFonts } from '../utils/export.js';
 import {
   MotionRegistry, SPRINGS_FLAG_KEY, readSpringsFlag, springSetFor, rateFor,
   prefersReducedMotion as springsReducedMotion,
-  dealBoard, yieldBoard, pushOut, planSweep, sweepWagers, shipPot, shipFirstArrival, shipStartAfterSweep,
+  dealBoard, yieldBoard, pushOut, emergeTimes, planSweep, sweepWagers, shipPot, shipFirstArrival, shipStartAfterSweep,
   settlePile, fadePileOut, emptyPile, seatLanding, clearPush, rayToRect, centreOf, unionRect,
   collectAtResult, potShown,
 } from '../utils/replayer-motion.js';
@@ -859,8 +859,12 @@ function formatStakes(hand, { straddle = 0 } = {}) {
   const cash = hand.gameMode === 'cash';
   const sym = currencySymbol(hand);
   const cents = cash && [b.sb, b.bb, b.ante, b.bigBet, straddle].some((v) => v && Math.round(Number(v) * 100) % 100 !== 0);
+  /* One style for every part (owner, 2026-11-22, of "200K/400K/(50,000)": "Let's be consistent with our numbers, this
+     should be 200K/400k/(50k)"): formatChipAmount compacts from 100,000, so once any part reaches that, every part is
+     written in K and M (compactChips, as the hand's title is); below it, all stay whole ("1,000/2,000/(2,000)"). */
+  const compact = !cash && [b.sb, b.bb, b.ante, b.bigBet, straddle].some((v) => Number(v) >= 100000);
   const f = (v) => {
-    if (!cash) return formatChipAmount(v);
+    if (!cash) return compact ? compactChips(v) : formatChipAmount(v);
     const n = Number(v) || 0;
     return sym + (cents && Math.round(n * 100) % 100 !== 0 ? n.toFixed(2) : n.toLocaleString('en-US', { maximumFractionDigits: 0 }));
   };
@@ -939,6 +943,19 @@ function pipShift(seed, index) {
   h = Math.imul(h ^ (h >>> 15), 0x846ca68b) >>> 0;
   h = (h ^ (h >>> 16)) >>> 0;
   return ((h % 1000) / 3000).toFixed(4);
+}
+
+/* A chip that comes out from under its seat (emergeTimes in utils/replayer-motion.js; owner, 2026-11-22: "When the chips
+   come out for antes or bets, let's have them originate from behind the cards and seat box"): what of the seat covers
+   it, the plaque and each card, and what it must also have left before it goes over the felt's pieces again, the
+   action label, the button and a readout, which may be fading in and so hide nothing. */
+function seatCoverOf(seatEl) {
+  const rects = (sel) => (seatEl ? [...seatEl.querySelectorAll(sel)] : [])
+    .map(o => o.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0);
+  return {
+    cover: rects('.replayer-seat-info, .replayer-seat-cards .card-row > *'),
+    also: rects('.replayer-action-badge-outer, .replayer-dealer-btn, .replayer-seat-hand-name:not([data-ghost])'),
+  };
 }
 
 // ── Chip visuals ──
@@ -5851,9 +5868,11 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     const stepNow = entryPhase === 'setup' ? 0 : entryPhase === 'result' ? steps.length - 1
       : Math.min(steps.length - 2, ((entryAt && entryAt.streetIdx) || 0) + 1);
     const blinds = currentHand.blinds || {};
+    // One style for every part, as the felt's pill (formatStakes): K and M for all once one reaches 100,000.
+    const fmtS = [blinds.sb, blinds.bb, blinds.bigBet, blinds.ante].some((v) => Number(v) >= 100000) ? compactChips : formatChipAmount;
     const stakes = blinds.bb ? (HAND_CONFIG[currentHand.gameType]?.betting === 'fl'
-      ? formatChipAmount(blinds.bb) + '/' + formatChipAmount(blinds.bigBet || blinds.bb * 2)
-      : formatChipAmount(blinds.sb) + '/' + formatChipAmount(blinds.bb)) + (blinds.ante ? ' (' + formatChipAmount(blinds.ante) + ')' : '') : '';
+      ? fmtS(blinds.bb) + '/' + fmtS(blinds.bigBet || blinds.bb * 2)
+      : fmtS(blinds.sb) + '/' + fmtS(blinds.bb)) + (blinds.ante ? ' (' + fmtS(blinds.ante) + ')' : '') : '';
     const summary = [gameLine, (currentHand.players || []).length + ' players', stakes, isCash ? 'Cash' : 'MTT'].filter(Boolean).join(' \u00b7 ');
     return (
       <div className="replayer-view replayer-entry-view">
@@ -10483,6 +10502,24 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       /* 1: the deal, under Play from the hand's first step: each card from the middle of the table to its seat on the hand
          spring, a seat after another from the button's left, round by round (stud: two down, then the door). */
       if (motion.openFor !== hand) { motion.openFor = hand; pendingOpenRef.current = true; }
+      /* What of each seat covers a chip coming out from under it (seatCoverOf), measured before the deal below sends
+         this commit's cards to the middle of the table to deal them in. A wager whose push is over, or was cut short,
+         goes back over the felt's pieces (a push's own tick does it when it is clear of its seat). */
+      const coverAtRest = new Map();
+      const coverOf = (pi) => {
+        if (!coverAtRest.has(pi)) coverAtRest.set(pi, seatCoverOf(table && table.querySelector('.replayer-seat[data-seat="' + pi + '"]')));
+        return coverAtRest.get(pi);
+      };
+      if (table && pendingOpenRef.current && pendingDealRef.current) hand.players.forEach((_, pi) => coverOf(pi));
+      if (table) table.querySelectorAll('.replayer-bet-chip[data-under]').forEach(el => {
+        const e = motion.entries.get(el);
+        if (!e || e.done) delete el.dataset.under;
+      });
+      const underSeat = (el, entry) => {
+        if (!entry || !entry.emerge) return;
+        el.dataset.under = '';
+        motion.tick(entry.emerge.clear != null ? entry.emerge.clear : entry.end, () => { delete el.dataset.under; }, entry);
+      };
       let dealEnds = -1;
       if (pendingDealRef.current && table && streetIdx === 0 && actionIdx < 0 && !showResult) {
         pendingDealRef.current = false;
@@ -10543,7 +10580,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             if (!info) return null;
             const r = info.getBoundingClientRect();
             const px = pileR.left + pileR.width / 2, py = pileR.top + pileR.height / 2;
-            const fx = Math.max(r.left, Math.min(r.right, px)), fy = Math.max(r.top, Math.min(r.bottom, py));
+            // From under the plaque's middle, out from behind the seat (seatCoverOf); it left from the plaque's edge.
+            const fx = r.left + r.width / 2, fy = r.top + r.height / 2;
+            coverOf(pi);   // measured now, before the button below starts its move
             return { pi, fx, fy, px, py, delay: t0 + (k * st0.sweepStagger) / rate0 };
           }).filter(Boolean) : [];
           const anteEnd = anteJobs.length ? anteJobs[anteJobs.length - 1].delay + timeTo(hand0, 0.98) / rate0 : t0;
@@ -10554,7 +10593,12 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             const push = st0.push * (motion.boardCardW || 30);
             const tn = stackTextNode(p.seat);
             const posted = computePlayerContrib(hand, 0, currentActions, -1, p.seat);
-            return { ...p, ox: dx / len * push, oy: dy / len * push, delay: (anteJobs.length ? anteEnd + st0.beat / rate0 : t0) + (k * st0.beat) / rate0, tn, from: stackFigure(p.seat) + posted, to: stackFigure(p.seat), r: p.el.getBoundingClientRect() };
+            const r = p.el.getBoundingClientRect();
+            // A blind comes out from under its seat as a bet does: from the plaque's middle (seatCoverOf).
+            const info = table.querySelector('.replayer-seat[data-seat="' + p.seat + '"] .replayer-seat-info');
+            const ir = info ? info.getBoundingClientRect() : null;
+            const fromPlaque = ir ? { x: ir.left + ir.width / 2 - (r.left + r.width / 2), y: ir.top + ir.height / 2 - (r.top + r.height / 2) } : null;
+            return { ...p, ox: fromPlaque ? fromPlaque.x : dx / len * push, oy: fromPlaque ? fromPlaque.y : dy / len * push, under: !!fromPlaque, cover: coverOf(p.seat), delay: (anteJobs.length ? anteEnd + st0.beat / rate0 : t0) + (k * st0.beat) / rate0, tn, from: stackFigure(p.seat) + posted, to: stackFigure(p.seat), r };
           });
           const btnEl = table.querySelector('.replayer-dealer-btn');
           const btnSeatIdx = btnEl ? Number(btnEl.closest('.replayer-seat').dataset.seat) : -1;
@@ -10623,23 +10667,55 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               const arrive = j.delay + timeTo(hand0, 0.98) / rate0;
               const lift = st0.crossLift || 0.12;
               const inMs = st0.appear / rate0, outMs = st0.arrivalFade / rate0;
-              const entry = motion.run(chip, { transient: true, prefix: 'translate(-50%, -50%)', size: { w: chipD, h: chipD }, end: arrive + outMs, channels: [
-                { prop: 'opacity', fn: (t) => (t <= j.delay ? 0 : t < j.delay + inMs ? (t - j.delay) / inMs : t <= arrive ? 1 : Math.max(0, 1 - (t - arrive) / outMs)), start: j.delay, end: arrive + outMs },
+              const path = [
                 { prop: 'x', spring: hand0, from: 0, to: j.px - j.fx, delay: j.delay, timeScale: rate0 },
                 { prop: 'y', spring: hand0, from: 0, to: j.py - j.fy, delay: j.delay, timeScale: rate0 },
                 { prop: 'scale', fn: (t) => { const q = t <= j.delay ? 0 : hand0.at((t - j.delay) * rate0); return 1 + lift * 4 * q * (1 - q); }, start: j.delay, end: arrive },
+              ];
+              /* It comes out from under the seat: a copy on the level under the seats (the fold layer) flies until the
+                 chip is clear of the plaque and the cards, and this one, on the sweep's level, takes over there, two
+                 frames before the copy goes, so the chip is never drawn less than whole. It fades in over `appear`, as a
+                 new wager does (longer if it stays under the plaque longer: to `peek`, when it first shows). */
+              const cv = coverOf(j.pi);
+              const em = foldLayerRef.current
+                ? emergeTimes(path, { left: j.fx - chipD / 2, right: j.fx + chipD / 2, top: j.fy - chipD / 2, bottom: j.fy + chipD / 2 }, cv.cover, { also: cv.also, end: arrive })
+                : null;
+              const clear = em && em.clear != null && em.clear > j.delay ? em.clear : null;
+              const inEnd = Math.max(j.delay + inMs, clear != null && em.peek > j.delay ? em.peek : 0);   // over `appear` at least, as a wager
+              const shown = (t) => (t <= j.delay ? 0 : t < inEnd ? (t - j.delay) / (inEnd - j.delay) : t <= arrive ? 1 : Math.max(0, 1 - (t - arrive) / outMs));
+              const handBack = 2 * 1000 / 60;
+              const entry = motion.run(chip, { transient: true, prefix: 'translate(-50%, -50%)', size: { w: chipD, h: chipD }, end: arrive + outMs, channels: [
+                { prop: 'opacity', fn: clear != null ? (t) => (t < clear ? 0 : shown(t)) : shown, start: j.delay, end: arrive + outMs },
+                ...path,
               ] });
+              if (clear != null) {
+                const fl = foldLayerRef.current, FL = fl.getBoundingClientRect();
+                const under = chip.cloneNode(true);
+                Object.assign(under.style, { left: (j.fx - FL.left) + 'px', top: (j.fy - FL.top) + 'px', opacity: '0' });
+                fl.appendChild(under);
+                motion.run(under, { transient: true, prefix: 'translate(-50%, -50%)', size: { w: chipD, h: chipD }, end: clear + handBack, channels: [
+                  { prop: 'opacity', fn: (t) => (t < clear + handBack ? shown(t) : 0), start: j.delay, end: clear + handBack },
+                  ...path,
+                ] });
+              }
               const last = ji === anteJobs.length - 1 && !pillJobs.length;
               const tick = () => potTo(last ? potCommitted : landed + ante);
               if (entry) motion.tick(arrive, tick, entry); else tick();
             });
             const postAt = timeTo(flick0, 0.98) / rate0;
             pillJobs.forEach((j, k) => {
-              const entry = motion.run(j.el, { prefix: 'translate(-50%, -50%)', size: { w: j.r.width, h: j.r.height }, channels: [
-                { prop: 'opacity', ramp: { from: 0, to: 1, delay: j.delay, duration: st0.appear / rate0 } },
+              const xy = [
                 { prop: 'x', spring: flick0, from: j.ox, to: 0, delay: j.delay, timeScale: rate0 },
                 { prop: 'y', spring: flick0, from: j.oy, to: 0, delay: j.delay, timeScale: rate0 },
+              ];
+              // From under its seat: unseen until it shows past the plaque or a card, so its fade in ends there.
+              const em = j.under ? emergeTimes(xy, { left: j.r.left, right: j.r.right, top: j.r.top, bottom: j.r.bottom }, j.cover.cover, { also: j.cover.also, end: j.delay + postAt }) : null;
+              const fadeEnd = Math.max(j.delay + st0.appear / rate0, em && em.peek != null && em.peek > j.delay ? em.peek : 0);
+              const entry = motion.run(j.el, { prefix: 'translate(-50%, -50%)', size: { w: j.r.width, h: j.r.height }, channels: [
+                { prop: 'opacity', ramp: { from: 0, to: 1, delay: j.delay, duration: fadeEnd - j.delay } },
+                ...xy,
               ] });
+              if (entry && em) { entry.emerge = em; underSeat(j.el, entry); }
               // Its chips counted into the pot as they come to rest in front of the seat.
               const posted = Math.max(0, j.from - j.to);
               const tick = () => potTo(k === pillJobs.length - 1 ? potCommitted : landed + posted, true);
@@ -10923,12 +10999,27 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               const info = seatEl && seatEl.querySelector('.replayer-seat-info');
               const pr = info ? info.getBoundingClientRect() : null;
               const tx = g.cx + g.chip.dx, ty = g.cy + g.chip.dy - g.chip.h / 2;
-              const fx = pr ? Math.max(pr.left, Math.min(pr.right, tx)) : g.cx + dir.x * pushPx, fy = pr ? Math.max(pr.top, Math.min(pr.bottom, ty)) : g.cy + dir.y * pushPx;
+              // From under the plaque's middle, out from behind the seat (seatCoverOf); it left from the plaque's edge.
+              const fx = pr ? pr.left + pr.width / 2 : g.cx + dir.x * pushPx, fy = pr ? pr.top + pr.height / 2 : g.cy + dir.y * pushPx;
               const probe = table.querySelector('.replayer-chip-probe.is-disc');
               const chipD = probe ? probe.getBoundingClientRect().width || 12 : 12;
               const flickSp3 = tierSpring(set, 'flick');
               const land = timeTo(flickSp3, 0.98) / rate;
               const newText = tn.data;
+              const path = [
+                { prop: 'x', spring: flickSp3, from: 0, to: tx - fx, timeScale: rate },
+                { prop: 'y', spring: flickSp3, from: 0, to: ty - fy, timeScale: rate },
+              ];
+              // As an ante's chip (the opening): a copy under the seats until it is clear of the plaque and the cards.
+              const cv = coverOf(act.player);
+              const em = pr && foldLayerRef.current
+                ? emergeTimes(path, { left: fx - chipD / 2, right: fx + chipD / 2, top: fy - chipD / 2, bottom: fy + chipD / 2 }, cv.cover, { also: cv.also, end: land })
+                : null;
+              const clear = em && em.clear != null && em.clear > 0 ? em.clear : null;
+              const inEnd = Math.max(S3.appear / rate, clear != null && em.peek > 0 ? em.peek : 0);   // over `appear` at least
+              const handBack = 2 * 1000 / 60;
+              const outMs = S3.arrivalFade / rate;
+              const shown = (t) => (t < inEnd ? t / inEnd : t <= land ? 1 : Math.max(0, 1 - (t - land) / outMs));
               writes.push(() => {
                 tn.data = fmtChips(before);
                 const chip = document.createElement('div');
@@ -10939,13 +11030,24 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 if (w.topColor) face.style.setProperty('--chip', w.topColor);
                 applyChipInserts(face, pipShift(before + act.player * 977, actionIdx), w.topColor);
                 chip.appendChild(face);
-                Object.assign(chip.style, { left: (fx - L.left) + 'px', top: (fy - L.top) + 'px', transform: 'translate(-50%, -50%)' });
+                Object.assign(chip.style, { left: (fx - L.left) + 'px', top: (fy - L.top) + 'px', transform: 'translate(-50%, -50%)', opacity: clear != null ? '0' : '' });
                 layer.appendChild(chip);
-                const entry = motion.run(chip, { transient: true, prefix: 'translate(-50%, -50%)', size: { w: chipD, h: chipD }, end: land + S3.arrivalFade / rate, channels: [
-                  { prop: 'x', spring: flickSp3, from: 0, to: tx - fx, timeScale: rate },
-                  { prop: 'y', spring: flickSp3, from: 0, to: ty - fy, timeScale: rate },
-                  { prop: 'opacity', ramp: { from: 1, to: 0, delay: land, duration: S3.arrivalFade / rate } },
+                const entry = motion.run(chip, { transient: true, prefix: 'translate(-50%, -50%)', size: { w: chipD, h: chipD }, end: land + outMs, channels: [
+                  ...path,
+                  clear != null
+                    ? { prop: 'opacity', fn: (t) => (t < clear ? 0 : shown(t)), start: 0, end: land + outMs }
+                    : { prop: 'opacity', ramp: { from: 1, to: 0, delay: land, duration: outMs } },
                 ] });
+                if (clear != null) {
+                  const fl = foldLayerRef.current, FL = fl.getBoundingClientRect();
+                  const under = chip.cloneNode(true);
+                  Object.assign(under.style, { left: (fx - FL.left) + 'px', top: (fy - FL.top) + 'px', opacity: '0' });
+                  fl.appendChild(under);
+                  motion.run(under, { transient: true, prefix: 'translate(-50%, -50%)', size: { w: chipD, h: chipD }, end: clear + handBack, channels: [
+                    ...path,
+                    { prop: 'opacity', fn: (t) => (t < clear + handBack ? shown(t) : 0), start: 0, end: clear + handBack },
+                  ] });
+                }
                 const onLand = () => {
                   tn.data = newText;
                   motion.wroteDigits = true;
@@ -10957,7 +11059,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                 if (entry) motion.tick(land, onLand, entry); else onLand();
               });
             } else {
-              writes.push(() => pushOut(motion, { set, rate, el, dir, pushPx, addOn, size: { w: g.w, h: g.h } }));
+              /* A new wager comes out from under its seat: it starts on the plaque's middle under the seat's level
+                 (data-under) and is put back over the felt's pieces once it is clear of the plaque and the cards. */
+              const cv = coverOf(act.player);
+              const under = !addOn && plaqueRect
+                ? { from: { x: plaqueRect.left + plaqueRect.width / 2 - g.cx, y: plaqueRect.top + plaqueRect.height / 2 - g.cy }, box, cover: cv.cover, also: cv.also }
+                : {};
+              writes.push(() => underSeat(el, pushOut(motion, { set, rate, el, dir, pushPx, addOn, size: { w: g.w, h: g.h }, ...under })));
             }
             /* 36: a pot-limit bet or raise of the most the pot allows takes its figure from the pot: a copy of the
                pot's figure travels to the wager, which shows its own figure as the copy lands. */

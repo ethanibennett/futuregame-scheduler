@@ -113,7 +113,10 @@ function issuesOf(F) {
     for (const id of ids) {
       const a = A[id], b = B[id];
       const twinB = a && (!b || (a.o - b.o > 0.2 && b.o < 0.1)) && Object.entries(B).find(([j, v]) => j !== id && same(v, a));
-      const twinA = b && (!a || (b.o - a.o > 0.2 && a.o < 0.1)) && Object.entries(A).find(([j, v]) => j !== id && same(v, b));
+      /* Or a copy takes over from one drawn in the same place in the same frame, already seen in the last: an ante's chip
+         coming out from under its seat is handed from its copy under the seats to one over them (HandReplayerView). */
+      const twinA = b && (!a || (b.o - a.o > 0.2 && a.o < 0.1)) && (Object.entries(A).find(([j, v]) => j !== id && same(v, b))
+        || Object.entries(B).find(([j, v]) => j !== id && A[j] && A[j].o > 0.3 && same(v, b)));
       if (twinB) swapped.add(id);
       if (twinA) swapped.add(id);
       // A swap in another colour is seen: the gold run-out name replaced by the loser's red one in a frame.

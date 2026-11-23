@@ -6292,6 +6292,10 @@
       align-items: center;
       gap: var(--space-2xs);
     }
+    /* A wager coming out from under its seat (owner, 2026-11-22: "originate from behind the cards and seat box"): under
+       the seats' level until it is clear of the plaque and the cards (data-under, set and cleared by the push in
+       HandReplayerView). */
+    .replayer-table .replayer-bet-chip[data-under] { z-index: var(--z-strip); }
     .replayer-seat-hand-name {
       position: absolute;
       left: 50%;
@@ -8480,7 +8484,12 @@
        1.6, no bet, call or raise beside at either (a folded hero's "fold" still is: its cards stay counted). Draw and
        flop games at those amounts: 0 of 104 at 1.2. The phone's portrait table only: on desktop, at 1.6, the hero's fan
        reached the rows under the game pill (check:replayer-collisions). */
-    .replayer-fullbleed .replayer-table[data-hand-cards="7"] .replayer-seat.is-hero .replayer-seat-cards { --card-h: calc(var(--seat-card-h) * 1.6); }
+    /* Not with the splay off (owner, 2026-11-22: "Do hero's cards need to be this large with splay turned off?"): a flat
+       row has no tilted outer cards and every index at the top, so the label sits on the cards at the hero's usual 1.2.
+       Measured on the phone in the app's layout, 14 stud and razz hands at tournament amounts, splay off: no bet, call or
+       raise label beside the plaque at 1 or 1.2 (a folded hero's "fold" is, 21 times at either), so the 1.6 only made
+       the row about two plaques wide. */
+    .replayer-fullbleed .replayer-table[data-hand-cards="7"]:not([data-flat="1"]) .replayer-seat.is-hero .replayer-seat-cards { --card-h: calc(var(--seat-card-h) * 1.6); }
     /* Not on the landscape table (desktop, the Hands pane), which keeps 1.2: there a split's shares hang under the game
        pill, just above the hero's fan, and a bigger stud hand reached them (check:replayer-collisions at 1440 and 1728:
        27 steps at 1.5, 4 at 1.4). Measured on the same 14 hands at 1440: 32 hero labels beside at 1.2, 2 at 1.4, none at
