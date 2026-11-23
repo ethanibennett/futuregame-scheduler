@@ -4985,6 +4985,21 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                 <div className="gto-seat-row1"><span className="gto-seat-pos">{p.position}</span><span className="gto-seat-stack">{formatChipAmount(currentStacks[i])}</span></div>
                 <div className="gto-seat-row2">
                   <span className="gto-seat-name">{p.name}</span>
+                  {/* Between the name and the cards (owner, 2026-11-22: "Keep the cards in the same location on the card
+                      always, put the betting action between the name and the cards"): after the cards, a seat's action
+                      pushed its cards left the moment it acted. The cards end on the row's right edge whatever is here. */}
+                  {hasDraws(category, gameCfg) && !gameCfg.discardOnly && (() => {
+                    const dh = [];
+                    for (let si = 0; si < currentStreetIdx; si++) {
+                      const ps = hand.streets[si];
+                      if (!ps || !ps.draws || !ps.draws.length) continue;
+                      const pd = ps.draws.find(d => d.player === i);
+                      if (pd) dh.push(pd.discarded === 0 ? 'Pat' : 'D' + pd.discarded);
+                    }
+                    if (dh.length === 0) return null;
+                    return <span className="gto-seat-draw-history">{dh.join(' / ')}</span>;
+                  })()}
+                  {act && !isActive && <span className={'gto-seat-result-badge ' + act.action}>{actionLabel}</span>}
                   {i === heroIdx && !gameCfg.isStud && (() => {
                     const baseCards = hand.streets[0]?.cards.hero || '';
                     if (!baseCards) return null;
@@ -5011,18 +5026,6 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                       </span>
                     );
                   })()}
-                  {hasDraws(category, gameCfg) && !gameCfg.discardOnly && (() => {
-                    const dh = [];
-                    for (let si = 0; si < currentStreetIdx; si++) {
-                      const ps = hand.streets[si];
-                      if (!ps || !ps.draws || !ps.draws.length) continue;
-                      const pd = ps.draws.find(d => d.player === i);
-                      if (pd) dh.push(pd.discarded === 0 ? 'Pat' : 'D' + pd.discarded);
-                    }
-                    if (dh.length === 0) return null;
-                    return <span className="gto-seat-draw-history">{dh.join(' / ')}</span>;
-                  })()}
-                  {act && !isActive && <span className={'gto-seat-result-badge ' + act.action}>{actionLabel}</span>}
                 </div>
               </div>
               {!isActive && i === heroIdx && !gameCfg.isStud && showHeroCardPicker && (
