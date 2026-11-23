@@ -4370,6 +4370,9 @@
     .replayer-entry-view .gto-seat-row2.is-act > .gto-seat-who { display: flex; align-items: flex-end; column-gap: var(--gu); flex: 1 1 0; min-width: 0; }
     .replayer-entry-view .gto-seat-row2.is-act:has(> .gto-seat-result-badge) > .gto-seat-who { flex: 0 1 calc(var(--gu) * 13); }
     .replayer-entry-view .gto-seat-row2.is-act > .gto-seat-result-badge { flex: 0 10000 calc(var(--gu) * 8); min-width: min-content; padding-inline: 0; text-align: center; }
+    /* On a stud seat 1r lower (owner, 2026-11-22: "And drop it 1r"): +5..+8r of the bar, its foot on the up cards' foot,
+       in the bar's 3r foot. Not on a flop game's seat, whose 8r bar has no foot: there it sat on the card's edge. */
+    .replayer-entry-view .gto-seat.is-stud .gto-seat-row2.is-act > .gto-seat-result-badge { margin-bottom: calc(var(--subrow) * -1); }
     /* Less the badge's hairline border each side, so the badge at its narrowest is the label's whole g. */
     .replayer-entry-view .gto-seat-badge-label { display: inline-block; margin-inline: calc(var(--bw-hair) * -1); }
     .replayer-entry-view .gto-seat-bar > .gto-seat-draw-history { justify-self: start; margin: var(--subrow) 0 0; }
