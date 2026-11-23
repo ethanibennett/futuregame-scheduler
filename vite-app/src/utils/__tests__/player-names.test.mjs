@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nameKey, isDefaultName, nameBook, nameSuggestions, predictSeat, restOfTable } from '../player-names.js';
+import { nameKey, isDefaultName, nameBook, nameSuggestions, predictSeat, restOfTable, proIndex } from '../player-names.js';
 
 const seat = (name) => ({ name, position: '', startingStack: 1000 });
 const table = (...names) => names.map(seat);
@@ -97,6 +97,24 @@ test("restOfTable fills nothing where the table as entered is not that hand's, a
   assert.deepEqual(restOfTable(book, table('Matt Vengrin', 'Opp 1', 'Hero', 'Opp 3', 'Opp 4'), 1, { hero: 2 }), [
     { seat: 1, name: 'Chino Rheem' }, { seat: 3, name: 'Brian Breck' }, { seat: 4, name: 'A. Livingston' },
   ]);
+});
+
+test('the pro list: searched from two letters, after your own names, by the whole name then a word, in its rank order', () => {
+  const pros = proIndex(['Phil Hellmuth', 'Phil Ivey', 'Daniel Negreanu', 'Chino Rheem', 'Erik Seidel', 'Philippe Ktorza', 'Adam Philips']);
+  const players = table('Opp 1', 'Opp 2');
+  // Nothing typed, or one letter: your own names only.
+  assert.deepEqual(nameSuggestions(book, { players, seat: 0, pros }), nameSuggestions(book, { players, seat: 0 }));
+  assert.ok(!nameSuggestions(book, { players, seat: 0, query: 'd', pros }).includes('Daniel Negreanu'));
+  // Your Phil Ivey first, then the pros' whole-name matches by rank, then a word of one.
+  assert.deepEqual(nameSuggestions(book, { players, seat: 0, query: 'phil', pros }), ['Phil Ivey', 'Phil Hellmuth', 'Philippe Ktorza', 'Adam Philips']);
+  // A pro you have played already comes once, as yours.
+  assert.deepEqual(nameSuggestions(book, { players, seat: 0, query: 'chino', pros }), ['Chino Rheem']);
+  // Nobody seated, and not the name the field holds.
+  assert.deepEqual(nameSuggestions(book, { players: table('Daniel Negreanu', 'Opp 2'), seat: 1, query: 'neg', pros }), []);
+  assert.deepEqual(nameSuggestions(book, { players, seat: 0, query: 'Erik Seidel', pros }), []);
+  // Your names that match only by initials come after the pros.
+  const b = nameBook([{ players: table('Paul Ingram') }]);
+  assert.deepEqual(nameSuggestions(b, { players, seat: 0, query: 'pi', pros: proIndex(['Pia Jones', 'Phil Ivey']) }), ['Pia Jones', 'Paul Ingram']);
 });
 
 test('an empty or odd list makes an empty book', () => {

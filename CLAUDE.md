@@ -127,6 +127,14 @@ sessions opened here own scheduler work.
   hand's order, offered only where the table as entered agrees with it and never on the hero's seat (`restOfTable`).
   A pick moves focus to the next unnamed seat; a made-up name (Opp 2) is selected on focus so typing replaces it; ↑/↓
   and Enter pick from the keyboard; the chips scroll clear of the keyboard and the step's footer (`visualViewport`).
+  **The pro list** (owner, 2026-11-23: "Pro list only", over a live event's field or the Hendon Mob): once two letters
+  are typed, the chips also offer known players after your own, by the whole name or a word of it, most results first.
+  `vite-app/src/data/pro-names.json` is built by `node scripts/build-pro-names.mjs` from Wikipedia's results pages
+  (every WSOP year and final table, WSOP Europe / Asia Pacific, WPT and EPT seasons, the Hall of Fame, the high
+  rollers), its own chunk loaded the first time a name field is focused. Names over the field's 20 characters are
+  shortened "A. Vuilleumier". Wikipedia limits anonymous clients: the script asks 20 pages a request and honours
+  Retry-After (one page a request was refused with 429 after a few dozen); `--cache <dir>` keeps the pages to re-run
+  the extraction offline, `--dry` prints each page's count.
 - **The replayer is held to an outside engine** (owner, 2026-11-10: "This is something we can get perfect";
   `test/replayer-oracle/`, its README): PokerKit plays random hands of twenty games (heads-up to ten-handed, cash to the
   cent and tournament, straddles, short stacks), `generate.py` settles each to the TDA rules the app follows, and every

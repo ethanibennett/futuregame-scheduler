@@ -1,7 +1,18 @@
 import { cardFaceSrc, rankOnlyFaceSrc, unknownCardFaceSrc } from '../utils/card-faces.js';
 import { boardSuitFills, readingAcross, undecidedLine } from '../utils/board-suit-fills.js';
 import { availableCardBacks, CARD_BACK_KEY, normalizeCardBack, applyCardBack } from '../utils/card-back.js';
-import { nameBook, nameSuggestions, restOfTable, isDefaultName } from '../utils/player-names.js';
+import { nameBook, nameSuggestions, restOfTable, isDefaultName, proIndex } from '../utils/player-names.js';
+// The pro list for the entry's name suggestions (scripts/build-pro-names.mjs): its own chunk, loaded once, the first
+// time a name field is focused.
+let proNamesLoad = null;
+function loadProNames() {
+  if (!proNamesLoad) {
+    proNamesLoad = import('../data/pro-names.json')
+      .then((m) => proIndex((m.default || m).names))
+      .catch(() => { proNamesLoad = null; return null; });
+  }
+  return proNamesLoad;
+}
 import { unitR } from '../utils/grid-snap.js';
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import useBackToClose from '../hooks/useBackToClose.js';
@@ -2724,6 +2735,13 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
   const nameBlur = useRef(null);
   const nameFocused = useRef(false);
   useEffect(() => () => clearTimeout(nameBlur.current), []);
+  const [proNames, setProNames] = useState(null);
+  useEffect(() => {
+    if (nameSeat == null || proNames) return undefined;
+    let on = true;
+    loadProNames().then((list) => { if (on && list) setProNames(list); });
+    return () => { on = false; };
+  }, [nameSeat, proNames]);
   /* The offer sits under its field, so on a phone it can open under the keyboard or the step's footer: the list
      scrolls it into what is left of the screen, 1r clear (again as the keyboard comes up). */
   const nameTyped = nameSeat != null && hand.players && hand.players[nameSeat] ? String(hand.players[nameSeat].name || '') : null;
@@ -3505,7 +3523,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
     const nameOffer = (i) => {
       const p = hand.players[i];
       if (!names || nameSeat !== i || !p) return { list: [], rest: [] };
-      const list = nameSuggestions(names, { players: hand.players, seat: i, query: p.name || '' });
+      const list = nameSuggestions(names, { players: hand.players, seat: i, query: p.name || '', pros: proNames });
       const rest = isDefaultName(p.name) ? restOfTable(names, hand.players, i, { hero: heroIdx }) : [];
       return { list, rest };
     };

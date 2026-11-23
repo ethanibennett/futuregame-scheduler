@@ -96,9 +96,21 @@ function matchTier(key, q) {
   return -1;
 }
 
+/* The pro list (scripts/build-pro-names.mjs, data/pro-names.json): names in rank order, most results first, each
+   with its key and its words' keys, made once. */
+export function proIndex(names) {
+  return (Array.isArray(names) ? names : []).map((name) => {
+    const key = nameKey(name);
+    return { name, key, words: key.split(/[\s.\-']+/).filter(Boolean) };
+  });
+}
+
 /* The names to offer at `seat`: `query` is what the field holds (a default name counts as nothing typed).
-   Anyone seated elsewhere is left out, and so is a name the field already holds exactly. */
-export function nameSuggestions(book, { players = [], seat = 0, query = '', limit = 4 } = {}) {
+   Anyone seated elsewhere is left out, and so is a name the field already holds exactly.
+   Your own names come first. The pro list (`pros`, from proIndex) is searched only once two letters are typed, by
+   the whole name or a word of it, in its rank order; your names that match only by initials or inside a word come
+   after it. */
+export function nameSuggestions(book, { players = [], seat = 0, query = '', limit = 4, pros = null } = {}) {
   const q = isDefaultName(query) ? '' : nameKey(query);
   const taken = new Set(players.map((p, i) => (i === seat ? '' : nameKey(p && p.name))).filter(Boolean));
   const predicted = q ? null : predictSeat(book, players, seat);
@@ -113,7 +125,21 @@ export function nameSuggestions(book, { players = [], seat = 0, query = '', limi
   rows.sort((a, b) => a.lead - b.lead || a.tier - b.tier
     || (q ? b.count - a.count || a.last - b.last : a.last - b.last || a.pos - b.pos)
     || a.name.localeCompare(b.name));
-  return rows.slice(0, limit).map((r) => r.name);
+  const strong = rows.filter((r) => r.tier <= 1), weak = rows.filter((r) => r.tier > 1);
+  const out = strong.slice(0, limit).map((r) => r.name);
+  if (pros && q.length >= 2 && out.length < limit) {
+    const have = new Set([...taken, ...rows.map((r) => r.key), q]);
+    const whole = [], word = [];
+    for (const pro of pros) {
+      if (have.has(pro.key)) continue;
+      if (pro.key.startsWith(q)) whole.push(pro.name);
+      else if (word.length < limit && pro.words.some((w) => w.startsWith(q))) word.push(pro.name);
+      if (whole.length >= limit) break;
+    }
+    out.push(...[...whole, ...word].slice(0, limit - out.length));
+  }
+  out.push(...weak.slice(0, Math.max(0, limit - out.length)).map((r) => r.name));
+  return out;
 }
 
 /* Every unnamed seat after the named seat before `seat`, filled in that player's newest hand's order: a list of
