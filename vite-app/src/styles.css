@@ -4360,6 +4360,18 @@
       padding: calc(var(--subrow) * 2 - 1em) var(--gu) 0; white-space: nowrap;
     }
     .replayer-entry-view .gto-seat-result-badge { padding-top: calc(var(--subrow) * 2 - 1em - var(--bw-hair)); }
+    /* The betting screen's action spans the grid's third major column (owner, 2026-11-22: "Make the betting action span
+       the third major column from the left"): 19g to 27g on the screen. A seat's row starts at 5g (the card at 1g, its
+       2g strip, 2g in), so the name and a draw game's history take 13g, then the 1g gutter, the action's 8g with its
+       label centred, and the cards on the row's right edge (34g). Where a stud hand reaches into the column (six cards
+       from 27g, seven from 26g) the action gives way and keeps 1g clear of them, down to its label's whole-g width
+       (the label is snap-g, the badge has no side padding: its label is centred); past that the name gives way, never
+       the cards (owner: "Keep the cards in the same location on the card always"). With no action the name runs on. */
+    .replayer-entry-view .gto-seat-row2.is-act > .gto-seat-who { display: flex; align-items: flex-end; column-gap: var(--gu); flex: 1 1 0; min-width: 0; }
+    .replayer-entry-view .gto-seat-row2.is-act:has(> .gto-seat-result-badge) > .gto-seat-who { flex: 0 1 calc(var(--gu) * 13); }
+    .replayer-entry-view .gto-seat-row2.is-act > .gto-seat-result-badge { flex: 0 10000 calc(var(--gu) * 8); min-width: min-content; padding-inline: 0; text-align: center; }
+    /* Less the badge's hairline border each side, so the badge at its narrowest is the label's whole g. */
+    .replayer-entry-view .gto-seat-badge-label { display: inline-block; margin-inline: calc(var(--bw-hair) * -1); }
     .replayer-entry-view .gto-seat-bar > .gto-seat-draw-history { justify-self: start; margin: var(--subrow) 0 0; }
     .replayer-entry-view .gto-seat-cards { padding: 0 calc(var(--gu) * 2) var(--subrow); }
     /* A stud seat (owner, 2026-11-22: "spacing is all off inside these cards and there is no indication of hero's

@@ -5016,11 +5016,14 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
             <div className="gto-seat-content">
               <div className="gto-seat-bar">
                 <div className="gto-seat-row1"><span className="gto-seat-pos">{p.position}</span><span className="gto-seat-stack">{formatChipAmount(currentStacks[i])}</span></div>
-                <div className="gto-seat-row2">
-                  <span className="gto-seat-name">{p.name}</span>
+                <div className="gto-seat-row2 is-act">
                   {/* Between the name and the cards (owner, 2026-11-22: "Keep the cards in the same location on the card
                       always, put the betting action between the name and the cards"): after the cards, a seat's action
-                      pushed its cards left the moment it acted. The cards end on the row's right edge whatever is here. */}
+                      pushed its cards left the moment it acted. The cards end on the row's right edge whatever is here.
+                      The action spans the grid's third major column (owner, 2026-11-22), so the name and a draw game's
+                      history share what is left of it (.gto-seat-who). */}
+                  <span className="gto-seat-who">
+                  <span className="gto-seat-name">{p.name}</span>
                   {hasDraws(category, gameCfg) && !gameCfg.discardOnly && (() => {
                     const dh = [];
                     for (let si = 0; si < currentStreetIdx; si++) {
@@ -5032,7 +5035,8 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                     if (dh.length === 0) return null;
                     return <span className="gto-seat-draw-history">{dh.join(' / ')}</span>;
                   })()}
-                  {act && !isActive && <span className={'gto-seat-result-badge ' + act.action}>{actionLabel}</span>}
+                  </span>
+                  {act && !isActive && <span className={'gto-seat-result-badge ' + act.action}><span className="gto-seat-badge-label snap-g">{actionLabel}</span></span>}
                   {i === heroIdx && !gameCfg.isStud && (() => {
                     const baseCards = hand.streets[0]?.cards.hero || '';
                     if (!baseCards) return null;
