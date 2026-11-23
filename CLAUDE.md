@@ -118,6 +118,15 @@ sessions opened here own scheduler work.
   needs). `variant-wheels.test.mjs` (in `npm test`) holds all of it: every row reachable and none extra, every open structure
   dealt with its own betting, and no catalog game outside the families in `WHEEL_GAMES`. Scripts that pick a game open the palette with `.vw-search` (the launcher, `.vp-launcher`, is gone). Guards:
   `hands-wheels-*` (controls), `hands-wheels` (clipping).
+- **The entry's name fields suggest names** (owner, 2026-11-23: "an autopopulate function for the name fields in the hand
+  replayer entry screen"; `utils/player-names.js`, `player-names.test.mjs` in `npm test`): a focused name field offers, as
+  chips under it, up to four players from the account's saved hands (`nameBook` over the list `/api/replayer/hands`
+  already sends), nobody already seated; typed letters narrow them (the whole name, a word, the initials, anywhere;
+  accents ignored). A hand's players are stored in seat order, so the seat beside a named one leads with whoever sat
+  there beside that player in their newest hand (`predictSeat`), and **Fill the rest** names every unnamed seat in that
+  hand's order, offered only where the table as entered agrees with it and never on the hero's seat (`restOfTable`).
+  A pick moves focus to the next unnamed seat; a made-up name (Opp 2) is selected on focus so typing replaces it; ↑/↓
+  and Enter pick from the keyboard; the chips scroll clear of the keyboard and the step's footer (`visualViewport`).
 - **The replayer is held to an outside engine** (owner, 2026-11-10: "This is something we can get perfect";
   `test/replayer-oracle/`, its README): PokerKit plays random hands of twenty games (heads-up to ten-handed, cash to the
   cent and tournament, straddles, short stacks), `generate.py` settles each to the TDA rules the app follows, and every

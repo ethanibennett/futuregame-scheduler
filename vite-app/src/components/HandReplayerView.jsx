@@ -1,6 +1,8 @@
 import { cardFaceSrc, rankOnlyFaceSrc, unknownCardFaceSrc } from '../utils/card-faces.js';
 import { boardSuitFills, readingAcross, undecidedLine } from '../utils/board-suit-fills.js';
 import { availableCardBacks, CARD_BACK_KEY, normalizeCardBack, applyCardBack } from '../utils/card-back.js';
+import { nameBook, nameSuggestions, restOfTable, isDefaultName } from '../utils/player-names.js';
+import { unitR } from '../utils/grid-snap.js';
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import useBackToClose from '../hooks/useBackToClose.js';
 import { useSolverAvailability, offered as offeredGame } from './StudyHead.jsx';
@@ -2653,7 +2655,7 @@ function readTypedCards(text, { max = 99, used = null, ranks = '23456789TJQKA' }
 // ══════════════════════════════════════════════════════════
 // ── GTOEntryView (GTO-style phased hand entry) ──────────
 // ══════════════════════════════════════════════════════════
-function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null, onProgress = null, jump = null }) {
+function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null, onProgress = null, jump = null, names = null }) {
   /* One fixed bar on every step (UX pick 58): the action steps had a fixed footer, while Next sat at
      the foot of setup, Continue mid-screen on board steps and Save & Replay 383 pt down the result;
      on card steps the Hands tool row stood where the bar should be, one tap from leaving the hand.
@@ -2713,6 +2715,36 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
   // Why Setup's Next or the Result's Save stayed put, named over the buttons; any edit clears it.
   const [phaseError, setPhaseError] = useState(null);
   useEffect(() => { setPhaseError(null); }, [hand, phase]);
+  /* Names you have entered before (owner, 2026-11-23: "an autopopulate function for the name fields"): the focused
+     name field offers the players of your saved hands under it, the one the table's order puts in that seat first
+     (utils/player-names.js). A pick fills the seat and moves on to the next seat nobody has named. */
+  const [nameSeat, setNameSeat] = useState(null);  // the name field that has focus
+  const [nameHi, setNameHi] = useState(-1);        // the offer the arrow keys are on
+  const nameInputs = useRef([]);
+  const nameBlur = useRef(null);
+  const nameFocused = useRef(false);
+  useEffect(() => () => clearTimeout(nameBlur.current), []);
+  /* The offer sits under its field, so on a phone it can open under the keyboard or the step's footer: the list
+     scrolls it into what is left of the screen, 1r clear (again as the keyboard comes up). */
+  const nameTyped = nameSeat != null && hand.players && hand.players[nameSeat] ? String(hand.players[nameSeat].name || '') : null;
+  useEffect(() => {
+    if (nameSeat == null) return undefined;
+    const reveal = () => {
+      const strip = document.getElementById('gto-names-' + nameSeat);
+      if (!strip) return;
+      const vv = window.visualViewport;
+      let limit = vv ? vv.offsetTop + vv.height : window.innerHeight;
+      const foot = document.querySelector('.gto-sticky-footer');
+      if (foot) { const top = foot.getBoundingClientRect().top; if (top > 0) limit = Math.min(limit, top); }
+      const over = strip.getBoundingClientRect().bottom + unitR() - limit;
+      const scroller = strip.closest('.content-area');
+      if (over > 0 && scroller) scroller.scrollBy({ top: over });
+    };
+    const t = setTimeout(reveal, 0);
+    const vv = window.visualViewport;
+    if (vv) vv.addEventListener('resize', reveal);
+    return () => { clearTimeout(t); if (vv) vv.removeEventListener('resize', reveal); };
+  }, [nameSeat, nameTyped]);
   const resetStacks = () => {
     const cap = Number(buyinCap) || 0;
     if (!(cap > 0)) { toast.error('Type a buy-in cap first: Reset stacks puts every seat on it.'); return; }
@@ -3469,6 +3501,44 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
       setPhase(category === 'ofc' ? 'ofc_entry' : gameCfg.isStud ? 'hero_cards' : gameCfg.doorBoard ? 'board_door' : 'action');
     };
     const capNum = Number(buyinCap);
+    // The names offered under the focused name field, and the rest of the table its order would fill.
+    const nameOffer = (i) => {
+      const p = hand.players[i];
+      if (!names || nameSeat !== i || !p) return { list: [], rest: [] };
+      const list = nameSuggestions(names, { players: hand.players, seat: i, query: p.name || '' });
+      const rest = isDefaultName(p.name) ? restOfTable(names, hand.players, i, { hero: heroIdx }) : [];
+      return { list, rest };
+    };
+    // The next seat nobody has named, round the table; never the hero's.
+    const nextUnnamed = (i, players) => {
+      for (let k = 1; k < players.length; k++) {
+        const at = (i + k) % players.length;
+        if (at !== heroIdx && isDefaultName(players[at].name)) return at;
+      }
+      return -1;
+    };
+    const closeNames = () => {
+      clearTimeout(nameBlur.current);
+      setNameSeat(null); setNameHi(-1);
+      const el = document.activeElement;
+      if (el && nameInputs.current.includes(el)) el.blur();
+    };
+    const pickName = (i, name) => {
+      clearTimeout(nameBlur.current);
+      const players = hand.players.map((p, k) => (k === i ? { ...p, name } : p));
+      updatePlayerField(i, 'name', name);
+      setNameHi(-1);
+      const next = nextUnnamed(i, players);
+      if (next >= 0 && nameInputs.current[next]) nameInputs.current[next].focus();
+      else closeNames();
+    };
+    const fillRest = (fills) => {
+      setHand(prev => ({ ...prev, players: prev.players.map((p, k) => {
+        const f = fills.find(x => x.seat === k);
+        return f && isDefaultName(p.name) ? { ...p, name: f.name } : p;
+      }) }));
+      closeNames();
+    };
     return (
       <div className="gto-entry">
         <div className="gto-phase-card"><div className="replayer-section">
@@ -3649,6 +3719,8 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
           {hand.players.map((p, i) => {
             const isHero = i === heroIdx;
             const badge = seatBadge(i);
+            const offer = nameOffer(i);
+            const offerCount = offer.list.length + (offer.rest.length ? 1 : 0);
             return (
               <div key={i} className={'replayer-player-row' + (dragSeat === i ? ' is-dragging' : '')}>
                 {!isOfc && <button type="button"
@@ -3663,7 +3735,40 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                   /* A pointer's tap is handled on pointerup; this is Enter or Space (detail 0). */
                   onClick={e => { if (!locked && e.detail === 0) setHeroSeat(i); }}
                 >{badge}</button>}
-                <div className="replayer-field" style={{flex:'1 1 calc(var(--subrow) * 10)'}}><input type="text" style={{textAlign:'left'}} value={p.name} maxLength={20} aria-label={badge + ' name'} onChange={e => updatePlayerField(i, 'name', e.target.value)} placeholder="Name" /></div>
+                <div className="replayer-field" style={{flex:'1 1 calc(var(--subrow) * 10)'}}>
+                  <input type="text" style={{textAlign:'left'}} value={p.name} maxLength={20} aria-label={badge + ' name'} placeholder="Name"
+                    ref={el => { nameInputs.current[i] = el; }}
+                    autoComplete="off" autoCorrect="off" autoCapitalize="words" spellCheck={false}
+                    role="combobox" aria-autocomplete="list" aria-expanded={offerCount > 0} aria-controls={'gto-names-' + i}
+                    onChange={e => { updatePlayerField(i, 'name', e.target.value); setNameSeat(i); setNameHi(-1); }}
+                    /* A seat's made-up name (Opp 2) is selected as the field takes focus, so typing replaces it. The
+                       mouseup that follows a click would put the caret back: the first one is held. */
+                    onFocus={e => {
+                      clearTimeout(nameBlur.current);
+                      setNameSeat(i); setNameHi(-1);
+                      if (isDefaultName(e.target.value)) {
+                        const el = e.target;
+                        nameFocused.current = true;
+                        setTimeout(() => { try { if (document.activeElement === el) el.setSelectionRange(0, el.value.length); } catch { /* ignore */ } }, 0);
+                      }
+                    }}
+                    onMouseUp={e => { if (nameFocused.current) { nameFocused.current = false; e.preventDefault(); } }}
+                    onBlur={() => {
+                      nameFocused.current = false;
+                      clearTimeout(nameBlur.current);
+                      nameBlur.current = setTimeout(() => { setNameSeat(s => (s === i ? null : s)); setNameHi(-1); }, 150);
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Escape' && offerCount) { e.preventDefault(); setNameSeat(null); return; }
+                      if (!offerCount) return;
+                      if (e.key === 'ArrowDown') { e.preventDefault(); setNameHi(h => (h + 1) % offerCount); }
+                      else if (e.key === 'ArrowUp') { e.preventDefault(); setNameHi(h => (h <= 0 ? offerCount - 1 : h - 1)); }
+                      else if (e.key === 'Enter' && nameHi >= 0 && nameHi < offerCount) {
+                        e.preventDefault();
+                        if (nameHi < offer.list.length) pickName(i, offer.list[nameHi]); else fillRest(offer.rest);
+                      }
+                    }} />
+                </div>
                 {!isOfc && <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 11)'}}>
                   <AmountField value={p.startingStack} cents={cents} disabled={locked} placeholder="Stack"
                     ariaLabel={(String(p.name || '').trim() || badge) + ' stack'}
@@ -3671,6 +3776,25 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                     style={{textAlign:'right', flex:'1 1 auto', minWidth:0}}
                     onCommit={v => updatePlayerField(i, 'startingStack', v)} />
                 </div>}
+                {/* A chip takes no focus from the field (its pointerdown is held), so the keyboard stays up. */}
+                {offerCount > 0 && (
+                  <div className="gto-name-offer" role="listbox" id={'gto-names-' + i} aria-label="Names from your saved hands">
+                    {offer.list.map((nm, k) => (
+                      <button key={nm} type="button" role="option" aria-selected={nameHi === k}
+                        className={'gto-name-chip ctl snap-g' + (nameHi === k ? ' is-hi' : '')}
+                        onPointerDown={e => e.preventDefault()} onMouseDown={e => e.preventDefault()}
+                        onClick={() => pickName(i, nm)}><span>{nm}</span></button>
+                    ))}
+                    {offer.rest.length > 0 && (
+                      <button type="button" role="option" aria-selected={nameHi === offer.list.length}
+                        className={'gto-name-chip is-fill ctl snap-g' + (nameHi === offer.list.length ? ' is-hi' : '')}
+                        aria-label={'Fill the rest: ' + offer.rest.map(f => f.name).join(', ')}
+                        title={offer.rest.map(f => seatBadge(f.seat) + ' ' + f.name).join(', ')}
+                        onPointerDown={e => e.preventDefault()} onMouseDown={e => e.preventDefault()}
+                        onClick={() => fillRest(offer.rest)}><span>Fill the rest</span></button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -5313,6 +5437,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   const [quickVoice, setQuickVoice] = useState(false);   // quick add opened by Say (listening at once)
   const [quickSeed, setQuickSeed] = useState(null);      // a hand said on the Watch, finished in quick add
   const [hands, setHands] = useState([]);
+  // Every name in the saved hands, for the entry's name fields (utils/player-names.js).
+  const savedNames = useMemo(() => nameBook(hands), [hands]);
   const [games, setGames] = useState([]);
   const [currentHand, setCurrentHand] = useState(initialHand ? canonicalHand(initialHand) : null);
   const [currentHandId, setCurrentHandId] = useState(null);
@@ -6001,6 +6127,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
           resume={entryResume}
           jump={entryJump}
           onProgress={setEntryAt}
+          names={savedNames}
         />
       </div>
     );

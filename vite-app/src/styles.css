@@ -4246,6 +4246,27 @@
       padding: 0; margin-bottom: var(--subrow); border: 0;
     }
     .replayer-entry-view .replayer-player-row > .replayer-field:first-child { grid-column: 1 / 3; }
+    /* Names from the saved hands under the focused name field (utils/player-names.js): from the name's left edge
+       (9g; OFC rows have no badge, so 3g) to the row's right, 1r under the inputs. Chips 4r, whole g wide, 1g
+       and 1r apart, the label centred; the arrow keys' chip and Fill the rest wear a ring. */
+    .replayer-entry-view .replayer-player-row > .gto-name-offer {
+      grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--subrow) var(--gu);
+      margin-top: var(--subrow); min-width: 0;
+    }
+    .replayer-entry-view .replayer-player-row:has(> .replayer-player-pos) > .gto-name-offer { grid-column: 2 / -1; }
+    /* The rows' flex gap (.replayer-player-row) is a row gap in the grid too: none, so the offer is 1r down. */
+    .replayer-entry-view .replayer-player-row:has(> .gto-name-offer) { row-gap: 0; }
+    .replayer-entry-view .gto-name-chip {
+      height: calc(var(--subrow) * 4); min-height: 0; max-width: 100%; padding: 0 var(--gu); margin: 0;
+      border: none; border-radius: var(--radius-pill); background: var(--surface2); color: var(--text);
+      font-family: var(--font-condensed); font-size: var(--fs-sm); cursor: pointer;
+      -webkit-appearance: none; appearance: none;
+    }
+    .replayer-entry-view .gto-name-chip.is-fill { background: transparent; color: var(--accent); box-shadow: inset 0 0 0 var(--bw-1) var(--border); }
+    .replayer-entry-view .gto-name-chip.is-hi { box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); }
+    @media (hover: hover) and (pointer: fine) {
+      .replayer-entry-view .gto-name-chip:hover { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); }
+    }
     .replayer-entry-view .replayer-player-row .replayer-player-pos {
       box-sizing: border-box; width: 100%; height: calc(var(--subrow) * 3); min-width: 0;
       margin-top: var(--subrow); padding: calc(var(--subrow) - 0.7em) 0 0; border: 0;
