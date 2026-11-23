@@ -4864,10 +4864,18 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
             const p = hand.players[pi];
             const cardStr = getStudCardForPlayer(pi);
             const isTarget = studDealTarget === pi;
+            /* A player with no name entered also shows their seat (owner, 2026-11-22, of a deal listing Opp 3, the hero,
+               Opp 2: "If no names are entered, yes, that will just minimize confusion"): the rows go round from Seat 1,
+               the dealer's left, and choosing the hero's seat turns every player round the table, so a default
+               "Opp N" need not sit in seat N. */
+            const unnamed = /^(Opp \d+|Hero)$/.test(String(p.name || '').trim());
             return (
               <button type="button" key={pi} className={'gto-deal-row is-pickable has-run' + (isTarget ? ' is-target' : '')}
                 aria-pressed={isTarget} onClick={() => setStudDealTarget(pi)}>
-                <span className="gto-deal-name">{p.name}</span>
+                <span className="gto-deal-who">
+                  <span className="gto-deal-name">{p.name}</span>
+                  {unnamed && <span className="gto-deal-seat">{p.position || 'Seat ' + (pi + 1)}</span>}
+                </span>
                 {/* The hand so far (owner, 2026-11-22: "show the hands up to this point here"), down cards 1r lower,
                     then the card this street deals. */}
                 <span className="gto-deal-run"><StudRun run={studRunFor(hand, pi, heroIdxSD, currentStreetIdx)} /></span>

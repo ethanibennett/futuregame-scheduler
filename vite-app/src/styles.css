@@ -4533,6 +4533,16 @@
        street card is down, 1r lower too); the name's baseline 4r. 1r inside the row's box above and below, so the
        target's outline never touches a card. */
     .replayer-entry-view .gto-deal-row.has-run { height: calc(var(--subrow) * 7); padding-top: var(--subrow); }
+    /* The name, and under it the seat of a player with no name entered (owner, 2026-11-22), its baseline 2r under the
+       name's (6r in the row), muted as the door rows' seat is. The column keeps the name's 11g, so every row's cards
+       start at the same place, a seat shown or not. */
+    .replayer-entry-view .gto-deal-who { display: flex; flex-direction: column; flex: none; min-width: calc(var(--gu) * 11); }
+    .replayer-entry-view .gto-deal-who > .gto-deal-name { min-width: 0; }
+    .replayer-entry-view .gto-deal-seat {
+      font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap;
+      line-height: 1; padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
     .replayer-entry-view .gto-deal-run .card-row { min-height: 0; flex-wrap: nowrap; align-items: flex-start; gap: 0; }
     .replayer-entry-view .gto-deal-run .card-img,
     .replayer-entry-view .gto-deal-run .card-unknown { flex: none; height: calc(var(--subrow) * 4); width: calc(var(--gu) * 2); object-fit: contain; }
