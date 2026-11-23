@@ -62,7 +62,22 @@ const GLYPHS = {
   dollarSign: { filled: false, path: (<><line x1="12" y1="1" x2="12" y2="23"/> <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></>) },
   /* A poker chip: the play-money Tables tab. */
   chip: { filled: false, path: (<><circle cx="12" cy="12" r="10"/> <circle cx="12" cy="12" r="5"/> <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></>) },
-  cards: { filled: false, path: (<><rect x="2" y="4" width="12" height="16" rx="1.5" transform="rotate(-8 8 12)"/> <rect x="10" y="4" width="12" height="16" rx="1.5" transform="rotate(8 16 12)"/></>) },
+  /* Two cards, the right one in front and opaque (owner, 2026-11-22: "One of these cards should be opaque"): the back
+     card is masked out under the front one, its outline stroke included, so it hides behind it on any ground (a fill
+     in the ground's colour would be wrong on every bar, theme and active tab but one). A glyph given as a function
+     gets its own id for the mask (Glyph, useId): every icon on the page draws its own. The mask is on a group, so
+     its units are the icon's, not the rotated card's. */
+  cards: { filled: false, path: (id) => {
+    const front = { x: 10, y: 4, width: 12, height: 16, rx: 1.5, transform: 'rotate(8 16 12)' };
+    return (<>
+      <defs><mask id={id} maskUnits="userSpaceOnUse" x="-2" y="-2" width="28" height="28">
+        <rect x="-2" y="-2" width="28" height="28" fill="#fff" stroke="none"/>
+        <rect {...front} fill="#000" stroke="#000"/>
+      </mask></defs>
+      <g mask={`url(#${id})`}><rect x="2" y="4" width="12" height="16" rx="1.5" transform="rotate(-8 8 12)"/></g>
+      <rect {...front}/>
+    </>);
+  } },
   bell: { filled: false, path: (<><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/> <path d="M13.73 21a2 2 0 01-3.46 0"/></>) },
   check: { filled: false, path: (<><polyline points="20 6 9 17 4 12"/></>) },
   plus: { filled: false, path: (<><line x1="12" y1="5" x2="12" y2="19"/> <line x1="5" y1="12" x2="19" y2="12"/></>) },
@@ -76,6 +91,8 @@ const GLYPHS = {
 };
 
 export function Glyph({ name, size, title, filled, ...rest }) {
+  // An id of this icon's own, for a glyph that defines something to point at (cards' mask).
+  const uid = 'glyph' + React.useId().replace(/[^A-Za-z0-9_-]/g, '');
   const g = GLYPHS[name];
   if (!g) return null;
   const isFilled = filled === undefined ? g.filled : filled;
@@ -97,7 +114,7 @@ export function Glyph({ name, size, title, filled, ...rest }) {
       aria-hidden={title ? undefined : "true"}
       {...rest}
     >
-      {g.path}
+      {typeof g.path === 'function' ? g.path(uid) : g.path}
     </svg>
   );
 }
