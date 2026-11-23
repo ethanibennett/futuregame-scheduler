@@ -12304,7 +12304,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       return out;
     })();
     if (!ups.length) return null;
-    if (streetIdx === 0 || first.action === 'bring-in') return { seat: pi, text: ups[0].rank + ups[0].suit + ' brings in' };   // owner, 2026-11-22: "3c brings in"
+    /* Not "brings in": the low card may bring it in or complete (owner, 2026-11-22: "since the low card has the option to
+       complete let's say action starts on the 3c instead of 3c brings in"). */
+    if (streetIdx === 0 || first.action === 'bring-in') return { seat: pi, text: 'Action starts on the ' + ups[0].rank + ups[0].suit };
     const counts = {};
     ups.forEach(c => { counts[c.rank] = (counts[c.rank] || 0) + 1; });
     const RW = { A: 'Aces', K: 'Kings', Q: 'Queens', J: 'Jacks', T: 'Tens', 9: '9s', 8: '8s', 7: '7s', 6: '6s', 5: '5s', 4: '4s', 3: '3s', 2: '2s' };
