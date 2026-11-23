@@ -526,7 +526,7 @@ async function worker(w) {
       const modeBtn = p.locator('.entry-game-row .live-update-tabs button').filter({ hasText: rec.mode === 'cash' ? /^\s*Cash\s*$/ : /^\s*MTT\s*$/ }).first();
       if (!/\bactive\b/.test((await modeBtn.getAttribute('class')) || '')) await tap(modeBtn, 'mode');
       const title = `EO ${rec.id} ${runTag}`;
-      await p.locator('input[placeholder="e.g. Huge pot with AA"]').fill(title);
+      await p.locator('#entry-title').fill(title);
       const seatsSel = p.locator('.gto-blinds-grid select').first();
       const options = await seatsSel.locator('option').allTextContents();
       if (!options.includes(String(m.n))) await stop('cannot', 'the number of players', 'setup', `${m.n} players; the list offers ${options.join(', ')}`);
