@@ -3844,7 +3844,11 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                 aria-describedby={heroProblem ? 'gto-hero-cards-why' : undefined}
                 value={heroCardsVal}
                 onChange={e => { const v = e.target.value.replace(/10/g, 'T'); setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === 0 ? { ...s, cards: { ...s.cards, hero: v } } : s) })); }} />
-              <CardRow text={heroTyped.cards.join('')} stud={gameCfg.isStud} max={heroMaxCards} />
+              {/* Stud: the two down cards 1r lower than the door card, as on the seats and the deal screen (owner,
+                  2026-11-22: "Show the 3 as an upcard (shifted) in the initial hand entry screen"). */}
+              {gameCfg.isStud
+                ? <span className="gto-hero-studrun"><StudRun run={heroTyped.cards.slice(0, 3).map((c, k) => ({ card: c, down: k < 2 }))} /></span>
+                : <CardRow text={heroTyped.cards.join('')} stud={gameCfg.isStud} max={heroMaxCards} />}
               {heroProblem && <div className="replayer-field-error" id="gto-hero-cards-why">{heroProblem}</div>}
             </div>
             <div className={pickerGridClass(heroAllRanks)}>

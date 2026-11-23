@@ -4539,6 +4539,11 @@
     .replayer-entry-view .gto-deal-run .card-row > :not(:first-child) { margin-left: calc(var(--gu) * -1); }
     .replayer-entry-view .gto-deal-run .is-down,
     .replayer-entry-view .gto-deal-new.is-down { margin-top: var(--subrow); }
+    /* The first screen's three (stud): the row's own spacing, 5r so the down cards' 1r drop stays inside it. */
+    .replayer-entry-view .gto-hero-studrun { display: block; }
+    .replayer-entry-view .gto-hero-studrun .card-row { min-height: calc(var(--subrow) * 5); align-items: flex-start; flex-wrap: nowrap; gap: var(--space-2xs); }
+    .replayer-entry-view .gto-hero-studrun .card-row > * { flex: none; }
+    .replayer-entry-view .gto-hero-studrun .is-down { margin-top: var(--subrow); }
 
     /* Action-phase footer (fixed above the tab bar): 1r · card (1r · 5r · 1r) · 1r = 9r.
        Bottom-anchored, its top would land wherever the viewport height puts it;
