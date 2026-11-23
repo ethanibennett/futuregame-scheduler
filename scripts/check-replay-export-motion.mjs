@@ -107,8 +107,8 @@ async function open({ clock = false, recorder = false } = {}) {
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') console.log('  console', m.type(), m.text().slice(0, 240)); });
   await page.goto(BASE + '/#h/' + encodeURIComponent(H8));
-  if (clock) { for (let i = 0; i < 60; i++) { await page.clock.runFor(100); if (await page.$('button[title="Forward"]')) break; await sleep(100); } }
-  await page.waitForSelector('button[title="Forward"]', { timeout: 30000 });
+  if (clock) { for (let i = 0; i < 60; i++) { await page.clock.runFor(100); if (await page.$('button[title^="Forward"]')) break; await sleep(100); } }
+  await page.waitForSelector('button[title^="Forward"]', { timeout: 30000 });
   if (clock) await page.clock.runFor(2500); else await sleep(2500);
   await page.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 800 }).catch(() => {});
   await page.evaluate(MEASURE);
@@ -204,7 +204,7 @@ const idle = async () => {
     await sleep(100);
   }
 };
-const forward = async (n) => { for (let i = 0; i < n; i++) { await page.click('button[title="Forward"]'); await hops(); await page.clock.runFor(1500); await hops(); await idle(); await hops(); } };
+const forward = async (n) => { for (let i = 0; i < n; i++) { await page.click('button[title^="Forward"]'); await hops(); await page.clock.runFor(1500); await hops(); await idle(); await hops(); } };
 await forward(PRESSES_BEFORE_TURN);
 // Time stops here: from now on timers fire only when the clock is run (as the motion harness does).
 await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 50);
@@ -221,7 +221,7 @@ async function liveAt(t, shot) {
   // land) and everything is pinned at t.
   await page.evaluate(async () => {
     window.__pressAt = performance.now();
-    document.querySelector('button[title="Forward"]').click();
+    document.querySelector('button[title^="Forward"]').click();
     for (let i = 0; i < 6; i++) await Promise.resolve();
     const anims = document.getAnimations();
     for (const a of anims) { try { a.pause(); a.currentTime = 0; } catch (e) {} }
@@ -239,7 +239,7 @@ async function liveAt(t, shot) {
   const m = await page.evaluate(() => window.__meas());
   if (shot) await page.locator('.replayer-table').screenshot({ path: shot });
   // back to the step before the moment: Back finishes everything
-  await page.evaluate(() => document.querySelector('button[title="Back"]').click());
+  await page.evaluate(() => document.querySelector('button[title^="Back"]').click());
   await hops(); await page.clock.runFor(600); await hops();
   return m;
 }

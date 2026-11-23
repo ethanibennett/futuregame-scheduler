@@ -963,7 +963,7 @@ async function worker(w) {
         await p.waitForTimeout(t ? 800 : 400);
         await p.locator('button[title="End"]').first().click({ force: true });
         await p.waitForTimeout(700);
-        if (await p.locator('button[title="Forward"]').first().isDisabled().catch(() => false)) break;
+        if (await p.locator('button[title^="Forward"]').first().isDisabled().catch(() => false)) break;
       }
       await p.waitForTimeout(900);
       const felt = await readSeats(p);

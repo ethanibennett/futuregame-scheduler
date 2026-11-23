@@ -270,7 +270,7 @@ async function runRow(browser, row) {
           const sel = p.locator('.gto-entry select').first();
           if (await sel.count()) { await sel.selectOption(String(SEATS)).catch(() => {}); await p.waitForTimeout(150); }
           // The title finds this hand in the saved list.
-          const titleBox = p.locator('input[placeholder*="Huge pot"]').first();
+          const titleBox = p.locator('#entry-title').first();
           if (await titleBox.count()) { await titleBox.fill(title); await p.waitForTimeout(80); }
         }
         await tap(primary('Next'), 'Next');
@@ -416,7 +416,7 @@ async function runRow(browser, row) {
     const atStart = await feltNow();
     if (atStart.board !== (cfg.doorBoard || 0)) problem(`${atStart.board} board cards before the first bet, the game deals ${cfg.doorBoard || 0}`);
     if (cfg.showCards && atStart.hero != null && atStart.hero !== cfg.heroCards) problem(`hero holds ${atStart.hero} cards before the throw, not ${cfg.heroCards}`);
-    const forward = p.locator('button[title="Forward"]').first();
+    const forward = p.locator('button[title^="Forward"]').first();
     for (let i = 0; i < 200; i++) {
       if (await forward.isDisabled()) break;
       await forward.click({ force: true });

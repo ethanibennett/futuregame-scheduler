@@ -293,7 +293,7 @@ async function openHand(browser, seats, { clock }) {
   page.on('pageerror', e => console.log('  pageerror:', String(e).slice(0, 200)));
   if (clock) await page.clock.install();
   await page.goto(BASE + '/#h/' + encodeURIComponent(HANDS[seats]), { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('button[title="Forward"]', { timeout: 30000 });
+  await page.waitForSelector('button[title^="Forward"]', { timeout: 30000 });
   await sleep(3000);
   await page.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000 }).catch(() => {});
   // Nothing may sit over the felt: a clip of a dialog is worse than no clip.
@@ -315,7 +315,7 @@ async function openHand(browser, seats, { clock }) {
 
 async function stepTo(page, n) {
   for (let i = 0; i < n; i++) {
-    const ok = await page.evaluate(() => { const b = document.querySelector('button[title="Forward"]'); if (!b || b.disabled) return false; b.click(); return true; });
+    const ok = await page.evaluate(() => { const b = document.querySelector('button[title^="Forward"]'); if (!b || b.disabled) return false; b.click(); return true; });
     if (!ok) throw new Error('Forward unavailable at press ' + i);
     await sleep(260);
   }
@@ -378,7 +378,7 @@ async function captureMoment(browser, seats, moment) {
         await page.evaluate(async (t) => {
           window.__mc.press(t);
           window.__mcHold();
-          document.querySelector('button[title="Forward"]').click();
+          document.querySelector('button[title^="Forward"]').click();
           for (let i = 0; i < 6; i++) await Promise.resolve();
           window.__mc.sync(t);
         }, vt);
@@ -561,7 +561,7 @@ async function realtimeMoment(browser, seats, moment, rep) {
         } catch (e) { rt[type + 'Unsupported'] = true; }
       };
       ob('long-animation-frame'); ob('longtask');
-      document.addEventListener('click', e => { if (e.target.closest && e.target.closest('button[title="Forward"]')) rt.click = performance.now(); }, true);
+      document.addEventListener('click', e => { if (e.target.closest && e.target.closest('button[title^="Forward"]')) rt.click = performance.now(); }, true);
       const table = document.querySelector('.replayer-table');
       const t0 = performance.now();
       const loop = (ts) => {
@@ -585,7 +585,7 @@ async function realtimeMoment(browser, seats, moment, rep) {
     const cpuTimes = () => os.cpus().reduce((a, c) => { const t = c.times; a.busy += t.user + t.nice + t.sys + t.irq; a.all += t.user + t.nice + t.sys + t.irq + t.idle; return a; }, { busy: 0, all: 0 });
     const c0 = cpuTimes();
     await sleep(600);
-    await page.click('button[title="Forward"]', { noWaitAfter: true });
+    await page.click('button[title^="Forward"]', { noWaitAfter: true });
     await sleep(2300);
     const c1 = cpuTimes();
     const rt = await page.evaluate(() => window.__rt);
@@ -654,7 +654,7 @@ async function exportProbe(browser, seats, moment) {
     await page.clock.runFor(60);
     await page.evaluate(() => window.__hops());
     const before = await page.evaluate(() => window.__measure());
-    await page.evaluate(() => document.querySelector('button[title="Forward"]').click());
+    await page.evaluate(() => document.querySelector('button[title^="Forward"]').click());
     for (let i = 0; i < 6; i++) { await page.evaluate(() => window.__hops()); await page.clock.runFor(20); }
     await page.evaluate(() => window.__hops());
     // The settled still captureStepFrames() takes: every spring finished, ghosts gone, ticks landed.
