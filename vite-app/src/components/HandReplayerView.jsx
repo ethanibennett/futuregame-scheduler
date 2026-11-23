@@ -2943,11 +2943,15 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
 
   /* Every screen but the betting starts at its top (the betting scrolls to the seat to act, below). The hero's cards,
      the door cards, Setup and OFC were left out, so an edited hand's screen opened where the last one had scrolled to,
-     past its own content (owner, 2026-11-22: "When editing hands this screen bizarrely scrolls here"). */
-  useEffect(() => {
+     past its own content (owner, 2026-11-22: "When editing hands this screen bizarrely scrolls here").
+     At once, before the new screen paints (owner, 2026-11-22: "some of the entry screens are not properly scrolled to
+     the top still"): a smooth scroll started after the paint was dropped by WebKit, which re-anchors the scroll when
+     one screen's content is swapped for another's (Setup at 344px down: the hero's cards opened at 190px, the 3rd Street
+     title off the top, and the smooth scroll never moved). A new screen has nothing on it to slide from. */
+  useLayoutEffect(() => {
     if (phase === 'action') return;
     const container = document.querySelector('.content-area');
-    if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+    if (container) container.scrollTo({ top: 0 });
   }, [phase]);
 
   // Scroll to active seat
