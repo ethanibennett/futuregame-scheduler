@@ -4537,6 +4537,11 @@
     .replayer-entry-view .gto-deal-run .card-img,
     .replayer-entry-view .gto-deal-run .card-unknown { flex: none; height: calc(var(--subrow) * 4); width: calc(var(--gu) * 2); object-fit: contain; }
     .replayer-entry-view .gto-deal-run .card-row > :not(:first-child) { margin-left: calc(var(--gu) * -1); }
+    /* Each card over the one before it, a back or a face (owner, 2026-11-22: "Upcards are rendering underneath down cards
+       in the hand entry"): a back is position: relative (.card-row .card-unknown, for its pattern) and a face a plain
+       image, and a positioned box paints over every unpositioned one, so an opponent's door card went under the backs
+       before it. Positioned alike, the order of the run decides. */
+    .replayer-entry-view .gto-card-run > * { position: relative; }
     .replayer-entry-view .gto-deal-run .is-down,
     .replayer-entry-view .gto-deal-new.is-down { margin-top: var(--subrow); }
     /* The first screen's three (stud): the row's own spacing, 5r so the down cards' 1r drop stays inside it. */
