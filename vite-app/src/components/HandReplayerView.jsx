@@ -2901,11 +2901,13 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
     setStudDealTarget(first !== undefined ? first : (live[0] ?? -1));
   }, [phase, currentStreetIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* Every screen but the betting starts at its top (the betting scrolls to the seat to act, below). The hero's cards,
+     the door cards, Setup and OFC were left out, so an edited hand's screen opened where the last one had scrolled to,
+     past its own content (owner, 2026-11-22: "When editing hands this screen bizarrely scrolls here"). */
   useEffect(() => {
-    if (['board_door','board_entry','stud_deal','draw_discard','draw_cards_entry','showdown','result'].includes(phase)) {
-      const container = document.querySelector('.content-area');
-      if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    if (phase === 'action') return;
+    const container = document.querySelector('.content-area');
+    if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
   }, [phase]);
 
   // Scroll to active seat

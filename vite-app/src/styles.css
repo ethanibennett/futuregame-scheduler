@@ -8467,6 +8467,19 @@
        seat hands it to its cards (--seat-card-h), and the hero's cards scale it; they grow up from the plaque. */
     .replayer-seat { --seat-card-h: var(--card-h); }
     .replayer-seat.is-hero .replayer-seat-cards { --card-h: calc(var(--seat-card-h) * 1.2); --card-w: calc(var(--card-h) * 0.7143); }
+    /* Stud (seven cards) 1.6 times on the phone (owner, 2026-11-22, a stud "bet 400K" still beside the plaque: "Wasn't
+       that where we went to 1.2x?"; 1.2 was checked on draw and flop hands and small-stakes stud, never a hand like
+       his): a stud fan's outer cards tilt and its down cards sit lower, so their indexes come down to the label, and a
+       tournament amount makes the label wide. Measured in the app's layout (safe areas, admin row) on 14 stud hands at
+       tournament amounts: 66 of 287 hero labels beside at 1.2; at 1.4, 4 (402 wide) and 6 (440); at 1.5, 0 and 4; at
+       1.6, no bet, call or raise beside at either (a folded hero's "fold" still is: its cards stay counted). Draw and
+       flop games at those amounts: 0 of 104 at 1.2. The phone's portrait table only: on desktop, at 1.6, the hero's fan
+       reached the rows under the game pill (check:replayer-collisions). */
+    .replayer-fullbleed .replayer-table[data-hand-cards="7"] .replayer-seat.is-hero .replayer-seat-cards { --card-h: calc(var(--seat-card-h) * 1.6); }
+    /* Not on the landscape table (desktop, the Hands pane), which keeps 1.2: there a split's shares hang under the game
+       pill, just above the hero's fan, and a bigger stud hand reached them (check:replayer-collisions at 1440 and 1728:
+       27 steps at 1.5, 4 at 1.4). Measured on the same 14 hands at 1440: 32 hero labels beside at 1.2, 2 at 1.4, none at
+       1.5, so desktop stud still puts some beside the plaque until the shares find another place. */
     /* Not on a nine or ten-seat phone table, already a step smaller for room: there the bigger hand took height from the
        table (placeTableFoot) and a side seat's cards met a split's shares under the board (check:replayer-collisions,
        PLO8 9-max at 375x667). */
