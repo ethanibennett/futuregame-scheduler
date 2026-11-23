@@ -851,6 +851,19 @@ function currencySymbol(hand) {
    The felt's stakes pill and the saved-hands row both use it. Through formatChipAmount, whose plain format
    keeps no fraction, $0.25/$0.50 read "0/1" and $0.12/$0.25 "0/0". A fixed-limit game is quoted in its two
    bet sizes; a straddle and the ante follow, as before. */
+/* A shared link's preview title (the text a message app shows for futurega.me/h/...): the game and its stakes as the
+   felt's pill writes them (owner, 2026-11-22, a Stud 8 link that read "Stud 8 100/200000/50000": "instead of stud 8
+   200k/400k"). It was the raw small blind, big blind and ante, so a stud hand showed the small blind it carries for
+   nothing and every figure unabbreviated. The straddle is part of the stakes: a link that read "10/10" for a "10/10/20"
+   game named a different game. */
+function linkTitle(hand) {
+  if (!hand) return '';
+  const b = hand.blinds || {};
+  const straddle = getStraddles(hand.players || [], b).reduce((m, st) => Math.max(m, st.amount || 0), 0);
+  const stakes = formatStakes(hand, { straddle });
+  return (hand.gameType || 'Poker hand') + (stakes ? ' ' + stakes : '');
+}
+
 function formatStakes(hand, { straddle = 0 } = {}) {
   const b = (hand && hand.blinds) || {};
   if (!b.bb) return '';
@@ -8360,9 +8373,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     if (!token) return null;
     const full = encodeHand({ ...hand, title: handTitle || hand.title || '', feltColor });
     if (!full) return null;
-    const b = hand.blinds || {};
-    const title = `${hand.gameType} ${b.sb || 0}/${b.bb || 0}${b.ante ? '/' + b.ante : ''}`;
-    const body = { shorthand: full, title };
+    const body = { shorthand: full, title: linkTitle(hand) };
     if (asQuestion) {
       const qs = encodeHand({ ...questionHand(hand, streetIdx, actionIdx), feltColor });
       if (!qs) return null;
@@ -8393,11 +8404,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       };
       const shorthand = encodeHand({ ...hand, title: handTitle || hand.title || '', feltColor, feltBright: rSettings.feltBright, visuals });
       if (!shorthand) return;
-      const b = hand.blinds || {};
-      // The straddle is part of the stakes — a link that reads "10/10" for a
-      // "10/10/20" game names a different game — so the title carries it too.
-      const _straddleAmt = getStraddles(hand.players, b).reduce((m, st) => Math.max(m, st.amount || 0), 0);
-      const title = `${hand.gameType} ${b.sb || 0}/${b.bb || 0}${_straddleAmt ? '/' + _straddleAmt : ''}${b.ante ? '/' + b.ante : ''}`;
+      const title = linkTitle(hand);
       // Fallback: the self-contained fragment link. SITE_URL (not
       // window.location.origin, which is capacitor://localhost in the app), and
       // NOT url-encoded — the format's commas/slashes are fragment-safe, so this

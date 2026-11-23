@@ -8617,8 +8617,17 @@ app.post('/api/hand-links', authenticateToken, requireRegistered, async (req, re
   const id = isQ ? handLinkId(`${shorthand}:q:${q.street}:${q.action}`) : handLinkId(shorthand);
   const cleanTitle = (typeof title === 'string' && title.trim()) ? title.trim().slice(0, 80) : null;
   try {
-    const existing = db.exec('SELECT id FROM shared_hands WHERE id = ?', [id]);
-    if (!existing.length || !existing[0].values.length) {
+    const existing = db.exec('SELECT id, title, uploaded_by FROM shared_hands WHERE id = ?', [id]);
+    if (existing.length && existing[0].values.length) {
+      /* The same hand shared again gets the same link (its id is the shorthand's hash), so a preview title the app
+         now writes better (2026-11-22: "Stud 8 100/200000/50000" for a 200K/400K stud hand) reached old links only
+         when their sharer shares again: theirs is replaced; anyone else's mint leaves it. */
+      const [, oldTitle, by] = existing[0].values[0];
+      if (cleanTitle && cleanTitle !== oldTitle && by === req.user.id) {
+        db.run('UPDATE shared_hands SET title = ? WHERE id = ?', [cleanTitle, id]);
+        await saveDatabase();
+      }
+    } else {
       if (isQ) {
         db.run('INSERT INTO shared_hands (id, shorthand, title, uploaded_by, question_shorthand, stop_street, stop_action) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [id, shorthand, cleanTitle, req.user.id, q.shorthand, q.street, q.action]);
