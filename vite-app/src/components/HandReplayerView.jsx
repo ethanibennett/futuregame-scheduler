@@ -2648,7 +2648,15 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
   // The header's Edit (UX pick 57): back to setup, the hand kept.
   // Only a press made while this entry is open: the one held from an earlier entry is not obeyed.
   const jumpSeen = useRef(jump);
-  useEffect(() => { if (jump && jump !== jumpSeen.current && jump.phase) { jumpSeen.current = jump; setPhase(jump.phase); } }, [jump]);
+  // A jump may name a street too (the step strip's buttons, owner 2026-11-22: "buttons that took the user directly to
+  // that street to edit").
+  useEffect(() => {
+    if (jump && jump !== jumpSeen.current && jump.phase) {
+      jumpSeen.current = jump;
+      if (Number.isInteger(jump.streetIdx) && jump.streetIdx >= 0 && jump.streetIdx < (hand.streets || []).length) setCurrentStreetIdx(jump.streetIdx);
+      setPhase(jump.phase);
+    }
+  }, [jump]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showRaiseInput, setShowRaiseInput] = useState(false);
   const [betAmount, setBetAmount] = useState('');
   // Why Confirm refused the typed bet or raise; typing again clears it.
@@ -2828,10 +2836,25 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
   const activePlayers = hand.players.filter((_, i) => !foldedSet.has(i));
   const handOver = activePlayers.length <= 1;
 
+  /* A jump to a street from the step strip holds there, though its betting is complete (owner, 2026-11-22: "buttons that
+     took the user directly to that street to edit"): it moved straight on to the next street's deal. Any change to the
+     street (an action, Undo, a tap on a seat) or Continue lets it go on as before. */
+  const [advanceHeld, setAdvanceHeld] = useState(false);
+  const heldActions = useRef(null);
+  useEffect(() => {
+    if (jump && jump.phase === 'action') { setAdvanceHeld(true); heldActions.current = null; }
+  }, [jump]);
+  useEffect(() => {
+    if (!advanceHeld) return;
+    const acts = (hand.streets[currentStreetIdx] || {}).actions || [];
+    if (heldActions.current == null) { heldActions.current = acts; return; }
+    if (acts !== heldActions.current || phase !== 'action') setAdvanceHeld(false);
+  }, [hand, currentStreetIdx, phase, advanceHeld]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (phase !== 'action') return;
     if (handOver) { setPhase('result'); return; }
     if (!isBettingComplete) return;
+    if (advanceHeld) return;
     const nextStreet = currentStreetIdx + 1;
     if (nextStreet >= hand.streets.length) { setPhase('showdown'); return; }
     if (gameCfg.drawAfter === currentStreetIdx) setPhase('draw_discard');
@@ -2839,7 +2862,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
     else if (category === 'stud') setPhase('stud_deal');
     else if (category === 'draw_triple' || category === 'draw_single') setPhase('draw_discard');
     else setCurrentStreetIdx(nextStreet);
-  }, [isBettingComplete, phase, handOver]);
+  }, [isBettingComplete, phase, handOver, advanceHeld]);
 
   /* Pineapple: everyone still in throws one, so there is nothing to declare; only which card the hero threw is asked. */
   useEffect(() => {
@@ -5107,7 +5130,10 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                   losing the hand — everything entered so far is kept in state. */}
               <button className="btn btn-ghost btn-sm" onClick={() => setPhase('setup')}>Back to Setup</button>
               <div style={{flex:1}} />
-              <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel Hand</button>
+              {/* Held on a finished street by the step strip: on to the next as its betting would have gone. */}
+              {advanceHeld && isBettingComplete
+                ? <button className="btn btn-primary btn-sm" onClick={() => setAdvanceHeld(false)}>Continue</button>
+                : <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel Hand</button>}
             </div>
           </div>
         </div>,
@@ -5834,11 +5860,28 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                 <button type="button" className="btn btn-ghost btn-sm ctl entry-summary-edit"
                   onClick={() => setEntryJump({ phase: 'setup', n: Date.now() })}>Edit</button>
               </div>}
+          {/* Each step the hand has reached is a button to it (owner, 2026-11-22: "Would be nice if these were buttons
+              that took the user directly to that street to edit"): Setup, a street's betting (one with an action or a
+              card entered, or the first), and Result once the hand has one. Not the step on screen. */}
           <ol className="entry-steps" aria-label="Steps" style={{ '--steps': steps.length }}>
-            {steps.map((st, i) => (
-              <li key={i} className={'entry-step' + (i < stepNow ? ' is-done' : i === stepNow ? ' is-now' : '')}
-                aria-current={i === stepNow ? 'step' : undefined}><span>{st}</span></li>
-            ))}
+            {steps.map((st, i) => {
+              const streets = currentHand.streets || [];
+              const si = i - 1;
+              const filled = (s) => !!s && ((s.actions || []).length > 0 || !!(s.cards && (s.cards.hero || s.cards.board || (s.cards.opponents || []).some(Boolean))));
+              const reached = i === 0 ? true
+                : i === steps.length - 1 ? !!(currentHand.result && (currentHand.result.winners || []).length)
+                : si === 0 || filled(streets[si]);
+              const go = i === 0 ? { phase: 'setup' } : i === steps.length - 1 ? { phase: 'result', streetIdx: Math.max(0, streets.length - 1) } : { phase: 'action', streetIdx: si };
+              const cls = 'entry-step' + (i < stepNow ? ' is-done' : i === stepNow ? ' is-now' : '');
+              return (
+                <li key={i} className={cls} aria-current={i === stepNow ? 'step' : undefined}>
+                  {reached && i !== stepNow
+                    ? <button type="button" className="entry-step-btn ctl" onClick={() => setEntryJump({ ...go, n: Date.now() })}
+                        aria-label={(i === 0 ? 'Setup' : i === steps.length - 1 ? 'Result' : st + ' street') + ': edit'}><span>{st}</span></button>
+                    : <span>{st}</span>}
+                </li>
+              );
+            })}
           </ol>
           {/* Tournament or cash. A cash game is money, so its stacks and pots
               carry a currency symbol; a straddle is a cash-game wager, so
