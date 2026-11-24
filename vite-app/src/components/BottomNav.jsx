@@ -2,7 +2,7 @@ import React from 'react';
 import Icon from './Icon.jsx';
 import { haptic } from '../utils/utils.js';
 
-export default function BottomNav({ current, onChange, isAdmin }) {
+export default function BottomNav({ current, onChange, isAdmin, showCash = isAdmin }) {
   const tabs = [
     // The screen the app opens on is first, and called Home (UX pick 98): it was the third tab, called
     // Dashboard in the nav and Home in Settings.
@@ -13,8 +13,9 @@ export default function BottomNav({ current, onChange, isAdmin }) {
     { id: 'tracking', label: 'Bankroll', icon: Icon.tracking },
     // Hands, for everyone since 2026-11-05 (owner): the replayer. Its Study and Scanner tools stay with admins.
     { id: 'hands', label: 'Hands', icon: Icon.cards },
-    // Cash watcher replaced Staking in this slot — admin-only for now.
-    ...(isAdmin ? [{ id: 'cash', label: 'Cash', icon: Icon.dollarSign }] : []),
+    // Cash watcher replaced Staking in this slot. Every signed-in account since 2026-11-24 (owner: "Bring the cash
+    // tab online for non-admin users"), each with a cash location of its own; not a guest.
+    ...(showCash ? [{ id: 'cash', label: 'Cash', icon: Icon.dollarSign }] : []),
   ];
 
   // Whole-g tabs (owner rule, 2026-10-10: every button's box on the grid). The widest whole-g

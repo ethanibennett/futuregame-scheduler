@@ -64,13 +64,14 @@ function RailSections({ onTab, go }) {
  * The admin dev keys (#, D, i) are not here: they float over the main column's
  * foot as on the phone (App.jsx devToggles).
  */
-export default function DesktopRail({ current, onChange, isAdmin, evalPct = null }) {
+export default function DesktopRail({ current, onChange, isAdmin, showCash = isAdmin, evalPct = null }) {
   const primary = [
     { id: 'dashboard', label: 'Home', icon: Icon.home },
     { id: 'tournaments', label: 'Schedule', icon: Icon.calendar },
     { id: 'tracking', label: 'Bankroll', icon: Icon.tracking },
     { id: 'hands', label: 'Hands', icon: Icon.cards },
-    ...(isAdmin ? [{ id: 'cash', label: 'Cash', icon: Icon.dollarSign }] : []),
+    // Every signed-in account since 2026-11-24 (owner), each with a cash location of its own; not a guest.
+    ...(showCash ? [{ id: 'cash', label: 'Cash', icon: Icon.dollarSign }] : []),
   ];
   // Yours, then the admin tools under their own caption (UX pick 106, as the avatar menu, pick 49).
   const secondary = [

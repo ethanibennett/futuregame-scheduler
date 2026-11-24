@@ -88,7 +88,7 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
           fetch(`${API_URL}/cash/location`, { headers }).catch(() => null),
         ]);
         if (!gRes.ok) {
-          setErr(gRes.status === 403 ? 'This account is not an admin.' : gRes.status === 503 ? 'Cash watcher is offline.' : 'Could not load the game catalog.');
+          setErr(gRes.status === 403 ? 'Sign in to see the heatmaps.' : gRes.status === 503 ? 'Cash watcher is offline.' : 'Could not load the game catalog.');
           setStatus('error');
           return;
         }
@@ -112,7 +112,12 @@ export default function CashHeatmap({ token, locationVersion = 0 }) {
           if (!live) return;
           // Mid-switch, pending drives the 2 s recheck below; without it this message never cleared on its own.
           setPending(switching ? ((loc.requested && loc.requested.label) || loc.label || 'the new location') : null);
-          setErr(switching ? 'Updating the rooms for the new location…' : 'Could not load the room names. Try again.');
+          // A player with no location yet (theirs is their own since 2026-11-24), or one whose rooms have no
+          // data: neither is a failure to load.
+          setErr(switching ? 'Updating the rooms for the new location…'
+            : loc && loc.lat == null ? 'Pick a location to see heatmaps for the rooms near you.'
+            : loc && loc.own ? 'No rooms near this location have data yet.'
+            : 'Could not load the room names. Try again.');
           setStatus('error');
           return;
         }

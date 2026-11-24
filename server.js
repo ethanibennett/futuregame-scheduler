@@ -536,12 +536,61 @@ let cashGamesRefresh = null;
 let cashLocationAt = 0; // when the location was last written
 const cashGamesTtl = () => (Date.now() - cashLocationAt < CASH_GAMES_SWITCH_WINDOW_MS ? CASH_GAMES_SWITCH_TTL_MS : CASH_GAMES_TTL_MS);
 
+// Every player since 2026-11-24 (owner: "Bring the cash tab online for non-admin users", each with a location of their
+// own; lib/cash-locations.js). The admins steer and read the watcher's own location, exactly as before. A player's
+// pick is kept here, the watcher is sent only the set of rounded points, and their reads go up with near= their point.
+const cashLocations = require('./lib/cash-locations');
+const mintCashOwnerCookie = () => `${SESSION_COOKIE}=${encodeURIComponent(jwt.sign({ id: HAM_OWNER_ID, username: 'ham' }, JWT_SECRET, { expiresIn: '10m' }))}`;
+const cashSyncGate = cashLocations.syncDecision();
+console.log(`[cash-players] sending players' locations to the watcher is ${cashSyncGate.on ? 'ON' : 'OFF'} (${cashSyncGate.why})`);
+const cashPlayerSync = cashLocations.createSync({
+  getDb: () => db,
+  on: cashSyncGate.on,
+  put: async (points) => {
+    if (HAM_OWNER_ID == null) return null;
+    const r = await fetch(`${CASHWATCHER_URL}/api/player-locations`, {
+      method: 'PUT', redirect: 'manual', signal: AbortSignal.timeout(10000),
+      headers: { cookie: mintCashOwnerCookie(), 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ points }),
+    });
+    if (!r.ok) { console.error(`[cash-players] the watcher refused the locations: HTTP ${r.status}`); return null; }
+    return r.json();
+  },
+  fetchState: async () => {
+    if (HAM_OWNER_ID == null) return null;
+    const r = await fetch(`${CASHWATCHER_URL}/api/player-locations`, { headers: { cookie: mintCashOwnerCookie(), accept: 'application/json' }, redirect: 'manual', signal: AbortSignal.timeout(10000) });
+    return r.ok ? r.json() : null;
+  },
+  log: (m) => console.log(`[cash-players] ${m}`),
+});
+const cashPlayer = cashLocations.createPlayerHandler({
+  getDb: () => db, saveDatabase, sync: cashPlayerSync, allowWrite: cashLocations.createWriteLimiter(),
+  upstream: (pathAndQuery) => fetch(`${CASHWATCHER_URL}${pathAndQuery}`, { headers: { cookie: mintCashOwnerCookie(), accept: 'application/json' }, redirect: 'manual', signal: AbortSignal.timeout(20000) }),
+});
+/** Whose board a user's cash alerts read: undefined = the owner's (an admin), a near= string = their own, null = none. */
+function cashBoardFor(d, userId) {
+  const r = d.exec('SELECT username FROM users WHERE id = ?', [userId]);
+  const username = r.length && r[0].values.length ? String(r[0].values[0][0] || '') : '';
+  if (APP_ADMIN_USERNAMES.has(username.toLowerCase())) return undefined;
+  const loc = cashLocations.get(d, userId);
+  return loc ? cashLocations.nearParam(loc) : null;
+}
+
 app.use('/api/cash', authenticateToken, (req, res) => {
   const u = String((req.user && req.user.username) || '').toLowerCase();
-  if (!APP_ADMIN_USERNAMES.has(u)) {
-    return res.status(403).json({ error: 'admin only' });
-  }
   const sub = req.url || '/'; // path AFTER /api/cash, e.g. '/current' or '/location'
+  if (!APP_ADMIN_USERNAMES.has(u)) {
+    if (!req.user || req.user.isGuest || !req.user.id) return res.status(403).json({ error: 'Sign in to see live cash games.' });
+    if (HAM_OWNER_ID == null) return res.status(503).json({ error: 'cash watcher owner unresolved' });
+    // The games catalog is the same for everyone (the heatmap offers only the rooms /venues names), so a player
+    // reads it from the cache below; everything else is theirs.
+    if (!(req.method === 'GET' && /^\/games(\?|$)/.test(sub))) {
+      return void cashPlayer(req, res, sub).catch((err) => {
+        console.error('[cash-players] request failed:', err && err.message);
+        if (!res.headersSent) res.status(500).json({ error: 'cash request failed' });
+      });
+    }
+  }
   // Reads are open; the one write we proxy is the location picker (SPEC §5).
   const isLocationWrite = req.method === 'POST' && /^\/location(\?|$)/.test(sub);
   if (req.method !== 'GET' && req.method !== 'HEAD' && !isLocationWrite) {
@@ -11816,13 +11865,17 @@ features.init({
   jwtSecret: JWT_SECRET, broadcastToGroup: (gid, ev, payload) => broadcastToGroup(gid, ev, payload),
   taxEntriesFor: (uid) => taxEntriesFor(uid),
   followShares: (table, ids) => followShares(table, ids),
-  // The cash watcher's board as the owner reads it (Features 14: the alerts' snapshot).
-  fetchCashCurrent: async () => {
+  // The cash watcher's board as the owner reads it (Features 14: the alerts' snapshot), or, given a player's near=,
+  // the rooms around that player (lib/cash-locations.js).
+  fetchCashCurrent: async (near) => {
     if (HAM_OWNER_ID == null) return null;
-    const tok = jwt.sign({ id: HAM_OWNER_ID, username: 'ham' }, JWT_SECRET, { expiresIn: '10m' });
-    const r = await fetch(`${CASHWATCHER_URL}/api/current`, { headers: { cookie: `${SESSION_COOKIE}=${encodeURIComponent(tok)}`, accept: 'application/json' }, redirect: 'manual', signal: AbortSignal.timeout(15000) });
+    const qs = near ? `?near=${encodeURIComponent(near)}` : '';
+    const r = await fetch(`${CASHWATCHER_URL}/api/current${qs}`, { headers: { cookie: mintCashOwnerCookie(), accept: 'application/json' }, redirect: 'manual', signal: AbortSignal.timeout(15000) });
     return r.ok ? r.json() : null;
   },
+  cashBoardFor: (d, userId) => cashBoardFor(d, userId),
+  // An alert switched on or off can keep a player's rooms polled (lib/cash-locations.js activePoints).
+  cashLocationsChanged: () => cashPlayerSync.schedule(),
   publicLimiter: rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests' } }),
   appUrl: () => process.env.APP_URL || `http://localhost:${PORT}`,
   isAppAdmin: (req) => !!(req.user && !req.user.isGuest && APP_ADMIN_USERNAMES.has(String(req.user.username || '').toLowerCase())),
@@ -14986,6 +15039,8 @@ initDatabase().then(() => {
   require('./lib/session-bridge').mountRoutes(app, { getDb: () => db, saveDatabase });
   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
+    // Players' cash locations to the watcher: once a few seconds after boot, then hourly (lib/cash-locations.js).
+    cashPlayerSync.start();
     // Weekly backer email digest — Sunday 18:00 ET.
     try {
       cron.schedule('0 18 * * 0', () => { sendBackerWeeklyDigests(); }, { timezone: CONSOLE_TZ });

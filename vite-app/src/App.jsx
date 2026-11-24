@@ -143,7 +143,7 @@ const DEVICE_HINT = (() => {
 const FIND_MATCH = window.location.search.match(/[?&]find=([^&]*)/);
 const FIND_PARAM = FIND_MATCH ? decodeURIComponent(FIND_MATCH[1].replace(/\+/g, ' ')) : null;
 // /?view=calendar — a notification that concerns many events (feed sync) opens the calendar
-// without a search. Only 'calendar' is honored; anything else falls through to the default view.
+// without a search; /?view=cash, a cash game alert, opens Cash. Anything else falls through to the default view.
 const VIEW_MATCH = window.location.search.match(/[?&]view=([a-z]+)/);
 const VIEW_PARAM = VIEW_MATCH ? VIEW_MATCH[1] : null;
 // /?batch=<id> — an admin alert's own list of what it added (server: admin_batches). Admin-only:
@@ -1838,6 +1838,8 @@ function App() {
     if (!token) return;
     if (FIND_PARAM != null) applyFindLink(FIND_PARAM);
     else if (VIEW_PARAM === 'calendar') setCurrentView('calendar');
+    // A cash game alert's push (lib/cash-alerts.js, '/?view=cash'): every account's since 2026-11-24.
+    else if (VIEW_PARAM === 'cash') setCurrentView('cash');
     else return;
     if (window.history.replaceState) window.history.replaceState(null, '', window.location.pathname);
   }, [token, applyFindLink, setCurrentView]);
@@ -2669,7 +2671,9 @@ function App() {
 
             <div data-money-zone="" className={'tab-panel' + (currentView === 'cash' ? ' tab-active' : '')} data-tab="cash" style={{display: currentView === 'cash' ? undefined : 'none', height: currentView === 'cash' ? '100%' : undefined}}>
             <TabErrorBoundary name="Cash" onSchedule={() => setCurrentView('tournaments')}>
-            {visitedTabs.has('cash') && isAdmin && (
+            {/* Every signed-in account since 2026-11-24 (owner): an admin steers the watcher's own location, a player
+                has one of their own (lib/cash-locations.js). A guest has no account to keep a location on. */}
+            {visitedTabs.has('cash') && !isGuest && (
               <Suspense fallback={<LazyFallback />}><CashView token={token} onModeChange={setCashMode} sidePane={isDesktop ? dkSideCash : null} /></Suspense>
             )}
             </TabErrorBoundary>
@@ -2854,11 +2858,11 @@ function App() {
   /* A tab answers the tap in its first frame (UX pick 46): the bar lights at once and the view, whose
      render is the slow part, follows as a transition. */
   /* Which tab's second pane is showing (desktop): Hands while its list and replay are split, Cash for
-     the admins who have it. Every other tab's main pane runs to the shell's right edge (UX pick 107). */
+     every signed-in account. Every other tab's main pane runs to the shell's right edge (UX pick 107). */
   const handsOnReplayer = !(isAdmin && (handsTool === 'scanner' || handsTool === 'study'));
   const dkSideTab = !isDesktop ? null
     : currentView === 'hands' && handsOnReplayer && handsSplit ? 'hands'
-    : currentView === 'cash' && isAdmin ? 'cash'
+    : currentView === 'cash' && !isGuest ? 'cash'
     : currentView === 'tracking' && bankrollSplit ? 'bankroll' : null;
   const onNavChange = (v) => {
     if (v === currentView && v === 'tournaments') { landListOnToday(); return; }
@@ -3060,6 +3064,7 @@ function App() {
           {isDesktop && (
             <DesktopRail
               isAdmin={isAdmin}
+              showCash={!isGuest}
               evalPct={evalPct}
               current={(navPending || currentView) === 'schedule' || (navPending || currentView) === 'calendar' ? 'tournaments' : (navPending || currentView)}
               onChange={v => (v === 'batches' ? openBatch(null) : onNavChange(v))}
@@ -3117,6 +3122,7 @@ function App() {
       {!isDesktop && (
         <BottomNav
           isAdmin={isAdmin}
+          showCash={!isGuest}
           current={(() => {
             const cv = navPending || currentView;
             if (cv === 'hands' && isAdmin) return 'hands';

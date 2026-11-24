@@ -363,6 +363,20 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   feed empties the other (it would have taken 1,798 live rows). `feedStableId` takes a prefix
   per feed (`MTT-` / `ONL-`) because `stable_id` is UNIQUE and two feeds can carry a series
   whose sanitised name and event_number coincide.
+- **The Cash tab, every player's** (owner, 2026-11-24: "Bring the cash tab online for non-admin users", each player
+  with a location of their own, game alerts with it; `lib/cash-locations.js`, `npm run test:cash-players`, ports
+  4800-4809). Every signed-in account has the tab (`showCash` on BottomNav and DesktopRail; not a guest). The admins'
+  path through the `/api/cash` proxy is the one it was: they steer and read the watcher's own location. A player's pick
+  is `cash_locations` here (exact, radius 5-150 mi; 30 writes per 10 minutes), and the watcher is sent only the SET of
+  points, rounded to 0.1° with no id or label (`PUT /api/player-locations`, debounced, hourly, at boot; from ONE
+  instance: on where RENDER is set, `CASH_PLAYER_SYNC=1|0` overrides, every boot logs `[cash-players] … ON|OFF`). A
+  point stays in the set while its player opened the tab in the last 14 days or has an alert on. A player's
+  current/history/venues/unusual/day go up with `near=` their rounded point (the watcher answers with the rooms within
+  it), heatmap and games as they are; with no pick, an empty board that asks for one (`needsLocation`), and the first
+  visit saves the Schedule's location as their pick. `GET /api/cash/location` says `pending` until the watcher has
+  derived the point's rooms. Cash alerts (`/api/cash-alerts`) are open to players: each alert reads its own player's
+  board (`boardFor`), admins' the owner's. `/?view=cash` (the alert's push) opens the tab. The watcher's half is in
+  cash-game-watcher's CLAUDE.md ("Players' locations"); deploy it first, since an old replica ignores `near=`.
 - **Live tournament clocks (in, on demand)**: `lib/live-clocks.js` behind `POST /api/live-clocks`.
   The dashboard polls it every 15 s for selected events past their start (and PokerAtlas-clocked
   events up to 6 h before) and drives the Level/Clock stats and the late-reg bar from the room's

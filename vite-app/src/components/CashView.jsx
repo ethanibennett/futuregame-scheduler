@@ -10,10 +10,11 @@ import CashHeatmap from './CashHeatmap.jsx';
 import './cash-board.css';
 
 // ── Cash watcher: Live now ──
-// Admin-only. Reads the cash-game traffic watcher through the scheduler's
+// Every signed-in account since 2026-11-24 (owner). Reads the cash-game traffic watcher through the scheduler's
 // Bearer-gated proxy (/api/cash/* -> cashwatcher.futurega.me). This screen is
 // "what's running right now" per venue, with each game's open duration derived
-// from the watcher's history, and a persistent variant filter.
+// from the watcher's history, and a persistent variant filter. An admin's location is the watcher's own; a
+// player's is theirs alone, kept by the server (lib/cash-locations.js), and every read answers with its rooms.
 
 // Grid constant: a control is 4 baseline rows tall. Every interactive box is
 // sized to a whole number of rows rather than to font + literal padding, so
@@ -119,7 +120,7 @@ function openLabel(startMs, endMs, windowStartMs) {
 // cash location is a single poll point the watcher steers around). It seeds from
 // the user's saved scheduler location so it is never empty, then the watcher's
 // own /cash/location (if set) overrides that, and picking a point POSTs it back.
-function CashLocationPicker({ token, onSaved, trailing = null }) {
+function CashLocationPicker({ token, onSaved, onPending, trailing = null }) {
   const toast = useToast();
   const [filters, setFiltersState] = useState(() => {
     const saved = readLocalLocation() || {};
@@ -135,7 +136,9 @@ function CashLocationPicker({ token, onSaved, trailing = null }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
 
-  // The watcher's own cash location wins over the scheduler default when set.
+  // The watcher's own cash location wins over the scheduler default when set. A player's is their own (`own`);
+  // one who has never picked one starts on the location the Schedule tab keeps, saved as their pick so the board
+  // has rooms to show at once, and a switch still on its way when the tab opens is waited on as a pick's is.
   useEffect(() => {
     (async () => {
       try {
@@ -143,12 +146,18 @@ function CashLocationPicker({ token, onSaved, trailing = null }) {
         if (r.ok) {
           const loc = await r.json();
           if (loc && loc.lat != null) {
-            setFiltersState(f => ({ ...f, userLocation: { lat: loc.lat, lng: loc.lon }, maxDistance: String(loc.radiusMiles || 100), locationLabel: loc.label || 'Location' }));
+            const next = { ...filtersRef.current, userLocation: { lat: loc.lat, lng: loc.lon }, maxDistance: String(loc.radiusMiles || 100), locationLabel: loc.label || 'Location' };
+            filtersRef.current = next;
+            lastSavedKey.current = `${loc.lat}|${loc.lon}|${next.maxDistance}`;
+            setFiltersState(next);
+            if (loc.own && loc.pending && onPending) onPending();
+          } else if (loc && !loc.lat && filtersRef.current.userLocation) {
+            saveToCash(filtersRef.current);
           }
         }
       } catch { /* keep the scheduler default */ }
     })();
-  }, [token]);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps -- once per account, not per pick
 
   // A point selection steers the watcher; region/jurisdiction are hidden here so
   // there is always a point to save.
@@ -168,7 +177,21 @@ function CashLocationPicker({ token, onSaved, trailing = null }) {
       } catch { /* keep what is shown */ }
     };
     fetch(`${API_URL}/cash/location`, { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      .then((r) => { if (r.ok) { if (onSaved) onSaved(); } else failed(); })
+      .then(async (r) => {
+        if (!r.ok) {
+          if (r.status === 429 && toast) { lastSavedKey.current = ''; toast.error('Too many location changes. Try again in a few minutes.'); return; }
+          failed(); return;
+        }
+        // A player's search is held to 150 miles by the server: show the radius it kept.
+        const saved = await r.json().catch(() => null);
+        if (saved && saved.own && saved.radiusMiles && filtersRef.current.userLocation && String(saved.radiusMiles) !== String(f.maxDistance)) {
+          const next = { ...filtersRef.current, maxDistance: String(saved.radiusMiles) };
+          filtersRef.current = next;
+          lastSavedKey.current = `${next.userLocation.lat}|${next.userLocation.lng}|${next.maxDistance}`;
+          setFiltersState(next);
+        }
+        if (onSaved) onSaved();
+      })
       .catch(failed);
   }, [token, onSaved, toast]);
 
@@ -270,7 +293,7 @@ export default function CashView({ token, onModeChange, sidePane = null }) {
       const curRes = await fetch(`${API_URL}/cash/current`, { headers });
       if (!curRes.ok) {
         let msg = 'HTTP ' + curRes.status;
-        if (curRes.status === 403) msg = 'This account is not an admin.';
+        if (curRes.status === 403) msg = 'Sign in to see live cash games.';
         else if (curRes.status === 503) msg = 'Cash watcher is offline.';
         else if (curRes.status === 502) msg = 'Cash watcher rejected the session.';
         else { try { const j = await curRes.json(); if (j && j.error) msg = j.error; } catch { /* keep */ } }
@@ -379,7 +402,7 @@ export default function CashView({ token, onModeChange, sidePane = null }) {
       {/* The cash location, in the Schedule tab's location-field spot, on both views. */}
       {/* Refresh shares the location field's row (owner, 2026-10-10), in its fourth column, on both
           views: Live reloads the board, Heatmaps re-reads its room list. */}
-      <CashLocationPicker token={token} onSaved={bumpLocation} trailing={
+      <CashLocationPicker token={token} onSaved={bumpLocation} onPending={bumpLocation} trailing={
         <button type="button" className="cb-refresh" onClick={split ? () => { load(); setHeatBump(b => b + 1); } : mode === 'heatmap' ? bumpLocation : load}
           style={{ width: 'var(--col)', flex: '0 0 auto', height: CTRL_H, boxSizing: 'border-box', border: 'var(--bw-hair) solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 'var(--radius-sm)', padding: 0, cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.060)', whiteSpace: 'nowrap' }}>
           {mode === 'live' && status === 'loading' ? 'Loading…' : 'Refresh'}
@@ -453,18 +476,23 @@ export default function CashView({ token, onModeChange, sidePane = null }) {
 
       {status !== 'error' && data && (
         <>
+          {/* A player with no location yet has no board to date or alert on (the prompt below asks for one). */}
+          {!data.needsLocation && (
           <div className="ca-line">
             <p className="cb-snap">Snapshot {ago(data.ts) || '—'}{fetchedAt ? ` · refreshed ${ago(new Date(fetchedAt).toISOString())}` : ''}</p>
             {/* Tell me when my game opens (Features 14). */}
             {token && <CashAlertsButton token={token} venues={data.venues} />}
           </div>
+          )}
 
           {/* Rooms with no first poll yet (a new location, its rows a second or two away) are loading, not empty
               (owner, 2026-11-21: "it ... initially said nothing was running at all"). */}
           {venues.length === 0 && (
             <div style={{ color: 'var(--text-muted, #aaa)', padding: 'var(--space-2xl)', textAlign: 'center' }}>
-              {rawVenues.some(v => v.ok === null) ? 'Getting the live games…'
-                : filterActive ? 'Nothing running in the selected variants.' : 'No venues reporting.'}
+              {switchingTo ? 'Getting the rooms near you…'
+                : data.needsLocation ? 'Pick a location to see the live games near you.'
+                : rawVenues.some(v => v.ok === null) ? 'Getting the live games…'
+                : filterActive ? 'Nothing running in the selected variants.' : 'No rooms near this location report live games.'}
             </div>
           )}
           {venues.length > 0 && rawVenues.some(v => v.ok === null) && (
