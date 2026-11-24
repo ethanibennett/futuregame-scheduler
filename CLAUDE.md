@@ -153,7 +153,8 @@ sessions opened here own scheduler work.
   Amounts in the entry go through `parseAmount`/`AmountField` (cents in cash, whole chips in a tournament, "1,500", "25k").
 - **Play-money tables** at **play.futurega.me** (owner, 2026-11-22: "deploy to play.futurega.me, no effect on the mobile
   app"; design, the owner's eleven answers and the deploy runbook: `docs/play-money-platform.md` §11-12). Free chips only,
-  never bought, cashed out, transferred or shown to others; app admins only (`TABLES=1`).
+  never bought, cashed out, transferred or shown to others; app admins only (`TABLES=1`), and the accounts named in
+  `TABLES_PLAYERS` on Render (usernames; owner, 2026-11-24; name one only once it exists, usernames never change).
   **Its own site, never the app.** `vite-app/play.html` (generated from index.html by `scripts/make-play-html.mjs`,
   gitignored, like live.html) loads `src/play-main.jsx` → `components/PlayApp.jsx`: a sign-in by email and password
   (its own origin, so its own `localStorage` token), then `TablesView`. `server.js` answers every page on a host in

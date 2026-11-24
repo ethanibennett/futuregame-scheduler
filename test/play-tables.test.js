@@ -83,14 +83,14 @@ async function waitFor(fn, what, ms = 10000) {
   const t = runner('play-tables');
   const scratch = await createScratch({ ports: [4940, 4944], prefix: 'fg-play-tables-' });
   const db = scratch.open();
-  db.run("INSERT INTO users (id, username, email, password) VALUES (101, 'ham', 'a@x.test', 'x'), (102, 'ham5', 'b@x.test', 'x'), (103, 'claude', 'c@x.test', 'x'), (104, 'pat', 'd@x.test', 'x')");
+  db.run("INSERT INTO users (id, username, email, password) VALUES (101, 'ham', 'a@x.test', 'x'), (102, 'ham5', 'b@x.test', 'x'), (103, 'claude', 'c@x.test', 'x'), (104, 'pat', 'd@x.test', 'x'), (105, 'Dana', 'e@x.test', 'x')");
   db.run('INSERT INTO user_blocks (user_id, blocked_id, created_at) VALUES (103, 101, 0)');
   scratch.save(db);
   const tok = (id, username) => jwt.sign({ id, username }, JWT_SECRET, { expiresIn: '1h' });
-  const AVA = tok(101, 'ham'), BO = tok(102, 'ham5'), BLOCKED = tok(103, 'claude'), PAT = tok(104, 'pat');
+  const AVA = tok(101, 'ham'), BO = tok(102, 'ham5'), BLOCKED = tok(103, 'claude'), PAT = tok(104, 'pat'), DANA = tok(105, 'Dana');
 
   const tport = await freePort([4945, 4949]);
-  const srv = await boot(scratch.dbPath, { TABLES: '1', TABLES_URL: `http://127.0.0.1:${tport}`, TABLES_SECRET: SECRET, PLAY_HOSTS: 'play.test' }, { ports: [4940, 4944] });
+  const srv = await boot(scratch.dbPath, { TABLES: '1', TABLES_URL: `http://127.0.0.1:${tport}`, TABLES_SECRET: SECRET, PLAY_HOSTS: 'play.test', TABLES_PLAYERS: ' dana , nobody-yet' }, { ports: [4940, 4944] });
   const dataDir = path.join(scratch.tmp, 'tables-data');
   const tables = await bootTables(tport, srv.port, dataDir);
   const S = `http://127.0.0.1:${srv.port}`, T = `http://127.0.0.1:${tport}`;
@@ -104,7 +104,8 @@ async function waitFor(fn, what, ms = 10000) {
   try {
     let table, invite;
     await t.test('the boot line says the tables are on', async () => {
-      assert.match(srv.log(), /\[tables\] play-money tables are ON/);
+      assert.match(srv.log(), /\[tables\] play-money tables are ON \(.*\), admins and 2 other account\(s\)/);
+      assert.ok(!/dana/i.test(srv.log().split('\n').filter((l) => l.includes('[tables]')).join(' ')), 'the log names nobody');
     });
 
     await t.test('off for a non-admin (decision 3); on for an admin, with the service URL', async () => {
@@ -116,6 +117,15 @@ async function waitFor(fn, what, ms = 10000) {
       // The app is untouched (owner, 2026-11-22: "no effect on the mobile app"): no tables row in its Notifications.
       const kinds = async (bearer) => (await call(S, 'GET', '/api/notification-prefs', null, bearer)).body.kinds.map((k) => k.kind);
       assert.ok(!(await kinds(AVA)).includes('tables'));
+    });
+
+    await t.test('TABLES_PLAYERS: a listed account plays (its name in any case) and gets nothing else of an admin; a guest with its name does not', async () => {
+      assert.deepEqual((await call(S, 'GET', '/api/tables/availability', null, DANA)).body, { on: true, url: T });
+      assert.equal((await call(S, 'GET', '/api/tables', null, DANA)).status, 200);
+      assert.equal((await call(S, 'GET', '/api/admin/reports', null, DANA)).status, 403);
+      assert.equal((await call(S, 'GET', '/api/solver/availability', null, DANA)).status, 403);
+      const guest = jwt.sign({ id: 0, username: 'dana', isGuest: true }, JWT_SECRET, { expiresIn: '1h' });
+      assert.notEqual((await call(S, 'GET', '/api/tables', null, guest)).status, 200);
     });
 
     await t.test('the balance starts at 20,000', async () => {

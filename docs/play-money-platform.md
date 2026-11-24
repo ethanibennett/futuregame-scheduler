@@ -393,7 +393,9 @@ app"; the fourth pass below says what changed for that):
    `TABLES_SCHEDULER_URL=https://futurega.me`, `TABLES_ORIGINS=https://play.futurega.me`.
 2. futurega.me's service: `TABLES=1`, `TABLES_URL` and `TABLES_PUBLIC_URL` (the tables service's address), the same
    `TABLES_SECRET`, and the custom domain `play.futurega.me` (a CNAME at the registrar to the service's
-   `onrender.com` host). Its boot logs `[tables] play-money tables are ON`.
+   `onrender.com` host). Its boot logs `[tables] play-money tables are ON`. `TABLES_PLAYERS` (optional; owner,
+   2026-11-24): usernames, comma separated, let onto the tables beside the admins, with no other admin access. Add a
+   name only once its account exists; a change takes a redeploy.
 3. This box (optional, for a local game): a pm2 app `futuregame-tables` running `node tables/server.mjs` on
    PORT 3101 (never 3001) with `kill_timeout: 290000` so a restart drains, and the scheduler's pm2 env pointed at it.
    Both are in the gitignored `ecosystem.config.cjs`.
