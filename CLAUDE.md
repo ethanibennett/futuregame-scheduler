@@ -948,8 +948,11 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
     0. on the phone, the table's foot (`placeTableFoot`): the bottom seat's fullest stack (plaque, draw run, hand name;
        invisible stand-ins where the step has none, so it is one answer for the whole hand) must end 0.5r above the
        slot's clip, and the table gives up exactly what that needs (inline height, `100cqh - var(--subrow) * N`);
-    1. a seat's cards on the screen by the fanned cards' own extent, not the row's box (a row whose cards are being
-       dealt keeps its last shift), and, with each card where its pose leaves it (a played card rises 1r), off the
+    1. a seat's cards on the screen by the fanned cards' own extent, not the row's box, measured where every card
+       comes to REST (`atRest`: each animation on the row jumped to its end for the measurement and put back; owner,
+       2026-11-23, "Chino's whole hand jumps sideways when he gets his 7th street card": measured mid-slide, the shift
+       was put right a second later in one 3px step), a change at the same table size gliding with the fan's slide
+       (`glideRow`), and, with each card where its pose leaves it (a played card rises 1r), off the
        replay's buttons above the felt (`placeCardRows`); the dealer button on its plaque's other lower corner when the
        one facing the middle touches what is not its seat's (`data-flip`);
     2. the pot 0.5r clear of the board, and the rows under the board 0.75r under it and 0.5r apart; a row that would

@@ -1947,6 +1947,55 @@ function DealerGlyph() {
 
 const FAN_SLIDE_MS = 460;
 const FAN_SLIDE_SAMPLES = 16;
+const FAN_SLIDE_EASE = 'cubic-bezier(0.2, 0.7, 0.2, 1)';
+/* Plays the animations in `held` (paused by the caller, now or later in the same task) once frames are flowing again
+   (owner, 2026-11-22: "Opp 2's cards are jumping around as the hand gets wider"): a stud street's commit runs about
+   190ms before its first frame, and the frames after it are themselves the moments' own work (300 to 600ms measured in
+   WebKit), so a slide started in the commit had covered 85% of its way by the first frame anyone saw. Started on two
+   frames in a row under 50ms apart, 250ms at most (a machine whose frames never come that close: headless WebKit).
+   Only what is still paused: a card the moments effect deals in cancels its own (a cancelled one would play again). */
+function playWhenFramesFlow(held) {
+  const go = () => held.forEach(a => { try { if (a.playState === 'paused') a.play(); } catch (e) { /* gone */ } });
+  let lastT = 0, firstT = 0;
+  const tick = (t) => {
+    if (!firstT) firstT = t;
+    if ((lastT && t - lastT < 50) || t - firstT > 250) go(); else { lastT = t; requestAnimationFrame(tick); }
+  };
+  requestAnimationFrame(tick);
+}
+/* `measure()` with every finite animation on `els` jumped to just before its end, each put back after it in the same
+   task, so nothing is painted in between: the pieces as they will rest. A finished one is already there, and is left
+   alone so it does not finish twice. */
+function atRest(els, measure) {
+  const saved = [];
+  els.forEach(el => el.getAnimations().forEach(a => {
+    const end = a.effect ? a.effect.getComputedTiming().endTime : NaN;
+    const t = a.currentTime;
+    if (!Number.isFinite(end) || t == null || a.playState === 'finished' || t >= end - 0.01) return;
+    try { a.currentTime = Math.max(0, end - 0.01); saved.push([a, t]); } catch (e) { /* measured as drawn */ }
+  }));
+  try { return measure(); } finally { saved.forEach(([a, t]) => { try { a.currentTime = t; } catch (e) { /* gone */ } }); }
+}
+/* A seat's card row moved by (dx, dy) on the screen's edge or off the replay's buttons glides there over the fan's own
+   slide, started on the same frame, so the hand never steps. A glide still running is taken over from where it is. */
+function glideRow(el, dx, dy) {
+  if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+  if (typeof el.animate !== 'function') return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let fx = -dx, fy = -dy;
+  const old = el.getAnimations().filter(a => a.id === 'row-edge');
+  if (old.length) {
+    const t = (getComputedStyle(el).translate || '').split(' ');
+    fx += parseFloat(t[0]) || 0;
+    fy += parseFloat(t[1]) || 0;
+    old.forEach(a => a.cancel());
+  }
+  const a = el.animate([{ translate: `${fx.toFixed(2)}px ${fy.toFixed(2)}px` }, { translate: '0px 0px' }],
+    { duration: FAN_SLIDE_MS, easing: FAN_SLIDE_EASE, fill: 'backwards' });
+  a.id = 'row-edge';
+  a.pause();
+  playWhenFramesFlow([a]);
+}
 
 /* A stud player's cards on the entry screens, streets 3rd to `uptoStreet`, in the order dealt, each marked down or
    up (owner, 2026-11-22: "there is no indication of hero's upcards"; "show the hands up to this point" on the deal
@@ -2047,22 +2096,10 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
       if (Math.abs(from - to) > 1e-6) moves.push({ el, from, to, y: now.byKey.get(k).y });
     }
     if (!moves.length) return;
-    /* Every slide starts on the first frame painted after the commit (owner, 2026-11-22: "Opp 2's cards are jumping around
-       as the hand gets wider"): a stud street's commit runs about 190ms before that frame, and a slide started in it had
-       covered 85% of its way by the first frame anyone saw, a jump. Held at its first keyframe until then. */
+    // Every slide is held at its first keyframe until frames flow (playWhenFramesFlow).
     const held = [];
     const hold = (a) => { try { a.pause(); held.push(a); } catch (e) { /* plays as it was */ } return a; };
-    // Only what is still held: a card the moments effect deals in cancels its own (a cancelled one would play again).
-    /* Started once frames are flowing again, two in a row under 50ms apart: the frames after a stud street's commit are
-       themselves the moments' own work (300 to 600ms measured in WebKit), and a slide started in them was done by the
-       first one painted. At most 250ms' wait (a machine whose frames never come that close: headless WebKit). */
-    const go = () => held.forEach(a => { try { if (a.playState === 'paused') a.play(); } catch (e) { /* gone */ } });
-    let lastT = 0, firstT = 0;
-    const tick = (t) => {
-      if (!firstT) firstT = t;
-      if ((lastT && t - lastT < 50) || t - firstT > 250) go(); else { lastT = t; requestAnimationFrame(tick); }
-    };
-    requestAnimationFrame(tick);
+    playWhenFramesFlow(held);
     if (!now.splay) {
       /* Flat row: slots are a straight line one STEP apart (a card's width less
          the Overlap setting), centred like the arc, so the same re-expressed
@@ -2080,7 +2117,7 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
         hold(m.el.animate([
           { transform: ('translateX(' + ((m.from - m.to) * step).toFixed(2) + 'px) ' + base).trim() },
           { transform: base || 'none' },
-        ], { duration: FAN_SLIDE_MS, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)', delay: holdSort, fill: 'backwards' }));
+        ], { duration: FAN_SLIDE_MS, easing: FAN_SLIDE_EASE, delay: holdSort, fill: 'backwards' }));
       }
       // Held (Replayer animations 10): the new cards are dealt into the gaps by the moments effect.
       if (!holdSort) for (const el of arrivals) {
@@ -2095,7 +2132,7 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
         const f = m.from + (m.to - m.from) * (s / FAN_SLIDE_SAMPLES);
         frames.push({ transform: getSplayStyle(f, now.total, now.splay, m.y, now.reverseZ, now.max, now.splayScale).transform });
       }
-      hold(m.el.animate(frames, { duration: FAN_SLIDE_MS, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)', delay: holdSort, fill: 'backwards' }));
+      hold(m.el.animate(frames, { duration: FAN_SLIDE_MS, easing: FAN_SLIDE_EASE, delay: holdSort, fill: 'backwards' }));
     }
     if (!holdSort) for (const el of arrivals) {
       hold(el.animate([{ opacity: 0 }, { opacity: 0, offset: 0.35 }, { opacity: 1 }],
@@ -9880,34 +9917,44 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const controls = [...host.querySelectorAll('.hx-chips > *, .replayer-quick-btn')].map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
     const LIFT = { up: -1, 'up-lo': -1, 'up-half': -1, down: 1, 'down-half': 1 };
     rows.forEach(el => { el.style.left = ''; el.style.top = ''; });
+    const width = Math.round(box.width);
     rows.forEach(el => {
-      const r = el.getBoundingClientRect();
-      if (!r.width) return;
       const lo = box.left + gu / 2, hi = box.right - gu / 2;
-      /* By the cards as the fan draws them, not the row's box (2026-11-17: a side seat's five fanned draw cards ran
-         off the screen's edge while the row's own box was inside it). While a card is still being dealt or turned,
-         the row keeps the shift it had: its cards are not where they will rest. */
       const kids = [...el.children];
-      let shift;
-      if (kids.some(c => c.getAnimations().some(a => a.playState === 'running'))) shift = Number(el.dataset.edgeShift) || 0;
-      else {
-        const L = Math.min(r.left, ...kids.map(c => c.getBoundingClientRect().left));
-        const R = Math.max(r.right, ...kids.map(c => c.getBoundingClientRect().right));
-        shift = L < lo ? lo - L : R > hi ? hi - R : 0;
-        el.dataset.edgeShift = String(shift);
-      }
-      if (shift) { el.style.position = 'relative'; el.style.left = `calc(var(--gu) * ${(shift / gu).toFixed(3)})`; }
-      let drop = 0;
-      [...el.children].forEach(c => {
-        const q = c.getBoundingClientRect();
-        if (!q.width) return;
-        const now = parseFloat((getComputedStyle(c).translate || '').split(' ')[1]) || 0;
-        const top = q.top - now + (LIFT[c.dataset.pose] || 0) * r1;
-        controls.forEach(b => {
-          if (q.left + shift < b.right && q.right + shift > b.left && top < b.bottom + r1 / 4 && top + q.height > b.top) drop = Math.max(drop, b.bottom + r1 / 4 - top);
+      /* By the cards as the fan draws them, not the row's box (2026-11-17: a side seat's five fanned draw cards ran
+         off the screen's edge while the row's own box was inside it), and where they come to REST (owner, 2026-11-23:
+         "Chino's whole hand jumps sideways when he gets his 7th street card"): in the commit a new card's neighbours are
+         still drawn at their old slots (CardRow's slide, held at its first frame), and the shift worked out for that
+         hand was put right by the settle pass a second later, the whole hand stepping 3px in one frame. */
+      const placed = atRest([el, ...kids], () => {
+        const r = el.getBoundingClientRect();
+        if (!r.width) return null;
+        const qs = kids.map(c => c.getBoundingClientRect());
+        const L = Math.min(r.left, ...qs.map(q => q.left));
+        const R = Math.max(r.right, ...qs.map(q => q.right));
+        const shift = L < lo ? lo - L : R > hi ? hi - R : 0;
+        let drop = 0;
+        kids.forEach((c, i) => {
+          const q = qs[i];
+          if (!q.width) return;
+          const now = parseFloat((getComputedStyle(c).translate || '').split(' ')[1]) || 0;
+          const top = q.top - now + (LIFT[c.dataset.pose] || 0) * r1;
+          controls.forEach(b => {
+            if (q.left + shift < b.right && q.right + shift > b.left && top < b.bottom + r1 / 4 && top + q.height > b.top) drop = Math.max(drop, b.bottom + r1 / 4 - top);
+          });
         });
+        return { shift, drop };
       });
+      if (!placed) return;
+      const { shift, drop } = placed;
+      if (shift) { el.style.position = 'relative'; el.style.left = `calc(var(--gu) * ${(shift / gu).toFixed(3)})`; }
       if (drop > 0) { el.style.position = 'relative'; el.style.top = `calc(var(--gu) * ${(drop / gu).toFixed(3)})`; }
+      // A change of place at the same size of table glides with the cards' slide; a new layout is placed at once.
+      const was = el.dataset.edgeW ? { x: Number(el.dataset.edgeShift) || 0, y: Number(el.dataset.edgeDrop) || 0, w: Number(el.dataset.edgeW) } : null;
+      el.dataset.edgeShift = String(shift);
+      el.dataset.edgeDrop = String(drop);
+      el.dataset.edgeW = String(width);
+      if (was && was.w === width) glideRow(el, shift - was.x, drop - was.y);
     });
   };
   useLayoutEffect(() => { if (tableRef.current) placeCardRows(tableRef.current); });
