@@ -809,6 +809,8 @@ async function worker(w) {
           if (rowsNow.some((i) => i < 0) || rowsNow.slice().sort().join() !== want.slice().sort().join()) await stop('fail', 'the stud deal lists other players', at, `still in: ${want.map((i) => names[i]).join(', ')}; the screen deals to ${s.deal.map((r) => r.name).join(', ')}`);
           for (const i of rowsNow) {
             let card;
+            // 7th street: an opponent's card is a back here (owner, 2026-11-23), and a shown one is entered at the showdown.
+            if (ev.street === 4 && i !== h.heroIdx) continue;
             if (i === h.heroIdx) card = cardsOf(h.streets[ev.street].cards.hero)[0];
             else {
               card = oppCards(i, ev.street)[0];
@@ -827,6 +829,7 @@ async function worker(w) {
             await pickAll([card], '', at, `${name} for ${who(i)}`);
             if (made) await find('cannot', 'a face-down 7th-street card nobody saw has to be given', at, `${who(i)} is dealt 7th street face down and never shows; Continue stays off until a card is chosen (the script gave ${card})`);
           }
+          await shot('deal-' + name.replace(/\s+/g, '-'));
           const go = p.locator('.gto-btn-row button.btn-primary:visible').filter({ hasText: /^Continue$/ }).first();
           if (await go.isDisabled()) await stop('fail', 'the stud deal will not continue', at, `${name}: every card is in and Continue is still off`);
           await tap(go, 'Continue');
@@ -973,7 +976,9 @@ async function worker(w) {
         const want = rec.expected[pl.name];
         const seat = felt.find((x) => x.name === names[i]) || felt.find((x) => x.seat === i);
         if (!seat) { off.push(`${names[i]} is not on the felt`); return; }
-        const haveNow = /all-?in/i.test(seat.text) ? 0 : num(seat.text);
+        // ALL-IN and, at a tournament's result, OUT (a busted seat, Replayer animations 2026-11-11) are 0 chips, as
+        // check-replayer-oracle.mjs reads them.
+        const haveNow = /all-?in|^\s*out\s*$/i.test(seat.text) ? 0 : num(seat.text);
         if (!(AS_SHOWN ? Math.abs(haveNow - want) <= Math.max(0.5, want * 0.06) : Math.abs(haveNow - want) <= 0.005)) off.push(`${names[i]} (${pl.name}) ends on "${seat.text}", the corpus ${want}`);
       });
       res.chips = off.length === 0;

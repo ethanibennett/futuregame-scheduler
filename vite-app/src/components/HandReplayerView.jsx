@@ -5045,7 +5045,14 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
        hero's is needed. Continue stayed off until every live seat had one, and a card nobody saw had
        to be made up (entry audit 8; entry vs oracle, cannot enter 2). */
     const sdFaceDown = nextStudStreet === hand.streets.length - 1;
-    const sdNeeded = sdFaceDown ? sdActivePlayers.filter(pi => pi === heroIdxSD) : sdActivePlayers;
+    /* On 7th the opponents' cards are backs, not rows to deal to (owner, 2026-11-23: "On 7th in stud just show
+       opponents' card face down without the words face down and without the option to edit it"): only the hero's card
+       is dealt here, and a shown one is entered with the rest of the hand at the showdown. */
+    const sdHeroIn = sdActivePlayers.includes(heroIdxSD);
+    const sdDealt = sdFaceDown ? sdActivePlayers.filter(pi => pi === heroIdxSD) : sdActivePlayers;
+    const sdTarget = sdFaceDown ? (sdHeroIn ? heroIdxSD : -1) : studDealTarget;
+    if (sdFaceDown) sdActivePlayers.forEach(pi => { if (pi !== heroIdxSD) parseCardNotation(getStudCardForPlayer(pi)).forEach(c => { if (c.suit !== 'x') sdDead.add(c.rank + c.suit); }); });
+    const sdNeeded = sdDealt;
     const sdReady = sdNeeded.every(pi => getStudCardForPlayer(pi));
     const sdRanks = 'AKQJT98765432'.split('');
     const sdSuits = [{key:'h'},{key:'d'},{key:'c'},{key:'s'}];
@@ -5054,46 +5061,57 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
       <div className="gto-entry">
         <div className="gto-phase-card"><div className="replayer-section">
           <div className="replayer-section-title">Deal {studStreetName}</div>
-          <p className="gto-entry-note">Tap a player, then tap a card.{sdFaceDown ? ' This card is dealt face down: give an opponent one only if it was shown.' : ''}</p>
+          <p className="gto-entry-note">{!sdFaceDown ? 'Tap a player, then tap a card.' : sdHeroIn ? 'Tap your card. Your opponents’ are dealt face down.' : 'Every card on this street is dealt face down.'}</p>
           {sdActivePlayers.map(pi => {
             const p = hand.players[pi];
             const cardStr = getStudCardForPlayer(pi);
-            const isTarget = studDealTarget === pi;
+            const isTarget = sdTarget === pi;
             /* A player with no name entered also shows their seat (owner, 2026-11-22, of a deal listing Opp 3, the hero,
                Opp 2: "If no names are entered, yes, that will just minimize confusion"): the rows go round from Seat 1,
                the dealer's left, and choosing the hero's seat turns every player round the table, so a default
                "Opp N" need not sit in seat N. */
             const unnamed = /^(Opp \d+|Hero)$/.test(String(p.name || '').trim());
+            const who = (
+              <span className="gto-deal-who">
+                <span className="gto-deal-name">{p.name}</span>
+                {unnamed && <span className="gto-deal-seat">{p.position || 'Seat ' + (pi + 1)}</span>}
+              </span>
+            );
+            /* The hand so far (owner, 2026-11-22: "show the hands up to this point here"), down cards 1r lower, then
+               the card this street deals. */
+            const run = <span className="gto-deal-run"><StudRun run={studRunFor(hand, pi, heroIdxSD, currentStreetIdx)} /></span>;
+            // An opponent's 7th street card: a back, 1r lower as a down card is, and nothing to tap.
+            if (sdFaceDown && pi !== heroIdxSD) return (
+              <div key={pi} className="gto-deal-row is-pickable is-fixed has-run">
+                {who}{run}
+                <span className="gto-deal-new is-down"><div className="card-row"><div className="card-unknown" aria-label="Face down" /></div></span>
+              </div>
+            );
             return (
               <button type="button" key={pi} className={'gto-deal-row is-pickable has-run' + (isTarget ? ' is-target' : '')}
-                aria-pressed={isTarget} onClick={() => setStudDealTarget(pi)}>
-                <span className="gto-deal-who">
-                  <span className="gto-deal-name">{p.name}</span>
-                  {unnamed && <span className="gto-deal-seat">{p.position || 'Seat ' + (pi + 1)}</span>}
-                </span>
-                {/* The hand so far (owner, 2026-11-22: "show the hands up to this point here"), down cards 1r lower,
-                    then the card this street deals. */}
-                <span className="gto-deal-run"><StudRun run={studRunFor(hand, pi, heroIdxSD, currentStreetIdx)} /></span>
+                aria-pressed={isTarget} onClick={() => { if (!sdFaceDown) setStudDealTarget(pi); }}>
+                {who}{run}
                 {cardStr ? <span className={'gto-deal-new' + (sdFaceDown ? ' is-down' : '')}><CardRow text={cardStr} max={1} /></span>
-                  : <span className="gto-deal-meta is-unknown">{sdFaceDown && pi !== heroIdxSD ? 'face down' : '--'}</span>}
+                  : <span className="gto-deal-meta is-unknown">--</span>}
               </button>
             );
           })}
-          <div className="card-picker-grid">
+          {sdDealt.length > 0 && <div className="card-picker-grid">
             {sdSuits.map(suit => (
               <React.Fragment key={suit.key}>
                 {sdRanks.map(rank => {
                   const card = rank + suit.key;
                   let selectedFor = -1;
-                  sdActivePlayers.forEach(pi => { if (getStudCardForPlayer(pi) === card) selectedFor = pi; });
+                  sdDealt.forEach(pi => { if (getStudCardForPlayer(pi) === card) selectedFor = pi; });
                   const isDead = selectedFor < 0 && sdDead.has(card);
                   return <button key={card} title={isDead ? 'Already dealt' : undefined}
                     className={'card-picker-btn' + (selectedFor >= 0 ? ' selected' : '') + (isDead ? ' used' : '')}
                     disabled={isDead} onClick={() => {
                     if (selectedFor >= 0) setStudCard(selectedFor, '');
-                    else if (studDealTarget >= 0) {
-                      setStudCard(studDealTarget, card);
-                      const nextTarget = sdActivePlayers.find(pi => pi !== studDealTarget && !getStudCardForPlayer(pi));
+                    else if (sdTarget >= 0) {
+                      // On 7th the hero's card is the only one: a new pick replaces it.
+                      setStudCard(sdTarget, card);
+                      const nextTarget = sdDealt.find(pi => pi !== sdTarget && !getStudCardForPlayer(pi));
                       if (nextTarget !== undefined) setStudDealTarget(nextTarget);
                     }
                   }}>
@@ -5102,7 +5120,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                 })}
               </React.Fragment>
             ))}
-          </div>
+          </div>}
         </div></div>
         <div className="gto-street-card">
           {footBar(<>

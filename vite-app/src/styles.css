@@ -4577,6 +4577,8 @@
        "make the highlight box for each player big enough to contain the card without overlapping"): 6r, the card 1..5r,
        the name and seat's baseline 4r. */
     .replayer-entry-view .gto-deal-row.is-pickable:not(.has-run) { height: calc(var(--subrow) * 6); padding-top: var(--subrow); }
+    /* An opponent's 7th street row: laid out as the rows that take a card, but nothing to tap (owner, 2026-11-23). */
+    .replayer-entry-view .gto-deal-row.is-fixed { cursor: default; }
     .replayer-entry-view .gto-deal-name,
     .replayer-entry-view .gto-deal-meta {
       line-height: 1; padding-top: calc(var(--subrow) * 3 - 1cap); white-space: nowrap;

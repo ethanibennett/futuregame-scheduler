@@ -292,7 +292,8 @@ async function runRow(browser, row) {
       }
       if (screen.section.startsWith('Deal ')) {
         const heroC = plan.hero[studHeroAt++]; const oppC = plan.opp[studOppAt++];
-        const rows = p.locator('.gto-deal-row');
+        // The rows that take a card: on 7th only the hero's (an opponent's is a back, its shown card entered at the showdown).
+        const rows = p.locator('button.gto-deal-row');
         const n = await rows.count();
         for (let i = 0; i < n; i++) {
           const name = (await rows.nth(i).locator('.gto-deal-name').textContent()).trim();
