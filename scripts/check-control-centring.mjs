@@ -953,10 +953,22 @@ function scan(cfg) {
     const lx = (b.left + lo.dx - (tr[0] || 0) - ox0) / g, ty = (b.top + lo.dy - (tr[1] || 0) - oy) / r;
     const geo = { w: +wg.toFixed(2), h: +hr.toFixed(2), x: +lx.toFixed(2), y: +ty.toFixed(2) };
     const geoFail = [];
+    /* The entry's card picker on the phone fills its block's whole width (owner, 2026-11-23: "scale up the cards to the
+       full width of the box above it on mobile"), and 13 ranks across 29g or 31g cannot each be whole g: a rank is held
+       to a 13th of the grid (a 9th in Short Deck), and the grid's own edges to g lines, instead. */
+    const pick = el.parentElement && !document.documentElement.classList.contains('dk-on')
+      && el.matches('.replayer-entry-view .card-picker-grid > .card-picker-btn') ? el.parentElement : null;
     if (kind !== 'strip') {
-      if (Math.abs(frac(wg)) > 0.05) geoFail.push('w');
+      if (pick) {
+        const G = pick.getBoundingClientRect();
+        const n = pick.classList.contains('is-short-deck') ? 9 : 13;
+        if (Math.abs(b.width - G.width / n) > 0.5 || Math.abs(frac(G.width / g)) > 0.05) geoFail.push('w');
+        if (Math.abs(frac((G.left + lo.dx - ox0) / g)) > 0.05) geoFail.push('x');
+      } else {
+        if (Math.abs(frac(wg)) > 0.05) geoFail.push('w');
+        if (Math.abs(frac(lx)) > 0.05) geoFail.push('x');
+      }
       if (Math.abs(frac(hr)) > 0.05) geoFail.push('h');
-      if (Math.abs(frac(lx)) > 0.05) geoFail.push('x');
       if (Math.abs(frac(ty)) > 0.05) geoFail.push('y');
     }
     const ink = measureInk(el, b);

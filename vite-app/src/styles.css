@@ -4434,6 +4434,23 @@
       grid-template-columns: repeat(9, minmax(0, 1fr));
       grid-template-columns: repeat(9, round(down, 100% / 9, var(--gu)));
     }
+    /* On the phone the ranks fill the block's whole width, edge to edge with the rows above (owner, 2026-11-23: "scale up
+       the cards to the full width of the box above it on mobile"): a 13th of it each (a 9th in Short Deck), and each
+       card's row whole r, the first r that holds the 5:7 face at that width. The grid is its cards' container, so 100cqw
+       is its own width; without container units (iOS < 16) the rows stay 5r. */
+    :root:not(.dk-on) .replayer-entry-view .card-picker-grid {
+      container-type: inline-size;
+      grid-template-columns: repeat(13, minmax(0, 1fr));
+      grid-auto-rows: auto;
+    }
+    :root:not(.dk-on) .replayer-entry-view .card-picker-grid.is-short-deck { grid-template-columns: repeat(9, minmax(0, 1fr)); }
+    :root:not(.dk-on) .replayer-entry-view .card-picker-btn {
+      height: calc(var(--subrow) * 5);
+      height: round(up, (100cqw / 13 - var(--gu) * 0.2) * 1.4, var(--subrow));
+    }
+    :root:not(.dk-on) .replayer-entry-view .card-picker-grid.is-short-deck .card-picker-btn {
+      height: round(up, (100cqw / 9 - var(--gu) * 0.2) * 1.4, var(--subrow));
+    }
 
     /* Action pad: 7r buttons; the icon over its label, the pair centred in the box as one group
        (owner rule, 2026-10-10: no baseline seat inside a control) — as .cal-action-btn. Each
@@ -4556,6 +4573,10 @@
       border: 0; background: transparent; color: inherit; font: inherit; text-align: left;
     }
     .replayer-entry-view .gto-deal-row.is-target { background: var(--accent-bg, rgba(34,197,94,0.1)); box-shadow: inset 0 0 0 var(--bw-1) var(--accent); }
+    /* A door-card row holds its card with 1r inside the box above and below, as the stud deal rows do (owner, 2026-11-23:
+       "make the highlight box for each player big enough to contain the card without overlapping"): 6r, the card 1..5r,
+       the name and seat's baseline 4r. */
+    .replayer-entry-view .gto-deal-row.is-pickable:not(.has-run) { height: calc(var(--subrow) * 6); padding-top: var(--subrow); }
     .replayer-entry-view .gto-deal-name,
     .replayer-entry-view .gto-deal-meta {
       line-height: 1; padding-top: calc(var(--subrow) * 3 - 1cap); white-space: nowrap;
