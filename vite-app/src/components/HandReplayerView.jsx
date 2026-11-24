@@ -3057,31 +3057,78 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
     if (container) container.scrollTo({ top: 0 });
   }, [phase]);
 
-  // Scroll to active seat
+  /* Scroll to the seat to act: its top 1r under the header's STUCK bottom (its height plus its negative sticky top,
+     both whole r), so it rests on an r-line whether or not the header had stuck when this measured.
+     The stop is rounded UP to a whole pixel (owner, 2026-11-24: "occasionally there's an incomplete scroll like
+     this", the bottom edge of the seat above showing as a line under the header): WebKit keeps a scroll position
+     in whole pixels and drops the fraction, so a stop of 331.9 left the content at 331, the seat 0.9px low and the
+     seat above it 0.9px into view (three device pixels on an iPhone), on every seat whose stop came out near a
+     whole pixel's top. Rounded up, the seat rests under 1px high instead, and the one above stays under the
+     header. It was also only scrolled when 2px or more off, so up to 2px of the seat above could stay.
+     Once the smooth scroll has come to rest the stop is measured again, and a scroll that stopped short (WebKit
+     drops a smooth scroll when a screen's content changes under it) glides the rest of the way. Anything the user
+     does meanwhile (a touch, a wheel, a key) is theirs: the landing is dropped. */
   const scrollGenRef = useRef(0);
   useEffect(() => {
     if (phase !== 'action' || currentActor < 0) return;
     const gen = ++scrollGenRef.current;
+    let raf = 0, unlisten = null;
     const tid = setTimeout(() => {
       if (gen !== scrollGenRef.current) return;
       const el = activeSeatRef.current;
       if (!el) return;
       const container = el.closest('.content-area');
       if (!container) return;
-      const caTop = container.getBoundingClientRect().top;
-      const sticky = container.querySelector('.gto-sticky-header');
-      // Land the seat 1r under the header's STUCK bottom (its height plus its
-      // negative sticky top, both whole r), so it rests on an r-line whether
-      // or not the header had stuck when this measured. r = 0.71g, g = min(vw, 430)/37.
-      const r = Math.min(window.innerWidth, 430) / 37 * 0.71;
-      const stuckBottom = sticky ? sticky.getBoundingClientRect().height + (parseFloat(getComputedStyle(sticky).top) || 0) : 0;
-      const elAbsTop = el.getBoundingClientRect().top - caTop + container.scrollTop;
-      const target = elAbsTop - stuckBottom - r;
-      if (Math.abs(container.scrollTop - target) > 2) {
-        container.scrollTo({ top: target, behavior: 'smooth' });
-      }
+      // r as laid out (rounded to 1/64px in the CSS), from a probe.
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)';
+      container.appendChild(probe);
+      const r = probe.getBoundingClientRect().height / 100 || Math.min(window.innerWidth, 430) / 37 * 0.71;
+      probe.remove();
+      const stopFor = () => {
+        const seat = activeSeatRef.current;
+        if (!seat || !seat.isConnected) return null;
+        const sticky = container.querySelector('.gto-sticky-header');
+        const stuckBottom = sticky ? sticky.getBoundingClientRect().height + (parseFloat(getComputedStyle(sticky).top) || 0) : 0;
+        const elAbsTop = seat.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+        const most = container.scrollHeight - container.clientHeight;
+        return Math.max(0, Math.min(most, Math.ceil(elAbsTop - stuckBottom - r - 0.01)));
+      };
+      const first = stopFor();
+      if (first == null) return;
+      if (Math.abs(container.scrollTop - first) > 0.5) container.scrollTo({ top: first, behavior: 'smooth' });
+      const inputs = ['wheel', 'touchstart', 'pointerdown', 'keydown'];
+      let dropped = false;
+      const drop = () => { dropped = true; };
+      inputs.forEach(ev => container.addEventListener(ev, drop, { passive: true }));
+      unlisten = () => { inputs.forEach(ev => container.removeEventListener(ev, drop)); unlisten = null; };
+      const live = () => !dropped && gen === scrollGenRef.current;
+      // At rest: three frames without movement once it has moved (a dozen if it never needed to); three seconds at most.
+      let last = container.scrollTop, still = 0, moved = false, frames = 0;
+      const settle = () => {
+        if (!live()) { if (unlisten) unlisten(); return; }
+        const now = container.scrollTop;
+        if (now !== last) { moved = true; still = 0; } else still++;
+        last = now; frames++;
+        if (frames < 180 && (still < 3 || (!moved && frames < 12))) { raf = requestAnimationFrame(settle); return; }
+        const stop = stopFor();
+        if (stop == null || Math.abs(container.scrollTop - stop) <= 0.5) { if (unlisten) unlisten(); return; }
+        // The rest of the way, eased out over 160ms (at once under Reduce Motion).
+        const from = container.scrollTop, t0 = performance.now();
+        const ms = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 160;
+        const glide = (t) => {
+          if (!live()) { if (unlisten) unlisten(); return; }
+          const k = ms ? Math.min(1, (t - t0) / ms) : 1;
+          const to = stopFor();
+          if (to == null) { if (unlisten) unlisten(); return; }
+          container.scrollTop = k >= 1 ? to : from + (to - from) * (1 - Math.pow(1 - k, 3));
+          if (k < 1) raf = requestAnimationFrame(glide); else if (unlisten) unlisten();
+        };
+        raf = requestAnimationFrame(glide);
+      };
+      raf = requestAnimationFrame(settle);
     }, 180);
-    return () => clearTimeout(tid);
+    return () => { clearTimeout(tid); cancelAnimationFrame(raf); if (unlisten) unlisten(); };
   }, [currentActor, phase, currentStreetIdx]);
 
   const addAction = (action, amount) => {
