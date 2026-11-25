@@ -114,6 +114,12 @@ export async function stageTables(p, stage, { force = false } = {}) {
   if (stage === 'seats') { await p.waitForTimeout(400); return; }
   // The felt plays the hand to where it stands; let it settle before measuring.
   await p.waitForTimeout(stage === 'over' ? 4000 : 2500);
+  // Everything the bar offers is on the screen: in landscape the raise row wrapped past its foot (2026-11-24).
+  const cut = await p.evaluate(() => [...document.querySelectorAll('.tb-bar button, .tb-bar input')].filter((e) => {
+    const r = e.getBoundingClientRect();
+    return r.width && (r.left < -0.5 || r.top < -0.5 || r.right > innerWidth + 0.5 || r.bottom > innerHeight + 0.5);
+  }).map((e) => (e.textContent || e.value || '').trim()));
+  if (cut.length) throw new Error(`tables-${stage}: past the edge of the screen: ${cut.join(', ')}`);
   if (stage === 'chat') { await click(p.locator('.tb-chat-btn')); await p.locator('.tb-chat').waitFor({ timeout: 5000 }); await p.waitForTimeout(400); }
 }
 

@@ -34,8 +34,24 @@
 }
 .tb-raise .tb-pill { --hs-h: 5; width: calc(var(--gu) * 5); }
 .tb-raise .tb-go { --hs-h: 5; width: calc(var(--gu) * 8); }
-/* The raise row wraps under the buttons 1r down (the replayer's landscape bar has 0.75r between rows). */
-.replayer-landscape .rd-bar.tb-bar { flex-wrap: wrap; row-gap: var(--subrow); }
+/* Landscape, and so every desktop window, has one 7.25r row for the bar, and whatever wrapped under it was past the
+   screen's foot: the raise row was cut off in every desktop window (found on the owner's table, 2026-11-24). So the
+   table's bar never wraps: its cap (75r) is off, and a turn with a raise box is one row of 53g, which a sideways phone
+   holds too (667px is 57g): the status 9g, two buttons of 8g, then 7g + 4g + 4g + 7g, 1g between. The refusal line
+   hangs over the bar, where it takes no room in the row. */
+.replayer-landscape .replayer-bottom-fixed > .rd-bar.tb-bar { max-width: none; flex-wrap: nowrap; column-gap: var(--gu); }
+.replayer-landscape .tb-bar:has(> .tb-raise) > .rd-status { width: calc(var(--gu) * 9); }
+.replayer-landscape .tb-bar:has(> .tb-raise) .rd-act { width: calc(var(--gu) * 8); }
+.replayer-landscape .tb-bar .tb-amount { width: calc(var(--gu) * 7); }
+.replayer-landscape .tb-bar .tb-raise .tb-pill { width: calc(var(--gu) * 4); padding-inline: 0; }
+.replayer-landscape .tb-bar .tb-raise .tb-go { width: calc(var(--gu) * 7); }
+.replayer-landscape .tb-bar > .rd-warn { position: absolute; right: 0; bottom: calc(100% + var(--subrow)); white-space: nowrap; }
+/* A seat waiting to come in has two lines (its own, and whose turn it is): a column of them, close in landscape. */
+.tb-lines { display: flex; flex-direction: column; row-gap: var(--subrow); }
+.replayer-landscape .tb-lines { row-gap: 0; }
+/* A sideways phone: the transport stands beside the bar once a hand is over, so the words wrap in 10g and the buttons are 7g. */
+.app-shell:not(.is-desktop) .replayer-landscape .tb-bar.is-over > .rd-status { width: calc(var(--gu) * 10); white-space: normal; }
+.app-shell:not(.is-desktop) .replayer-landscape .tb-bar.is-over .hs-btn { width: calc(var(--gu) * 7); }
 
 /* Table chat: a panel over the foot of the screen, 31g wide (the drill's column) and up to 36r tall, its list
    scrolling; every size whole g and r. Portalled to the body, so it sets the type and colours it needs. */

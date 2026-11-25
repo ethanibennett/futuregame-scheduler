@@ -194,7 +194,8 @@ sessions opened here own scheduler work.
   Tests: `npm run test:tables` (ports 4940-4949; with `test/tables-runtime.test.mjs`, a fake clock), `npm run
   check:tables` (two WebKit pages on the play page through an NLH, a Stud Hi and a 2-7 TD hand, ports 4950-4959),
   `npm run check:tables-felt` (ports 4840-4849); the guards' `tables-*` views stage the play page from the build
-  (`scripts/tables-states.mjs`). All need the built app.
+  (`scripts/tables-states.mjs`, which fails a view whose bar reaches past the screen: landscape has one 7.25r row for it, so
+  the table's bar never wraps, and a bet row is 53g; until 2026-11-24 it was cut off in every desktop window). All need the built app.
 - **Hands > Study** (owner, 2026-11-04: one training experience; `components/StudyHub.jsx`, `StudyHead.jsx`, `study-hub.css`):
   the Hands row is Replayer, Study, Scanner, and Study is one list of the solver tools: Practice (Play a hand, Hand trainer,
   Quick spots, Three-way Razz), Look up (Watch the solver, Solve a spot, Price a draw, Pre-draw ranges). Each opens under the same header and

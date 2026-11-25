@@ -165,8 +165,10 @@ function TableBar({ view, busy, onAct, onPost, left, chat, thrown }) {
     const me = view.table.you >= 0 ? view.table.seats[view.table.you] : null;
     return (
       <div className="hs-view rd-bar tb-bar snap-place">
-        {me && me.waiting && <div className="hs-t hs-sm rd-status" style={T(2)}>{waitingWords(me)}</div>}
-        <div className="hs-t hs-sm rd-status" style={T(2)}>{who ? `${who} to ${h.live.drawing ? 'draw' : 'act'}${clock}` : 'Dealing…'}</div>
+        <div className="tb-lines">
+          {me && me.waiting && <div className="hs-t hs-sm rd-status" style={T(2)}>{waitingWords(me)}</div>}
+          <div className="hs-t hs-sm rd-status" style={T(2)}>{who ? `${who} to ${h.live.drawing ? 'draw' : 'act'}${clock}` : 'Dealing…'}</div>
+        </div>
         {me && me.waiting
           ? <div className="hs-cols" style={{ '--hs-n': 2 }}><PostButton me={me} busy={busy} onPost={onPost} />{chat}</div>
           : chat}
@@ -217,10 +219,15 @@ function TableBar({ view, busy, onAct, onPost, left, chat, thrown }) {
 // ── After the hand: the result, and what the player can do between hands ──
 function OverBar({ view, busy, onLeave, onRebuy, onSitIn, onPost, chat }) {
   const me = view.table.you >= 0 ? view.table.seats[view.table.you] : null;
+  // With nobody else to deal in (sitting out, out of chips) there is no next hand to promise.
+  const alone = view.table.seats.filter((s) => s && s.status === 'playing' && s.stack > 0).length < 2;
+  const words = !me || me.status !== 'playing' ? (me && me.status === 'busted' ? 'Out of chips' : 'Hand over')
+    : me.waiting ? (me.postNow ? "You'll post to come in" : 'You come in on the big blind')
+      : alone ? 'Hand over · waiting for a player' : 'Hand over · next hand soon';
   return (
-    <div className="hs-view rd-bar tb-bar snap-place">
+    <div className="hs-view rd-bar tb-bar is-over snap-place">
       {/* The felt shows who won as the replay reaches the result; the bar does not say it first. */}
-      <div className="hs-t hs-sm rd-status" style={T(2)}>{me && me.status === 'busted' ? 'Out of chips' : 'Hand over'}{me && me.status === 'playing' ? (me.waiting ? (me.postNow ? " · you'll post to come in" : ' · you come in on the big blind') : ' · next hand soon') : ''}</div>
+      <div className="hs-t hs-sm rd-status" style={T(2)}>{words}</div>
       <div className="hs-cols3" style={{ '--hs-n': 2 }}>
         {me && me.status === 'busted' && <button type="button" className="hs-btn rd-primary" disabled={busy} onClick={onRebuy}><span className="hs-t" style={T(3)}>Buy in again</span></button>}
         {me && me.status === 'sitting-out' && <button type="button" className="hs-btn rd-primary" disabled={busy} onClick={onSitIn}><span className="hs-t" style={T(3)}>Sit in</span></button>}
