@@ -2957,7 +2957,6 @@ function App() {
                   );
                   const mine = [
                     !isDesktop && row('social', 'Social', Icon.people, go('social')),
-                    !isDesktop && handReplayerAccess && !isAdmin && row('hands', 'Hand Replayer', Icon.cards, go('hands')),
                     row('settings', 'Settings', Icon.gear, go('settings')),
                     !isGuest && row('report', 'Report a problem', Icon.warn, () => { setShowUserMenu(false); setShowReport(true); }),
                   ].filter(Boolean);
@@ -3125,9 +3124,9 @@ function App() {
           showCash={!isGuest}
           current={(() => {
             const cv = navPending || currentView;
-            if (cv === 'hands' && isAdmin) return 'hands';
+            // Hands is every account's tab since 2026-11-05: it lights for everyone, not admins only.
             if (cv === 'calendar' || cv === 'schedule') return 'tournaments';
-            if (['social', 'settings', 'hands', 'admin', 'batches'].includes(cv)) return null;
+            if (['social', 'settings', 'admin', 'batches'].includes(cv)) return null;
             return cv;
           })()}
           onChange={onNavChange}
