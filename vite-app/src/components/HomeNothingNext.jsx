@@ -13,7 +13,7 @@ import { weekAhead, weekAheadLine } from '../utils/home-upnext.js';
 export default function HomeNothingNext({ tournaments, today, onOpen }) {
   const loc = readLocalLocation();
   const located = !!(loc && ((loc.userLocation && loc.maxDistance) || loc.locationRegion));
-  const locKey = located ? JSON.stringify([loc.userLocation, loc.maxDistance, loc.locationRegion]) : '';
+  const locKey = located ? JSON.stringify([loc.userLocation, loc.maxDistance, loc.locationRegion, loc.moreLocations]) : '';
   const { count } = useMemo(
     () => weekAhead(tournaments, today, located ? { near: (e) => !isOnline(e) && matchesLocation(e, loc) } : {}),
     [tournaments, today, locKey]); // eslint-disable-line react-hooks/exhaustive-deps

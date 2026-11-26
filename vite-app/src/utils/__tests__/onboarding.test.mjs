@@ -174,6 +174,16 @@ test('locationFrom: point, region and Everywhere', () => {
   // A new place keeps a non-chip radius unless a chip is tapped.
   const moved = O.locationFrom(O.choosePoint(O.answersFrom(stored, null), { lat: 1, lng: 2, short: 'X' }), stored, { place: true });
   assert.equal(moved.maxDistance, '30');
+  // Several places (2026-11-26): setup answers the first; the others stay, each spot once, and
+  // Everywhere takes them away.
+  const vegas = { userLocation: { lat: 36.17, lng: -115.14 }, maxDistance: '20', locationLabel: 'Las Vegas' };
+  const several = { ...stored, moreLocations: [vegas, { locationRegion: 'florida' }] };
+  const kept = O.locationFrom(O.choosePoint(O.answersFrom(several, null), { lat: 1, lng: 2, short: 'X' }), several, { place: true });
+  assert.deepEqual(kept.moreLocations, [vegas, { locationRegion: 'florida' }]);
+  const dup = O.locationFrom(O.chooseRegion(O.answersFrom(several, null), 'florida'), several, { place: true });
+  assert.deepEqual(dup.moreLocations, [vegas], 'Florida chosen first is not listed twice');
+  const everywhere = O.locationFrom(O.chooseRegion(O.answersFrom(several, null), 'everywhere'), several, { place: true });
+  assert.deepEqual([everywhere.userLocation, everywhere.locationRegion, everywhere.moreLocations, everywhere.jurisdiction], [null, null, undefined, 'PA'], 'the state stays');
 });
 
 test('state: REGION_JURISDICTION, worked-out vs manual, precedence', () => {

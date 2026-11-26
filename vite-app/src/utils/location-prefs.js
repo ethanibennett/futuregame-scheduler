@@ -1,7 +1,8 @@
 import { API_URL } from './api.js';
 import { stateCodeFrom } from './online-sites.js';
 
-/* Where the chosen location lives.
+/* Where the chosen location lives. Since 2026-11-26 it may name several places: the first in the
+ * classic fields, the rest in `moreLocations` (utils/location-places.js), in both stores alike.
  *
  * localStorage is the immediate store: it paints on load without a round trip,
  * and it is the only store a guest has. The server copy is what makes the
@@ -100,6 +101,7 @@ export function sameLocation(a, b) {
     locationRegion: (l && l.locationRegion) || null,
     maxDistance: (l && l.maxDistance) || '',
     locationLabel: (l && l.locationLabel) || null,
+    moreLocations: (l && Array.isArray(l.moreLocations) && l.moreLocations.length) ? l.moreLocations : [],
     jurisdiction: (l && l.jurisdiction) || null,
     jurisdictionManual: !!(l && l.jurisdictionManual),
   });

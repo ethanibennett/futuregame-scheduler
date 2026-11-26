@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { LOCATION_REGIONS, REGION_JURISDICTION } from '../utils/utils.js';
+import { placesOf, addPlace, removePlace, togglePlace, setPlaceRadius, withPlaces, placeName, placeText } from '../utils/location-places.js';
 import { US_STATES, stateCodeFrom } from '../utils/online-sites.js';
 import { API_URL } from '../utils/api.js';
 import Icon from './Icon.jsx';
@@ -47,15 +48,29 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
     !code || f.jurisdictionManual ? f : { ...f, jurisdiction: code }
   );
 
+  /* The Schedule names several places (owner, 2026-11-26: "Philadelphia + 300 miles, Las Vegas + 20
+     miles, Hollywood, FL + 30 miles"; utils/location-places.js): a place found here, the device's
+     position or a region is ADDED to the list, each point with the radius in the field beside the
+     search; the list at the top changes a radius or takes a place off. Only the first place answers
+     the state (where the player is); a second place is somewhere they travel to. The Cash tab
+     (pointOnly) keeps one point, replaced by each pick. */
+  const places = pointOnly ? [] : placesOf(filters);
+  const firstPlace = (f) => placesOf(f).length === 0;
+  const regionOn = (key) => places.some(p => p.locationRegion === key);
+  const currentOn = places.some(p => p.locationLabel === 'Current Location');
+
   const selectGeoResult = (r) => {
-    setFilters(f => learnJurisdiction({
-      ...f,
-      userLocation: { lat: r.lat, lng: r.lng },
-      maxDistance: radius || '100',
-      locationRegion: null,
-      locationLabel: r.short || r.display,
-    }, r.country === 'US' ? stateCodeFrom(r.region) : null));
-    onClose();
+    const place = { userLocation: { lat: r.lat, lng: r.lng }, maxDistance: radius || '100', locationLabel: r.short || r.display };
+    const code = r.country === 'US' ? stateCodeFrom(r.region) : null;
+    if (pointOnly) {
+      setFilters(f => learnJurisdiction({ ...f, ...place, locationRegion: null }, code));
+      onClose();
+      return;
+    }
+    setFilters(f => firstPlace(f) ? learnJurisdiction(addPlace(f, place), code) : addPlace(f, place));
+    // Stays open: the new place joins the list above, where its radius can change and another follow.
+    setGeoQuery('');
+    setGeoResults([]);
   };
 
   /* Browser geolocation gives coordinates and nothing else. One reverse lookup
@@ -95,15 +110,17 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
       <div style={{padding:'var(--subrow) var(--gu)'}}>
         <div style={{display:'flex',gap:'calc(var(--subrow) * 0.75)',alignItems:'center',height:'calc(var(--subrow) * 4)',marginBottom: geoLoading || geoResults.length > 0 ? 'var(--subrow)' : 0}}>
           <input type="text" value={geoQuery} onChange={e => onQueryChange(e.target.value)}
-            placeholder="City or postal code..." autoFocus className="focus-inset"
+            placeholder={places.length ? 'Add a city or postal code...' : 'City or postal code...'} autoFocus className="focus-inset"
             style={{flex:1,height:'calc(var(--subrow) * 4)',boxSizing:'border-box',padding:'0 calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',background:'var(--bg)',color:'var(--text)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius)',minWidth:0}} />
           <input type="number" value={radius}
             onChange={e => {
               setRadius(e.target.value);
-              if (filters.userLocation) {
+              // On the Schedule this is the next place's radius; each listed place has its own.
+              if (pointOnly && filters.userLocation) {
                 setFilters(f => ({...f, maxDistance: e.target.value}));
               }
             }}
+            aria-label={places.length ? 'Radius for the next place, in miles' : 'Radius in miles'}
             style={{width:'calc(var(--subrow) * 6.25)',height:'calc(var(--subrow) * 4)',boxSizing:'border-box',padding:'0 calc(var(--subrow) * 0.5)',fontSize:'calc(var(--gu) * 1.208)',textAlign:'center',background:'var(--bg)',color:'var(--text)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius)'}}
             min="1" placeholder="100" />
           <span style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',flexShrink:0}}>mi</span>
@@ -125,6 +142,38 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
         )}
       </div>
       <div style={DIVIDER} />
+      {/* The Schedule's places, first one first: each a 5r row with its name, a point's own radius and a
+          remove button (3g x the row's 5r, 1g in from the panel's right edge, so it sits on g and r lines). A name that runs long ends in an ellipsis inside a 4r line box, so its
+          descenders are painted (the clipping guard's rule). */}
+      {places.length > 0 && (
+        <>
+          {places.map((p, i) => {
+            const name = placeName(p, LOCATION_REGIONS);
+            return (
+              <div key={p.locationRegion || `${p.userLocation.lat},${p.userLocation.lng}`} className="loc-place" style={{ ...ROW, gap: 'calc(var(--subrow) * 1)', padding: '0 var(--gu) 0 var(--space-xl)', color: 'var(--accent)', fontWeight: 700, fontSize: 'calc(var(--gu) * 1.252)' }}>
+                <span style={{width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)',flexShrink:0}}><Icon.mapPin /></span>
+                <span title={placeText(p, LOCATION_REGIONS)} style={{flex:1,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:'calc(var(--subrow) * 4)'}}>{name}</span>
+                {p.userLocation && (
+                  <>
+                    <input type="number" min="1" value={p.maxDistance} className="focus-inset"
+                      onChange={e => { const v = e.target.value; setFilters(f => setPlaceRadius(f, i, v)); }}
+                      // A radius left empty or at 0 would narrow nothing: it goes back to 100.
+                      onBlur={e => { if (!(Number(e.target.value) > 0)) setFilters(f => setPlaceRadius(f, i, '100')); }}
+                      aria-label={`Radius around ${name}, in miles`}
+                      style={{width:'calc(var(--subrow) * 6.25)',height:'calc(var(--subrow) * 4)',boxSizing:'border-box',padding:'0 calc(var(--subrow) * 0.5)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textAlign:'center',background:'var(--bg)',color:'var(--text)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius)',flexShrink:0}} />
+                    <span style={{fontSize:'calc(var(--gu) * 1.104)',fontWeight:400,color:'var(--text-muted)',flexShrink:0}}>mi</span>
+                  </>
+                )}
+                <button type="button" className="ctl" aria-label={`Remove ${name}`} onClick={() => setFilters(f => removePlace(f, i))}
+                  style={{flexShrink:0,width:'calc(var(--gu) * 3)',height:'calc(var(--subrow) * 5)',padding:0,background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer'}}>
+                  <span style={{width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)',display:'flex'}}><Icon.x /></span>
+                </button>
+              </div>
+            );
+          })}
+          <div style={DIVIDER} />
+        </>
+      )}
       {/* Cash (pointOnly; UX pick 92): the first row names the point that is set and carries the tick.
           The tick sat on "Current Location", meaning "some point is set". */}
       {pointOnly && filters.userLocation && (
@@ -138,9 +187,9 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
         </>
       )}
       <button onClick={() => {
-        if (!pointOnly && filters.userLocation && !filters.locationRegion) {
-          setFilters(f => ({...f, userLocation: null, maxDistance: '', locationRegion: null, locationLabel: null}));
-          onClose();
+        if (!pointOnly && currentOn) {
+          // The device's position is one of the places: this takes it off.
+          setFilters(f => removePlace(f, placesOf(f).findIndex(p => p.locationLabel === 'Current Location')));
         } else {
           /* WebKit only grants geolocation to a secure page. The installed app
              (capacitor:// or https) is one; a live-reload build served over
@@ -151,9 +200,10 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
           } else if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
               (pos) => {
-                setFilters(f => ({...f, userLocation: { lat: pos.coords.latitude, lng: pos.coords.longitude }, maxDistance: radius || '100', locationRegion: null, locationLabel: 'Current Location'}));
+                const here = { userLocation: { lat: pos.coords.latitude, lng: pos.coords.longitude }, maxDistance: radius || '100', locationLabel: 'Current Location' };
+                setFilters(f => pointOnly ? ({...f, ...here, locationRegion: null}) : addPlace(f, here));
                 reverseLookup(pos.coords.latitude, pos.coords.longitude);
-                onClose();
+                if (pointOnly) onClose();
               },
               (err) => {
                 // The three GeolocationPositionError codes each need a different fix.
@@ -172,35 +222,34 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
       }} style={{
         ...ROW,gap:'calc(var(--subrow) * 1)',
         padding:'0 var(--space-xl)',background:'none',border:'none',
-        color: (!pointOnly && filters.userLocation && !filters.locationRegion) ? 'var(--accent)' : 'var(--text)',
-        fontWeight: (!pointOnly && filters.userLocation && !filters.locationRegion) ? 700 : 400,
+        color: currentOn ? 'var(--accent)' : 'var(--text)',
+        fontWeight: currentOn ? 700 : 400,
         fontSize:'calc(var(--gu) * 1.252)',cursor:'pointer',textAlign:'left',
       }}>
         <span style={{width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)',flexShrink:0}}><Icon.mapPin /></span>
         {pointOnly ? 'Use my current location' : 'Current Location'}
-        {(!pointOnly && filters.userLocation && !filters.locationRegion) && <span style={{marginLeft:'auto',fontSize:'calc(var(--gu) * 1.104)'}}>{'✓'}</span>}
+        {currentOn && <span style={{marginLeft:'auto',fontSize:'calc(var(--gu) * 1.104)'}}>{'✓'}</span>}
       </button>
       <div style={DIVIDER} />
       {!pointOnly && Object.entries(LOCATION_REGIONS).map(([key, { label }]) => (
         <button key={key} onClick={() => {
-          // A region also answers the state where it implies one (Las Vegas: Nevada), as a place
-          // looked up does; a state picked by hand stays.
+          // On or off, beside the other places. As the first place, a region also answers the state
+          // where it implies one (Las Vegas: Nevada), as a place looked up does; a state picked by
+          // hand stays.
           setFilters(f => {
-            const picking = f.locationRegion !== key;
-            const next = {...f, locationRegion: picking ? key : null, userLocation: null, maxDistance: '', locationLabel: null};
-            return picking ? learnJurisdiction(next, REGION_JURISDICTION[key] || null) : next;
+            const next = togglePlace(f, { locationRegion: key });
+            return firstPlace(f) ? learnJurisdiction(next, REGION_JURISDICTION[key] || null) : next;
           });
-          onClose();
-        }} style={{
+        }} aria-pressed={regionOn(key)} style={{
           ...ROW,gap:'calc(var(--subrow) * 1)',
           padding:'0 var(--space-xl)',background:'none',border:'none',
-          color: filters.locationRegion === key ? 'var(--accent)' : 'var(--text)',
-          fontWeight: filters.locationRegion === key ? 700 : 400,
+          color: regionOn(key) ? 'var(--accent)' : 'var(--text)',
+          fontWeight: regionOn(key) ? 700 : 400,
           fontSize:'calc(var(--gu) * 1.252)',cursor:'pointer',textAlign:'left',
         }}>
           <span style={{width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)',flexShrink:0}}><Icon.mapPin /></span>
           {label}
-          {filters.locationRegion === key && <span style={{marginLeft:'auto',fontSize:'calc(var(--gu) * 1.104)'}}>{'✓'}</span>}
+          {regionOn(key) && <span style={{marginLeft:'auto',fontSize:'calc(var(--gu) * 1.104)'}}>{'✓'}</span>}
         </button>
       ))}
       {/* Jurisdiction. Physically separate from the region buttons above it
@@ -244,18 +293,18 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
       </>)}
       {/* No Clear on Cash (UX pick 92): a cleared point could not be saved there, so the screen said "no
           location" while the watcher kept polling the old one. */}
-      {!pointOnly && (filters.locationRegion || filters.userLocation) && (
+      {!pointOnly && places.length > 0 && (
         <>
           <div style={DIVIDER} />
           <button onClick={() => {
-            setFilters(f => ({...f, locationRegion: null, userLocation: null, maxDistance: '', locationLabel: null}));
+            setFilters(f => withPlaces(f, []));
             onClose();
           }} style={{
             ...ROW,padding:'0 var(--space-xl)',
             background:'none',border:'none',color:'var(--text-muted)',
             fontSize:'calc(var(--gu) * 1.178)',cursor:'pointer',textAlign:'left',
           }}>
-            Clear location filter
+            {places.length > 1 ? 'Clear every place' : 'Clear location filter'}
           </button>
         </>
       )}

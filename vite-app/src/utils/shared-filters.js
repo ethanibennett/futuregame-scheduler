@@ -20,6 +20,9 @@ export const DEFAULT_FILTERS = {
   hideSideEvents: false, hiddenMonths: [], ladiesOnly: false, seniorsOnly: false,
   mixedOnly: false, dateFrom: '', dateTo: '',
   maxDistance: '', userLocation: null, locationRegion: null, locationLabel: null,
+  // The places after the first (owner, 2026-11-26), each { userLocation, maxDistance, locationLabel }
+  // or { locationRegion }: utils/location-places.js. Saved with the location, not here.
+  moreLocations: [],
   // Live only by default (launch plan, 2026-10-15): online play shows once the player says yes,
   // in setup or the Online menu. A browser that used the app before keeps its choice
   // (location-prefs.js migrateLiveOnlyDefaults). It is deliberately NOT a location field: an
@@ -54,6 +57,7 @@ export function initialFilters() {
     userLocation: savedLoc.userLocation || null,
     locationRegion: savedLoc.locationRegion || null,
     locationLabel: savedLoc.locationLabel || null,
+    moreLocations: Array.isArray(savedLoc.moreLocations) ? savedLoc.moreLocations : [],
     jurisdiction: savedLoc.jurisdiction || null,
     jurisdictionManual: !!savedLoc.jurisdictionManual,
   };
@@ -68,6 +72,7 @@ export function clearedFilters(f) {
     userLocation: f.userLocation,
     locationRegion: f.locationRegion,
     locationLabel: f.locationLabel,
+    moreLocations: f.moreLocations || [],
     jurisdiction: f.jurisdiction,
     jurisdictionManual: f.jurisdictionManual,
     showOnline: f.showOnline,

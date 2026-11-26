@@ -278,6 +278,13 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   Never a bare room name or a series title. Non-US regions whose ISO code is also a US state
   code use the country name (`PANAMA`, `MALTA`), or they land in "Northeast US". The watcher
   side (per-row coordinates) is `docs/venue-coords-watcher.diff`; see `docs/venue-coords.md`.
+- **The location filter is several places** (owner, 2026-11-26: "Philadelphia + 300 miles, Las Vegas + 20 miles,
+  Hollywood, FL + 30 miles"; `utils/location-places.js`, `location-places.test.mjs` in `npm test`): each a point with its
+  own radius or a region. The first stays in the classic fields (`userLocation`, `maxDistance`, `locationLabel`,
+  `locationRegion`), so setup, the venue map's distance line, Home and Cash read it as before; the rest are
+  `moreLocations`, saved in the same `savedLocation` / `users.saved_location` blob. An event passes near ANY of them
+  (`matchesLocation`). The menu (`LocationDropdown`) adds a place looked up, Current Location or a region, and lists the
+  places with their own radius and a remove button; only the first place answers the state. Cash keeps one point.
 - **Venue map**: an event card's venue strip (not online or Personal) opens `VenueMapSheet.jsx`, a
   map of the room. The provider is chosen per platform in `utils/venue-map/providers.js`: Google on
   Android, else MapKit JS, else OpenStreetMap. Each key's env is unset until the owner sets it up;

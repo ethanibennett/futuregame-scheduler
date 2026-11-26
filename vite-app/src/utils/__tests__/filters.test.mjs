@@ -54,6 +54,26 @@ eq('but not within 50 miles of Vegas', matchesLocation(bigStax, nearVegas), fals
 eq('Tampa does not inherit Hollywood coords: 150mi from Hollywood excludes it (they are ~190mi apart)', matchesLocation(pinktober, { maxDistance: '150', userLocation: { lat: 26.0512, lng: -80.2109 } }), false);
 eq('a venue with no coords and no property is still hidden, not shown nationwide', matchesLocation({ venue: 'Fall Series' }, nearPhilly), false);
 
+console.log('matchesLocation — several places (owner, 2026-11-26)');
+// "Philadelphia + 300 miles, Las Vegas + 20 miles, Hollywood, FL + 30 miles": near ANY of them passes.
+const three = {
+  userLocation: { lat: 39.9526, lng: -75.1652 }, maxDistance: '300', locationLabel: 'Philadelphia',
+  moreLocations: [
+    { userLocation: { lat: 36.1699, lng: -115.1398 }, maxDistance: '20', locationLabel: 'Las Vegas' },
+    { userLocation: { lat: 26.0112, lng: -80.1495 }, maxDistance: '30', locationLabel: 'Hollywood, Florida' },
+  ],
+};
+eq('Parx passes on Philadelphia', matchesLocation(bigStax, three), true);
+eq('the Strip passes on Las Vegas', matchesLocation(vegas, three), true);
+eq('Hard Rock Hollywood passes on Hollywood', matchesLocation(rrpo, three), true);
+eq('Tampa is near none of them', matchesLocation(pinktober, three), false);
+const lodge = { event_name: 'NLH', venue: 'Lodge Poker Club' };                      // has coords, TX
+eq('the Lodge is near none of them', matchesLocation(lodge, three), false);
+eq('a region among the places counts', matchesLocation(lodge, { ...three, moreLocations: [...three.moreLocations, { locationRegion: 'texas' }] }), true);
+eq('only the extra places, with no first one, still filter', matchesLocation(pinktober, { moreLocations: three.moreLocations }), false);
+eq('online still abstains', matchesLocation(online, three), true);
+eq('each radius is its own: Vegas at 20 mi does not reach Parx', matchesLocation(bigStax, { ...three.moreLocations[0] }), false);
+
 console.log('matchesOnline — the toggle');
 eq('shown by default (field absent)', matchesOnline(online, {}), true);
 eq('shown when true', matchesOnline(online, { showOnline: true }), true);

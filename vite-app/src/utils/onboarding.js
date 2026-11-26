@@ -21,6 +21,7 @@ import {
 } from './utils.js';
 import { stateCodeFrom } from './online-sites.js';
 import { readLocalFilters, writeLocalFilters, repairJurisdiction } from './location-prefs.js';
+import { placeOf, samePlace } from './location-places.js';
 
 // ── The choices ────────────────────────────────────────────────────────────────────────────────
 // Step 1's region grid, two to a row: Las Vegas | Texas / Florida | Northeast US / Europe | Everywhere.
@@ -210,6 +211,12 @@ export function locationFrom(a, prevLoc, touched = ALL_ROWS) {
   } else if (a.place && a.place.kind === 'region') {
     loc.locationRegion = a.place.region;
   }
+  // Setup answers the FIRST place; the others the location menu added stay (each spot once).
+  // Everywhere takes them all away.
+  const first = placeOf(loc);
+  const more = first && prevLoc && Array.isArray(prevLoc.moreLocations)
+    ? prevLoc.moreLocations.map(placeOf).filter(p => p && !samePlace(p, first)) : [];
+  if (more.length) loc.moreLocations = more;
   return loc.userLocation || loc.locationRegion || loc.jurisdiction ? loc : null;
 }
 

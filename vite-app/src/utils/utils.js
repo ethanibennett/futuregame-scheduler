@@ -3,6 +3,7 @@ import { seasonLabelOf } from './season-label.js';
 // Converted from public/js/utils.js — window globals removed, ES module exports added
 
 import { SITE_VENUE_TIMEZONES, isSiteAvailable } from './online-sites.js';
+import { placesOf } from './location-places.js';
 
 // ── Haptic feedback ──
 export function haptic(ms = 15) {
@@ -1577,22 +1578,21 @@ export function parseDateTimeInTz(date, time, venue) {
    It has no coordinates because it has no place, not because we failed to look
    one up — so every location filter would hide all of it, with nothing on screen
    to say why. Online is answered by its own predicate (matchesOnline) instead,
-   and location abstains here. */
+   and location abstains here.
+
+   Several places (owner, 2026-11-26; utils/location-places.js): the event passes when it is near
+   ANY of them, each point with its own radius. A place that narrows nothing (a point with no
+   radius, a region this build does not know) lets everything through, as one alone always did. */
 export function matchesLocation(t, filters) {
   if (!filters) return true;
   if (isOnline(t)) return true;
-  if (filters.maxDistance && filters.userLocation) {
-    const coords = getVenueCoords(t.venue, t.property);
-    if (!coords) return false;
-    const dist = haversineDistance(filters.userLocation.lat, filters.userLocation.lng, coords.lat, coords.lng);
-    if (dist > Number(filters.maxDistance)) return false;
-  }
-  if (filters.locationRegion) {
-    const coords = getVenueCoords(t.venue, t.property);
-    const regionDef = LOCATION_REGIONS[filters.locationRegion];
-    if (regionDef && (!coords || !regionDef.test(coords))) return false;
-  }
-  return true;
+  const places = placesOf(filters);
+  if (!places.length) return true;
+  if (places.some(p => p.locationRegion ? !LOCATION_REGIONS[p.locationRegion] : !p.maxDistance)) return true;
+  const coords = getVenueCoords(t.venue, t.property);
+  if (!coords) return false;   // an unknown position is near nothing
+  return places.some(p => p.locationRegion ? LOCATION_REGIONS[p.locationRegion].test(coords)
+    : haversineDistance(p.userLocation.lat, p.userLocation.lng, coords.lat, coords.lng) <= Number(p.maxDistance));
 }
 
 /* Should this event show, given the Online toggle?

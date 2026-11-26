@@ -660,8 +660,11 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
   // Persist location selection across sessions
   const locationMounted = useRef(false);
   useEffect(() => {
-    const { userLocation, locationRegion, maxDistance, locationLabel, jurisdiction, jurisdictionManual } = filters;
+    const { userLocation, locationRegion, maxDistance, locationLabel, moreLocations, jurisdiction, jurisdictionManual } = filters;
     const loc = { userLocation, locationRegion, maxDistance, locationLabel, jurisdiction, jurisdictionManual };
+    // The places after the first (utils/location-places.js), only when there are any, so a single
+    // place is stored exactly as it always was.
+    if (moreLocations && moreLocations.length) loc.moreLocations = moreLocations;
     writeLocalLocation(loc);
     /* Not on mount: what this view starts from is this browser's copy, and a new browser has
        none, so pushing it then cleared the account's location before the sync below could read
@@ -671,7 +674,7 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
     // Follows the user: localStorage is per-browser, so without this a region
     // picked on the desktop does not exist on the phone.
     pushServerLocation(token, loc);
-  }, [filters.userLocation, filters.locationRegion, filters.maxDistance, filters.locationLabel, filters.jurisdiction, filters.jurisdictionManual]);
+  }, [filters.userLocation, filters.locationRegion, filters.maxDistance, filters.locationLabel, filters.moreLocations, filters.jurisdiction, filters.jurisdictionManual]);
   /* The account's copy, once we have a token. localStorage has already painted
      so there is no flash; this only corrects it when the choice was made on
      another device.
@@ -696,6 +699,7 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
           next.maxDistance = l.maxDistance || '';
           next.locationRegion = l.locationRegion || null;
           next.locationLabel = l.locationLabel || null;
+          next.moreLocations = Array.isArray(l.moreLocations) ? l.moreLocations : [];
           next.jurisdiction = l.jurisdiction || null;
           next.jurisdictionManual = !!l.jurisdictionManual;
         }
@@ -728,6 +732,7 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
         locationRegion: (remote && remote.locationRegion) || null,
         maxDistance: (remote && remote.maxDistance) || '',
         locationLabel: (remote && remote.locationLabel) || null,
+        moreLocations: (remote && Array.isArray(remote.moreLocations)) ? remote.moreLocations : [],
         jurisdiction: (remote && remote.jurisdiction) || null,
         jurisdictionManual: !!(remote && remote.jurisdictionManual),
       }));
