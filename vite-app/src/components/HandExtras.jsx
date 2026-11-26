@@ -197,7 +197,7 @@ export function SendHandSheet({ token, mintLink, title, step, onClose, toast }) 
 
 /* A question link opened (27): instead of the transport, the bet faced and Fold / Call / Raise; after an answer
    the tally. The rest of the hand arrives only after the answer. */
-export function QuestionCard({ linkId, token, answered, tally, onAnswered }) {
+export function QuestionCard({ linkId, token, answered, tally, onAnswered, onContinue }) {
   const [busy, setBusy] = useState(false);
   const device = useMemo(() => {
     try { let d = localStorage.getItem('deviceId'); if (!d) { d = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('deviceId', d); } return d; } catch { return null; }
@@ -216,6 +216,8 @@ export function QuestionCard({ linkId, token, answered, tally, onAnswered }) {
       <div className="qc-card" role="status">
         <div className="qc-label">{`What people did · ${total}`}</div>
         <div className="qc-tally">{['call', 'fold', 'raise'].map((k) => <span key={k}><b>{tally[k] || 0}</b> {k}</span>)}</div>
+        {/* The card sits over the transport: this is the way on to the rest of the hand, from the decision. */}
+        {onContinue && <button type="button" className="btn btn-primary ctl qc-go" onClick={onContinue}><span>See the rest</span></button>}
       </div>
     );
   }

@@ -8319,6 +8319,27 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     if (isHiLo) setTimeout(() => setHiloAnimate(true), 100);
   };
 
+  /* A question link (Features 27) opens at the decision it asks about: the bet faced, the hero to act. It opened on the
+     first step, under a card that covers the transport, so whoever was asked could not see the spot; after the answer
+     the whole hand arrives and stays on that decision, and the tally's See the rest plays on from it (2026-11-25). */
+  const questionStop = useRef(null);
+  useEffect(() => {
+    if (!question) return;
+    if (!question.answered) {
+      // The stop is the last street the question's hand reaches: a decoded hand carries every street, those past the
+      // stop empty (no action, no card dealt).
+      const reached = (st) => !!(st && ((st.actions && st.actions.length) || (st.cards && (st.cards.board || st.cards.hero))));
+      let si = hand.streets.length - 1;
+      while (si > 0 && !reached(hand.streets[si])) si -= 1;
+      const ai = (hand.streets[si]?.actions?.length || 0) - 1;
+      questionStop.current = { si, ai };
+      setStreetIdx(si); setActionIdx(ai); setShowResult(false);
+    } else if (questionStop.current) {
+      setStreetIdx(questionStop.current.si); setActionIdx(questionStop.current.ai); setShowResult(false);
+    }
+  }, [question && question.linkId, question && question.answered, hand.streets.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [tallyOpen, setTallyOpen] = useState(true);
+
   /* ?at=flop|turn|river|end on a replay link opens the hand there (that street after its action, or
      the showdown): one address per moment, which is how the Mac's simulator check
      (.github/workflows/mac-sim-check.yml) photographs a replay it cannot tap through. */
@@ -8621,11 +8642,20 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
      question that stops at the hero's next decision. Resolves to the link's id, or null. */
   const mintHandLink = useCallback(async (asQuestion) => {
     if (!token) return null;
-    const full = encodeHand({ ...hand, title: handTitle || hand.title || '', feltColor });
+    /* The sharer's table rides along as it does on Copy link: the felt, lit or not, and the visual switches. Without
+       it a hand sent in the app or asked as a question opened on the dark felt whatever the sharer's was (2026-11-25). */
+    const look = {
+      feltColor, feltBright: rSettings.feltBright,
+      visuals: {
+        theme: rSettings.theme, splayAmount: Number(rSettings.splayAmount) || 0, cardOverlap: Number(rSettings.cardOverlap ?? 52) || 0,
+        ...Object.fromEntries(VISUAL_SWITCHES.map(k => [k, !!rSettings[k]])),
+      },
+    };
+    const full = encodeHand({ ...hand, title: handTitle || hand.title || '', ...look });
     if (!full) return null;
     const body = { shorthand: full, title: linkTitle(hand) };
     if (asQuestion) {
-      const qs = encodeHand({ ...questionHand(hand, streetIdx, actionIdx), feltColor });
+      const qs = encodeHand({ ...questionHand(hand, streetIdx, actionIdx), ...look });
       if (!qs) return null;
       body.question = { shorthand: qs, street: streetIdx, action: actionIdx };
     }
@@ -8635,7 +8665,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const d = await res.json();
       return d && d.id ? d.id : null;
     } catch { return null; }
-  }, [token, hand, handTitle, feltColor, streetIdx, actionIdx]);
+  }, [token, hand, handTitle, feltColor, rSettings, streetIdx, actionIdx]);
   const askQuestion = useCallback(async () => {
     const id = await mintHandLink(true);
     if (!id) { toast.error('The question link was not made; check the connection'); return; }
@@ -12704,7 +12734,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         <QuestionCard linkId={question.linkId} token={token} answered={false}
           onAnswered={(choice, tally) => { if (onQuestionAnswered) onQuestionAnswered(choice, tally); }} />
       )}
-      {question && question.answered && question.tally && <QuestionCard linkId={question.linkId} answered tally={question.tally} />}
+      {question && question.answered && question.tally && tallyOpen && (
+        <QuestionCard linkId={question.linkId} answered tally={question.tally} onContinue={() => { setTallyOpen(false); setPlaying(true); }} />
+      )}
       <button ref={quickBtnRef} className={'replayer-quick-btn' + (showQuick ? ' is-open' : '')}
         aria-label="Table settings" aria-expanded={showQuick} aria-haspopup="dialog"
         onClick={() => setShowQuick(v => !v)}>

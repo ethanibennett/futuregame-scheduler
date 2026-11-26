@@ -302,6 +302,7 @@ button.hx-inbox-btn { appearance: none; border: 0; width: 100%; font: inherit; c
 .qc-btn { height: calc(var(--subrow) * 6); min-height: 0; padding: 0; border-radius: var(--radius-pill); }
 .qc-tally { display: flex; justify-content: space-around; font-size: var(--fs-sm); color: var(--text-muted); line-height: calc(var(--subrow) * 4); }
 .qc-tally b { color: var(--text); font-size: var(--fs-lg); }
+.qc-go { width: 100%; height: calc(var(--subrow) * 6); min-height: 0; padding: 0; border-radius: var(--radius-pill); }
 
 /* ── Study look-ups: odds (35) and the deal calculator (34) ── */
 .lk-view { padding-bottom: calc(var(--subrow) * 4); }
