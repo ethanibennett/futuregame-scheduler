@@ -153,8 +153,23 @@ sessions opened here own scheduler work.
   Amounts in the entry go through `parseAmount`/`AmountField` (cents in cash, whole chips in a tournament, "1,500", "25k").
 - **Play-money tables** at **play.futurega.me** (owner, 2026-11-22: "deploy to play.futurega.me, no effect on the mobile
   app"; design, the owner's eleven answers and the deploy runbook: `docs/play-money-platform.md` §11-12). Free chips only,
-  never bought, cashed out, transferred or shown to others; app admins only (`TABLES=1`), and the accounts named in
-  `TABLES_PLAYERS` on Render (usernames; owner, 2026-11-24; name one only once it exists, usernames never change).
+  never bought, cashed out, transferred or shown to others. **Every registered account plays, hosts and invites** (owner,
+  2026-11-26: "Every account, full access"; a guest does not; a host keeps 5 open tables at most, `HOST_MAX`); `TABLES=1`
+  is the switch. `TABLES_PLAYERS` (2026-11-24) is read no more.
+  **Eight at once** (owner, 2026-11-26: "we want 8 players to be able to play at once"): a table made since then deals
+  nothing until its host presses Start the game (anyone seated may, while the host is not), or every seat is taken
+  (`Table.startGame`, `startGate`, `POST /tables/:id/start`), so everyone seated by then is dealt the first hand; before,
+  the first two to sit started heads-up and the rest waited for the big blind. A table journaled before has started. The
+  tab's title says "Your turn" (a phone that can buzzes once) while it is the player's turn.
+  **Sit and go** (owner, 2026-11-26: "Buy in, top 3 paid"; `lib/tables/sng.mjs`, `cfg.format 'sng'`): the host sets level
+  1's blinds, the buy-in (balance chips), the chips each and the minutes a level; a seat is entered for the buy-in (left
+  before the start, it comes back: `refund`). Started, nobody joins or rebuys, the blinds climb `LADDER` (×1.5, ×2, ×3…)
+  at the next hand after each level's minutes, a seat sitting out is dealt and blinded, a player with no chips is out
+  (status `out`, cleared at the next deal), placed by the stack they began that hand with (level: a tie sharing the
+  places' prizes), and paid as the place is decided (`prize`). Seven or more entrants pay 50/30/20, five or six 65/35,
+  four or fewer the winner. A host closing one under way chops what is left of the pool by chips. Won, it stays 30
+  minutes to be looked at, then closes; the scheduler keeps its places (`sng-result`, `play_tables.status 'finished'`,
+  `config.results`, in its players' list for a day).
   **Its own site, never the app.** `vite-app/play.html` (generated from index.html by `scripts/make-play-html.mjs`,
   gitignored, like live.html) loads `src/play-main.jsx` → `components/PlayApp.jsx`: a sign-in by email and password
   (its own origin, so its own `localStorage` token), then `TablesView`. `server.js` answers every page on a host in
@@ -195,7 +210,13 @@ sessions opened here own scheduler work.
   check:tables` (two WebKit pages on the play page through an NLH, a Stud Hi and a 2-7 TD hand, ports 4950-4959),
   `npm run check:tables-felt` (ports 4840-4849); the guards' `tables-*` views stage the play page from the build
   (`scripts/tables-states.mjs`, which fails a view whose bar reaches past the screen: landscape has one 7.25r row for it, so
-  the table's bar never wraps, and a bet row is 53g; until 2026-11-24 it was cut off in every desktop window). All need the built app.
+  the table's bar never wraps, and a bet row is 53g; until 2026-11-24 it was cut off in every desktop window; the `start`
+  and `sng-*` views since 2026-11-26). All need the built app. **Eight at once**: `npm run test:tables-eight` (ports
+  4970-4979; eight ordinary accounts over the real routes and streams, random legal play on the service's own deals for
+  120 hands, then a sit and go to a winner; every event held for privacy and agreement, the chips in every hand, the
+  balances and their journals at the end, every hand saved to everyone dealt in; `--game PLO`, `--hands N`, `--verbose`)
+  and `npm run check:tables-eight` (eight WebKit browsers, one each, phones and desktops, at one table: nothing face up
+  that is not the player's own or the board's, the bar on the screen, a latecomer dealt in on the big blind).
 - **Hands > Study** (owner, 2026-11-04: one training experience; `components/StudyHub.jsx`, `StudyHead.jsx`, `study-hub.css`):
   the Hands row is Replayer, Study, Scanner, and Study is one list of the solver tools: Practice (Play a hand, Hand trainer,
   Quick spots, Three-way Razz), Look up (Watch the solver, Solve a spot, Price a draw, Pre-draw ranges). Each opens under the same header and
@@ -772,9 +793,9 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -match 'stub-solver-preload' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
   ```
   With several sessions on this box, one of those servers may be ANOTHER session's, still in use: check its parent
-  process before killing it. `test/helpers/scratch-server.js` `freePort` probes 0.0.0.0 as well as 127.0.0.1 (since
-  2026-11-22): Windows let a probe of 127.0.0.1 bind a port another session's server held on 0.0.0.0, and the test's
-  requests then reached that other server.
+  process before killing it. `test/helpers/scratch-server.js` `freePort` probes 0.0.0.0 and [::] as well as 127.0.0.1
+  (since 2026-11-22; [::] since 2026-11-26): Windows let a probe of 127.0.0.1 bind a port another session's server held on
+  0.0.0.0 or [::] (the tables service listens there), and the test's requests then reached that other server.
 - The MTT-feed mirror reconciles deletions: the push carries `feedVenues` (the series we
   still hold) and the receiver prunes feed rows outside it. Pruning **never** touches a row
   referenced by `user_schedules`, `tracking_entries`, `live_updates`, `schedule_conditions`,

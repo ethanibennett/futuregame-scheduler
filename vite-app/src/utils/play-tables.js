@@ -98,6 +98,8 @@ export function openTable(tableId, { onView, onStatus }) {
     // Waiting for the big blind: post one to come in at once (true), or wait again (false).
     post: (on) => call('post', { on }),
     leave: () => call('leave'),
+    // A table made with the start gate: deal the first hand (the host, or anyone seated while the host is not).
+    start: () => call('start'),
     say: (text) => call('chat', { text }),
     mute: (userId, muted) => call('mute', { userId, muted }),
     close() { closed = true; clearTimeout(retry); if (es) es.close(); },
@@ -114,6 +116,30 @@ export function liveReplayHand(view) {
 }
 
 export const chips = (n) => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+// ── A sit and go in words (lib/tables/sng.mjs does the arithmetic; the view carries its results) ──
+/* "1st", "2nd", "3rd", "4th" … */
+export function ordinal(n) {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+/* The prizes: "1st 4,000 · 2nd 2,400 · 3rd 1,600". */
+export const prizesText = (prizes) => (prizes || []).map((p, i) => `${ordinal(i + 1)} ${chips(p)}`).join(' · ');
+/* One place: "3rd Casey +1,600"; a share of a called-off game's pool: "Casey +2,250". */
+export const placeText = (p) => `${p.place ? `${ordinal(p.place)} ` : ''}${p.name}${p.prize ? ` +${chips(p.prize)}` : ''}`;
+/* Minutes and seconds: "4:07". */
+export function clockText(ms) {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+/* The level line under a sit and go's felt: "Level 3 · 25/50 · 50/100 in 4:07" (the stakes in the table's words). */
+export function levelText(sng, stakes, nextStakes, leftMs) {
+  if (!sng) return '';
+  const lv = `Level ${sng.level}${sng.clockLevel > sng.level ? ` · level ${sng.clockLevel} next hand` : ''}`;
+  const next = nextStakes && leftMs != null && sng.clockLevel === sng.level ? ` · ${nextStakes} in ${clockText(leftMs)}` : '';
+  return `${lv} · ${stakes}${next}`;
+}
 
 /* The words of the result for this player, once the hand is over. */
 export function resultLine(view) {

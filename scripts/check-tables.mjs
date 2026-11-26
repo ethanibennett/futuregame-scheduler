@@ -117,6 +117,7 @@ try {
   await ava.getByRole('button', { name: 'Open' }).click();
   await ava.getByRole('button', { name: 'Sit down' }).click();
   ok('Ava sat down');
+  await press(ava, 'Start the game', 'Ava (the host)');
 
   // The hand: Bo limps, Ava checks; check it down.
   await yourTurn(bo);
@@ -193,7 +194,8 @@ async function otherGame(ava, bo, game, label) {
   await ava.getByRole('button', { name: 'New table' }).waitFor({ timeout: 15000 });
   await ava.getByRole('button', { name: 'New table' }).click();
   await ava.locator('.tb-new').getByLabel('Name').fill(name);
-  await ava.locator('.tb-new').getByLabel('Game').selectOption(game);
+  // The field by its own label: a label's text takes in its menu's options, and the Format menu's say "Cash game".
+  await ava.locator('.tb-new .tb-field').filter({ has: ava.locator('.tb-field-label', { hasText: /^Game$/ }) }).locator('select').selectOption(game);
   await ava.getByRole('button', { name: 'Create' }).click();
   await ava.getByText(name).first().waitFor();
   ok(`Ava made a ${label} table`);
@@ -207,6 +209,7 @@ async function otherGame(ava, bo, game, label) {
   await ava.locator('.tb-item', { hasText: name }).getByRole('button', { name: 'Open' }).click();
   await ava.getByRole('button', { name: 'Sit down' }).click();
   ok(`${game}: both sat down`);
+  await press(ava, 'Start the game', 'Ava (the host)');
 
   const threw = { ava: false, bo: false };
   const bar = async (p) => (await p.locator('.tb-bar').allInnerTexts().catch(() => [])).join(' ');

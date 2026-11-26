@@ -4,7 +4,8 @@
  * a scratch scheduler (ports 4940-4944) and the tables service beside it (4945-4949), two accounts at one
  * private table playing a full NLH hand from a fixed deck.
  *
- *   - the gate: off for a non-admin; a blocked player is told the table is full;
+ *   - the gate: open to every registered account, never a guest, five open tables a host; a blocked player is told the table is full;
+ *   - nothing is dealt until the host starts the game;
  *   - chips: the balance starts at 20,000, a buy-in takes from it, leaving gives the stack back;
  *   - each stream's raw events never hold the other player's unshown cards;
  *   - the chips at the end are what the export's PokerStars text says (the oracle-checked writer, read back);
@@ -90,7 +91,7 @@ async function waitFor(fn, what, ms = 10000) {
   const AVA = tok(101, 'ham'), BO = tok(102, 'ham5'), BLOCKED = tok(103, 'claude'), PAT = tok(104, 'pat'), DANA = tok(105, 'Dana');
 
   const tport = await freePort([4945, 4949]);
-  const srv = await boot(scratch.dbPath, { TABLES: '1', TABLES_URL: `http://127.0.0.1:${tport}`, TABLES_SECRET: SECRET, PLAY_HOSTS: 'play.test', TABLES_PLAYERS: ' dana , nobody-yet' }, { ports: [4940, 4944] });
+  const srv = await boot(scratch.dbPath, { TABLES: '1', TABLES_URL: `http://127.0.0.1:${tport}`, TABLES_SECRET: SECRET, PLAY_HOSTS: 'play.test' }, { ports: [4940, 4944] });
   const dataDir = path.join(scratch.tmp, 'tables-data');
   const tables = await bootTables(tport, srv.port, dataDir);
   const S = `http://127.0.0.1:${srv.port}`, T = `http://127.0.0.1:${tport}`;
@@ -103,29 +104,36 @@ async function waitFor(fn, what, ms = 10000) {
 
   try {
     let table, invite;
-    await t.test('the boot line says the tables are on', async () => {
-      assert.match(srv.log(), /\[tables\] play-money tables are ON \(.*\), admins and 2 other account\(s\)/);
-      assert.ok(!/dana/i.test(srv.log().split('\n').filter((l) => l.includes('[tables]')).join(' ')), 'the log names nobody');
+    await t.test('the boot line says the tables are on, for every account', async () => {
+      assert.match(srv.log(), /\[tables\] play-money tables are ON \(.*\), every account/);
     });
 
-    await t.test('off for a non-admin (decision 3); on for an admin, with the service URL', async () => {
-      assert.deepEqual((await call(S, 'GET', '/api/tables/availability', null, PAT)).body, { on: false, url: null });
-      assert.equal((await call(S, 'POST', '/api/tables', { gameType: 'NLH', sb: 5, bb: 10 }, PAT)).status, 404);
-      const a = await call(S, 'GET', '/api/tables/availability', null, AVA);
-      assert.equal(a.body.on, true);
-      assert.equal(a.body.url, T);
+    await t.test('open to every registered account (owner, 2026-11-26, decision 3), with the service URL; a guest is refused', async () => {
+      for (const who of [AVA, PAT, DANA]) assert.deepEqual((await call(S, 'GET', '/api/tables/availability', null, who)).body, { on: true, url: T });
+      assert.equal((await call(S, 'GET', '/api/tables', null, PAT)).status, 200);
+      // Nothing else of an admin's opens with it.
+      assert.equal((await call(S, 'GET', '/api/admin/reports', null, PAT)).status, 403);
+      assert.equal((await call(S, 'GET', '/api/solver/availability', null, PAT)).status, 403);
+      const guest = jwt.sign({ id: 0, username: 'dana', isGuest: true }, JWT_SECRET, { expiresIn: '1h' });
+      assert.notEqual((await call(S, 'GET', '/api/tables', null, guest)).status, 200);
+      assert.notEqual((await call(S, 'POST', '/api/tables', { gameType: 'NLH', sb: 5, bb: 10 }, guest)).status, 201);
       // The app is untouched (owner, 2026-11-22: "no effect on the mobile app"): no tables row in its Notifications.
       const kinds = async (bearer) => (await call(S, 'GET', '/api/notification-prefs', null, bearer)).body.kinds.map((k) => k.kind);
       assert.ok(!(await kinds(AVA)).includes('tables'));
     });
 
-    await t.test('TABLES_PLAYERS: a listed account plays (its name in any case) and gets nothing else of an admin; a guest with its name does not', async () => {
-      assert.deepEqual((await call(S, 'GET', '/api/tables/availability', null, DANA)).body, { on: true, url: T });
-      assert.equal((await call(S, 'GET', '/api/tables', null, DANA)).status, 200);
-      assert.equal((await call(S, 'GET', '/api/admin/reports', null, DANA)).status, 403);
-      assert.equal((await call(S, 'GET', '/api/solver/availability', null, DANA)).status, 403);
-      const guest = jwt.sign({ id: 0, username: 'dana', isGuest: true }, JWT_SECRET, { expiresIn: '1h' });
-      assert.notEqual((await call(S, 'GET', '/api/tables', null, guest)).status, 200);
+    await t.test('any account hosts, up to five open tables at once', async () => {
+      const made = [];
+      for (let k = 0; k < 5; k++) {
+        const r = await call(S, 'POST', '/api/tables', { gameType: 'NLH', sb: 5, bb: 10, name: `Pat ${k}` }, PAT);
+        assert.equal(r.status, 201, JSON.stringify(r.body));
+        made.push(r.body.id);
+      }
+      const sixth = await call(S, 'POST', '/api/tables', { gameType: 'NLH', sb: 5, bb: 10 }, PAT);
+      assert.equal(sixth.status, 409);
+      assert.match(sixth.body.error, /Close one first/);
+      assert.equal((await call(S, 'POST', `/api/tables/${made[0]}/close`, null, PAT)).status, 200);
+      assert.equal((await call(S, 'POST', '/api/tables', { gameType: 'NLH', sb: 5, bb: 10 }, PAT)).status, 201);
     });
 
     await t.test('the balance starts at 20,000', async () => {
@@ -181,6 +189,16 @@ async function waitFor(fn, what, ms = 10000) {
       assert.equal(a.body.balance, 19000);
       const b = await call(T, 'POST', `/tables/${table.id}/sit`, { seat: 1, buyIn: 1000 }, seats.bo);
       assert.equal(b.status, 200, JSON.stringify(b.body));
+    });
+
+    await t.test('nothing is dealt until the host starts the game; a guest at the table cannot', async () => {
+      await sleep(300);
+      const v = (await call(T, 'GET', `/tables/${table.id}/state`, null, seats.ava)).body;
+      assert.equal(v.table.started, false);
+      assert.equal(v.hand, null);
+      assert.equal(v.table.canStart, true);
+      assert.equal((await call(T, 'POST', `/tables/${table.id}/start`, null, seats.bo)).status, 409, 'the host is seated: only the host');
+      assert.equal((await call(T, 'POST', `/tables/${table.id}/start`, null, seats.ava)).status, 200);
     });
 
     const state = async (who) => (await call(T, 'GET', `/tables/${table.id}/state`, null, seats[who])).body;

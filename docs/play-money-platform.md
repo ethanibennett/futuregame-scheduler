@@ -301,7 +301,7 @@ These override the sections above where they differ.
 |---|---|---|
 | 1 | Where tables live | **Their own service** (§5 B): `tables/server.js`, Render `futuregame-tables` with a build filter, a pm2 app here; seat tickets from the scheduler, finished hands archived there |
 | 2 | The chips | **An account balance**, not per-table stacks, with three guardrails: **no transfers** (chips move between accounts only across a table), **a daily top-up floor** (once a day a balance under the floor is raised to it), **no leaderboard of balances** (a balance is private to its owner). Never bought, never cashed out, never a prize |
-| 3 | Who can play | Registered accounts; **app admins only** until the owner opens it, behind `TABLES=1` |
+| 3 | Who can play | Registered accounts; **app admins only** until the owner opens it, behind `TABLES=1`. **Opened 2026-11-26: every account, full access** (plays, hosts, invites; §14) |
 | 4 | Saving hands | **Every hand**, to every player dealt in, as hero, holding only what they saw, tagged with the table |
 | 5 | The showdown | **TDA, auto-muck** (as recommended) |
 | 6 | Chat | **Free-text chat** at the table |
@@ -484,3 +484,47 @@ session's server held and its browser talked to that server. It probes 0.0.0.0 t
 11. **The shared rules move.** Recommend **moving the replayer's entry and quick add onto the module on
     this branch** (§2, steps 3 and 4), shipping with the tables after launch, rather than leaving the
     server a third copy until then.
+
+## 14. Eight at once, and the sit and go (2026-11-26)
+
+The owner: "We need to get this to the point that two players logged in at once can actually play against each other,
+either in a cash game or sit and go format", then "Actually we want 8 players to be able to play at once, not 2". Asked,
+they chose **every account, full access**, **both, cash first**, and for the sit and go **buy in, top 3 paid**.
+
+**Who plays.** Every registered account plays, hosts and invites (a guest does not). A host keeps at most five open
+tables (`HOST_MAX`). `TABLES_PLAYERS` is read no more.
+
+**The start.** Played by eight bots, the first two to sit started heads-up and the other six waited for the big blind,
+for up to seven hands. A table made since deals nothing until it is started: the host presses Start the game (anyone
+seated may, while the host is not), or every seat is taken. Everyone seated by then is dealt the first hand; a seat
+taken after waits for the big blind or posts, as before. A table journaled before the start existed has started.
+
+**Your turn.** With seven others to wait on, the tab's title says "Your turn" and a phone that can buzzes once while the
+page is in the background. A push of play.futurega.me's own is still to come.
+
+**The sit and go** (`lib/tables/sng.mjs`, the runtime's `sng` state):
+
+- The host sets level 1's blinds (and ante), the buy-in (chips from the balance), the chips each, the minutes a level,
+  the seats (2-9), the clock and bank. Entering takes the buy-in; leaving before the start gives it back (`refund`).
+- It starts as any table does (Start the game, or every seat taken). Then nobody joins and nobody rebuys; Leave is
+  refused (sit out instead: the seat is still dealt, blinded and folded).
+- The blinds climb `LADDER` (level 1 × 1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 80, 100, 120, 150,
+  200, 250, 300, 400, 500) every level's minutes from the start, taking effect at the next hand.
+- A player with no chips after a hand is out (status `out`; the seat is cleared when the next hand is dealt). Two out in
+  one hand: the one who began it with more chips finishes higher; level, they tie at the better place and share the
+  prizes of the places they span.
+- The pool is every buy-in. Seven or more entrants pay 50/30/20, five or six 65/35, four or fewer the winner alone
+  (whole chips, the odd ones to first). Each prize goes to the balance as its place is decided (`prize`).
+- The last one with chips wins. The table stays 30 minutes for everyone to see the result, then closes. The scheduler
+  keeps the places with the table (`sng-result`; `play_tables.status 'finished'`, `config.results`), shown in its
+  players' lists for a day.
+- A host closing one under way chops what is left of the pool (the buy-ins less the prizes paid) among the players still
+  in, by their chips. Nothing is created or lost: the prizes and the chop always add up to the pool.
+
+**Held by**: `test/tables-runtime.test.mjs` (the arithmetic; a sit and go of eight to a winner on a fake clock, the levels
+at every hand, each knock-out below the last, the prizes the pool; sitting out and the chop), `npm run test:tables-eight`
+(eight ordinary accounts over the real routes: a cash table for 120 hands of random legal play with sitting out, leaving,
+rebuys, posts, dropped streams and timeouts, then a sit and go to a winner; every event checked for privacy and
+agreement, every hand's chips, the balances and their journals at the end, every place paid once, every hand saved to
+everyone dealt in), `npm run check:tables-eight` (eight WebKit browsers, phones and desktops), and the guards' `start`
+and `sng-*` views.

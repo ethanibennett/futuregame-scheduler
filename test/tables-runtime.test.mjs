@@ -330,3 +330,176 @@ test('a seat can take its post back and wait for the big blind again', () => {
     playOut(table);
   }
 });
+
+test('a table with the start gate deals nothing until the host starts it, and then deals everyone seated in', () => {
+  const { table, advance } = harness({ startGate: true, hostId: 1 });
+  table.sit(2, 'Bo', 5000, 0);
+  table.sit(3, 'Cy', 5000, 1);
+  advance(60000);
+  assert.equal(table.handNo, 0, 'two seated, nobody started it: no hand');
+  assert.equal(table.viewFor(2).table.canStart, true, 'the host is not seated: anyone seated may start');
+  table.sit(1, 'Ava', 5000, 2);
+  assert.equal(table.viewFor(2).table.canStart, false, 'the host is seated: only the host');
+  assert.equal(table.viewFor(9).table.canStart, false, 'nor someone not seated');
+  assert.match(table.startGame(2).error, /host/);
+  table.sit(4, 'Dee', 5000, 3);
+  assert.ok(table.seats.every((s) => !s || !s.waiting), 'before the start nobody waits for the big blind');
+  assert.ok(table.startGame(1).ok);
+  assert.equal(table.viewFor(1).table.started, true);
+  assert.match(table.startGame(1).error, /started/);
+  advance(1000);
+  assert.equal(table.handNo, 1);
+  assert.deepEqual(table.handSeats.slice().sort(), [0, 1, 2, 3], 'all four dealt the first hand');
+  table.sit(5, 'Eve', 5000, 4);
+  assert.equal(table.seats[4].waiting, true, 'after the start a newcomer waits for the big blind');
+});
+
+test('a gated table starts by itself once every seat is taken; one player cannot start it', () => {
+  const { table, advance } = harness({ startGate: true, hostId: 1, maxSeats: 3 });
+  table.sit(1, 'Ava', 5000, 0);
+  assert.match(table.startGame(1).error, /Two players/);
+  table.sit(2, 'Bo', 5000, 1);
+  advance(5000);
+  assert.equal(table.handNo, 0);
+  table.sit(3, 'Cy', 5000, 2);
+  advance(1000);
+  assert.equal(table.handNo, 1, 'the last seat taken started it');
+  assert.equal(table.handSeats.length, 3);
+});
+
+test('a table journaled before the gate (no started field) and a table without it have always started', () => {
+  const { table, advance } = harness();
+  assert.equal(table.started, true);
+  const saved = { ...table.toJSON() };
+  delete saved.started;
+  const again = new Table({ ...table.cfg, startGate: true }, table.env, saved);
+  assert.equal(again.started, true);
+  table.sit(1, 'Ava', 5000, 0);
+  table.sit(2, 'Bo', 5000, 1);
+  advance(1000);
+  assert.equal(table.handNo, 1);
+});
+
+// ── Sit and go (owner, 2026-11-26: "either in a cash game or sit and go format"; "Buy in, top 3 paid") ──
+import { prizesFor, payoutPcts, placeBusts, stakesAt, LADDER } from '../lib/tables/sng.mjs';
+
+const SNG = (over = {}) => ({ startGate: true, hostId: 1, format: 'sng', sng: { buyIn: 1000, stack: 1500, levelMins: 5 },
+  blinds: { sb: 10, bb: 20, ante: 0 }, buyIn: { min: 1500, max: 1500 }, maxSeats: 8, ...over });
+
+// A seeded shuffle: the harness deals one deck every hand, and with everyone all in every pot would split.
+function seeded(table, seed = 7) {
+  let x = seed;
+  const r = () => { x = (x * 1103515245 + 12345) % 2147483648; return x / 2147483648; };
+  table.env.shuffle = () => { const d = FULL.slice(); for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [d[i], d[j]] = [d[j], d[i]]; } return d; };
+}
+
+// Everyone all in or calling: hands that knock players out quickly.
+// Now and then a shove (every seventh decision), and the shove called one time in three; otherwise check or fold.
+let turns = 0;
+function shoveOut(table) {
+  for (let k = 0; k < 200 && table.hand && table.hand.phase !== 'over'; k++) {
+    const t = toAct(table.hand);
+    const userId = table.seats[table.handSeats[t.player]].userId;
+    const L = t.legal;
+    turns++;
+    const move = L.canRaise && L.maxTo > 0 && turns % 7 === 0 ? { action: L.raiseWord === 'Bet' ? 'bet' : 'raise', to: L.maxTo }
+      : L.canCheck ? { action: 'check' } : turns % 3 === 0 ? { action: 'call' } : { action: 'fold' };
+    const r = table.act(userId, move);
+    assert.ok(!r.error, `${JSON.stringify(move)}: ${r.error}`);
+  }
+}
+
+test('sit and go arithmetic: the prizes add up to the pool; three paid from seven, two from five, one from four; a tie shares', () => {
+  assert.deepEqual(payoutPcts(8), [50, 30, 20]);
+  assert.deepEqual(payoutPcts(6), [65, 35]);
+  assert.deepEqual(payoutPcts(4), [100]);
+  assert.deepEqual(prizesFor(8, 1000), [4000, 2400, 1600]);
+  for (let n = 2; n <= 9; n++) for (const b of [1, 7, 333, 1000]) assert.equal(prizesFor(n, b).reduce((a, x) => a + x, 0), n * b);
+  // Two out in one hand: the bigger stack at its start finishes higher.
+  assert.deepEqual(placeBusts([{ userId: 5, name: 'E', start: 300, seat: 4 }, { userId: 6, name: 'F', start: 900, seat: 5 }], 2, [4000, 2400, 1600])
+    .map((p) => [p.userId, p.place, p.prize]), [[6, 3, 1600], [5, 4, 0]]);
+  // Level at the start: a tie, both third, sharing third's and fourth's prizes (1,600 + 0).
+  assert.deepEqual(placeBusts([{ userId: 5, name: 'E', start: 500, seat: 4 }, { userId: 6, name: 'F', start: 500, seat: 2 }], 2, [4000, 2400, 1600])
+    .map((p) => [p.userId, p.place, p.prize]), [[6, 3, 800], [5, 3, 800]]);
+  // The stakes climb the ladder from the host's level 1.
+  assert.deepEqual(stakesAt('NLH', { sb: 10, bb: 20, ante: 0 }, 0), { sb: 10, bb: 20, ante: 0 });
+  assert.deepEqual(stakesAt('NLH', { sb: 10, bb: 20, ante: 0 }, 1), { sb: 15, bb: 30, ante: 0 });
+  assert.equal(stakesAt('NLH', { sb: 10, bb: 20, ante: 0 }, 99).bb, 20 * LADDER[LADDER.length - 1]);
+});
+
+test('a sit and go: eight enter, it starts full, the blinds climb with the clock, players go out in order, the prizes are the pool', () => {
+  const { table, advance, cashOuts } = harness(SNG());
+  seeded(table);
+  for (let i = 1; i <= 7; i++) assert.ok(table.sit(i, 'P' + i, 1500, i - 1).ok);
+  assert.equal(table.started, false);
+  // Before the start everyone sees who has entered and what that would pay.
+  const before = table.viewFor(99).table.sng;
+  assert.equal(before.entrants, 7);
+  assert.deepEqual(before.prizes, [3500, 2100, 1400]);
+  assert.deepEqual(before.places, []);
+  assert.ok(table.leave(7).ok, 'off the list before the start');
+  assert.deepEqual(cashOuts.pop(), { userId: 7, amount: 1000, kind: 'refund', handsDone: 0 });
+  table.sit(7, 'P7', 1500, 6);
+  table.sit(8, 'P8', 1500, 7);
+  assert.equal(table.started, true, 'every seat taken: it starts');
+  assert.deepEqual(table.sng.prizes, [4000, 2400, 1600]);
+  assert.match(table.sit(9, 'Late', 1500).error, /started|full/);
+  assert.match(table.leave(3).error, /sit out/);
+  assert.match(table.rebuy(3, 100).error, /rebuys/);
+  const outOrder = [];
+  let lastLevel = 0;
+  for (let h = 0; h < 400 && !table.sng.finished; h++) {
+    advance(60000);                                        // a minute a hand: a level every five
+    if (!table.hand) continue;                             // between two hands (the clock played some out)
+    // The hand was dealt at the level the clock was on then (a moment ago, or a level back across a boundary).
+    const lv = Math.min(LADDER.length - 1, Math.floor((table.env.now() - table.sng.startedAt) / 300000));
+    assert.ok(table.sng.level === lv || table.sng.level === lv - 1, `hand ${table.handNo}: level ${table.sng.level + 1}, the clock's ${lv + 1}`);
+    assert.deepEqual(table.hand.blinds, stakesAt('NLH', { sb: 10, bb: 20, ante: 0 }, table.sng.level), `hand ${table.handNo} at level ${table.sng.level + 1}`);
+    assert.ok(table.sng.level >= lastLevel);
+    lastLevel = table.sng.level;
+    const before = table.sng.places.length;
+    shoveOut(table);
+    for (const p of table.sng.places.slice(before)) outOrder.push(p.place);
+    // The tournament's chips stay 12,000 among those still in.
+    const inPlay = table.seats.filter(Boolean).reduce((a, s) => a + s.stack, 0);
+    assert.equal(inPlay, 12000);
+  }
+  assert.equal(table.sng.finished, true);
+  assert.ok(lastLevel >= 1, 'the blinds went up');
+  const places = table.sng.places.map((p) => p.place).sort((a, b) => a - b);
+  assert.equal(table.sng.places.length, 8, 'every entrant placed');
+  assert.equal(places[0], 1);
+  for (let k = 1; k < outOrder.length; k++) assert.ok(outOrder[k] <= outOrder[k - 1], 'each knock-out places below the ones before it');
+  const prizes = cashOuts.filter((c) => c.kind === 'prize');
+  assert.equal(prizes.reduce((a, c) => a + c.amount, 0), 8000, 'the prizes are the whole pool');
+  assert.ok(cashOuts.every((c) => c.kind === 'prize' || c.kind === 'refund'), 'no stack is ever cashed out of a sit and go');
+  const handNo = table.handNo;
+  advance(120000);
+  assert.equal(table.handNo, handNo, 'nothing is dealt once it is won');
+  assert.equal(table.closed, false, 'it stays to be looked at');
+  advance(30 * 60000);
+  assert.equal(table.closed, true, 'then closes');
+});
+
+test('a sit and go: a seat sitting out is still dealt and blinded; the host calling it off chops the pool by chips', () => {
+  const { table, advance, cashOuts } = harness(SNG({ maxSeats: 4 }));
+  seeded(table, 11);
+  for (let i = 1; i <= 3; i++) table.sit(i, 'P' + i, 1500, i - 1);
+  assert.ok(table.startGame(1).ok);
+  assert.deepEqual(table.sng.prizes, [3000], 'three entered: the winner takes it all');
+  table.sitOut(3);
+  advance(1000);
+  assert.ok(table.handSeats.includes(2), 'sitting out, still dealt');
+  playOut(table);
+  advance(5000);
+  playOut(table);
+  const stacks = table.seats.filter(Boolean).map((s) => s.stack);
+  assert.equal(stacks.reduce((a, b) => a + b, 0), 4500);
+  advance(5000);
+  table.close();
+  playOut(table);
+  const paid = cashOuts.filter((c) => c.kind === 'prize');
+  assert.equal(paid.reduce((a, c) => a + c.amount, 0), 3000, 'the pool, chopped');
+  assert.ok(table.closed);
+  assert.equal(table.sng.cancelled, true);
+});

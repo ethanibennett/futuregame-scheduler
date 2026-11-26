@@ -3,7 +3,10 @@
 // runtime Table (lib/tables/runtime.mjs) built here with a fixed deck, so each view is the service's own view, the
 // same every run, and needs no tables service. The real thing is covered by npm run test:tables and check:tables.
 //
-//   await stageTables(p, 'lobby' | 'new' | 'seats' | 'turn' | 'waiting' | 'post' | 'chat' | 'over' | 'stud' | 'draw')
+//   await stageTables(p, 'lobby' | 'new' | 'seats' | 'turn' | 'waiting' | 'post' | 'chat' | 'over' | 'stud' | 'draw'
+//                       | 'start' | 'new-sng' | 'sng-enter' | 'sng-play' | 'sng-out' | 'sng-done')
+// start: a table waiting for its host to start it; the sng- stages a sit and go (owner, 2026-11-26): open for entries,
+// under way (the level line on the bar), seen by a player knocked out (the places so far), and won.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,6 +28,10 @@ const GAME_CFG = {
   draw: { ...CFG, gameType: '2-7 TD', blinds: { sb: 50, bb: 100, ante: 0, bigBet: 200 } },
 };
 
+const SNG_CFG = { ...CFG, id: 'guard-sng', name: 'Sunday sit and go', maxSeats: 8, blinds: { sb: 10, bb: 20, ante: 0 }, buyIn: { min: 3000, max: 3000 },
+  startGate: true, format: 'sng', sng: { buyIn: 1000, stack: 3000, levelMins: 6 } };
+const cfgFor = (stage) => (stage.startsWith('sng') ? SNG_CFG : stage === 'start' ? { ...CFG, startGate: true } : GAME_CFG[stage] || CFG);
+
 /* A table in the state a stage needs, and whose view the page is shown. */
 function tableFor(stage) {
   let now = 1_700_000_000_000;
@@ -34,7 +41,32 @@ function tableFor(stage) {
     shuffle: () => DECK.slice(), commit: () => ({ salt: 's', hash: 'h' }),
     onChange: () => {}, onHandDone: () => {}, onCashOut: () => {}, handGapMs: 1000,
   };
-  const t = new Table(GAME_CFG[stage] || CFG, env);
+  const t = new Table(cfgFor(stage), env);
+  if (stage === 'start') { t.sit(HOST, 'Ava', 10000, 0); t.sit(OTHER, 'Bo', 10000, 1); t.sit(3, 'Cy', 10000, 2); return { t, viewer: HOST }; }
+  if (stage.startsWith('sng')) {
+    const names = ['Ava', 'Bo', 'Cy', 'Dee', 'Eli'];
+    if (stage === 'sng-enter') { for (let i = 1; i < 4; i++) t.sit(i + 1, names[i], 3000, i); return { t, viewer: HOST }; }
+    names.forEach((n, i) => t.sit(i + 1, n, 3000, i));
+    t.startGame(HOST);
+    now += 130000;                                    // two minutes in: level 1, four minutes to level 2
+    timers.shift().fn();                              // deal
+    const who = () => t.seats[t.handSeats[handToAct(t.hand).player]].userId;
+    if (stage === 'sng-play') { if (who() === HOST) t.act(HOST, { action: 'call' }); return { t, viewer: HOST }; }
+    // The hand folds round to the big blind; then the places as the stage needs them.
+    while (t.hand) t.act(who(), { action: 'fold' });
+    if (stage === 'sng-out') {
+      // Eli and Dee are out (5th, 4th) and their seats cleared; Dee looks on.
+      for (const [i, place] of [[4, 5], [3, 4]]) { t.sng.places.push({ userId: i + 1, name: names[i], place, prize: 0 }); t.seats[i] = null; }
+      return { t, viewer: 4 };
+    }
+    // sng-done: Ava has won it.
+    const total = t.seats.reduce((a, x) => a + (x ? x.stack : 0), 0);
+    t.seats.forEach((x, i) => { if (x) { x.stack = i === 0 ? total : 0; if (i) x.status = 'out'; } });
+    t.sng.places = [{ userId: 1, name: 'Ava', place: 1, prize: 3250 }, { userId: 2, name: 'Bo', place: 2, prize: 1750 },
+      { userId: 3, name: 'Cy', place: 3, prize: 0 }, { userId: 4, name: 'Dee', place: 4, prize: 0 }, { userId: 5, name: 'Eli', place: 5, prize: 0 }];
+    t.sng.finished = true;
+    return { t, viewer: HOST };
+  }
   if (GAME_CFG[stage]) {
     t.sit(HOST, 'Ava', 10000, 0);
     t.sit(OTHER, 'Bo', 10000, 1);
@@ -64,10 +96,11 @@ function tableFor(stage) {
 async function routeTables(p, stage) {
   const origin = new URL(p.url()).origin;
   const svc = `${origin}/__tables`;
-  const { t, viewer } = stage === 'lobby' || stage === 'new' ? { t: null, viewer: HOST } : tableFor(stage);
+  const { t, viewer } = stage === 'lobby' || stage === 'new' || stage === 'new-sng' ? { t: null, viewer: HOST } : tableFor(stage);
   const view = () => t.viewFor(viewer);
-  const c = GAME_CFG[stage] || CFG;
-  const summary = { id: c.id, name: c.name, gameType: c.gameType, blinds: c.blinds, maxSeats: c.maxSeats, buyIn: c.buyIn, clock: c.clock, status: 'open', hostId: HOST };
+  const c = cfgFor(stage);
+  const summary = { id: c.id, name: c.name, gameType: c.gameType, blinds: c.blinds, maxSeats: c.maxSeats, buyIn: c.buyIn, clock: c.clock, status: 'open', hostId: HOST,
+    format: c.format || 'cash', ...(c.sng ? { sng: c.sng } : {}) };
   const json = (route, body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
   await p.route((url) => /\/api\/(tables|blocks)(\/|$)|\/__tables\//.test(url.pathname), async (route) => {
     const u = new URL(route.request().url());
@@ -101,19 +134,31 @@ export async function stageTables(p, stage, { force = false } = {}) {
   await p.getByText(/20,000 chips/).first().waitFor({ timeout: 15000 });
   await p.waitForTimeout(400);
   if (stage === 'lobby') return;
-  if (stage === 'new') { await click(p.getByRole('button', { name: 'New table' })); await p.waitForTimeout(400); return; }
+  if (stage === 'new' || stage === 'new-sng') {
+    // A forced click (the overlay runs) can land while the lobby is still settling: click again until the form is open.
+    for (let k = 0; k < 3 && !(await p.locator('.tb-new').isVisible().catch(() => false)); k++) {
+      await click(p.getByRole('button', { name: 'New table' })).catch(() => {});
+      await p.locator('.tb-new').waitFor({ timeout: 5000 }).catch(() => {});
+    }
+    await p.locator('.tb-new').waitFor({ timeout: 5000 });
+    if (stage === 'new-sng') await p.locator('.tb-new select').first().selectOption('sng', { timeout: 10000 });
+    await p.waitForTimeout(400);
+    return;
+  }
   /* Open with an ordinary click, looked for again if the table did not open: a forced click (the guards' overlay runs
      force theirs) could land while the lobby's list was still settling and be lost (the clipping guard's over, stud and
      draw stayed in the lobby, 2026-11-22). */
-  const opened = stage === 'seats' ? p.getByRole('button', { name: 'Sit down' }) : p.locator('.tb-bar');
+  const LOOK = { seats: () => p.getByRole('button', { name: 'Sit down' }), start: () => p.getByRole('button', { name: 'Start the game' }),
+    'sng-enter': () => p.getByRole('button', { name: /^Enter for/ }), 'sng-out': () => p.locator('.tb-places') };
+  const opened = LOOK[stage] ? LOOK[stage]() : p.locator('.tb-bar');
   for (let k = 0; ; k++) {
     if (await opened.first().isVisible().catch(() => false)) break;
     await p.getByRole('button', { name: 'Open' }).filter({ visible: true }).first().click({ timeout: 10000 }).catch(() => {});
     try { await opened.first().waitFor({ timeout: 6000 }); break; } catch (e) { if (k >= 2) throw e; }
   }
-  if (stage === 'seats') { await p.waitForTimeout(400); return; }
+  if (LOOK[stage]) { await p.waitForTimeout(400); return; }
   // The felt plays the hand to where it stands; let it settle before measuring.
-  await p.waitForTimeout(stage === 'over' ? 4000 : 2500);
+  await p.waitForTimeout(stage === 'over' || stage === 'sng-done' ? 4000 : 2500);
   // Everything the bar offers is on the screen: in landscape the raise row wrapped past its foot (2026-11-24).
   const cut = await p.evaluate(() => [...document.querySelectorAll('.tb-bar button, .tb-bar input')].filter((e) => {
     const r = e.getBoundingClientRect();
@@ -123,4 +168,4 @@ export async function stageTables(p, stage, { force = false } = {}) {
   if (stage === 'chat') { await click(p.locator('.tb-chat-btn')); await p.locator('.tb-chat').waitFor({ timeout: 5000 }); await p.waitForTimeout(400); }
 }
 
-export const TABLE_STAGES = ['lobby', 'new', 'seats', 'turn', 'waiting', 'post', 'chat', 'over', 'stud', 'draw'];
+export const TABLE_STAGES = ['lobby', 'new', 'seats', 'turn', 'waiting', 'post', 'chat', 'over', 'stud', 'draw', 'start', 'new-sng', 'sng-enter', 'sng-play', 'sng-out', 'sng-done'];

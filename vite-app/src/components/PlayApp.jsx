@@ -2,7 +2,7 @@
 // mobile app"). Its own page (src/play-main.jsx, built to play.html), so the app, and the iOS app built from it, carry
 // no table and no link to one. A sign-in (the futurega.me account, by its email and password: this origin has its own
 // storage, so a session on futurega.me does not carry over), then the tables (TablesView), for the accounts the server
-// says may play (decision 3: app admins while the owner keeps it so). Everything it asks is futurega.me's own API, on
+// says may play (decision 3: every registered account since 2026-11-26). Everything it asks is futurega.me's own API, on
 // this same server (server.js servePlay answers for the play host); the table itself streams from the tables service.
 import React, { useEffect, useState } from 'react';
 import { API_URL } from '../utils/api.js';
@@ -43,7 +43,7 @@ function SignIn({ onIn }) {
       </label>
       {error && <div className="hs-t hs-sm rd-wrap rd-warn">{error}</div>}
       <button type="submit" className="hs-btn rd-primary" disabled={busy}><span className="hs-t" style={T(3)}>{busy ? 'Signing in…' : 'Sign in'}</span></button>
-      <div className="hs-t hs-xs hs-mut rd-wrap">No account, or no password? Make one, or reset it, at futurega.me.</div>
+      <div className="hs-t hs-xs hs-mut rd-wrap">No account, or no password? Make one, or reset it, at <a href="https://futurega.me" target="_blank" rel="noopener noreferrer">futurega.me</a>.</div>
     </form>
   );
 }
@@ -103,8 +103,8 @@ export default function PlayApp() {
         {token && open === null && <div className="hs-view rd-setup tb-lobby"><div className="hs-t hs-sm hs-mut" style={T(3)}>Opening…</div></div>}
         {token && open === false && (
           <div className="hs-view rd-setup tb-lobby">
-            <h2 className="screen-title hs-t hs-title" style={T(4)}>Not open yet</h2>
-            <div className="hs-t hs-sm hs-mut rd-wrap">The play-money tables are not open to your account yet.</div>
+            <h2 className="screen-title hs-t hs-title" style={T(4)}>Closed for now</h2>
+            <div className="hs-t hs-sm hs-mut rd-wrap">The play-money tables are closed right now. Try again later.</div>
           </div>
         )}
         {token && open === true && <TablesView heroName={name || 'Hero'} cardSplay={cardSplay} />}
