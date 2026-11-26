@@ -1,6 +1,9 @@
 // ── Quick-add: draws, showdown and result ─────────────────────────────────
 
-import { evaluateShowdown } from '../poker-engine.js';
+import { evaluateShowdown, gameEvalFor } from '../poker-engine.js';
+import { prepareHand } from '../hand-history/prepare.js';
+import { evaluate } from '../hand-history/settle.js';
+import { describeEvals } from '../hand-history/describe.js';
 import { cardsOf, notationProblem, isMuck, backs, oppSlot, computeDrawHand, getPlayerDrawsByStreet, drawDeadCards, knownKeys } from './cards.js';
 import { seatOrder } from './betting.js';
 import { STAGE, makeGap, playerName, streetName, listWords, num, dismissOption } from './common.js';
@@ -262,6 +265,49 @@ function evaluatedWinners(hand, env, live) {
   }
 }
 
+const sameSeats = (a, b) => a.length === b.length && a.every((p, i) => p === b[i]);
+const seatsOf = (winners) => [...new Set(winners.map(w => w.playerIdx))].sort((a, b) => a - b);
+
+/* Who the cards give the pot to, when they can tell: { seats, winners, sidePots } or null. The export's own
+   settlement first (prepareHand: side pots, hi-lo halves), so quick add, the saved list's net and the export
+   cannot disagree; when the hand cannot be settled yet (a stack not given) and nobody went all in, there is one
+   pot and the showdown's evaluation decides it. */
+function winnersByCards(hand, env, live) {
+  const ev = evaluatedWinners(hand, env, live);
+  let prep = null;
+  try { prep = prepareHand(hand, {}); } catch (e) { prep = null; }
+  if (prep) {
+    const s = prep.settle;
+    if (!s || s.from !== 'cards') return null; // settled from the stored result: the cards cannot decide
+    const seats = Object.keys(s.won).map(Number).filter(p => s.won[p] > 0).sort((a, b) => a - b);
+    if (!seats.length) return null;
+    const pots = [];
+    for (const l of s.lines) (pots[l.pot] = pots[l.pot] || new Set()).add(l.p);
+    const potSeats = pots.filter(Boolean).map(set => [...set].sort((a, b) => a - b));
+    if (ev && sameSeats(seatsOf(ev), seats)) return { seats, winners: ev, potSeats };
+    const shares = (p) => s.lines.some(l => l.p === p && s.lines.some(m => m.p !== p && m.pot === l.pot && m.half === l.half));
+    return { seats, winners: seats.map(p => ({ playerIdx: p, split: shares(p) })), potSeats };
+  }
+  const allIn = hand.streets.some(st => (st.actions || []).some(a => a && a.action === 'all-in'));
+  if (!ev || allIn) return null;
+  return { seats: seatsOf(ev), winners: ev, potSeats: [seatsOf(ev)] };
+}
+
+/* A seat's showdown hand in words ("a straight, Eight to Queen"), the export's wording, or ''. */
+function handWords(hand, env, pi) {
+  try {
+    const cfg = gameEvalFor(hand.gameType, hand);
+    const board = env.category === 'community'
+      ? hand.streets.reduce((acc, st) => acc.concat(cardsOf(st.cards.board).filter(c => c.suit !== 'x')), [])
+      : [];
+    const cards = cardsOf(showdownCards(hand, env, pi)).filter(c => c.suit !== 'x');
+    const d = cfg && cards.length ? describeEvals(cfg, evaluate(cfg, cards, board)) : null;
+    return d ? d.summary : '';
+  } catch (e) {
+    return '';
+  }
+}
+
 export function showdownRules(hand, env, out, ctx) {
   const n = hand.players.length;
   const heroIdx = hand.heroIdx;
@@ -351,5 +397,39 @@ export function showdownRules(hand, env, out, ctx) {
       question: 'Who won at showdown?',
       options: opts, allowFree: true, blocking: false,
     }, [STAGE.result]));
+  }
+
+  /* A winner the cards contradict (owner, 2026-11-26: "build the winner check"). The parse's winner was taken as
+     given, and the replay pays the stored winner: a PLO test hand came back with the opponent's set of nines paid
+     over the hero's straight, though the text never said who won. Asked, never fixed silently: the cards may be
+     the wrong half. */
+  if (winners.length && !ctx.dismissed.has('result-cards')) {
+    const byCards = winnersByCards(hand, env, live);
+    const stated = seatsOf(winners);
+    if (byCards && !sameSeats(stated, byCards.seats)) {
+      const who = (pi) => (pi === heroIdx ? 'you' : playerName(hand, pi));
+      const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+      const named = (seats) => listWords(seats.map(who));
+      const shown = live.filter(pi => pi === heroIdx || !isMuck((hand.streets[0].cards.opponents || [])[oppSlot(pi, heroIdx)]))
+        .sort((a, b) => (b === heroIdx) - (a === heroIdx)); // the hero first
+      const words = shown.map(pi => [pi, handWords(hand, env, pi)]);
+      const why = words.every(([, w]) => w) ? ' ' + words.map(([pi, w]) => cap(who(pi)) + ': ' + w).join('; ') + '.' : '';
+      const one = byCards.seats.length === 1;
+      const pots = byCards.potSeats;
+      const sidePots = !one && pots.length > 1;
+      const potName = (k) => (k === 0 ? 'the main pot' : pots.length > 2 ? 'side pot ' + k : 'the side pot');
+      const byCardsText = one ? (byCards.seats[0] === heroIdx ? 'you did' : playerName(hand, byCards.seats[0]) + ' did')
+        : sidePots ? pots.map((ps, k) => potName(k) + (k === 0 ? ' goes to ' : ' to ') + named(ps)).join(', ')
+          : 'the pot goes to ' + named(byCards.seats);
+      out.push(makeGap({
+        id: 'result-cards', kind: 'ambiguous', field: 'result.winners',
+        question: 'The hand says ' + named(stated) + ' won, but by the cards ' + byCardsText + '.' + why + ' Who won?',
+        options: [
+          { label: cap(named(byCards.seats)) + (one ? ' won' : sidePots ? ' won the pots' : ' split it') + ' (from the cards)', value: { op: 'setResult', winners: byCards.winners } },
+          { label: cap(named(stated)) + ' won, as the hand says', value: { op: 'dismiss' } },
+        ],
+        allowFree: true, blocking: true,
+      }, [STAGE.result]));
+    }
   }
 }

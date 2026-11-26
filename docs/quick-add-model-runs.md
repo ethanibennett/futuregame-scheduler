@@ -19,6 +19,14 @@ tokens and its cache lasts five minutes, so the first parse after a quiet spell 
 about $0.11 on Opus 5.5 against about $0.05 on Sonnet 5 (the same arithmetic at its prices). The two-to-one
 ratio holds; the eval's absolute figures do not.
 
+**The winner check** (2026-11-26, owner: "build the winner check"). The second test parse (PLO, "he shows
+AhAd9c9d", the text never saying who won) came back with the opponent's set of nines as the winner over the
+hero's queen-high straight, and nothing questioned it: a stated winner was kept as given, and the cards were read
+only when no winner was given. Now, when the board and every hand still in are known, quick add settles the pot
+from the cards as the export does (side pots and hi-lo halves included) and asks when that disagrees: "The hand
+says Opp 1 won, but by the cards you did. You: a straight, Eight to Queen; Opp 1: three of a kind, Nines. Who
+won?", answered "You won (from the cards)" or "Opp 1 won, as the hand says" (gap `result-cards`, blocking).
+
 ## What changed
 
 **1. The parse can run on the current models, with thinking.** `lib/quick-add/prompt.js` has two request

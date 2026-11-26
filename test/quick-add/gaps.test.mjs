@@ -944,6 +944,55 @@ test('everyone folded: the last player standing won', () => {
   ok(g.auto); eq(answerFirst(h, g).result.winners, [{ playerIdx: 1, split: false }]);
 });
 
+// The winner check (2026-11-26): a stated winner the cards contradict is asked about, never taken as given.
+test('a winner the cards contradict is asked about', () => {
+  const h = nlh6max(); h.result = { winners: [{ playerIdx: 2, split: false }] }; // Cal's queens over the hero's two pair
+  const g = gap(h, 'result-cards');
+  ok(g && g.blocking, 'blocking');
+  eq(g.question, 'The hand says Cal won, but by the cards you did. You: two pair, Aces and Kings; Cal: a pair of Queens. Who won?');
+  eq(g.options.map(o => o.label), ['You won (from the cards)', 'Cal won, as the hand says']);
+  const fixed = answerFirst(h, g);
+  eq(fixed.result.winners, [{ playerIdx: 3, split: false }]);
+  eq(ids(fixed), []);
+  eq(ids(applyAnswer(h, g, g.options[1].value)), [], 'kept as the hand says');
+  eq(ids(nlh6max()), [], 'the right winner asks nothing');
+});
+
+function sidePotHand(winners, shortStack = 2000) {
+  return { gameType: 'NLH', gameMode: 'cash', currency: 'USD', blinds: { sb: 50, bb: 100, ante: 0 },
+    players: [P('Hero', 'BTN', 10000), P('Short', 'SB', shortStack), P('Big', 'BB', 10000)], heroIdx: 0,
+    streets: [St('Preflop', 'QsQd', ['AhAd', 'KhKd'], '', [A(0, 'raise', 300), A(1, 'all-in', 1950), A(2, 'call', 1900), A(0, 'call', 1700)]),
+      St('Flop', '', ['', ''], '2c7d9h', [A(2, 'check'), A(0, 'bet', 3000), A(2, 'call', 3000)]),
+      St('Turn', '', ['', ''], 'Js', [A(2, 'check'), A(0, 'check')]), St('River', '', ['', ''], '3s', [A(2, 'check'), A(0, 'check')])],
+    result: { winners: winners.map(p => ({ playerIdx: p, split: false })) } };
+}
+
+test('the winner check settles side pots as the export does', () => {
+  eq(ids(sidePotHand([1, 2])), [], 'main pot to the aces, side pot to the kings');
+  const g = gap(sidePotHand([1]), 'result-cards');
+  ok(g && /by the cards the main pot goes to Short, the side pot to Big\./.test(g.question), g && g.question);
+  eq(g.options[0].label, 'Short and Big won the pots (from the cards)');
+  eq(ids(answerFirst(sidePotHand([1]), g)), []);
+  // A stack not given: an all-in leaves the side pots unknown, so the cards decide nothing yet.
+  ok(!ids(sidePotHand([0], null)).includes('result-cards'));
+});
+
+test('the winner check: one pot is decided even with a stack not given', () => {
+  const h = nlh6max(); h.players[2].startingStack = null; h.result = { winners: [{ playerIdx: 2, split: false }] };
+  ok(ids(h).includes('result-cards'), ids(h).join(' '));
+});
+
+test('the winner check: a board that plays is a split', () => {
+  const h = { gameType: 'NLH', gameMode: 'cash', currency: 'USD', blinds: { sb: 50, bb: 100, ante: 0 },
+    players: [P('Hero', 'SB', 10000), P('Opp', 'BB', 10000)], heroIdx: 0,
+    streets: [St('Preflop', '2c3d', ['4h5s'], '', [A(0, 'call', 50), A(1, 'check')]), St('Flop', '', [''], 'AsKsQs', [A(1, 'check'), A(0, 'check')]),
+      St('Turn', '', [''], 'Js', [A(1, 'check'), A(0, 'check')]), St('River', '', [''], 'Ts', [A(1, 'check'), A(0, 'check')])],
+    result: { winners: [{ playerIdx: 1, split: false }] } };
+  const g = gap(h, 'result-cards');
+  eq(g.options[0].label, 'You and Opp split it (from the cards)');
+  eq(answerFirst(h, g).result.winners, [{ playerIdx: 0, split: true }, { playerIdx: 1, split: true }]);
+});
+
 test('an opponent with too few cards', () => {
   const h = plo6max(); h.streets[0].cards.opponents[2] = 'KcKh';
   const g = gap(h, 'oppcards:2');
