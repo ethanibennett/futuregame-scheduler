@@ -5193,7 +5193,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
   );
 
   return (
-    <div className="gto-entry">
+    <div className="gto-entry is-action">
       {stickySlot && createPortal(streetCardEl, stickySlot)}
       {seatOrder.map(i => {
         const p = hand.players[i];

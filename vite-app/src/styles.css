@@ -4216,6 +4216,19 @@
 
     /* Phase cards 1–36, hairline inset, content inset 2g (3..34), 1r top/bottom. */
     .replayer-entry-view .gto-entry { margin-top: 0; }
+    /* The betting: the seat to act lands 1r under the stuck header (the landing in HandReplayerView), and the seat
+       above it ends 1r over its top, exactly on the header's bottom edge. Flush edges are a coin toss: a renderer
+       that rounds either one a device pixel the other way shows the seat above as a line under the street bar
+       (owner, 2026-11-24 and 2026-11-26 on a Mac: "Fix it for good this time"; two fixes to the landing's rounding
+       had already measured 0px in WebKit). So the header's ground reaches 0.5r further down (it takes a tap like the
+       rest of the header: nothing it hides can be pressed), and the seat above is hidden with half an r of room
+       either way. The list starts 1r down, so the first seat rests where every seat to act lands, 2r under the
+       street bar, and none rests under the strip. */
+    .replayer-entry-view .gto-entry.is-action { margin-top: var(--subrow); }
+    .replayer-entry-view:has(> .gto-entry.is-action) > .gto-sticky-header::after {
+      content: ''; position: absolute; left: 0; right: 0; top: 100%;
+      height: calc(var(--subrow) * 0.5); background: var(--bg);
+    }
     .replayer-entry-view .gto-phase-card,
     .replayer-entry-view .gto-street-card { border: 0; box-shadow: inset 0 0 0 var(--bw-1) var(--border); }
     .replayer-entry-view .gto-phase-card > .replayer-section { padding: var(--subrow) calc(var(--gu) * 2); }
