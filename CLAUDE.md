@@ -1137,10 +1137,11 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   2026-11-22: "Get rid of the Baskerville net gain/loss").
   A side seat's wager sits 1g further out than the 0.6 of the way to the pot, left on the left, right on the right
   (portrait; owner, 2026-11-22), and placeWagers keeps a wager only r/4 off its own seat's dealer button (a whole r
-  pushed the dealer seat's wager back in). check:replayer-collisions 0 in 7,055 steps after it. On the landscape table a
-  seat is a side seat (a level wager) only where its way to the pot runs 1.25 times more across than up, in the table's
-  pixels: the 8-max bottom corners (1.05) walk toward the pot like the bottom seats (owner, 2026-11-22: level with the
-  plaque their chips sat on the rail). Dead cards (stud, draw) are never on the felt (owner, 2026-11-22): every layout
+  pushed the dealer seat's wager back in). check:replayer-collisions 0 in 7,055 steps after it. A seat is a side seat
+  (a level wager) only when it is level with the middle of the table: within a quarter of the table's height of it in
+  portrait (the long straight sides), an eighth in landscape (the middle of the round ends). Every seat where the rail
+  turns walks toward the pot like the top and bottom seats (owner, 2026-11-22 and 2026-11-26: a corner's level wager sat
+  beside its plaque by the rail; the 22 Nov rule, 1.25 times more across than up, had moved only the 8-max corners). Dead cards (stud, draw) are never on the felt (owner, 2026-11-22): every layout
   draws them in the strip at the table slot's foot (`.replayer-dead-strip`), landscape since that day.
   Also 2026-11-22 (owner): a stud hand stays centred on its plaque ("Hands are starting way off center": laid out for the
   final count it started 2 to 3 slots left) and slides to its new centre when a card comes (CardRow's fan slide); the

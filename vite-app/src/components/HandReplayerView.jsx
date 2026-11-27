@@ -13643,14 +13643,18 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           /* A side seat's wager goes straight in, level with its seat (owner, 2026-11-13: "move more directly
              horizontal"): toward the pot, a lower side seat's chips rose into the game and stakes pill under the
              board. Top and bottom seats keep the walk toward the pot. */
-          /* On the landscape table a seat counts as a side seat only where its way to the pot runs more across than up
-             (1.25 to 1, in the table's own pixels): the 8-max table's two bottom corners sit on the bottom row, their
-             way to the pot as much up as across (1.05), and level with the plaque their chips sat on the rail beside it
-             (owner, 2026-11-22: "On desktop the location of Opp 1's bet here is wrong"). They walk toward the pot like
-             the bottom seats. Every other landscape side seat, 6 to 10-max, is 1.5 or more and keeps its level wager. */
-          const tableAspect = tableW && tableH ? tableW / tableH : LGX / LGY;
-          const sideSeat = Math.abs(pos[0] - 50) > 25
-            && (!isLandscape || Math.abs(pos[0] - 50) * tableAspect > 1.25 * Math.abs(POT_AT[1] - pos[1]));
+          /* A side seat is one level with the middle of the table, where the cloth beside it runs in toward the pot: the
+             portrait table's long straight sides (within a quarter of the table's height of its middle), a landscape
+             table's round ends at their middle (within an eighth). Where the rail turns, top or bottom, the seat's wager
+             walks toward the pot like a top or bottom seat's: level with its plaque it sat beside the plaque by the rail
+             (owner, 2026-11-22, the 8-max desktop table's bottom corners: "On desktop the location of Opp 1's bet here
+             is wrong"; 2026-11-26, the 9-max desktop table's lower corner: "We also talked about the placement of these
+             bets being off, and you said you'd fixed that too"). The 22 Nov rule (the way to the pot 1.25 times more
+             across than up) moved only the 8-max corners: the 9-max lower corners, the 6-max lower side seats, the 10-max
+             lower side seats and the 8 and 9-max upper corners on desktop, and the 10-max corners on a phone, all stayed
+             beside their plaques. Seats sit on fixed rows, so every one is at least 3% of the table's height from either
+             line: portrait 0 to 21.9 in, 28.1 out; landscape 3.1 to 9.4 in, 18.7 out. */
+          const sideSeat = Math.abs(pos[0] - 50) > 25 && Math.abs(pos[1] - 50) <= (isLandscape ? 12.5 : 25);
           // Level with the plaque it clears that plaque only from further in: 0.6 of the way (a 6-max side plaque is
           // anchored on the table's edge and reaches ~24% in; at 0.42 the chips sat on its inner end).
           // (Portrait only: a landscape table is wide enough that 0.42 clears its plaques, and 0.6 reached the board.)
