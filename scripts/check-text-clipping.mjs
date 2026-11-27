@@ -230,6 +230,18 @@ function scan(rootSel) {
     await p.waitForTimeout(1800);
   };
   const HOME = '.dashboard-view.home';
+  // A Travel Day open in My Schedule, its flights, stays and cars, then an item's form (owner, 2026-11-27). Skipped
+  // where the account has no Travel Day.
+  if (on('myschedule-travel')) try {
+    await openTab('Schedule');
+    if (!(await isDesktop())) { await p.locator('.sched-switch-seg:has-text("My schedule")').first().click({ timeout: 4000 }); await p.waitForTimeout(1800); }
+    await p.locator('.cal-event-row.is-personal:not(.open) .cal-event-bar').filter({ visible: true }).first().click({ timeout: 4000 });
+    await p.waitForTimeout(1200);
+    await run('travel day, open', '.cal-event-row.is-personal.open');
+    await p.locator('.cal-event-row.is-personal.open .travel-edit').filter({ visible: true }).first().click({ timeout: 4000 });
+    await p.waitForTimeout(800);
+    await run('travel day, a form', '.cal-event-row.is-personal.open');
+  } catch (e) { console.log(`  (travel day skipped: ${e.message.split('\n')[0]})`); }
   const pageHome = async (label) => {
     await run(label, HOME);
     for (let i = 1; i < 8; i++) {

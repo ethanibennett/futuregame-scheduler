@@ -324,6 +324,16 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   `moreLocations`, saved in the same `savedLocation` / `users.saved_location` blob. An event passes near ANY of them
   (`matchesLocation`). The menu (`LocationDropdown`) adds a place looked up, Current Location or a region, and lists the
   places with their own radius and a remove button; only the first place answers the state. Cash keeps one point.
+- **A Travel Day's flights, stays and cars** (owner, 2026-11-27: "Add the option to enter flight information, stay
+  information (hotel name, check in time etc), rental car info etc"; `lib/travel-details.js`, `components/TravelDetails.jsx`,
+  `utils/travel-details.js`; `npm run test:travel-details`, ports 4780-4789). Open, a Personal day is an event card
+  (owner: "make it look more like a regular event card"; no emoji, ever): its times where an event's start is, the day
+  in the name's face, the flights' route as its stage line, then each flight, stay and car as detail cells with Edit
+  and the action row Flight / Stay / Car / Remove. They live in their own table, `travel_details`, never on the day's
+  `tournaments` row, which goes out with the schedule (share links, friends, groups, the calendar feed): only the owner
+  reads them (`GET`/`PUT /api/personal-event/:id/travel`), and they go with the day and with the account
+  (`USER_TABLES`). A save whose flights give a departure and an arrival rewrites the day's note as the picker writes it
+  ("Depart 8:00 AM → Arrive 11:00 AM"), which the closed band and the card's times read.
 - **Venue map**: an event card's venue strip (not online or Personal) opens `VenueMapSheet.jsx`, a
   map of the room. The provider is chosen per platform in `utils/venue-map/providers.js`: Google on
   Android, else MapKit JS, else OpenStreetMap. Each key's env is unset until the owner sets it up;

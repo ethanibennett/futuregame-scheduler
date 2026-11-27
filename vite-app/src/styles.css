@@ -11414,18 +11414,6 @@
       position: relative;
       top: calc(var(--subrow) * 0.419);
     }
-    /* A personal day's note beside its name ("— PHL to LAS, ..."): one 2r line like the name's. On its
-       natural line it was 2.43r, which made the open Travel Day card 0.43r off whole and put My
-       Schedule under it (its header buttons, every date pill) off the grid with it. */
-    /* Its baseline then sits 0.455r above the line's foot (measured, WebKit 1440 wide: 15.545r against
-       r16 beside the open card's name); moved down by that, it is on the r-line, as the name is. The
-       font and the line both scale with g, so it is one constant in r. */
-    .cal-personal-notes {
-      font-size: calc(var(--gu) * 1.149); color: var(--text-muted); font-style: italic;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      line-height: var(--cal-title-line);
-      position: relative; top: calc(var(--subrow) * 0.455);
-    }
     /* A flight card carries the title on line 1 (.cal-event-base) and "- Flight A"
        on line 2 (.cal-event-stage). Each is a trimmed block, but text-box-trim
        eats the line-height leading, so two stacked would butt together — instead
@@ -16599,6 +16587,54 @@
     .cal-band-end { text-align: right; }
     /* No departure and arrival (a Day Off, a typed note): the day takes the whole band. */
     .cal-band-what:only-child { grid-column: 1 / -1; }
+    /* A Travel Day's flights, stays and cars in its open card (TravelDetails.jsx; owner, 2026-11-27). Every piece is
+       whole r. An item is a 2r kind line (its caps seated on the line, Edit 5g x 2r at the right) over the event's own
+       detail cells (5r, 1r apart); a hotel's name and address take the whole row. The form is the kind line, then
+       7r fields (a 2r label, 1r, a 4r field) 1r apart, a date and time across the row so it fits a phone's 15g half,
+       then 4r buttons. */
+    .travel-item { display: flex; flex-direction: column; gap: var(--space-md); }
+    /* One item from the next: a hairline and 1r, as the detail panel sits under the bar. */
+    .travel-item + .travel-item { box-shadow: inset 0 var(--bw-hair) 0 var(--border); padding-top: var(--space-md); }
+    .travel-item-head {
+      display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 5); align-items: end;
+      height: calc(var(--subrow) * 2);
+    }
+    .travel-item-kind, .travel-field-label {
+      align-self: end; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: var(--track-caps); font-weight: var(--fw-bold);
+    }
+    .travel-item-kind { color: var(--text); font-size: var(--fs-sm); }
+    .travel-field-label { color: var(--text-muted); }
+    .travel-edit { width: calc(var(--gu) * 5); }
+    .travel-edit:disabled, .cal-action-row .cal-action-btn:disabled { opacity: var(--state-disabled); cursor: default; }
+    .travel-item .cal-detail-item.is-wide { grid-column: 1 / -1; }
+    /* A long value ends in an ellipsis; the padding cancelled by an equal negative margin is its descenders' and
+       accents' room, which the clip would otherwise take (the clipped-text rule). */
+    .travel-value {
+      min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      padding: var(--space-xs) 0; margin: calc(-1 * var(--space-xs)) 0;
+    }
+    .travel-fields {
+      display: grid; grid-template-columns: 1fr 1fr; row-gap: var(--space-md);
+      column-gap: calc(100% - 2 * round(down, calc((100% - var(--gu)) / 2), var(--gu)));
+    }
+    .travel-field { display: grid; grid-template-rows: calc(var(--subrow) * 2) calc(var(--subrow) * 4); row-gap: var(--space-md); min-width: 0; }
+    .travel-field.is-wide { grid-column: 1 / -1; }
+    .travel-input {
+      width: 100%; min-width: 0; height: calc(var(--subrow) * 4); box-sizing: border-box; margin: 0;
+      padding: 0 var(--space-ml); font-family: inherit; font-size: var(--fs-sm);
+      border-radius: calc(var(--subrow) * 0.75); border: var(--bw-hair) solid var(--border);
+      background: var(--surface); color: var(--text);
+    }
+    .travel-form-actions { display: flex; justify-content: flex-end; gap: var(--gu); }
+    .travel-form-actions .btn { width: calc(var(--gu) * 7); height: calc(var(--subrow) * 4); padding: 0; font-size: var(--fs-sm); }
+    .travel-form-actions .travel-delete { margin-right: auto; }
+    /* One quiet line, seated on the r-line: no details yet, or someone else's day (what is planned is private). */
+    .travel-empty, .cal-personal-line { margin: 0; display: grid; grid-template-rows: calc(var(--subrow) * 2); }
+    .travel-empty > span, .cal-personal-line > span {
+      align-self: end; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      font-size: var(--fs-xs); color: var(--text-muted);
+    }
     @media (hover: hover) and (pointer: fine) {
       .cal-event-row.is-detail:hover { box-shadow: none; }
       .cal-event-row.is-detail:hover .cal-event-bar { background: none; }

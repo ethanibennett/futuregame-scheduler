@@ -23,6 +23,8 @@ import { useToast } from '../contexts/ToastContext.jsx';
 import { hasVenueMap, venueRoomName } from '../utils/venue-place.js';
 import { openVenueMap } from '../utils/venue-map/open.js';
 import { initialName } from '../utils/names.js';
+import TravelDetails from './TravelDetails.jsx';
+import { timesOf, routeOf } from '../utils/travel-details.js';
 
 // ── Format event name: the stage of a multi-flight event goes underneath ──
 // splitEventStage is shared with CalendarEventRow and mirrors the server's
@@ -620,7 +622,8 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
   const [showMixGames, setShowMixGames] = useState(false);
   const game = useMemo(() => describeGame(tournament.game_variant, tournament.event_name, tournament.mix_games),
     [tournament.game_variant, tournament.event_name, tournament.mix_games]);
-  const [travelNotes, setTravelNotes] = useState(tournament.notes || '');
+  // A Travel Day's flights, stays and cars once its open card has loaded them (TravelDetails), for the route line.
+  const [travelItems, setTravelItems] = useState(null);
   const [editing, setEditing] = useState(false);
   const [editFields, setEditFields] = useState({});
   const [saving, setSaving] = useState(false);
@@ -748,18 +751,27 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
         <div className="cal-event-bar" onClick={toggle} role="button" tabIndex={0} aria-expanded={open} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}>
           {tournament.venue === 'Personal' && !open ? (
             <PersonalBand t={tournament} />
-          ) : tournament.venue === 'Personal' ? (
-            <div className="cal-bar-row2" style={{display:'flex', alignItems:'center', gap:'calc(var(--subrow) * 1)'}}>
-              <span className="cal-event-name" style={{fontSize:'calc(var(--gu) * 1.296)'}}>
-                {tournament.event_name === 'Travel Day' ? '\u2708\uFE0F ' : tournament.event_name === 'Day Off' ? '\uD83C\uDFD6\uFE0F ' : ''}{tournament.event_name}
-              </span>
-              {tournament.notes && (
-                <span className="cal-personal-notes">
-                  {'\u2014'} {tournament.notes}
-                </span>
-              )}
-            </div>
-          ) : (
+          ) : tournament.venue === 'Personal' ? (() => {
+            /* Open, a Personal day is an event card (owner, 2026-11-27: "make it look more like a regular event
+               card"; "no emojis, ever"): its times where an event's start is ("8:00 AM \u2192 11:00 AM", else "All day"),
+               the day in the event name's face, and under it, as a flight's stage line, the way the day's flights
+               go ("PHL \u2192 LAS") or a note that is not the picker's times. */
+            const times = tournament.event_name === 'Travel Day' ? timesOf(tournament.notes) : null;
+            const note = !times && tournament.event_name === 'Travel Day' ? (tournament.notes || '').trim() : '';
+            const stage = routeOf(travelItems) || note;
+            return (
+              <>
+                <div className="cal-bar-row1">
+                  <span className="cal-event-time">{times ? `${times.depart} \u2192 ${times.arrive}` : 'All day'}</span>
+                </div>
+                <div className="cal-bar-row2">
+                  <span className="cal-event-name">
+                    {stage ? <><span className="cal-event-base">{tournament.event_name}</span><span className="cal-event-stage">{stage}</span></> : tournament.event_name}
+                  </span>
+                </div>
+              </>
+            );
+          })() : (
             <>
               <div className="cal-bar-row1">
                 <span className="cal-event-time">{timeLabel}</span>
@@ -799,42 +811,22 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, overlap
         <div className={`cal-event-detail-wrap ${open ? 'open' : ''}`} onClick={e => {
           const tag = e.target.tagName;
           if (tag === 'A' || tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT') return;
-          if (e.target.closest('.badge-clickable') || e.target.closest('.condition-picker') || e.target.closest('.cal-action-row') || e.target.closest('.admin-edit-panel')) return;
+          if (e.target.closest('.badge-clickable') || e.target.closest('.condition-picker') || e.target.closest('.cal-action-row') || e.target.closest('.admin-edit-panel') || e.target.closest('.travel-item')) return;
           if (!detail) setOpen(false);
         }}>
           <div className="cal-event-detail-inner">
             <div className="cal-event-detail">
               {tournament.venue === 'Personal' ? (
                 <>
-                  {tournament.event_name === 'Travel Day' && !readOnly && onUpdatePersonalEvent ? (
-                    /* On the grid: a 2r label, 1r, a 4r field, then 1r, so every card under an open Travel
-                       Day stays on its lines (it was 1.5r + 0.5r + a padded field, a quarter r off). */
-                    <div style={{marginBottom:'var(--subrow)'}}>
-                      <label style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', display:'block', lineHeight:'calc(var(--subrow) * 2)', marginBottom:'var(--subrow)'}}>Travel details</label>
-                      <div style={{display:'flex', gap:'calc(var(--subrow) * 0.75)', alignItems:'center'}}>
-                        <input className="focus-inset"
-                          type="text"
-                          value={travelNotes}
-                          onChange={e => setTravelNotes(e.target.value)}
-                          onBlur={() => { if (travelNotes !== (tournament.notes || '')) onUpdatePersonalEvent(tournament.id, travelNotes); }}
-                          onKeyDown={e => { if (e.key === 'Enter') { e.target.blur(); }}}
-                          placeholder="e.g. 6h flight LAX \u2192 LAS"
-                          style={{
-                            flex:1, height:'calc(var(--subrow) * 4)', boxSizing:'border-box', margin:0, padding:'0 calc(var(--subrow) * 1.25)', fontSize:'calc(var(--gu) * 1.222)',
-                            borderRadius:'calc(var(--subrow) * 0.75)', border:'var(--bw-hair) solid var(--border)',
-                            background:'var(--surface)', color:'var(--text)'
-                          }}
-                        />
-                      </div>
-                    </div>
+                  {/* A Travel Day's own flights, stays and cars, its owner's only; a Day Off has nothing to add.
+                      Read-only (a friend's or a shared schedule) shows one line: what is planned is private. */}
+                  {tournament.event_name === 'Travel Day' && !readOnly ? (
+                    <TravelDetails tournament={tournament} onItems={setTravelItems}
+                      onRemove={() => onToggle(tournament.id)}
+                      onNotes={onUpdatePersonalEvent ? (notes) => onUpdatePersonalEvent(tournament.id, notes) : undefined} />
+                  ) : readOnly ? (
+                    <p className="cal-personal-line"><span>{tournament.event_name === 'Travel Day' ? 'Traveling, no tournaments planned' : 'A day off, no tournaments planned'}</span></p>
                   ) : (
-                    <p style={{fontSize:'calc(var(--gu) * 1.252)', color:'var(--text-muted)', lineHeight:'calc(var(--subrow) * 2)', margin:0}}>
-                      {tournament.event_name === 'Travel Day'
-                        ? (tournament.notes || 'Travel day \u2014 no tournaments planned')
-                        : 'Day off \u2014 rest and recover'}
-                    </p>
-                  )}
-                  {!readOnly && (
                     <div className="cal-action-row">
                       <button className="cal-action-btn remove" onClick={() => onToggle(tournament.id)}>
                         <span className="cal-action-icon"><Icon.x /></span>

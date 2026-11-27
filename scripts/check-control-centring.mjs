@@ -1100,6 +1100,21 @@ function scan(cfg) {
       return { d: best >= step ? best : 0, by };
     };
     const lo = reach(-1), hi = reach(1);
+    // The strip's OWN outer shadow in its colour is band too: a saved card's 1px cover carried into the body (f18ff3af,
+    // 2026-11-19), which elementsFromPoint cannot see (it is the strip's own paint). Its padding centres the name in
+    // strip plus cover, so measured against the strip alone every saved card's name read 0.78px off at 1440.
+    // A rotate(180deg) strip paints its x offset on the other side.
+    const cs0 = getComputedStyle(el), flip = /^matrix\(-1,/.test(cs0.transform) ? -1 : 1;
+    for (const sh of (cs0.boxShadow || 'none').split(/,(?![^(]*\))/)) {
+      if (/inset/.test(sh)) continue;
+      const col = (sh.match(/rgba?\([^)]*\)/) || [''])[0];
+      if (!col || rgbKey(col) !== key || clear(col)) continue;
+      const [ox = 0, oy = 0, blur = 0, spread = 0] = (sh.replace(col, '').match(/-?[\d.]+px/g) || []).map(parseFloat);
+      if (blur || spread) continue;
+      const v = vertical ? ox * flip : oy * flip;
+      if (v > hi.d) { hi.d = v; hi.by = desc(el) + ' own shadow'; }
+      if (-v > lo.d) { lo.d = -v; lo.by = desc(el) + ' own shadow'; }
+    }
     if (!lo.d && !hi.d) return b;
     const out = vertical ? { left: b.left - lo.d, top: b.top, width: b.width + lo.d + hi.d, height: b.height }
       : { left: b.left, top: b.top - lo.d, width: b.width, height: b.height + lo.d + hi.d };
@@ -2252,6 +2267,14 @@ function finalize(c) {
   }, 1);
   step('myschedule-export', async () => { await mySched(); await tap('button[title="Export schedule"]', 900); }, 1);
   step('myschedule-travel', async () => { await mySched(); await tap('button:has-text("Travel")', 900); });
+  // A Travel Day open (owner, 2026-11-27): its flights, stays and cars as detail cells with Edit over the action row
+  // (Flight, Stay, Car, Remove), then an item's form. Reported as not opening where the account has no Travel Day.
+  step('myschedule-travel-day', async () => { const s = await mySched(); await tap(s + '.cal-event-row.is-personal:not(.open) .cal-event-bar', 1200); }, 1);
+  step('myschedule-travel-form', async () => {
+    const s = await mySched();
+    await tap(s + '.cal-event-row.is-personal:not(.open) .cal-event-bar', 1200);
+    await tap(s + '.cal-event-row.is-personal.open .travel-edit', 900);
+  }, 1);
   // Calendar with a filter set: its pill (and clear ✕) in the bar, panel open and closed.
   step('calendar-filter-pill', async () => {
     await nav('Schedule');

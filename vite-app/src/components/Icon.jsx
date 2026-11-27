@@ -86,6 +86,10 @@ const GLYPHS = {
   pencil: { filled: false, path: (<><path d="M16 3l5 5L8 21H3v-5L16 3z"/></>) },
   lock: { filled: false, path: (<><rect x="5" y="11" width="14" height="10" rx="2" ry="2"/> <path d="M8 11V7a4 4 0 018 0v4"/></>) },
   mapPin: { filled: false, path: (<><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/> <circle cx="12" cy="10" r="3"/></>) },
+  // A Travel Day's flight, stay and rental car (TravelDetails.jsx): an airliner from above, a bed, a car.
+  plane: { filled: false, path: (<><path d="M12 2c.9 0 1.5.9 1.5 2v5.2l7.5 4.3v2.2l-7.5-2.3v4.8l2.2 1.6V22L12 21l-3.7 1v-2.2l2.2-1.6v-4.8L3 15.7v-2.2l7.5-4.3V4c0-1.1.6-2 1.5-2z"/></>) },
+  bed: { filled: false, path: (<><path d="M3 5v14"/> <path d="M3 15h18v4"/> <path d="M21 15v-3a3 3 0 0 0-3-3h-7v6"/> <circle cx="7" cy="12" r="1.8"/></>) },
+  car: { filled: false, path: (<><path d="M5 17H3.5v-4.5L6 7h12l2.5 5.5V17H19"/> <path d="M3.5 12.5h17"/> <circle cx="7.5" cy="17" r="2"/> <circle cx="16.5" cy="17" r="2"/> <path d="M9.5 17h5"/></>) },
   calendarCheck: { filled: false, path: (<><rect x="3" y="4" width="18" height="17" rx="2" ry="2"/> <line x1="16" y1="2" x2="16" y2="6"/> <line x1="8" y1="2" x2="8" y2="6"/> <line x1="3" y1="9" x2="21" y2="9"/> <polyline points="8.5 15 11 17.5 15.5 13"/></>) },
   pointer: { filled: true, path: (<><circle cx="5" cy="5" r="1.4"/> <circle cx="11" cy="5" r="1.4"/> <circle cx="17" cy="5" r="1.4"/> <circle cx="5" cy="11" r="1.4"/> <circle cx="11" cy="11" r="1.4"/> <circle cx="17" cy="11" r="1.4"/> <circle cx="5" cy="17" r="1.4"/> <circle cx="11" cy="17" r="1.4"/> <circle cx="17" cy="17" r="1.4"/></>) },
 };

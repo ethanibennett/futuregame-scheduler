@@ -5394,6 +5394,7 @@ app.delete('/api/personal-event/:id', authenticateToken, requireRegistered, asyn
     db.run('DELETE FROM schedule_conditions WHERE tournament_id = ? AND user_id = ?', [id, req.user.id]);
     db.run('DELETE FROM user_schedules WHERE tournament_id = ? AND user_id = ?', [id, req.user.id]);
     db.run("DELETE FROM tournaments WHERE id = ? AND venue = 'Personal'", [id]);
+    require('./lib/travel-details').remove(db, id); // a Travel Day's flights, stays and cars go with it
     followShares('tracking_entries', orphans);
 
     await saveDatabase();

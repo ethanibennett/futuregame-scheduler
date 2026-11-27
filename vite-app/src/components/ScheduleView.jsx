@@ -81,8 +81,9 @@ function TravelDayPicker({ onSave, onCancel, suggestion = null }) {
       background: 'var(--surface)', border: 0, boxShadow: 'inset 0 0 0 var(--bw-hair) var(--border)',
       borderRadius: 'calc(var(--subrow) * 1.25)', padding: 'calc(var(--subrow) * 2) var(--gu)', marginBottom: 'calc(var(--subrow) * 2)'
     }}>
-      <div style={{display:'flex', alignItems:'center', gap:'calc(var(--subrow) * 1)', height:'calc(var(--subrow) * 3)', marginBottom:'var(--subrow)'}}>
-        <span style={{fontSize:'calc(var(--gu) * 1.473)'}}>&#9992;&#65039;</span>
+      {/* No emoji (owner, 2026-11-27: "no emojis, ever"): the title alone. Flights, a hotel and a car are added
+          to the day once it is saved, from its open card (TravelDetails). */}
+      <div style={{display:'flex', alignItems:'center', height:'calc(var(--subrow) * 3)', marginBottom:'var(--subrow)'}}>
         <span style={{fontWeight:700, fontSize:'calc(var(--gu) * 1.296)', color:'var(--text)'}}>Add Travel Day</span>
       </div>
       {sg && sg.date === date && <div className="travel-suggest-note">{sg.note}</div>}
