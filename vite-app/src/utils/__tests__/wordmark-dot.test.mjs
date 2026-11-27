@@ -1,7 +1,7 @@
 // node --test vite-app/src/utils/__tests__/wordmark-dot.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dotGeometry, DOT_SPACE_EM } from '../wordmark-dot.js';
+import { dotGeometry, DOT_SPACE_EM, saneDotGeometry } from '../wordmark-dot.js';
 
 const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, `${a} vs ${b}`);
 
@@ -38,4 +38,17 @@ test('tighter tracking pulls the a in, so the room and the dot both move by it',
   const b = dotGeometry({ ...BASKERVILLE, tracking: -0.07 });
   near(b.gap - a.gap, 0.02);
   near(b.dotX - a.dotX, 0.02);
+});
+
+// A canvas read back with noise (Safari's fingerprinting protection) gave a gap of a word's width (owner's video,
+// 2026-11-27): a geometry no face has is refused, and the CSS's Baskerville values stand.
+test('a measured geometry is used only when a face could have it', () => {
+  const ok = dotGeometry(BASKERVILLE);
+  assert.deepEqual(saneDotGeometry({ ...ok, base: 0.35, originY: 0.3 }), { ...ok, base: 0.35, originY: 0.3 });
+  assert.equal(saneDotGeometry({ ...ok, gap: 2.6 }), null, 'me a word away');
+  assert.equal(saneDotGeometry({ ...ok, gap: -0.4 }), null, 'me back over the a');
+  assert.equal(saneDotGeometry({ ...ok, dotX: 1.9 }), null, 'the dot off past the m');
+  assert.equal(saneDotGeometry({ ...ok, gap: NaN }), null);
+  assert.equal(saneDotGeometry(null), null);
+  assert.equal(saneDotGeometry({ ...ok, base: 3, originY: -2 }).base, null, 'a wild baseline falls back alone');
 });

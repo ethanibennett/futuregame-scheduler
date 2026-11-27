@@ -28,7 +28,10 @@ export function dotGeometry({ aAdv, aRight, mLeft, dotAdv, dotLeft, dotRight, tr
   return { gap, dotX };
 }
 
-// The ink of one glyph, drawn on a canvas in the word's face: each row's leftmost and rightmost inked column.
+// The ink of one glyph, drawn on a canvas in the word's face: each row's leftmost and rightmost inked column, read only
+// inside the glyph's own box (measureText's ink bounds and 3px): a browser that adds noise to what a canvas reads back
+// (Safari's fingerprinting protection) put "ink" across the whole canvas, and the m's left edge and the a's right one
+// came from the noise, so "me" flew a word's width away from the dot (owner's video, 2026-11-27).
 const S = 160, OX = 80, BY = 200, W = 400, H = 280;
 function inkOf(font, ch) {
   const cv = document.createElement('canvas');
@@ -38,14 +41,35 @@ function inkOf(font, ch) {
   c.font = font;
   c.fillText(ch, OX, BY);
   const m = c.measureText(ch);
+  const num = (v, d) => (Number.isFinite(v) ? v : d);
+  const x0 = Math.max(0, Math.floor(OX - num(m.actualBoundingBoxLeft, 0) - 3));
+  const x1 = Math.min(W, Math.ceil(OX + num(m.actualBoundingBoxRight, m.width) + 3));
+  const y0 = Math.max(0, Math.floor(BY - num(m.actualBoundingBoxAscent, S) - 3));
+  const y1 = Math.min(H, Math.ceil(BY + num(m.actualBoundingBoxDescent, S * 0.3) + 3));
   const d = c.getImageData(0, 0, W, H).data;
+  // Ink is a pixel with ink beside it: a stroke at 160px is many pixels wide, and a noise pixel stands alone.
+  const on = (x, y) => x >= 0 && x < W && d[(y * W + x) * 4 + 3] > 96;
   const rows = new Array(H).fill(null);
-  for (let y = 0; y < H; y++) {
+  for (let y = y0; y < y1; y++) {
     let l = -1, r = -1;
-    for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 96) { if (l < 0) l = x; r = x; }
+    for (let x = x0; x < x1; x++) if (on(x, y) && (on(x - 1, y) || on(x + 1, y))) { if (l < 0) l = x; r = x; }
     if (l >= 0) rows[y] = [l, r + 1];
   }
   return { adv: m.width / S, rows, ascent: m.fontBoundingBoxAscent / S, descent: m.fontBoundingBoxDescent / S };
+}
+
+/** A measured geometry only when every part is one a face can have (the gap and the dot's move about a third and a
+    fifth of an em in every display face we ship); else null, and the CSS keeps its Baskerville values. Whatever a
+    canvas reads back, "me" never moves more than half an em. */
+export function saneDotGeometry(geo) {
+  if (!geo) return null;
+  const within = (v, lo, hi) => Number.isFinite(v) && v >= lo && v <= hi;
+  if (!within(geo.gap, 0.12, 0.55) || !within(geo.dotX, -0.05, 0.45)) return null;
+  return {
+    gap: geo.gap, dotX: geo.dotX,
+    base: within(geo.base, 0.1, 0.6) ? geo.base : null,
+    originY: within(geo.originY, 0.05, 0.6) ? geo.originY : null,
+  };
 }
 
 /**
@@ -80,5 +104,5 @@ export function measureWordmarkDot(el) {
   });
   const base = Number.isFinite(dot.ascent) && Number.isFinite(dot.descent) ? (dot.ascent - dot.descent) / 2 : null;
   const inkMid = (BY - (y0 + y1 + 1) / 2) / S;
-  return { gap, dotX, base, originY: base == null ? null : base - inkMid };
+  return saneDotGeometry({ gap, dotX, base, originY: base == null ? null : base - inkMid });
 }
