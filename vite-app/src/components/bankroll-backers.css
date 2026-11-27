@@ -87,13 +87,16 @@
 /* The week's clock beside the title (51): "Settles Sunday noon · 5 days", regular and quiet, at the right. */
 .bb-titlerow { display: flex; justify-content: space-between; gap: var(--gu); }
 .bb-clock { font-weight: var(--fw-regular); color: var(--text-muted); text-transform: none; letter-spacing: 0; white-space: nowrap; }
-/* A two-sided ledger (51): 35g x 10r, two 17g columns, the label over the sum (display xl, its baseline on
-   the 4r cell's line 3), one 1r bar split by the two, and a foot line per side. */
+/* A two-sided ledger (51): 35g x 11r, two 17g columns, the label over the sum (display xl, its baseline on
+   the 4r cell's line 3), one 1r bar split by the two with 1r clear above and below it (owner, 2026-11-27: "give
+   this distribution line a little more space"; it sat on the sums' descent and the foot lines), and a foot line
+   per side. */
 .bb-ledgerstrip {
   display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 17)); column-gap: var(--gu);
-  grid-template-rows: calc(var(--subrow) * 6) var(--subrow) calc(var(--subrow) * 2); row-gap: 0;
-  height: calc(var(--subrow) * 10); margin-top: var(--subrow); align-items: start;
+  grid-template-rows: calc(var(--subrow) * 6) calc(var(--subrow) * 3) calc(var(--subrow) * 2); row-gap: 0;
+  height: calc(var(--subrow) * 11); margin-top: var(--subrow); align-items: start;
 }
+.bb-ledgerstrip > .bb-split { align-self: center; }
 .bb-side { display: flex; flex-direction: column; min-width: 0; }
 .an-cell.bb-side-fig { --h: 4; --p: 1.1314; font-family: var(--font-display); font-size: var(--fs-xl); color: var(--text); font-variant-numeric: var(--num-tabular); }
 .bb-split { grid-column: 1 / -1; display: flex; gap: var(--bw-2); height: var(--subrow); }
