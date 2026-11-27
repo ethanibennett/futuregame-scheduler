@@ -16,6 +16,7 @@ import { createPortal } from 'react-dom';
 
 import { API_URL } from './utils/api.js';
 import { parseDeepLink } from './utils/deep-links.js';
+import { fetchHandLink } from './utils/hand-link-fetch.js';
 import { resetPath } from './utils/reset-results.js';
 import { initialName } from './utils/names.js';
 import { haptic, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, formatSeasonLabel, registerRowTimezones, registerRowCurrencies, registerVenueCoords, getDebugNow, setDebugNow, normaliseDate, parseTournamentTime } from './utils/utils.js';
@@ -640,14 +641,17 @@ function App() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!PATH_HAND_ID) return;
-    const failed = () => {
-      setSharedHandError(true);
-      if (token) toast.error("This hand link doesn't open. It may have been copied wrong, or the hand is no longer shared.");
+    // 'gone': the server says there is no such hand; 'down': it never answered (utils/hand-link-fetch.js).
+    const failed = (why = 'gone') => {
+      setSharedHandError(why);
+      if (token) toast.error(why === 'down'
+        ? "futurega.me didn't answer, so the hand couldn't open. Check the connection and open the link again."
+        : "This hand link doesn't open. It may have been copied wrong, or the hand is no longer shared.");
     };
-    fetch(`${API_URL}/hand-links/${PATH_HAND_ID}`, { headers: linkHeaders() })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (!d || !d.shorthand) { failed(); return; }
+    fetchHandLink(`${API_URL}/hand-links/${PATH_HAND_ID}`, { headers: linkHeaders() })
+      .then(res => {
+        if (res.kind !== 'ok') { failed(res.kind); return; }
+        const d = res.data;
         const decoded = decodeHand(d.shorthand);
         if (!decoded) { failed(); return; }
         if (d.question) setSharedQuestion({ linkId: PATH_HAND_ID, answered: !!d.answered, tally: d.tally || null });
@@ -660,7 +664,7 @@ function App() {
         // when the shared hand is closed — the effect below.
         sharedPathShown.current = true;
       })
-      .catch(failed);
+      .catch(() => failed('down'));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (sharedHandData || !sharedPathShown.current) return;
@@ -2338,9 +2342,15 @@ function App() {
         <div className="app-shell hand-link-dead" style={{ height: '100%' }}>
           <div className="hand-link-dead-box">
             <div className="hand-link-dead-mark">futurega.me</div>
-            <h1 className="hand-link-dead-title">This hand link doesn&rsquo;t open</h1>
-            <p className="hand-link-dead-body">It may have been copied wrong, or the hand is no longer shared.</p>
-            <a className="btn btn-primary hand-link-dead-btn" href="/">Open futurega.me</a>
+            {sharedHandError === 'down' ? <>
+              <h1 className="hand-link-dead-title">futurega.me didn&rsquo;t answer</h1>
+              <p className="hand-link-dead-body">The hand couldn&rsquo;t be loaded. Check the connection, then try again.</p>
+              <button type="button" className="btn btn-primary hand-link-dead-btn" onClick={() => window.location.reload()}>Try again</button>
+            </> : <>
+              <h1 className="hand-link-dead-title">This hand link doesn&rsquo;t open</h1>
+              <p className="hand-link-dead-body">It may have been copied wrong, or the hand is no longer shared.</p>
+              <a className="btn btn-primary hand-link-dead-btn" href="/">Open futurega.me</a>
+            </>}
           </div>
         </div>
       );

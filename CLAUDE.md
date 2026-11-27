@@ -819,6 +819,10 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
     window's insets (`?probe=layout`, `utils/layout-probe.js`, read by `scripts/check-app-link-log.py`). The Windows
     guards set the inset, so they cannot see a page iOS gave none. Run it before a native or safe-area change ships:
     `gh api repos/ethanibennett/futuregame-scheduler/dispatches -f event_type=app-link-check -F 'client_payload[ref]=master'`.
+    Its first run found a hand link reading "This hand link doesn't open" while futurega.me redeployed: any failed
+    request read as a dead link. `utils/hand-link-fetch.js` asks again after 1, 2, 4 and 8 s on no answer, 429 or 5xx;
+    only the server saying there is no such hand (404, 410, 400, JSON without one) is "doesn't open", and a server that
+    never answers is "futurega.me didn't answer" with Try again.
   - Tests: `npm run test:features-social` (ports 4750-4759), and `game-rules`, `odds`, `plans-in-common` in
     `test:utils`. Catalogue figures (ICM, the PLO 8/b odds) are held by `odds.test.mjs`.
 

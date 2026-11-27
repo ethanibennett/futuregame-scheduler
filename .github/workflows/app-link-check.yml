@@ -91,10 +91,10 @@ jobs:
               case "$LINK" in *\?*) URL="${LINK}&probe=layout" ;; *) URL="${LINK}?probe=layout" ;; esac
               LOG="out/${SLUG}${MODE}.log"
               if [ "$MODE" = cold ]; then
-                SIMCTL_CHILD_FG_OPEN_URL="$URL" xcrun simctl launch --console --terminate-running-process "$UDID" "$APPID" > "$LOG" 2>&1 &
+                SIMCTL_CHILD_FG_OPEN_URL="$URL" xcrun simctl launch --console-pty --terminate-running-process "$UDID" "$APPID" > "$LOG" 2>&1 &
                 WAIT=24
               else
-                SIMCTL_CHILD_FG_OPEN_URL_LATER="$URL" xcrun simctl launch --console --terminate-running-process "$UDID" "$APPID" > "$LOG" 2>&1 &
+                SIMCTL_CHILD_FG_OPEN_URL_LATER="$URL" xcrun simctl launch --console-pty --terminate-running-process "$UDID" "$APPID" > "$LOG" 2>&1 &
                 WAIT=32
               fi
               LPID=$!
