@@ -24,6 +24,7 @@ const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 const initSqlJs = require('sql.js');
+const { USER_TABLES: FEATURE_USER_TABLES } = require('../lib/feature-mounts');
 
 const ROOT = path.join(__dirname, '..');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'fg-account-delete-'));
@@ -217,6 +218,49 @@ const check = (label, fn) => { fn(); pass++; console.log('  ok   ' + label); };
     run("INSERT INTO backer_events (id, token, session_id, ts, share_cents, source, notified_share_cents) VALUES (?, ?, 's1', 1760000000000, 24800, 'dashboard', 24800)", [`${tok}:s1`, tok]);
     run("INSERT INTO backer_event_revisions (event_id, token, at, action, share_before, share_after) VALUES (?, ?, 1760000001000, 'revise', 24800, 25000)", [`${tok}:s1`, tok]);
   }
+
+  // The Features catalogue's tables (2026-11-11), never seeded here until 2026-11-27: one row each for alice and bob in
+  // every user_id table the deletion clears (feature-mounts USER_TABLES), every NOT NULL column filled.
+  let seq = 0;
+  const colsOf = (t) => db.exec(`PRAGMA table_info(${t})`)[0].values.map(v => ({ name: v[1], type: String(v[2] || '').toUpperCase(), notnull: !!v[3], dflt: v[4], pk: v[5] }));
+  const seed = (t, values) => {
+    const cols = colsOf(t);
+    const row = { ...values };
+    const rowid = cols.filter(c => c.pk).length === 1 && cols.some(c => c.pk && /INT/.test(c.type));
+    for (const c of cols) {
+      if (c.name in row || (rowid && c.pk) || !c.notnull || c.dflt != null) continue;
+      row[c.name] = /INT|REAL|NUM/.test(c.type) ? ++seq : `${t}-${c.name}-${++seq}`;
+    }
+    const keys = Object.keys(row);
+    run(`INSERT INTO ${t} (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`, keys.map(k => row[k]));
+    return lastId();
+  };
+  for (const t of FEATURE_USER_TABLES) for (const u of [A, B]) seed(t, { user_id: u });
+  // Blocks both ways and a stranger's; reports by and about alice.
+  for (const [u, x] of [[A, B], [B, A], [B, C]]) run('INSERT INTO user_blocks (user_id, blocked_id, created_at) VALUES (?, ?, 1)', [u, x]);
+  seed('reports', { reporter_id: A, kind: 'hand', target_user_id: B });
+  const reportAboutA = seed('reports', { reporter_id: B, kind: 'hand', target_user_id: A });
+  // Hands shared in the app: alice to bob, bob to alice, bob in alice's group, bob on alice's link; bob to carol stays.
+  seed('hand_shares', { link_id: `h${B}`, from_user_id: A, to_user_id: B });
+  seed('hand_shares', { link_id: `h${B}`, from_user_id: B, to_user_id: A });
+  seed('hand_shares', { link_id: `h${B}`, from_user_id: B, group_id: G1 });
+  seed('hand_shares', { link_id: `h${A}`, from_user_id: B, to_user_id: C });
+  const shareKept = seed('hand_shares', { link_id: `h${B}`, from_user_id: B, to_user_id: C });
+  seed('hand_replies', { link_id: `h${B}`, user_id: A, text: 'a on b' });
+  seed('hand_replies', { link_id: `h${A}`, user_id: B, text: 'b on a' });
+  const replyKept = seed('hand_replies', { link_id: `h${B}`, user_id: B, text: 'b on b' });
+  seed('hand_answers', { link_id: `h${B}`, who: `u:${A}`, choice: 'call' });
+  seed('hand_answers', { link_id: `h${A}`, who: `u:${B}`, choice: 'fold' });
+  seed('hand_answers', { link_id: `h${B}`, who: `u:${B}`, choice: 'raise' });
+  // Staking packages with a buyer's request each.
+  const pkgA = seed('staking_packages', { user_id: A, token: 'pkg-a', pct: 10 });
+  seed('package_requests', { package_id: pkgA, name: 'Buyer of alice', contact: 'buyer@example.test', pct: 5 });
+  const pkgB = seed('staking_packages', { user_id: B, token: 'pkg-b', pct: 10 });
+  seed('package_requests', { package_id: pkgB, name: 'Buyer of bob', pct: 5 });
+  // Play-money tables: alice hosts T-A (bob sits there); bob hosts T-B (alice sits there).
+  seed('play_tables', { id: 'T-A', host_id: A, name: 'alice table', game_type: 'NLH', config: '{}', invite_token: 'inv-a' });
+  seed('play_tables', { id: 'T-B', host_id: B, name: 'bob table', game_type: 'NLH', config: '{}', invite_token: 'inv-b' });
+  for (const [t, u] of [['T-A', A], ['T-A', B], ['T-B', B], ['T-B', A]]) run('INSERT INTO play_table_members (table_id, user_id, joined_at) VALUES (?, ?, 1)', [t, u]);
   saveDb(db);
   db.close();
 
@@ -271,7 +315,10 @@ const check = (label, fn) => { fn(); pass++; console.log('  ok   ' + label); };
     standing_agreements: ['user_id'], session_extras: ['user_id'], money_locations: ['user_id'],
     money_settings: ['user_id'], money_import_runs: ['user_id'],
     growth_events: ['user_id'], user_days: ['user_id'], apple_notifications: ['user_id'],
-    travel_details: ['user_id'],
+    ...Object.fromEntries(FEATURE_USER_TABLES.map(t => [t, ['user_id']])),
+    // A report ABOUT the account stays for the record (target_user_id); what it filed goes.
+    user_blocks: ['user_id', 'blocked_id'], reports: ['reporter_id'],
+    hand_shares: ['from_user_id', 'to_user_id'], hand_replies: ['user_id'], staking_packages: ['user_id'], play_tables: ['host_id'],
   };
   check('no row anywhere still points at the deleted user', () => {
     const left = [];
@@ -287,6 +334,27 @@ const check = (label, fn) => { fn(); pass++; console.log('  ok   ' + label); };
       return cols.some(c => /(^|_)user_id$|^uploaded_by$|^created_by$|^invited_by$|^owner_id$|^viewer_id$/.test(c));
     });
     assert.deepStrictEqual(linked.filter(t => !userCols[t]), []);
+  });
+  check('the Features catalogue tables keep the other accounts\' rows', () => {
+    for (const t of FEATURE_USER_TABLES) assert.ok(one(db, `SELECT COUNT(*) FROM ${t} WHERE user_id = ?`, [B]) >= 1, `${t} lost bob's row`);
+  });
+  check('hands shared in the app: alice\'s shares, replies and answers go, and everything on her links; bob\'s own stay', () => {
+    assert.deepStrictEqual(ids(db, 'SELECT id FROM hand_shares ORDER BY id'), [shareKept]);
+    assert.deepStrictEqual(ids(db, 'SELECT id FROM hand_replies ORDER BY id'), [replyKept]);
+    assert.deepStrictEqual(ids(db, 'SELECT who FROM hand_answers'), [`u:${B}`]);
+    assert.strictEqual(one(db, 'SELECT COUNT(*) FROM hand_answers WHERE link_id = ?', [`h${A}`]), 0);
+  });
+  check('her staking packages go with their buyers\' requests; bob\'s stay', () => {
+    assert.deepStrictEqual(ids(db, 'SELECT id FROM staking_packages'), [pkgB]);
+    assert.deepStrictEqual(ids(db, 'SELECT package_id FROM package_requests'), [pkgB]);
+  });
+  check('the table she hosted goes with whoever sat at it; bob\'s table stays without her', () => {
+    assert.deepStrictEqual(ids(db, 'SELECT id FROM play_tables'), ['T-B']);
+    assert.deepStrictEqual(ids(db, "SELECT user_id FROM play_table_members WHERE table_id IN ('T-A', 'T-B') ORDER BY table_id"), [B]);
+  });
+  check('blocks go both ways, a stranger\'s stays; a report about her stays, hers goes', () => {
+    assert.deepStrictEqual(db.exec('SELECT user_id, blocked_id FROM user_blocks')[0].values, [[B, C]]);
+    assert.deepStrictEqual(ids(db, 'SELECT id FROM reports'), [reportAboutA]);
   });
   check('alice\'s staking tree is gone, leaves included', () => {
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM staking_series WHERE id = ?', [SA]), 0);

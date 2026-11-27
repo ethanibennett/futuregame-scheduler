@@ -4648,6 +4648,14 @@ function deleteUserAccount(userId) {
   const personal = columnIds(
     `SELECT id FROM tournaments WHERE venue = 'Personal' AND (uploaded_by = ? OR stable_id LIKE ?)`,
     [uid, `PERSONAL-${uid}-%`]);
+  /* The Features catalogue's tables keyed otherwise than by user_id (2026-11-27: test/account-delete.test.js had not
+     been told of them, and these kept the account's rows): hands it shared (hand_shares, and the replies and answers on
+     its own links), its staking packages and the requests buyers sent for them, the play-money tables it hosted. */
+  const textIds = (sql, args) => { const r = db.exec(sql, args); return r.length ? r[0].values.map(v => String(v[0])) : []; };
+  const sharedLinks = need('shared_hands') ? textIds('SELECT id FROM shared_hands WHERE uploaded_by = ?', [uid]) : [];
+  const packages = need('staking_packages') ? columnIds('SELECT id FROM staking_packages WHERE user_id = ?', [uid]) : [];
+  const hostedTables = need('play_tables') ? textIds('SELECT id FROM play_tables WHERE host_id = ?', [uid]) : [];
+  const quoted = (list) => (list.length ? list.map(s => `'${s.replace(/'/g, "''")}'`).join(',') : 'NULL');
 
   db.run('BEGIN');
   try {
@@ -4705,6 +4713,18 @@ function deleteUserAccount(userId) {
                      'growth_events', 'user_days', 'apple_notifications', ...features.USER_TABLES]) {   // growth (lib/growth.js) and App Store notices go with the account
       run(t, `DELETE FROM ${t} WHERE user_id = ?`, [uid]);
     }
+    // Hands shared in the app: what it sent or was sent, in the groups it owned or on links it shared; its replies
+    // anywhere and its answers ('u:<id>'), and the replies and answers on its own links, which go with them.
+    const links = quoted(sharedLinks);
+    run('hand_shares', `DELETE FROM hand_shares WHERE from_user_id = ? OR to_user_id = ? OR group_id IN (${og}) OR link_id IN (${links})`, [uid, uid]);
+    run('hand_replies', `DELETE FROM hand_replies WHERE user_id = ? OR link_id IN (${links})`, [uid]);
+    run('hand_answers', `DELETE FROM hand_answers WHERE who = ? OR link_id IN (${links})`, [`u:${uid}`]);
+    // Its staking packages, and the requests buyers sent for them (their names and how to reach them).
+    run('package_requests', `DELETE FROM package_requests WHERE package_id IN (${inList(packages)})`, []);
+    run('staking_packages', 'DELETE FROM staking_packages WHERE user_id = ?', [uid]);
+    // The play-money tables it hosted and who sat at them; the route closes them in the tables service.
+    run('play_table_members', `DELETE FROM play_table_members WHERE table_id IN (${quoted(hostedTables)})`, []);
+    run('play_tables', 'DELETE FROM play_tables WHERE host_id = ?', [uid]);
     run('shared_hands', 'DELETE FROM shared_hands WHERE uploaded_by = ?', [uid]);
     // Blocks either way, and the reports this account filed (a report ABOUT it stays for the record).
     run('user_blocks', 'DELETE FROM user_blocks WHERE user_id = ? OR blocked_id = ?', [uid, uid]);
@@ -4719,7 +4739,7 @@ function deleteUserAccount(userId) {
     try { db.run('ROLLBACK'); } catch (_) { /* the BEGIN may not have landed */ }
     throw err;
   }
-  return { counts, ownedGroups, ownedGroupMembers, memberGroups };
+  return { counts, ownedGroups, ownedGroupMembers, memberGroups, hostedTables };
 }
 
 app.delete('/api/account', authenticateToken, requireRegistered, async (req, res) => {
@@ -4738,6 +4758,8 @@ app.delete('/api/account', authenticateToken, requireRegistered, async (req, res
     const result = deleteUserAccount(uid);
     await saveDatabase();
     if (HAM_OWNER_ID === uid) HAM_OWNER_ID = null; // the console must not trust a deleted owner's cookie
+    // The tables it hosted, closed in the play-money service too (best effort; their rows are already gone).
+    if (result.hostedTables.length) require('./lib/play-tables').closeTablesInService(result.hostedTables).catch(() => {});
 
     // Groups that went with the account: tell their remaining members (ids only).
     for (const [gid, members] of Object.entries(result.ownedGroupMembers)) {
