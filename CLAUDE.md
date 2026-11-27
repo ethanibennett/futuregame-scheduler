@@ -32,6 +32,12 @@ sessions opened here own scheduler work.
   and the list bar are `position: sticky` where they sit, each gap a `--bg` `::after` strip that takes a tap, then the
   Lines header, and the month breaks stick at `--tr-break-top` under all of it (`tracking-cards.css`, the offsets in r
   beside each rule). A piece added to that head moves every offset under it.
+  **The + on every tab** (owner, 2026-11-27: "Let's add this button to every screen and include New Hand as an option";
+  `components/BankrollFab.jsx`, `utils/bankroll-fab.js`, `bankroll-fab.css`): App mounts the round + for every signed-in
+  account whatever the tab (`tab`, `holdable` only on Bankroll), its menu the Log menu's choices then **New hand** (Hands'
+  saved list, the New Hand picker at its top: `newHandAsk`). Phone: 2r above the nav, the cash bar or the Hands tools
+  row; desktop: the main pane's foot-right, except Bankroll's, which keeps its "+ Add" in the band. Never over the
+  replay over the whole window or sideways, a hand's entry, a trainer's footer, or any Hands screen but the list.
   A selected list card keeps its outline in the standard themes (the brand ring was dropped 2026-10-20; only Swiss,
   which still draws it, removes the card's own ring under it).
   Everything narrower, and

@@ -5547,7 +5547,7 @@ function agoLabel(ms) {
    the main pane and the replay of the chosen hand opens beside it (portalled there), with a prompt in
    its place while none is open; onSplitChange says whether the split is showing (entry, quick add and
    the drill still take the main pane alone). */
-export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, onStudyDraw, linkedReplay, quickAdd, drillEnabled, drillAsk, onDrillAsked = false, schedule = null, updates = null, sidePane = null, onSplitChange = null, onDrillBack = null, active = true,
+export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, onStudyDraw, linkedReplay, quickAdd, drillEnabled, drillAsk, onDrillAsked = false, newHandAsk = 0, onNewHandAsked = null, schedule = null, updates = null, sidePane = null, onSplitChange = null, onDrillBack = null, active = true,
   sharedQuestion = null, onSharedQuestionAnswered = null }) {
   const toast = useToast();
   const [mode, setMode] = useState(initialHand ? 'replay' : 'list');
@@ -5563,6 +5563,22 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   }, [mode]);
   // Hands > Study > Play a hand.
   useEffect(() => { if (drillAsk) { setMode('drill'); if (onDrillAsked) onDrillAsked(); } }, [drillAsk, onDrillAsked]);
+  /* The +'s New hand (owner, 2026-11-27, the + on every tab): back to the saved list, its New Hand picker in view at
+     the top. A hand being entered stays as the draft the list offers to resume. */
+  useEffect(() => {
+    if (!newHandAsk) return;
+    setMode('list');
+    if (onNewHandAsked) onNewHandAsked();
+    // The list's own scroller back to its top, where the picker is (scrollIntoView scrolled the app shell itself,
+    // taking the top bar off the screen).
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      let el = document.querySelector('.tab-panel[data-tab="hands"] .replayer-list-new');
+      for (el = el && el.parentElement; el && el !== document.body; el = el.parentElement) {
+        const oy = getComputedStyle(el).overflowY;
+        if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) { el.scrollTop = 0; break; }
+      }
+    }));
+  }, [newHandAsk, onNewHandAsked]);
   const [quickVoice, setQuickVoice] = useState(false);   // quick add opened by Say (listening at once)
   const [quickSeed, setQuickSeed] = useState(null);      // a hand said on the Watch, finished in quick add
   const [hands, setHands] = useState([]);

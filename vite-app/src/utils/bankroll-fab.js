@@ -7,16 +7,20 @@
 // form that already exists opens, nothing is built twice.
 
 /**
- * The menu's choices, in order. Cash sessions and expenses are admin-only (the bankroll beta), so
- * everyone else has the one choice and the + skips the menu and opens that form.
+ * The menu's choices, in order. Cash sessions and expenses are admin-only (the bankroll beta); New hand is
+ * everyone's, so everyone has a menu.
  * live: a cash session is running (no second one starts).
  */
 export function fabItems({ isAdmin, live }) {
   const items = [{ key: 'tournament', label: 'Tournament result', intent: { kind: 'tournament' } }];
-  if (!isAdmin) return items;
-  items.push({ key: 'cash-add', label: 'Cash session', intent: { kind: 'cash-add' } });
-  if (!live) items.push({ key: 'cash-start', label: 'Start live session', intent: { kind: 'cash-start' } });
-  items.push({ key: 'expense', label: 'Expense or income', intent: { kind: 'expense' } });
+  if (isAdmin) {
+    items.push({ key: 'cash-add', label: 'Cash session', intent: { kind: 'cash-add' } });
+    if (!live) items.push({ key: 'cash-start', label: 'Start live session', intent: { kind: 'cash-start' } });
+    items.push({ key: 'expense', label: 'Expense or income', intent: { kind: 'expense' } });
+  }
+  // Everyone's last, nearest the + (owner, 2026-11-27: "Let's add this button to every screen and include New Hand
+  // as an option"): Hands' New Hand picker (App's openNewHand), not a Results form.
+  items.push({ key: 'new-hand', label: 'New hand', intent: { kind: 'new-hand' } });
   return items;
 }
 

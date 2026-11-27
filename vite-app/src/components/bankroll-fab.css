@@ -68,9 +68,35 @@
 /* The sheet's last line scrolls clear of the + (its top is 9r plus the snap above the sheet's foot). */
 .an-sheet:has(> .bk-fab) .an-body { padding-bottom: calc(var(--subrow) * 11 + var(--sa-b)); }
 
-/* Desktop (Bankroll design 49 and 87): the + is a labelled Add button in the bankroll's band, so the round
-   one is not drawn there and no amount is ever under it. */
-.app-shell.is-desktop :is(.dk-pane-wide, .dk-pane-split) > .bk-fab--page { display: none; }
+/* Desktop (Bankroll design 49 and 87): on the Bankroll tab the + is a labelled Add button in the bankroll's band,
+   so the round one is not drawn there and no amount is ever under it. */
+.app-shell.is-desktop .bk-fab--page[data-tab="tracking"] { display: none; }
+/* Every other desktop tab (owner, 2026-11-27: the + on every screen) has the round one at its main pane's foot-right,
+   absolute from the pane as the wide pane's is above: the Home's NOW pane, the Hands and Cash lists, and the Schedule
+   list, where it stands 2r above the nav band the list pane keeps at its foot (.dk-pane-list::after), level with the
+   Today/Next pill as on the phone. Only the wide pane grows to the shell's edge (--dk-grow). */
+.app-shell.is-desktop :is(.dk-pane-split, .dk-pane-home, .dk-pane-list) > .bk-fab--page {
+  position: absolute;
+  right: calc(var(--gu) * (1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0))));
+  bottom: calc(var(--subrow) * 2);
+}
+.app-shell.is-desktop .dk-pane-list > .bk-fab--page { bottom: calc(var(--tab-h) + var(--nav-snap) + var(--subrow) * 2); }
+.app-shell.is-desktop:has(.cs-bar) :is(.dk-pane-split, .dk-pane-home) > .bk-fab--page { bottom: calc(var(--subrow) * 7); }
+.app-shell.is-desktop:has(.cs-bar) .dk-pane-list > .bk-fab--page { bottom: calc(var(--tab-h) + var(--nav-snap) + var(--subrow) * 7); }
+
+/* Hands (admins): the 5r tools row (Replayer, Study, Scanner; styles.css .hands-tool-row) stands over the nav, or at
+   the desktop pane's foot, so the + stands 2r above it, as it does above the nav and the cash bar. */
+.app-shell:has(.hands-tool-row) .bk-fab--page { bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * 7); }
+.app-shell:has(.hands-tool-row):has(.cs-bar) .bk-fab--page { bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * 12); }
+.app-shell.is-desktop:has(.hands-tool-row) :is(.dk-pane-split, .dk-pane-wide) > .bk-fab--page { bottom: calc(var(--subrow) * 7); }
+.app-shell.is-desktop:has(.hands-tool-row):has(.cs-bar) :is(.dk-pane-split, .dk-pane-wide) > .bk-fab--page { bottom: calc(var(--subrow) * 12); }
+
+/* Never over a screen with controls of its own at its foot: the replay over the whole window or turned sideways
+   (the app's own bars are hidden there too), a hand's entry and the trainers (their footer, portalled to the body),
+   and on Hands anything but the saved list (entry, quick add, the drill, Study, the scanner). */
+body:has(.tab-panel.tab-active :is(.replayer-fullbleed, .replayer-landscape)) .bk-fab--page,
+body:has(.gto-sticky-footer) .bk-fab--page,
+.app-shell:has(.tab-panel.tab-active[data-tab="hands"]):not(:has(.tab-panel.tab-active[data-tab="hands"] .replayer-view.is-list)) .bk-fab--page { display: none; }
 /* .ctl (styles.css, loaded later) would show it: out-rank it on the phone. */
 .app-shell .bk-add-btn { display: none; }
 .app-shell.is-desktop .bk-add-btn {
@@ -85,20 +111,29 @@
 .bk-add-btn:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 @media (hover: hover) and (pointer: fine) { .bk-add-btn:hover { background: var(--brand-hover); } }
 
-/* Results' last line scrolls clear of the + too, by a spacer after the tab's content while the + shows.
+/* A tab's last line scrolls clear of the + too, by a spacer after the tab's content while the + shows.
    The + spans 2r to 9r over the nav (or the cash bar), 1r of room more: the phone's scroller already
-   keeps 7r clear at its foot (nav-h + 2r), so 4r more; a desktop pane keeps only 2r, so 8r. */
-.app-shell:has(.bk-fab--page) .tab-panel[data-tab="tracking"]::after { content: ''; display: block; height: calc(var(--subrow) * 4); }
-.app-shell.is-desktop:has(.bk-fab--page) .tab-panel[data-tab="tracking"]::after { height: calc(var(--subrow) * 2); }
+   keeps 7r clear at its foot (nav-h + 2r), so 4r more; a desktop pane keeps only 2r, so 8r. Not the Schedule's
+   lists, which scroll in their own scroller with a tail of a screen or more (.schedule-list-tail). */
+.app-shell:has(.bk-fab--page) .tab-panel.tab-active:not(:is([data-tab="tournaments"], [data-tab="schedule"], [data-tab="calendar"]))::after { content: ''; display: block; height: calc(var(--subrow) * 4); }
+.app-shell.is-desktop:has(.bk-fab--page) .tab-panel.tab-active:not(:is([data-tab="tournaments"], [data-tab="schedule"], [data-tab="calendar"]))::after { height: calc(var(--subrow) * 2); }
 
 /* The admin dev keys (the grid toggles, styles.css .grid-dev-toggle) stand at the same corner: on
-   the Results tab they move up past the +. The phone's stack starts at 7r over the nav's top, the +
+   every tab with the + they move up past it. The phone's stack starts at 7r over the nav's top, the +
    reaches 9r (14r over the cash bar), so +3 (+8); on desktop the pane has no nav band, the keys
    already clear the + by 3r, and only the bar's raise reaches them. */
-.app-shell:has(.tab-panel.tab-active[data-tab="tracking"]) { --dev-lift: 3; }
-.app-shell:has(.tab-panel.tab-active[data-tab="tracking"]):has(.cs-bar) { --dev-lift: 8; }
-.app-shell.is-desktop:has(.tab-panel.tab-active[data-tab="tracking"]) { --dev-lift: 0; }
-.app-shell.is-desktop:has(.tab-panel.tab-active[data-tab="tracking"]):has(.cs-bar) { --dev-lift: 3; }
+.app-shell:has(.bk-fab--page) { --dev-lift: 3; }
+.app-shell:has(.bk-fab--page):has(.cs-bar) { --dev-lift: 8; }
+.app-shell.is-desktop:has(.bk-fab--page) { --dev-lift: 0; }
+.app-shell.is-desktop:has(.bk-fab--page):has(.cs-bar) { --dev-lift: 3; }
+/* The desktop Schedule list pane holds the keys where the phone does (styles.css .dk-fab-scope), the + too. */
+.app-shell.is-desktop:has(.dk-pane-list > .bk-fab--page) { --dev-lift: 3; }
+.app-shell.is-desktop:has(.dk-pane-list > .bk-fab--page):has(.cs-bar) { --dev-lift: 8; }
+/* Over the Hands tools row the + is 5r higher, so the keys are too. */
+.app-shell:has(.hands-tool-row):has(.bk-fab--page) { --dev-lift: 8; }
+.app-shell:has(.hands-tool-row):has(.bk-fab--page):has(.cs-bar) { --dev-lift: 13; }
+.app-shell.is-desktop:has(.hands-tool-row):has(.bk-fab--page) { --dev-lift: 5; }
+.app-shell.is-desktop:has(.hands-tool-row):has(.bk-fab--page):has(.cs-bar) { --dev-lift: 10; }
 
 /* ── The menu (portalled to the body) ──
    A layer above the page (Bankroll design 37): the page dims behind it (--bg at 64%), the menu is

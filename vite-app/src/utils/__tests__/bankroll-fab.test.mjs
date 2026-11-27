@@ -4,29 +4,30 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fabItems, fabHasMenu, holdFab, fabHeld, subscribeFab } from '../bankroll-fab.js';
 
-test('an admin with no live session is offered all four choices, in the Log menu order', () => {
+test('an admin with no live session is offered all five choices, the Log menu order then New hand', () => {
   const items = fabItems({ isAdmin: true, live: false });
-  assert.deepEqual(items.map((i) => i.label), ['Tournament result', 'Cash session', 'Start live session', 'Expense or income']);
-  assert.deepEqual(items.map((i) => i.intent.kind), ['tournament', 'cash-add', 'cash-start', 'expense']);
+  assert.deepEqual(items.map((i) => i.label), ['Tournament result', 'Cash session', 'Start live session', 'Expense or income', 'New hand']);
+  assert.deepEqual(items.map((i) => i.intent.kind), ['tournament', 'cash-add', 'cash-start', 'expense', 'new-hand']);
   assert.ok(fabHasMenu(items));
 });
 
 test('a running live session takes Start live session off the menu and nothing else', () => {
   const items = fabItems({ isAdmin: true, live: true });
-  assert.deepEqual(items.map((i) => i.key), ['tournament', 'cash-add', 'expense']);
+  assert.deepEqual(items.map((i) => i.key), ['tournament', 'cash-add', 'expense', 'new-hand']);
   assert.ok(items.every((i) => i.intent.kind !== 'cash-start'));
 });
 
-test('everyone else has only the tournament result, so there is no menu to open', () => {
+test('everyone else has the tournament result and New hand, in a menu', () => {
   for (const live of [false, true]) {
     const items = fabItems({ isAdmin: false, live });
-    assert.deepEqual(items.map((i) => i.intent), [{ kind: 'tournament' }]);
-    assert.equal(fabHasMenu(items), false);
+    assert.deepEqual(items.map((i) => i.intent), [{ kind: 'tournament' }, { kind: 'new-hand' }]);
+    assert.equal(fabHasMenu(items), true);
   }
 });
 
 test('the intents are the kinds Results already understands (TrackingView, CashSessions, Expenses)', () => {
-  const known = new Set(['tournament', 'cash-add', 'cash-start', 'cash-live', 'cash-end', 'cash-session', 'expense', 'trip']);
+  // new-hand goes to Hands instead (App's logIntoResults hands it to openNewHand).
+  const known = new Set(['tournament', 'cash-add', 'cash-start', 'cash-live', 'cash-end', 'cash-session', 'expense', 'trip', 'new-hand']);
   for (const live of [false, true]) for (const i of fabItems({ isAdmin: true, live })) assert.ok(known.has(i.intent.kind), i.intent.kind);
 });
 

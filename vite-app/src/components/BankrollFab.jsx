@@ -28,10 +28,15 @@ import './bankroll-fab.css';
 //
 // variant 'bar' (Bankroll design 49 and 87): on desktop the + is a labelled "+ Add" in the bankroll's band
 // at the top of the pane (Bankrolls.jsx BankrollSwitcher), and the floating one is not drawn there.
+//
+// On every tab (owner, 2026-11-27: "Let's add this button to every screen and include New Hand as an option"):
+// App mounts the page's + whatever the tab, with `tab` naming it (data-tab: the CSS keeps the desktop Bankroll's
+// to its bar, and Hands' to the saved list), and New hand at the foot of every menu (utils/bankroll-fab.js).
+// `holdable` false off the Bankroll tab: a form left open there holds its + away, not every tab's.
 
 const ROW_R = 6;
 const WIDTH_G = 20;
-const MARK = { tournament: 'ring', 'cash-add': 'cards', 'cash-start': 'clock', expense: 'dollarSign' };
+const MARK = { tournament: 'ring', 'cash-add': 'cards', 'cash-start': 'clock', expense: 'dollarSign', 'new-hand': 'pencil' };
 
 function FabMenu({ id, anchor, items, onPick, onClose, leaving = false }) {
   const ref = useRef(null);
@@ -77,7 +82,7 @@ function FabMenu({ id, anchor, items, onPick, onClose, leaving = false }) {
     <>
       <div className={'bk-fab-scrim' + (leaving ? ' is-leaving' : '')} onClick={() => onClose(true)} />
       {placed && (
-        <div ref={ref} id={id} className={'bk-fab-menu' + (below ? ' is-below' : '') + (leaving ? ' is-leaving' : '')} role="menu" aria-label="Add a session" style={style} onKeyDown={onKeyDown}>
+        <div ref={ref} id={id} className={'bk-fab-menu' + (below ? ' is-below' : '') + (leaving ? ' is-leaving' : '')} role="menu" aria-label="Add" style={style} onKeyDown={onKeyDown}>
           {items.map((it) => {
             const Mark = Icon[MARK[it.key]] || Icon.plus;
             return (
@@ -94,8 +99,9 @@ function FabMenu({ id, anchor, items, onPick, onClose, leaving = false }) {
   );
 }
 
-export default function BankrollFab({ scope = 'page', isAdmin, onPick, variant = 'float' }) {
-  const held = useBankrollFabHeld(scope);
+export default function BankrollFab({ scope = 'page', isAdmin, onPick, variant = 'float', tab = null, holdable = true }) {
+  const heldNow = useBankrollFabHeld(scope);
+  const held = holdable && heldNow;
   const live = useLiveSessionNow();
   const items = useMemo(() => fabItems({ isAdmin: !!isAdmin, live: !!live }), [isAdmin, live]);
   const menu = fabHasMenu(items);
@@ -121,7 +127,8 @@ export default function BankrollFab({ scope = 'page', isAdmin, onPick, variant =
         ref={btnRef}
         type="button"
         className={bar ? 'bk-add-btn ctl' : 'bk-fab bk-fab--' + scope}
-        aria-label="Add a session"
+        data-tab={tab || undefined}
+        aria-label="Add"
         aria-haspopup={menu ? 'menu' : undefined}
         aria-expanded={menu ? open && !leaving : undefined}
         aria-controls={menu && open ? menuId : undefined}

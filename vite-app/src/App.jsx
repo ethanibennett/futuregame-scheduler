@@ -383,6 +383,8 @@ function App() {
   // Hands > Study: which tool is open (null is its list), and a request to open the drill on the replayer.
   const [studyTool, setStudyTool] = useState(null);
   const [drillAsk, setDrillAsk] = useState(false);
+  // The +'s New hand (owner, 2026-11-27): Hands' saved list with its New Hand picker in view (HandReplayerView newHandAsk).
+  const [newHandAsk, setNewHandAsk] = useState(0);
   // Play a hand opened from Study: Study stays lit and the drill's Back returns there (App improvements 304).
   const [drillFromStudy, setDrillFromStudy] = useState(false);
   // Set by the replayer's "Study this draw" button and consumed by
@@ -477,7 +479,14 @@ function App() {
   const clearResultsIntent = useCallback(() => setResultsIntent(null), []);
   // Show Results with a form open (the home's Log menu and To log, the bankroll tab's floating +
   // and the bankroll dashboard sheet's): the intent is set first, TrackingView opens it once.
+  // The + on every tab (owner, 2026-11-27) hands New hand here too: Hands, its saved list, the New Hand picker.
   const logIntoResults = useCallback((intent) => {
+    if (intent && intent.kind === 'new-hand') {
+      setHandsTool('replayer');
+      setNewHandAsk(Date.now());
+      setCurrentView('hands');
+      return;
+    }
     setResultsIntent({ ...intent, at: Date.now() });
     setCurrentView('tracking');
   }, [setCurrentView]);
@@ -2613,7 +2622,7 @@ function App() {
                             onPlayHand={() => { setDrillAsk(true); setDrillFromStudy(true); setHandsTool('replayer'); }}
                             pendingSolverSpot={pendingSolverSpot} onConsumeSolverSpot={() => setPendingSolverSpot(null)}
                             pendingDrawSpot={pendingDrawSpot} onConsumeDrawSpot={() => setPendingDrawSpot(null)} /></Suspense>
-                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setStudyTool('solve'); setHandsTool('study'); }) : undefined} onStudyDraw={isAdmin ? (spot => { setPendingDrawSpot(spot); setStudyTool('draw'); setHandsTool('study'); }) : undefined} quickAdd={isAdmin} drillEnabled={isAdmin} drillAsk={drillAsk} onDrillAsked={() => setDrillAsk(false)} onDrillBack={drillFromStudy ? (() => { setDrillFromStudy(false); setHandsTool('study'); }) : null} schedule={mySchedule} updates={myActiveUpdates} sidePane={isDesktop ? dkSideHands : null} onSplitChange={setHandsSplit} active={currentView === 'hands'} sharedQuestion={sharedQuestion} onSharedQuestionAnswered={onSharedQuestionAnswered} /></Suspense>}
+                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setStudyTool('solve'); setHandsTool('study'); }) : undefined} onStudyDraw={isAdmin ? (spot => { setPendingDrawSpot(spot); setStudyTool('draw'); setHandsTool('study'); }) : undefined} quickAdd={isAdmin} drillEnabled={isAdmin} drillAsk={drillAsk} onDrillAsked={() => setDrillAsk(false)} newHandAsk={newHandAsk} onNewHandAsked={() => setNewHandAsk(0)} onDrillBack={drillFromStudy ? (() => { setDrillFromStudy(false); setHandsTool('study'); }) : null} schedule={mySchedule} updates={myActiveUpdates} sidePane={isDesktop ? dkSideHands : null} onSplitChange={setHandsSplit} active={currentView === 'hands'} sharedQuestion={sharedQuestion} onSharedQuestionAnswered={onSharedQuestionAnswered} /></Suspense>}
                     </div>
                   </div>
             )}
@@ -3098,9 +3107,9 @@ function App() {
           <div className={!isDesktop ? 'layout-contents' : 'dk-pane dk-pane-main ' + (currentView === 'tournaments' || currentView === 'calendar' ? 'dk-pane-list dk-fab-scope' : currentView === 'dashboard' ? 'dk-pane-home' : dkSideTab ? 'dk-pane-split' : 'dk-pane-wide')}>
             {primaryColumn}
             {devToggles}
-            {/* The Results tab's floating +: a direct child of the main pane, so on desktop it sits
-                in that pane (bankroll-fab.css). Guests cannot log results. */}
-            {currentView === 'tracking' && !isGuest && <BankrollFab scope="page" isAdmin={isAdmin} onPick={logIntoResults} />}
+            {/* The floating +, on every tab (owner, 2026-11-27): a direct child of the main pane, so on desktop it
+                sits in that pane (bankroll-fab.css). Guests cannot log results or keep hands. */}
+            {!isGuest && <BankrollFab scope="page" isAdmin={isAdmin} onPick={logIntoResults} tab={currentView} holdable={currentView === 'tracking'} />}
           </div>
           {/* The home's second pane (docs/desktop-layout.md "Dashboard"): Up Next and the rest of
               NOW stay in the main pane; the NUMBERS column (the period block, later Trend) is
