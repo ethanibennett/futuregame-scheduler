@@ -222,6 +222,9 @@ function getGameCategory(gameType) {
   if (cfg.hasBoard) return 'community';
   if (['2-7 TD', 'PL 2-7 TD', 'L 2-7 TD', 'A-5 TD', 'Badeucy', 'Badacy', 'Archie 99', 'Archie 66', 'Ari'].includes(gameType)) return 'draw_triple';
   if (['NL 2-7 SD', 'PL 5CD Hi', 'NL 5CD Hi', 'NL A-5 SD'].includes(gameType)) return 'draw_single';
+  // Limit 5-Card Draw and Pot Limit Badugi (owner, 2026-11-27: "add Limit 5-Card Draw and Pot Limit Badugi too").
+  if (gameType === 'L 5CD Hi') return 'draw_single';
+  if (gameType === 'PL Badugi') return 'draw_triple';
   if (DOUBLE_DRAW.includes(gameType)) return 'draw_double';
   if (gameType === 'Badugi') return 'draw_triple';
   if (!cfg.hasBoard && !cfg.isStud) {
@@ -264,8 +267,8 @@ function sortHandByRank(cardStr) {
 /* Draw games sort high→low too, but the ace plays LOW in the A-5 family, so a
    wheel reads "5 4 3 2 A" there and "A K Q J T" in 2-7 or high draw. Face-down
    backs rank 0 and sit at the end, after every known card. */
-const ACE_LOW_DRAW = new Set(['A-5 TD', 'NL A-5 SD', 'Badugi', 'Badacy']);
-const HIGH_DRAW = new Set(['PL 5CD Hi', 'NL 5CD Hi', 'PL DD Hi', 'NL Pineapple', 'PL Pineapple', 'L Pineapple', 'Dramaha Hi', 'Dramaha 49', 'L Dramaha Hi', 'L Dramaha 49', 'Archie 99', 'Archie 66', 'Ari']);
+const ACE_LOW_DRAW = new Set(['A-5 TD', 'NL A-5 SD', 'Badugi', 'PL Badugi', 'Badacy']);
+const HIGH_DRAW = new Set(['PL 5CD Hi', 'NL 5CD Hi', 'L 5CD Hi', 'PL DD Hi', 'NL Pineapple', 'PL Pineapple', 'L Pineapple', 'Dramaha Hi', 'Dramaha 49', 'L Dramaha Hi', 'L Dramaha 49', 'Archie 99', 'Archie 66', 'Ari']);
 const drawBase = (gameType) => String(gameType || '').replace(/^Super /, '');
 function sortDrawHand(cardStr, gameType) {
   const cards = parseCardNotation(cardStr || '');
@@ -4763,7 +4766,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
     const drawPlayerQueue = drawActivePlayers.filter(pi => !(currentStreet.draws || []).find(d => d.player === pi));
     const currentDrawPlayer = drawPlayerQueue.length > 0 ? drawPlayerQueue[0] : -1;
     const allDrawsDeclared = drawPlayerQueue.length === 0;
-    const isBadugi = ['Badugi','Badeucy','Badacy'].includes(hand.gameType);
+    const isBadugi = ['Badugi','PL Badugi','Badeucy','Badacy'].includes(hand.gameType);
     const maxDiscard = isBadugi ? 4 : 5;
 
     if (phase === 'draw_cards_entry') {

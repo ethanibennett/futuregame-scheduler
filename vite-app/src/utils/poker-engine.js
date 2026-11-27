@@ -495,7 +495,7 @@ export const GAME_EVAL = {
   'PL Pineapple': { type: 'high', method: 'standard' },
   'L Pineapple': { type: 'high', method: 'standard' },
   'NLH':{type:'high',method:'standard'},'LHE':{type:'high',method:'standard'},'PLH':{type:'high',method:'standard'},
-  'Stud Hi':{type:'high',method:'standard'},'PL 5CD Hi':{type:'high',method:'standard'},'NL 5CD Hi':{type:'high',method:'standard'},'PL DD Hi':{type:'high',method:'standard'},
+  'Stud Hi':{type:'high',method:'standard'},'PL 5CD Hi':{type:'high',method:'standard'},'NL 5CD Hi':{type:'high',method:'standard'},'PL DD Hi':{type:'high',method:'standard'},'L 5CD Hi':{type:'high',method:'standard'},
   'PLO':{type:'high',method:'omaha'},'LO Hi':{type:'high',method:'omaha'},'NLO':{type:'high',method:'omaha'},
   'PLO8':{type:'hilo',method:'omaha'},'O8':{type:'hilo',method:'omaha'},'Big O':{type:'hilo',method:'omaha'},
   'NL Big O':{type:'hilo',method:'omaha'},'L Big O':{type:'hilo',method:'omaha'},
@@ -503,7 +503,7 @@ export const GAME_EVAL = {
   'Razz':{type:'low',lowType:'a5'},'A-5 TD':{type:'low',lowType:'a5'},'NL A-5 SD':{type:'low',lowType:'a5'},
   '2-7 TD':{type:'low',lowType:'27'},'PL 2-7 TD':{type:'low',lowType:'27'},'L 2-7 TD':{type:'low',lowType:'27'},
   'NL 2-7 SD':{type:'low',lowType:'27'},'PL 2-7 DD':{type:'low',lowType:'27'},'2-7 Razz':{type:'low',lowType:'27'},
-  'Badugi':{type:'badugi'},
+  'Badugi':{type:'badugi'},'PL Badugi':{type:'badugi'},
   'Badeucy':{type:'split-badugi',otherLow:'27'},'Badacy':{type:'split-badugi',otherLow:'a5'},
   // Omaha variants (omaha method works for any N >= 2 hole cards)
   'PLO5':{type:'high',method:'omaha'},

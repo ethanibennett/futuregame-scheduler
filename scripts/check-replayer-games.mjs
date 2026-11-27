@@ -108,10 +108,10 @@ function planFor(row) {
   if (t === 'NL 2-7 SD') return LOW_27(1);
   if (t === 'A-5 TD') return LOW_A5(3);
   if (t === 'NL A-5 SD') return LOW_A5(1);
-  if (t === 'Badugi') return BADUGI;
+  if (t === 'Badugi' || t === 'PL Badugi') return BADUGI;
   if (t === 'Badeucy') return BADEUCY;
   if (t === 'Badacy') return BADACY;
-  if (t === 'PL 5CD Hi' || t === 'NL 5CD Hi') return DRAW_HI(1);
+  if (t === 'PL 5CD Hi' || t === 'NL 5CD Hi' || t === 'L 5CD Hi') return DRAW_HI(1);
   // The double draws (2026-11-27): two draws.
   if (t === 'PL 2-7 DD') return LOW_27(2);
   if (t === 'PL DD Hi') return DRAW_HI(2);

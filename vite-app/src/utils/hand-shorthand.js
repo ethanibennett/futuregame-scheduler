@@ -24,7 +24,7 @@ export const GAME_CODES = {
   'Dramaha Hi':'DH', 'Dramaha 2-7':'DL', 'Dramaha 49':'DP', 'Dramaha 0':'DZ', 'Dramadugi':'DD', 'Omajack':'OJ',
   'L Dramaha Hi':'LD', 'L Dramaha 2-7':'L7', 'L Dramaha 49':'L9', 'L Dramaha 0':'L0', 'L Dramadugi':'LG',
   // The double draws (2026-11-27). 'DD' and 'DH' were taken (Dramadugi, Dramaha Hi).
-  'PL 2-7 DD':'2D', 'PL DD Hi':'HD'
+  'PL 2-7 DD':'2D', 'PL DD Hi':'HD', 'L 5CD Hi':'L5', 'PL Badugi':'PB'
 };
 
 export const GAME_CODES_REV = {};
@@ -57,6 +57,8 @@ function _shGetGameCategory(gameType) {
   if (['2-7 TD', 'PL 2-7 TD', 'L 2-7 TD', 'A-5 TD', 'Badeucy', 'Badacy', 'Badugi', 'Archie 99', 'Archie 66', 'Ari'].indexOf(gameType) >= 0) return 'draw_triple';
   if (['NL 2-7 SD', 'PL 5CD Hi', 'NL 5CD Hi', 'NL A-5 SD'].indexOf(gameType) >= 0) return 'draw_single';
   if (['PL 2-7 DD', 'PL DD Hi'].indexOf(gameType) >= 0) return 'draw_double';
+  if (gameType === 'L 5CD Hi') return 'draw_single';
+  if (gameType === 'PL Badugi') return 'draw_triple';
   if (!cfg.hasBoard && !cfg.isStud) {
     return 'community';
   }

@@ -109,7 +109,7 @@ test('the variant wheel never repeats the game wheel (owner, 2026-11-22: "Let\'s
    to the standard limit for each game but allow users to change it (NL A-5 Single Draw is a classic game)"). A pair
    whose game type would bet otherwise (No Limit Badugi -> 'Badugi', a limit game) stays struck through: it needs a
    game type of its own, never another game's. OFC has no betting structure (it is scored in points). */
-test('every structure the wheels offer plays with that betting', () => {
+test('every structure the wheels offer plays with that betting', async () => {
   const BET = { 'No Limit': 'nl', 'Pot Limit': 'pl', Limit: 'fl' };
   let open = 0, struck = 0;
   wheels.groups.forEach((grp, g) => grp.games.forEach((game, v) => W.STRUCTURES.forEach((s, si) => {
@@ -132,11 +132,31 @@ test('every structure the wheels offer plays with that betting', () => {
   assert.equal(a5sd.gameType, 'NL A-5 SD');
   assert.equal(U.HAND_CONFIG['NL A-5 SD'].betting, 'nl');
   assert.equal(W.usualRow(wheels, 'A-5 Single Draw'), a5sd);
-  // 62 positions pick a row (the catalog's 60, NL Razz, OFC and the two double draws among them, and the 2 custom
-  // games); 51 do not: 49 wait for a game type of their own (45, and the double draws at No Limit and Limit), and OFC's
-  // Pot Limit and Limit, where no structure applies.
-  assert.equal(open, 62);
-  assert.equal(struck, 51);
+  // 64 positions pick a row (the catalog's 62, NL Razz, OFC, the two double draws, Limit 5-Card Draw and Pot Limit
+  // Badugi among them, and the 2 custom games); 49 do not: 47 wait for a game type of their own, and OFC's Pot Limit
+  // and Limit, where no structure applies.
+  assert.equal(open, 64);
+  assert.equal(struck, 49);
+  // Limit 5-Card Draw and Pot Limit Badugi (owner, 2026-11-27: "add Limit 5-Card Draw and Pot Limit Badugi too"): game
+  // types of their own, never the pot-limit draw's or the limit badugi's; the usual structures are unchanged.
+  const l5 = W.rowAt(wheels, '5-Card Draw', 'Limit');
+  assert.equal(l5.gameType, 'L 5CD Hi');
+  assert.equal(l5.name, 'Limit 5-Card Draw');
+  assert.deepEqual(U.HAND_CONFIG['L 5CD Hi'].flSmallStreets, [0], 'a small bet before the draw, a big bet after');
+  const plb = W.rowAt(wheels, 'Badugi', 'Pot Limit');
+  assert.equal(plb.gameType, 'PL Badugi');
+  assert.equal(plb.name, 'Pot Limit Badugi');
+  assert.equal(U.HAND_CONFIG['PL Badugi'].heroCards, 4);
+  assert.equal(W.usualRow(wheels, 'Badugi').structure, 'Limit');
+  assert.equal(W.usualRow(wheels, '5-Card Draw').structure, 'No Limit');
+  const QG = await import('../quick-add/game.js');
+  const E = await import('../poker-engine.js');
+  const S = await import('../hand-shorthand.js');
+  assert.equal(QG.gameCategory('L 5CD Hi'), 'draw_single');
+  assert.equal(QG.gameCategory('PL Badugi'), 'draw_triple');
+  assert.equal(E.GAME_EVAL['PL Badugi'].type, 'badugi');
+  assert.equal(E.GAME_EVAL['L 5CD Hi'].type, 'high');
+  for (const t of ['L 5CD Hi', 'PL Badugi']) assert.equal(S.GAME_CODES_REV[S.GAME_CODES[t]], t, t + ' has a share-link code of its own');
 });
 
 /* The double draws (owner, 2026-11-27: "add Pot Limit 2-7 Double Draw and Pot Limit Double Draw Hi"): rows of their own,

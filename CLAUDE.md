@@ -112,14 +112,16 @@ sessions opened here own scheduler work.
   (owner, 2026-11-27: "add Pot Limit 2-7 Double Draw and Pot Limit Double Draw Hi"): `PL 2-7 DD` and `PL DD Hi`, category
   `draw_double` (Pre-Draw, First Draw, Second Draw) in the replayer, the share links (codes `2D`, `HD`) and quick add's copy;
   played end to end by `check:replayer-games`. Not exported (PokerStars has no such game, as for the games built 2026-11-05), and
-  quick add's parser is not told of them. Two recent games with one abbreviation say their structure on the chips ("NL 5CD",
+  quick add's parser is not told of them. **Limit 5-Card Draw and Pot Limit Badugi** (owner, 2026-11-27, "add … too") the same
+  way: `L 5CD Hi` (a small bet before the draw, a big bet after: `flSmallStreets: [0]`) and `PL Badugi` (aces low, four cards,
+  as Badugi everywhere it is named), codes `L5` and `PB`. Two recent games with one abbreviation say their structure on the chips ("NL 5CD",
   "PL 5CD"). Over them, the last three
   games picked (else NLH, PLO, 2-7 TD) and Search, which opens the palette (`VariantPicker.jsx` `Palette`: slang, the mixes, a game's
   rules; ⌘K and / still open it). The wheels are a second view of `buildCatalog`: every position not struck through is a catalog
   row and every row is one position, and a pick goes through `pickVariant`, so the game type is the palette's. Turning a game puts
   the structure on its usual one, and any structure the game has a game type for can be turned to, NL Stud and NL Razz included
   (owner, 2026-11-22: "Default to the standard limit for each game but allow users to change it"; no line under the wheels). The
-  other 49 pairs (No Limit Badugi, Limit 5-Card Draw, PL Short Deck, the double draws at No Limit and Limit…) map in `STRUCTURE_GAME_MAP` to a game type that bets
+  other 47 pairs (No Limit Badugi, PL Short Deck, the double draws at No Limit and Limit…) map in `STRUCTURE_GAME_MAP` to a game type that bets
   otherwise, so they stay struck through until each has a game type of its own (a `HAND_CONFIG` row and the rest a new game
   needs). `variant-wheels.test.mjs` (in `npm test`) holds all of it: every row reachable and none extra, every open structure
   dealt with its own betting, and no catalog game outside the families in `WHEEL_GAMES`. Scripts that pick a game open the palette with `.vw-search` (the launcher, `.vp-launcher`, is gone). Guards:

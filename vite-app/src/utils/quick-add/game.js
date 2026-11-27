@@ -47,6 +47,9 @@ export const HAND_CONFIG = {
   // The double draws (owner, 2026-11-27: "add Pot Limit 2-7 Double Draw and Pot Limit Double Draw Hi"): two draws.
   'PL 2-7 DD':{ heroCards: 5, hasBoard: false, boardMax: 0, betting: 'pl', heroPlaceholder: '23457hdcss' },
   'PL DD Hi': { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'pl', heroPlaceholder: 'AKQJT hdcss' },
+  // Limit 5-Card Draw: a small bet before the draw, a big bet after it. Pot Limit Badugi (owner, 2026-11-27).
+  'L 5CD Hi': { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0], raiseCap: 4, heroPlaceholder: 'AKQJT hdcss' },
+  'PL Badugi':{ heroCards: 4, hasBoard: false, boardMax: 0, betting: 'pl', heroPlaceholder: 'A234hdcs' },
   'L 2-7 TD': { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: '23457hdcss' },
   'Badeucy':  { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: '23457hdcss' },
   'Badacy':   { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'A2345hdcss' },
@@ -117,8 +120,9 @@ export function gameCategory(gameType) {
   if (cfg.hasBoard) return 'community';
   if (['2-7 TD', 'PL 2-7 TD', 'L 2-7 TD', 'A-5 TD', 'Badeucy', 'Badacy', 'Archie 99', 'Archie 66', 'Ari'].includes(gameType)) return 'draw_triple';
   if (['NL 2-7 SD', 'PL 5CD Hi', 'NL 5CD Hi', 'NL A-5 SD'].includes(gameType)) return 'draw_single';
+  if (gameType === 'L 5CD Hi') return 'draw_single';
   if (['PL 2-7 DD', 'PL DD Hi'].includes(gameType)) return 'draw_double';
-  if (gameType === 'Badugi') return 'draw_triple';
+  if (gameType === 'Badugi' || gameType === 'PL Badugi') return 'draw_triple';
   return 'community';
 }
 

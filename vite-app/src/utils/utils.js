@@ -98,10 +98,12 @@ const VARIANT_STRIPS = {
   'NL 2-7 SD':          { abbr: '2-7 SD', fam: 'draw',  shade: 0.84 },
   'PL 2-7 DD':          { abbr: '2-7 DD', fam: 'draw',  shade: 0.92 },
   'Badugi':             { abbr: 'BADUGI', fam: 'draw',  shade: 1.18 },
+  'PL Badugi':          { abbr: 'BADUGI', fam: 'draw',  shade: 1.18 },
   'Badeucy':            { abbr: 'BADEUCY',fam: 'draw',  shade: 1.30 },
   'Badacy':             { abbr: 'BADACY', fam: 'draw',  shade: 1.24 },
   'PL 5CD Hi':          { abbr: '5CD',    fam: 'draw',  shade: 0.72 },
   'NL 5CD Hi':          { abbr: '5CD',    fam: 'draw',  shade: 0.72 },
+  'L 5CD Hi':           { abbr: '5CD',    fam: 'draw',  shade: 0.72 },
   'PL DD Hi':           { abbr: 'DD HI',  fam: 'draw',  shade: 0.78 },
   'NL A-5 SD':          { abbr: 'A-5 SD', fam: 'draw',  shade: 0.90 },
   'NLO':                { abbr: 'NLO',    fam: 'flop',  shade: 1.14 },
@@ -353,6 +355,9 @@ export const HAND_CONFIG = {
   // The double draws (owner, 2026-11-27: "add Pot Limit 2-7 Double Draw and Pot Limit Double Draw Hi"): two draws.
   'PL 2-7 DD':{ heroCards: 5, hasBoard: false, boardMax: 0, betting: 'pl', heroPlaceholder: '23457hdcss' },
   'PL DD Hi': { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'pl', heroPlaceholder: 'AKQJT hdcss' },
+  // Limit 5-Card Draw: a small bet before the draw, a big bet after it. Pot Limit Badugi (owner, 2026-11-27).
+  'L 5CD Hi': { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0], raiseCap: 4, heroPlaceholder: 'AKQJT hdcss' },
+  'PL Badugi':{ heroCards: 4, hasBoard: false, boardMax: 0, betting: 'pl', heroPlaceholder: 'A234hdcs' },
   'L 2-7 TD': { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: '23457hdcss' },
   'Badeucy':  { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: '23457hdcss' },
   'Badacy':   { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'A2345hdcss' },
