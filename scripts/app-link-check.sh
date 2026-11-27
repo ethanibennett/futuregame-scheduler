@@ -79,12 +79,14 @@ for want in os.environ['WANT'].split('|'):
   xcrun simctl install "$UDID" "$APP"
   for MODE in cold warm; do
     LOG="$OUT/${SLUG}${MODE}.log"
-    # The page reports until 30 s after it loads; the warm link arrives 8 s after launch.
-    if [ "$MODE" = cold ]; then VAR=SIMCTL_CHILD_FG_OPEN_URL; WAIT=36; else VAR=SIMCTL_CHILD_FG_OPEN_URL_LATER; WAIT=46; fi
+    # The page reports until the hand has been open 6 s ("final":true), or 150 s after it loads (the app asks for a
+    # hand that long while futurega.me restarts); the warm link arrives 8 s after launch.
+    if [ "$MODE" = cold ]; then VAR=SIMCTL_CHILD_FG_OPEN_URL; LIMIT=165; else VAR=SIMCTL_CHILD_FG_OPEN_URL_LATER; LIMIT=175; fi
     # --console-pty: on a pipe the app's stdout is block-buffered and lost when the app is ended.
     env "$VAR=$URL" xcrun simctl launch --console-pty --terminate-running-process "$UDID" "$APPID" > "$LOG" 2>&1 &
     LPID=$!
-    sleep "$WAIT"
+    T=0
+    while [ "$T" -lt "$LIMIT" ] && ! grep -q '"final":true' "$LOG" 2>/dev/null; do sleep 3; T=$((T + 3)); done
     xcrun simctl io "$UDID" screenshot "$OUT/${SLUG}${MODE}.png" > /dev/null 2>&1 || true
     xcrun simctl terminate "$UDID" "$APPID" 2>/dev/null || true
     kill "$LPID" 2>/dev/null || true

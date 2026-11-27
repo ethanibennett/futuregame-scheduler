@@ -822,10 +822,11 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
     true` skips it for one dispatch, for futurega.me down); `app-link-check.yml` runs three phones on demand:
     `gh api repos/ethanibennett/futuregame-scheduler/dispatches -f event_type=app-link-check -F "client_payload[ref]=$(git rev-parse HEAD)"`
     (a full SHA: "master" right after a push checked out the commit before it).
-    Its first run found a hand link reading "This hand link doesn't open" while futurega.me redeployed: any failed
-    request read as a dead link. `utils/hand-link-fetch.js` asks again after 1, 2, 4 and 8 s on no answer, 429 or 5xx;
-    only the server saying there is no such hand (404, 410, 400, JSON without one) is "doesn't open", and a server that
-    never answers is "futurega.me didn't answer" with Try again.
+    Its first runs found a hand link reading "This hand link doesn't open" while futurega.me redeployed (a deploy
+    refuses requests for well over 15 s: Render cannot run two copies of a service with a disk). `utils/hand-link-fetch.js`
+    asks again for about two minutes on no answer, a 12 s silence, 429 or 5xx, the page saying "Opening the hand:
+    futurega.me is restarting" from the second refusal; only the server saying there is no such hand (404, 410, 400,
+    JSON without one) is "doesn't open", and two minutes unanswered is "futurega.me didn't answer" with Try again.
   - Tests: `npm run test:features-social` (ports 4750-4759), and `game-rules`, `odds`, `plans-in-common` in
     `test:utils`. Catalogue figures (ICM, the PLO 8/b odds) are held by `odds.test.mjs`.
 

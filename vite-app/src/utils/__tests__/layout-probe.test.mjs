@@ -1,7 +1,7 @@
 // node --test src/utils/__tests__/layout-probe.test.mjs  (from vite-app/)
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { outOfBands } from '../layout-probe.js';
+import { outOfBands, wantsProbe } from '../layout-probe.js';
 
 const band = { W: 402, H: 874, top: 62, bottom: 34 };
 const r = (top, bottom, left = 100, right = 200) => ({ sel: 'x', top, bottom, left, right });
@@ -17,4 +17,13 @@ test('a piece under the clock, on the home bar or off a side is out; one inside 
 test('half a pixel of rounding is allowed', () => {
   assert.deepEqual(outOfBands([r(61.6, 100), r(700, 840.4)], band), []);
   assert.equal(outOfBands([r(61.4, 100)], band).length, 1);
+});
+
+test('the address that asks for the report', () => {
+  assert.equal(wantsProbe('?probe=layout'), true);
+  assert.equal(wantsProbe('?src=x&probe=layout'), true);
+  assert.equal(wantsProbe('?probe=layout&warm=1'), true);
+  assert.equal(wantsProbe('?probe=layouts'), false);
+  assert.equal(wantsProbe(''), false);
+  assert.equal(wantsProbe(undefined), false);
 });

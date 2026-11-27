@@ -35,8 +35,29 @@ test('only the server saying the hand is not there is "gone", at once', async ()
 test('no answer through every retry is "down", never "gone"', async () => {
   const s = seq(new TypeError('Load failed'));
   assert.deepEqual(await fetchHandLink('u', {}, s.opts), { kind: 'down' });
-  assert.deepEqual(s.waits, [1000, 2000, 4000, 8000]);
-  assert.equal(s.calls.length, 5);
+  assert.equal(s.calls.length, 15);
+  // About two minutes: longer than a deploy keeps futurega.me down.
+  const total = s.waits.reduce((a, b) => a + b, 0);
+  assert.ok(total >= 100000 && total <= 130000, String(total));
   const t = seq(res(429), res(503), res(200, undefined), res(500), res(504));
   assert.deepEqual(await fetchHandLink('u', {}, t.opts), { kind: 'down' });
+});
+
+test('the page is told it is waiting from the second refusal on, not the first', async () => {
+  const told = [];
+  const s = seq(res(502), res(502), res(502), res(200, HAND));
+  assert.deepEqual(await fetchHandLink('u', {}, { ...s.opts, onWait: (n) => told.push(n) }), { kind: 'ok', data: HAND });
+  assert.deepEqual(told, [1, 2]);
+});
+
+test('a request held open with no answer is given up and asked again', async () => {
+  let n = 0;
+  const fetchImpl = (u, init) => new Promise((resolve, reject) => {
+    n += 1;
+    if (n === 1) { init.signal.addEventListener('abort', () => reject(new Error('aborted'))); return; }   // hangs
+    resolve(res(200, HAND));
+  });
+  const out = await fetchHandLink('u', {}, { fetchImpl, wait: async () => {}, timeoutMs: 30 });
+  assert.deepEqual(out, { kind: 'ok', data: HAND });
+  assert.equal(n, 2);
 });

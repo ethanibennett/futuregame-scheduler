@@ -621,6 +621,8 @@ function App() {
   // (The #h/ fragment above is decoded synchronously; this one needs the server.)
   // A link that does not open says so (App improvements 155): it read "Loading…" for ever.
   const [sharedHandError, setSharedHandError] = useState(false);
+  // The server refused twice while the hand was asked for (a deploy, mostly): say so while it is asked again.
+  const [sharedHandWaiting, setSharedHandWaiting] = useState(false);
   // A question link (Features 27): the hand to the hero's decision until this viewer answers.
   const [sharedQuestion, setSharedQuestion] = useState(null);
   const linkHeaders = () => {
@@ -648,8 +650,14 @@ function App() {
         ? "futurega.me didn't answer, so the hand couldn't open. Check the connection and open the link again."
         : "This hand link doesn't open. It may have been copied wrong, or the hand is no longer shared.");
     };
-    fetchHandLink(`${API_URL}/hand-links/${PATH_HAND_ID}`, { headers: linkHeaders() })
+    let toldWaiting = false;
+    const onWait = () => {
+      setSharedHandWaiting(true);
+      if (token && !toldWaiting) { toldWaiting = true; toast.info('futurega.me is restarting. The hand opens as soon as it is back.'); }
+    };
+    fetchHandLink(`${API_URL}/hand-links/${PATH_HAND_ID}`, { headers: linkHeaders() }, { onWait })
       .then(res => {
+        setSharedHandWaiting(false);
         if (res.kind !== 'ok') { failed(res.kind); return; }
         const d = res.data;
         const decoded = decodeHand(d.shorthand);
@@ -2363,7 +2371,15 @@ function App() {
                 initialHand={sharedHandData} onClearInitialHand={() => {}} linkedReplay
                 sharedQuestion={sharedQuestion} onSharedQuestionAnswered={onSharedQuestionAnswered} />
             </Suspense>
-          : <LazyFallback />}
+          : sharedHandWaiting
+            ? <div className="hand-link-dead" style={{ height: '100%' }}>
+                <div className="hand-link-dead-box" role="status">
+                  <div className="hand-link-dead-mark">futurega.me</div>
+                  <h1 className="hand-link-dead-title">Opening the hand</h1>
+                  <p className="hand-link-dead-body">futurega.me is restarting. The hand opens as soon as it is back.</p>
+                </div>
+              </div>
+            : <LazyFallback />}
       </div>
     );
   }

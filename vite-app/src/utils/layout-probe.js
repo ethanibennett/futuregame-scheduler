@@ -61,12 +61,24 @@ export function layoutReport(win = window) {
   return { W, H, native: has ? native : null, env, sa, band: { top: band.top, bottom: band.bottom }, view: doc.querySelector('.replayer-replay') ? 'replay' : 'app', pieces: rects.length, bad: bad.slice(0, 12), ok: rects.length > 0 && bad.length === 0 };
 }
 
+// The address asks for the report: ?probe=layout, alone or among other parameters.
+export const wantsProbe = (search) => /[?&]probe=layout(?:&|$)/.test(search || '');
+
 export function startLayoutProbe(win = typeof window !== 'undefined' ? window : null) {
-  if (!win || !/[?&]probe=layout\b/.test(win.location.search || '')) return false;
-  // Until 30 s: a link answered slowly (futurega.me just after a deploy took over 15 s) is still judged once it opens.
-  [3000, 6000, 10000, 15000, 22000, 30000].forEach((t) => setTimeout(() => {
-    try { console.log('[fg-layout] ' + JSON.stringify({ at: t / 1000, path: win.location.pathname, ...layoutReport(win) })); }
-    catch (e) { console.log('[fg-layout] ' + JSON.stringify({ at: t / 1000, error: String(e && e.message || e) })); }
-  }, t));
+  if (!win || !wantsProbe(win.location.search)) return false;
+  // Every few seconds until the hand has been open 6 s (the report then says final: true), or 150 s: the app keeps
+  // asking for a hand about two minutes while futurega.me restarts (utils/hand-link-fetch.js), so the check does too.
+  const times = [3, 6, 10, 15, 22, 30, 40, 50, 60, 75, 90, 105, 120, 135, 150];
+  let openedAt = null;
+  const tick = (k) => {
+    const at = times[k];
+    let rep;
+    try { rep = layoutReport(win); } catch (e) { rep = { error: String(e && e.message || e) }; }
+    if (rep.view === 'replay' && openedAt == null) openedAt = at;
+    const final = (openedAt != null && at - openedAt >= 6) || k === times.length - 1;
+    console.log('[fg-layout] ' + JSON.stringify({ at, path: win.location.pathname, ...rep, final }));
+    if (!final) setTimeout(() => tick(k + 1), (times[k + 1] - at) * 1000);
+  };
+  setTimeout(() => tick(0), times[0] * 1000);
   return true;
 }
