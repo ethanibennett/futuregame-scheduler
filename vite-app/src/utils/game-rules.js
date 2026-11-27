@@ -58,8 +58,11 @@ function orderOf(row, n) {
   }
   if (row.family === 'draw' || /^Archie|^Ari$/.test(g)) {
     const triple = /Triple|Badugi|Badeucy|Badacey|Archie|Ari/.test(g) && !/Single/.test(g);
+    const double = /Double Draw/.test(g);
     return [`Blinds; each player gets ${HOLE[g] || 5} cards down.`, 'A round of betting.',
-      triple ? 'Three draws, each followed by a round of betting: discard any number and take as many.' : 'One draw: discard any number and take as many, then a last round.',
+      triple ? 'Three draws, each followed by a round of betting: discard any number and take as many.'
+        : double ? 'Two draws, each followed by a round of betting: discard any number and take as many.'
+        : 'One draw: discard any number and take as many, then a last round.',
       'The showdown.'];
   }
   const omaha = row.family === 'omaha' || /^Dramaha|^Omajack/.test(g);

@@ -104,16 +104,22 @@ sessions opened here own scheduler work.
   typing or saying a hand stay with admins.
 - **The New Hand picker is three wheels** (owner, 2026-11-22: "Let's build the wheels picker"; `components/VariantWheels.jsx`,
   `utils/variant-wheels.js`, styles in `variant-picker.css`; the approved prototype is `docs/prototypes/variant-wheels.html`): a
-  structure wheel (No Limit, Pot Limit, Limit), a game wheel of families (Hold'em, Omaha, Stud, Razz, 2-7 Draw … OFC, then Custom
-  when the account has custom games) and a family's variants on a third wheel that › opens to the right, each row only what tells it
-  from its family (owner, 2026-11-22: "Let's try not to repeat here"; `VARIANT_LABEL`): Stud's read Hi, 8/b, Hi/Lo Regular, 2-7
-  Draw's and A-5 Draw's Triple Draw, Single Draw; the label only, the row and its game type unchanged. Over them, the last three
+  structure wheel (No Limit, Pot Limit, Limit), a game wheel of families (Hold'em, Omaha, Stud, Razz, 2-7, A-5, Badugi, 5-Card …
+  OFC, then Custom when the account has custom games; a draw family is named by its hand, owner 2026-11-27: "just say A-5 and
+  2-7") and a family's variants on a third wheel that › opens to the right, each row only what tells it from its family (owner,
+  2026-11-22: "Let's try not to repeat here"; `VARIANT_LABEL`): Stud's read Hi, 8/b, Hi/Lo Regular; 2-7's Triple Draw, Double Draw,
+  Single Draw; 5-Card's Single Draw, Double Draw; the label only, the row and its game type unchanged. **The double draws**
+  (owner, 2026-11-27: "add Pot Limit 2-7 Double Draw and Pot Limit Double Draw Hi"): `PL 2-7 DD` and `PL DD Hi`, category
+  `draw_double` (Pre-Draw, First Draw, Second Draw) in the replayer, the share links (codes `2D`, `HD`) and quick add's copy;
+  played end to end by `check:replayer-games`. Not exported (PokerStars has no such game, as for the games built 2026-11-05), and
+  quick add's parser is not told of them. Two recent games with one abbreviation say their structure on the chips ("NL 5CD",
+  "PL 5CD"). Over them, the last three
   games picked (else NLH, PLO, 2-7 TD) and Search, which opens the palette (`VariantPicker.jsx` `Palette`: slang, the mixes, a game's
   rules; ⌘K and / still open it). The wheels are a second view of `buildCatalog`: every position not struck through is a catalog
   row and every row is one position, and a pick goes through `pickVariant`, so the game type is the palette's. Turning a game puts
   the structure on its usual one, and any structure the game has a game type for can be turned to, NL Stud and NL Razz included
   (owner, 2026-11-22: "Default to the standard limit for each game but allow users to change it"; no line under the wheels). The
-  other 45 pairs (No Limit Badugi, Limit 5-Card Draw, PL Short Deck…) map in `STRUCTURE_GAME_MAP` to a game type that bets
+  other 49 pairs (No Limit Badugi, Limit 5-Card Draw, PL Short Deck, the double draws at No Limit and Limit…) map in `STRUCTURE_GAME_MAP` to a game type that bets
   otherwise, so they stay struck through until each has a game type of its own (a `HAND_CONFIG` row and the rest a new game
   needs). `variant-wheels.test.mjs` (in `npm test`) holds all of it: every row reachable and none extra, every open structure
   dealt with its own betting, and no catalog game outside the families in `WHEEL_GAMES`. Scripts that pick a game open the palette with `.vw-search` (the launcher, `.vp-launcher`, is gone). Guards:

@@ -112,6 +112,9 @@ function planFor(row) {
   if (t === 'Badeucy') return BADEUCY;
   if (t === 'Badacy') return BADACY;
   if (t === 'PL 5CD Hi' || t === 'NL 5CD Hi') return DRAW_HI(1);
+  // The double draws (2026-11-27): two draws.
+  if (t === 'PL 2-7 DD') return LOW_27(2);
+  if (t === 'PL DD Hi') return DRAW_HI(2);
   return null;
 }
 

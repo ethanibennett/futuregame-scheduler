@@ -48,7 +48,7 @@ test('a pick sets the game type the old picker set', () => {
 
 test('the game wheel: the prototype families, each game in one place, nothing left over', () => {
   assert.deepEqual(wheels.groups.map((g) => g.label),
-    ["Hold'em", 'Omaha', 'Stud', 'Razz', '2-7 Draw', 'A-5 Draw', 'Badugi', '5-Card Draw', 'Archie', 'Ari', 'Dramaha', 'Omajack', 'OFC', 'Custom']);
+    ["Hold'em", 'Omaha', 'Stud', 'Razz', '2-7', 'A-5', 'Badugi', '5-Card', 'Archie', 'Ari', 'Dramaha', 'Omajack', 'OFC', 'Custom']);
   assert.ok(!wheels.groups.some((g) => g.unplaced), 'every built game is named by a family');
   const all = wheels.groups.flatMap((g) => g.games);
   assert.equal(new Set(all).size, all.length, 'no game in two places');
@@ -87,8 +87,9 @@ test('a game or variant turned lands on its usual structure; a structure turned 
 test('the variant wheel never repeats the game wheel (owner, 2026-11-22: "Let\'s try not to repeat here")', () => {
   const labels = (key) => { const g = wheels.groups.find((x) => x.key === key); return g.games.map((game) => W.variantLabel(g, game)); };
   assert.deepEqual(labels('stud'), ['Hi', '8/b', 'Hi/Lo Regular']);
-  assert.deepEqual(labels('27draw'), ['Triple Draw', 'Single Draw']);
+  assert.deepEqual(labels('27draw'), ['Triple Draw', 'Double Draw', 'Single Draw']);
   assert.deepEqual(labels('a5draw'), ['Triple Draw', 'Single Draw']);
+  assert.deepEqual(labels('5cd'), ['Single Draw', 'Double Draw']);
   assert.deepEqual(labels('holdem'), ['Texas', 'Pineapple', 'Short Deck']);
   assert.deepEqual(labels('razz'), ['A-5', 'Razzdugi', 'Razzdeucy', '2-7']);
   assert.deepEqual(labels('custom'), CUSTOM, 'a custom game keeps its own name');
@@ -97,8 +98,8 @@ test('the variant wheel never repeats the game wheel (owner, 2026-11-22: "Let\'s
     if (g.games.length < 2 || g.custom) continue;
     const ls = g.games.map((game) => W.variantLabel(g, game));
     assert.equal(new Set(ls).size, ls.length, `${g.label}: two rows read the same`);
-    // The family's name ("2-7" of 2-7 Draw, "Stud"), as a word of its own: "Razzdugi" is one word, not "Razz" again,
-    // and "Triple Draw" is the owner's own example under 2-7 Draw.
+    // The family's name ("2-7", "Stud"), as a word of its own: "Razzdugi" is one word, not "Razz" again,
+    // and "Triple Draw" is the owner's own example under 2-7.
     const word = g.label.split(' ')[0];
     for (const l of ls) assert.ok(!new RegExp(`(^|\\s)${esc(word)}(\\s|$)`, 'i').test(l), `${g.label} wheel repeats "${word}" in "${l}"`);
   }
@@ -131,10 +132,36 @@ test('every structure the wheels offer plays with that betting', () => {
   assert.equal(a5sd.gameType, 'NL A-5 SD');
   assert.equal(U.HAND_CONFIG['NL A-5 SD'].betting, 'nl');
   assert.equal(W.usualRow(wheels, 'A-5 Single Draw'), a5sd);
-  // 60 positions pick a row (the catalog's 58, NL Razz and OFC among them, and the 2 custom games); 47 do not:
-  // 45 wait for a game type of their own, and OFC's Pot Limit and Limit, where no structure applies.
-  assert.equal(open, 60);
-  assert.equal(struck, 47);
+  // 62 positions pick a row (the catalog's 60, NL Razz, OFC and the two double draws among them, and the 2 custom
+  // games); 51 do not: 49 wait for a game type of their own (45, and the double draws at No Limit and Limit), and OFC's
+  // Pot Limit and Limit, where no structure applies.
+  assert.equal(open, 62);
+  assert.equal(struck, 51);
+});
+
+/* The double draws (owner, 2026-11-27: "add Pot Limit 2-7 Double Draw and Pot Limit Double Draw Hi"): rows of their own,
+   pot limit by default, dealt with two draws, a 2-7 low and a high hand. */
+test('Pot Limit 2-7 Double Draw and Pot Limit Double Draw Hi', async () => {
+  const QG = await import('../quick-add/game.js');
+  const E = await import('../poker-engine.js');
+  const S = await import('../hand-shorthand.js');
+  for (const [game, type, name, low] of [['2-7 Double Draw', 'PL 2-7 DD', 'Pot Limit 2-7 Double Draw', '27'], ['Double Draw Hi', 'PL DD Hi', 'Pot Limit Double Draw Hi', null]]) {
+    const r = W.usualRow(wheels, game);
+    assert.equal(r.structure, 'Pot Limit', game);
+    assert.equal(r.gameType, type);
+    assert.equal(r.name, name);
+    assert.equal(U.HAND_CONFIG[type].betting, 'pl');
+    assert.equal(QG.gameCategory(type), 'draw_double');
+    assert.deepEqual(QG.streetDef(type).streets, ['Pre-Draw', 'First Draw', 'Second Draw']);
+    assert.equal(E.GAME_EVAL[type].type, low ? 'low' : 'high');
+    if (low) assert.equal(E.GAME_EVAL[type].lowType, low);
+    assert.ok(S.GAME_CODES[type] && S.GAME_CODES_REV[S.GAME_CODES[type]] === type, type + ' has a share-link code of its own');
+    for (const s of ['No Limit', 'Limit']) assert.equal(W.rowAt(wheels, game, s), null, `${s} ${game} is struck through`);
+  }
+  // Under 2-7 and 5-Card on the game wheel.
+  const pos = W.positionOf(wheels, W.usualRow(wheels, 'Double Draw Hi'));
+  assert.equal(wheels.groups[pos.g].label, '5-Card');
+  assert.equal(W.variantLabel(wheels.groups[pos.g], 'Double Draw Hi'), 'Double Draw');
 });
 
 test('quick picks: recent rows, else NLH, PLO and 2-7 TD', () => {

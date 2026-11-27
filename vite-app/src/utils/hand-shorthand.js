@@ -22,7 +22,9 @@ export const GAME_CODES = {
   'NL Pineapple':'NA', 'PL Pineapple':'PA', 'L Pineapple':'LA', 'Courchevel':'CV', 'Stud Regular':'SR',
   'Razzdugi':'RD', 'Razzdeucy':'RC', 'Archie 99':'A9', 'Archie 66':'A6', 'Ari':'AR',
   'Dramaha Hi':'DH', 'Dramaha 2-7':'DL', 'Dramaha 49':'DP', 'Dramaha 0':'DZ', 'Dramadugi':'DD', 'Omajack':'OJ',
-  'L Dramaha Hi':'LD', 'L Dramaha 2-7':'L7', 'L Dramaha 49':'L9', 'L Dramaha 0':'L0', 'L Dramadugi':'LG'
+  'L Dramaha Hi':'LD', 'L Dramaha 2-7':'L7', 'L Dramaha 49':'L9', 'L Dramaha 0':'L0', 'L Dramadugi':'LG',
+  // The double draws (2026-11-27). 'DD' and 'DH' were taken (Dramadugi, Dramaha Hi).
+  'PL 2-7 DD':'2D', 'PL DD Hi':'HD'
 };
 
 export const GAME_CODES_REV = {};
@@ -41,6 +43,7 @@ const SHORTHAND_STREET_DEFS = {
   community: { streets: ['Preflop', 'Flop', 'Turn', 'River'], boardCards: [0, 3, 1, 1] },
   draw_triple: { streets: ['Pre-Draw', 'First Draw', 'Second Draw', 'Third Draw'], boardCards: [0, 0, 0, 0] },
   draw_single: { streets: ['Pre-Draw', 'Draw'], boardCards: [0, 0] },
+  draw_double: { streets: ['Pre-Draw', 'First Draw', 'Second Draw'], boardCards: [0, 0, 0] },
   stud: { streets: ['3rd Street', '4th Street', '5th Street', '6th Street', '7th Street'], boardCards: [0, 0, 0, 0, 0] },
   ofc: { streets: ['Initial (5)', 'Card 6', 'Card 7', 'Card 8', 'Card 9', 'Card 10', 'Card 11', 'Card 12', 'Card 13'], boardCards: [0, 0, 0, 0, 0, 0, 0, 0, 0] }
 };
@@ -53,6 +56,7 @@ function _shGetGameCategory(gameType) {
   if (cfg.hasBoard) return 'community';
   if (['2-7 TD', 'PL 2-7 TD', 'L 2-7 TD', 'A-5 TD', 'Badeucy', 'Badacy', 'Badugi', 'Archie 99', 'Archie 66', 'Ari'].indexOf(gameType) >= 0) return 'draw_triple';
   if (['NL 2-7 SD', 'PL 5CD Hi', 'NL 5CD Hi', 'NL A-5 SD'].indexOf(gameType) >= 0) return 'draw_single';
+  if (['PL 2-7 DD', 'PL DD Hi'].indexOf(gameType) >= 0) return 'draw_double';
   if (!cfg.hasBoard && !cfg.isStud) {
     return 'community';
   }

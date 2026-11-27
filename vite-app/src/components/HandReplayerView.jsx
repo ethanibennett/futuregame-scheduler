@@ -76,6 +76,7 @@ const STREET_DEFS = {
   community: { streets: ['Preflop', 'Flop', 'Turn', 'River'], boardCards: [0, 3, 1, 1] },
   draw_triple: { streets: ['Pre-Draw', 'First Draw', 'Second Draw', 'Third Draw'], boardCards: [0, 0, 0, 0] },
   draw_single: { streets: ['Pre-Draw', 'Draw'], boardCards: [0, 0] },
+  draw_double: { streets: ['Pre-Draw', 'First Draw', 'Second Draw'], boardCards: [0, 0, 0] },
   stud: { streets: ['3rd Street', '4th Street', '5th Street', '6th Street', '7th Street'], boardCards: [0, 0, 0, 0, 0] },
   ofc: { streets: ['Initial (5)', 'Card 6', 'Card 7', 'Card 8', 'Card 9', 'Card 10', 'Card 11', 'Card 12', 'Card 13'], boardCards: [0,0,0,0,0,0,0,0,0] },
 };
@@ -208,6 +209,9 @@ function getPlayerDrawsByStreet(hand, playerIdx) {
 }
 
 // ── Game category / street helpers ──
+/* The double draws (owner, 2026-11-27): two draws, a round of betting after each. */
+const DOUBLE_DRAW = ['PL 2-7 DD', 'PL DD Hi'];
+const isDrawCategory = (c) => c === 'draw_triple' || c === 'draw_double' || c === 'draw_single';
 function getGameCategory(gameType) {
   // Strip "Super " prefix for engine lookups — Super variants share base game config
   const baseType = gameType.replace(/^Super /, '');
@@ -218,6 +222,7 @@ function getGameCategory(gameType) {
   if (cfg.hasBoard) return 'community';
   if (['2-7 TD', 'PL 2-7 TD', 'L 2-7 TD', 'A-5 TD', 'Badeucy', 'Badacy', 'Archie 99', 'Archie 66', 'Ari'].includes(gameType)) return 'draw_triple';
   if (['NL 2-7 SD', 'PL 5CD Hi', 'NL 5CD Hi', 'NL A-5 SD'].includes(gameType)) return 'draw_single';
+  if (DOUBLE_DRAW.includes(gameType)) return 'draw_double';
   if (gameType === 'Badugi') return 'draw_triple';
   if (!cfg.hasBoard && !cfg.isStud) {
     const customDef = STREET_DEFS['custom_' + gameType];
@@ -236,7 +241,7 @@ function getStreetDef(gameType) {
   return door ? { ...base, boardCards: base.boardCards.map((n, i) => (i === 0 ? door : i === 1 && n ? n - door : n)) } : base;
 }
 /* A draw in a game with a board too (Dramaha, Pineapple) plays by the draw games' rules for the hand. */
-const hasDraws = (category, cfg) => category === 'draw_triple' || category === 'draw_single' || (cfg && cfg.drawAfter != null);
+const hasDraws = (category, cfg) => isDrawCategory(category) || (cfg && cfg.drawAfter != null);
 /* The razz family: the highest door brings it in and the lowest board acts first. In the 2-7 games the ace is the worst card. */
 const LOW_STUD = /(^|\s)(2-7 )?Razz$|^Razzdugi$|^Razzdeucy$/;
 const ACE_HIGH_LOW_STUD = /2-7 Razz$|^Razzdeucy$/;
@@ -260,7 +265,7 @@ function sortHandByRank(cardStr) {
    wheel reads "5 4 3 2 A" there and "A K Q J T" in 2-7 or high draw. Face-down
    backs rank 0 and sit at the end, after every known card. */
 const ACE_LOW_DRAW = new Set(['A-5 TD', 'NL A-5 SD', 'Badugi', 'Badacy']);
-const HIGH_DRAW = new Set(['PL 5CD Hi', 'NL 5CD Hi', 'NL Pineapple', 'PL Pineapple', 'L Pineapple', 'Dramaha Hi', 'Dramaha 49', 'L Dramaha Hi', 'L Dramaha 49', 'Archie 99', 'Archie 66', 'Ari']);
+const HIGH_DRAW = new Set(['PL 5CD Hi', 'NL 5CD Hi', 'PL DD Hi', 'NL Pineapple', 'PL Pineapple', 'L Pineapple', 'Dramaha Hi', 'Dramaha 49', 'L Dramaha Hi', 'L Dramaha 49', 'Archie 99', 'Archie 66', 'Ari']);
 const drawBase = (gameType) => String(gameType || '').replace(/^Super /, '');
 function sortDrawHand(cardStr, gameType) {
   const cards = parseCardNotation(cardStr || '');
@@ -285,7 +290,7 @@ const LOWBALL_STUD = new Set(['Razz', '2-7 Razz', 'Razzdugi', 'Razzdeucy']);
 const ACE_LOW_STUD = new Set(['Razz', 'Razzdugi']);
 function sortDeadCards(keys, gameType, category) {
   const base = drawBase(gameType);
-  const isDraw = category === 'draw_triple' || category === 'draw_single';
+  const isDraw = isDrawCategory(category);
   const lowball = isDraw ? !HIGH_DRAW.has(base) : LOWBALL_STUD.has(base);
   const aceLow = isDraw ? ACE_LOW_DRAW.has(base) : ACE_LOW_STUD.has(base);
   const rank = (r) => (r === 'A' && aceLow) ? 1 : (RANK_SORT[r] || 0);
@@ -2981,7 +2986,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
     if (gameCfg.drawAfter === currentStreetIdx) setPhase('draw_discard');
     else if (category === 'community') setPhase('board_entry');
     else if (category === 'stud') setPhase('stud_deal');
-    else if (category === 'draw_triple' || category === 'draw_single') setPhase('draw_discard');
+    else if (isDrawCategory(category)) setPhase('draw_discard');
     else setCurrentStreetIdx(nextStreet);
   }, [isBettingComplete, phase, handOver, advanceHeld]);
 
@@ -4767,7 +4772,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
          yet seen, each as many as the draw, and new cards need their discards named, or they replaced
          the first cards of the hand (entry audit 26). */
       const drawTitle = gameCfg.discardOnly ? 'the throw'
-        : (category === 'draw_triple' || category === 'draw_single') ? ((hand.streets[nextDrawStreet] || {}).name || 'the draw') : 'the draw';
+        : isDrawCategory(category) ? ((hand.streets[nextDrawStreet] || {}).name || 'the draw') : 'the draw';
       const hiDC = hand.heroIdx != null ? hand.heroIdx : 0;
       const heroDE = (currentStreet.draws || []).find(d => d.player === hiDC);
       let drawProblem = null;

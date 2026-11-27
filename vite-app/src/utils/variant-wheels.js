@@ -19,10 +19,12 @@ export const WHEEL_GAMES = [
   { key: 'omaha', label: 'Omaha', games: ['Omaha', 'Omaha 8/b', 'Big O', 'PLO5', 'PLO6', 'PLO6 8/b', 'Courchevel', 'Double Board Bomb Pot'] },
   { key: 'stud', label: 'Stud', games: ['Stud Hi', 'Stud 8/b', 'Stud Hi/Lo Regular'] },
   { key: 'razz', label: 'Razz', games: ['Razz', 'Razzdugi', 'Razzdeucy', '2-7 Razz'] },
-  { key: '27draw', label: '2-7 Draw', games: ['2-7 Triple Draw', '2-7 Single Draw'] },
-  { key: 'a5draw', label: 'A-5 Draw', games: ['A-5 Triple Draw', 'A-5 Single Draw'] },
+  /* The draw families are named by the hand they play (owner, 2026-11-27: "For the draw games let's just say A-5 and
+     2-7, not A-5 draw etc, since the third wheel will say single draw/triple draw"); 5-Card the same way. */
+  { key: '27draw', label: '2-7', games: ['2-7 Triple Draw', '2-7 Double Draw', '2-7 Single Draw'] },
+  { key: 'a5draw', label: 'A-5', games: ['A-5 Triple Draw', 'A-5 Single Draw'] },
   { key: 'badugi', label: 'Badugi', games: ['Badugi', 'Badeucy', 'Badacey'] },
-  { key: '5cd', label: '5-Card Draw', games: ['5-Card Draw'] },
+  { key: '5cd', label: '5-Card', games: ['5-Card Draw', 'Double Draw Hi'] },
   { key: 'archie', label: 'Archie', games: ['Archie 66', 'Archie 99'] },
   { key: 'ari', label: 'Ari', games: ['Ari'] },
   { key: 'dramaha', label: 'Dramaha', games: ['Dramaha Hi', 'Dramaha 2-7', 'Dramaha 49', 'Dramaha 0', 'Dramadugi'] },
@@ -40,9 +42,10 @@ export const VARIANT_LABEL = {
   'Omaha': 'Hi', 'Omaha 8/b': '8/b', 'Big O': 'Big O', 'PLO5': '5-Card', 'PLO6': '6-Card', 'PLO6 8/b': '6-Card 8/b', 'Courchevel': 'Courchevel',
   'Stud Hi': 'Hi', 'Stud 8/b': '8/b', 'Stud Hi/Lo Regular': 'Hi/Lo Regular',
   'Razz': 'A-5', 'Razzdugi': 'Razzdugi', 'Razzdeucy': 'Razzdeucy', '2-7 Razz': '2-7',
-  '2-7 Triple Draw': 'Triple Draw', '2-7 Single Draw': 'Single Draw',
+  '2-7 Triple Draw': 'Triple Draw', '2-7 Double Draw': 'Double Draw', '2-7 Single Draw': 'Single Draw',
   'A-5 Triple Draw': 'Triple Draw', 'A-5 Single Draw': 'Single Draw',
   'Badugi': 'Standard', 'Badeucy': 'Badeucy', 'Badacey': 'Badacey',
+  '5-Card Draw': 'Single Draw', 'Double Draw Hi': 'Double Draw',
   'Archie 66': '66', 'Archie 99': '99',
   'Dramaha Hi': 'Hi', 'Dramaha 2-7': '2-7', 'Dramaha 49': '49', 'Dramaha 0': '0', 'Dramadugi': 'Dramadugi',
 };

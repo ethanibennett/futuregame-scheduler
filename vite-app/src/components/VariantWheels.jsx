@@ -152,6 +152,8 @@ function Wheel({ id, label, items, index, onTurn, listKey, className = '', hidde
   );
 }
 
+const STRUCTURE_CHIP = { 'No Limit': 'NL', 'Pot Limit': 'PL', Limit: 'L' };
+
 const Chevron = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18" /></svg>
 );
@@ -205,11 +207,14 @@ export function VariantWheels({ rows, current, onPick, history, hands, onSearch,
       <div className="vw-quick" role="group" aria-label={quick.recent ? 'Recent games' : 'Popular games'}>
         {quick.rows.map((r) => {
           const s = rowStrip(r);
+          // Two picks with one abbreviation (No Limit and Pot Limit 5-Card Draw are both "5CD") each say their structure.
+          const twin = quick.rows.some((o) => o !== r && rowStrip(o).abbr === s.abbr);
+          const abbr = twin ? `${STRUCTURE_CHIP[r.structure] || ''} ${s.abbr}`.trim() : s.abbr;
           const on = !!current && current.key === r.key && !current.mix;
           return (
             <button key={r.key} type="button" className={'vw-chip ctl' + (on ? ' is-on' : '')} aria-pressed={on}
               aria-label={r.name} onClick={() => onPick(r, { mix: null, create: false })}>
-              <i style={{ background: s.color }} aria-hidden="true" /><span>{s.abbr}</span>
+              <i style={{ background: s.color }} aria-hidden="true" /><span>{abbr}</span>
             </button>
           );
         })}
