@@ -5,12 +5,47 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-11-16 (from Windows) — newest section first. Earlier notes: 2026-10-21, 2026-10-13, then 2026-09-30, live
+Last updated: 2026-11-26 (from Windows) — newest section first. Earlier notes: 2026-10-21, 2026-10-13, then 2026-09-30, live
 tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
 2026-08-30; "Seams to the dashboard" and "The build pipeline" were added from the
 wsop-console side and verified against both live services.
+
+---
+
+## 2026-11-26 — play.futurega.me: "your turn" pushes; a seat taken between hands no longer sees the last hand
+
+- **Shipped to master** (`d089fe3e`, `257df5e2`; futurega.me and the tables service both deployed and checked): the
+  play lobby's **Turn alerts** panel ("Tell me when it is my turn" / "Turn off") subscribes the browser for the account,
+  and a player whose table is not in front of them gets "<table name> / Your turn" from play.futurega.me's own worker;
+  a tap opens `play.futurega.me/table/<id>`. Once a hand per player, gated by `PLAY_DELIVERY` (on where RENDER is set).
+  The tables service now reports a turn when the player's page is hidden, not only when no stream is open (the page
+  beacons `POST /tables/:id/presence`). Design and tests: CLAUDE.md "Your turn" pushes, `docs/play-money-platform.md` §15.
+- **The privacy fix** (`d089fe3e`, found by `test:tables-eight`): a player who sat in a seat someone had just left was
+  shown that seat's last hand as its last player saw it, unshown hole cards included (`Table.viewFor` matched by seat;
+  it matches by user now). It had been live since the tables opened.
+- **Waiting on the owner:** a real push on a real device was NOT seen (no credentials here for two accounts at a live
+  table). To check: desktop Chrome at play.futurega.me, Turn alerts on, allow; a second account at the same table in
+  another browser; start, switch the first to another tab, wait for its turn. On an iPhone, Add to Home Screen first:
+  iOS gives web push only there, so the play page has its own manifest now ("futurega.me play").
+- **Traps:**
+  - Playwright's WebKit on Windows hangs the whole page when a service worker registers (`goto` stalls, `evaluate`
+    never returns). `check:tables` hung on it for 12 minutes, inside its failure dump's `evaluate`, which has no
+    timeout. So the play worker is registered only when a player turns alerts on, never at load; keep it that way, or
+    give the browser checks `serviceWorkers: 'block'`.
+  - Only WebKit is installed for Playwright here. This PC's Chrome works through `chromium.launch({ channel: 'chrome' })`,
+    and its DevTools protocol delivers a test push to a worker (`ServiceWorker.deliverPushMessage`).
+  - Playwright is not a dependency: a worktree has none until `vite-app/node_modules/playwright` and `playwright-core`
+    are junctioned to the main checkout's.
+  - The tables service's address is `https://futuregame-tables.onrender.com` (`/health` is public); `tables.futurega.me`
+    in §5 of the platform doc was the plan, never made.
+  - `test:tables-eight` asserts the first hand went to everyone seated, but its bots start anyway after 30 s; with a
+    WebKit check running beside it, one run's first hand went to 7 of 8. Run it alone.
+  - `test/stub-delivery-preload.js` logs each push's payload and options, and refuses a `/stub-gone/` endpoint with a
+    410, only with `DELIVERY_STUB_DETAIL=1`; unset, its log is as before (the backer tests count its lines).
+  - The guards' `tables-push` / `tables-push-on` stub the browser's push on pages loaded as `/__play?guard-push=on|off`:
+    a query, not a hash, since the clipping guard reloads `/__play` first and a hash change would not reload.
 
 ---
 
