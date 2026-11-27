@@ -10195,7 +10195,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     if (!labels.length) return;
     const host = table.closest('.replayer-replay') || document.documentElement;
     const gu = guPx(table);
-    labels.forEach(el => { el.style.marginBottom = ''; el.style.marginLeft = ''; });
+    labels.forEach(el => { el.style.marginBottom = ''; el.style.marginLeft = ''; delete el.dataset.spot; });
     const box = (e) => {
       const q = e.getBoundingClientRect();
       const w = Math.max(q.width, e.offsetWidth || 0), h = Math.max(q.height, e.offsetHeight || 0);
@@ -10245,6 +10245,24 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         .concat([...table.querySelectorAll('.replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-above:not([data-ghost]), .replayer-pot-layers.is-placed:not([data-ghost]) > *, .replayer-split-shares.is-placed:not([data-ghost]) > *')])
         .map(box).filter(b => b.width > 0 && b.height > 0);
       const ranks = rankBoxesOf(seat);
+      /* Above its own cards, where it stands across, before anything beside the plaque (owner, 2026-11-27, of a stud
+         hero's BRING-IN beside the plaque at 3rd street: "Why is bring in off to the side, I thought we went over this
+         like a thousand fucking times"): its foot r/4 over the fan's top, raised by g/2 steps past anything in the way,
+         never off the table. Beside the plaque is left for a seat with no felt above its cards (the top of the table). */
+      const ownCards = [...seat.querySelectorAll('.replayer-seat-cards .card-row > *')].map(box).filter(b => b.width > 0 && b.height > 0);
+      if (ownCards.length) {
+        const T = table.getBoundingClientRect();
+        const fanTop = Math.min(...ownCards.map(b => b.top), ...ranks.map(b => b.top));
+        for (let j = 0; j <= 4; j++) {
+          const top = fanTop - pad - h - j * gu / 2;
+          const b = { left: L.left, right: L.right, top, bottom: top + h };
+          if (b.top < T.top + pad || b.left < edge.left + gu / 2 || b.right > edge.right - gu / 2) break;
+          if (others.some(o => b.left < o.right + pad && b.right > o.left - pad && b.top < o.bottom + pad && b.bottom > o.top - pad)) continue;
+          el.style.marginBottom = `calc(var(--gu) * ${(-(b.top - L.top) / sy / gu).toFixed(3)})`;
+          el.dataset.spot = 'above';
+          return;
+        }
+      }
       const inward = (P.left + P.width / 2) < (edge.left + edge.width / 2) ? 1 : -1;
       const spot = [inward, -inward].map(side => {
         const left = side > 0 ? P.right + gu / 2 : P.left - gu / 2 - w;
@@ -10371,6 +10389,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       const spotFor = (q, from) => {
         const cands = from ? [{ left: q.left, top: q.top }] : [];
         const mid = P.top + (P.height - q.height) / 2;
+        /* Above its own cards, centred on the plaque, before anything beside it (owner, 2026-11-27, of "Pair of 3s acts
+           first" beside the hero's plaque at 7th street: "And here too"): under the bottom seat's plaque is the slot's
+           clipped foot, and what belongs to a seat stays over it, not off to its side. Its foot r/4 over the fan's top,
+           then g/2 higher at a time; never above the table. */
+        const fan = ownCards.map(rectOf).filter(b => b.width > 0 && b.height > 0);
+        if (fan.length) {
+          const fanTop = Math.min(...fan.map(b => b.top));
+          for (let j = 0; j <= 4; j++) cands.push({ left: P.left + (P.width - q.width) / 2, top: fanTop - pad - q.height - j * gu / 2, above: true });
+        }
         for (const side of [inward, -inward]) {
           const left = side > 0 ? P.right + gu / 2 : P.left - gu / 2 - q.width;
           for (let k = 0; k <= 8; k++) for (const s of k ? [-1, 1] : [1]) cands.push({ left, top: mid + s * k * P.height / 8 });
@@ -10383,8 +10410,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           under.push({ left: q.left + inward * k * P.width / 16, top: q.top + j * gu / 2, cost: Math.abs(k) * P.width / 16 + 2 * j * gu / 2 + (k < 0 ? 0.5 : 0) });
         }
         under.sort((a, b) => a.cost - b.cost).forEach(c => cands.push(c));
-        return cands.map(c => ({ left: c.left, right: c.left + q.width, top: c.top, bottom: c.top + q.height }))
-          .find(o => o.left >= lo && o.right <= hi && !hits(o, others) && !hits(o, [P]));
+        return cands.map(c => ({ left: c.left, right: c.left + q.width, top: c.top, bottom: c.top + q.height, above: !!c.above }))
+          .find(o => o.left >= lo && o.right <= hi && (!o.above || o.top >= T.top + pad) && !hits(o, others) && !hits(o, [P]));
       };
       let ok = spotFor(r, false);
       let rest = r, spot = '';

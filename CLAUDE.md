@@ -1043,11 +1043,13 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
     2. the pot 0.5r clear of the board, and the rows under the board 0.75r under it and 0.5r apart; a row that would
        reach a side seat's plaque, cards or labels wraps, centred, to the band between them (never round a readout);
     3. an action label on one of its own ranks sinks to clear it while that keeps it off the player's name, else goes
-       beside the plaque level with its top edge (a seven-card stud fan at 7th street); one whose foot reaches the
-       name (440 wide, past the 430 where the screen's g stops growing) is lifted off it, or beside the plaque if the
-       lift would cover a rank;
+       ABOVE its cards (its foot r/4 over the fan's top, raised g/2 at a time past anything there, `data-spot="above"`);
+       one whose foot reaches the name (440 wide, past the 430 where the screen's g stops growing) is lifted off it, or
+       above the cards if the lift would cover a rank. Beside the plaque only where there is no felt above the cards
+       (owner, 2026-11-27: "Why is bring in off to the side, I thought we went over this like a thousand fucking times");
     4. keepHandNamesOn: a readout that lands on anything (other seats' pieces, the felt, a readout placed before it or
-       where a later one stands) tries beside its plaque (the side facing the middle, then the outer side), then under
+       where a later one stands) tries above its own cards, centred on the plaque (owner, 2026-11-27, of a stud "Pair of
+       3s acts first" beside the hero: "And here too"), then beside its plaque (the side facing the middle, then the outer side), then under
        it on a grid shifted either way and down to 2g, nearest first; then all of those at the action label's size
        (`data-spot="small"`); then, a single line, on its own cards (`data-spot="cards"`). Measured at rest (layout box,
        fractional size), and kept for the step at that size of table (the desktop pane draws the table at 0 x 0 for
