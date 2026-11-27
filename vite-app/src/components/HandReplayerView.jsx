@@ -2753,8 +2753,9 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
   // Which board the board step is dealing to: double board's 2nd, or a run's (utils/poker-engine.js).
   const [boardSlot, setBoardSlot] = useState(0);
   const activeSeatRef = useRef(null);
-  // Buy-in cap: remembered across hands, and a one-tap way to put every seat
-  // back on the cap (a fresh full-stack table).
+  // The effective stack (owner, 2026-11-26: renamed from "Buy-in cap"; the state and its storage key
+  // keep the old name): remembered across hands, and a one-tap way to put every seat back on it (a
+  // fresh full-stack table).
   const [buyinCap, setBuyinCap] = useState(() => {
     try { const s = localStorage.getItem('replayerBuyinCap'); if (s) return s; } catch { /* ignore */ }
     return String((hand.players && hand.players[0] && hand.players[0].startingStack) ?? '');
@@ -2802,7 +2803,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
   }, [nameSeat, nameTyped]);
   const resetStacks = () => {
     const cap = Number(buyinCap) || 0;
-    if (!(cap > 0)) { toast.error('Type a buy-in cap first: Reset stacks puts every seat on it.'); return; }
+    if (!(cap > 0)) { toast.error('Type an effective stack first: Reset stacks puts every seat on it.'); return; }
     try { localStorage.setItem('replayerBuyinCap', String(cap)); } catch { /* ignore */ }
     setHand(prev => ({ ...prev, players: prev.players.map(p => ({ ...p, startingStack: cap })) }));
   };
@@ -3903,13 +3904,13 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
         </div></div>
         {!isOfc && (
           <div className="gto-cap-row">
-            <span className="gto-cap-label">Buy-in cap</span>
+            <span className="gto-cap-label">Effective stack</span>
             <div className="replayer-field">
               <AmountField value={buyinCap !== '' && Number.isFinite(capNum) ? capNum : ''} blankZero cents={cents}
-                placeholder="Cap" ariaLabel="Buy-in cap" style={{textAlign:'right'}}
+                placeholder="Stack" ariaLabel="Effective stack" style={{textAlign:'right'}}
                 onCommit={v => { setBuyinCap(String(v)); try { localStorage.setItem('replayerBuyinCap', String(v)); } catch { /* ignore */ } }} />
             </div>
-            <button className="btn btn-ghost btn-sm" onClick={resetStacks} disabled={locked} title="Set every seat's stack to the cap">Reset stacks</button>
+            <button className="btn btn-ghost btn-sm" onClick={resetStacks} disabled={locked} title="Set every seat's stack to the effective stack">Reset stacks</button>
             <button className="btn btn-ghost btn-sm" onClick={resetNames} title="Hero keeps your name; everyone else becomes Opp 1, 2, …">Reset names</button>
           </div>
         )}
