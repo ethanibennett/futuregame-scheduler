@@ -39,6 +39,22 @@ jobs:
           echo "commit: $(git rev-parse --short HEAD)"
           git log -1 --pretty='%s' | cut -c1-200
 
+      # The same gate as every TestFlight upload (ios-testflight.yml): a hand link opened in the app on one phone.
+      - name: Hand link in the app (simulator)
+        if: ${{ github.event.client_payload.skip_link_check != true }}
+        env:
+          DEVICES: 'iPhone 17 Pro|iPhone 16 Pro|iPhone 17|iPhone Air'
+          OUT: link-check
+        run: ./scripts/app-link-check.sh
+
+      - name: Upload the link check
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-link-check
+          path: link-check/
+          retention-days: 7
+
       - name: Unlock build keychain
         env:
           BUILD_KEYCHAIN_PASSWORD: ${{ secrets.BUILD_KEYCHAIN_PASSWORD }}

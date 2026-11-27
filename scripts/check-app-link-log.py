@@ -46,8 +46,10 @@ def judge(reps):
         b = last['bad'][0]
         return False, '%d piece(s) in the safe area or off the screen, e.g. %s at %s..%s (band %s top, %s bottom of %s)' % (
             len(last['bad']), b['sel'], b['top'], b['bottom'], last['band']['top'], last['band']['bottom'], last['H'])
-    return True, 'ok: %d pieces inside %s..%s of %s (window insets %s / %s, env() %s / %s, page %s / %s)' % (
-        last['pieces'], last['band']['top'], last['H'] - last['band']['bottom'], last['H'],
+    first = next(i for i, r in enumerate(reps) if r.get('view') == 'replay')
+    slow = '' if first == 0 else ' (slow server: the hand opened between %ss and %ss)' % (reps[first - 1].get('at'), reps[first].get('at'))
+    return True, 'ok%s: %d pieces inside %s..%s of %s (window insets %s / %s, env() %s / %s, page %s / %s)' % (
+        slow, last['pieces'], last['band']['top'], last['H'] - last['band']['bottom'], last['H'],
         last['native'].get('top'), last['native'].get('bottom'), last['env']['top'], last['env']['bottom'],
         last['sa']['top'], last['sa']['bottom'])
 

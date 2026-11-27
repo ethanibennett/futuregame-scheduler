@@ -63,7 +63,8 @@ export function layoutReport(win = window) {
 
 export function startLayoutProbe(win = typeof window !== 'undefined' ? window : null) {
   if (!win || !/[?&]probe=layout\b/.test(win.location.search || '')) return false;
-  [3000, 6000, 10000, 15000].forEach((t) => setTimeout(() => {
+  // Until 30 s: a link answered slowly (futurega.me just after a deploy took over 15 s) is still judged once it opens.
+  [3000, 6000, 10000, 15000, 22000, 30000].forEach((t) => setTimeout(() => {
     try { console.log('[fg-layout] ' + JSON.stringify({ at: t / 1000, path: win.location.pathname, ...layoutReport(win) })); }
     catch (e) { console.log('[fg-layout] ' + JSON.stringify({ at: t / 1000, error: String(e && e.message || e) })); }
   }, t));

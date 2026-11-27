@@ -813,12 +813,15 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
     `SafeAreaPlugin` (AppDelegate.swift) gives the window's insets and tells of every change; `utils/native-insets.js`
     writes them over `--sa-t` / `--sa-b` / `--sa-l` / `--sa-r` (a side the window says is 0 stays env()'s), so every
     inset in the CSS goes through those four, never env() itself.
-    **The in-app link check** (`.github/workflows/app-link-check.yml`, the Mac): builds the app (Debug, simulator), opens
-    a hand link in it cold and warm on three phones (`FG_OPEN_URL` / `FG_OPEN_URL_LATER`, Debug only) and fails on any
-    piece of the replay under the clock, on the home bar or off the screen, judged by the page's own report against the
-    window's insets (`?probe=layout`, `utils/layout-probe.js`, read by `scripts/check-app-link-log.py`). The Windows
-    guards set the inset, so they cannot see a page iOS gave none. Run it before a native or safe-area change ships:
-    `gh api repos/ethanibennett/futuregame-scheduler/dispatches -f event_type=app-link-check -F 'client_payload[ref]=master'`.
+    **The in-app link check** (`scripts/app-link-check.sh`, on the Mac): builds the app (Debug, simulator), opens a
+    hand link in it cold and warm (`FG_OPEN_URL` / `FG_OPEN_URL_LATER`, Debug only) and fails on any piece of the
+    replay under the clock, on the home bar or off the screen, judged by the page's own report against the window's
+    insets (`?probe=layout`, `utils/layout-probe.js`, read by `scripts/check-app-link-log.py`). The Windows guards set
+    the inset, so they cannot see a page iOS gave none. **Every TestFlight upload runs it first** on one phone
+    (`ios-testflight.yml`, and `ios-build-check.yml`; a failure stops the job before signing; `client_payload.skip_link_check:
+    true` skips it for one dispatch, for futurega.me down); `app-link-check.yml` runs three phones on demand:
+    `gh api repos/ethanibennett/futuregame-scheduler/dispatches -f event_type=app-link-check -F "client_payload[ref]=$(git rev-parse HEAD)"`
+    (a full SHA: "master" right after a push checked out the commit before it).
     Its first run found a hand link reading "This hand link doesn't open" while futurega.me redeployed: any failed
     request read as a dead link. `utils/hand-link-fetch.js` asks again after 1, 2, 4 and 8 s on no answer, 429 or 5xx;
     only the server saying there is no such hand (404, 410, 400, JSON without one) is "doesn't open", and a server that

@@ -95,6 +95,26 @@ jobs:
           echo "commit: $(git rev-parse --short HEAD)"
           git log -1 --pretty='%s'
 
+      # Nothing uploads that opens a hand link with the replay under the clock or on the home bar (owner, 2026-11-27:
+      # "This kind of thing just can not happen"). The app built for the simulator, a hand link opened in it cold and
+      # warm on one phone, the page's report of every piece against the window's safe area: scripts/app-link-check.sh
+      # (three phones on demand: app-link-check.yml). About two minutes. A failure stops the job here, before
+      # anything is signed; client_payload.skip_link_check: true skips it for one dispatch (futurega.me down).
+      - name: Hand link in the app (simulator)
+        if: ${{ github.event.client_payload.skip_link_check != true }}
+        env:
+          DEVICES: 'iPhone 17 Pro|iPhone 16 Pro|iPhone 17|iPhone Air'
+          OUT: link-check
+        run: ./scripts/app-link-check.sh
+
+      - name: Upload the link check
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-link-check
+          path: link-check/
+          retention-days: 7
+
       - name: Unlock build keychain
         # Signing runs against a dedicated keychain, not the login keychain. A
         # runner started by launchd (svc.sh) cannot use login-keychain keys at
