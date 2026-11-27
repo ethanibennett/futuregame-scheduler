@@ -78,13 +78,14 @@
        showing --surface beneath it, which is the gap that was reported.
        #root ends at the screen edge and the shell pads only the top. */
     #root { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
+    /* --sa-t once the stylesheet is in: in the iPhone app it carries the window's own inset (utils/native-insets.js). */
     .app-shell {
-      padding-top: env(safe-area-inset-top, 0px) !important;
+      padding-top: var(--sa-t, env(safe-area-inset-top, 0px)) !important;
     }
     /* The floor is the iPhone Home Screen app's, where the inset is not always reported (App improvements 459): an
        installed desktop or Android app has an inset of 0 and got an empty band over its top bar. */
     @media screen and (display-mode: standalone) {
-      [data-platform="ios-web"] .app-shell { padding-top: max(env(safe-area-inset-top, 0px), 47px) !important; }
+      [data-platform="ios-web"] .app-shell { padding-top: max(var(--sa-t, env(safe-area-inset-top, 0px)), 47px) !important; }
     }
     /* The splash never moved, which reads as a frozen screenshot. One entrance,
        staggered, so the (now much shorter) dwell is earned. Honours reduced

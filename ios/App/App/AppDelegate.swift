@@ -586,11 +586,54 @@ public class LiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 // explicitly in capacitorDidLoad, where the bridge already exists. Main.storyboard
 // instantiates this subclass as the root VC (customClass=MainViewController).
 class MainViewController: CAPBridgeViewController {
+    private let safeArea = SafeAreaPlugin()
+
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(InstagramStoriesPlugin())
         bridge?.registerPluginInstance(AppLockPlugin())
         bridge?.registerPluginInstance(AppleSignInPlugin())
         bridge?.registerPluginInstance(DeepLinksPlugin())
         bridge?.registerPluginInstance(LiveActivityPlugin())
+        bridge?.registerPluginInstance(safeArea)
+    }
+
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        safeArea.changed()
+    }
+}
+
+// ── The safe area, told to the page (owner, 2026-11-27) ──────────────────────
+// A hand link opened in the app ("why is it so high"): the page reloads at the link's path, and on that load the
+// web view's env(safe-area-inset-*) came back 0, top and bottom, so the replay ran up under the clock and its
+// buttons sat on the home bar. The window always knows its real insets, so the page asks for them
+// (utils/native-insets.js) at boot, on resize and on return, and is told of every change here; it sets --sa-t,
+// --sa-b, --sa-l and --sa-r from them, the properties every inset in the CSS goes through. A side the window
+// reports as 0 is left to env(). Not on the Mac, whose window has no notch or home bar.
+@objc(SafeAreaPlugin)
+public class SafeAreaPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "SafeAreaPlugin"
+    public let jsName = "SafeArea"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "get", returnType: CAPPluginReturnPromise)
+    ]
+
+    private func insets() -> [String: Any] {
+        #if targetEnvironment(macCatalyst)
+        return [:]
+        #else
+        guard let view = bridge?.viewController?.view else { return [:] }
+        let i = view.window?.safeAreaInsets ?? view.safeAreaInsets
+        return ["top": Double(i.top), "bottom": Double(i.bottom), "left": Double(i.left), "right": Double(i.right)]
+        #endif
+    }
+
+    @objc func get(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { call.resolve(self.insets()) }
+    }
+
+    func changed() {
+        let now = insets()
+        if !now.isEmpty { notifyListeners("change", data: now) }
     }
 }

@@ -308,9 +308,12 @@
          which is why a bottom-inset bug could only ever be seen on a phone and
          had to be reasoned about instead of measured. Set --sa-b to 34px in
          devtools and the whole bottom of the app lays out as it does on an
-         iPhone. The default keeps production behaviour identical. */
+         iPhone. The default keeps production behaviour identical. In the iPhone app the window's own insets
+         are written over these (utils/native-insets.js): on a hand link's reload env() came back 0. */
       --sa-b:      env(safe-area-inset-bottom, 0);
       --sa-t:      env(safe-area-inset-top, 0);
+      --sa-l:      env(safe-area-inset-left, 0px);
+      --sa-r:      env(safe-area-inset-right, 0px);
       /* MEASURED, not chosen: a tab is a 20px icon, a --nudge-1 gap and a
          --fs-2xs label, which needs 35px. At 30 the content overflowed its box
          by exactly 5px (measured), and since the nav centres a taller child in
@@ -4827,8 +4830,8 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      padding: var(--sa-t) env(safe-area-inset-right, 0)
-               var(--sa-b) env(safe-area-inset-left, 0);
+      padding: var(--sa-t) var(--sa-r)
+               var(--sa-b) var(--sa-l);
       box-sizing: border-box;
     }
     /* Scoped to the ACTIVE tab panel. Tab panels stay mounted behind
@@ -4887,8 +4890,8 @@
       z-index: var(--z-modal);
       background: var(--bg);
       overflow: hidden;
-      padding-left: env(safe-area-inset-left, 0);
-      padding-right: env(safe-area-inset-right, 0);
+      padding-left: var(--sa-l);
+      padding-right: var(--sa-r);
       box-sizing: border-box;
     }
     /* 25 + 16: in landscape the phone is being held for exactly this, and
@@ -14701,7 +14704,7 @@
       inset: 0;
       z-index: var(--z-scrim);
     }
-    /* .app-shell applies padding-top: env(safe-area-inset-top), so the
+    /* .app-shell applies padding-top: var(--sa-t), the safe-area inset, so the
        header's real bottom edge is inset + --header-h. Positioning at a flat
        64px opened this 47px too high on an iPhone 14 - over the header it is
        anchored to - and over-reported max-height by the same amount. */
@@ -14711,7 +14714,7 @@
     .notif-panel {
       position: fixed;
       top: calc(var(--sa-t) + var(--header-h, calc(var(--subrow) * 7.5)) + var(--subrow));
-      right: max(var(--gu), env(safe-area-inset-right, 0));
+      right: max(var(--gu), var(--sa-r));
       width: calc(var(--gu) * 32); max-width: calc(100vw - var(--gu) * 2);
       max-height: calc(100vh - var(--sa-t) - var(--header-h, calc(var(--subrow) * 7.5)) - var(--nav-h) - var(--space-xl));
       overflow-y: auto;
@@ -17038,7 +17041,7 @@
       transform: translateX(-50%);
       width: calc(var(--gu) * 37);
       box-sizing: border-box;
-      padding: env(safe-area-inset-top, 0) var(--gu) calc(var(--subrow) * 4);
+      padding: var(--sa-t) var(--gu) calc(var(--subrow) * 4);
       overflow-y: auto;
       overscroll-behavior: contain;
       background: var(--bg);

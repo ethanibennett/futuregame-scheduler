@@ -10,6 +10,10 @@ import { installNumericFocusClear } from './utils/numeric-focus-clear.js';
 import { installGridSnap } from './utils/grid-snap.js';
 import { installSwissTypography } from './utils/swiss-typography.js';
 import { applyStoredCardBack } from './utils/card-back.js';
+import { startNativeInsets } from './utils/native-insets.js';
+
+// In the iPhone app, the safe area as the window gives it, over env()'s (utils/native-insets.js).
+startNativeInsets();
 
 // Every numeric field clears on focus, ready for a new number (utils/numeric-focus-clear.js).
 installNumericFocusClear();

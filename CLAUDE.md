@@ -808,6 +808,11 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
     `result`, the "Since" line as `note`) with `startedAt`, from which the lock screen's Session clock counts up by itself
     (`Text(date, style: .timer)`). Every one is optional, in BOTH structs, so an older activity still decodes.
     Android links need `ANDROID_CERT_SHA256`.
+    **The safe area comes from the app** (owner, 2026-11-27, a hand link opened in the app: "why is it so high"): on the
+    page a link reloads to, env(safe-area-inset-*) came back 0 (the replay under the clock, its buttons on the home bar).
+    `SafeAreaPlugin` (AppDelegate.swift) gives the window's insets and tells of every change; `utils/native-insets.js`
+    writes them over `--sa-t` / `--sa-b` / `--sa-l` / `--sa-r` (a side the window says is 0 stays env()'s), so every
+    inset in the CSS goes through those four, never env() itself.
   - Tests: `npm run test:features-social` (ports 4750-4759), and `game-rules`, `odds`, `plans-in-common` in
     `test:utils`. Catalogue figures (ICM, the PLO 8/b odds) are held by `odds.test.mjs`.
 
