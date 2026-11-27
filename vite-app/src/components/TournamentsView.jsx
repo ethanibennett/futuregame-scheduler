@@ -968,7 +968,11 @@ export default function TournamentsView({
     // Stop the group's top EXACTLY on the bottom edge of the sticky filter rows —
     // filtersH is that block's real rendered height, so the stop is the exact
     // grid line the CSS drew, on any device. No fudge pixels.
-    container.scrollTo({ top: Math.max(0, groupAbsTop - filtersH), behavior });
+    // Rounded UP to a whole pixel (2026-11-27): WebKit keeps a scroll position in whole pixels and drops the
+    // fraction, so the day landed up to 1px low (measured 0.06 to 0.1r at 402 and 1440: 22.06r against the
+    // filters' 22r), the day above showing in the sliver under the filters, as the hand entry's seat above did.
+    // Up, the day rests under 1px high, its top under the filters.
+    container.scrollTo({ top: Math.max(0, Math.ceil(groupAbsTop - filtersH - 0.01)), behavior });
   }, []);
   const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
   const locationBtnRef = useRef(null);
