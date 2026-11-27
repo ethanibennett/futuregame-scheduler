@@ -1175,7 +1175,7 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   names entered (`n` part) and the title (`t` part), base64url JSON, read by marker.
 - **Special showdowns** (owner, 2026-11-22: "special hand animations to play at showdown", "only when hero wins";
   `utils/showdown-specials.js` decides and simulates, `utils/showdown-moments.js` plays, `showdown-specials.css`; the
-  catalogue of 100 ideas to pick from: `docs/catalogues/showdown-specials/`, https://claude.ai/artifact/MkvGpnepvimme8F7KKDCQn).
+  catalogue of 40 ideas to pick from, each drawn from the real hand: `docs/catalogues/showdown-specials/`, https://claude.ai/artifact/MkvGpnepvimme8F7KKDCQn).
   Built: **the flush flood** ("a watermark-opacity flood of the suit symbol on the felt inside the rail, with simulated
   physics allowing them to bounce off of each other"). When the hero is paid with a high hand that is a flush (not a
   straight flush) and beats every hand shown (`showdownSpecial`; hi-lo: the high half), the suit pours onto the cloth a
