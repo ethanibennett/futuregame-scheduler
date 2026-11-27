@@ -217,14 +217,16 @@ app.use(express.json({ limit: '50mb' }));
 // Health check for zero-downtime deploys
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-// The two sites keep their own pages (play.futurega.me, below): the play page's file is not served on futurega.me, and
-// no page of the app's is served on the play host.
+// The two sites keep their own pages (play.futurega.me, below): the play page's files (its page, its service worker,
+// which shows "your turn" pushes, and its manifest) are not served on futurega.me, and no page of the app's is served
+// on the play host.
 const PLAY_HOSTS = new Set(String(process.env.PLAY_HOSTS || 'play.futurega.me').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean));
 const isPlayHost = (req) => PLAY_HOSTS.has(String(req.hostname || '').toLowerCase());
+const PLAY_FILES = new Set(['/play.html', '/play-sw.js', '/play-manifest.json']);
 app.use((req, res, next) => {
-  if (!req.path.endsWith('.html')) return next();
-  if (isPlayHost(req)) return req.path === '/play.html' ? next() : res.redirect(302, '/');
-  return req.path === '/play.html' ? res.status(404).end() : next();
+  if (!isPlayHost(req)) return PLAY_FILES.has(req.path) ? res.status(404).end() : next();
+  if (req.path.endsWith('.html') && req.path !== '/play.html') return res.redirect(302, '/');
+  return next();
 });
 
 // Serve frontend — now the Vite build output in public-vite/.

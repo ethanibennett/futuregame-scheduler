@@ -500,7 +500,7 @@ seated may, while the host is not), or every seat is taken. Everyone seated by t
 taken after waits for the big blind or posts, as before. A table journaled before the start existed has started.
 
 **Your turn.** With seven others to wait on, the tab's title says "Your turn" and a phone that can buzzes once while the
-page is in the background. A push of play.futurega.me's own is still to come.
+page is in the background. Away from the page, a push of play.futurega.me's own says so (§15).
 
 **The sit and go** (`lib/tables/sng.mjs`, the runtime's `sng` state):
 
@@ -528,3 +528,24 @@ rebuys, posts, dropped streams and timeouts, then a sit and go to a winner; ever
 agreement, every hand's chips, the balances and their journals at the end, every place paid once, every hand saved to
 everyone dealt in), `npm run check:tables-eight` (eight WebKit browsers, phones and desktops), and the guards' `start`
 and `sng-*` views.
+
+## 15. "Your turn" pushes (2026-11-26)
+
+With eight at a table, waiting for your turn is the norm, and after two timeouts a seat is sat out. The tab's title and
+one buzz reach a player looking at the page or another tab; a locked phone sees neither. Now a player whose table is
+not in front of them gets a web push from play.futurega.me, and tapping it opens the table.
+
+| Piece | Where | Held by |
+|---|---|---|
+| The switch | The lobby's **Turn alerts** panel ("Tell me when it is my turn", then "Turn off"): `TurnPush` in `TablesView.jsx`, `utils/play-push.js`. The browser asks for permission on the tap, subscribes with the server's VAPID key and sends the subscription; the server is the truth for "on" (`GET /api/tables/push?endpoint=` answers for this account), so a browser another account opted in reads as off. A Safari tab on an iPhone or iPad is told to Add to Home Screen; blocked notifications say where to allow them; a browser with no web push says so | `play-push.test.mjs` (every state); the guards' `tables-push` / `tables-push-on` |
+| The subscriptions | `play_push_subs` (endpoint, user, keys): the play origin's own, never the app's `push_subscriptions`. Stored by `POST /api/tables/push`, removed by `POST /api/tables/push/off` (Turn off, sign-out, notifications refused) or when the push service answers 404/410; ten browsers an account at most; registered accounts only (a guest gets 403); cleared with the account (`USER_TABLES`) | `test:tables` |
+| Who is away | The tables service, which holds the streams. Each stream opens with an id and the page's visibility (`/events?sid=&visible=`); the page beacons `POST /tables/:id/presence?token=&sid=&visible=` when it is hidden or shown (a beacon survives a phone locking). A turn is reported (`onTurn` → `internal/turn`) only when none of the player's streams at that table is visible: no stream, another tab, a locked phone | `test:tables`: Bo's page hidden is pushed, Ava's visible page never; one page cannot hide another's stream |
+| The push | `internal/turn` checks the table is open and the player a member, then `lib/play-push.js` sends "<table name>" / "Your turn" to each of the player's browsers, **once a hand** (`play_push_log`), with a TTL of the decision clock plus the bank plus 15 s (a turn that is over is not worth telling), high urgency, and one Topic a table (a newer turn replaces one not yet fetched). Gated as the other pushes: on where RENDER is set, `PLAY_DELIVERY=1|0` overrides, every boot logs `[tables] your-turn push is ON|OFF` | `test:tables` (web-push stubbed): one push for Bo's four turns in a hand, a new hand a new push, the payload and options, a dropped browser removed, a non-member and a forged caller refused |
+| The worker | `vite-app/public/play-sw.js`, served on the play host only (with `play-manifest.json`; 404 on futurega.me): shows the push (tag one a table; an unreadable payload still says "Your turn", since a browser must show something for every push) and, on a tap, brings an open play page forward and asks it to open the table (`postMessage`), else opens `play.futurega.me/table/<id>`, which the page takes as an invite is taken (kept through a sign-in) and puts the address back to `/`. No fetch handler. It is registered when a player turns alerts on, never at load: Playwright's WebKit on Windows hangs the whole page when a worker registers, which stalled `check:tables` | `test:tables` (served on the play host only); in this PC's Chrome, a push delivered through the DevTools protocol showed "Friday game / Your turn" with the table to open, one notification a table, and `/table/<id>` opened the table |
+| The iPhone | Web push reaches a page opened from the Home Screen only, so the play page has its own manifest (`play-manifest.json`, "futurega.me play", standalone), in place of the app's that `make-play-html.mjs` used to drop | |
+
+The app is untouched: `main.jsx` and `App.jsx` import none of it, and the app's bundle holds no play worker.
+
+**Found on the way** (`npm run test:tables-eight`): a player who took a seat between hands was shown the hand just played
+from that seat as its last player saw it, unshown hole cards included, because `Table.viewFor` found the viewer in the
+last hand by the seat they sit in now. It finds them by user now (`state.ids`); `tables-runtime.test.mjs` holds it.

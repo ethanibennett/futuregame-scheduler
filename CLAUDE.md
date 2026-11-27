@@ -161,6 +161,24 @@ sessions opened here own scheduler work.
   (`Table.startGame`, `startGate`, `POST /tables/:id/start`), so everyone seated by then is dealt the first hand; before,
   the first two to sit started heads-up and the rest waited for the big blind. A table journaled before has started. The
   tab's title says "Your turn" (a phone that can buzzes once) while it is the player's turn.
+  **"Your turn" pushes** (2026-11-26; `lib/play-push.js`, `vite-app/public/play-sw.js`, `utils/play-push.js`): the lobby's
+  Turn alerts panel ("Tell me when it is my turn") subscribes the browser for the account, from the play origin only
+  (`play_push_subs`, its own table, never the app's `push_subscriptions`; re-keyed to whoever opts in on that browser
+  last; off on Turn off, sign-out, refused notifications, or a 404/410 from the push service). The worker is registered
+  only then, never at load: Playwright's Windows WebKit hangs the whole page when one registers. The tables service
+  reports a turn only when none of the player's streams at that table is on a visible page (each stream opens with
+  `&sid=&visible=`, and the page beacons `POST /tables/:id/presence` when it is hidden or shown; `service.mjs`
+  `present`); `internal/turn` pushes "<table name> / Your turn" once a hand (`play_push_log`), TTL the decision clock
+  plus the bank plus 15 s, one Topic a table, and a tap opens `play.futurega.me/table/<id>` (or the page already open,
+  by `postMessage`). Delivery: on where RENDER is set, `PLAY_DELIVERY=1|0` overrides, every boot logs
+  `[tables] your-turn push is ON|OFF`. An iPhone gets web push only from the Home Screen, so the play page has its own
+  manifest (`play-manifest.json`, "futurega.me play"; the panel tells a Safari tab to Add to Home Screen). `/play-sw.js`
+  and `/play-manifest.json` are served on the play host only. Tests: `test:tables` (web-push stubbed by
+  `test/stub-delivery-preload.js` with `DELIVERY_STUB_DETAIL=1`), `play-push.test.mjs` in `npm test`, the guards'
+  `tables-push` and `tables-push-on` views.
+  **A seat taken between hands** is never shown the hand just played from that seat (2026-11-26, found by
+  `test:tables-eight`): `Table.viewFor` finds the viewer in the last hand by user (`state.ids`), not by the seat they sit
+  in now, which showed a newcomer the previous player's hand, unshown cards included.
   **Sit and go** (owner, 2026-11-26: "Buy in, top 3 paid"; `lib/tables/sng.mjs`, `cfg.format 'sng'`): the host sets level
   1's blinds, the buy-in (balance chips), the chips each and the minutes a level; a seat is entered for the buy-in (left
   before the start, it comes back: `refund`). Started, nobody joins or rebuys, the blinds climb `LADDER` (×1.5, ×2, ×3…)
@@ -175,7 +193,7 @@ sessions opened here own scheduler work.
   (its own origin, so its own `localStorage` token), then `TablesView`. `server.js` answers every page on a host in
   `PLAY_HOSTS` (default `play.futurega.me`; a test names its own) with `play.html`, the API as usual, and never serves
   `play.html` on futurega.me. The app (`main.jsx`, `App.jsx`) imports none of it: no Tables tab, no settings row, and the
-  "your turn" push sends nothing until play.futurega.me has a push of its own. An invite is
+  "your turn" push is play.futurega.me's own (above), never the app's or the phone app's. An invite is
   `play.futurega.me/join/<token>` (`PLAY_URL`).
   **The app's entry and quick add are untouched until after launch** (owner's pick, 2026-11-22): they keep their own
   copies of the rules. Moving them onto `poker-rules/` (decision 11, with the fixes it brought: the owner's `deckRanOut`

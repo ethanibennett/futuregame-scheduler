@@ -461,7 +461,8 @@ function scan(rootSel) {
   }
   // Play-money tables, on a canned table (tables-states.mjs): the lobby, a new table, the seats, the bars, the chat.
   for (const [stage, root] of [['lobby', '.tb-lobby'], ['new', '.tb-new'], ['seats', '.tb-lobby'], ['turn', '.tb-bar'], ['waiting', '.tb-bar'], ['post', '.tb-bar'], ['chat', '.tb-chat'], ['over', '.tb-bar'], ['stud', '.tb-bar'], ['draw', '.tb-bar'],
-    ['start', '.tb-lobby'], ['new-sng', '.tb-new'], ['sng-enter', '.tb-lobby'], ['sng-play', '.tb-bar'], ['sng-out', '.tb-lobby'], ['sng-done', '.tb-bar']]) {
+    ['start', '.tb-lobby'], ['new-sng', '.tb-new'], ['sng-enter', '.tb-lobby'], ['sng-play', '.tb-bar'], ['sng-out', '.tb-lobby'], ['sng-done', '.tb-bar'],
+    ['push', '.tb-push'], ['push-on', '.tb-push']]) {
     if (on('tables')) try {
       await p.goto(p.url().split('#')[0]);
       await p.waitForTimeout(1200);

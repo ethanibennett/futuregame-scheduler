@@ -40,6 +40,22 @@ export function takeTableInvite() {
   try { const v = sessionStorage.getItem(PENDING); sessionStorage.removeItem(PENDING); return v; } catch { return null; }
 }
 
+/* A table a "your turn" notification opens (play.futurega.me/table/<id>; public/play-sw.js), kept like an invite until
+   the lobby takes it. Returns the id, or null. */
+const OPEN = 'pendingTableOpen';
+export function tableFromPath(pathname) {
+  const m = /^\/table\/([A-Za-z0-9_-]{1,64})\/?$/.exec(pathname || '');
+  return m ? m[1] : null;
+}
+export function rememberTableOpen(pathname) {
+  const id = tableFromPath(pathname);
+  if (id) { try { sessionStorage.setItem(OPEN, id); } catch { /* storage off */ } }
+  return id;
+}
+export function takeTableOpen() {
+  try { const v = sessionStorage.getItem(OPEN); sessionStorage.removeItem(OPEN); return v; } catch { return null; }
+}
+
 /**
  * A seat at one table: join with a fresh ticket, follow the stream, act. onView gets every view the service
  * sends (the whole view each time, so a missed one costs nothing). The stream reconnects with a new ticket
@@ -51,6 +67,22 @@ export function openTable(tableId, { onView, onStatus }) {
   let base = null;
   let token = null;
   let retry = null;
+  /* Away or here: the service tells a player it is their turn (a push, lib/play-push.js) only when none of their
+     streams is on a visible page, so the stream says which it is, and the page says when that changes. A beacon,
+     because a page being hidden (a phone locking) may never run another task. */
+  const sid = Math.random().toString(36).slice(2, 12);
+  const visible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden';
+  const presence = () => {
+    if (!base || !token) return;
+    const url = `${base}/tables/${encodeURIComponent(tableId)}/presence?token=${encodeURIComponent(token)}&sid=${sid}&visible=${visible() ? 1 : 0}`;
+    try {
+      if (navigator.sendBeacon && navigator.sendBeacon(url)) return;
+      fetch(url, { method: 'POST', keepalive: true, mode: 'no-cors' }).catch(() => {});
+    } catch { /* the next stream says it */ }
+  };
+  const onHide = () => presence();
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onHide);
+  if (typeof window !== 'undefined') window.addEventListener('pagehide', onHide);
 
   const call = async (path, body) => {
     const res = await fetch(`${base}/tables/${encodeURIComponent(tableId)}/${path}`, {
@@ -72,7 +104,7 @@ export function openTable(tableId, { onView, onStatus }) {
       if (closed) return;
       token = j.token;
       onView(j.view);
-      es = new EventSource(`${base}/tables/${encodeURIComponent(tableId)}/events?token=${encodeURIComponent(token)}`);
+      es = new EventSource(`${base}/tables/${encodeURIComponent(tableId)}/events?token=${encodeURIComponent(token)}&sid=${sid}&visible=${visible() ? 1 : 0}`);
       es.addEventListener('view', (e) => { try { onView(JSON.parse(e.data)); } catch { /* a bad frame: the next one carries all of it */ } });
       es.onopen = () => onStatus && onStatus('live');
       es.onerror = () => {
@@ -102,7 +134,11 @@ export function openTable(tableId, { onView, onStatus }) {
     start: () => call('start'),
     say: (text) => call('chat', { text }),
     mute: (userId, muted) => call('mute', { userId, muted }),
-    close() { closed = true; clearTimeout(retry); if (es) es.close(); },
+    close() {
+      closed = true; clearTimeout(retry); if (es) es.close();
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onHide);
+      if (typeof window !== 'undefined') window.removeEventListener('pagehide', onHide);
+    },
   };
 }
 

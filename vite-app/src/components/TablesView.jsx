@@ -8,7 +8,8 @@
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { T } from './StudyHead.jsx';
-import { tablesApi, openTable, liveReplayHand, takeTableInvite, chips, ordinal, prizesText, placeText, levelText } from '../utils/play-tables.js';
+import { tablesApi, openTable, liveReplayHand, takeTableInvite, takeTableOpen, chips, ordinal, prizesText, placeText, levelText } from '../utils/play-tables.js';
+import { pushSupport, turnPushState, readTurnPush, enableTurnPush, disableTurnPush } from '../utils/play-push.js';
 import { parseMoney } from '../utils/money.js';
 import { SITE_URL } from '../utils/api.js';
 import './replayer-drill.css';
@@ -309,7 +310,8 @@ function LiveTable({ tableId, heroName, cardSplay, onBack }) {
   const hand = useMemo(() => liveReplayHand(view), [view]);
   const handNo = view && view.hand ? view.hand.handNo : 0;
   /* Your turn: the tab's title says so, for a player looking at another tab while seven others act, and a phone
-     that can buzzes once if the page is in the background (play.futurega.me has no push of its own yet). */
+     that can buzzes once if the page is in the background. Away from the page, the lobby's Turn alerts (TurnPush)
+     send a push instead: the service reports the turn of a player none of whose pages is visible. */
   const myTurn = !!(view && view.hand && !view.hand.live.over && view.hand.you >= 0 && view.hand.live.toAct === view.hand.you);
   useEffect(() => {
     if (!myTurn) return undefined;
@@ -440,6 +442,52 @@ function LiveTable({ tableId, heroName, cardSplay, onBack }) {
 }
 
 // ── The lobby ──
+/* "Tell me when it is my turn" (lib/play-push.js, public/play-sw.js): this browser, for this account. A notification
+   when it is the player's turn and no page of theirs at that table is in front of them; tapping it opens the table. */
+const PUSH_WORDS = {
+  off: ['Turn alerts', 'A notification when it is your turn and this page is not in front of you.'],
+  on: ['Turn alerts are on', 'This device gets a notification when it is your turn and this page is not in front of you.'],
+  blocked: ['Turn alerts', "Notifications are blocked for this site. Allow them in the browser's settings, then come back here."],
+  install: ['Turn alerts', 'On an iPhone or iPad: Share, then Add to Home Screen, and play from the Home Screen to be told when it is your turn.'],
+  unsupported: ['Turn alerts', 'This browser cannot show a notification when it is your turn.'],
+};
+function TurnPush() {
+  const support = useMemo(() => pushSupport(), []);
+  const [server, setServer] = useState({ key: undefined, subscribed: false });
+  const [permission, setPermission] = useState(() => (typeof Notification !== 'undefined' ? Notification.permission : 'default'));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let live = true;
+    readTurnPush().then((r) => { if (live) setServer(r); }).catch(() => { if (live) setServer({ key: null, subscribed: false }); });
+    // Notifications refused since they were turned on (the browser's settings): this browser comes off the list.
+    if (support.supported && permission === 'denied') disableTurnPush().catch(() => {});
+    return () => { live = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const state = turnPushState({ support, permission, key: server.key, subscribed: server.subscribed });
+  if (state === 'hidden') return null;
+  const run = async (fn) => {
+    setBusy(true); setError('');
+    try { await fn(); } catch (e) { setError(e.message || 'That did not go through'); } finally { setBusy(false); }
+  };
+  const turnOn = () => run(async () => {
+    const r = await enableTurnPush(server.key);
+    setPermission(Notification.permission);
+    setServer((p) => ({ ...p, subscribed: r === 'on' }));
+  });
+  const turnOff = () => run(async () => { await disableTurnPush(); setServer((p) => ({ ...p, subscribed: false })); });
+  const [title, words] = PUSH_WORDS[state];
+  return (
+    <div className="hs-panel hs-stack tb-push" data-testid="turn-push" data-state={state}>
+      <div className="hs-t hs-sm" style={T(3)}>{title}</div>
+      <div className="hs-t hs-xs hs-mut rd-wrap">{words}</div>
+      {state === 'off' && <button type="button" className="hs-btn rd-primary" disabled={busy} onClick={turnOn}><span className="hs-t" style={T(3)}>Tell me when it is my turn</span></button>}
+      {state === 'on' && <button type="button" className="hs-btn" disabled={busy} onClick={turnOff}><span className="hs-t" style={T(3)}>Turn off</span></button>}
+      {error && <div className="hs-t hs-xs rd-wrap rd-warn">{error}</div>}
+    </div>
+  );
+}
+
 function NewTable({ onMade, onCancel }) {
   const [f, setF] = useState({ name: '', format: 'cash', gameType: 'NLH', sb: '50', bb: '100', ante: '0', maxSeats: '6', min: '2000', max: '10000', decision: '30', bank: '60',
     sngBuy: '1000', stack: '3000', levelMins: '6' });
@@ -540,8 +588,23 @@ export default function TablesView({ heroName, cardSplay, active = true }) {
     tablesApi.invite(token).then((t) => setInvite({ token, table: t })).catch((e) => setError(e.message));
   }, []);
 
+  /* A "your turn" notification tapped (public/play-sw.js): it opened /table/<id> (kept through a sign-in), or, with a
+     play page already open, asks that page to open the table. */
+  useEffect(() => {
+    const id = takeTableOpen();
+    if (id) setScreen({ kind: 'table', id });
+    const sw = typeof navigator !== 'undefined' && navigator.serviceWorker;
+    if (!sw || !sw.addEventListener) return undefined;
+    const onMessage = (e) => {
+      const d = (e && e.data) || {};
+      if (d.type === 'open-table' && typeof d.tableId === 'string') setScreen({ kind: 'table', id: d.tableId });
+    };
+    sw.addEventListener('message', onMessage);
+    return () => sw.removeEventListener('message', onMessage);
+  }, []);
+
   if (screen.kind === 'table') {
-    return <LiveTable tableId={screen.id} heroName={heroName} cardSplay={cardSplay} onBack={() => setScreen({ kind: 'lobby' })} />;
+    return <LiveTable key={screen.id} tableId={screen.id} heroName={heroName} cardSplay={cardSplay} onBack={() => setScreen({ kind: 'lobby' })} />;
   }
   if (screen.kind === 'new') {
     return <NewTable onCancel={() => setScreen({ kind: 'lobby' })} onMade={(t) => { setList((l) => [t, ...l]); setScreen({ kind: 'lobby' }); }} />;
@@ -579,6 +642,7 @@ export default function TablesView({ heroName, cardSplay, active = true }) {
       ))}
       {error && <div className="hs-t hs-sm rd-wrap rd-warn">{error}</div>}
       <button type="button" className="hs-btn" onClick={() => setScreen({ kind: 'new' })}><span className="hs-t" style={T(3)}>New table</span></button>
+      <TurnPush />
       <div className="hs-t hs-xs hs-mut rd-wrap">{`Invites open ${SITE_URL.replace(/^https?:\/\//, '')}/join/… links.`}</div>
     </div>
   );

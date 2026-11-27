@@ -12,16 +12,28 @@
  *
  * With these stubs in place a test can set VAPID_* and TWILIO_* to made-up values, so the senders
  * get past their "not configured" early returns and only the BACKER_DELIVERY gate decides.
+ *
+ * With DELIVERY_STUB_DETAIL=1 (test/play-tables.test.js), each push also logs
+ * `[delivery-detail] {"endpoint","payload","options"}` on a line of its own, and a push to an endpoint
+ * holding `/stub-gone/` is refused as the push service refuses a dropped subscription (410), logging
+ * `[delivery-stub] gone [<title>] <endpoint>`. Unset, the log is as it always was.
  */
 const Module = require('module');
 
 const stubPush = {
   setVapidDetails() {},
   generateVAPIDKeys() { return { publicKey: 'stub', privateKey: 'stub' }; },
-  async sendNotification(sub, payload) {
+  async sendNotification(sub, payload, options) {
     // The title in brackets, then the endpoint LAST (tests read it with split(' ').pop()).
     let title = '';
     try { title = String(JSON.parse(payload).title || ''); } catch (_) { /* not JSON */ }
+    if (process.env.DELIVERY_STUB_DETAIL === '1') {
+      console.log(`[delivery-detail] ${JSON.stringify({ endpoint: sub && sub.endpoint, payload, options: options || null })}`);
+      if (/\/stub-gone\//.test(String(sub && sub.endpoint))) {
+        console.log(`[delivery-stub] gone [${title}] ${sub.endpoint}`);
+        throw Object.assign(new Error('Received unexpected response code'), { statusCode: 410 });
+      }
+    }
     console.log(`[delivery-stub] push [${title}] ${sub && sub.endpoint}`);
     return { statusCode: 201, body: '', headers: {} };
   },

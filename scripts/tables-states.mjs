@@ -4,9 +4,11 @@
 // same every run, and needs no tables service. The real thing is covered by npm run test:tables and check:tables.
 //
 //   await stageTables(p, 'lobby' | 'new' | 'seats' | 'turn' | 'waiting' | 'post' | 'chat' | 'over' | 'stud' | 'draw'
-//                       | 'start' | 'new-sng' | 'sng-enter' | 'sng-play' | 'sng-out' | 'sng-done')
+//                       | 'start' | 'new-sng' | 'sng-enter' | 'sng-play' | 'sng-out' | 'sng-done' | 'push' | 'push-on')
 // start: a table waiting for its host to start it; the sng- stages a sit and go (owner, 2026-11-26): open for entries,
-// under way (the level line on the bar), seen by a player knocked out (the places so far), and won.
+// under way (the level line on the bar), seen by a player knocked out (the places so far), and won. push and push-on:
+// the lobby's Turn alerts (utils/play-push.js) offered and on, in a browser made to look as if it has web push (the
+// guards' WebKit may not), so the panel's button is measured; the plain lobby shows whatever the browser really has.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -93,10 +95,36 @@ function tableFor(stage) {
   return { t, viewer: HOST };
 }
 
+const LOBBY_STAGES = new Set(['lobby', 'new', 'new-sng', 'push', 'push-on']);
+
+/* Web push as a browser that has it would answer, on a page loaded as /__play?guard-push=on or =off only (an init
+   script stays with the page for every later stage, so it keys on the address; a query, not a hash, so going from one
+   to the other loads the page again): a worker registration whose push manager holds a subscription (on) or none
+   (off), and notifications allowed (on) or not asked (off). */
+function fakePush() {
+  const m = /[?&]guard-push=(on|off)(&|$)/.exec(location.search);
+  if (!m) return;
+  const on = m[1] === 'on';
+  const sub = {
+    endpoint: 'https://push.guard.test/1',
+    toJSON() { return { endpoint: this.endpoint, keys: { p256dh: 'BGuardP256dhKey0123456789abcdef', auth: 'guardAuth0123' } }; },
+    unsubscribe: async () => true,
+  };
+  const reg = { pushManager: { getSubscription: async () => (on ? sub : null), subscribe: async () => sub } };
+  const sw = { register: async () => reg, getRegistration: async () => reg, ready: Promise.resolve(reg), addEventListener() {}, removeEventListener() {} };
+  Object.defineProperty(navigator, 'serviceWorker', { configurable: true, get: () => sw });
+  if (!('PushManager' in window)) window.PushManager = function PushManager() {};
+  const N = window.Notification || function Notification() {};
+  try { Object.defineProperty(N, 'permission', { configurable: true, get: () => (on ? 'granted' : 'default') }); } catch (_) { /* fixed */ }
+  N.requestPermission = async () => 'granted';
+  window.Notification = N;
+}
+const pushFaked = new WeakSet();
+
 async function routeTables(p, stage) {
   const origin = new URL(p.url()).origin;
   const svc = `${origin}/__tables`;
-  const { t, viewer } = stage === 'lobby' || stage === 'new' || stage === 'new-sng' ? { t: null, viewer: HOST } : tableFor(stage);
+  const { t, viewer } = LOBBY_STAGES.has(stage) ? { t: null, viewer: HOST } : tableFor(stage);
   const view = () => t.viewFor(viewer);
   const c = cfgFor(stage);
   const summary = { id: c.id, name: c.name, gameType: c.gameType, blinds: c.blinds, maxSeats: c.maxSeats, buyIn: c.buyIn, clock: c.clock, status: 'open', hostId: HOST,
@@ -107,6 +135,8 @@ async function routeTables(p, stage) {
     const path = u.pathname;
     if (path.endsWith('/api/tables/availability')) return json(route, { on: true, url: svc });
     if (path.endsWith('/api/tables/chips')) return json(route, { balance: 20000, floor: 5000, start: 20000 });
+    // The play page's Turn alerts (lib/play-push.js): the server can push; this browser is on only in push-on.
+    if (path.endsWith('/api/tables/push')) return json(route, { key: 'BGuardVapidPublicKey0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTU', subscribed: stage === 'push-on', delivery: true });
     if (path.endsWith('/api/tables')) return json(route, { tables: [{ ...summary, invite: 'https://play.futurega.me/join/guardinvitetoken0001' }] });
     if (/\/api\/tables\/[^/]+\/ticket$/.test(path)) return json(route, { ticket: 'guard', url: svc, table: summary });
     if (path.endsWith('/api/blocks')) return json(route, { blocked: [], hidden: [] });
@@ -127,13 +157,22 @@ const PLAY_HTML = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 
 // From a fresh load: the play page, under the routes. `force` for the guards' overlay runs.
 export async function stageTables(p, stage, { force = false } = {}) {
   const origin = new URL(p.url()).origin;
-  await p.route(`${origin}/__play`, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: fs.readFileSync(PLAY_HTML, 'utf8') }));
+  await p.route((u) => u.origin === origin && u.pathname === '/__play', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: fs.readFileSync(PLAY_HTML, 'utf8') }));
   await routeTables(p, stage);
-  await p.goto(`${origin}/__play`, { waitUntil: 'domcontentloaded' });
+  const push = stage === 'push' || stage === 'push-on';
+  if (push && !pushFaked.has(p)) { await p.addInitScript(fakePush); pushFaked.add(p); }
+  await p.goto(`${origin}/__play${push ? `?guard-push=${stage === 'push-on' ? 'on' : 'off'}` : ''}`, { waitUntil: 'domcontentloaded' });
   const click = (loc) => loc.filter({ visible: true }).first().click({ timeout: 10000, force });
   await p.getByText(/20,000 chips/).first().waitFor({ timeout: 15000 });
   await p.waitForTimeout(400);
   if (stage === 'lobby') return;
+  if (push) {
+    const want = stage === 'push-on' ? 'on' : 'off';
+    await p.locator(`[data-testid="turn-push"][data-state="${want}"] button`).waitFor({ timeout: 10000 });
+    await p.locator('[data-testid="turn-push"]').scrollIntoViewIfNeeded();
+    await p.waitForTimeout(300);
+    return;
+  }
   if (stage === 'new' || stage === 'new-sng') {
     // A forced click (the overlay runs) can land while the lobby is still settling: click again until the form is open.
     for (let k = 0; k < 3 && !(await p.locator('.tb-new').isVisible().catch(() => false)); k++) {
@@ -168,4 +207,4 @@ export async function stageTables(p, stage, { force = false } = {}) {
   if (stage === 'chat') { await click(p.locator('.tb-chat-btn')); await p.locator('.tb-chat').waitFor({ timeout: 5000 }); await p.waitForTimeout(400); }
 }
 
-export const TABLE_STAGES = ['lobby', 'new', 'seats', 'turn', 'waiting', 'post', 'chat', 'over', 'stud', 'draw', 'start', 'new-sng', 'sng-enter', 'sng-play', 'sng-out', 'sng-done'];
+export const TABLE_STAGES = ['lobby', 'new', 'seats', 'turn', 'waiting', 'post', 'chat', 'over', 'stud', 'draw', 'start', 'new-sng', 'sng-enter', 'sng-play', 'sng-out', 'sng-done', 'push', 'push-on'];

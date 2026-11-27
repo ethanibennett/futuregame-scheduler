@@ -9,7 +9,11 @@
  *   - chips: the balance starts at 20,000, a buy-in takes from it, leaving gives the stack back;
  *   - each stream's raw events never hold the other player's unshown cards;
  *   - the chips at the end are what the export's PokerStars text says (the oracle-checked writer, read back);
- *   - a saved_hands row for each player, holding only what they saw.
+ *   - a saved_hands row for each player, holding only what they saw;
+ *   - "your turn" (lib/play-push.js): the play page's switch stores and removes a browser's subscription, never a
+ *     guest's; the service reports the turn of a player whose page is hidden, never of one whose page is visible; the
+ *     scheduler pushes once a hand (web-push stubbed: test/stub-delivery-preload.js), drops a subscription the push
+ *     service says is gone, and serves the play origin's worker and manifest on the play host only.
  *
  *   npm run test:tables
  */
@@ -30,6 +34,9 @@ const FULL = [...RANKS].flatMap((r) => [...SUITS].map((s) => r + s));
 const TOP = ['Ah', 'Ad', 'Kc', 'Ks', '2c', '7d', '9h', '3s', '4d'];
 const DECK = [...TOP, ...FULL.filter((c) => !TOP.includes(c))];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const VAPID_KEY = 'BStubVapidPublicKeyForThePlayTablesTest0123456789abcdefghijklmnopqrstuvwxyzABCDEFG';
+// A browser's PushSubscription.toJSON(), made up: the stub never sends anywhere.
+const SUB = (name) => ({ endpoint: `https://push.test/${name}`, keys: { p256dh: `BP256dh${name.replace(/[^A-Za-z0-9]/g, '')}0123456789abcdef`, auth: `auth${name.replace(/[^A-Za-z0-9]/g, '')}0123` } });
 
 function bootTables(port, schedulerPort, dataDir) {
   const env = scrubbedEnv({
@@ -91,7 +98,12 @@ async function waitFor(fn, what, ms = 10000) {
   const AVA = tok(101, 'ham'), BO = tok(102, 'ham5'), BLOCKED = tok(103, 'claude'), PAT = tok(104, 'pat'), DANA = tok(105, 'Dana');
 
   const tport = await freePort([4945, 4949]);
-  const srv = await boot(scratch.dbPath, { TABLES: '1', TABLES_URL: `http://127.0.0.1:${tport}`, TABLES_SECRET: SECRET, PLAY_HOSTS: 'play.test' }, { ports: [4940, 4944] });
+  // Web push is the stub (it logs each send); made-up VAPID keys get the sender past "not configured", and
+  // PLAY_DELIVERY=1 opens the gate a scratch server otherwise keeps shut.
+  const srv = await boot(scratch.dbPath, {
+    TABLES: '1', TABLES_URL: `http://127.0.0.1:${tport}`, TABLES_SECRET: SECRET, PLAY_HOSTS: 'play.test',
+    VAPID_PUBLIC_KEY: VAPID_KEY, VAPID_PRIVATE_KEY: 'stub-private', PLAY_DELIVERY: '1', DELIVERY_STUB_DETAIL: '1',
+  }, { ports: [4940, 4944], preloads: [path.join(ROOT, 'test', 'stub-delivery-preload.js')] });
   const dataDir = path.join(scratch.tmp, 'tables-data');
   const tables = await bootTables(tport, srv.port, dataDir);
   const S = `http://127.0.0.1:${srv.port}`, T = `http://127.0.0.1:${tport}`;
@@ -178,7 +190,7 @@ async function waitFor(fn, what, ms = 10000) {
         seats[who] = j.body.token;
       }
       seats.avaStream = stream(`${T}/tables/${table.id}/events?token=${encodeURIComponent(seats.ava)}`);
-      seats.boStream = stream(`${T}/tables/${table.id}/events?token=${encodeURIComponent(seats.bo)}`);
+      seats.boStream = stream(`${T}/tables/${table.id}/events?token=${encodeURIComponent(seats.bo)}&sid=bo1&visible=1`);
       streams.push(seats.avaStream, seats.boStream);
     });
 
@@ -189,6 +201,60 @@ async function waitFor(fn, what, ms = 10000) {
       assert.equal(a.body.balance, 19000);
       const b = await call(T, 'POST', `/tables/${table.id}/sit`, { seat: 1, buyIn: 1000 }, seats.bo);
       assert.equal(b.status, 200, JSON.stringify(b.body));
+    });
+
+    // ── "Your turn" (lib/play-push.js) ──
+    const pushes = (endpoint) => srv.log().split(/\r?\n/).filter((l) => l.includes('[delivery-stub] push [') && l.trim().endsWith(endpoint));
+    const details = (endpoint) => srv.log().split(/\r?\n/).filter((l) => l.startsWith('[delivery-detail] '))
+      .map((l) => JSON.parse(l.slice('[delivery-detail] '.length))).filter((d) => d.endpoint === endpoint);
+    const pushState = async (bearer, endpoint) => (await call(S, 'GET', `/api/tables/push${endpoint ? `?endpoint=${encodeURIComponent(endpoint)}` : ''}`, null, bearer)).body;
+
+    await t.test('the boot line says the your-turn push is ON, and why; the gate is the other pushes\' (RENDER, PLAY_DELIVERY)', async () => {
+      assert.match(srv.log(), /\[tables\] your-turn push is ON \(PLAY_DELIVERY=1\)/);
+      const { deliveryDecision } = require(path.join(ROOT, 'lib', 'play-push.js'));
+      assert.equal(deliveryDecision({}).on, false, 'a scratch server never pushes');
+      assert.equal(deliveryDecision({ RENDER: 'true' }).on, true);
+      assert.equal(deliveryDecision({ RENDER: 'true', PLAY_DELIVERY: '0' }).on, false);
+      assert.equal(deliveryDecision({ PLAY_DELIVERY: '1' }).on, true);
+      assert.equal(deliveryDecision({ RENDER: 'true', PLAY_DELIVERY: 'yes' }).on, false, 'a typo is off');
+    });
+
+    await t.test('the play page\'s switch: a guest is refused; a browser is stored for one account at a time and removed', async () => {
+      const guest = jwt.sign({ id: 0, username: 'dana', isGuest: true }, JWT_SECRET, { expiresIn: '1h' });
+      assert.equal((await call(S, 'GET', '/api/tables/push', null, guest)).status, 403);
+      assert.equal((await call(S, 'POST', '/api/tables/push', { subscription: SUB('guest') }, guest)).status, 403);
+      assert.equal((await call(S, 'POST', '/api/tables/push/off', { endpoint: SUB('guest').endpoint }, guest)).status, 403);
+      assert.deepEqual(await pushState(AVA), { key: VAPID_KEY, subscribed: false, delivery: true });
+      // Not a subscription: no https endpoint, or no keys.
+      assert.equal((await call(S, 'POST', '/api/tables/push', { subscription: { ...SUB('x'), endpoint: 'http://push.test/x' } }, BO)).status, 400);
+      assert.equal((await call(S, 'POST', '/api/tables/push', { subscription: { endpoint: SUB('x').endpoint } }, BO)).status, 400);
+      // Bo turns alerts on in one browser; the same browser reads as off for Ava.
+      assert.equal((await call(S, 'POST', '/api/tables/push', { subscription: SUB('bo-1') }, BO)).status, 200);
+      assert.equal((await pushState(BO, SUB('bo-1').endpoint)).subscribed, true);
+      assert.equal((await pushState(AVA, SUB('bo-1').endpoint)).subscribed, false);
+      // Ava opts in on that browser (she signed in on it after him): it is hers now, and off for him.
+      assert.equal((await call(S, 'POST', '/api/tables/push', { subscription: SUB('bo-1') }, AVA)).status, 200);
+      assert.equal((await pushState(BO, SUB('bo-1').endpoint)).subscribed, false);
+      // Turn off (or sign out, or notifications refused): only the caller's own row goes.
+      assert.equal((await call(S, 'POST', '/api/tables/push/off', { endpoint: SUB('bo-1').endpoint }, BO)).status, 200);
+      assert.equal((await pushState(AVA, SUB('bo-1').endpoint)).subscribed, true, "Bo's off does not take Ava's");
+      assert.equal((await call(S, 'POST', '/api/tables/push/off', { endpoint: SUB('bo-1').endpoint }, AVA)).status, 200);
+      assert.equal((await pushState(AVA, SUB('bo-1').endpoint)).subscribed, false);
+      // For the hand: Bo in two browsers (one the push service has dropped), Ava in one.
+      for (const [who, name] of [[BO, 'bo-1'], [BO, 'stub-gone/bo-2'], [AVA, 'ava-1']]) {
+        assert.equal((await call(S, 'POST', '/api/tables/push', { subscription: SUB(name) }, who)).status, 200);
+      }
+      // Gone with the account (server.js deleteUserAccount clears every table in USER_TABLES).
+      const { USER_TABLES } = require(path.join(ROOT, 'lib', 'feature-mounts.js'));
+      for (const tname of ['play_push_subs', 'play_push_log']) assert.ok(USER_TABLES.includes(tname), tname);
+    });
+
+    await t.test('presence: a page says it was hidden, for its own stream only', async () => {
+      const at = (who, sid, visible) => call(T, 'POST', `/tables/${table.id}/presence?token=${encodeURIComponent(seats[who])}&sid=${sid}&visible=${visible}`);
+      assert.equal((await call(T, 'POST', `/tables/${table.id}/presence?sid=bo1&visible=0`)).status, 401, 'no token');
+      assert.equal((await at('ava', 'bo1', 0)).body.streams, 0, "Ava cannot hide Bo's stream");
+      // Bo's page goes to the background before the first hand: he is away. Ava's stream is on a visible page.
+      assert.equal((await at('bo', 'bo1', 0)).body.streams, 1);
     });
 
     await t.test('nothing is dealt until the host starts the game; a guest at the table cannot', async () => {
@@ -223,6 +289,38 @@ async function waitFor(fn, what, ms = 10000) {
       const end = await state('ava');
       assert.equal(end.hand.live.over, true);
       assert.deepEqual(end.table.seats.slice(0, 2).map((s) => s.stack), [1080, 920]);
+    });
+
+    await t.test('your turn, away: Bo (page hidden) is pushed once this hand; Ava (page visible) never', async () => {
+      // Bo had four turns this hand, each reported by the service; the scheduler sends the first only.
+      await waitFor(async () => (await (await fetch(`${T}/health`)).json()).outbox === 0, 'the outbox to empty');
+      await waitFor(() => pushes(SUB('bo-1').endpoint).length >= 1, "Bo's push");
+      await sleep(300);
+      assert.equal(pushes(SUB('bo-1').endpoint).length, 1, 'one push a hand');
+      assert.equal(pushes(SUB('ava-1').endpoint).length, 0, 'nothing to a player whose page is visible');
+      const [d] = details(SUB('bo-1').endpoint);
+      assert.deepEqual(JSON.parse(d.payload), { title: 'Test table', body: 'Your turn', url: `/table/${table.id}`, tableId: table.id, tag: `turn-${table.id}` });
+      // The push lives as long as the turn can (30 s a decision, no bank, and 15 s), high urgency, one per table.
+      assert.deepEqual({ TTL: d.options.TTL, urgency: d.options.urgency, topic: d.options.topic }, { TTL: 45, urgency: 'high', topic: `turn${table.id}` });
+      // The browser the push service dropped was tried once and taken off the list.
+      assert.equal(details(SUB('stub-gone/bo-2').endpoint).length, 1);
+      assert.equal((await pushState(BO, SUB('stub-gone/bo-2').endpoint)).subscribed, false);
+      assert.equal((await pushState(BO, SUB('bo-1').endpoint)).subscribed, true);
+    });
+
+    await t.test('internal/turn: the service only, a member only, once a hand', async () => {
+      const turn = (body, secret = SECRET) => call(S, 'POST', '/api/tables/internal/turn', body, secret);
+      assert.equal((await turn({ tableId: table.id, handNo: 1, userId: 102 }, 'not-the-secret')).status, 404);
+      assert.deepEqual((await turn({ tableId: table.id, handNo: 1, userId: 102 })).body, { ok: true, sent: false, why: 'already told this hand' });
+      assert.equal((await turn({ tableId: table.id, handNo: 1, userId: 103 })).body.why, 'not at this table');
+      assert.equal((await turn({ tableId: 'nope', handNo: 1, userId: 102 })).body.why, 'not at this table');
+      const next = await turn({ tableId: table.id, handNo: 2, userId: 102 });
+      assert.equal(next.body.sent, true, JSON.stringify(next.body));
+      assert.equal(pushes(SUB('bo-1').endpoint).length, 2, 'a new hand, a new push');
+      assert.equal((await turn({ tableId: table.id, handNo: 2, userId: 102 })).body.sent, false);
+      assert.equal(pushes(SUB('bo-1').endpoint).length, 2);
+      // Bo's page is in front of him again.
+      assert.equal((await call(T, 'POST', `/tables/${table.id}/presence?token=${encodeURIComponent(seats.bo)}&sid=bo1&visible=1`)).body.streams, 1);
     });
 
     await t.test('the chips are what the oracle-checked writer says', async () => {
@@ -318,6 +416,16 @@ async function waitFor(fn, what, ms = 10000) {
       const app = await get(`127.0.0.1:${srv.port}`, '/');
       assert.ok(!app.body.includes('futurega.me | play'), 'futurega.me itself is the app');
       assert.equal((await get(`127.0.0.1:${srv.port}`, '/play.html')).status, 404, 'the play page is not on futurega.me');
+      // The play origin's own worker and manifest: on the play host only. A notification opens /table/<id>.
+      const sw = await get('play.test', '/play-sw.js');
+      assert.equal(sw.status, 200);
+      assert.ok(sw.body.includes('notificationclick') && sw.body.includes('showNotification'), 'the play worker');
+      assert.ok(!sw.body.includes("addEventListener('fetch'"), 'no fetch handler: the page loads as without it');
+      assert.equal(JSON.parse((await get('play.test', '/play-manifest.json')).body).name, 'futurega.me play');
+      assert.ok((await get('play.test', '/')).body.includes('<link rel="manifest" href="/play-manifest.json">'), "the play page's own manifest");
+      for (const f of ['/play-sw.js', '/play-manifest.json']) assert.equal((await get(`127.0.0.1:${srv.port}`, f)).status, 404, `${f} is not on futurega.me`);
+      const tablePage = await get('play.test', `/table/${table.id}`);
+      assert.ok(tablePage.status === 200 && tablePage.body.includes('<title>futurega.me | play</title>'), '/table/<id> is the play page');
       const api = await get('play.test', '/api/tables/availability', AVA);
       assert.equal(JSON.parse(api.body).on, true, 'the API answers on the play host');
     });

@@ -7,6 +7,7 @@
 import React, { useEffect, useState } from 'react';
 import { API_URL } from '../utils/api.js';
 import { tablesApi } from '../utils/play-tables.js';
+import { disableTurnPush } from '../utils/play-push.js';
 import useDesktopLayout from '../hooks/useDesktopLayout.js';
 import { T } from './StudyHead.jsx';
 import TablesView from './TablesView.jsx';
@@ -86,7 +87,9 @@ export default function PlayApp() {
     write('token', d.token); write('playName', who);
     setName(who); setToken(d.token);
   };
-  const signOut = () => {
+  const signOut = async () => {
+    // This browser's turn alerts end with the session (taking it off the server's list needs the session, so first).
+    await Promise.race([disableTurnPush().catch(() => {}), new Promise((r) => setTimeout(r, 3000))]);
     fetch(`${API_URL}/logout`, { method: 'POST', headers: { authorization: `Bearer ${token}` } }).catch(() => {});
     write('token', null); write('playName', null);
     setToken(null); setOpen(null);
