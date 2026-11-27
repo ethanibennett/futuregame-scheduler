@@ -8,6 +8,11 @@
 
 const round = (v) => Math.round(v * 100) / 100;
 
+// The window's insets as the app last gave them (null before the first answer, or off the app): the truth the
+// in-app layout check (utils/layout-probe.js) holds the page to.
+let lastNative = null;
+export const nativeInsetsNow = () => lastNative;
+
 /* The rule for a set of insets ({ top, bottom, left, right } in CSS px), or '' when none is above 0. */
 export function insetsCss(v) {
   const parts = [];
@@ -35,7 +40,7 @@ export function startNativeInsets(win = typeof window !== 'undefined' ? window :
   if (C.isPluginAvailable && !C.isPluginAvailable('SafeArea')) return false;
   const SA = C.registerPlugin('SafeArea');
   const doc = win.document;
-  const apply = (v) => { try { applyInsets(doc, v || {}); } catch { /* no head yet */ } };
+  const apply = (v) => { lastNative = v || {}; try { applyInsets(doc, v || {}); } catch { /* no head yet */ } };
   const sync = () => { Promise.resolve().then(() => SA.get()).then(apply).catch(() => {}); };
   sync();
   // iOS applies the inset after the first layout (see GridOverlay), so ask again as the page settles.

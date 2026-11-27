@@ -1,0 +1,118 @@
+# A hand link opened in the iPhone APP, in the simulator, on the Mac (owner, 2026-11-27: a shared hand opened from
+# Discord into the app with the table under the clock and the buttons on the home bar, "This kind of thing just can
+# not happen"). The guards on Windows emulate the safe area by setting it, so they could never see a page where iOS
+# reported it as 0. This builds the app itself (Debug, for the simulator), launches it on each phone with a hand link
+# the way a link tapped in another app arrives (cold: the app starts on it; warm: the app is open and the link comes
+# in; FG_OPEN_URL / FG_OPEN_URL_LATER in SceneDelegate, Debug only), and reads the page's own report from the app's
+# console (?probe=layout, vite-app/src/utils/layout-probe.js): every piece of the replay against the safe area the
+# window gives. Fails on any piece under the clock, on the home bar or off the screen. Screenshots and logs are the
+# run's artifact.
+#
+# Dispatch from Windows (one line):
+#   gh api repos/ethanibennett/futuregame-scheduler/dispatches -f event_type=app-link-check -F 'client_payload[ref]=master'
+# then: gh run download <run id> -n app-link-check
+name: Hand link in the app (iPhone simulator)
+
+on:
+  workflow_dispatch:
+    inputs:
+      link:
+        description: 'A hand link (https://futurega.me/h/...)'
+        default: 'https://futurega.me/h/dSXeHmQt'
+      devices:
+        description: 'Phones, ";" between them, "|" between names to try in turn'
+        default: 'iPhone 17 Pro|iPhone 16 Pro;iPhone 17 Pro Max|iPhone 16 Pro Max;iPhone 16e|iPhone SE (3rd generation)'
+  repository_dispatch:
+    types: [app-link-check]
+
+concurrency:
+  group: app-link-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: [self-hosted, macOS]
+    timeout-minutes: 50
+    env:
+      LINK: ${{ github.event.client_payload.link || inputs.link || 'https://futurega.me/h/dSXeHmQt' }}
+      DEVICES: ${{ github.event.client_payload.devices || inputs.devices || 'iPhone 17 Pro|iPhone 16 Pro;iPhone 17 Pro Max|iPhone 16 Pro Max;iPhone 16e|iPhone SE (3rd generation)' }}
+      APPID: app.futurega.me.beta
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.client_payload.ref || github.ref }}
+
+      - name: Build the app for the simulator
+        run: |
+          set -euo pipefail
+          echo "commit: $(git rev-parse --short HEAD)"
+          [ -d node_modules ] || npm install
+          (cd vite-app && npm ci)
+          node build.js
+          [ -f public-vite/index.html ] || { echo "the web build produced nothing" >&2; exit 1; }
+          npx cap sync ios
+          ./scripts/build-capacitor-xcframeworks.sh --ios-only
+          rm -rf "$RUNNER_TEMP/alc-build"
+          xcodebuild -project ios/App/App.xcodeproj -scheme futurega.me -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/alc-build" \
+            CODE_SIGNING_ALLOWED=NO CAPACITOR_DEBUG=true build > "$RUNNER_TEMP/alc-xcodebuild.log" 2>&1 \
+            || { tail -60 "$RUNNER_TEMP/alc-xcodebuild.log"; exit 1; }
+          APP=$(find "$RUNNER_TEMP/alc-build/Build/Products/Debug-iphonesimulator" -maxdepth 1 -name '*.app' | head -1)
+          [ -n "$APP" ] || { echo "no .app built" >&2; exit 1; }
+          echo "APP=$APP" >> "$GITHUB_ENV"
+          echo "built $APP"
+
+      - name: Open the link on each phone
+        run: |
+          set -uo pipefail
+          rm -rf out && mkdir -p out
+          SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
+          echo "### Hand link in the app: $LINK" >> "$SUMMARY"
+          FAIL=0
+          IFS=';' read -ra PHONES <<< "$DEVICES"
+          for GROUP in "${PHONES[@]}"; do
+            PICK=$(xcrun simctl list devices available -j | WANT="$GROUP" /usr/bin/python3 -c "
+          import json, os, sys
+          d = json.load(sys.stdin)['devices']
+          for want in os.environ['WANT'].split('|'):
+              rows = [x for rt, xs in d.items() if 'iOS' in rt for x in xs if x['name'] == want.strip()]
+              if rows:
+                  print(rows[-1]['udid'] + ' ' + want.strip()); break
+          ")
+            if [ -z "$PICK" ]; then echo "- SKIP $GROUP: no such simulator here" >> "$SUMMARY"; echo "skip $GROUP"; continue; fi
+            UDID="${PICK%% *}"; NAME="${PICK#* }"; SLUG=$(echo "$NAME" | tr -c 'A-Za-z0-9' '-')
+            xcrun simctl shutdown "$UDID" 2>/dev/null || true
+            xcrun simctl erase "$UDID"
+            xcrun simctl boot "$UDID" 2>/dev/null || true
+            xcrun simctl bootstatus "$UDID" -b > /dev/null
+            xcrun simctl install "$UDID" "$APP"
+            for MODE in cold warm; do
+              case "$LINK" in *\?*) URL="${LINK}&probe=layout" ;; *) URL="${LINK}?probe=layout" ;; esac
+              LOG="out/${SLUG}${MODE}.log"
+              if [ "$MODE" = cold ]; then
+                SIMCTL_CHILD_FG_OPEN_URL="$URL" xcrun simctl launch --console --terminate-running-process "$UDID" "$APPID" > "$LOG" 2>&1 &
+                WAIT=24
+              else
+                SIMCTL_CHILD_FG_OPEN_URL_LATER="$URL" xcrun simctl launch --console --terminate-running-process "$UDID" "$APPID" > "$LOG" 2>&1 &
+                WAIT=32
+              fi
+              LPID=$!
+              sleep "$WAIT"
+              xcrun simctl io "$UDID" screenshot "out/${SLUG}${MODE}.png" > /dev/null 2>&1 || true
+              xcrun simctl terminate "$UDID" "$APPID" 2>/dev/null || true
+              kill "$LPID" 2>/dev/null || true
+              wait "$LPID" 2>/dev/null || true
+              python3 scripts/check-app-link-log.py "$LOG" "$NAME, $MODE" "$SUMMARY" || FAIL=1
+            done
+            xcrun simctl shutdown "$UDID" 2>/dev/null || true
+          done
+          exit $FAIL
+
+      - name: Upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-link-check
+          path: out/
+          retention-days: 7

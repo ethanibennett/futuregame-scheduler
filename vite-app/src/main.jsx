@@ -11,9 +11,12 @@ import { installGridSnap } from './utils/grid-snap.js';
 import { installSwissTypography } from './utils/swiss-typography.js';
 import { applyStoredCardBack } from './utils/card-back.js';
 import { startNativeInsets } from './utils/native-insets.js';
+import { startLayoutProbe } from './utils/layout-probe.js';
 
 // In the iPhone app, the safe area as the window gives it, over env()'s (utils/native-insets.js).
 startNativeInsets();
+// ?probe=layout: where the replay's pieces sit against that safe area, on the console (the Mac's app-link-check).
+startLayoutProbe();
 
 // Every numeric field clears on focus, ready for a new number (utils/numeric-focus-clear.js).
 installNumericFocusClear();

@@ -813,6 +813,12 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
     `SafeAreaPlugin` (AppDelegate.swift) gives the window's insets and tells of every change; `utils/native-insets.js`
     writes them over `--sa-t` / `--sa-b` / `--sa-l` / `--sa-r` (a side the window says is 0 stays env()'s), so every
     inset in the CSS goes through those four, never env() itself.
+    **The in-app link check** (`.github/workflows/app-link-check.yml`, the Mac): builds the app (Debug, simulator), opens
+    a hand link in it cold and warm on three phones (`FG_OPEN_URL` / `FG_OPEN_URL_LATER`, Debug only) and fails on any
+    piece of the replay under the clock, on the home bar or off the screen, judged by the page's own report against the
+    window's insets (`?probe=layout`, `utils/layout-probe.js`, read by `scripts/check-app-link-log.py`). The Windows
+    guards set the inset, so they cannot see a page iOS gave none. Run it before a native or safe-area change ships:
+    `gh api repos/ethanibennett/futuregame-scheduler/dispatches -f event_type=app-link-check -F 'client_payload[ref]=master'`.
   - Tests: `npm run test:features-social` (ports 4750-4759), and `game-rules`, `odds`, `plans-in-common` in
     `test:utils`. Catalogue figures (ICM, the PLO 8/b odds) are held by `odds.test.mjs`.
 

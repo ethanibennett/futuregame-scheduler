@@ -118,6 +118,19 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             if let web = activity.webpageURL { DeepLinksPlugin.launchURL = web }
             _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, continue: activity, restorationHandler: { _ in })
         }
+        #if DEBUG
+        // The in-app link check (.github/workflows/app-link-check.yml): the simulator launches a Debug build with
+        // FG_OPEN_URL (SIMCTL_CHILD_FG_OPEN_URL) and the link opens as a cold launch from a tapped link does.
+        if let s = ProcessInfo.processInfo.environment["FG_OPEN_URL"], let url = URL(string: s) {
+            DeepLinksPlugin.launchURL = url
+        }
+        // And as a link tapped while the app is already open: delivered 8 s after launch, as Capacitor's proxy delivers one.
+        if let s = ProcessInfo.processInfo.environment["FG_OPEN_URL_LATER"], let url = URL(string: s) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
+                NotificationCenter.default.post(name: .capacitorOpenUniversalLink, object: ["url": url])
+            }
+        }
+        #endif
     }
 
     // The app lock's privacy screen (Features 43): while the lock is on, the snapshot the app switcher
