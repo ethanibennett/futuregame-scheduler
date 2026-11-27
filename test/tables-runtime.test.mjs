@@ -89,6 +89,32 @@ test('a seat that sits into a game waits for the big blind, then is dealt in on 
   assert.ok(cameIn, 'Cy was dealt in within three hands');
 });
 
+test("between hands, a player who takes a seat someone left is not shown that seat's last hand", () => {
+  // Found by test:tables-eight (2026-11-26): the last hand is shown until the next is dealt, and the viewer was found in
+  // it by the seat they sit in NOW, so a newcomer in a seat just left was shown the hand as its last player saw it,
+  // their unshown cards included.
+  const { table, advance } = harness();
+  table.sit(1, 'Ava', 5000, 0);
+  table.sit(2, 'Bo', 5000, 1);
+  advance(1000);
+  assert.equal(table.handNo, 1);
+  const boCards = table.viewFor(2).hand.hand.streets[0].cards.hero;
+  assert.match(boCards, /^([2-9TJQKA][hdcs]){2}$/);
+  playOut(table);                       // Ava folds: nobody shows
+  assert.equal(table.hand, null);
+  table.leave(2);                       // Bo goes between hands...
+  assert.equal(table.seats[1], null);
+  assert.ok(!table.sit(3, 'Cy', 5000, 1).error);   // ...and Cy takes his seat before the next is dealt
+  const cy = table.viewFor(3);
+  assert.equal(cy.hand.you, -1, 'Cy was not dealt the last hand');
+  const shown = JSON.stringify(cy.hand);
+  for (const c of boCards.match(/../g)) assert.ok(!shown.includes(`"${c}`) && !shown.includes(`${c}"`) && !new RegExp(`[2-9TJQKA][hdcs]${c}|${c}[2-9TJQKA][hdcs]`).test(shown), `Cy was shown Bo's ${c}`);
+  // Ava still sees her own last hand, and Bo, back in another seat, his.
+  assert.equal(table.viewFor(1).hand.you >= 0, true);
+  assert.ok(!table.sit(2, 'Bo', 5000, 4).error);
+  assert.equal(table.viewFor(2).hand.hand.streets[0].cards.hero, boCards);
+});
+
 test('a waiting seat never takes the button, and a table of one regular starts afresh', () => {
   const { table, advance } = harness();
   table.sit(1, 'Ava', 5000, 0);
