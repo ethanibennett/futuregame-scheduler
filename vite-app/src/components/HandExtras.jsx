@@ -39,7 +39,7 @@ export function questionHand(hand, streetIdx, actionIdx) {
 /* The note on this moment as a quote bubble over the hero's hand on the felt (owner, 2026-11-28: "This note is hidden.
    Let's put it in a quote bubble above hero's hand"): a card pinned 16r up from the replay's foot, it sat behind the transport.
    Drawn inside the table, unseen until the replay places it (left, top and the tail's x, as shares of the table and of
-   the bubble); four lines at most, and a tap on the words opens the note (its sheet, or the whole note where it cannot
+   the bubble); four lines at most, no quotation marks (owner, 2026-11-28: "take out the quotation marks"), and a tap on the words opens the note (its sheet, or the whole note where it cannot
    be edited). The replay stops on a note, and its play button carries on (owner, 2026-11-28: "when a note shows up, the
    hand should pause, and the note should have a continue symbol for the user to tap"); none where nothing is left. */
 export const MomentBubble = React.forwardRef(function MomentBubble({ note, onOpen, onContinue }, ref) {
@@ -50,7 +50,7 @@ export const MomentBubble = React.forwardRef(function MomentBubble({ note, onOpe
     <div ref={ref} className={'mn-bubble' + (open ? ' is-open' : '')} role="note">
       <button type="button" className="mn-bubble-text" aria-label={'Your note on this moment: ' + note.text}
         onClick={(e) => { e.stopPropagation(); if (onOpen) onOpen(); else setOpen((v) => !v); }}>
-        {'“' + note.text + '”'}
+        {note.text}
       </button>
       {onContinue && (
         <button type="button" className="mn-continue" aria-label="Continue the replay"

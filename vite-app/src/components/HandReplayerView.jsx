@@ -10153,10 +10153,45 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const r = subrowPx(table), g = guPx(table);
     const top = Math.min(...rs.map((q) => q.top)) - T.top;
     const cx = (Math.min(...rs.map((q) => q.left)) + Math.max(...rs.map((q) => q.right))) / 2 - T.left;
-    const w = b.offsetWidth, h = b.offsetHeight;
-    // The tail is 1r tall under the bubble's body; its tip r/2 over the cards.
-    const L = Math.max(g, Math.min(T.width - g - w, cx - w / 2));
-    const Y = Math.max(g, top - r * 0.5 - r - h);
+    /* Where it covers least (owner, 2026-11-28: "Move this bubble to minimize collision with other elements"): every
+       width up to 24g, 21g, 18g or 15g (a short note keeps its own), and every place along the row (g/2 apart) that keeps the tail 1.5g in from either end
+       and the bubble 1g inside the table, scored by the area it would cover of the felt's pieces (the collision guard's:
+       plaques, cards, action labels, readouts, wagers, the button, the board, the pot); the game's label counts a tenth,
+       since it fades under the bubble. Least wins; then the widest, then the nearest to centred. Centred at 24g it lay
+       over a side seat's plaque. */
+    const P = (q) => ({ l: q.left - T.left, t: q.top - T.top, r: q.right - T.left, b: q.bottom - T.top });
+    const pieces = [];
+    const add = (sel, wt) => table.querySelectorAll(sel).forEach((el) => {
+      if (b.contains(el) || el.closest('[data-ghost]')) return;
+      const q = el.getBoundingClientRect();
+      if (q.width && q.height) pieces.push({ ...P(q), wt });
+    });
+    add('.replayer-seat-info, .replayer-seat-cards .card-row > *, .replayer-action-badge-outer, .replayer-seat-hand-name, .replayer-seat-draw-badge, .replayer-dealer-btn, .replayer-bet-chip[data-seat], .replayer-board-area:not(.replayer-dead-area) .card-row > *, .replayer-pot-display, .replayer-pot-above, .replayer-pot-layers.is-placed > *', 1);
+    add('.replayer-table-info > *', 0.1);
+    const cover = (L, Y, w, h) => pieces.reduce((sum, q) => {
+      const ix = Math.min(L + w, q.r) - Math.max(L, q.l), iy = Math.min(Y + h, q.b) - Math.max(Y, q.t);
+      return ix > 0 && iy > 0 ? sum + ix * iy * q.wt : sum;
+    }, 0);
+    let best = null;
+    for (const n of [24, 21, 18, 15]) {
+      if (n * g > T.width - 2 * g) continue;
+      b.style.maxWidth = 'calc(var(--gu) * ' + n + ')';
+      const w = b.offsetWidth, h = b.offsetHeight;
+      // The tail is 1r tall under the bubble's body; its tip r/2 over the cards.
+      const Y = Math.max(g, top - r * 0.5 - r - h);
+      const lo = Math.max(g, cx - w + 1.5 * g), hi = Math.min(T.width - g - w, cx - 1.5 * g);
+      for (let L = lo; L <= hi + 0.01; L += g / 2) {
+        const score = cover(L, Y, w, h) + Math.abs(L + w / 2 - cx) * 0.01 + (24 - n) * 0.02;
+        if (!best || score < best.score) best = { score, n, L, Y, w };
+      }
+    }
+    if (!best) {
+      b.style.maxWidth = '';
+      const w = b.offsetWidth, h = b.offsetHeight;
+      best = { n: null, L: Math.max(g, Math.min(T.width - g - w, cx - w / 2)), Y: Math.max(g, top - r * 0.5 - r - h), w };
+    }
+    b.style.maxWidth = best.n ? 'calc(var(--gu) * ' + best.n + ')' : '';
+    const { L, Y, w } = best;
     b.style.left = (L / T.width * 100) + '%';
     b.style.top = (Y / T.height * 100) + '%';
     b.style.setProperty('--mn-tail-x', ((cx - L) / w * 100) + '%');

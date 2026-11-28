@@ -819,6 +819,9 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
     owner, 2026-11-28: "put it in a quote bubble above hero's hand"): the replay stops on it, and its play button
     carries on ("the hand should pause, and the note should have a continue symbol for the user to tap"); the moment
     play starts from never stops it again, and a drill or an export is never stopped. The game's label fades under it.
+    It goes where it covers least ("Move this bubble to minimize collision with other elements, and take out the
+    quotation marks"): up to 24g, 21g, 18g or 15g wide, anywhere along the row that keeps its tail on the hero's cards,
+    scored by the area of the felt's pieces it would cover (the collision guard's; the game's label at a tenth).
   - **Hide money** (44, `utils/hide-money.js`) masks text inside `[data-money-zone]` (Bankroll, Cash, Staking,
     Home's result, period and bankroll blocks, the trip card, the pay ladder). New money screens need the attribute.
   - **Native** (41, 43, 47, 10): `AppLockPlugin`, `AppleSignInPlugin`, `DeepLinksPlugin`, `LiveActivityPlugin`
