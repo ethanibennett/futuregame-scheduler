@@ -608,27 +608,30 @@ function ghostOf(host, c, layerRect, back, i) {
 
 /**
  * The ways a folded hand can leave the table (owner, 2026-11-27: "Let's make a few more folding motions other than the
- * helicopter into the muck and the shrink behind the box"), the Replayer setting Fold Motion. Spin in and Behind the
- * seat are foldToStack's two (25, and the stud fold's down cards); Spread, Lift and drop and Flicked are the owner's
- * three; the rest were offered with them. Each their own gives every player one of them, fixed by their name.
+ * helicopter into the muck and the shrink behind the box"), the Replayer setting Fold Motion. Kept (owner, 2026-11-28:
+ * "okay keep 1, 2, 3, 4, 5, 8, and 11"): Spin in and Behind the seat (foldToStack's two), Spread, Lift and drop,
+ * Flicked, Thrown, and Stud flip under (studFlipUnder). Pushed, Lobbed, Coin spin and Each their own are gone.
+ * Random is the default (owner, 2026-11-28: "default to a random one in all games but stud, add an option to turn them
+ * off (which just makes everyone use #2)"): each fold one of the six that play in any game, fixed by the fold (its
+ * hand, street, action and seat), so Back and an export play it the same; in stud, Stud flip under. Off is Behind the
+ * seat for everyone (in stud, stud's 2026-11-22 fold: the down cards behind the seat, the up cards to the strip).
  */
 export const FOLD_STYLES = [
+  { id: 'random', label: 'Random' },
   { id: 'spin', label: 'Spin in' },
   { id: 'tuck', label: 'Behind the seat' },
   { id: 'spread', label: 'Spread' },
   { id: 'drop', label: 'Lift and drop' },
   { id: 'flick', label: 'Flicked' },
-  { id: 'push', label: 'Pushed' },
-  { id: 'lob', label: 'Lobbed' },
   { id: 'throw', label: 'Thrown' },
-  { id: 'coin', label: 'Coin spin' },
-  { id: 'each', label: 'Each their own' },
-  /* Stud's own (owner, 2026-11-27: "Let's add one specifically for stud"): studFlipUnder. Last, so the others keep their
-     numbers; in a game with no up cards it plays as Behind the seat. */
   { id: 'flipunder', label: 'Stud flip under' },
+  { id: 'off', label: 'Off' },
 ];
 const FOLD_IDS = new Set(FOLD_STYLES.map((s) => s.id));
-export const normalizeFoldStyle = (v) => (FOLD_IDS.has(v) ? v : 'spin');
+// A stored style no longer offered (Pushed, Lobbed, Coin spin, Each their own), or none, is Random.
+export const normalizeFoldStyle = (v) => (FOLD_IDS.has(v) ? v : 'random');
+/** The motions Random picks from outside stud. */
+export const RANDOM_FOLDS = ['spin', 'tuck', 'spread', 'drop', 'flick', 'throw'];
 
 const hashStr = (s) => {
   let h = 2166136261;
@@ -646,13 +649,14 @@ function seeded(seed) {
   };
 }
 
-/** The style a fold plays: the setting's, or under Each their own the player's own, by `who` (their name). */
-export function foldStyleOf(setting, who = '') {
+/** The motion a fold plays: the setting's; under Random one of RANDOM_FOLDS fixed by `seed` (the fold), or Stud flip
+    under in stud; under Off, Behind the seat. */
+export function foldStyleOf(setting, seed = '', { stud = false } = {}) {
   const s = normalizeFoldStyle(setting);
-  if (s !== 'each') return s;
-  // Not Stud flip under: added after, it would have moved every name to another style.
-  const pool = FOLD_STYLES.map((x) => x.id).filter((id) => id !== 'each' && id !== 'flipunder');
-  return pool[hashStr('fold:' + String(who).trim().toLowerCase()) % pool.length];
+  if (s === 'off') return 'tuck';
+  if (s !== 'random') return s;
+  if (stud) return 'flipunder';
+  return RANDOM_FOLDS[hashStr('fold:' + String(seed)) % RANDOM_FOLDS.length];
 }
 
 /* Ghosts of `cards` each on its own pose over the moment's clock: pose(i, t) gives { x, y } (px from where the card
@@ -713,19 +717,16 @@ function dimTrack({ dimTo, dimMs, delay = 0, end, h, lift = null, steps = 28 }) 
  *           straight in without turning and coming to rest under the pot's graphic (owner, 2026-11-27: "For 5 let's have
  *           them land under the pot graphic, and slide without spinning"; 2026-11-28: "gather them together centered
  *           before the flicks").
- *   push    the hand, as it is held, pushed forward across the cloth, slowing as it goes, and fades.
- *   lob     gathered, the stack is tossed in an arc to the muck (rising and falling), lands and skids.
  *   throw   the whole hand thrown in at once, every card spinning its own way and skidding apart under the pot.
- *   coin    gathered, the stack spins on its edge like a coin, slowing, and falls flat as it fades.
  */
 export function foldAway(reg, { style, set, rate = 1, layer, layerRect, cards, back = null, dimTo = 0.42, middle, muck, line, seat, pot, seed = '' }) {
   if (!layer || !layerRect || !cards.length) return [];
-  const id = normalizeFoldStyle(style);
+  const id = foldStyleOf(style, seed);
   // Stud flip under is studFlipUnder, given the up cards apart; a hand with none (any flop game) goes behind the seat.
   if ((id === 'tuck' || id === 'flipunder') && seat) return foldToStack(reg, { set, rate, layer, layerRect, cards, target: seat, back, dimTo, spin: 0, scaleTo: 0.05 });
   /* Spin in goes under the pot's graphic (owner, 2026-11-28: "1 should go under the pot as well"), the fold layer under
      it; it went to the middle of the felt. */
-  if (id === 'spin' || id === 'each') return foldToStack(reg, { set, rate, layer, layerRect, cards, target: pot || middle, back, dimTo });
+  if (id === 'spin') return foldToStack(reg, { set, rate, layer, layerRect, cards, target: pot || middle, back, dimTo });
   if (id === 'tuck' || id === 'flipunder') return foldToStack(reg, { set, rate, layer, layerRect, cards, target: middle, back, dimTo });
   const B = stage(set).beat / rate;
   const R = seeded(seed + ':' + id);
@@ -840,48 +841,6 @@ export function foldAway(reg, { style, set, rate = 1, layer, layerRect, cards, b
       } });
   }
 
-  if (id === 'push') {
-    const C = { x: cards.reduce((a, c) => a + c.cx, 0) / n, y: cards.reduce((a, c) => a + c.cy, 0) / n };
-    const v = towards(C, page(middle || muck));
-    const d = Math.min(0.42 * v.d, 5 * H);
-    const fly = tierSpring(set, 'inertia');
-    const tGo = 0.15 * B;
-    const k = sprAt(fly, tGo);
-    const tFade = tGo + timeTo(fly, 0.6) / rate;
-    const end = tFade + 2.5 * B;
-    const fade = fadeFrom(tFade, 2.5 * B);
-    return flyPoses(reg, { layer, layerRect, cards, back, end,
-      filter: () => dimTrack({ dimTo, dimMs: 2 * B, end, h: H }),
-      pose: (i, t) => {
-        const c = cards[i], kk = k(t);
-        return { x: v.ux * d * kk, y: v.uy * d * kk, rotate: c.angle || 0, scale: 1 + (0.9 - 1) * clamp01(kk), scaleX: 1, opacity: fade(t) };
-      } });
-  }
-
-  if (id === 'lob') {
-    const M = page(muck || middle), v = towards(S, M), dir = v.dx >= 0 ? 1 : -1;
-    const tGo = tMeet + 0.25 * B;
-    const F = Math.max(3.2 * B, 1.1 * B + v.d / (0.55 * W) * B * 0.35);
-    // Nearly even speed across the felt (a thrown thing keeps its way), up and down as it goes.
-    const prog = (t) => { const p = clamp01((t - tGo) / F); return 0.5 * p + 0.5 * smooth(p); };
-    const lift = (t) => (t <= tGo ? 0 : Math.sin(Math.PI * clamp01((t - tGo) / F)));
-    // Landing still moving: it skids on, slowing on the cloth (the speed it landed with, decaying).
-    const tLand = tGo + F, v0 = (0.5 * v.d) / F, tau = 0.7 * B;
-    const skid = (t) => (t <= tLand ? 0 : v0 * tau * (1 - Math.exp(-(t - tLand) / tau)));
-    const tFade = tLand + 3 * tau + 0.6 * B;
-    const end = tFade + 2 * B;
-    const fade = fadeFrom(tFade, 2 * B);
-    const turn = dir * (30 + 25 * R());
-    return flyPoses(reg, { layer, layerRect, cards, back, end,
-      filter: () => dimTrack({ dimTo, dimMs: tMeet, end, h: H, lift }),
-      pose: (i, t) => {
-        const c = cards[i], q = gq(t), p = geo.at(c, q), kk = prog(t), sk = skid(t);
-        return { x: p.x + v.dx * kk + v.ux * sk, y: p.y + v.dy * kk + v.uy * sk,
-          rotate: geo.angleAt(c, q) + turn * kk + dir * 0.4 * sk,
-          scale: (1 + (LAND - 1) * kk) * (1 + 0.3 * lift(t)), scaleX: 1, opacity: fade(t) };
-      } });
-  }
-
   if (id === 'throw') {
     // Under the pot's graphic (owner, 2026-11-27: "Make #8 land under the pot"); it was the dealer's muck.
     const M = page(pot || muck || middle);
@@ -908,26 +867,6 @@ export function foldAway(reg, { style, set, rate = 1, layer, layerRect, cards, b
       } });
   }
 
-  if (id === 'coin') {
-    const v = towards(S, page(middle || muck));
-    const d = Math.min(0.25 * v.d, 2.5 * H);
-    const slide = tierSpring(set, 'inertia');
-    const tGo = tMeet + 0.2 * B;
-    const k = sprAt(slide, tGo);
-    // Two whole turns on its edge, slowing as a spun coin does, ending flat (|cos| back to 1).
-    const tau = 1.6 * B, span = 5 * tau, PHI = 4 * Math.PI, norm = 1 - Math.exp(-span / tau);
-    const phase = (t) => (t <= tGo ? 0 : PHI * (1 - Math.exp(-Math.min(t - tGo, span) / tau)) / norm);
-    const tFade = tGo + span - 1.2 * B;
-    const end = tFade + 2 * B;
-    const fade = fadeFrom(tFade, 2 * B);
-    return flyPoses(reg, { layer, layerRect, cards, back, end,
-      filter: () => dimTrack({ dimTo, dimMs: tMeet, end, h: H }),
-      pose: (i, t) => {
-        const c = cards[i], q = gq(t), p = geo.at(c, q), kk = k(t);
-        return { x: p.x + v.ux * d * kk, y: p.y + v.uy * d * kk, rotate: geo.angleAt(c, q),
-          scale: 1 + (0.85 - 1) * clamp01(kk), scaleX: Math.max(0.03, Math.abs(Math.cos(phase(t)))), opacity: fade(t) };
-      } });
-  }
   return foldToStack(reg, { set, rate, layer, layerRect, cards, target: middle, back, dimTo });
 }
 
@@ -979,17 +918,29 @@ export function studFlipUnder(reg, { set, rate = 1, layer, layerRect, up = [], d
   const end = tGo + settle(go) / rate;
   const T = { x: seat.x + layerRect.left, y: seat.y + layerRect.top };
   const nu = up.length, H = Math.max(...all.map((c) => c.h));
-  const ghosts = flyPoses(reg, { layer, layerRect, cards: all, back, end,
-    // Each dims as it closes: the up cards in their gather, the down cards in theirs.
-    filter: (i) => (i < nu ? dimTrack({ dimTo, dimMs: tMeet, end, h: H }) : dimTrack({ dimTo, dimMs: timeTo(slide, 0.97) / rate, delay: tUnder, end, h: H })),
-    // An up card's face swapped for the back at the half turn, and kept.
-    more: (i) => (i < nu && all[i].node && all[i].node.tagName === 'IMG'
+  /* The turned cards show the down cards' own back (owner, 2026-11-28: "upcards flipped should show the same back as the
+     downcards"): a face-down card of this hand, copied at each up card's place and size, drawn over its face card (and
+     under the down cards), shown from the half turn as the face goes. The face card's own back was only the back's paint
+     (backFrameOf), without the back's mark, which the face-down card draws itself; that stays for a hand with no
+     face-down card to copy (a hero whose down cards are face up to him). */
+  const backCard = down.find((c) => c.node && c.node.tagName !== 'IMG');
+  const twins = backCard ? up.map((c) => ({ ...c, node: backCard.node })) : [];
+  const nt = twins.length;
+  const cards = [...up, ...twins, ...down];
+  const upOf = (i) => (i < nu ? i : i < nu + nt ? i - nu : -1);       // the up card a ghost is (or stands in for)
+  const ghosts = flyPoses(reg, { layer, layerRect, cards, back, end,
+    // Each dims as it closes: the up cards (and their backs) in their gather, the down cards in theirs.
+    filter: (i) => (upOf(i) >= 0 ? dimTrack({ dimTo, dimMs: tMeet, end, h: H }) : dimTrack({ dimTo, dimMs: timeTo(slide, 0.97) / rate, delay: tUnder, end, h: H })),
+    // With no back to copy, an up card's face is swapped for the back's paint at the half turn, and kept.
+    more: (i) => (!nt && i < nu && cards[i].node && cards[i].node.tagName === 'IMG'
       ? [{ frames: [{ ...FACE_FRAME, offset: 0 }, { ...FACE_FRAME, offset: 0.999 }, { ...backFrameOf(back), offset: 1 }], duration: faceDownAt, fill: 'forwards' }]
       : []),
     pose: (i, t) => {
       // The down cards close on the slide's own spring, from its start (still until then), round the whole hand's arc
       // to J; the turned stack slides from its own stack to J on the same spring; then the one stack goes to the seat.
-      const c = all[i], isUp = i < nu, kk = k(t), hh = clamp01(h(t)), go = h(t);
+      const u = upOf(i), isUp = u >= 0, c = isUp ? up[u] : cards[i], kk = k(t), hh = clamp01(h(t)), go = h(t);
+      // A face and its back share one pose; the face shows until the half turn, the back from it.
+      const shown = !nt || !isUp ? 1 : (i < nu ? (t < faceDownAt ? 1 : 0) : (t < faceDownAt ? 0 : 1));
       let x, y, rotate;
       if (isUp) {
         const q = g(t), p = gu.at(c, q), o = ga.at(upStack, kk);
@@ -1001,7 +952,7 @@ export function studFlipUnder(reg, { set, rate = 1, layer, layerRect, up = [], d
         rotate = ga.angleAt(c, kk);
       }
       return { x: x + (T.x - J.x) * go, y: y + (T.y - J.y) * go, rotate, scale: 1 + (0.05 - 1) * hh,
-        scaleX: isUp && t > tFlip ? Math.max(0.002, Math.abs(1 - 2 * flip(t))) : 1, opacity: 1 - hh };
+        scaleX: isUp && t > tFlip ? Math.max(0.002, Math.abs(1 - 2 * flip(t))) : 1, opacity: (1 - hh) * shown };
     } });
   return { ghosts, flipAt: tFlip, faceDownAt };
 }

@@ -2628,7 +2628,8 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             { key:'animateBoard', label:'Board Flip', sub:'Board cards flip face-up' },
           ])}
           {/* How a folded hand leaves (owner, 2026-11-27: "Let's make a few more folding motions"; FOLD_STYLES in
-              utils/replayer-card-moments.js). Each their own gives every player one of them, fixed by their name. */}
+              utils/replayer-card-moments.js). Random, the default, gives each fold one of them (Stud flip under in stud);
+              Off is Behind the seat for everyone (owner, 2026-11-28). */}
           {settings.animateFold && (
             <div className="replayer-settings-row is-stacked">
               <div className="rs-text">
@@ -7048,7 +7049,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const _animWinner = useReplayerSetting('AnimateWinner', true);
   const _animFold = useReplayerSetting('AnimateFold', true, vs('animateFold'));
   /* How a folded hand leaves (FOLD_STYLES): a viewer preference, like the card back. */
-  const _foldStyle = useReplayerSetting('FoldStyle', 'spin');
+  const _foldStyle = useReplayerSetting('FoldStyle', 'random');
   /* The card back (utils/card-back.js): a viewer preference, not part of a shared link's look. */
   const _cardBack = useReplayerSetting(CARD_BACK_KEY.replace(/^replayer/, ''), 'standard');
   useEffect(() => { applyCardBack(_cardBack[0]); }, [_cardBack[0]]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -11796,7 +11797,6 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             seat: PQ ? { x: PQ.left + PQ.width / 2 - R0.left, y: PQ.top + PQ.height / 2 - R0.top } : null,
           };
         };
-        const foldWho = (pi) => (hand.players[pi] && hand.players[pi].name) || 'seat ' + pi;
         const foldSeed = (pi) => (hand.id || '') + ':' + streetIdx + ':' + actionIdx + ':' + pi;
 
         /* 25: a folded hand gathers and goes (owner, 2026-11-21: "When splayed, they should just slide together around the
@@ -11812,7 +11812,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                over the plaque. The motion is the Fold Motion setting's (owner, 2026-11-27; Spin in, the default, is 25). */
             const fl = foldLayer && FL ? foldLayer : layer, FLr = foldLayer && FL ? FL : L;
             const pts = foldPoints(act.player, FLr);
-            const style = foldStyleOf(rSettings.foldStyle, foldWho(act.player));
+            // Under Random, one of the six for this fold, fixed by it (so Back and an export play it the same).
+            const style = foldStyleOf(rSettings.foldStyle, foldSeed(act.player));
             writes.push(() => foldAway(motion, { style, set, rate: rate * 0.75, layer: fl, layerRect: FLr, cards: was, back: backPaint, ...pts, seed: foldSeed(act.player) }));
           }
         }
@@ -11851,11 +11852,10 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             const plaque = table.querySelector('.replayer-seat[data-seat="' + act.player + '"] .replayer-seat-info');
             const PQ = plaque ? plaque.getBoundingClientRect() : null;
             const fl = foldLayer && FL ? foldLayer : layer, FLr = foldLayer && FL ? FL : L;
-            /* Stud flip under is stud's default (owner, 2026-11-28: "Make Stud flip under the default for stud"): Spin in,
+            /* Stud flip under is stud's default (owner, 2026-11-28: "Make Stud flip under the default for stud"): Random,
                the setting's default, plays it here. The 2026-11-22 stud fold above (the down cards behind the seat, the up
-               cards to the strip) is Behind the seat; any other Fold Motion as chosen, on the down cards. */
-            const chosenFold = foldStyleOf(rSettings.foldStyle, foldWho(act.player));
-            const downStyle = chosenFold === 'spin' ? 'flipunder' : chosenFold;
+               cards to the strip) is Behind the seat, and Off; any other Fold Motion as chosen, on the down cards. */
+            const downStyle = foldStyleOf(rSettings.foldStyle, foldSeed(act.player), { stud: true });
             const downPts = FLr ? foldPoints(act.player, FLr) : null;
             /* Stud flip under (owner, 2026-11-27): the up cards turn face down and go under the down ones, behind the seat,
                instead of flying to the strip. The strip's copies turn face UP on the same turn, at the same moment (owner,

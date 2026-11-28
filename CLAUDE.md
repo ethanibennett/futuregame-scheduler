@@ -1238,35 +1238,33 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   `--ports lo-hi`. `warmSuitFlood` runs a small simulation at idle when the replay opens: a cold first run took 100 to
   150ms where a warm one takes 20. Tests: `showdown-specials.test.mjs` in `npm test`.
 - **Fold Motion** (owner, 2026-11-27: "Let's make a few more folding motions other than the helicopter into the muck and the
-  shrink behind the box"; `foldAway` / `FOLD_STYLES` in `utils/replayer-card-moments.js`, `fold-styles.test.mjs` in `npm test`):
-  Replayer settings › Animation › Fold Motion (`replayerFoldStyle`, a viewer preference). Spin in (the default, 25) and Behind
-  the seat are `foldToStack`'s; Spread, Lift and drop and Flicked are the owner's; Pushed, Lobbed, Thrown and Coin spin were
-  offered with them; Each their own gives every player one of them by their name (`foldStyleOf`). Each style is a pose per card
-  over the moment's clock (`flyPoses`), so Back, a jump and an export seek it; a tossed hand (Lobbed) lands in the dealer's
-  muck (`muckTarget`). Spin in goes under the pot's graphic, not the middle of the felt ("1 should go under the pot as
-  well"). Spread never turns ("also not spin at all") and is one flow ("shouldn't pause before the spread, it should just be
-  a natural flow where the stack moves together and then spreads smoothly, it should also finish with the farthest card
-  under the pot"): the stack sets off while the gather closes and opens into a row on the way, along the way it left the
-  seat toward the pot, a diagonal from a corner seat ("spread in the direction that they leave the seat box toward the
-  pot", "expand only toward the middle, not backward"), the top card resting on the pot. Lift and drop lands just past the betting line
-  after one half turn in the air ("have the stack do one half turn in the air"). Flicked gathers into a stack centred on the
-  hand ("gather them together centered before the flicks"), then each card slides from its top straight in under the pot's
-  graphic with no turn ("land under the pot graphic, and slide without spinning"). Thrown lands under the pot too, on the
-  arm's spring, each card turning 35 to 65 degrees ("Make #8 land under the pot", "Make 8 less violent"). A landing hand is
-  dimmed to 0.7, not 0.42 (on the dark felt it could hardly be seen). In stud, Spin in (the default) plays Stud flip under
-  (owner, 2026-11-28: "Make Stud flip under the default for stud"), Behind the seat is the 2026-11-22 stud fold (the down
-  cards behind the seat, the up cards to the strip), and any other choice plays on the down cards. **Stud flip under** (11,
-  `studFlipUnder`; owner, 2026-11-28: "any upcards slide together in a stack, flip over, and slide under the downcards before
-  shrinking behind the seat"): the down cards wait, still, until the turned stack slides in, then close on its spring ("it
-  should slide under as they all combine into one stack") round the fan's own arc to where a card stands upright, the top
-  of the arc, and the turned stack slides there round the same arc ("along the natural radius, so that when they are
-  combined into one stack they are exactly vertical"; `stackGeometry`'s `aim`), across from the plaque's centre ("join the
-  downcards in the center of the seat box, not off to the left"). The Dead cards strip's copies turn face
-  up on the same turn as the hand's turn face down, from `flipAt`, at the fold's rate ("flip open in the dead card section at
-  the same time they flip down in the hand"), shown as backs faded in over the two beats before; no flight lands on them.
-  It is last in the list so the others keep their numbers, and out of Each their own's pool (adding it would have moved
-  every name's style); with no up cards (a flop game) it is Behind the seat. The recordings:
-  https://claude.ai/artifact/Fc6jrNtpiRx39h8dgViJZx
+  shrink behind the box"; `foldAway` / `FOLD_STYLES` / `foldStyleOf` in `utils/replayer-card-moments.js`,
+  `fold-styles.test.mjs` in `npm test`): Replayer settings › Animation › Fold Motion (`replayerFoldStyle`, a viewer
+  preference). Kept (owner, 2026-11-28: "okay keep 1, 2, 3, 4, 5, 8, and 11"): Spin in, Behind the seat, Spread, Lift and
+  drop, Flicked, Thrown and Stud flip under; Pushed, Lobbed, Coin spin and Each their own are gone (a stored one reads as
+  Random). **Random is the default** ("default to a random one in all games but stud, add an option to turn them off
+  (which just makes everyone use #2)"): each fold one of the six that play in any game (`RANDOM_FOLDS`), fixed by the fold
+  (`foldSeed`: hand, street, action, seat), so Back and an export play it the same; in stud, Stud flip under. **Off** is
+  Behind the seat for everyone (in stud, the 2026-11-22 stud fold: the down cards behind the seat, the up cards to the
+  strip); a chosen motion plays as chosen, in stud on the down cards. Each motion is a pose per card over the moment's clock
+  (`flyPoses`). Spin in goes under the pot's graphic ("1 should go under the pot as well"). Spread never turns and is one
+  flow ("shouldn't pause before the spread ... finish with the farthest card under the pot"): the stack sets off while the
+  gather closes and opens into a row on the way, along its way out of the seat toward the pot ("spread in the direction
+  that they leave the seat box toward the pot", "expand only toward the middle, not backward"), the top card on the pot.
+  Lift and drop lands just past the betting line after one half turn in the air. Flicked gathers into a stack centred on
+  the hand ("gather them together centered before the flicks"), then each card slides from its top straight in under the
+  pot with no turn. Thrown lands under the pot too, on the arm's spring, each card turning 35 to 65 degrees ("Make 8 less
+  violent"). A landing hand is dimmed to 0.7, not 0.42. **Stud flip under** (11, `studFlipUnder`; "any upcards slide
+  together in a stack, flip over, and slide under the downcards before shrinking behind the seat"): the down cards wait,
+  still, until the turned stack slides in, then close on its spring round the fan's own arc to where a card stands
+  upright, the top of the arc, and the turned stack slides there round the same arc ("along the natural radius, so that
+  when they are combined into one stack they are exactly vertical"; `stackGeometry`'s `aim`), across from the plaque's
+  centre ("join the downcards in the center of the seat box"). The turned cards show the down cards' own back ("upcards
+  flipped should show the same back as the downcards"): a copy of a face-down card of the hand at each up card's place,
+  shown from the half turn as the face goes (only the back's paint, `backFrameOf`, where the hand has no face-down card).
+  The Dead cards strip's copies turn face up on the same turn, from `flipAt`, at the fold's rate ("flip open in the dead
+  card section at the same time they flip down in the hand"), shown as backs faded in over the two beats before. With no
+  up cards (a flop game) it is Behind the seat. The recordings: https://claude.ai/artifact/Fc6jrNtpiRx39h8dgViJZx
 - **The action pills are solid** (owner, 2026-11-22: "a solid color with contrasting text"): `--act-pill` / `--act-pill-ink`
   per action, from `--act-*-solid` and `--act-ink-light` / `--act-ink-dark` (styles.css, beside `--act-*`): fold, call
   (blue-600) and raise (red-600) in white, check and bet in near-black, all-in as before; each pair measured at 4.8:1 or

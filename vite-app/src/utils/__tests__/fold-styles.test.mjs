@@ -1,9 +1,9 @@
 // The Fold Motion styles (utils/replayer-card-moments.js foldAway, owner 2026-11-27): every style, played on a stub
 // registry, starts each card where it was, moves without a jump, and is gone (opacity 0) at its end; the landing styles
-// come to rest near where they were sent; Each their own gives a player one style, never itself.
+// come to rest near where they were sent; Random picks one of the kept six per fold, Off is Behind the seat.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FOLD_STYLES, foldAway, foldStyleOf, normalizeFoldStyle, studFlipUnder } from '../replayer-card-moments.js';
+import { FOLD_STYLES, RANDOM_FOLDS, foldAway, foldStyleOf, normalizeFoldStyle, studFlipUnder } from '../replayer-card-moments.js';
 
 const fakeEl = () => ({
   style: {}, className: '', tagName: 'DIV', children: [],
@@ -30,7 +30,7 @@ const layer = fakeEl();
 const layerRect = { left: 0, top: 0 };
 const pts = { middle: { x: 200, y: 430 }, muck: { x: 150, y: 520 }, line: { x: 200, y: 600 }, seat: { x: 200, y: 740 }, pot: { x: 205, y: 330 } };
 
-for (const { id } of FOLD_STYLES.filter((s) => s.id !== 'each')) {
+for (const { id } of FOLD_STYLES.filter((s) => s.id !== 'random' && s.id !== 'off')) {
   test(`${id}: from the hand, smooth, gone at the end`, () => {
     runs.length = 0;
     const out = foldAway(reg, { style: id, set: 'B', rate: 0.5, layer, layerRect, cards: hand, ...pts, seed: 'h1:0:3:2' });
@@ -56,7 +56,7 @@ for (const { id } of FOLD_STYLES.filter((s) => s.id !== 'each')) {
 }
 
 test('the landing styles come to rest where they were sent', () => {
-  const near = { spread: pts.pot, drop: pts.line, lob: pts.muck, flick: pts.pot, throw: pts.pot };
+  const near = { spread: pts.pot, drop: pts.line, flick: pts.pot, throw: pts.pot };
   for (const [id, to] of Object.entries(near)) {
     runs.length = 0;
     foldAway(reg, { style: id, set: 'B', rate: 0.5, layer, layerRect, cards: hand, ...pts, seed: 's' });
@@ -157,34 +157,45 @@ test('Stud flip under: the up cards stack, turn face down, go under the down car
   const up = row.slice(2, 5), down = [row[0], row[1], row[5]];
   runs.length = 0;
   const { ghosts, faceDownAt, flipAt } = studFlipUnder(reg, { set: 'B', rate: 0.5, layer, layerRect, up, down, seat: pts.seat });
+  // The ghosts: the three faces, a back for each (a copy of a down card: "upcards flipped should show the same back as
+  // the downcards"), then the three down cards, drawn in that order (faces under their backs, both under the down cards).
+  assert.equal(ghosts.length, 9, 'a ghost a card, and a back for each up card');
+  const z = (a, b) => ghosts.slice(a, b).map((g) => +g.style.zIndex);
+  assert.ok(Math.max(...z(0, 3)) < Math.min(...z(3, 6)) && Math.max(...z(3, 6)) < Math.min(...z(6, 9)), 'faces under their backs, both under the down cards');
+  const faces = runs.slice(0, 3), backs = runs.slice(3, 6), downs = runs.slice(6, 9);
+  const all = [...up, ...up, ...down];
   // flipAt is when the turn starts (the Dead cards strip turns its copies face up from then, on the same turn).
-  assert.ok(flipAt > 0 && flipAt < faceDownAt && val(runs[0], 'scaleX', flipAt) === 1 && val(runs[0], 'scaleX', flipAt + 40) < 1, `the turn starts at flipAt (${flipAt.toFixed(0)}ms)`);
-  assert.equal(ghosts.length, 6, 'a ghost a card');
-  assert.ok(Math.max(...ghosts.slice(0, 3).map((g) => +g.style.zIndex)) < Math.min(...ghosts.slice(3).map((g) => +g.style.zIndex)), 'the up cards are drawn under the down ones');
-  const all = [...up, ...down];
-  runs.forEach((spec, i) => {
-    const isUp = i < 3;
-    // An up card turns over once, edge on at the half turn, and from then on is drawn as the back; a down card never.
+  assert.ok(flipAt > 0 && flipAt < faceDownAt && val(faces[0], 'scaleX', flipAt) === 1 && val(faces[0], 'scaleX', flipAt + 40) < 1, `the turn starts at flipAt (${flipAt.toFixed(0)}ms)`);
+  faces.forEach((spec, u) => {
+    // A face turns over once, edge on at the half turn, and is gone from then; its back, in the same place and turn,
+    // shows from then.
     let minX = 1, at = 0;
     for (let t = 0; t <= spec.end; t += 4) { const v = val(spec, 'scaleX', t); if (v < minX) { minX = v; at = t; } }
-    if (isUp) {
-      assert.ok(minX < 0.05 && Math.abs(at - faceDownAt) < 12, `up card ${i} edge on (${minX.toFixed(3)}) at ${at}ms, the half turn at ${faceDownAt.toFixed(0)}`);
-      const swap = spec.extras.find((x) => x.options.duration === faceDownAt);
-      assert.ok(swap && swap.options.fill === 'forwards' && swap.frames[swap.frames.length - 1].objectPosition === '-999em -999em', `up card ${i} keeps the back from the half turn`);
-    } else {
-      assert.equal(minX, 1, `down card ${i} never turns`);
-      assert.ok(!spec.extras.some((x) => x.options.duration === faceDownAt), `down card ${i} keeps its own face`);
+    assert.ok(minX < 0.05 && Math.abs(at - faceDownAt) < 12, `up card ${u} edge on (${minX.toFixed(3)}) at ${at}ms, the half turn at ${faceDownAt.toFixed(0)}`);
+    const b = backs[u];
+    for (let t = 0; t <= spec.end; t += 16.7) {
+      assert.ok(Math.abs(val(b, 'x', t) - val(spec, 'x', t)) < 1e-9 && Math.abs(val(b, 'scaleX', t) - val(spec, 'scaleX', t)) < 1e-9, `back ${u} moves with its face at ${t.toFixed(0)}ms`);
     }
+    assert.ok(val(spec, 'opacity', faceDownAt - 5) > 0.99 && val(spec, 'opacity', faceDownAt + 5) === 0, `face ${u} shows until the half turn`);
+    assert.ok(val(b, 'opacity', faceDownAt - 5) === 0 && val(b, 'opacity', faceDownAt + 5) > 0.99, `back ${u} shows from it`);
+    assert.ok(!spec.extras.some((x) => x.options.duration === faceDownAt), `face ${u} needs no paint of its own`);
+  });
+  downs.forEach((spec, i) => {
+    let minX = 1;
+    for (let t = 0; t <= spec.end; t += 4) minX = Math.min(minX, val(spec, 'scaleX', t));
+    assert.equal(minX, 1, `down card ${i} never turns`);
+  });
+  runs.forEach((spec, i) => {
     // Gone behind the seat.
     const x = all[i].cx + val(spec, 'x', spec.end), y = all[i].cy + val(spec, 'y', spec.end);
     assert.ok(Math.hypot(x - pts.seat.x, y - pts.seat.y) < 2, `card ${i} ends on the seat`);
     assert.ok(val(spec, 'opacity', spec.end) < 0.01 && val(spec, 'scale', spec.end) < 0.1, `card ${i} shrunk to nothing`);
   });
-  // Between the slide under and the tuck, the six are one stack.
+  // Between the slide under and the tuck, they are one stack.
   let together = false;
-  for (let t = faceDownAt; t <= runs[0].end && !together; t += 8) {
+  for (let t = faceDownAt; t <= downs[0].end && !together; t += 8) {
     const ps = runs.map((spec, i) => ({ x: all[i].cx + val(spec, 'x', t), y: all[i].cy + val(spec, 'y', t) }));
-    together = ps.every((p) => Math.hypot(p.x - ps[5].x, p.y - ps[5].y) < 2) && val(runs[0], 'opacity', t) > 0.95
+    together = ps.every((p) => Math.hypot(p.x - ps[8].x, p.y - ps[8].y) < 2) && val(downs[0], 'opacity', t) > 0.95
       ? ps[0] : false;
   }
   assert.ok(together, 'the turned stack ends under the down stack, as one, before it goes');
@@ -195,15 +206,24 @@ test('Stud flip under: the up cards stack, turn face down, go under the down car
   // through the up cards' gather and turn, then moving from the same instant as the turned stack, closing as it slides in.
   const moved = (spec, t, from) => Math.hypot(val(spec, 'x', t) - val(spec, 'x', from), val(spec, 'y', t) - val(spec, 'y', from)) > 0.02;
   const firstMove = (spec, from) => { for (let t = from; t <= spec.end; t += 2) if (moved(spec, t, from)) return t; return Infinity; };
-  for (const i of [3, 4, 5]) {
+  downs.forEach((spec, i) => {
     for (let t = 0; t <= faceDownAt; t += 8) {
-      assert.ok(Math.hypot(val(runs[i], 'x', t), val(runs[i], 'y', t)) < 0.01 && val(runs[i], 'rotate', t) === all[i].angle, `down card ${i} still at ${t}ms`);
+      assert.ok(Math.hypot(val(spec, 'x', t), val(spec, 'y', t)) < 0.01 && val(spec, 'rotate', t) === down[i].angle, `down card ${i} still at ${t}ms`);
     }
-  }
+  });
   // The middle up card is the stack's own place (it does not move in the gather): its first move is the slide's.
-  const tUp = firstMove(runs[1], faceDownAt + 1);
-  // Card 5 sits where they meet (x 200) and has nowhere to go until the tuck; the other two set off with the stack.
-  for (const i of [3, 4]) assert.ok(Math.abs(firstMove(runs[i], faceDownAt + 1) - tUp) <= 4, `down card ${i} starts with the turned stack (${tUp}ms)`);
+  const tUp = firstMove(faces[1], faceDownAt + 1);
+  // The 6th card sits where they meet (x 200) and has nowhere to go until the tuck; the other two set off with the stack.
+  for (const i of [0, 1]) assert.ok(Math.abs(firstMove(downs[i], faceDownAt + 1) - tUp) <= 4, `down card ${i} starts with the turned stack (${tUp}ms)`);
+});
+
+test('Stud flip under with no face-down card to copy (a hero sees his own down cards): the face takes the back paint', () => {
+  const row = [0, 1, 2, 3].map((i) => ({ node: { ...fakeEl(), tagName: 'IMG' }, cx: 120 + i * 16, cy: 700, w: 40, h: 56, angle: 0 }));
+  runs.length = 0;
+  const { ghosts, faceDownAt } = studFlipUnder(reg, { set: 'B', rate: 0.5, layer, layerRect, up: row.slice(2), down: row.slice(0, 2), seat: pts.seat });
+  assert.equal(ghosts.length, 4, 'no backs to add');
+  const swap = runs[0].extras.find((x) => x.options.duration === faceDownAt);
+  assert.ok(swap && swap.options.fill === 'forwards' && swap.frames[swap.frames.length - 1].objectPosition === '-999em -999em', 'the face keeps the back paint from the half turn');
 });
 
 test('Stud flip under, a fanned hand: the stack they make stands upright at the top of the fan arc', () => {
@@ -218,16 +238,16 @@ test('Stud flip under, a fanned hand: the stack they make stands upright at the 
   const up = fan.slice(2, 6), down = [fan[0], fan[1], fan[6]];
   runs.length = 0;
   studFlipUnder(reg, { set: 'B', rate: 0.5, layer, layerRect, up, down, seat: { x: 200, y: 760 } });
-  const all = [...up, ...down];
-  // The stack at rest: the last moment before it starts for the seat (still opaque).
+  const all = [...up, ...up, ...down];
+  // The stack at rest: the last moment before it starts for the seat (a down card still opaque).
   let t1 = 0;
-  for (let t = 0; t <= runs[0].end; t += 4) if (val(runs[0], 'opacity', t) > 0.999) t1 = t;
+  for (let t = 0; t <= runs[8].end; t += 4) if (val(runs[8], 'opacity', t) > 0.999) t1 = t;
   const met = runs.map((spec, i) => ({ x: all[i].cx + val(spec, 'x', t1), y: all[i].cy + val(spec, 'y', t1), r: val(spec, 'rotate', t1) }));
   assert.ok(met.every((p) => Math.hypot(p.x - met[0].x, p.y - met[0].y) < 1), 'they make one stack');
   met.forEach((p, i) => assert.ok(Math.abs(p.r) < 0.5, `card ${i} stands at ${p.r.toFixed(2)} degrees`));
   assert.ok(Math.abs(met[0].x - P.x) < 1.5 && Math.abs(met[0].y - (P.y - R)) < 1.5, `at the top of the arc (${met[0].x.toFixed(1)}, ${met[0].y.toFixed(1)})`);
   // The 7th card goes round the arc, not across it: its distance from the pivot stays the fan's radius.
-  const seven = runs[6];
+  const seven = runs[10];
   for (let t = 0; t <= runs[0].end * 0.6; t += 16.7) {
     const d = Math.hypot(fan[6].cx + val(seven, 'x', t) - P.x, fan[6].cy + val(seven, 'y', t) - P.y);
     assert.ok(Math.abs(d - R) < 1.5, `the 7th card keeps to the arc (${d.toFixed(1)} from the pivot at ${t.toFixed(0)}ms)`);
@@ -249,18 +269,22 @@ test('the same fold plays the same way (seeded)', () => {
   assert.deepEqual(play(), play());
 });
 
-test('Each their own: one style a player, never Each', () => {
-  const names = ['Ethan', 'Opp 2', 'A. Vuilleumier', 'Chino', 'seat 4', 'Daniel', 'Phil', 'Jen', 'Maria', 'Kai'];
-  const got = new Set();
-  for (const n of names) {
-    const s = foldStyleOf('each', n);
-    assert.notEqual(s, 'each');
-    assert.equal(foldStyleOf('each', n), s, 'fixed by the name');
-    assert.equal(foldStyleOf('each', n.toUpperCase()), s, 'whatever the case');
-    got.add(s);
+test('Random by default: one of the six per fold, fixed by the fold; Stud flip under in stud; Off is Behind the seat', () => {
+  // Owner, 2026-11-28: "okay keep 1, 2, 3, 4, 5, 8, and 11", "default to a random one in all games but stud, add an
+  // option to turn them off (which just makes everyone use #2)".
+  assert.deepEqual(FOLD_STYLES.map((s) => s.id), ['random', 'spin', 'tuck', 'spread', 'drop', 'flick', 'throw', 'flipunder', 'off']);
+  assert.deepEqual(RANDOM_FOLDS, ['spin', 'tuck', 'spread', 'drop', 'flick', 'throw']);
+  for (const v of [undefined, null, 'nonsense', 'each', 'lob', 'push', 'coin']) assert.equal(normalizeFoldStyle(v), 'random', String(v));
+  const seen = new Set();
+  for (let a = 0; a < 60; a++) {
+    const seed = 'h7:2:' + a + ':3', s = foldStyleOf('random', seed);
+    assert.ok(RANDOM_FOLDS.includes(s), s);
+    assert.equal(foldStyleOf('random', seed), s, 'fixed by the fold');
+    seen.add(s);
   }
-  assert.ok(got.size >= 4, 'ten players fold more than a few ways');
-  assert.equal(foldStyleOf('lob', 'Ethan'), 'lob');
-  assert.equal(normalizeFoldStyle('nonsense'), 'spin');
-  assert.equal(normalizeFoldStyle(null), 'spin');
+  assert.equal(seen.size, 6, 'sixty folds play all six');
+  assert.equal(foldStyleOf('random', 'x', { stud: true }), 'flipunder');
+  assert.equal(foldStyleOf('off', 'x'), 'tuck');
+  assert.equal(foldStyleOf('off', 'x', { stud: true }), 'tuck');
+  assert.equal(foldStyleOf('flick', 'x', { stud: true }), 'flick', 'a choice plays as chosen, in stud too');
 });
