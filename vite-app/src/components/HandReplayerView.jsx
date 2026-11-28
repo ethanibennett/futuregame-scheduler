@@ -34,7 +34,7 @@ import { parseCardNotation, evaluateHand, evaluateShowdown, assignNeutralSuits, 
          seatOrderFromButton } from '../utils/poker-engine.js';
 import { encodeHand, VISUAL_SWITCHES } from '../utils/hand-shorthand.js';
 import { ODDS_GAMES } from '../utils/odds.js';
-import { MomentNote, NoteTrack, NoteSheet, DetailsSheet, SendHandSheet, QuestionCard, ImportHandsSheet, SentToYou, FromYourWatch, noteAt, heroDecisionNext, questionHand } from './HandExtras.jsx';
+import { MomentBubble, NoteTrack, NoteSheet, DetailsSheet, SendHandSheet, QuestionCard, ImportHandsSheet, SentToYou, FromYourWatch, noteAt, heroDecisionNext, questionHand } from './HandExtras.jsx';
 import { keepListCopy, listCopy, outbox as readOutbox, addToOutbox, flushOutbox } from '../utils/hand-outbox.js';
 import { loadCardImages, ensureExportFonts } from '../utils/export.js';
 import {
@@ -10119,6 +10119,55 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     stand.forEach(e => e.remove());
   };
   useLayoutEffect(() => { if (tableRef.current) placeTableFoot(tableRef.current); });
+  /* The moment's note, a quote bubble over the hero's hand (owner, 2026-11-28: "This note is hidden. Let's put it in a
+     quote bubble above hero's hand"; MomentBubble in HandExtras.jsx): its tail's tip r/2 over the top of the hero's
+     cards (the plaque's, with no cards), at their middle; the bubble centred on that and kept 1g inside the table.
+     Placed after each commit, again once the cards have come to rest, and when the table changes size. */
+  const [tableEl, setTableEl] = useState(null);
+  useLayoutEffect(() => { if (tableRef.current !== tableEl) setTableEl(tableRef.current); });
+  const noteBubbleRef = useRef(null);
+  const placeNoteBubble = () => {
+    const b = noteBubbleRef.current, table = tableRef.current;
+    // The game's label fades while the bubble lies over it (the landscape table has little room between the board and
+    // the hero's hand); its own data-away is its placement pass's, so this is an attribute of its own.
+    const info = table && table.querySelector('.replayer-table-info');
+    if (info && (!b || !b.isConnected)) delete info.dataset.underNote;
+    if (!b || !table) return;
+    const T = table.getBoundingClientRect();
+    if (!T.width || !T.height) { b.style.visibility = 'hidden'; return; }
+    const cards = [...table.querySelectorAll('[data-seat-cards="' + replayHeroIdx + '"] .card-row > *')];
+    const plaque = table.querySelector('.replayer-seat[data-seat="' + replayHeroIdx + '"] .replayer-seat-info');
+    const rs = (cards.length ? cards : plaque ? [plaque] : []).map((el) => el.getBoundingClientRect()).filter((q) => q.width);
+    if (!rs.length) { b.style.visibility = 'hidden'; return; }
+    const r = subrowPx(table), g = guPx(table);
+    const top = Math.min(...rs.map((q) => q.top)) - T.top;
+    const cx = (Math.min(...rs.map((q) => q.left)) + Math.max(...rs.map((q) => q.right))) / 2 - T.left;
+    const w = b.offsetWidth, h = b.offsetHeight;
+    // The tail is 1r tall under the bubble's body; its tip r/2 over the cards.
+    const L = Math.max(g, Math.min(T.width - g - w, cx - w / 2));
+    const Y = Math.max(g, top - r * 0.5 - r - h);
+    b.style.left = (L / T.width * 100) + '%';
+    b.style.top = (Y / T.height * 100) + '%';
+    b.style.setProperty('--mn-tail-x', ((cx - L) / w * 100) + '%');
+    b.style.visibility = 'visible';
+    if (info) {
+      const I = info.getBoundingClientRect(), B = b.getBoundingClientRect();
+      const over = I.width && B.left < I.right && B.right > I.left && B.top < I.bottom && B.bottom > I.top;
+      if (over) info.dataset.underNote = '1'; else delete info.dataset.underNote;
+    }
+  };
+  useLayoutEffect(() => {
+    placeNoteBubble();
+    const t = setTimeout(placeNoteBubble, 700);
+    return () => clearTimeout(t);
+  });
+  useEffect(() => {
+    const table = tableRef.current;
+    if (!table || typeof ResizeObserver !== 'function') return undefined;
+    const ro = new ResizeObserver(() => placeNoteBubble());
+    ro.observe(table);
+    return () => ro.disconnect();
+  }, [tableEl]);
   const placeCardRows = (table) => {
     if (!table.clientWidth || !table.clientHeight) return;
     const rows = table.querySelectorAll('.replayer-seat-cards > .card-row');
@@ -12910,7 +12959,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           </>}
         </span>
       )}
-      {!drill && <MomentNote note={noteAt(hand, streetIdx, actionIdx)} onEdit={onSaveExtras ? () => setNoteEditing(true) : null} />}
+      {!drill && tableEl && createPortal(
+        <MomentBubble ref={noteBubbleRef} note={noteAt(hand, streetIdx, actionIdx)} onOpen={onSaveExtras ? () => setNoteEditing(true) : null} />,
+        tableEl)}
       {!drill && <NoteTrack hand={hand} streetIdx={streetIdx} onJump={(si, ai) => { setPlaying(false); setStreetIdx(si); setActionIdx(ai); }} />}
       {noteEditing && onSaveExtras && (
         <NoteSheet initial={(noteAt(hand, streetIdx, actionIdx) || {}).text || ''}

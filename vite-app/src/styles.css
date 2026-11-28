@@ -8532,6 +8532,8 @@
     /* 87: the title and the level, inside the captured element. */
     /* With no clear spot on the felt for the step, it fades out (the pill's layout effect, 2026-11-16). */
     .replayer-table-info[data-away] { opacity: 0; transition: opacity var(--dur-base) var(--ease-out); }
+    /* And while the moment's note lies over it (the quote bubble over the hero's hand, 2026-11-28). */
+    .replayer-table-info[data-under-note] { opacity: 0; transition: opacity var(--dur-base) var(--ease-out); }
     /* Under the board, in the clear column between the two side rows of
        seats — the one part of the felt nothing is ever placed on. No plate:
        this is printed on the cloth, the way a table's own name is. */

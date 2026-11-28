@@ -35,16 +35,21 @@ export function questionHand(hand, streetIdx, actionIdx) {
   return { ...rest, streets, players: (hand.players || []).map((p) => ({ ...p, cards: undefined })) };
 }
 
-export function MomentNote({ note, onEdit }) {
+/* The note on this moment as a quote bubble over the hero's hand on the felt (owner, 2026-11-28: "This note is hidden.
+   Let's put it in a quote bubble above hero's hand"): a card pinned 16r up from the replay's foot, it sat behind the transport.
+   Drawn inside the table, unseen until the replay places it (left, top and the tail's x, as shares of the table and of
+   the bubble); four lines at most, and a tap opens the note (its sheet, or the whole note where it cannot be edited). */
+export const MomentBubble = React.forwardRef(function MomentBubble({ note, onOpen }, ref) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => { setOpen(false); }, [note && note.text]);
   if (!note) return null;
   return (
-    <div className="mn-card" role="note">
-      <div className="mn-label">Your note on this moment</div>
-      <div className="mn-text">{note.text}</div>
-      {onEdit && <button type="button" className="mn-edit" onClick={onEdit}><span>Edit</span></button>}
-    </div>
+    <button ref={ref} type="button" className={'mn-bubble' + (open ? ' is-open' : '')} aria-label={'Your note on this moment: ' + note.text}
+      onClick={(e) => { e.stopPropagation(); if (onOpen) onOpen(); else setOpen((v) => !v); }}>
+      <span className="mn-bubble-text">{'“' + note.text + '”'}</span>
+    </button>
   );
-}
+});
 
 /** A street track with a dot on every street that has a note; a tap jumps there. */
 export function NoteTrack({ hand, streetIdx, onJump }) {
