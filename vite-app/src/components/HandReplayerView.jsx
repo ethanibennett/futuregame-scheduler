@@ -13824,7 +13824,9 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   // same player acts twice in one street. By the action's own index, not the replay's step: keyed by
                   // the step, every label at the table was re-made at every press, so a label's motions (its dimming
                   // when a bet made it stale) found a new element each time and started again.
-                  return <div key={streetIdx + '-' + lastAct._ai} data-act-seat={pi} className={'replayer-action-badge-outer action-' + actText + (stale ? ' is-stale' : '')}>{label}</div>;
+                  /* 'all-in' is drawn as .action-allin, the class its styles were written for: as action-all-in it matched none of
+                     them and was drawn as a check (found 2026-11-28; owner: "Yes" to fixing it). */
+                  return <div key={streetIdx + '-' + lastAct._ai} data-act-seat={pi} className={'replayer-action-badge-outer action-' + (actText === 'all-in' ? 'allin' : actText) + (stale ? ' is-stale' : '')}>{label}</div>;
                 })()}
                 {/* On a corner of the name box rather than at a percentage
                     offset from the seat point — the plaque is sized by its
