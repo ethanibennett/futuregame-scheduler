@@ -140,7 +140,8 @@ sessions opened here own scheduler work.
   Action under Razz (`SWITCH_GAMES` in variant-wheels.js: on picks the Action Razz row, which stands at Razz's position; the
   palette and the quick picks still find it by name) and Super under any stud game (`superStud` in HandReplayerView, which
   Create makes `hand.superStud`; the button reads "Create Super Stud Hi Hand"; leaving the stud games turns it off). Hidden, a
-  row is folded to no height and faded out; picked, it opens to its 6r or 8r and fades in (`grid-template-rows` 0fr to 1fr), so
+  row (its name and the switch, no note: owner, "No explanations needed") is folded to no height and faded out; picked, it
+  opens to its 4r and fades in (`grid-template-rows` 0fr to 1fr), so
   Create moves down with it. Guards: `hands-wheels-switches` (controls), "hands wheels, switches on" (clipping).
 - **Super Stud** (owner, 2026-11-28: "discard is after 3rd street betting, before 4th is dealt, applies to any stud game";
   `utils/super-stud.js`, `super-stud.test.mjs` in `npm test`): a switch under the wheels when a stud game is picked

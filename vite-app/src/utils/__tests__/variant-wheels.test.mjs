@@ -37,7 +37,7 @@ test('the Action switch: under Razz only, on picks Action Razz, off picks Razz',
   const razz = W.rowAt(wheels, 'Razz', 'Limit');
   const action = W.rowAt(wheels, 'Action Razz', 'Limit');
   assert.ok(razz && action);
-  assert.deepEqual({ ...W.switchFor(wheels, razz), note: '' }, { game: 'Action Razz', base: 'Razz', label: 'Action', note: '', on: false });
+  assert.deepEqual(W.switchFor(wheels, razz), { game: 'Action Razz', base: 'Razz', label: 'Action', on: false });
   assert.equal(W.switchFor(wheels, action).on, true);
   assert.deepEqual(W.positionOf(wheels, action), W.positionOf(wheels, razz), 'Action Razz stands where Razz does');
   assert.equal(W.turnSwitch(wheels, razz, true), action);

@@ -57,7 +57,7 @@ export const VARIANT_LABEL = {
    quick pick); on the wheels it stands where its base does, and the switch turns one into the other. Super is a switch
    too, but a hand's, not a game's (HandReplayerView's superStud). */
 export const SWITCH_GAMES = [
-  { game: 'Action Razz', base: 'Razz', label: 'Action', note: 'The lowest hand with a J, Q or K in its seven wins; with none, the plain low wins.' },
+  { game: 'Action Razz', base: 'Razz', label: 'Action' },
 ];
 const switchGame = (game) => SWITCH_GAMES.find((x) => x.game === game) || null;
 
@@ -136,7 +136,7 @@ export const turnVariant = (wheels, g, v) => { const grp = wheels.groups[g]; ret
 /** The structure wheel turned: this game at that structure, or null where it is not played so. */
 export const turnStructure = (wheels, row, s) => (row ? rowAt(wheels, row.game, STRUCTURES[s]) : null);
 
-/** The switch a row offers under the wheels, or null: { game, base, label, note, on } when the row is a switch's game
+/** The switch a row offers under the wheels, or null: { game, base, label, on } when the row is a switch's game
  *  or its base and the catalog has both. */
 export function switchFor(wheels, row) {
   if (!row) return null;

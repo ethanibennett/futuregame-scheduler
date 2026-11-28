@@ -159,19 +159,15 @@ function Wheel({ id, label, items, index, onTurn, listKey, className = '', hidde
 
 const STRUCTURE_CHIP = { 'No Limit': 'NL', 'Pot Limit': 'PL', Limit: 'L' };
 
-const SUPER_NOTE = 'Four down and one up on 3rd street; after its betting, each player throws two down cards.';
-
-/* A switch under the wheels. It stays in the page while hidden, folded to no height and faded out, so it opens and
-   fades in when its game is picked, and folds and fades away when another is. */
-function SwitchRow({ shown, on, label, note, onChange }) {
+/* A switch under the wheels, its name and nothing more (owner, 2026-11-28: "No explanations needed"). It stays in the
+   page while hidden, folded to no height and faded out, so it opens and fades in when its game is picked, and folds and
+   fades away when another is. */
+function SwitchRow({ shown, on, label, onChange }) {
   return (
     <div className={'vw-opt' + (shown ? ' is-shown' : '')} aria-hidden={shown ? undefined : true}>
       <div className="vw-opt-in">
         <div className="vw-opt-row">
-          <div className="vw-opt-text">
-            <div className="replayer-settings-label vw-opt-label">{label}</div>
-            <div className="replayer-settings-sublabel vw-opt-note">{note}</div>
-          </div>
+          <div className="replayer-settings-label vw-opt-label">{label}</div>
           <button type="button" className={'replayer-settings-toggle' + (on ? ' on' : '')} aria-pressed={on} aria-label={label}
             tabIndex={shown ? 0 : -1} onClick={() => { if (shown) onChange(!on); }} />
         </div>
@@ -274,10 +270,10 @@ export function VariantWheels({ rows, current, onPick, history, hands, onSearch,
       </div>
       {SWITCH_GAMES.map((x) => {
         const mine = !!sw && sw.game === x.game;
-        return <SwitchRow key={x.game} shown={mine} on={mine && sw.on} label={x.label} note={x.note}
+        return <SwitchRow key={x.game} shown={mine} on={mine && sw.on} label={x.label}
           onChange={(on) => pick(turnSwitch(wheels, current, on))} />;
       })}
-      {onSuperStud && <SwitchRow shown={studGame} on={studGame && !!superStud} label="Super" note={SUPER_NOTE} onChange={onSuperStud} />}
+      {onSuperStud && <SwitchRow shown={studGame} on={studGame && !!superStud} label="Super" onChange={onSuperStud} />}
       <span className="vw-sr" aria-live="polite">{name}</span>
     </div>
   );
