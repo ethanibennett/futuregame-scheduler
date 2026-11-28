@@ -187,7 +187,21 @@
   border-radius: var(--radius-circle);
   background: var(--surface);
   box-shadow: var(--elev-1);
+  /* None of the tap-target ::after's centring (styles.css, UX pick 38: translate(-50%, -50%) on every small control's
+     ::after), which is this knob here: from 2026-11-10 it threw the knob of a switch that is off half its size up and
+     left, off the track (owner, 2026-11-27: "These toggles are rendering incorrectly"). */
+  transform: none;
   transition: transform var(--dur-snap) var(--ease-out);
+}
+/* The switch's tap target instead: 4g x 6r over the 4g x 3r it draws, centred on it, as pick 38 meant. */
+.he-body .he-switch::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: calc(var(--subrow) * 6);
+  transform: translateY(-50%);
 }
 .he-body .he-switch.on { background: var(--brand); }
 .he-body .he-switch.on::after {
