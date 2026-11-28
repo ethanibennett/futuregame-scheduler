@@ -911,7 +911,7 @@
 :root[data-theme^="swiss"] .top-bar-title h1 .wm-dot { color: var(--sw-red); }
 /* The wordmark loop's spans (styles.css .wm-loop) are the word's own letters: the word's weight and tracking, not
    body *'s thin and untracked (untracked, the a's span moved the dot off the middle of its room). */
-:root[data-theme^="swiss"] .wm-loop :is(.wm-u, .wm-a, .wm-me) { font-weight: inherit; letter-spacing: inherit; }
+:root[data-theme^="swiss"] .wm-loop :is(.wm-u, .wm-g, .wm-a, .wm-me) { font-weight: inherit; letter-spacing: inherit; }
 /* 7: the running head replaces the subtitle. */
 :root[data-theme^="swiss"] .top-bar-title > :not(h1):not(.sw-runhead) { display: none !important; }
 :root[data-theme^="swiss"] .top-bar-title > .sw-runhead { display: block; color: var(--sw-ink); font-weight: var(--sw-thin); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -2222,9 +2222,13 @@
     /* Nothing in the word transitions: under Reduce Motion the app-wide rule gives every property 1ms, the inherited
        font size included, and useWordmarkFit's second pass read the spans mid-change (the word ended up to 0.04g wide). */
     .wm-loop, .wm-loop * { transition-property: none; }
+    /* "game" in the brand blue and the dot in the word's own ink (owner, 2026-11-27, from a mock-up of "the game
+       letters in our accent blue" and "a white dot"): white in dark and dusk, the dark text colour in light and cloudy,
+       where a white dot vanished into the bar. The g is a span for it (wm-g). Swiss keeps its plain word and red dot. */
+    :root:not([data-theme^="swiss"]) .wm-loop :is(.wm-g, .wm-a, .wm-me) { color: var(--brand); }
     .wm-loop .wm-dot {
       display: inline-flex; justify-content: center; width: 0; letter-spacing: 0;
-      color: var(--brand);
+      color: var(--text);
       transform: translateX(var(--wm-dot-x, 0.1985em));
       transform-origin: 50% calc(50% + var(--wm-dot-oy, 0.295em));
       animation: wm-loop-dot var(--wm-loop) infinite;

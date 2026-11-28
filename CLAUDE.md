@@ -1259,9 +1259,11 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   Without it the Card Back row is hidden and a stored BTG choice paints the standard back. Add a code there.
   `npm run test:registration-codes` (ports 4770-4779).
 - **The top bar's wordmark loops, forever** (owner, 2026-11-20; `.wm-loop` in styles.css, `utils/wordmark-dot.js`,
-  `npm test`): "futuregame", then "me" slides right and a blue dot grows in, holds as "futurega.me", the dot shrinks
+  `npm test`): "futuregame", then "me" slides right and a dot grows in, holds as "futurega.me", the dot shrinks
   away and "me" slides back, every 4.8 s; still "futurega.me" under Reduce Motion. Transforms only, on spans in App.jsx's
-  h1 (`wm-u`, `wm-dot`, `wm-me`). `useWordmarkFit` reads the room and the dot's place from the face's ink on a canvas (the
+  h1 (`wm-u`, `wm-g`, `wm-dot`, `wm-me`). "game" is in the brand blue and the dot in the word's own ink, white in dark
+  and dusk, the dark text colour in light and cloudy (owner, 2026-11-27; the dot was blue); Swiss keeps its plain word
+  and red dot. `useWordmarkFit` reads the room and the dot's place from the face's ink on a canvas (the
   same clear space to the a as to the m, in every face) and fits the whole mark, room open, to 8g. In Baskerville the
   u's are 0.97 tall, from the baseline, so their serifs meet the f's and t's crossbars, and while there is no dot the
   a's tail bends down onto the m's serif (a clip-path on `.wm-a`, swept away as "me" leaves). Swiss's `body *` sets

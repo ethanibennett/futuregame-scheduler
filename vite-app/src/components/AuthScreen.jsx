@@ -79,7 +79,7 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
         <div className="auth-logo">
           {/* The top bar's wordmark loop here too (owner, 2026-11-21: "The wordmark animation should be on the sign-in
               page too"; styles.css .wm-loop): the dot's place read from the face, the size the card's own. */}
-          <h1 ref={wordmarkRef} className="wm-loop" aria-label="futurega.me">f<span className="wm-u">u</span>t<span className="wm-u">u</span>reg<span className="wm-a">a</span><span className="wm-dot">.</span><span className="wm-me">me</span></h1>
+          <h1 ref={wordmarkRef} className="wm-loop" aria-label="futurega.me">f<span className="wm-u">u</span>t<span className="wm-u">u</span>re<span className="wm-g">g</span><span className="wm-a">a</span><span className="wm-dot">.</span><span className="wm-me">me</span></h1>
           <p>{isRegister ? 'Create your free account' : season}</p>
         </div>
 
