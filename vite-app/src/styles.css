@@ -3683,6 +3683,12 @@
       max-width: calc(var(--subrow) * 75);
       margin: 0 auto;
     }
+    /* The entry's footer is portalled out of the Hands tab (into the shell, or <body> on the phone), and a tab left is
+       only hidden (display: none), so a hand being entered kept its Undo / Back to Setup / Cancel Hand bar over every
+       other tab (owner, 2026-11-28, on Bankroll: "No idea what the fuck is happening here on desktop after switching
+       from hands to bankroll"). Off while the app's tabs are up and Hands is not the one showing; a shared hand opened
+       signed out has no tabs and keeps it. */
+    body:has(.tab-panel):not(:has(.tab-panel.tab-active[data-tab="hands"])) .gto-sticky-footer { display: none; }
     /* Window-width rules from the full-width web column. Never in the desktop shell: its panes
        are phone canvases and take the phone's values (the :where keeps the specificity). */
     @media (min-width: 640px) {
@@ -4409,6 +4415,15 @@
        (the label is snap-g, the badge has no side padding: its label is centred); past that the name gives way, never
        the cards (owner: "Keep the cards in the same location on the card always"). With no action the name runs on. */
     .replayer-entry-view .gto-seat-row2.is-act > .gto-seat-who { display: flex; align-items: flex-end; column-gap: var(--gu); flex: 1 1 0; min-width: 0; }
+    /* A draw game's history follows the name, 1g on (owner, 2026-11-28, desktop: "Spacing is bad here"): the name grew
+       (flex: 1) and the history's own margin-left: auto (.gto-seat-draw-history) pushed it to the far end of the name's
+       room, 4.7 to 5g off the name, and 32g on the hero's seat with no action yet. The name still gives way first (it
+       truncates). */
+    .replayer-entry-view .gto-seat-row2.is-act > .gto-seat-who > .gto-seat-name { flex: 0 1 auto; }
+    .replayer-entry-view .gto-seat-row2.is-act > .gto-seat-who > .gto-seat-draw-history { margin-left: 0; }
+    /* The hero's cards (+4..+8r) ended on the 8r seat's own bottom edge, over its border: the seat that holds them takes
+       a 1r foot under them, as a stud seat's run has (measured 0px clear before). */
+    .replayer-entry-view .gto-seat:has(.gto-hero-cards-btn) .gto-seat-bar { padding-bottom: calc(var(--subrow) * 2); }
     .replayer-entry-view .gto-seat-row2.is-act:has(> .gto-seat-result-badge) > .gto-seat-who { flex: 0 1 calc(var(--gu) * 13); }
     .replayer-entry-view .gto-seat-row2.is-act > .gto-seat-result-badge { flex: 0 10000 calc(var(--gu) * 8); min-width: min-content; padding-inline: 0; text-align: center; }
     /* On a stud seat 1r lower (owner, 2026-11-22: "And drop it 1r"): +5..+8r of the bar, its foot on the up cards' foot,
