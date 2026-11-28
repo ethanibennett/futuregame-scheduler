@@ -32,6 +32,7 @@ import { readLocalLocation, writeLocalLocation, pushServerLocation,
   fetchServerLocation, sameLocation, writeLocalFilters } from '../utils/location-prefs.js';
 import { DEFAULT_FILTERS, useSharedFilters, clearedFilters } from '../utils/shared-filters.js';
 import { placesOf, locationTileText, locationTitle } from '../utils/location-places.js';
+import { landOn } from '../utils/land-on.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -939,6 +940,7 @@ export default function TournamentsView({
   // the user starts scrolling. filtersH is MEASURED, so a change to the
   // filters' padding moves the landing and the pin together. The old "- 2"
   // landed it 6px shy of the pin, off every grid line.
+  const landingRef = useRef(null);
   const scrollDateGroupToTop = useCallback((dateGroupEl, behavior = 'smooth') => {
     const container = document.querySelector('.content-area');
     if (!container || !dateGroupEl) return;
@@ -961,10 +963,6 @@ export default function TournamentsView({
     // sticky height from the DOM and land the group's top 2px below it. Robust to
     // whatever the real device layout/safe-area produces (a computed r-target was
     // not, and floated the whole day off the grid on device).
-    const stickyEl = container.querySelector('.sticky-filters');
-    const filtersH = stickyEl ? stickyEl.getBoundingClientRect().height : 0;
-    const cTop = container.getBoundingClientRect().top;
-    const groupAbsTop = dateGroupEl.getBoundingClientRect().top - cTop + container.scrollTop;
     // Stop the group's top EXACTLY on the bottom edge of the sticky filter rows —
     // filtersH is that block's real rendered height, so the stop is the exact
     // grid line the CSS drew, on any device. No fudge pixels.
@@ -972,8 +970,23 @@ export default function TournamentsView({
     // fraction, so the day landed up to 1px low (measured 0.06 to 0.1r at 402 and 1440: 22.06r against the
     // filters' 22r), the day above showing in the sliver under the filters, as the hand entry's seat above did.
     // Up, the day rests under 1px high, its top under the filters.
-    container.scrollTo({ top: Math.max(0, Math.ceil(groupAbsTop - filtersH - 0.01)), behavior });
+    // Read again every frame and after it lands (utils/land-on.js; owner, 2026-11-28: "clicking today's date pill
+    // scrolls here"): a smooth scrollTo went to where the day was at the press, and a day above that took its rows
+    // or its room clock row meanwhile, or after, left today a row below the filters with yesterday pinned over it.
+    const sel = day ? '[data-date-group="' + day + '"]' : null;
+    const target = () => {
+      const el = sel ? container.querySelector(sel) : (dateGroupEl.isConnected ? dateGroupEl : null);
+      if (!el) return null;
+      const stickyEl = container.querySelector('.sticky-filters');
+      const filtersH = stickyEl ? stickyEl.getBoundingClientRect().height : 0;
+      const groupAbsTop = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+      return Math.max(0, Math.ceil(groupAbsTop - filtersH - 0.01));
+    };
+    if (landingRef.current) landingRef.current.stop();
+    landingRef.current = landOn(container, { target, smooth: behavior === 'smooth',
+      observe: [listRef.current, container.querySelector('.sticky-filters')].filter(Boolean) });
   }, []);
+  useEffect(() => () => { if (landingRef.current) landingRef.current.stop(); }, []);
   const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
   const locationBtnRef = useRef(null);
   /* With no location set, the list says it is worldwide and offers Near me (UX pick 9). The ✕ keeps

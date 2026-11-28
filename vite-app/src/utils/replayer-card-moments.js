@@ -527,7 +527,7 @@ export function foldToStack(reg, { set, rate = 1, layer, layerRect, cards, targe
    centres and tilts (least squares on c = P + R * unit(angle), unknowns Px, Py, R), and the stack forms on the middle
    card (on the arc between the two middle cards for an even count). `at(c, q)` is where card c's centre is at gather
    progress q, relative to where it started; `angleAt(c, q)` its tilt. A flat row slides straight along. */
-function stackGeometry(cards) {
+function stackGeometry(cards, aim = null) {
   const n = cards.length;
   const rad = (d) => (d * Math.PI) / 180;
   const unit = (d) => ({ x: Math.sin(rad(d)), y: -Math.cos(rad(d)) });
@@ -554,7 +554,9 @@ function stackGeometry(cards) {
   }
   const mid = (n - 1) / 2;
   const lo = cards[Math.floor(mid)], hi = cards[Math.ceil(mid)];
-  const aS = ((lo.angle || 0) + (hi.angle || 0)) / 2;
+  /* `aim`: the tilt the stack forms at, on the fan's own arc (0: standing upright, above the pivot), where the middle
+     card's is the default. */
+  const aS = aim != null ? aim : ((lo.angle || 0) + (hi.angle || 0)) / 2;
   const radiusOf = (c) => (P ? (c.cx - P.x) * unit(c.angle || 0).x + (c.cy - P.y) * unit(c.angle || 0).y : 0);
   const rS = (radiusOf(lo) + radiusOf(hi)) / 2;
   const S = P ? { x: P.x + rS * unit(aS).x, y: P.y + rS * unit(aS).y } : { x: (lo.cx + hi.cx) / 2, y: (lo.cy + hi.cy) / 2 };
@@ -700,16 +702,17 @@ function dimTrack({ dimTo, dimMs, delay = 0, end, h, lift = null, steps = 28 }) 
  * are in the layer's px: `middle` the felt's middle (Spin in), `muck` the dealer's muck beside the deck (where a hand
  * thrown in lands), `line` just past the seat's betting line (Lift and drop), `seat` its plaque's centre (Behind the
  * seat), `pot` the pot's graphic (Flicked). `seed` fixes the scatter, so a fold plays the same way every time.
- *   spin    gathered into one stack, which spins into the middle and fades (25).
+ *   spin    gathered into one stack, which spins in under the pot's graphic and fades (25; to the middle of the felt
+ *           until 2026-11-28).
  *   tuck    gathered, then shrinks to nothing behind the seat's plaque (the stud fold's down cards).
- *   spread  gathered, the stack goes straight to just past the seat's betting line (its own side of the table) and, as
- *           it lands, its cards slide apart into a row running toward the middle of the felt; nothing turns but the
- *           gather.
+ *   spread  gathered, the stack goes toward the pot and on the way its cards slide apart into a row along its way, the
+ *           top card coming to rest under the pot's graphic; nothing turns but the gather.
  *   drop    gathered, the stack is picked up (it grows, its shadow lengthening), makes one half turn in the air and is
  *           dropped just past the betting line.
- *   flick   the cards are flicked in one at a time from the top, each sliding straight in without turning and coming to
- *           rest under the pot's graphic (owner, 2026-11-27: "For 5 let's have them land under the pot graphic, and
- *           slide without spinning").
+ *   flick   gathered into one stack centred on the hand, then flicked in one at a time from its top, each sliding
+ *           straight in without turning and coming to rest under the pot's graphic (owner, 2026-11-27: "For 5 let's have
+ *           them land under the pot graphic, and slide without spinning"; 2026-11-28: "gather them together centered
+ *           before the flicks").
  *   push    the hand, as it is held, pushed forward across the cloth, slowing as it goes, and fades.
  *   lob     gathered, the stack is tossed in an arc to the muck (rising and falling), lands and skids.
  *   throw   the whole hand thrown in at once, every card spinning its own way and skidding apart under the pot.
@@ -720,7 +723,10 @@ export function foldAway(reg, { style, set, rate = 1, layer, layerRect, cards, b
   const id = normalizeFoldStyle(style);
   // Stud flip under is studFlipUnder, given the up cards apart; a hand with none (any flop game) goes behind the seat.
   if ((id === 'tuck' || id === 'flipunder') && seat) return foldToStack(reg, { set, rate, layer, layerRect, cards, target: seat, back, dimTo, spin: 0, scaleTo: 0.05 });
-  if (id === 'spin' || id === 'tuck' || id === 'each' || id === 'flipunder') return foldToStack(reg, { set, rate, layer, layerRect, cards, target: middle, back, dimTo });
+  /* Spin in goes under the pot's graphic (owner, 2026-11-28: "1 should go under the pot as well"), the fold layer under
+     it; it went to the middle of the felt. */
+  if (id === 'spin' || id === 'each') return foldToStack(reg, { set, rate, layer, layerRect, cards, target: pot || middle, back, dimTo });
+  if (id === 'tuck' || id === 'flipunder') return foldToStack(reg, { set, rate, layer, layerRect, cards, target: middle, back, dimTo });
   const B = stage(set).beat / rate;
   const R = seeded(seed + ':' + id);
   const n = cards.length;
@@ -741,29 +747,31 @@ export function foldAway(reg, { style, set, rate = 1, layer, layerRect, cards, b
   dimTo = Math.max(dimTo, 0.7);
 
   if (id === 'spread') {
-    /* On the folding player's own side of the table, just past their betting line, and never turning (owner, 2026-11-27:
-       "for 3 let's have them come to rest on the same side of the table that they start, and also not spin at all"):
-       the stack goes straight there and, as it lands, its cards slide apart into a row, each keeping the stack's tilt.
-       They went across the table to the dealer's muck before, turning on the way and fanning as they landed. */
-    // Three quarters of the way to the line: the row (almost two cards wide) stays clear of the pot from a side seat.
-    const L0 = page(line || muck || middle), M = { x: S.x + (L0.x - S.x) * 0.75, y: S.y + (L0.y - S.y) * 0.75 }, v = towards(S, M);
-    const fly = tierSpring(set, 'arm'), fan = tierSpring(set, 'yield');
-    const tGo = tMeet + 0.3 * B;
-    const k = sprAt(fly, tGo);
-    const tLand = tGo + timeTo(fly, 0.8) / rate;
-    const sp = sprAt(fan, tLand);
-    const tFade = tLand + timeTo(fan, 0.99) / rate + 1.5 * B;
-    const end = tFade + 2 * B;
-    const fade = fadeFrom(tFade, 2 * B);
-    /* The row runs from where the stack lands toward the middle of the felt (owner, 2026-11-27: "Make #3 spread
-       diagonally toward the center"), the top card furthest in; from a side or corner seat that line is a diagonal. It
-       lay along the cards' own width before, flat beside the seat. A step is a share of the card's extent along that
-       line, so the cards overlap alike whether it runs across them or down them. */
-    const C = page(middle || muck || L0), u = towards(M, C);
+    /* Never turning (owner, 2026-11-27: "also not spin at all"): the stack goes toward the pot and, on the way, its cards
+       slide apart into a row, each keeping the stack's tilt, the bottom card where the stack ends and the rest further on
+       ("expand only toward the middle, not backward").
+       One motion, no pause (owner, 2026-11-28: "#3 shouldn't pause before the spread, it should just be a natural flow
+       where the stack moves together and then spreads smoothly, it should also finish with the farthest card under the
+       pot"): the stack sets off as the gather closes, the row opens while it is still travelling, and the top card comes
+       to rest on the pot's graphic (the fold layer is under it). It landed first and then spread, the row ending three
+       quarters of the way to the betting line.
+       The row runs on the way the stack goes, from the seat toward the pot ("3 should spread in the direction that they
+       leave the seat box toward the pot"); from a side or corner seat that is a diagonal. A step is a share of the card's
+       extent along that line, so the cards overlap alike whether it runs across them or down them. */
+    const P0 = page(pot || middle || muck), u = towards(S, P0);
     const a0 = rad(geo.aS), along = Math.abs(u.ux * Math.cos(a0) + u.uy * Math.sin(a0)) * W + Math.abs(-u.ux * Math.sin(a0) + u.uy * Math.cos(a0)) * H;
     const step = 0.38 * along;
-    /* Only toward the middle, never back (owner, 2026-11-27: "3 should expand only toward the middle, not backward"):
-       the bottom card stays where the stack lands and each card above it slides one step further in. */
+    // The stack stops a row short of the pot (the row at its landed scale), never under a quarter of the way out.
+    const reach = Math.max(0.25 * u.d, u.d - (n - 1) * step * LAND);
+    const M = { x: S.x + u.ux * reach, y: S.y + u.uy * reach }, v = towards(S, M);
+    const fly = tierSpring(set, 'arm'), fan = tierSpring(set, 'arm');
+    const tGo = 0.5 * tMeet;                               // off while the gather closes: the two overlap, no lull
+    const k = sprAt(fly, tGo);
+    const tSpread = tGo + timeTo(fly, 0.3) / rate;         // opening a third of the way there
+    const sp = sprAt(fan, tSpread);
+    const tFade = Math.max(tGo + timeTo(fly, 0.99) / rate, tSpread + timeTo(fan, 0.99) / rate) + 1.5 * B;
+    const end = tFade + 2 * B;
+    const fade = fadeFrom(tFade, 2 * B);
     const spreads = cards.map((c, i) => ({ on: i * step, off: (R() - 0.5) * 0.08 * W }));
     return flyPoses(reg, { layer, layerRect, cards, back, end,
       filter: () => dimTrack({ dimTo, dimMs: tMeet, end, h: H }),
@@ -804,27 +812,30 @@ export function foldAway(reg, { style, set, rate = 1, layer, layerRect, cards, b
   }
 
   if (id === 'flick') {
-    // Under the pot's graphic (the fold layer is under it), a little apart; each slides straight, its tilt kept.
+    /* Gathered first into one stack, centred on the hand (owner, 2026-11-28: "In #5 let's gather them together centered
+       before the flicks"), then flicked in one at a time from the top of the stack, each sliding straight in at the
+       stack's tilt and coming to rest under the pot's graphic (the fold layer is under it), a little apart. They went
+       each from its own place in the hand before. */
     const M = page(pot || muck || middle);
     const fly = tierSpring(set, 'flick');
     const F = timeTo(fly, 0.98) / rate;
     const stag = 0.75 * B;
-    // From the top of the hand (the last card dealt sits over the rest) to the first.
+    // From the top of the stack (the last card dealt sits over the rest) to the first.
     const slots = cards.map((c, i) => {
-      const j = n - 1 - i, t0 = 0.2 * B + j * stag;
+      const j = n - 1 - i, t0 = tMeet + 0.3 * B + j * stag;
       const to = { x: M.x + (R() - 0.5) * 0.5 * W, y: M.y + (R() - 0.5) * 0.3 * H };
-      const v = towards({ x: c.cx, y: c.cy }, to);
-      return { t0, v, spin: 0, bow: 0, k: sprAt(fly, t0) };
+      return { t0, v: towards(S, to), k: sprAt(fly, t0) };
     });
     const last = Math.max(...slots.map((s) => s.t0)) + F;
     const tFade = last + 1.0 * B;
     const end = tFade + 2 * B;
     const fade = fadeFrom(tFade, 2 * B);
     return flyPoses(reg, { layer, layerRect, cards, back, end,
-      filter: (i) => dimTrack({ dimTo, dimMs: F, delay: slots[i].t0, end, h: H }),
+      // Dimmed as it gathers, as every stack is.
+      filter: () => dimTrack({ dimTo, dimMs: tMeet, end, h: H }),
       pose: (i, t) => {
-        const c = cards[i], s = slots[i], kk = s.k(t), b = s.bow * Math.sin(Math.PI * clamp01(kk));
-        return { x: s.v.dx * kk - s.v.uy * b, y: s.v.dy * kk + s.v.ux * b, rotate: (c.angle || 0) + s.spin * kk,
+        const c = cards[i], s = slots[i], q = gq(t), p = geo.at(c, q), kk = s.k(t);
+        return { x: p.x + s.v.dx * kk, y: p.y + s.v.dy * kk, rotate: geo.angleAt(c, q),
           scale: 1 + (LAND - 1) * clamp01(kk), scaleX: 1, opacity: fade(t) };
       } });
   }
@@ -928,23 +939,35 @@ export function foldAway(reg, { style, set, rate = 1, layer, layerRect, cards, b
  *           cards stay where they are;
  *   flip    a beat later the up stack turns over where it is (scaleX 1 to 0 to 1, an even ease over turnMs, as turnOver
  *           turns a card), its faces swapped for the back at the half turn;
- *   under   the turned stack slides in beneath the down cards AS they close into their stack, on the one spring, so all
- *           of them become one stack together (owner, 2026-11-28: "Don't push the downcards together until the upcard
- *           stack combines, it should slide under as they all combine into one stack"), taking the down stack's tilt;
+ *   under   the turned stack slides in beneath the down cards AS they close, on the one spring, so all of them become
+ *           one stack together (owner, 2026-11-28: "Don't push the downcards together until the upcard stack combines,
+ *           it should slide under as they all combine into one stack"), at the middle of the hand, across from the
+ *           plaque's centre ("join the downcards in the center of the seat box, not off to the left");
  *   tuck    the one stack goes to the seat's plaque, under it, shrinking to nothing and fading, without turning.
- * up and down: [{ node, cx, cy, w, h, angle }] in page px; seat in the layer's px. Returns { ghosts, faceDownAt }: the
- * half turn (ms), from which the Dead cards strip shows the up cards. With no up cards, or no down ones, it is Behind
- * the seat.
+ * up and down: [{ node, cx, cy, w, h, angle }] in page px; seat in the layer's px. Returns { ghosts, flipAt,
+ * faceDownAt }: when the turn starts and its half (ms); the Dead cards strip turns its copies face up on the same turn
+ * (owner, 2026-11-28: "they should flip open in the dead card section at the same time they flip down in the hand"). With
+ * no up cards, or no down ones, it is Behind the seat.
  */
 export function studFlipUnder(reg, { set, rate = 1, layer, layerRect, up = [], down = [], seat, back = null, dimTo = 0.7 }) {
   const all = [...up, ...down];
-  if (!layer || !layerRect || !all.length || !seat) return { ghosts: [], faceDownAt: 0 };
+  if (!layer || !layerRect || !all.length || !seat) return { ghosts: [], flipAt: 0, faceDownAt: 0 };
   if (!up.length || !down.length) {
-    return { ghosts: foldToStack(reg, { set, rate, layer, layerRect, cards: all, target: seat, back, dimTo: 0.42, spin: 0, scaleTo: 0.05 }), faceDownAt: 0 };
+    return { ghosts: foldToStack(reg, { set, rate, layer, layerRect, cards: all, target: seat, back, dimTo: 0.42, spin: 0, scaleTo: 0.05 }), flipAt: 0, faceDownAt: 0 };
   }
   const B = stage(set).beat / rate;
   const gather = tierSpring(set, 'slide'), slide = tierSpring(set, 'arm'), go = tierSpring(set, 'inertia');
-  const gu = stackGeometry(up), gd = stackGeometry(down);
+  const gu = stackGeometry(up);
+  /* Where they all meet: on the whole hand's arc where a card stands exactly upright (owner, 2026-11-28: "The down cards
+     should join the flipped upcards along the natural radius, so that when they are combined into one stack they are
+     exactly vertical"), across from the plaque's centre ("join the downcards in the center of the seat box, not off to
+     the left"); a stud hand is centred on its plaque, so that is the top of its arc. The down cards close round that arc
+     to it, and the turned stack slides there round the same arc, under them. They met at the middle cards' tilt before,
+     a stack leaning as the middle of the fan did, and before that on the down cards' own stack, off to one side. */
+  const ga = stackGeometry(all, 0);
+  const J = { x: seat.x + layerRect.left, y: ga.S.y }, jx = J.x - ga.S.x;
+  // The turned stack, as a card where it stands: its way round the arc to J.
+  const upStack = { cx: gu.S.x, cy: gu.S.y, angle: gu.aS };
   const tMeet = timeTo(gather, 0.985) / rate;
   const g = (t) => (t <= 0 ? 0 : gather.at(t * rate));
   const tFlip = tMeet + 0.3 * B, dFlip = turnMs(set) / rate, faceDownAt = tFlip + dFlip / 2;
@@ -964,12 +987,21 @@ export function studFlipUnder(reg, { set, rate = 1, layer, layerRect, up = [], d
       ? [{ frames: [{ ...FACE_FRAME, offset: 0 }, { ...FACE_FRAME, offset: 0.999 }, { ...backFrameOf(back), offset: 1 }], duration: faceDownAt, fill: 'forwards' }]
       : []),
     pose: (i, t) => {
-      // The down cards close on the slide's own spring, from its start: still until then.
-      const c = all[i], isUp = i < nu, geo = isUp ? gu : gd, q = isUp ? g(t) : k(t), p = geo.at(c, q), hh = clamp01(h(t));
-      const kk = isUp ? k(t) : 0;
-      const x = p.x + (gd.S.x - gu.S.x) * kk + (T.x - gd.S.x) * h(t), y = p.y + (gd.S.y - gu.S.y) * kk + (T.y - gd.S.y) * h(t);
-      return { x, y, rotate: geo.angleAt(c, q) + (isUp ? (gd.aS - gu.aS) * kk : 0), scale: 1 + (0.05 - 1) * hh,
+      // The down cards close on the slide's own spring, from its start (still until then), round the whole hand's arc
+      // to J; the turned stack slides from its own stack to J on the same spring; then the one stack goes to the seat.
+      const c = all[i], isUp = i < nu, kk = k(t), hh = clamp01(h(t)), go = h(t);
+      let x, y, rotate;
+      if (isUp) {
+        const q = g(t), p = gu.at(c, q), o = ga.at(upStack, kk);
+        x = p.x + o.x + jx * kk; y = p.y + o.y;
+        rotate = gu.angleAt(c, q) + (ga.angleAt(upStack, kk) - gu.aS);
+      } else {
+        const p = ga.at(c, kk);
+        x = p.x + jx * kk; y = p.y;
+        rotate = ga.angleAt(c, kk);
+      }
+      return { x: x + (T.x - J.x) * go, y: y + (T.y - J.y) * go, rotate, scale: 1 + (0.05 - 1) * hh,
         scaleX: isUp && t > tFlip ? Math.max(0.002, Math.abs(1 - 2 * flip(t))) : 1, opacity: 1 - hh };
     } });
-  return { ghosts, faceDownAt };
+  return { ghosts, flipAt: tFlip, faceDownAt };
 }

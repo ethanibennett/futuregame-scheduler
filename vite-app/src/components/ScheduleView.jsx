@@ -16,6 +16,7 @@ import { suggestTravelDay } from '../utils/travel-suggest.js';
 import { detectOverlaps } from '../utils/overlaps.js';
 import { clockAskable } from '../utils/live-clocks.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
+import { landOn } from '../utils/land-on.js';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -208,38 +209,25 @@ export default function ScheduleView({
      list's pill does (owner, 2026-11-15: "clicking the date pill in my schedule should make it autoscroll to that date,
      just like it does in the regular schedule"). In My Schedule's own scroller: the phone's .content-area or the
      desktop's right pane (.dk-scroll). The landing is App.jsx landMySchedule's: the header's bottom once stuck (its
-     sticky top plus its height). Rows off screen stand in at an estimated height (content-visibility), so the smooth
-     scroll can stop a little off: once it is at rest the day lands again on the same formula, unless the user has
-     taken the scroll meanwhile. */
+     sticky top plus its height). Rows off screen stand in at an estimated height (content-visibility), so the day
+     moves while the scroll runs: landOn follows it there and holds it until the user takes the scroll. */
+  const landingRef = useRef(null);
   const scrollDayToTop = useCallback((group) => {
     const c = group && group.closest('.dk-scroll, .content-area');
     if (!c) return;
+    // Read again every frame and held after it lands (utils/land-on.js, 2026-11-28): the smooth scroll went to where
+    // the day was at the press and landed again once at rest; a row that grew above it after that still moved it.
+    // Rounded up to a whole pixel, as the Schedule list's landing is (WebKit drops a scroll position's fraction).
     const target = () => {
+      if (!group.isConnected) return null;
       const sticky = schedHeaderRef.current;
       const stickyH = sticky ? Math.max(0, (parseFloat(getComputedStyle(sticky).top) || 0) + sticky.getBoundingClientRect().height) : 0;
-      return Math.max(0, group.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - stickyH);
+      return Math.max(0, Math.ceil(group.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - stickyH - 0.01));
     };
-    const reduced = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    c.scrollTo({ top: target(), behavior: reduced ? 'auto' : 'smooth' });
-    const inputs = ['wheel', 'touchstart', 'pointerdown', 'keydown'];
-    let dropped = false;
-    const drop = () => { dropped = true; };
-    inputs.forEach(ev => c.addEventListener(ev, drop, { passive: true }));
-    let last = c.scrollTop, still = 0, moved = false, frames = 0;
-    const tick = () => {
-      const now = c.scrollTop;
-      if (now !== last) { moved = true; still = 0; } else still++;
-      last = now; frames++;
-      if (!dropped && frames < 180 && (still < 3 || (!moved && frames < 12))) { requestAnimationFrame(tick); return; }
-      inputs.forEach(ev => c.removeEventListener(ev, drop));
-      if (dropped || !group.isConnected) return;
-      c.scrollTop = target();
-      // The header is stuck by now: close what its computed top left (a fraction of a pixel on a phone) by measuring.
-      const sticky = schedHeaderRef.current;
-      if (sticky) { const d = group.getBoundingClientRect().top - sticky.getBoundingClientRect().bottom; if (Math.abs(d) >= 0.5) c.scrollTop += d; }
-    };
-    requestAnimationFrame(tick);
+    if (landingRef.current) landingRef.current.stop();
+    landingRef.current = landOn(c, { target, observe: [group.parentElement, schedHeaderRef.current].filter(Boolean) });
   }, []);
+  useEffect(() => () => { if (landingRef.current) landingRef.current.stop(); }, []);
 
   // Track which rows have been expanded — only those get the full (heavy)
   // CalendarEventRow component. All others render CalendarEventRowLite

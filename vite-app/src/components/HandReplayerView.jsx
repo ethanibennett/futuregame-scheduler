@@ -11851,17 +11851,25 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             const plaque = table.querySelector('.replayer-seat[data-seat="' + act.player + '"] .replayer-seat-info');
             const PQ = plaque ? plaque.getBoundingClientRect() : null;
             const fl = foldLayer && FL ? foldLayer : layer, FLr = foldLayer && FL ? FL : L;
-            /* Stud's own under Spin in (the owner's 2026-11-22 rule above); any other Fold Motion as chosen. */
-            const downStyle = foldStyleOf(rSettings.foldStyle, foldWho(act.player));
+            /* Stud flip under is stud's default (owner, 2026-11-28: "Make Stud flip under the default for stud"): Spin in,
+               the setting's default, plays it here. The 2026-11-22 stud fold above (the down cards behind the seat, the up
+               cards to the strip) is Behind the seat; any other Fold Motion as chosen, on the down cards. */
+            const chosenFold = foldStyleOf(rSettings.foldStyle, foldWho(act.player));
+            const downStyle = chosenFold === 'spin' ? 'flipunder' : chosenFold;
             const downPts = FLr ? foldPoints(act.player, FLr) : null;
             /* Stud flip under (owner, 2026-11-27): the up cards turn face down and go under the down ones, behind the seat,
-               instead of flying to the strip, so the strip's copies fade in as they turn (studFlipUnder's faceDownAt). */
+               instead of flying to the strip. The strip's copies turn face UP on the same turn, at the same moment (owner,
+               2026-11-28: "they should flip open in the dead card section at the same time they flip down in the hand"):
+               shown as backs, faded in over the two beats before it, then turned over with the hand's own rate. */
             const flipUnder = downStyle === 'flipunder' && up.length && down.length && fl && FLr && downPts && downPts.seat;
             writes.push(() => {
               if (flipUnder) {
-                const { faceDownAt } = studFlipUnder(motion, { set, rate: rate * 0.75, layer: fl, layerRect: FLr, up, down, seat: downPts.seat, back: backPaint });
+                const { flipAt } = studFlipUnder(motion, { set, rate: rate * 0.75, layer: fl, layerRect: FLr, up, down, seat: downPts.seat, back: backPaint });
                 const fadeMs = 2 * cardTimes(set).beat / rate;
-                flights.forEach(f => appearAt(motion, { set, rate, el: f.target, at: faceDownAt, size: f.size, duration: fadeMs }));
+                flights.forEach(f => {
+                  appearAt(motion, { set, rate, el: f.target, at: Math.max(0, flipAt - fadeMs), size: f.size, duration: fadeMs });
+                  turnOver(motion, { set, rate: rate * 0.75, el: f.target, delay: flipAt, size: f.size, back: backPaint });
+                });
                 moves.forEach(mv => makeRoom(motion, { set, rate, el: mv.el, dx: mv.dx, size: mv.size }));
                 return;
               }
@@ -11869,7 +11877,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               flights.forEach((f, i) => appearAt(motion, { set, rate, el: f.target, at: lands[i] || 0, size: f.size }));
               moves.forEach(mv => makeRoom(motion, { set, rate, el: mv.el, dx: mv.dx, size: mv.size }));
               if (down.length && fl && FLr && PQ) {
-                foldAway(motion, { style: downStyle === 'spin' ? 'tuck' : downStyle, set, rate: rate * 0.75, layer: fl, layerRect: FLr, cards: down,
+                foldAway(motion, { style: downStyle, set, rate: rate * 0.75, layer: fl, layerRect: FLr, cards: down,
                   back: backPaint, ...downPts, seed: foldSeed(act.player) });
               }
             });
