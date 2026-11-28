@@ -888,7 +888,8 @@ function scan(rootSel) {
   // The floating + on the bankroll pages (components/BankrollFab.jsx) and its menu: the Results tab's
   // with a session running (the seed's: the + is raised over the cash bar), with none (the live fetch
   // answered here and never sent: the menu then has Start live session as a fourth row), and the
-  // dashboard sheet's. The + holds an icon only; the menu's rows are text under overflow: hidden.
+  // dashboard sheet's. New hand is the last row of each since 2026-11-27 (the + on every tab). The + holds an icon
+  // only; the menu's rows are text under overflow: hidden.
   const fabView = async (label, { idle = false, sheet = false } = {}) => {
     try {
       if (idle) await p.route('**/api/cash-sessions/live', (r) => r.fulfill({ json: { session: null, stacks: [], now: new Date().toISOString() } }));
@@ -904,7 +905,7 @@ function scan(rootSel) {
         await fab.first().click({ timeout: 4000 });
         await p.locator('.bk-fab-menu').waitFor({ timeout: 3000 });
         const rows = await p.locator('.bk-fab-menu [role="menuitem"]').count();
-        if (rows !== (idle ? 4 : 3)) throw new Error(`the menu has ${rows} rows, expected ${idle ? 4 : 3}`);
+        if (rows !== (idle ? 5 : 4)) throw new Error(`the menu has ${rows} rows, expected ${idle ? 5 : 4}`);
         await run(label, '.bk-fab-menu');
       } finally { if (idle) await p.unroute('**/api/cash-sessions/live'); }
     } catch (e) { console.log(`  (${label} skipped: ${e.message.split('\n')[0]})`); }

@@ -45,7 +45,7 @@ import {
 } from '../utils/replayer-motion.js';
 import { SPRING_SETS, spring, timeTo, tierSpring, keyframes as transportKeyframes, REPLAYER_PACE } from '../utils/spring.js';
 import { bestFive, halvesOf, counterfeitedNow, leaderOf, lowDecider, indexOfLowRank, streetChange } from '../utils/replayer-reading.js';
-import { turnOver, dealIn, liftOnce, poseTo, rap, ghostsAway, labelsAway, cardsAway, foldAway, foldStyleOf, FOLD_STYLES, normalizeFoldStyle, angleOf, cardTimes, slideRow, runOutBoard, runOutTimes, poseSequence, drawIn, ghostsTo, appearAt, makeRoom } from '../utils/replayer-card-moments.js';
+import { turnOver, dealIn, liftOnce, poseTo, rap, ghostsAway, labelsAway, cardsAway, foldAway, studFlipUnder, foldStyleOf, FOLD_STYLES, normalizeFoldStyle, angleOf, cardTimes, slideRow, runOutBoard, runOutTimes, poseSequence, drawIn, ghostsTo, appearAt, makeRoom } from '../utils/replayer-card-moments.js';
 import { showdownSpecial } from '../utils/showdown-specials.js';
 import { playSuitFlood, warmSuitFlood } from '../utils/showdown-moments.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
@@ -11774,7 +11774,17 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             /* Stud's own under Spin in (the owner's 2026-11-22 rule above); any other Fold Motion as chosen. */
             const downStyle = foldStyleOf(rSettings.foldStyle, foldWho(act.player));
             const downPts = FLr ? foldPoints(act.player, FLr) : null;
+            /* Stud flip under (owner, 2026-11-27): the up cards turn face down and go under the down ones, behind the seat,
+               instead of flying to the strip, so the strip's copies fade in as they turn (studFlipUnder's faceDownAt). */
+            const flipUnder = downStyle === 'flipunder' && up.length && down.length && fl && FLr && downPts && downPts.seat;
             writes.push(() => {
+              if (flipUnder) {
+                const { faceDownAt } = studFlipUnder(motion, { set, rate: rate * 0.75, layer: fl, layerRect: FLr, up, down, seat: downPts.seat, back: backPaint });
+                const fadeMs = 2 * cardTimes(set).beat / rate;
+                flights.forEach(f => appearAt(motion, { set, rate, el: f.target, at: faceDownAt, size: f.size, duration: fadeMs }));
+                moves.forEach(mv => makeRoom(motion, { set, rate, el: mv.el, dx: mv.dx, size: mv.size }));
+                return;
+              }
               const lands = ghostsTo(motion, { set, rate, cards: flights });
               flights.forEach((f, i) => appearAt(motion, { set, rate, el: f.target, at: lands[i] || 0, size: f.size }));
               moves.forEach(mv => makeRoom(motion, { set, rate, el: mv.el, dx: mv.dx, size: mv.size }));
