@@ -10245,7 +10245,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const gu = guPx(table), r1 = gu * 0.71;
     const controls = [...host.querySelectorAll('.hx-chips > *, .replayer-quick-btn')].map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
     const LIFT = { up: -1, 'up-lo': -1, 'up-half': -1, down: 1, 'down-half': 1 };
-    rows.forEach(el => { el.style.left = ''; el.style.top = ''; });
+    rows.forEach(el => { el.style.left = ''; el.style.top = ''; const seat = el.closest('.replayer-seat'); if (seat) seat.style.marginLeft = ''; });
     const width = Math.round(box.width);
     rows.forEach(el => {
       const lo = box.left + gu / 2, hi = box.right - gu / 2;
@@ -10276,14 +10276,25 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       });
       if (!placed) return;
       const { shift, drop } = placed;
-      if (shift) { el.style.position = 'relative'; el.style.left = `calc(var(--gu) * ${(shift / gu).toFixed(3)})`; }
+      /* The whole seat moves in from the edge, not its cards alone, so the cards stay centred on the plaque (owner,
+         2026-11-28: "Why aren't this player's cards centered on the box"): a side seat's plaque is anchored 1g in from
+         the screen's edge, a four-card fan is wider than the plaque, and sliding only the row left the fan off to one
+         side of its own plaque. The drop off the replay's buttons is the cards' alone. */
+      const seat = el.closest('.replayer-seat');
+      if (shift) {
+        if (seat) seat.style.marginLeft = `calc(var(--gu) * ${(shift / gu).toFixed(3)})`;
+        else { el.style.position = 'relative'; el.style.left = `calc(var(--gu) * ${(shift / gu).toFixed(3)})`; }
+      }
       if (drop > 0) { el.style.position = 'relative'; el.style.top = `calc(var(--gu) * ${(drop / gu).toFixed(3)})`; }
       // A change of place at the same size of table glides with the cards' slide; a new layout is placed at once.
       const was = el.dataset.edgeW ? { x: Number(el.dataset.edgeShift) || 0, y: Number(el.dataset.edgeDrop) || 0, w: Number(el.dataset.edgeW) } : null;
       el.dataset.edgeShift = String(shift);
       el.dataset.edgeDrop = String(drop);
       el.dataset.edgeW = String(width);
-      if (was && was.w === width) glideRow(el, shift - was.x, drop - was.y);
+      if (was && was.w === width) {
+        if (seat) { glideRow(seat, shift - was.x, 0); glideRow(el, 0, drop - was.y); }
+        else glideRow(el, shift - was.x, drop - was.y);
+      }
     });
   };
   useLayoutEffect(() => { if (tableRef.current) placeCardRows(tableRef.current); });
