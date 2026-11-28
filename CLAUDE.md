@@ -815,6 +815,10 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
     question link (`shared_hands.question_shorthand`, `stop_street`) gives the hand only to the stop until the
     viewer answers (`hand_answers`, one per account or device); `/api/replayer/import` reads PokerStars text with
     `lib/hh-import`; an outbox save carries `hand.clientId` and the server matches a retry to its hand.
+    A note on a moment (29) is a quote bubble over the hero's hand on the felt (`MomentBubble`, placed by the replay;
+    owner, 2026-11-28: "put it in a quote bubble above hero's hand"): the replay stops on it, and its play button
+    carries on ("the hand should pause, and the note should have a continue symbol for the user to tap"); the moment
+    play starts from never stops it again, and a drill or an export is never stopped. The game's label fades under it.
   - **Hide money** (44, `utils/hide-money.js`) masks text inside `[data-money-zone]` (Bankroll, Cash, Staking,
     Home's result, period and bankroll blocks, the trip card, the pay ladder). New money screens need the attribute.
   - **Native** (41, 43, 47, 10): `AppLockPlugin`, `AppleSignInPlugin`, `DeepLinksPlugin`, `LiveActivityPlugin`

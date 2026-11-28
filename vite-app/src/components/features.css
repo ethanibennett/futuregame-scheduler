@@ -265,20 +265,31 @@
      at most (a tap opens the rest), 1r over and under, 1g each side; the tail 1r under it, on the hero's cards. */
   position: absolute; z-index: var(--z-dealer, 9); visibility: hidden; left: 0; top: 0;
   box-sizing: border-box; width: max-content; max-width: min(calc(var(--gu) * 24), calc(100% - var(--gu) * 2));
-  margin: 0; padding: var(--subrow) var(--gu); border: 0; border-radius: var(--radius-sm);
+  display: flex; align-items: flex-end; column-gap: var(--gu);
+  margin: 0; padding: var(--subrow) var(--gu); border-radius: var(--radius-sm);
   background: var(--surface-raised); color: var(--text); box-shadow: var(--elev-2), inset 0 0 0 var(--bw-hair) var(--border);
-  font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-regular); text-align: left; cursor: pointer;
 }
 .mn-bubble::after {
   content: ''; position: absolute; top: 100%; left: var(--mn-tail-x, 50%); width: calc(var(--gu) * 1.5); height: var(--subrow);
   transform: translateX(-50%); background: var(--surface-raised); clip-path: polygon(0 0, 100% 0, 50% 100%);
 }
 .mn-bubble-text {
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; flex: 0 1 auto; min-width: 0;
+  margin: 0; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; text-align: left;
+  font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-regular);
   line-height: calc(var(--subrow) * 2); white-space: pre-wrap; overflow-wrap: anywhere;
 }
 .mn-bubble.is-open .mn-bubble-text { -webkit-line-clamp: unset; }
-.mn-bubble:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+/* The play button (owner, 2026-11-28: "the note should have a continue symbol for the user to tap"): a 3r disc in the
+   brand colour on the bubble's last line, its triangle centred (nudged right by its own optical weight, a tenth of it). */
+.mn-continue {
+  flex: none; display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+  width: calc(var(--subrow) * 3); height: calc(var(--subrow) * 3); margin: 0; padding: 0 0 0 calc(var(--subrow) * 0.15); border: 0;
+  border-radius: var(--radius-circle); background: var(--brand); color: var(--on-brand); cursor: pointer;
+  --icon-size: calc(var(--subrow) * 1.5);
+}
+.mn-continue svg { width: var(--icon-size); height: var(--icon-size); fill: currentColor; stroke: currentColor; stroke-linejoin: round; }
+.mn-bubble-text:focus-visible, .mn-continue:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 [data-capturing] .mn-bubble { display: none; }
 .mn-track { position: absolute; z-index: 6; left: var(--gu); right: var(--gu); bottom: calc(var(--subrow) * 12); display: flex; gap: calc(var(--gu) * 0.5); justify-content: center; }
 .mn-pill { position: relative; height: calc(var(--subrow) * 3); min-height: 0; padding: 0 var(--gu); border: none; border-radius: var(--radius-pill); background: var(--surface2); color: var(--text-muted); font-size: var(--fs-2xs); cursor: pointer; }

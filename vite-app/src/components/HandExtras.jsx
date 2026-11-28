@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { API_URL } from '../utils/api.js';
 import useBackToClose from '../hooks/useBackToClose.js';
 import { normaliseDate, getVenueInfo } from '../utils/utils.js';
+import Icon from './Icon.jsx';
 
 /* The replay's Features (2026-11-11): a note pinned to a moment (29), a hand's tags (31) and the event it was
    played in (30), sending it to friends or a group (26), and asking what they would do (27). */
@@ -38,16 +39,26 @@ export function questionHand(hand, streetIdx, actionIdx) {
 /* The note on this moment as a quote bubble over the hero's hand on the felt (owner, 2026-11-28: "This note is hidden.
    Let's put it in a quote bubble above hero's hand"): a card pinned 16r up from the replay's foot, it sat behind the transport.
    Drawn inside the table, unseen until the replay places it (left, top and the tail's x, as shares of the table and of
-   the bubble); four lines at most, and a tap opens the note (its sheet, or the whole note where it cannot be edited). */
-export const MomentBubble = React.forwardRef(function MomentBubble({ note, onOpen }, ref) {
+   the bubble); four lines at most, and a tap on the words opens the note (its sheet, or the whole note where it cannot
+   be edited). The replay stops on a note, and its play button carries on (owner, 2026-11-28: "when a note shows up, the
+   hand should pause, and the note should have a continue symbol for the user to tap"); none where nothing is left. */
+export const MomentBubble = React.forwardRef(function MomentBubble({ note, onOpen, onContinue }, ref) {
   const [open, setOpen] = useState(false);
   useEffect(() => { setOpen(false); }, [note && note.text]);
   if (!note) return null;
   return (
-    <button ref={ref} type="button" className={'mn-bubble' + (open ? ' is-open' : '')} aria-label={'Your note on this moment: ' + note.text}
-      onClick={(e) => { e.stopPropagation(); if (onOpen) onOpen(); else setOpen((v) => !v); }}>
-      <span className="mn-bubble-text">{'“' + note.text + '”'}</span>
-    </button>
+    <div ref={ref} className={'mn-bubble' + (open ? ' is-open' : '')} role="note">
+      <button type="button" className="mn-bubble-text" aria-label={'Your note on this moment: ' + note.text}
+        onClick={(e) => { e.stopPropagation(); if (onOpen) onOpen(); else setOpen((v) => !v); }}>
+        {'“' + note.text + '”'}
+      </button>
+      {onContinue && (
+        <button type="button" className="mn-continue" aria-label="Continue the replay"
+          onClick={(e) => { e.stopPropagation(); onContinue(); }}>
+          <Icon.play />
+        </button>
+      )}
+    </div>
   );
 });
 

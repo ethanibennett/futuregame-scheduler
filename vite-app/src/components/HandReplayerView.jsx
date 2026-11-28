@@ -8618,6 +8618,17 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   }, [playing, tabHidden, speed, streetIdx, actionIdx, showResult, currentActions.length, totalStreets, rSettings.animateDeal]);
 
   useEffect(() => { if (showResult && playing) setPlaying(false); }, [showResult, playing]);
+  /* A note stops the replay where it was written (owner, 2026-11-28: "when a note shows up, the hand should pause, and
+     the note should have a continue symbol for the user to tap"): the bubble's play button carries on. The moment play
+     starts from (Play, or Continue on the bubble) does not stop it again; a drill and an export are not stopped. */
+  const notePlayRef = useRef({ was: false, from: null });
+  useEffect(() => {
+    const s = notePlayRef.current, here = streetIdx + ':' + actionIdx + ':' + (showResult ? 1 : 0);
+    if (playing && !s.was) s.from = here;
+    s.was = playing;
+    if (!playing || drill || here === s.from) return;
+    if (noteAt(hand, streetIdx, actionIdx)) setPlaying(false);
+  }, [playing, streetIdx, actionIdx, showResult, hand, drill]);
 
   /* ── The transport (Replayer animations 76-80) ── */
   const glyphRef = useRef(null);
@@ -12960,7 +12971,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         </span>
       )}
       {!drill && tableEl && createPortal(
-        <MomentBubble ref={noteBubbleRef} note={noteAt(hand, streetIdx, actionIdx)} onOpen={onSaveExtras ? () => setNoteEditing(true) : null} />,
+        <MomentBubble ref={noteBubbleRef} note={noteAt(hand, streetIdx, actionIdx)} onOpen={onSaveExtras ? () => setNoteEditing(true) : null}
+          onContinue={canGoForward ? () => setPlaying(true) : null} />,
         tableEl)}
       {!drill && <NoteTrack hand={hand} streetIdx={streetIdx} onJump={(si, ai) => { setPlaying(false); setStreetIdx(si); setActionIdx(ai); }} />}
       {noteEditing && onSaveExtras && (
