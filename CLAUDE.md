@@ -1239,7 +1239,12 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   spinning"), Thrown under the pot too, on the arm's spring, each card turning 35 to 65 degrees ("Make #8 land under the
   pot", "Make 8 less violent"), and a landing hand is dimmed to 0.7, not 0.42 (on the
   dark felt it could hardly be seen). In stud, Spin in keeps stud's own fold (the 2026-11-22 rule); any other choice plays on
-  the down cards. The recordings: https://claude.ai/artifact/Fc6jrNtpiRx39h8dgViJZx
+  the down cards. **Stud flip under** (11, owner, 2026-11-28: "any upcards slide together in a stack, flip over, and slide
+  under the downcards before shrinking behind the seat"; `studFlipUnder`; the down cards wait, still, until the turned stack
+  slides in, then close on its spring: "it should slide under as they all combine into one stack"): stud's own, last in the list so the others keep
+  their numbers and out of Each their own's pool (adding it would have moved every name's style); the Dead cards strip's copies
+  fade in from the half turn (`faceDownAt`, `appearAt`'s `duration`) instead of a flight landing on them; with no up cards (a
+  flop game) it is Behind the seat. The recordings: https://claude.ai/artifact/Fc6jrNtpiRx39h8dgViJZx
 - **The action pills are solid** (owner, 2026-11-22: "a solid color with contrasting text"): `--act-pill` / `--act-pill-ink`
   per action, from `--act-*-solid` and `--act-ink-light` / `--act-ink-dark` (styles.css, beside `--act-*`): fold, call
   (blue-600) and raise (red-600) in white, check and bet in near-black, all-in as before; each pair measured at 4.8:1 or

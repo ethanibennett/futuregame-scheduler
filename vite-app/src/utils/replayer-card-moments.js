@@ -924,11 +924,13 @@ export function foldAway(reg, { style, set, rate = 1, layer, layerRect, cards, b
  * Stud flip under, stud's own fold (owner, 2026-11-27: "Let's add one specifically for stud: any upcards slide together
  * in a stack, flip over, and slide under the downcards before shrinking behind the seat"). Ghosts in the fold layer, the
  * up cards' drawn under the down cards':
- *   gather  the up cards slide together into one stack and the down cards into another, each round its own arc
- *           (stackGeometry), dimming as they close;
+ *   gather  the up cards slide together into one stack round their arc (stackGeometry), dimming as they close; the down
+ *           cards stay where they are;
  *   flip    a beat later the up stack turns over where it is (scaleX 1 to 0 to 1, an even ease over turnMs, as turnOver
  *           turns a card), its faces swapped for the back at the half turn;
- *   under   the turned stack slides in beneath the down stack, taking its tilt;
+ *   under   the turned stack slides in beneath the down cards AS they close into their stack, on the one spring, so all
+ *           of them become one stack together (owner, 2026-11-28: "Don't push the downcards together until the upcard
+ *           stack combines, it should slide under as they all combine into one stack"), taking the down stack's tilt;
  *   tuck    the one stack goes to the seat's plaque, under it, shrinking to nothing and fading, without turning.
  * up and down: [{ node, cx, cy, w, h, angle }] in page px; seat in the layer's px. Returns { ghosts, faceDownAt }: the
  * half turn (ms), from which the Dead cards strip shows the up cards. With no up cards, or no down ones, it is Behind
@@ -953,15 +955,17 @@ export function studFlipUnder(reg, { set, rate = 1, layer, layerRect, up = [], d
   const h = (t) => (t <= tGo ? 0 : go.at((t - tGo) * rate));
   const end = tGo + settle(go) / rate;
   const T = { x: seat.x + layerRect.left, y: seat.y + layerRect.top };
-  const nu = up.length;
+  const nu = up.length, H = Math.max(...all.map((c) => c.h));
   const ghosts = flyPoses(reg, { layer, layerRect, cards: all, back, end,
-    filter: () => dimTrack({ dimTo, dimMs: tMeet, end, h: Math.max(...all.map((c) => c.h)) }),
+    // Each dims as it closes: the up cards in their gather, the down cards in theirs.
+    filter: (i) => (i < nu ? dimTrack({ dimTo, dimMs: tMeet, end, h: H }) : dimTrack({ dimTo, dimMs: timeTo(slide, 0.97) / rate, delay: tUnder, end, h: H })),
     // An up card's face swapped for the back at the half turn, and kept.
     more: (i) => (i < nu && all[i].node && all[i].node.tagName === 'IMG'
       ? [{ frames: [{ ...FACE_FRAME, offset: 0 }, { ...FACE_FRAME, offset: 0.999 }, { ...backFrameOf(back), offset: 1 }], duration: faceDownAt, fill: 'forwards' }]
       : []),
     pose: (i, t) => {
-      const c = all[i], isUp = i < nu, geo = isUp ? gu : gd, q = g(t), p = geo.at(c, q), hh = clamp01(h(t));
+      // The down cards close on the slide's own spring, from its start: still until then.
+      const c = all[i], isUp = i < nu, geo = isUp ? gu : gd, q = isUp ? g(t) : k(t), p = geo.at(c, q), hh = clamp01(h(t));
       const kk = isUp ? k(t) : 0;
       const x = p.x + (gd.S.x - gu.S.x) * kk + (T.x - gd.S.x) * h(t), y = p.y + (gd.S.y - gu.S.y) * kk + (T.y - gd.S.y) * h(t);
       return { x, y, rotate: geo.angleAt(c, q) + (isUp ? (gd.aS - gu.aS) * kk : 0), scale: 1 + (0.05 - 1) * hh,

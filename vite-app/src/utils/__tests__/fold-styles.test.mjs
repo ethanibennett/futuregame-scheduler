@@ -161,6 +161,18 @@ test('Stud flip under: the up cards stack, turn face down, go under the down car
     together = ps.every((p) => Math.hypot(p.x - ps[5].x, p.y - ps[5].y) < 2) && val(runs[0], 'opacity', t) > 0.95;
   }
   assert.ok(together, 'the turned stack ends under the down stack, as one, before it goes');
+  // The down cards wait (owner, 2026-11-28: "Don't push the downcards together until the upcard stack combines"): still
+  // through the up cards' gather and turn, then moving from the same instant as the turned stack, closing as it slides in.
+  const moved = (spec, t, from) => Math.hypot(val(spec, 'x', t) - val(spec, 'x', from), val(spec, 'y', t) - val(spec, 'y', from)) > 0.02;
+  const firstMove = (spec, from) => { for (let t = from; t <= spec.end; t += 2) if (moved(spec, t, from)) return t; return Infinity; };
+  for (const i of [3, 4, 5]) {
+    for (let t = 0; t <= faceDownAt; t += 8) {
+      assert.ok(Math.hypot(val(runs[i], 'x', t), val(runs[i], 'y', t)) < 0.01 && val(runs[i], 'rotate', t) === all[i].angle, `down card ${i} still at ${t}ms`);
+    }
+  }
+  // The middle up card is the stack's own place (it does not move in the gather): its first move is the slide's.
+  const tUp = firstMove(runs[1], faceDownAt + 1);
+  for (const i of [3, 5]) assert.ok(Math.abs(firstMove(runs[i], faceDownAt + 1) - tUp) <= 4, `down card ${i} starts with the turned stack (${tUp}ms)`);
 });
 
 test('the same fold plays the same way (seeded)', () => {
