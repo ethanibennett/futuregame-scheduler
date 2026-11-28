@@ -1086,7 +1086,9 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
     clips just above the street track). `--insets "59,34" --admin` lays the page out as the app on an iPhone (safe areas,
     and the admin row under the transport, which takes table height): run it at 402x874 and 440x956 too (owner,
     2026-11-17, "Bottom part of hero is cut off", a draw game's run and hand name under the bottom plaque past the clip).
-    Run it after any change to the felt, and alone: two at once can land on one scratch server (a --build run measured
+    `--flat` lays the cards flat (Splay off), where a stud row is at its widest: every card, backs included, shows 0.4
+    of itself (owner, 2026-11-28: "With splay turned off, opponents cards are overlapping too much"; the backs had
+    tucked to 0.15). Run it after any change to the felt, and alone: two at once can land on one scratch server (a --build run measured
     the other's build). `--json <file>` writes every collision (kind, hand, step, pieces). It runs under Reduce Motion,
     where the replay keeps fades and colours but no transition of a place (`.replayer-replay *` `transition-property`):
     a 1 ms or 140 ms transition on margins or left/top let every layout effect below read a piece back where it had

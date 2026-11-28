@@ -10335,7 +10335,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
        watermark, pot above the watermark, and the result pills under the game/limits"). They hung under the pot, on
        the watermark. */
     const studPill = gameCfg.isStud && !(board && board.querySelector('.card-row > *')) ? table.querySelector('.replayer-table-info') : null;
-    const anchor = board && board.querySelector('.card-row > *') ? board : (studPill || table.querySelector('.replayer-pot-display'));
+    const potAnchor = table.querySelector('.replayer-pot-display');
+    const anchor = board && board.querySelector('.card-row > *') ? board : (studPill || potAnchor);
     if (rows.length && anchor && rows[0].offsetParent) {
       const cb = rows[0].offsetParent;
       const oy = cb.getBoundingClientRect().top + cb.clientTop;
@@ -10346,32 +10347,44 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
          Not the readouts: they are placed after, round the rows. */
       const seatBoxes = [...table.querySelectorAll('.replayer-seat-info, .replayer-action-badge-outer, .replayer-seat-draw-badge, .replayer-dealer-btn, .replayer-seat-cards .card-row > *')]
         .map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
-      let y = anchor.getBoundingClientRect().bottom + r * 0.75;
-      if (anchor === studPill) {
-        // The pill's own foot (not its 46% column), where it rests: placePill, after this, may move it for the step.
-        const kids = [...studPill.children].map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
-        const foot = kids.length ? Math.max(...kids.map(b => b.bottom)) : studPill.getBoundingClientRect().bottom;
-        y = foot - (parseFloat(studPill.style.marginTop) || 0) + r * 0.75;
-      }
-      rows.forEach(el => {
-        el.style.maxWidth = ''; el.style.flexWrap = '';
-        el.style.top = (y - oy) + 'px';
-        for (let pass = 0; pass < 3; pass++) {
-          const b = el.getBoundingClientRect();
-          const cx = b.left + b.width / 2;
-          let lo = -Infinity, hi = Infinity;
-          seatBoxes.forEach(s => {
-            if (s.bottom <= b.top || s.top >= b.bottom) return;
-            if (s.right < cx) lo = Math.max(lo, s.right);
-            else if (s.left > cx) hi = Math.min(hi, s.left);
-          });
-          const half = Math.min(cx - lo, hi - cx) - r / 2;
-          if (!(half < b.width / 2) || half <= 0) break;
-          el.style.flexWrap = 'wrap';
-          el.style.maxWidth = `calc(var(--gu) * ${(2 * half / gu).toFixed(3)})`;
+      const layRows = (from) => {
+        let y = from.getBoundingClientRect().bottom + r * 0.75;
+        if (from === studPill) {
+          // The pill's own foot (not its 46% column), where it rests: placePill, after this, may move it for the step.
+          const kids = [...studPill.children].map(e => e.getBoundingClientRect()).filter(b => b.width > 0 && b.height > 0);
+          const foot = kids.length ? Math.max(...kids.map(b => b.bottom)) : studPill.getBoundingClientRect().bottom;
+          y = foot - (parseFloat(studPill.style.marginTop) || 0) + r * 0.75;
         }
-        y = el.getBoundingClientRect().bottom + r * 0.5;
-      });
+        rows.forEach(el => {
+          el.style.maxWidth = ''; el.style.flexWrap = '';
+          el.style.top = (y - oy) + 'px';
+          for (let pass = 0; pass < 3; pass++) {
+            const b = el.getBoundingClientRect();
+            const cx = b.left + b.width / 2;
+            let lo = -Infinity, hi = Infinity;
+            seatBoxes.forEach(s => {
+              if (s.bottom <= b.top || s.top >= b.bottom) return;
+              if (s.right < cx) lo = Math.max(lo, s.right);
+              else if (s.left > cx) hi = Math.min(hi, s.left);
+            });
+            const half = Math.min(cx - lo, hi - cx) - r / 2;
+            if (!(half < b.width / 2) || half <= 0) break;
+            el.style.flexWrap = 'wrap';
+            el.style.maxWidth = `calc(var(--gu) * ${(2 * half / gu).toFixed(3)})`;
+          }
+          y = el.getBoundingClientRect().bottom + r * 0.5;
+        });
+      };
+      layRows(anchor);
+      /* A stud table whose band under the game pill is narrower than a pill (seven seats with the cards lying flat, on
+         the desktop: the bottom seats' rows rise to the pill's foot, and a split's shares wrapped to a column that ran
+         onto a card) lays the rows under the pot instead, as a table with no board does; the game pill is placed after,
+         round them. */
+      const meets = () => rows.some(el => [...el.children].some(k => {
+        const b = k.getBoundingClientRect();
+        return b.width > 0 && seatBoxes.some(s => Math.min(b.right, s.right) - Math.max(b.left, s.left) > 0.5 && Math.min(b.bottom, s.bottom) - Math.max(b.top, s.top) > 0.5);
+      }));
+      if (anchor === studPill && potAnchor && meets()) layRows(potAnchor);
     }
   });
   /* keepHandNamesOn (owner, 2026-11-13): every showdown readout is centred under its seat; one that would

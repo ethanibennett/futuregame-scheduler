@@ -5951,11 +5951,12 @@
       --card-h: calc(var(--plaque-w) * 0.56);
       --card-w: calc(var(--card-h) * 0.7143);
     }
+    /* The face-down cards no longer tuck (owner, 2026-11-28: "With splay turned off, opponents cards are
+       overlapping too much"): at 0.15 of a card a 3rd-street opponent's two backs were slivers behind the door.
+       Every card in the row shows 0.4 of itself now, backs included, so an opponent's row is as wide before the
+       showdown as it already was once its cards were turned up (seven cards: 1.36 plaques, as the hero's). */
     .replayer-table:is([data-hand-cards="7"], [data-hand-cards="6"], [data-hand-cards="5"][data-community="1"])[data-flat="1"] .replayer-seat-cards .card-row:not(.card-row-splay) > *:not(:first-child) {
       margin-left: calc(var(--card-h) * 0.7143 * -1 * max(var(--card-overlap, 0.52), 0.6));
-    }
-    .replayer-table:is([data-hand-cards="7"], [data-hand-cards="6"], [data-hand-cards="5"][data-community="1"])[data-flat="1"] .replayer-seat-cards .card-row:not(.card-row-splay) > :is(.card-unknown, .card-placeholder) + * {
-      margin-left: calc(var(--card-h) * 0.7143 * -0.85);
     }
 
     .replayer-seat {

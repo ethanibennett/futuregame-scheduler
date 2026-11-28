@@ -45,6 +45,8 @@ const MAX_STEPS = 80;
 // the table's height. Neither is on by default: the default sizes are a browser's.
 const INSETS = opt('--insets', '');
 const ADMIN = args.includes('--admin');
+// --flat: the cards lying flat (Replayer settings > Splay off), where a stud row is wider (owner, 2026-11-28).
+const FLAT = args.includes('--flat');
 
 // Long names, as real tables have them: the plaque is sized by its name.
 const NAMES = ['Vincent Basilicata', 'Joshua Rhodes', 'Rob Klein', 'Maria Konstantinidis', 'Alexander Petrov',
@@ -273,6 +275,7 @@ async function worker(wi) {
       ctx = await browser.newContext({ viewport: { width: job.w, height: job.h }, reducedMotion: 'reduce' });
       await ctx.addInitScript((tk) => { localStorage.setItem('token', tk); localStorage.setItem('onboarded', '1'); localStorage.setItem('hasOnboarded', 'true'); }, token);
       await ctx.addInitScript(MEASURE);
+      if (FLAT) await ctx.addInitScript(() => { localStorage.setItem('replayerCardSplay', 'false'); });
       if (INSETS) await ctx.addInitScript(([t, b]) => {
         const set = () => { document.documentElement.style.setProperty('--sa-t', t + 'px'); document.documentElement.style.setProperty('--sa-b', b + 'px'); };
         if (document.documentElement) set();
