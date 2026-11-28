@@ -1217,6 +1217,15 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   never holds it; `check-replayer-smooth` reads it (kind `flood`) in its real-time pass, and both replayer guards take
   `--ports lo-hi`. `warmSuitFlood` runs a small simulation at idle when the replay opens: a cold first run took 100 to
   150ms where a warm one takes 20. Tests: `showdown-specials.test.mjs` in `npm test`.
+- **Fold Motion** (owner, 2026-11-27: "Let's make a few more folding motions other than the helicopter into the muck and the
+  shrink behind the box"; `foldAway` / `FOLD_STYLES` in `utils/replayer-card-moments.js`, `fold-styles.test.mjs` in `npm test`):
+  Replayer settings › Animation › Fold Motion (`replayerFoldStyle`, a viewer preference). Spin in (the default, 25) and Behind
+  the seat are `foldToStack`'s; Spread, Lift and drop and Flicked are the owner's; Pushed, Lobbed, Thrown and Coin spin were
+  offered with them; Each their own gives every player one of them by their name (`foldStyleOf`). Each style is a pose per card
+  over the moment's clock (`flyPoses`), so Back, a jump and an export seek it; a thrown or tossed hand lands in the dealer's
+  muck (`muckTarget`), Lift and drop just past the seat's betting line, and a landing hand is dimmed to 0.7, not 0.42 (on the
+  dark felt it could hardly be seen). In stud, Spin in keeps stud's own fold (the 2026-11-22 rule); any other choice plays on
+  the down cards. The recordings: https://claude.ai/artifact/Fc6jrNtpiRx39h8dgViJZx
 - **The action pills are solid** (owner, 2026-11-22: "a solid color with contrasting text"): `--act-pill` / `--act-pill-ink`
   per action, from `--act-*-solid` and `--act-ink-light` / `--act-ink-dark` (styles.css, beside `--act-*`): fold, call
   (blue-600) and raise (red-600) in white, check and bet in near-black, all-in as before; each pair measured at 4.8:1 or

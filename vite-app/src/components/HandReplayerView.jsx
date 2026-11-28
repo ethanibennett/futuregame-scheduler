@@ -45,7 +45,7 @@ import {
 } from '../utils/replayer-motion.js';
 import { SPRING_SETS, spring, timeTo, tierSpring, keyframes as transportKeyframes, REPLAYER_PACE } from '../utils/spring.js';
 import { bestFive, halvesOf, counterfeitedNow, leaderOf, lowDecider, indexOfLowRank, streetChange } from '../utils/replayer-reading.js';
-import { turnOver, dealIn, liftOnce, poseTo, rap, ghostsAway, labelsAway, cardsAway, foldToStack, angleOf, cardTimes, slideRow, runOutBoard, runOutTimes, poseSequence, drawIn, ghostsTo, appearAt, makeRoom } from '../utils/replayer-card-moments.js';
+import { turnOver, dealIn, liftOnce, poseTo, rap, ghostsAway, labelsAway, cardsAway, foldAway, foldStyleOf, FOLD_STYLES, normalizeFoldStyle, angleOf, cardTimes, slideRow, runOutBoard, runOutTimes, poseSequence, drawIn, ghostsTo, appearAt, makeRoom } from '../utils/replayer-card-moments.js';
 import { showdownSpecial } from '../utils/showdown-specials.js';
 import { playSuitFlood, warmSuitFlood } from '../utils/showdown-moments.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
@@ -2614,6 +2614,23 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             { key:'animateChips', label:'Chip Animation', sub:'The pot ships to the winner' },
             { key:'animateBoard', label:'Board Flip', sub:'Board cards flip face-up' },
           ])}
+          {/* How a folded hand leaves (owner, 2026-11-27: "Let's make a few more folding motions"; FOLD_STYLES in
+              utils/replayer-card-moments.js). Each their own gives every player one of them, fixed by their name. */}
+          {settings.animateFold && (
+            <div className="replayer-settings-row is-stacked">
+              <div className="rs-text">
+                <div className="replayer-settings-label rs-cell"><span className="rs-t">Fold Motion</span></div>
+                <div className="replayer-settings-sublabel rs-cell"><span className="rs-t">How a folded hand leaves the table</span></div>
+              </div>
+              <div className="replayer-settings-pills is-text" role="radiogroup" aria-label="Fold motion">
+                {FOLD_STYLES.map(f => (
+                  <button key={f.id} type="button" role="radio" aria-checked={settings.foldStyle === f.id}
+                    className={'replayer-settings-choice ctl' + (settings.foldStyle === f.id ? ' active' : '')}
+                    onClick={() => onUpdate('foldStyle', f.id)}>{f.label}</button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>,
@@ -6965,6 +6982,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   const _animBoard = useReplayerSetting('AnimateBoard', true, vs('animateBoard'));
   const _animWinner = useReplayerSetting('AnimateWinner', true);
   const _animFold = useReplayerSetting('AnimateFold', true, vs('animateFold'));
+  /* How a folded hand leaves (FOLD_STYLES): a viewer preference, like the card back. */
+  const _foldStyle = useReplayerSetting('FoldStyle', 'spin');
   /* The card back (utils/card-back.js): a viewer preference, not part of a shared link's look. */
   const _cardBack = useReplayerSetting(CARD_BACK_KEY.replace(/^replayer/, ''), 'standard');
   useEffect(() => { applyCardBack(_cardBack[0]); }, [_cardBack[0]]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -6982,7 +7001,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     showRanges: _showRanges[0], showChipDelta: _showChipDelta[0],
     showEquity: _showEquity[0], stacksInBB: _stacksInBB[0], hideOppNames: _hideOppNames[0], showResults: _showResults[0],
     animateDeal: _animDeal[0], animateChips: _animChips[0], animateBoard: _animBoard[0], animateWinner: false,
-    animateFold: _animFold[0],
+    animateFold: _animFold[0], foldStyle: normalizeFoldStyle(_foldStyle[0]),
     cardSplay: _cardSplay[0], splayAmount: _splayAmount[0], cardOverlap: _cardOverlap[0], lightStrip: _lightStrip[0], feltBright: _feltBright[0],
     cardBack: normalizeCardBack(_cardBack[0]),
   };
@@ -6996,7 +7015,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     showRanges: _showRanges[1], showChipDelta: _showChipDelta[1],
     showEquity: _showEquity[1], stacksInBB: _stacksInBB[1], hideOppNames: _hideOppNames[1], showResults: _showResults[1],
     animateDeal: _animDeal[1], animateChips: _animChips[1], animateBoard: _animBoard[1], animateWinner: _animWinner[1],
-    animateFold: _animFold[1],
+    animateFold: _animFold[1], foldStyle: v => _foldStyle[1](normalizeFoldStyle(v)),
     cardSplay: _cardSplay[1], splayAmount: _splayAmount[1], cardOverlap: _cardOverlap[1], lightStrip: _lightStrip[1], feltBright: _feltBright[1],
     cardBack: v => _cardBack[1](normalizeCardBack(v)),
   };
@@ -11684,6 +11703,25 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         const prevCards = motion.prevSeatCards || new Map();
         const prevEls = motion.prevCardEls || new Set();
         const backPaint = motion.backPaint || null;
+        /* Where a folded hand can go (foldAway, utils/replayer-card-moments.js), in the fold layer's px: the felt's middle
+           (Spin in), the dealer's muck beside the deck, just past the seat's betting line (the wager's spot, as the bets'
+           own placement works it out, and a fifth of the way on toward the pot), and the seat's plaque. */
+        const foldPoints = (pi, R0) => {
+          const at = (pct) => { const p = ptOf(pct); return { x: p.x - R0.left, y: p.y - R0.top }; };
+          const sp = seats[pi] || [50, 50];
+          const side = Math.abs(sp[0] - 50) > 25 && Math.abs(sp[1] - 50) <= (isLandscape ? 12.5 : 25);
+          const wx = sp[0] + (50 - sp[0]) * (side && !isLandscape ? 0.6 : 0.42);
+          const wy = side ? sp[1] : sp[1] + (40 - sp[1]) * (isLandscape ? 0.42 : sp[1] > 40 ? 0.26 : 0.3);
+          const plaque = table.querySelector('.replayer-seat[data-seat="' + pi + '"] .replayer-seat-info');
+          const PQ = plaque ? plaque.getBoundingClientRect() : null;
+          return {
+            middle: at([50, 54]), muck: at(muckTarget),
+            line: at([wx + (50 - wx) * 0.2, side ? wy : wy + (40 - wy) * 0.2]),
+            seat: PQ ? { x: PQ.left + PQ.width / 2 - R0.left, y: PQ.top + PQ.height / 2 - R0.top } : null,
+          };
+        };
+        const foldWho = (pi) => (hand.players[pi] && hand.players[pi].name) || 'seat ' + pi;
+        const foldSeed = (pi) => (hand.id || '') + ':' + streetIdx + ':' + actionIdx + ':' + pi;
 
         /* 25: a folded hand gathers and goes (owner, 2026-11-21: "When splayed, they should just slide together around the
            arc into a single stack, then that whole stack should spin into the middle. Same with non-splayed, but they
@@ -11692,13 +11730,14 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         if (act && act.action === 'fold' && L && rSettings.animateFold && !gameCfg.isStud) {
           const was = (prevCards.get(act.player) || []).filter(c => c.node);
           if (was.length) {
-            const m = ptOf([50, 54]);
             // At 3/4 of the replay's pace (owner, 2026-11-21: "Let's go 3/4 speed").
             /* Under the seats (owner, 2026-11-22: "When the cards slide together before mucking that should happen behind
                the seat box and they should always be below it in the z dimension"): in the flight layer they gathered
-               over the plaque. */
+               over the plaque. The motion is the Fold Motion setting's (owner, 2026-11-27; Spin in, the default, is 25). */
             const fl = foldLayer && FL ? foldLayer : layer, FLr = foldLayer && FL ? FL : L;
-            writes.push(() => foldToStack(motion, { set, rate: rate * 0.75, layer: fl, layerRect: FLr, cards: was, target: { x: m.x - FLr.left, y: m.y - FLr.top }, back: backPaint }));
+            const pts = foldPoints(act.player, FLr);
+            const style = foldStyleOf(rSettings.foldStyle, foldWho(act.player));
+            writes.push(() => foldAway(motion, { style, set, rate: rate * 0.75, layer: fl, layerRect: FLr, cards: was, back: backPaint, ...pts, seed: foldSeed(act.player) }));
           }
         }
 
@@ -11736,13 +11775,16 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             const plaque = table.querySelector('.replayer-seat[data-seat="' + act.player + '"] .replayer-seat-info');
             const PQ = plaque ? plaque.getBoundingClientRect() : null;
             const fl = foldLayer && FL ? foldLayer : layer, FLr = foldLayer && FL ? FL : L;
+            /* Stud's own under Spin in (the owner's 2026-11-22 rule above); any other Fold Motion as chosen. */
+            const downStyle = foldStyleOf(rSettings.foldStyle, foldWho(act.player));
+            const downPts = FLr ? foldPoints(act.player, FLr) : null;
             writes.push(() => {
               const lands = ghostsTo(motion, { set, rate, cards: flights });
               flights.forEach((f, i) => appearAt(motion, { set, rate, el: f.target, at: lands[i] || 0, size: f.size }));
               moves.forEach(mv => makeRoom(motion, { set, rate, el: mv.el, dx: mv.dx, size: mv.size }));
               if (down.length && fl && FLr && PQ) {
-                foldToStack(motion, { set, rate: rate * 0.75, layer: fl, layerRect: FLr, cards: down, back: backPaint,
-                  target: { x: PQ.left + PQ.width / 2 - FLr.left, y: PQ.top + PQ.height / 2 - FLr.top }, spin: 0, scaleTo: 0.05 });
+                foldAway(motion, { style: downStyle === 'spin' ? 'tuck' : downStyle, set, rate: rate * 0.75, layer: fl, layerRect: FLr, cards: down,
+                  back: backPaint, ...downPts, seed: foldSeed(act.player) });
               }
             });
           }

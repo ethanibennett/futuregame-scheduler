@@ -7740,12 +7740,21 @@
     .replayer-settings-thumb { width: calc(var(--gu) * 8); gap: 0; }
     .replayer-settings-thumb .thumb-felt { width: calc(var(--gu) * 8); height: calc(var(--subrow) * 5); }
     .replayer-settings-thumb .thumb-label { line-height: normal; font-size: var(--fs-xs); white-space: nowrap; }
-    /* Text pills: 8g x 3r in the first two primary columns (1..9, 10..18);
-       caps 0.95..2r of 3r. */
+    /* Text pills (Fold Motion, owner 2026-11-27): 8g x 3r on the thumbnails' four primary columns, the label centred
+       in the box (the pills-and-buttons rule); the chosen one ringed in the brand colour, as a chosen thumbnail is. */
     .replayer-settings-pills.is-text {
-      display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 8));
-      column-gap: var(--gu); margin-top: var(--subrow);
+      display: grid; grid-template-columns: repeat(auto-fill, calc(var(--gu) * 8));
+      column-gap: var(--gu); row-gap: var(--subrow); width: 100%; margin-top: var(--subrow);
     }
+    .replayer-settings-choice {
+      width: calc(var(--gu) * 8); height: calc(var(--subrow) * 3); padding: 0 calc(var(--gu) * 0.25);
+      border: 0; border-radius: var(--radius-sm); background: transparent; cursor: pointer;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      color: var(--text-muted); font-family: var(--font-condensed); font-size: var(--fs-xs); white-space: nowrap;
+      transition: box-shadow var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+    }
+    .replayer-settings-choice.active { color: var(--text); box-shadow: inset 0 0 0 var(--bw-2) var(--brand); }
+    .replayer-settings-choice:focus-visible { outline: calc(var(--subrow) * 0.25) solid var(--brand); outline-offset: calc(var(--subrow) * 0.25); }
 
     /* Share sheet (the replay's own, .replayer-share-sheet): same edge rules
        as the settings sheet; two 17g tiles with a 1g gutter (1..18, 19..36). */

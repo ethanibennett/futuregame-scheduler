@@ -486,15 +486,47 @@ export function angleOf(matrix) {
 export function foldToStack(reg, { set, rate = 1, layer, layerRect, cards, target, spin = 360, scaleTo = 0.6, back = null, dimTo = 0.42 }) {
   if (!layer || !layerRect || !cards.length) return [];
   const gather = tierSpring(set, 'slide'), go = tierSpring(set, 'inertia');
+  const geo = stackGeometry(cards);
+  const S = geo.S;
+  const tMeet = timeTo(gather, 0.985) / rate;
+  const tGo = tMeet + stage(set).beat / rate * 0.5;
+  const end = tGo + settle(go) / rate;
+  const g = (t) => (t <= 0 ? 0 : gather.at(t * rate));
+  const h = (t) => (t <= tGo ? 0 : go.at((t - tGo) * rate));
+  const T = { x: target.x + layerRect.left, y: target.y + layerRect.top };
+  const dir = T.x >= S.x ? 1 : -1;
+  const host = ghostHost(layer);
+  return cards.map((c, i) => {
+    const ghost = ghostOf(host, c, layerRect, back, i);
+    const a0 = c.angle || 0;
+    const pos = (t) => { const q = g(t), k = h(t), p = geo.at(c, q); return { x: p.x + (T.x - S.x) * k, y: p.y + (T.y - S.y) * k }; };
+    return reg.run(ghost, {
+      transient: true, size: { w: c.w, h: c.h }, tolPx: 0.25, end,
+      extras: [{ el: ghost, frames: [{ filter: 'brightness(1)' }, { filter: 'brightness(' + dimTo + ')' }],
+        options: { duration: Math.max(1, tMeet), delay: 0, fill: 'forwards', easing: 'cubic-bezier(0.33, 0, 0.2, 1)' } }],
+      channels: [
+        { prop: 'x', fn: (t) => pos(Math.min(t, end)).x, start: 0, end, key: 'fsx:' + i + ':' + c.cx + ':' + c.cy + ':' + T.x },
+        { prop: 'y', fn: (t) => pos(Math.min(t, end)).y, start: 0, end, key: 'fsy:' + i + ':' + c.cx + ':' + c.cy + ':' + T.y },
+        { prop: 'rotate', fn: (t) => { const q = g(Math.min(t, end)), k = h(Math.min(t, end)); return a0 + (geo.aS - a0) * q + dir * spin * k; }, start: 0, end, key: 'fsr:' + i + ':' + a0 + ':' + geo.aS + ':' + dir },
+        { prop: 'scale', fn: (t) => 1 + (scaleTo - 1) * clamp01(h(Math.min(t, end))), start: 0, end, key: 'fss:' + scaleTo + ':' + tGo },
+        { prop: 'opacity', fn: (t) => 1 - clamp01(h(Math.min(t, end))), start: 0, end, key: 'fso2:' + tGo },
+      ],
+    }) && ghost;
+  }).filter(Boolean);
+}
+
+/* Where a hand's cards meet when it is gathered into one stack (25): a fan's pivot P and radius are fitted to the cards'
+   centres and tilts (least squares on c = P + R * unit(angle), unknowns Px, Py, R), and the stack forms on the middle
+   card (on the arc between the two middle cards for an even count). `at(c, q)` is where card c's centre is at gather
+   progress q, relative to where it started; `angleAt(c, q)` its tilt. A flat row slides straight along. */
+function stackGeometry(cards) {
   const n = cards.length;
   const rad = (d) => (d * Math.PI) / 180;
   const unit = (d) => ({ x: Math.sin(rad(d)), y: -Math.cos(rad(d)) });
-  // The fan's pivot P and radius: least squares on c = P + R * unit(angle), unknowns Px, Py, R.
   const angles = cards.map((c) => c.angle || 0);
   const fanned = Math.max(...angles) - Math.min(...angles) > 1;
   let P = null;
   if (fanned) {
-    // Normal equations for [Px, Py, R].
     const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], b = [0, 0, 0];
     for (const c of cards) {
       const u = unit(c.angle || 0);
@@ -512,67 +544,339 @@ export function foldToStack(reg, { set, rate = 1, layer, layerRect, cards, targe
       if (R > 0) P = { x: det(col(0)) / D, y: det(col(1)) / D };
     }
   }
-  // The stack forms on the middle card (on the arc between the two middle cards for an even count).
   const mid = (n - 1) / 2;
   const lo = cards[Math.floor(mid)], hi = cards[Math.ceil(mid)];
   const aS = ((lo.angle || 0) + (hi.angle || 0)) / 2;
   const radiusOf = (c) => (P ? (c.cx - P.x) * unit(c.angle || 0).x + (c.cy - P.y) * unit(c.angle || 0).y : 0);
   const rS = (radiusOf(lo) + radiusOf(hi)) / 2;
   const S = P ? { x: P.x + rS * unit(aS).x, y: P.y + rS * unit(aS).y } : { x: (lo.cx + hi.cx) / 2, y: (lo.cy + hi.cy) / 2 };
-  const tMeet = timeTo(gather, 0.985) / rate;
-  const tGo = tMeet + stage(set).beat / rate * 0.5;
-  const end = tGo + settle(go) / rate;
-  const g = (t) => (t <= 0 ? 0 : gather.at(t * rate));
-  const h = (t) => (t <= tGo ? 0 : go.at((t - tGo) * rate));
-  const T = { x: target.x + layerRect.left, y: target.y + layerRect.top };
-  const dir = T.x >= S.x ? 1 : -1;
+  const at = (c, q) => {
+    if (!P) return { x: (S.x - c.cx) * q, y: (S.y - c.cy) * q };
+    const a0 = c.angle || 0, r0 = radiusOf(c);
+    const th = a0 + (aS - a0) * q, r = r0 + (rS - r0) * q, u = unit(th);
+    return { x: P.x + r * u.x - c.cx, y: P.y + r * u.y - c.cy };
+  };
+  const angleAt = (c, q) => (c.angle || 0) + (aS - (c.angle || 0)) * q;
+  return { S, aS, at, angleAt };
+}
+
+/* The fold layer's row of ghosts (one per layer, made on first use). */
+function ghostHost(layer) {
   let host = layer.querySelector(':scope > .replayer-ghost-row');
   if (!host) {
     host = document.createElement('div');
     host.className = 'card-row replayer-ghost-row';
     layer.appendChild(host);
   }
-  return cards.map((c, i) => {
-    const ghost = c.node.cloneNode(true);
-    ghost.removeAttribute('data-ck');
-    ghost.removeAttribute('data-slot');
-    ghost.style.cssText = '';
-    ghost.className = c.node.className;
-    const a0 = c.angle || 0;
+  return host;
+}
+
+/* A ghost of card c in `host`, drawn where the card is (its centre at c.cx, c.cy in the page), untransformed. */
+function ghostOf(host, c, layerRect, back, i) {
+  const ghost = c.node.cloneNode(true);
+  ghost.removeAttribute('data-ck');
+  ghost.removeAttribute('data-slot');
+  ghost.style.cssText = '';
+  ghost.className = c.node.className;
+  Object.assign(ghost.style, {
+    position: 'absolute', left: (c.cx - layerRect.left - c.w / 2) + 'px', top: (c.cy - layerRect.top - c.h / 2) + 'px',
+    width: c.w + 'px', height: c.h + 'px', margin: '0', transformOrigin: '50% 50%', zIndex: String(i + 1),
+    transform: 'none', pointerEvents: 'none',
+  });
+  /* A face-down card is a placeholder the seat's own rules paint; out of the seat it is painted as the theme's back
+     (`back`, read off a back on the table, as a turn-over is). */
+  if (c.node.tagName !== 'IMG' && back) {
     Object.assign(ghost.style, {
-      position: 'absolute', left: (c.cx - layerRect.left - c.w / 2) + 'px', top: (c.cy - layerRect.top - c.h / 2) + 'px',
-      width: c.w + 'px', height: c.h + 'px', margin: '0', transformOrigin: '50% 50%', zIndex: String(i + 1),
-      transform: 'none', pointerEvents: 'none',
+      backgroundImage: back.image || 'none', backgroundColor: back.color || '#1a2744', backgroundSize: back.size || 'auto',
+      backgroundPosition: back.position || '0% 0%', backgroundRepeat: back.repeat || 'repeat', borderRadius: back.radius || '',
+      boxShadow: 'inset 0 0 0 1px ' + (back.ring || '#3a5a8a'),
     });
-    /* A face-down card is a placeholder the seat's own rules paint; out of the seat it is painted as the theme's back
-       (`back`, read off a back on the table, as a turn-over is). */
-    if (c.node.tagName !== 'IMG' && back) {
-      Object.assign(ghost.style, {
-        backgroundImage: back.image || 'none', backgroundColor: back.color || '#1a2744', backgroundSize: back.size || 'auto',
-        backgroundPosition: back.position || '0% 0%', backgroundRepeat: back.repeat || 'repeat', borderRadius: back.radius || '',
-        boxShadow: 'inset 0 0 0 1px ' + (back.ring || '#3a5a8a'),
-      });
-    }
-    host.appendChild(ghost);
-    const r0 = radiusOf(c);
-    // Where the card's centre is at gather progress q, relative to where it started.
-    const at = (q) => {
-      if (!P) return { x: (S.x - c.cx) * q, y: (S.y - c.cy) * q };
-      const th = a0 + (aS - a0) * q, r = r0 + (rS - r0) * q, u = unit(th);
-      return { x: P.x + r * u.x - c.cx, y: P.y + r * u.y - c.cy };
+  }
+  host.appendChild(ghost);
+  return ghost;
+}
+
+/**
+ * The ways a folded hand can leave the table (owner, 2026-11-27: "Let's make a few more folding motions other than the
+ * helicopter into the muck and the shrink behind the box"), the Replayer setting Fold Motion. Spin in and Behind the
+ * seat are foldToStack's two (25, and the stud fold's down cards); Spread, Lift and drop and Flicked are the owner's
+ * three; the rest were offered with them. Each their own gives every player one of them, fixed by their name.
+ */
+export const FOLD_STYLES = [
+  { id: 'spin', label: 'Spin in' },
+  { id: 'tuck', label: 'Behind the seat' },
+  { id: 'spread', label: 'Spread' },
+  { id: 'drop', label: 'Lift and drop' },
+  { id: 'flick', label: 'Flicked' },
+  { id: 'push', label: 'Pushed' },
+  { id: 'lob', label: 'Lobbed' },
+  { id: 'throw', label: 'Thrown' },
+  { id: 'coin', label: 'Coin spin' },
+  { id: 'each', label: 'Each their own' },
+];
+const FOLD_IDS = new Set(FOLD_STYLES.map((s) => s.id));
+export const normalizeFoldStyle = (v) => (FOLD_IDS.has(v) ? v : 'spin');
+
+const hashStr = (s) => {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+};
+/* A small seeded generator (mulberry32): the same fold scatters the same way every time it is played or exported. */
+function seeded(seed) {
+  let a = hashStr(String(seed)) || 1;
+  return () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** The style a fold plays: the setting's, or under Each their own the player's own, by `who` (their name). */
+export function foldStyleOf(setting, who = '') {
+  const s = normalizeFoldStyle(setting);
+  if (s !== 'each') return s;
+  const pool = FOLD_STYLES.map((x) => x.id).filter((id) => id !== 'each');
+  return pool[hashStr('fold:' + String(who).trim().toLowerCase()) % pool.length];
+}
+
+/* Ghosts of `cards` each on its own pose over the moment's clock: pose(i, t) gives { x, y } (px from where the card
+   was), rotate (deg, absolute), scale, scaleX and opacity, every one a function of t, so Back, a jump and an export
+   seek it like any spring. `filter(i)` is an optional per-card filter track ({ frames, duration, delay }). */
+function flyPoses(reg, { layer, layerRect, cards, back, end, pose, filter }) {
+  const host = ghostHost(layer);
+  return cards.map((c, i) => {
+    const ghost = ghostOf(host, c, layerRect, back, i);
+    let lastT = NaN, lastV = null;
+    const at = (t) => {
+      const tt = Math.max(0, Math.min(t, end));
+      if (tt !== lastT) { lastT = tt; lastV = pose(i, tt); }
+      return lastV;
     };
-    const pos = (t) => { const q = g(t), k = h(t), p = at(q); return { x: p.x + (T.x - S.x) * k, y: p.y + (T.y - S.y) * k }; };
+    const f = filter ? filter(i) : null;
     return reg.run(ghost, {
       transient: true, size: { w: c.w, h: c.h }, tolPx: 0.25, end,
-      extras: [{ el: ghost, frames: [{ filter: 'brightness(1)' }, { filter: 'brightness(' + dimTo + ')' }],
-        options: { duration: Math.max(1, tMeet), delay: 0, fill: 'forwards', easing: 'cubic-bezier(0.33, 0, 0.2, 1)' } }],
-      channels: [
-        { prop: 'x', fn: (t) => pos(Math.min(t, end)).x, start: 0, end, key: 'fsx:' + i + ':' + c.cx + ':' + c.cy + ':' + T.x },
-        { prop: 'y', fn: (t) => pos(Math.min(t, end)).y, start: 0, end, key: 'fsy:' + i + ':' + c.cx + ':' + c.cy + ':' + T.y },
-        { prop: 'rotate', fn: (t) => { const q = g(Math.min(t, end)), k = h(Math.min(t, end)); return a0 + (aS - a0) * q + dir * spin * k; }, start: 0, end, key: 'fsr:' + i + ':' + a0 + ':' + aS + ':' + dir },
-        { prop: 'scale', fn: (t) => 1 + (scaleTo - 1) * clamp01(h(Math.min(t, end))), start: 0, end, key: 'fss:' + scaleTo + ':' + tGo },
-        { prop: 'opacity', fn: (t) => 1 - clamp01(h(Math.min(t, end))), start: 0, end, key: 'fso2:' + tGo },
-      ],
+      extras: f ? [{ el: ghost, frames: f.frames, options: { duration: Math.max(1, f.duration), delay: f.delay || 0, fill: 'both', easing: f.easing || 'linear' } }] : [],
+      channels: ['x', 'y', 'rotate', 'scale', 'scaleX', 'opacity'].map((prop) => ({ prop, fn: (t) => at(t)[prop], start: 0, end })),
     }) && ghost;
   }).filter(Boolean);
+}
+
+const smooth = (p) => { const q = clamp01(p); return q * q * (3 - 2 * q); };
+/* A card's filter while it goes: dimmed as a folded hand is (to dimTo over `dimMs` from `delay`), with a drop shadow
+   that grows with its height off the felt (`lift(t)`, 0 on the cloth, 1 at the top of a toss), sampled into keyframes. */
+function dimTrack({ dimTo, dimMs, delay = 0, end, h, lift = null, steps = 28 }) {
+  if (!lift) {
+    return { frames: [{ filter: 'brightness(1)' }, { filter: 'brightness(' + dimTo + ')' }], duration: dimMs, delay, easing: 'cubic-bezier(0.33, 0, 0.2, 1)' };
+  }
+  const frames = [];
+  for (let k = 0; k <= steps; k++) {
+    const t = (end * k) / steps;
+    const b = 1 + (dimTo - 1) * smooth((t - delay) / dimMs);
+    const L = clamp01(lift(t));
+    const dy = (0.03 + 0.16 * L) * h, blur = (0.04 + 0.22 * L) * h, a = 0.34 - 0.14 * L;
+    frames.push({ offset: k / steps, filter: 'brightness(' + b.toFixed(3) + ') drop-shadow(0 ' + dy.toFixed(1) + 'px ' + blur.toFixed(1) + 'px rgba(0,0,0,' + a.toFixed(3) + '))' });
+  }
+  return { frames, duration: end, delay: 0 };
+}
+
+/**
+ * A folded hand leaving in one of FOLD_STYLES: ghost copies of its cards in the fold layer, under every seat. Points
+ * are in the layer's px: `middle` the felt's middle (Spin in), `muck` the dealer's muck beside the deck (where a hand
+ * thrown in lands), `line` just past the seat's betting line (Lift and drop), `seat` its plaque's centre (Behind the
+ * seat). `seed` fixes the scatter, so a fold plays the same way every time.
+ *   spin    gathered into one stack, which spins into the middle and fades (25).
+ *   tuck    gathered, then shrinks to nothing behind the seat's plaque (the stud fold's down cards).
+ *   spread  gathered, the stack goes in to the muck and, as it lands, its cards spread apart into a loose fan.
+ *   drop    gathered, the stack is picked up (it grows, its shadow lengthening) and dropped just past the betting line.
+ *   flicked the cards are flicked in one at a time from the top, each spinning on its way, into a loose pile.
+ *   push    the hand, as it is held, pushed forward across the cloth, slowing as it goes, and fades.
+ *   lob     gathered, the stack is tossed in an arc to the muck (rising and falling), lands and skids.
+ *   throw   the whole hand thrown at the muck at once, every card spinning its own way and skidding apart.
+ *   coin    gathered, the stack spins on its edge like a coin, slowing, and falls flat as it fades.
+ */
+export function foldAway(reg, { style, set, rate = 1, layer, layerRect, cards, back = null, dimTo = 0.42, middle, muck, line, seat, seed = '' }) {
+  if (!layer || !layerRect || !cards.length) return [];
+  const id = normalizeFoldStyle(style);
+  if (id === 'tuck' && seat) return foldToStack(reg, { set, rate, layer, layerRect, cards, target: seat, back, dimTo, spin: 0, scaleTo: 0.05 });
+  if (id === 'spin' || id === 'tuck' || id === 'each') return foldToStack(reg, { set, rate, layer, layerRect, cards, target: middle, back, dimTo });
+  const B = stage(set).beat / rate;
+  const R = seeded(seed + ':' + id);
+  const n = cards.length;
+  const page = (p) => ({ x: p.x + layerRect.left, y: p.y + layerRect.top });
+  const sprAt = (sp, t0) => (t) => (t <= t0 ? 0 : sp.at((t - t0) * rate));
+  const fadeFrom = (tFade, dur) => (t) => 1 - smooth((t - tFade) / dur);
+  const gather = tierSpring(set, 'slide');
+  const tMeet = timeTo(gather, 0.985) / rate;
+  const gq = sprAt(gather, 0);
+  const geo = stackGeometry(cards);
+  const S = geo.S;
+  const towards = (from, to) => { const dx = to.x - from.x, dy = to.y - from.y, d = Math.hypot(dx, dy) || 1; return { dx, dy, d, ux: dx / d, uy: dy / d }; };
+  const H = Math.max(...cards.map((c) => c.h)), W = Math.max(...cards.map((c) => c.w));
+  const rad = (d) => (d * Math.PI) / 180;
+  const LAND = 0.8;
+  /* A hand that lands and lies on the cloth a moment is dimmed less than one that goes at once (0.42): at 0.42 a
+     face-down hand on the dark felt could hardly be seen landing. */
+  dimTo = Math.max(dimTo, 0.7);
+
+  if (id === 'spread') {
+    const M = page(muck || middle), v = towards(S, M), dir = v.dx >= 0 ? 1 : -1;
+    const fly = tierSpring(set, 'arm'), fan = tierSpring(set, 'yield');
+    const tGo = tMeet + 0.3 * B;
+    const k = sprAt(fly, tGo);
+    const tLand = tGo + timeTo(fly, 0.8) / rate;
+    const sp = sprAt(fan, tLand);
+    const tFade = tLand + timeTo(fan, 0.99) / rate + 1.5 * B;
+    const end = tFade + 2 * B;
+    const fade = fadeFrom(tFade, 2 * B);
+    const turn = dir * (18 + 14 * R());
+    const mid = (n - 1) / 2;
+    const spreads = cards.map((c, i) => ({ rot: (i - mid) * 14 + (R() - 0.5) * 8, across: (i - mid) * 0.3 * W, along: (R() - 0.5) * 0.14 * H }));
+    return flyPoses(reg, { layer, layerRect, cards, back, end,
+      filter: () => dimTrack({ dimTo, dimMs: tMeet, end, h: H }),
+      pose: (i, t) => {
+        const c = cards[i], q = gq(t), p = geo.at(c, q), kk = k(t), s = sp(t);
+        const ang = geo.angleAt(c, q) + turn * kk, a = rad(ang), sc = 1 + (LAND - 1) * clamp01(kk);
+        const ax = s * spreads[i].across * sc, ay = s * spreads[i].along * sc;
+        return { x: p.x + v.dx * kk + ax * Math.cos(a) - ay * Math.sin(a), y: p.y + v.dy * kk + ax * Math.sin(a) + ay * Math.cos(a),
+          rotate: ang + s * spreads[i].rot, scale: sc, scaleX: 1, opacity: fade(t) };
+      } });
+  }
+
+  if (id === 'drop') {
+    const Lp = page(line || muck || middle), v = towards(S, Lp), dir = v.dx >= 0 ? 1 : -1;
+    const fly = tierSpring(set, 'hand');
+    const tGo = tMeet + 0.2 * B;
+    const F = timeTo(fly, 0.97) / rate;
+    const k = sprAt(fly, tGo);
+    // Up slowly, down fast: the top of the lift at 60% of the way, the drop in the last 40%.
+    const lift = (t) => (t <= tGo ? 0 : Math.sin(Math.PI * Math.pow(clamp01((t - tGo) / F), 1.4)));
+    const tDown = tGo + F, thud = 0.9 * B;
+    const dip = (t) => (t <= tDown ? 0 : Math.sin(Math.PI * clamp01((t - tDown) / thud)));
+    const tFade = tDown + thud + 1.6 * B;
+    const end = tFade + 2 * B;
+    const fade = fadeFrom(tFade, 2 * B);
+    const restAngle = dir * (R() - 0.5) * 12;
+    return flyPoses(reg, { layer, layerRect, cards, back, end,
+      filter: () => dimTrack({ dimTo, dimMs: tMeet, end, h: H, lift }),
+      pose: (i, t) => {
+        const c = cards[i], q = gq(t), p = geo.at(c, q), kk = k(t);
+        const ang = geo.angleAt(c, q) + (restAngle - geo.aS) * kk * 0.6;
+        return { x: p.x + v.dx * kk, y: p.y + v.dy * kk, rotate: ang,
+          scale: (1 + (0.92 - 1) * clamp01(kk)) * (1 + 0.2 * lift(t) - 0.035 * dip(t)), scaleX: 1, opacity: fade(t) };
+      } });
+  }
+
+  if (id === 'flick') {
+    const M = page(muck || middle);
+    const fly = tierSpring(set, 'flick');
+    const F = timeTo(fly, 0.98) / rate;
+    const stag = 0.75 * B;
+    // From the top of the hand (the last card dealt sits over the rest) to the first.
+    const slots = cards.map((c, i) => {
+      const j = n - 1 - i, t0 = 0.2 * B + j * stag;
+      const to = { x: M.x + (R() - 0.5) * 0.7 * W, y: M.y + (R() - 0.5) * 0.5 * H };
+      const v = towards({ x: c.cx, y: c.cy }, to), dir = v.dx >= 0 ? 1 : -1;
+      return { t0, v, spin: dir * (150 + 120 * R()), bow: (R() < 0.5 ? -1 : 1) * 0.08 * v.d, k: sprAt(fly, t0) };
+    });
+    const last = Math.max(...slots.map((s) => s.t0)) + F;
+    const tFade = last + 1.0 * B;
+    const end = tFade + 2 * B;
+    const fade = fadeFrom(tFade, 2 * B);
+    return flyPoses(reg, { layer, layerRect, cards, back, end,
+      filter: (i) => dimTrack({ dimTo, dimMs: F, delay: slots[i].t0, end, h: H }),
+      pose: (i, t) => {
+        const c = cards[i], s = slots[i], kk = s.k(t), b = s.bow * Math.sin(Math.PI * clamp01(kk));
+        return { x: s.v.dx * kk - s.v.uy * b, y: s.v.dy * kk + s.v.ux * b, rotate: (c.angle || 0) + s.spin * kk,
+          scale: 1 + (LAND - 1) * clamp01(kk), scaleX: 1, opacity: fade(t) };
+      } });
+  }
+
+  if (id === 'push') {
+    const C = { x: cards.reduce((a, c) => a + c.cx, 0) / n, y: cards.reduce((a, c) => a + c.cy, 0) / n };
+    const v = towards(C, page(middle || muck));
+    const d = Math.min(0.42 * v.d, 5 * H);
+    const fly = tierSpring(set, 'inertia');
+    const tGo = 0.15 * B;
+    const k = sprAt(fly, tGo);
+    const tFade = tGo + timeTo(fly, 0.6) / rate;
+    const end = tFade + 2.5 * B;
+    const fade = fadeFrom(tFade, 2.5 * B);
+    return flyPoses(reg, { layer, layerRect, cards, back, end,
+      filter: () => dimTrack({ dimTo, dimMs: 2 * B, end, h: H }),
+      pose: (i, t) => {
+        const c = cards[i], kk = k(t);
+        return { x: v.ux * d * kk, y: v.uy * d * kk, rotate: c.angle || 0, scale: 1 + (0.9 - 1) * clamp01(kk), scaleX: 1, opacity: fade(t) };
+      } });
+  }
+
+  if (id === 'lob') {
+    const M = page(muck || middle), v = towards(S, M), dir = v.dx >= 0 ? 1 : -1;
+    const tGo = tMeet + 0.25 * B;
+    const F = Math.max(3.2 * B, 1.1 * B + v.d / (0.55 * W) * B * 0.35);
+    // Nearly even speed across the felt (a thrown thing keeps its way), up and down as it goes.
+    const prog = (t) => { const p = clamp01((t - tGo) / F); return 0.5 * p + 0.5 * smooth(p); };
+    const lift = (t) => (t <= tGo ? 0 : Math.sin(Math.PI * clamp01((t - tGo) / F)));
+    // Landing still moving: it skids on, slowing on the cloth (the speed it landed with, decaying).
+    const tLand = tGo + F, v0 = (0.5 * v.d) / F, tau = 0.7 * B;
+    const skid = (t) => (t <= tLand ? 0 : v0 * tau * (1 - Math.exp(-(t - tLand) / tau)));
+    const tFade = tLand + 3 * tau + 0.6 * B;
+    const end = tFade + 2 * B;
+    const fade = fadeFrom(tFade, 2 * B);
+    const turn = dir * (30 + 25 * R());
+    return flyPoses(reg, { layer, layerRect, cards, back, end,
+      filter: () => dimTrack({ dimTo, dimMs: tMeet, end, h: H, lift }),
+      pose: (i, t) => {
+        const c = cards[i], q = gq(t), p = geo.at(c, q), kk = prog(t), sk = skid(t);
+        return { x: p.x + v.dx * kk + v.ux * sk, y: p.y + v.dy * kk + v.uy * sk,
+          rotate: geo.angleAt(c, q) + turn * kk + dir * 0.4 * sk,
+          scale: (1 + (LAND - 1) * kk) * (1 + 0.3 * lift(t)), scaleX: 1, opacity: fade(t) };
+      } });
+  }
+
+  if (id === 'throw') {
+    const M = page(muck || middle);
+    const fly = tierSpring(set, 'flick');
+    const F = timeTo(fly, 0.98) / rate;
+    const slots = cards.map((c, i) => {
+      const t0 = 0.15 * B + i * 0.08 * B;
+      const to = { x: M.x + (R() - 0.5) * 1.1 * W, y: M.y + (R() - 0.5) * 0.8 * H };
+      const v = towards({ x: c.cx, y: c.cy }, to);
+      return { t0, v, spin: (R() < 0.5 ? -1 : 1) * (140 + 100 * R()), bow: (i % 2 ? -1 : 1) * (0.06 + 0.08 * R()) * v.d, k: sprAt(fly, t0) };
+    });
+    const last = Math.max(...slots.map((s) => s.t0)) + F;
+    const tFade = last + 0.8 * B;
+    const end = tFade + 2 * B;
+    const fade = fadeFrom(tFade, 2 * B);
+    return flyPoses(reg, { layer, layerRect, cards, back, end,
+      filter: () => dimTrack({ dimTo, dimMs: F, delay: 0.15 * B, end, h: H }),
+      pose: (i, t) => {
+        const c = cards[i], s = slots[i], kk = s.k(t), b = s.bow * Math.sin(Math.PI * clamp01(kk));
+        return { x: s.v.dx * kk - s.v.uy * b, y: s.v.dy * kk + s.v.ux * b, rotate: (c.angle || 0) + s.spin * kk,
+          scale: 1 + (LAND - 1) * clamp01(kk), scaleX: 1, opacity: fade(t) };
+      } });
+  }
+
+  if (id === 'coin') {
+    const v = towards(S, page(middle || muck));
+    const d = Math.min(0.25 * v.d, 2.5 * H);
+    const slide = tierSpring(set, 'inertia');
+    const tGo = tMeet + 0.2 * B;
+    const k = sprAt(slide, tGo);
+    // Two whole turns on its edge, slowing as a spun coin does, ending flat (|cos| back to 1).
+    const tau = 1.6 * B, span = 5 * tau, PHI = 4 * Math.PI, norm = 1 - Math.exp(-span / tau);
+    const phase = (t) => (t <= tGo ? 0 : PHI * (1 - Math.exp(-Math.min(t - tGo, span) / tau)) / norm);
+    const tFade = tGo + span - 1.2 * B;
+    const end = tFade + 2 * B;
+    const fade = fadeFrom(tFade, 2 * B);
+    return flyPoses(reg, { layer, layerRect, cards, back, end,
+      filter: () => dimTrack({ dimTo, dimMs: tMeet, end, h: H }),
+      pose: (i, t) => {
+        const c = cards[i], q = gq(t), p = geo.at(c, q), kk = k(t);
+        return { x: p.x + v.ux * d * kk, y: p.y + v.uy * d * kk, rotate: geo.angleAt(c, q),
+          scale: 1 + (0.85 - 1) * clamp01(kk), scaleX: Math.max(0.03, Math.abs(Math.cos(phase(t)))), opacity: fade(t) };
+      } });
+  }
+  return foldToStack(reg, { set, rate, layer, layerRect, cards, target: middle, back, dimTo });
 }
