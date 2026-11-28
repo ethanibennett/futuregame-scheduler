@@ -41,12 +41,17 @@ export const STUDY_GROUPS = [
   ]],
 ];
 
+/* Hidden for now (owner, 2026-11-28: "Hide all solve references for now"): Solve a spot is not listed, and the replay's
+   "Solve this spot" is off (HandReplayerView.jsx SOLVE_SPOT_HIDDEN). The tool itself is unchanged; take it out of here to
+   offer it again. */
+export const HIDDEN_TOOLS = new Set(['solve']);
+
 export default function StudyHub({ tool, onTool, onPlayHand, fallback, pendingSolverSpot, onConsumeSolverSpot, pendingDrawSpot, onConsumeDrawSpot }) {
   const avail = useSolverAvailability();
   const back = () => onTool(null);
   const open = (id) => { if (id === 'play') onPlayHand(); else onTool(id); };
 
-  if (tool) {
+  if (tool && !HIDDEN_TOOLS.has(tool)) {
     return (
       <Suspense fallback={fallback}>
         {tool === 'hands' && <RazzTrainerView onBack={back} />}
@@ -67,7 +72,7 @@ export default function StudyHub({ tool, onTool, onPlayHand, fallback, pendingSo
       {STUDY_GROUPS.map(([group, items]) => (
         <section key={group} className="study-group" aria-label={group}>
           <h2 className="hs-t hs-cap" style={T(3, 2)}>{group}</h2>
-          {items.filter(([id]) => id !== 'three-way' || offered(avail, 'razz3')).map(([id, name, note]) => (
+          {items.filter(([id]) => !HIDDEN_TOOLS.has(id) && (id !== 'three-way' || offered(avail, 'razz3'))).map(([id, name, note]) => (
             <button key={id} type="button" className="hs-btn hs-left hs-row study-row" onClick={() => open(id)} style={{ '--hs-h': 8 }}>
               <span className="hs-t hs-sm hs-bold hs-clip" style={T(3)}>{name}</span>
               <span className="hs-t hs-xs hs-mut hs-clip" style={T(2)}>{note}</span>

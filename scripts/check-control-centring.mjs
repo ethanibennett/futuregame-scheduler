@@ -2455,7 +2455,8 @@ function finalize(c) {
   // The admin's Hands tools (the second footer row): each view as it renders against this server
   // (without a solver, its error and empty states).
   step('hands-study', async () => { await nav('Hands'); await tap('.hands-tool-row button:text-is("Study")', 800); }, 0);
-  for (const [id, label] of [['solve', 'Solve a spot'], ['spots', 'Quick spots'], ['watch', 'Watch the solver'], ['hands', 'Hand trainer'], ['three-way', 'Three-way Razz'], ['draw', 'Price a draw']]) {
+  // Solve a spot is hidden for now (owner, 2026-11-28: "Hide all solve references for now"; StudyHub HIDDEN_TOOLS).
+  for (const [id, label] of [['spots', 'Quick spots'], ['watch', 'Watch the solver'], ['hands', 'Hand trainer'], ['three-way', 'Three-way Razz'], ['draw', 'Price a draw']]) {
     step('hands-study-' + id, async () => { await nav('Hands'); await tap('.hands-tool-row button:text-is("Study")', 800); await tap(`.study-row:has-text("${label}")`, 2000); }, 1);
   }
   // The replayer drill, on canned answers (drill-states.mjs): every state of its controls.

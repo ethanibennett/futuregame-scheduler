@@ -538,6 +538,8 @@ function studHasOpenPairOn4th(hand) {
 }
 
 // ── "Solve this spot" → Solver handoff ──────────────────────
+// Off for now (owner, 2026-11-28: "Hide all solve references for now"), with Study's Solve a spot (StudyHub HIDDEN_TOOLS).
+const SOLVE_SPOT_HIDDEN = true;
 // gameType → solver engine id. The live Solver supports only the
 // fixed-limit stud games it has trees for: Stud 8 and Razz. Hold'em /
 // Omaha / draw games (and the NL/PL stud variants, Stud Hi, 2-7 Razz)
@@ -7521,7 +7523,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
   // "Solve this spot" → Solver handoff. Enabled only when the hand's
   // game maps to a solver-supported stud game (Stud 8 / Razz).
   const solverGame = solverGameFor(hand.gameType);
-  const canSolveSpot = !!onSolveSpot && !!solverGame;
+  const canSolveSpot = !SOLVE_SPOT_HIDDEN && !!onSolveSpot && !!solverGame;
   const handleSolveSpot = useCallback(() => {
     if (!canSolveSpot) return;
     haptic();
