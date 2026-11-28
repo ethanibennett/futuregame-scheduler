@@ -287,7 +287,7 @@ export default function ResultsAll({ token, bk, entries, isoDay, resultNet, resu
                 }
                 return it.kind === 'cash'
                   ? <SessionRow key={key} s={it.session} onOpen={() => openInResults('cash', it.session.id)} />
-                  : <div key={key} data-entry-id={it.entry.id}>{renderEntry(it.entry, { defaultOpen: openLine === key })}</div>;
+                  : <div key={key} data-entry-id={it.entry.id}>{renderEntry(it.entry, { defaultOpen: openLine === key, onCollapse: openLine === key ? () => setOpenLine(null) : null })}</div>;
               })}
             </div>
           ))}

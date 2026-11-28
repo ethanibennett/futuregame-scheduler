@@ -270,11 +270,13 @@ function TrackingEntryForm({ previewToken = null, tournaments, mySchedule, exist
 }
 
 // ── Tracking Entry Row ──────────────────────────────────────
-function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCancelEdit, displayCurrency, exchangeRates, bankrolls, notifyToken = null, defaultOpen = false, select = null }) {
+function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCancelEdit, displayCurrency, exchangeRates, bankrolls, notifyToken = null, defaultOpen = false, select = null, onCollapse = null }) {
   const [openState, setOpen] = useState(defaultOpen);
   // Desktop's master and detail (Bankroll design 84): in the list a card selects, and opens in the pane beside it.
   const open = select ? false : openState;
-  const toggle = select ? select.pick : () => setOpen((v) => !v);
+  /* A card opened from a line in Lines closes back to its line (owner, 2026-11-27: "These should return to being lines
+     when clicked again, they are currently persisting as cards"): `onCollapse` is the list putting the line back. */
+  const toggle = select ? select.pick : () => { if (openState && onCollapse) onCollapse(); else setOpen((v) => !v); };
   const rowRef = useRef(null);
   useOpenSpring(open, rowRef, '.cal-event-detail');
   const from = nativeCurrency(entry.venue, entry.currency);
@@ -449,9 +451,10 @@ function DidNotPlayForm({ event, initialNote = '', onSave, onCancel }) {
   );
 }
 
-function DidNotPlayRow({ event, onEdit, onPlayed, onDelete, busy, defaultOpen = false }) {
+function DidNotPlayRow({ event, onEdit, onPlayed, onDelete, busy, defaultOpen = false, onCollapse = null }) {
   const [open, setOpen] = useState(defaultOpen);
-  const toggle = () => setOpen((v) => !v);
+  // Opened from a line in Lines, closing it puts the line back (as TrackingEntryRow).
+  const toggle = () => { if (open && onCollapse) onCollapse(); else setOpen((v) => !v); };
   const note = (event.not_played_note || '').trim();
   // A no-venue marker (utils/didnt-play.js): a blank strip, and Delete where Played it would be.
   const marker = isDnpMarker(event);
@@ -980,6 +983,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
             renderEntry={(entry, opts = {}) => (
               <TrackingEntryRow
                 defaultOpen={!!opts.defaultOpen}
+                onCollapse={opts.onCollapse || null}
                 entry={entry}
                 onEdit={() => setEditingId(entry.id)}
                 onDelete={() => onDelete(entry.id)}
@@ -1179,6 +1183,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
                       onOpen={() => setOpenLine('dnp-' + dnp.id)} />
                   ) : (
                     <DidNotPlayRow event={dnp} busy={dnpBusy} defaultOpen={openLine === 'dnp-' + dnp.id}
+                      onCollapse={openLine === 'dnp-' + dnp.id ? () => setOpenLine(null) : null}
                       onEdit={() => setDnpForm({ event: dnp, note: dnp.not_played_note || '', fromList: true })}
                       onPlayed={() => markPlayed(dnp)} onDelete={() => deleteDnpDay(dnp)} />
                   )}
@@ -1197,6 +1202,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
                     bankrolls={formBankrolls}
                     notifyToken={isAdmin ? token : null}
                     defaultOpen={openLine === entry.id}
+                    onCollapse={openLine === entry.id ? () => setOpenLine(null) : null}
                     select={mttSplit ? { on: selId === entry.id, pick: () => setSelId(entry.id) } : null}
                   />
                 </div>
