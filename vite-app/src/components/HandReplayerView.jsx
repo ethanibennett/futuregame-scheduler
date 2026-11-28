@@ -26,6 +26,7 @@ import { STRUCTURE_GAME_MAP, DEFAULT_STRUCTURE, variantName, buildCatalog, build
 import { Palette, GuessCard } from './VariantPicker.jsx';
 import { VariantWheels } from './VariantWheels.jsx';
 import { buildDrawStudySpot } from '../utils/draw-study-spot';
+import { SUPER_DOWN, SUPER_THROWN_IDX, SUPER_DOWN_IDX, superDealText, splitSuperDeal, superDowns, applySuperThrow, superThrowAsked, superThirdOnFelt, superName } from '../utils/super-stud.js';
 import { parseCardNotation, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL, gameEvalFor,
          bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestLowFor, bestBadugiHand, scoreHalves, halvesWinnersAmong, halvesHandName, oddChipToLo,
          computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot, studOddChipKey, studOddChipOrder,
@@ -885,7 +886,7 @@ function linkTitle(hand) {
   const limit = (HAND_CONFIG[hand.gameType] || HAND_CONFIG_DEFAULT).betting === 'fl';
   const straddle = limit ? 0 : getStraddles(hand.players || [], b).reduce((m, st) => Math.max(m, st.amount || 0), 0);
   const stakes = formatStakes(limit ? { ...hand, blinds: { ...b, ante: 0 } } : hand, { straddle });
-  return (hand.gameType || 'Poker hand') + (stakes ? ' ' + stakes : '');
+  return (hand.gameType ? superName(hand, hand.gameType) : 'Poker hand') + (stakes ? ' ' + stakes : '');
 }
 
 function formatStakes(hand, { straddle = 0 } = {}) {
@@ -2018,8 +2019,17 @@ function studRunFor(hand, pi, heroIdx, uptoStreet) {
     const raw = isHero ? (cs.hero || '') : ((cs.opponents || [])[oppSlot] || '');
     const cards = raw === 'MUCK' ? [] : parseCardNotation(raw).filter(c => c.suit !== 'x').map(c => c.rank + c.suit);
     if (si === 0) {
-      if (isHero) cards.slice(0, 3).forEach((c, k) => run.push({ card: c, down: k < 2 }));
-      else run.push({ card: null, down: true }, { card: null, down: true }, { card: cards.length ? cards[cards.length - 1] : null, down: false });
+      // Super (utils/super-stud.js): four down and the door until the throw after 3rd street's betting.
+      const extra = hand.superStud && uptoStreet === 0 ? SUPER_DOWN - 2 : 0;
+      if (isHero) {
+        const thrown = extra ? parseCardNotation(cs.heroThrown || '').filter(c => c.suit !== 'x').map(c => c.rank + c.suit) : [];
+        cards.slice(0, 2).forEach(c => run.push({ card: c, down: true }));
+        for (let k = 0; k < extra; k++) run.push({ card: thrown[k] || null, down: true });
+        cards.slice(2, 3).forEach(c => run.push({ card: c, down: false }));
+      } else {
+        for (let k = 0; k < 2 + extra; k++) run.push({ card: null, down: true });
+        run.push({ card: cards.length ? cards[cards.length - 1] : null, down: false });
+      }
     } else {
       const seventh = si === 4;
       run.push({ card: isHero || !seventh ? (cards[0] || null) : null, down: seventh });
@@ -2067,7 +2077,7 @@ function TitleEditor({ shown, typed, canEdit, onSave }) {
   );
 }
 
-function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, reverseZ, discardIdx, onCardTap, poseOf, playIds, holdSort = 0 }) {
+function CardRow({ text, stud, studDown, max, placeholderCount, splay, splayScale = 1, reverseZ, discardIdx, onCardTap, poseOf, playIds, holdSort = 0 }) {
   /* Draw-game re-sort. A card keeps its DOM element for as long as it stays in
      the hand (keyed by identity, below), so when a draw puts a new card among
      them this can see where each surviving card was and where it is now, and
@@ -2160,7 +2170,8 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, rev
   }
   if (!cards.length) return null;
   if (max && cards.length > max) cards = cards.slice(0, max);
-  const downIdx = stud ? new Set([0, 1, 6]) : null;
+  // studDown: a Super 3rd street's four down cards before the door (utils/super-stud.js); else the 2nd, 3rd and 7th.
+  const downIdx = stud ? new Set(studDown || [0, 1, 6]) : null;
   /* One z-order for the whole row. reverseZ exists for a hand that is face
      DOWN, where putting the leftmost card on top buries no rank because there
      are none. Deciding it per CARD mixed the two orders inside one hand: a
@@ -2772,6 +2783,8 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
   useEffect(() => { setBetError(null); }, [betAmount, showRaiseInput]);
   const [showHeroCardPicker, setShowHeroCardPicker] = useState(false);
   const [studDealTarget, setStudDealTarget] = useState(0);
+  // Super's throw screen: the cards picked so far (null: the throw recorded, else the deal's last two down cards).
+  const [superPick, setSuperPick] = useState(null);
   // The OFC entry phase's card picker. Declared with the other hooks: inside the phase's branch it
   // changed the hook count when Next opened it, and React threw "Rendered more hooks" (entry audit D5).
   const [ofcPickerState, setOfcPickerState] = useState(null);
@@ -3005,7 +3018,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
     if (nextStreet >= hand.streets.length) { setPhase('showdown'); return; }
     if (gameCfg.drawAfter === currentStreetIdx) setPhase('draw_discard');
     else if (category === 'community') setPhase('board_entry');
-    else if (category === 'stud') setPhase('stud_deal');
+    else if (category === 'stud') setPhase(currentStreetIdx === 0 && superThrowAsked(hand, foldedSet.has(entryHeroIdx(hand, heroName))) ? 'super_throw' : 'stud_deal');
     else if (isDrawCategory(category)) setPhase('draw_discard');
     else setCurrentStreetIdx(nextStreet);
   }, [isBettingComplete, phase, handOver, advanceHeld]);
@@ -3723,6 +3736,31 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                 onClick={() => setBlind('uncapHeadsUp', !uncapHU)} />
             </div>
           )}
+          {/* Super (owner, 2026-11-28: "discard is after 3rd street betting, before 4th is dealt, applies to any stud game";
+              utils/super-stud.js): set with the hand it describes, like Double board. */}
+          {!isOfc && category === 'stud' && (
+            <div className="replayer-settings-row">
+              <div>
+                <div className="replayer-settings-label">Super</div>
+                <div className="replayer-settings-sublabel">Four down and one up on 3rd street; after its betting, each player throws two down cards.</div>
+              </div>
+              <button type="button" className={'replayer-settings-toggle' + (hand.superStud ? ' on' : '')}
+                aria-pressed={!!hand.superStud} aria-label="Super" disabled={locked}
+                onClick={() => setHand(prev => {
+                  const next = { ...prev };
+                  if (prev.superStud) {
+                    delete next.superStud;
+                    next.streets = prev.streets.map((s, i) => {
+                      if (i !== 0) return s;
+                      const cards = { ...s.cards };
+                      delete cards.heroThrown; delete cards.heroSuper;
+                      return { ...s, cards };
+                    });
+                  } else next.superStud = true;
+                  return next;
+                })} />
+            </div>
+          )}
           {/* Double board (UX pick 62): set with the hand it describes. Flop games, as the list offered it. */}
           {!isOfc && category === 'community' && !gameCfg.doorBoard && (
             <div className="replayer-settings-row">
@@ -4083,13 +4121,17 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
 
   // ── HERO CARDS PHASE ──
   if (phase === 'hero_cards') {
-    const heroCardsVal = (hand.streets[0] && hand.streets[0].cards.hero) || '';
+    /* Super (utils/super-stud.js): the five dealt, typed as dealt (the down cards, then the door), in their own field
+       (cards.heroSuper) until Enter Door Cards splits them into 3rd street's own and the throw. */
+    const superDeal = !!(gameCfg.isStud && hand.superStud);
+    const heroField = superDeal ? 'heroSuper' : 'hero';
+    const heroCardsVal = superDeal ? superDealText(hand.streets[0] && hand.streets[0].cards) : ((hand.streets[0] && hand.streets[0].cards.hero) || '');
     /* A stud hand is not dealt at once: three cards on 3rd street and one on
        each street after, stored that way too — getStudHeroAllCards accumulates
        cards.hero ACROSS streets. This phase writes streets[0], so it is asking
        for 3rd street alone. gameCfg.heroCards is 7 for stud, the size of the
        finished hand, and would invite all of it into the first street. */
-    const heroMaxCards = gameCfg.isStud ? 3 : (gameCfg.heroCards || 2);
+    const heroMaxCards = gameCfg.isStud ? (superDeal ? SUPER_DOWN + 1 : 3) : (gameCfg.heroCards || 2);
     const heroCardsLabel = gameCfg.isStud ? '3rd Street' : 'Hero Cards';
     const heroCurrentCards = parseCardNotation(heroCardsVal).filter(c => c.suit !== 'x').map(c => c.rank + c.suit);
     const heroCurrentSet = new Set(heroCurrentCards);
@@ -4103,7 +4145,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
        the other card picker in this file already does it this way. */
     const toggleHeroCard = (card) => {
       setHand(prev => {
-        const base = (prev.streets[0] && prev.streets[0].cards.hero) || '';
+        const base = superDeal ? superDealText(prev.streets[0] && prev.streets[0].cards) : ((prev.streets[0] && prev.streets[0].cards.hero) || '');
         const cur = parseCardNotation(base).filter(c => c.suit !== 'x').map(c => c.rank + c.suit);
         let next;
         if (cur.includes(card)) next = cur.filter(c => c !== card).join('');
@@ -4111,7 +4153,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
           if (cur.length >= heroMaxCards) return prev;
           next = cur.concat(card).join('');
         }
-        return { ...prev, streets: prev.streets.map((s, i) => i === 0 ? { ...s, cards: { ...s.cards, hero: next } } : s) };
+        return { ...prev, streets: prev.streets.map((s, i) => i === 0 ? { ...s, cards: { ...s.cards, [heroField]: next } } : s) };
       });
     };
     // Three different cards, or none (the hand can be entered without them); anything else is said.
@@ -4126,17 +4168,17 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
           <div className="replayer-section">
             <div className="replayer-section-title">{heroCardsLabel}</div>
             <div className="replayer-field">
-              <label htmlFor="gto-hero-cards-typed">{gameCfg.isStud ? 'Two down, one up' : 'Your Cards'}</label>
-              <input id="gto-hero-cards-typed" type="text" placeholder={gameCfg.isStud ? 'Ah7d2c' : (gameCfg.heroPlaceholder || 'AhKd')}
+              <label htmlFor="gto-hero-cards-typed">{gameCfg.isStud ? (superDeal ? 'Four down, one up' : 'Two down, one up') : 'Your Cards'}</label>
+              <input id="gto-hero-cards-typed" type="text" placeholder={gameCfg.isStud ? (superDeal ? 'Ah7d9sKc2c' : 'Ah7d2c') : (gameCfg.heroPlaceholder || 'AhKd')}
                 autoCapitalize="none" autoCorrect="off" spellCheck={false}
                 className={heroTyped.error ? 'is-invalid' : undefined} aria-invalid={heroTyped.error ? true : undefined}
                 aria-describedby={heroProblem ? 'gto-hero-cards-why' : undefined}
                 value={heroCardsVal}
-                onChange={e => { const v = e.target.value.replace(/10/g, 'T'); setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === 0 ? { ...s, cards: { ...s.cards, hero: v } } : s) })); }} />
+                onChange={e => { const v = e.target.value.replace(/10/g, 'T'); setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === 0 ? { ...s, cards: { ...s.cards, [heroField]: v } } : s) })); }} />
               {/* Stud: the two down cards 1r lower than the door card, as on the seats and the deal screen (owner,
                   2026-11-22: "Show the 3 as an upcard (shifted) in the initial hand entry screen"). */}
               {gameCfg.isStud
-                ? <span className="gto-hero-studrun"><StudRun run={heroTyped.cards.slice(0, 3).map((c, k) => ({ card: c, down: k < 2 }))} /></span>
+                ? <span className="gto-hero-studrun"><StudRun run={heroTyped.cards.slice(0, heroMaxCards).map((c, k) => ({ card: c, down: k < heroMaxCards - 1 }))} /></span>
                 : <CardRow text={heroTyped.cards.join('')} stud={gameCfg.isStud} max={heroMaxCards} />}
               {heroProblem && <div className="replayer-field-error" id="gto-hero-cards-why">{heroProblem}</div>}
             </div>
@@ -4160,7 +4202,11 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
             <button className="btn btn-ghost btn-sm" onClick={() => setPhase('setup')}>Back</button>
             <button className="btn btn-primary btn-sm" disabled={!!heroProblem} onClick={() => {
               // What goes on as the hand is the cards read, not the text: "10h" is stored as Th.
-              if (heroTyped.cards.join('') !== heroCardsVal) setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === 0 ? { ...s, cards: { ...s.cards, hero: heroTyped.cards.join('') } } : s) }));
+              if (superDeal) {
+                // The five as 3rd street's own (two down and the door) and the two thrown, until the throw says which.
+                setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i !== 0 ? s : {
+                  ...s, cards: { ...s.cards, heroSuper: heroTyped.cards.join(''), ...splitSuperDeal(heroTyped.cards, s.cards) } }) }));
+              } else if (heroTyped.cards.join('') !== heroCardsVal) setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === 0 ? { ...s, cards: { ...s.cards, hero: heroTyped.cards.join('') } } : s) }));
               setPhase(gameCfg.isStud ? 'door_cards' : 'action');
             }}>
               {gameCfg.isStud ? 'Enter Door Cards' : 'Start Action'}
@@ -4192,7 +4238,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
     const boardVal = (hand.streets[nextStreet] && hand.streets[nextStreet].cards[key]) || '';
     const usedCards = new Set();
     hand.streets.forEach(s => {
-      parseCardNotation(s.cards.hero || '').forEach(c => { if (c.suit !== 'x') usedCards.add(c.rank + c.suit); });
+      parseCardNotation((s.cards.hero || '') + (s.cards.heroThrown || '')).forEach(c => { if (c.suit !== 'x') usedCards.add(c.rank + c.suit); });
       ['board', 'board2', 'board3'].forEach(k => parseCardNotation(s.cards[k] || '').forEach(c => { if (c.suit !== 'x') usedCards.add(c.rank + c.suit); }));
       (s.cards.opponents || []).forEach(opp => { parseCardNotation(opp || '').forEach(c => { if (c.suit !== 'x') usedCards.add(c.rank + c.suit); }); });
       (s.draws || []).forEach(d => { parseCardNotation((d.discardedCards || '') + (d.newCards || '')).forEach(c => { if (c.suit !== 'x') usedCards.add(c.rank + c.suit); }); });
@@ -4304,7 +4350,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
     // Collect used cards
     const sdUsedCards = new Set();
     hand.streets.forEach(s => {
-      parseCardNotation(s.cards.hero || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); });
+      parseCardNotation((s.cards.hero || '') + (s.cards.heroThrown || '')).forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); });
       // Every board: a double board's second and a run's were left out, so their cards could be shown in a hand.
       ['board', 'board2', 'board3'].forEach(k => parseCardNotation(s.cards[k] || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); }));
       (s.cards.opponents || []).forEach(opp => { parseCardNotation(opp || '').forEach(c => { if (c.suit !== 'x') sdUsedCards.add(c.rank + c.suit); }); });
@@ -4668,7 +4714,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
     const oppCards0 = (hand.streets[0] && hand.streets[0].cards.opponents) || [];
     const numOpps = hand.players.length - 1;
     const usedCardsDC = new Set();
-    parseCardNotation((hand.streets[0]?.cards.hero) || '').forEach(c => { if (c.suit !== 'x') usedCardsDC.add(c.rank + c.suit); });
+    parseCardNotation(((hand.streets[0]?.cards.hero) || '') + ((hand.streets[0]?.cards.heroThrown) || '')).forEach(c => { if (c.suit !== 'x') usedCardsDC.add(c.rank + c.suit); });
     oppCards0.forEach(opp => { parseCardNotation(opp || '').forEach(c => { if (c.suit !== 'x') usedCardsDC.add(c.rank + c.suit); }); });
     const dcRanks = 'AKQJT98765432'.split('');
     const dcSuits = [{key:'h',color:'#ef4444'},{key:'d',color:'#3b82f6'},{key:'c',color:'#22c55e'},{key:'s',color:'var(--text)'}];
@@ -5068,6 +5114,54 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
   }
 
   // ── STUD DEAL PHASE ──
+  // ── SUPER: THE THROW (owner, 2026-11-28: "discard is after 3rd street betting, before 4th is dealt") ──
+  if (phase === 'super_throw') {
+    const c0 = (hand.streets[0] && hand.streets[0].cards) || {};
+    const downs = superDowns(c0);
+    const was = parseCardNotation(c0.heroThrown || '').filter(c => c.suit !== 'x').map(c => c.rank + c.suit);
+    const pick = superPick || was;
+    const throwN = SUPER_THROWN_IDX.length;
+    const tapThrow = (card) => setSuperPick(p => {
+      const cur = p || was;
+      if (cur.includes(card)) return cur.filter(c => c !== card);
+      return cur.length >= throwN ? cur : [...cur, card];
+    });
+    return (
+      <div className="gto-entry">
+        <div className="gto-phase-card">
+          <div className="replayer-section">
+            <div className="replayer-section-title">Super: the throw</div>
+            <div className="gto-entry-note">Everyone still in throws two down cards before 4th street.</div>
+            <div className="gto-dce-hand">
+              <span className="gto-picker-label">Tap the two you threw</span>
+              <div className="card-row gto-card-run">
+                {downs.map(card => {
+                  const on = pick.includes(card);
+                  return (
+                    <button key={card} type="button" className="gto-discard-card" aria-pressed={on}
+                      aria-label={(on ? 'Keep ' : 'Throw ') + card} onClick={() => tapThrow(card)}>
+                      <img className={'card-img draw-selectable' + (on ? ' draw-discarded' : '')} src={cardFaceSrc(card)} alt={card} loading="eager" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="gto-street-card">
+          {footBar(<>
+            <button className="btn btn-ghost btn-sm" onClick={() => { setSuperPick(null); setPhase('action'); }}>Back</button>
+            <button className="btn btn-primary btn-sm" disabled={pick.length !== throwN} onClick={() => {
+              setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i !== 0 ? s : { ...s, cards: { ...s.cards, ...applySuperThrow(s.cards, pick) } }) }));
+              setSuperPick(null);
+              setPhase('stud_deal');
+            }}>Continue</button>
+          </>)}
+        </div>
+      </div>
+    );
+  }
+
   if (phase === 'stud_deal') {
     const nextStudStreet = currentStreetIdx + 1;
     const studStreetName = (hand.streets[nextStudStreet]?.name) || 'Next Street';
@@ -5110,6 +5204,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
       const cs = st.cards || {};
       const eat = (str) => parseCardNotation(str || '').forEach(c => { if (c.suit !== 'x') sdDead.add(c.rank + c.suit); });
       eat(cs.hero);
+      eat(cs.heroThrown);
       eat(cs.board);
       (cs.opponents || []).forEach(eat);
     });
@@ -5502,7 +5597,7 @@ class ReplayErrorBoundary extends React.Component {
 // browser's Back used to throw the hand away. One draft is kept in localStorage while a hand is
 // being entered, and the list offers it back as "Unfinished hand".
 const DRAFT_KEY = 'replayerDraft';
-const ENTRY_PHASES = ['setup', 'ofc_entry', 'hero_cards', 'door_cards', 'action', 'board_door', 'board_entry', 'stud_deal', 'draw_discard', 'draw_cards_entry', 'showdown', 'result'];
+const ENTRY_PHASES = ['setup', 'ofc_entry', 'hero_cards', 'door_cards', 'action', 'board_door', 'board_entry', 'super_throw', 'stud_deal', 'draw_discard', 'draw_cards_entry', 'showdown', 'result'];
 function readEntryDraft() {
   try {
     const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
@@ -5678,7 +5773,6 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   const [bettingStructure, setBettingStructure] = useState('No Limit');
   const [selectedGame, setSelectedGame] = useState("Hold'em");
   const [selectedCategory, setSelectedCategory] = useState("Hold'em");
-  const [studSuper, setStudSuper] = useState(false);
   const [gameHistory, setGameHistory] = useState(() => {
     /* A favourite chosen before the rename says "Big Easy"; the picker's row is now PLO6 8/b. */
     try {
@@ -5693,11 +5787,9 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   const structureGameMap = STRUCTURE_GAME_MAP;
   const defaultStructure = DEFAULT_STRUCTURE;
 
-  /* The game's name on the launcher and the Create button: the catalog's own (variantName: "O8",
-     "Razz", "PLO6 8/b"), with the stud modifiers in front while one is on (both are off for now: see
-     the Stud block under the launcher). */
-  const variantDisplayName = (studSuper && selectedCategory === 'Stud' ? 'Super ' : '')
-    + variantName(selectedGame, bettingStructure);
+  /* The game's name on the Create button: the catalog's own (variantName: "O8", "Razz", "PLO6 8/b"). Super is the
+     hand's own switch, in its setup, like Double board. */
+  const variantDisplayName = variantName(selectedGame, bettingStructure);
 
   const recordGameUse = (game, structure, mix = null) => {
     setGameHistory(prev => {
@@ -5721,7 +5813,6 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
        'Badugi', 'Badeucy', 'Badacey', 'Archie 66', 'Archie 99', 'Ari', '5-Card Draw'].includes(game) ? 'Draw' :
       'Other';
     setSelectedCategory(cat);
-    if (cat !== 'Stud') setStudSuper(false);
   };
 
   // ── The variant picker (VariantPicker.jsx, utils/variant-catalog.js) ──
@@ -6060,7 +6151,6 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     if (draftInTheWay()) return;
     const hand = createEmptyHand(selectedGameType, heroName);
     if (hand.gameType === 'Short Deck') hand.tripsBeatStraight = sdTrips === true;
-    if (studSuper && selectedCategory === 'Stud') hand.gameType = 'Super ' + hand.gameType;
     if (selectedMix) hand.mix = selectedMix;
     // Double board: a second board on every street (utils/poker-engine.js handBoards).
     if (doubleBoard && currentRow && ['holdem', 'omaha'].includes(currentRow.family) && !(HAND_CONFIG[selectedGameType] || {}).doorBoard) {
@@ -6119,7 +6209,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
           <h2><TitleEditor shown={title || autoTitle(currentHand) || currentHand.gameType + ' Hand'} typed={title}
             canEdit={!!(token && currentHandId && !handIsShared && !linkedReplay)}
             onSave={(t) => { setTitle(t); saveHand(currentHand, { title: t }); }} /></h2>
-          <span className="replayer-hand-card-game">{currentHand.gameType + (currentHand.blinds && currentHand.blinds.bb ? ' ' + formatStakes(currentHand) : '')}</span>
+          <span className="replayer-hand-card-game">{superName(currentHand, currentHand.gameType) + (currentHand.blinds && currentHand.blinds.bb ? ' ' + formatStakes(currentHand) : '')}</span>
         </div>
         {/* 76: .replayer-notes-area — label, textarea, focus ring, all
             tokenised — had zero JSX consumers, so notes were write-only from
@@ -6170,7 +6260,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     const entryPhase = (entryAt && entryAt.phase) || 'setup';
     const onSetup = entryPhase === 'setup';
     const onEnds = onSetup || entryPhase === 'result';
-    const gameLine = [currentHand.gameType, currentHand.doubleBoard ? 'Double board' : '', currentHand.mix || '']
+    const gameLine = [superName(currentHand, currentHand.gameType), currentHand.doubleBoard ? 'Double board' : '', currentHand.mix || '']
       .filter(Boolean).join(' · ');
     const isCash = (currentHand.gameMode || 'mtt') === 'cash';
     /* The step track (UX pick 57, Goal-Gradient): Setup, each street, Result; done cells quiet, the
@@ -6438,25 +6528,6 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                 </div>
                 <span className={`game-check-row-label is-caps${doubleBoard ? ' selected' : ''}`}>Double board</span>
               </div>
-            </div>
-          </div>
-        )}
-        {/* Stud's modifiers, under the launcher while a stud game is picked. Off for now (owner, 2026-11-05: every
-            game on offer has to work): Super and Action only prefixed the game type, and the entry screen then dealt
-            the hand as a flop game. They come back with rules of their own. */}
-        {false && selectedCategory === 'Stud' && (
-          <div className="game-picker vp-stud">
-            <div className="game-check-group">
-              {[['Super', studSuper, () => setStudSuper(p => !p), false]].map(([label, checked, onToggle, disabled]) => (
-                <div key={label} className={`game-check-row has-check${checked ? ' selected' : ''}`}
-                  style={{opacity: disabled ? 0.35 : 1, cursor: disabled ? 'default' : 'pointer'}}
-                  onClick={disabled ? undefined : onToggle}>
-                  <div className={`game-check-box${checked ? ' checked' : ''}`}>
-                    {checked && <span style={{color:'#fff',fontSize:'calc(var(--subrow) * 1.125)',lineHeight:1,fontWeight:700}}>✓</span>}
-                  </div>
-                  <span className={`game-check-row-label is-caps${checked ? ' selected' : ''}`}>{label}</span>
-                </div>
-              ))}
             </div>
           </div>
         )}
@@ -7246,11 +7317,18 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     return board;
   }, [hand, streetIdx, feltBoard]);
 
+  /* Super (utils/super-stud.js): 3rd street holds four down cards and the door until the throw after its betting; the
+     two thrown dim as that betting closes (superThrowNow) and go as 4th street is dealt (the moments effect). */
+  const superThird = !!hand.superStud && category === 'stud' && streetIdx === 0;
+  const superGoesOn = !!hand.superStud && !!hand.streets[1] && !!((hand.streets[1].cards || {}).hero || ((hand.streets[1].cards || {}).opponents || []).some(Boolean));
+  const superThrowNow = superThird && superGoesOn && actionIdx >= ((hand.streets[0] || {}).actions || []).length - 1;
+
   // Hero cards
   const heroCards = useMemo(() => {
     if (category === 'stud') {
       let cards = '';
       for (let si = 0; si <= streetIdx; si++) { if (hand.streets[si]?.cards.hero) cards += hand.streets[si].cards.hero; }
+      if (hand.superStud && streetIdx === 0) cards = superThirdOnFelt(cards, hand.streets[0]?.cards.heroThrown);
       return cards;
     }
     if (isDrawGame) {
@@ -11913,6 +11991,13 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           }
         }
 
+        /* Super (utils/super-stud.js): the two down cards each player threw (dimmed as 3rd street's betting closed) go as
+           4th street is dealt, copies fading where they lay, as a draw's thrown cards do. */
+        if (hand.superStud && category === 'stud' && streetIdx === 1 && motionKind === 'street' && rSettings.animateDeal && layer && L) {
+          const gone = [];
+          prevCards.forEach(list => list.forEach(c => { if (c.node && !c.node.isConnected && c.o < 0.6) gone.push(c); }));
+          if (gone.length) writes.push(() => cardsAway(motion, { rate, layer, layerRect: L, cards: gone, duration: 2 * S.beat }));
+        }
         if (isDrawGame && rSettings.animateDeal) {
           // 11: a hand that stands pat is rapped once, toward the middle of the table, as its PAT is declared.
           const nActs = (hand.streets[streetIdx]?.actions || []).length;
@@ -12785,6 +12870,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         if (!folded.has(pi)) return;
         add(pi === replayHeroIdx ? heroCards : opponentCards[pi]);
       });
+      // Super: the hero's two thrown cards are out of play from 4th street on.
+      if (hand.superStud && streetIdx >= 1) add(hand.streets[0]?.cards.heroThrown);
     }
     return sortDeadCards(out, hand.gameType, category);
   })();
@@ -13233,7 +13320,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           // A hand with several boards says so on the felt (owner, 2026-10-21).
           // Running it twice is not the game (owner, 2026-11-20): the rows say it; a double board is.
           const boardsTag = hand.doubleBoard ? 'Double board' : null;
-          const named = [hand.gameType, boardsTag].filter(Boolean).join('  ·  ');
+          const named = [superName(hand, hand.gameType), boardsTag].filter(Boolean).join('  ·  ');
           const level = [named, sizes].filter(Boolean).join('  ·  ');
           /* A long line takes two on a portrait table, game over stakes, with no dot left hanging: at
              one line the pill's width cut the stakes to "100/20...". */
@@ -13263,7 +13350,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             in an export they land in exactly the first and last frames,
             because that is where the exporter starts and stops. */}
         <div className={'replayer-bookend is-open' + (streetIdx === 0 && actionIdx < 0 && !showResult ? ' is-live' : '')}>
-          <span className="replayer-bookend-eyebrow">{hand.gameType}{(hand.blinds || {}).bb ? ' \u00b7 ' + formatChipAmount(hand.blinds.sb) + '/' + formatChipAmount(hand.blinds.bb) : ''}</span>
+          <span className="replayer-bookend-eyebrow">{superName(hand, hand.gameType)}{(hand.blinds || {}).bb ? ' \u00b7 ' + formatChipAmount(hand.blinds.sb) + '/' + formatChipAmount(hand.blinds.bb) : ''}</span>
           <span className="replayer-bookend-title">{hand.title || 'Hand replay'}</span>
           {heroCards && <span className="replayer-bookend-cards"><CardRow text={heroCards} max={gameCfg.heroCards} /></span>}
           <span className="replayer-bookend-sub">{hand.players.length}-handed</span>
@@ -13368,7 +13455,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                  'xx' is one card rather than two. The rank is never drawn and
                  never counted. */
               const back = 'Ax';
-              cards = back + back + upCards.map(c => c.rank + c.suit).join('')
+              cards = back.repeat(superThird ? SUPER_DOWN : 2) + upCards.map(c => c.rank + c.suit).join('')
                 + (dealt >= 7 ? back : '');
             } else if (upCards.length) {
               /* A shown hand keeps every card in the slot it was dealt to (owner, 2026-11-20: no card slides at the
@@ -13385,6 +13472,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
               if (hole.length === 2) cards = [...hole, ...upCards, ...(dealt >= 7 && seventh ? [seventh] : [])].map(c => c.rank + c.suit).join('');
             }
           }
+          // Super: the two down cards each player throws, dimmed from the close of 3rd street's betting, as a draw's are.
+          if (superThrowNow && cards && !folded.has(pi)) discardIdx = new Set(SUPER_THROWN_IDX);
           const seatClass = getPlayerSeatClass(pi);
           const isMucked = showResult && rawCards === 'MUCK';
           const lastAct = playerLastAction[pi];
@@ -13469,6 +13558,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                   return st;
                 })()}>
                 <CardRow text={getGameCategory(hand.gameType) === 'community' && !isDrawGame ? sortHandByRank(cards) : cards} stud={gameCfg.isStud} max={gameCfg.heroCards}
+                  studDown={superThird ? SUPER_DOWN_IDX : undefined}
                   /* Everyone is dealt the same cards at the same time, so a
                      face-down seat holds exactly what the hero holds right now.
                      This was gameCfg.heroCards — the size of a FINISHED hand —

@@ -91,6 +91,11 @@ const TRUTH = {
   // Three aces leave K-T-5, a bust; the opponent's nines leave K-Q-A, 21.
   'Omajack': { plan: { hero: 'AsAdKhTc5c', opp: '9h9cKdQsAc', boards: [['Ah7d2c', '9s', '4c']], expect: 'split' } },
 };
+/* Super (owner, 2026-11-28): four down and the door; the throw is chosen on its own screen (the deal's last two down cards
+   picked until changed, so this throws the first two). Each throws the cards that would win the pot if they still played:
+   kept, hero's aces make two pair over the kings, and the ace and deuce a wheel. */
+const SUPER_HI = { hero: ['AhAd2c2d', '7s', '3d', '4c', '9h', 'Jc'], throw: 'AhAd', opp: ['KhKc', 'Qs', '5c', '8d', 'Td', '6s'], expect: 'opp' };
+const SUPER_RAZZ = { hero: ['Ah2hKcQc', '3d', '4c', '5s', '9d', 'Jc'], throw: 'Ah2h', opp: ['6c7d', '2c', '3s', '8h', 'Kh', 'Qh'], expect: 'opp' };
 const BETTING = { 'No Limit': 'nl', 'Pot Limit': 'pl', 'Limit': 'fl' };
 
 function planFor(row) {
@@ -295,6 +300,20 @@ async function runRow(browser, row) {
         doorDone = true;
         continue;
       }
+      if (screen.section === 'Super: the throw') {
+        // Unmark what is not to be thrown first: a third pick is refused while two are marked.
+        const want = new Set(cards(plan.throw));
+        const throwCards = p.locator('.gto-dce-hand button.gto-discard-card');
+        for (const pass of [true, false]) {
+          for (const b of await throwCards.all()) {
+            const c = await b.locator('img').getAttribute('alt');
+            const on = (await b.getAttribute('aria-pressed')) === 'true';
+            if (pass ? (on && !want.has(c)) : (!on && want.has(c))) await tap(b, 'throw ' + c);
+          }
+        }
+        await tap(primary('Continue'), 'throw Continue');
+        continue;
+      }
       if (screen.section.startsWith('Deal ')) {
         const heroC = plan.hero[studHeroAt++]; const oppC = plan.opp[studOppAt++];
         // The rows that take a card: on 7th only the hero's (an opponent's is a back, its shown card entered at the showdown).
@@ -421,6 +440,7 @@ async function runRow(browser, row) {
     await p.waitForTimeout(250);
     const atStart = await feltNow();
     if (atStart.board !== (cfg.doorBoard || 0)) problem(`${atStart.board} board cards before the first bet, the game deals ${cfg.doorBoard || 0}`);
+    if (row.toggle === 'Super' && atStart.hero !== 5) problem(`hero holds ${atStart.hero} cards on Super's 3rd street, not 5`);
     if (cfg.showCards && atStart.hero != null && atStart.hero !== cfg.heroCards) problem(`hero holds ${atStart.hero} cards before the throw, not ${cfg.heroCards}`);
     const forward = p.locator('button[title^="Forward"]').first();
     for (let i = 0; i < 200; i++) {
@@ -476,7 +496,7 @@ async function runRow(browser, row) {
 
     // ── Back to the list, and open what was saved ──
     const firstEnd = end.map((s) => s.stack).join('|');
-    await p.locator('button:has-text("Back")').first().click({ force: true });
+    await p.locator(W >= 1024 ? 'button:has-text("Close")' : 'button:has-text("Back")').first().click({ force: true });
     await p.waitForTimeout(1400);
     const savedCard = p.locator('.replayer-hand-card.is-row').filter({ hasText: title }).first();
     if (!(await savedCard.count())) problem('its title is not in the saved list: ' + title);
@@ -534,7 +554,7 @@ async function runRow(browser, row) {
       res.image = file ? await file.suggestedFilename() : null;
       if (errors.length > before) problem('the image share threw: ' + errors.slice(before).join(' | '));
       await p.waitForTimeout(200);
-      await p.locator('button:has-text("Back")').first().click({ force: true });
+      await p.locator(W >= 1024 ? 'button:has-text("Close")' : 'button:has-text("Back")').first().click({ force: true });
       await p.waitForTimeout(500);
     }
     const saved = await p.evaluate(async (t) => {
@@ -568,6 +588,8 @@ const EXTRAS = [
   { ...rowNamed("No Limit Hold'em"), label: 'Double board Hold\'em', toggle: 'Double board', plan: DOUBLE_HE },
   { ...rowNamed('Pot Limit Omaha'), label: 'Double board PLO', toggle: 'Double board', plan: BOMB },
   { ...rowNamed('Razz'), label: 'Razz in HORSE', mix: 'HORSE' },
+  { ...rowNamed('Stud Hi'), label: 'Super Stud Hi', toggle: 'Super', plan: SUPER_HI },
+  { ...rowNamed('Razz'), label: 'Super Razz', toggle: 'Super', plan: SUPER_RAZZ },
   { ...rowNamed('O8'), label: 'O8 in the 8-Game', mix: '8-Game Mix' },
 ];
 const rows = catalog.filter((r) => r.gameType !== 'OFC').concat(EXTRAS)
@@ -718,7 +740,7 @@ if (!only || /fixtures/i.test(only)) {
       } else res.problems.push('no golden hand history to check the seats against');
       for (const t of await handNameTrouble(p)) res.problems.push('hand name ' + t);
       for (const t of await feltTrouble(p)) res.problems.push('felt: ' + t);
-      await p.locator('button:has-text("Back")').first().click({ force: true });
+      await p.locator(W >= 1024 ? 'button:has-text("Close")' : 'button:has-text("Back")').first().click({ force: true });
       await p.waitForTimeout(450);
     } catch (e) {
       res.problems.push('STOPPED: ' + e.message.split('\n')[0]);

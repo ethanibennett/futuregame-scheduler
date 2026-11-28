@@ -232,6 +232,8 @@ export function prepareHand(input, opts = {}) {
   const { hand: raw, legacySplit } = normalizeInput(input);
   // Several boards (double board, run it twice or three times): not written (errors.js 'multi-board').
   if (raw.doubleBoard || Number(raw.runs) > 1) throw new HandExportError('multi-board', { double: !!raw.doubleBoard, runs: Number(raw.runs) || 1 });
+  // Super Stud (utils/super-stud.js): its 3rd street deals five, which PokerStars format has no way to write.
+  if (raw.superStud) throw new HandExportError('unsupported-game', { game: 'Super ' + raw.gameType, why: 'PokerStars format has no Super Stud' });
   if (NOT_WRITTEN[raw.gameType]) throw new HandExportError('unsupported-game', { game: raw.gameType, ...NOT_WRITTEN[raw.gameType] });
   const cfg0 = gameConfig(raw.gameType);
   if (!cfg0 || !GAME_TABLE[raw.gameType]) throw new HandExportError('unsupported-game', { game: raw.gameType || 'game' });

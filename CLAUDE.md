@@ -135,6 +135,19 @@ sessions opened here own scheduler work.
   needs). `variant-wheels.test.mjs` (in `npm test`) holds all of it: every row reachable and none extra, every open structure
   dealt with its own betting, and no catalog game outside the families in `WHEEL_GAMES`. Scripts that pick a game open the palette with `.vw-search` (the launcher, `.vp-launcher`, is gone). Guards:
   `hands-wheels-*` (controls), `hands-wheels` (clipping).
+- **Super Stud** (owner, 2026-11-28: "discard is after 3rd street betting, before 4th is dealt, applies to any stud game";
+  `utils/super-stud.js`, `super-stud.test.mjs` in `npm test`): a switch in any stud hand's setup (Super, beside Uncapped
+  heads-up), not a wheel row. The published deal (BARGE, the Asian Poker Tour): four down and the door on 3rd street, then
+  two down cards thrown by everyone still in before 4th (`SUPER_THROW`, the one constant if the owner plays it otherwise).
+  `hand.superStud`; 3rd street's `cards.hero` stays two down and the door, as in every stud hand, so scoring, the felt's
+  awards and the readers of a stud hand are unchanged, and the hero's throw is `cards.heroThrown` beside it (an opponent's
+  is never seen). The entry asks the five on 3rd Street ("Four down, one up", typed into `cards.heroSuper`) and the throw on
+  its own screen after 3rd street's betting ("Super: the throw", `super_throw`). The felt holds four down and the door
+  through 3rd street (`superThirdOnFelt`, CardRow's `studDown`), dims the two thrown as its betting closes and fades them
+  as 4th is dealt (`cardsAway`, as a draw's throw); the hero's throw joins Dead cards from 4th. Links: `*S` and a `q` token
+  on 3rd street, which an older decoder drops. The pill and the title say "Super Stud Hi". Not exported (PokerStars has
+  none): `unsupported-game`, so a Super hand's saved row has no net. `check:replayer-games` plays Super Stud Hi and Super
+  Razz, each throwing the cards that would have won; guard view `hands-entry-super` (controls).
 - **The entry's name fields suggest names** (owner, 2026-11-23: "an autopopulate function for the name fields in the hand
   replayer entry screen"; `utils/player-names.js`, `player-names.test.mjs` in `npm test`): a focused name field offers, as
   chips under it, up to four players from the account's saved hands (`nameBook` over the list `/api/replayer/hands`

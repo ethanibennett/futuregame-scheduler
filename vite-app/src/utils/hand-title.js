@@ -63,7 +63,7 @@ export function autoTitle(hand, opts = {}) {
   const h = handOf(hand);
   if (!h || !Array.isArray(h.streets) || !h.streets.length) return '';
   const parts = [];
-  if (h.gameType) parts.push(String(h.gameType));
+  if (h.gameType) parts.push((h.superStud ? 'Super ' : '') + String(h.gameType));
   const pot = potType(h);
   if (pot) parts.push(pot);
   parts.push(h.gameMode === 'cash' ? 'Cash' : 'MTT');

@@ -2430,6 +2430,19 @@ function finalize(c) {
     await p.waitForTimeout(400);
     await tap('.vp-list button:has(.vp-row-name:text-is("PLO8"))', 1500);
   }, 1);
+  // Super (owner, 2026-11-28; utils/super-stud.js): a stud hand's setup with its Super switch on, then 3rd street's five.
+  step('hands-entry-super', async () => {
+    await nav('Hands');
+    await tap('.vw-search', 800);
+    await p.locator('.vp-search input').fill('Stud Hi');
+    await p.waitForTimeout(400);
+    await tap('.vp-list button:has(.vp-row-name:text-is("Stud Hi"))', 900);
+    if (!(await exists('.gto-entry'))) await tap('.replayer-list-create button', 1500);
+    await tap('.replayer-entry-view button.replayer-settings-toggle[aria-label="Super"]', 400);
+    await also('setup');
+    await tap('.gto-sticky-footer button:has-text("Next")', 900);
+    if (!(await exists('label:has-text("Four down, one up")'))) throw new Error('no Super 3rd street');
+  }, 1);
   // Choosing Short Deck asks the room's rule (ShortDeckRuleDialog.jsx): the question and its two answers.
   step('hands-short-deck-rule', async () => {
     await nav('Hands');

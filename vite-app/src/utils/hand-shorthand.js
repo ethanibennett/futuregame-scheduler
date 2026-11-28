@@ -150,6 +150,9 @@ export function encodeHand(hand) {
   if (_shGetGameCategory(hand.gameType) !== 'stud') {
     (hand.players || []).forEach(function(p, i) { if (p && Number(p.post) > 0) flags += 'P' + i + '@' + amountOut(p.post); });
   }
+  /* Super Stud (owner, 2026-11-28; utils/super-stud.js) adds 'S', and the hero's two thrown cards ride on 3rd street as a
+     'q' token after the opponents'. An older decoder drops both and replays the hand as its game dealt three on 3rd. */
+  if (hand.superStud && _shGetGameCategory(hand.gameType) === 'stud') flags += 'S';
   // A play-money table's hand (hand.table) adds 'T': the felt settles a hand mucked at its showdown by the TDA there.
   if (hand.table) flags += 'T';
   if (flags) blindStr += '*' + flags;
@@ -173,6 +176,7 @@ export function encodeHand(hand) {
     if (cards.board) {
       streetCards.push('b' + cards.board);
     }
+    if (si === 0 && hand.superStud && cards.heroThrown) streetCards.push('q' + cards.heroThrown);
     if (cards.board2) streetCards.push('y' + cards.board2);
     if (cards.board3) streetCards.push('z' + cards.board3);
     cardParts.push(streetCards.join(','));
@@ -369,6 +373,9 @@ export function decodeHand(str) {
   // A play-money table's hand ('T').
   var tableHand = /T$/.test(boardFlags);
   if (tableHand) boardFlags = boardFlags.slice(0, -1);
+  // Super Stud ('S'), written before the 'T'.
+  var superStud = /S$/.test(boardFlags);
+  if (superStud) boardFlags = boardFlags.slice(0, -1);
   var straddleCode = '';
   var bangAt = blindsStr.indexOf('!');
   if (bangAt >= 0) {
@@ -437,11 +444,12 @@ export function decodeHand(str) {
     var hero = '';
     var opponents = Array.from({ length: numPlayers - 1 }, function() { return ''; });
     var board = '';
-    var board2 = '', board3 = '';
+    var board2 = '', board3 = '', heroThrown = '';
     var rawCards = cardStreets[idx] ? cardStreets[idx].split(',') : [];
     rawCards.forEach(function(tok) {
       if (tok && tok.charAt(0) === 'y') board2 = tok.substring(1);
       if (tok && tok.charAt(0) === 'z') board3 = tok.substring(1);
+      if (tok && tok.charAt(0) === 'q' && idx === 0) heroThrown = tok.substring(1);
     });
 
     if (idx === 0 || category === 'stud') {
@@ -451,7 +459,7 @@ export function decodeHand(str) {
       }
       cardIdx++;
       for (var oi = 0; oi < numPlayers - 1; oi++) {
-        if (rawCards[cardIdx] && rawCards[cardIdx] !== '-' && 'byz'.indexOf(rawCards[cardIdx].charAt(0)) < 0) {
+        if (rawCards[cardIdx] && rawCards[cardIdx] !== '-' && 'byzq'.indexOf(rawCards[cardIdx].charAt(0)) < 0) {
           opponents[oi] = rawCards[cardIdx];
         }
         cardIdx++;
@@ -471,7 +479,8 @@ export function decodeHand(str) {
 
     return {
       name: streetName,
-      cards: Object.assign({ hero: hero, opponents: opponents, board: board }, board2 ? { board2: board2 } : {}, board3 ? { board3: board3 } : {}),
+      cards: Object.assign({ hero: hero, opponents: opponents, board: board }, board2 ? { board2: board2 } : {}, board3 ? { board3: board3 } : {},
+        heroThrown && superStud ? { heroThrown: heroThrown } : {}),
       actions: [],
       draws: []
     };
@@ -619,6 +628,7 @@ export function decodeHand(str) {
     result: result,
     ...(boardFlags === 'D' ? { doubleBoard: true } : {}),
     ...(tableHand ? { table: {} } : {}),
+    ...(superStud && category === 'stud' ? { superStud: true } : {}),
     ...(/^R[23]$/.test(boardFlags) ? (function() {
       var runs = Number(boardFlags.charAt(1));
       var from = streets.findIndex(function(s) { return !!s.cards.board2; });
