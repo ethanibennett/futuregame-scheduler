@@ -22,12 +22,12 @@ import ShortDeckRuleDialog from './ShortDeckRuleDialog.jsx';
 import Icon from './Icon.jsx';
 import { API_URL, SITE_URL } from '../utils/api.js';
 import { HAND_CONFIG, HAND_CONFIG_DEFAULT, haptic, getVariantStrip, canonicalGameType, canonicalHand, getToday } from '../utils/utils.js';
-import { STRUCTURE_GAME_MAP, DEFAULT_STRUCTURE, RAZZ_VARIANTS as RAZZ_LIST, variantName, buildCatalog, buildMixes, bestGuess } from '../utils/variant-catalog.js';
+import { STRUCTURE_GAME_MAP, DEFAULT_STRUCTURE, variantName, buildCatalog, buildMixes, bestGuess } from '../utils/variant-catalog.js';
 import { Palette, GuessCard } from './VariantPicker.jsx';
 import { VariantWheels } from './VariantWheels.jsx';
 import { buildDrawStudySpot } from '../utils/draw-study-spot';
 import { parseCardNotation, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL, gameEvalFor,
-         bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestBadugiHand, scoreHalves, halvesWinnersAmong, halvesHandName, oddChipToLo,
+         bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestLowFor, bestBadugiHand, scoreHalves, halvesWinnersAmong, halvesHandName, oddChipToLo,
          computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot, studOddChipKey, studOddChipOrder,
          boardKey, handBoards, boardCount, runRows, multiBoardWinners, multiBoardEvals, multiBoardShaped, combinesHiLo,
          seatOrderFromButton } from '../utils/poker-engine.js';
@@ -289,8 +289,8 @@ function drawThrowsFromTop(gameType) { return !HIGH_DRAW.has(drawBase(gameType))
    lead — every draw game but 5-card high, and the razz family. The ace is low
    in the A-5 games (A-5 TD, Badugi, Badacy, Razz, Razzdugi) and high in 2-7.
    Stud 8 is a split game and keeps the high order. */
-const LOWBALL_STUD = new Set(['Razz', '2-7 Razz', 'Razzdugi', 'Razzdeucy']);
-const ACE_LOW_STUD = new Set(['Razz', 'Razzdugi']);
+const LOWBALL_STUD = new Set(['Razz', 'Action Razz', '2-7 Razz', 'Razzdugi', 'Razzdeucy']);
+const ACE_LOW_STUD = new Set(['Razz', 'Action Razz', 'Razzdugi']);
 function sortDeadCards(keys, gameType, category) {
   const base = drawBase(gameType);
   const isDraw = isDrawCategory(category);
@@ -5679,7 +5679,6 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   const [selectedGame, setSelectedGame] = useState("Hold'em");
   const [selectedCategory, setSelectedCategory] = useState("Hold'em");
   const [studSuper, setStudSuper] = useState(false);
-  const [studAction, setStudAction] = useState(false);
   const [gameHistory, setGameHistory] = useState(() => {
     /* A favourite chosen before the rename says "Big Easy"; the picker's row is now PLO6 8/b. */
     try {
@@ -5694,13 +5693,10 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   const structureGameMap = STRUCTURE_GAME_MAP;
   const defaultStructure = DEFAULT_STRUCTURE;
 
-  const RAZZ_VARIANTS = RAZZ_LIST;
-
   /* The game's name on the launcher and the Create button: the catalog's own (variantName: "O8",
      "Razz", "PLO6 8/b"), with the stud modifiers in front while one is on (both are off for now: see
      the Stud block under the launcher). */
   const variantDisplayName = (studSuper && selectedCategory === 'Stud' ? 'Super ' : '')
-    + (studAction && RAZZ_VARIANTS.includes(selectedGame) ? 'Action ' : '')
     + variantName(selectedGame, bettingStructure);
 
   const recordGameUse = (game, structure, mix = null) => {
@@ -5720,13 +5716,12 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     const cat =
       ["Hold'em", 'Pineapple', 'Short Deck'].includes(game) ? "Hold'em" :
       ['Omaha', 'Omaha 8/b', 'Big O', 'PLO6 8/b', 'PLO5', 'PLO6', 'Double Board Bomb Pot', 'Courchevel'].includes(game) ? 'Omaha' :
-      ['Stud Hi', 'Stud 8/b', 'Razz', 'Stud Hi/Lo Regular', '2-7 Razz', 'Razzdugi', 'Razzdeucy'].includes(game) ? 'Stud' :
+      ['Stud Hi', 'Stud 8/b', 'Razz', 'Action Razz', 'Stud Hi/Lo Regular', '2-7 Razz', 'Razzdugi', 'Razzdeucy'].includes(game) ? 'Stud' :
       ['2-7 Triple Draw', '2-7 Single Draw', 'A-5 Triple Draw', 'A-5 Single Draw',
        'Badugi', 'Badeucy', 'Badacey', 'Archie 66', 'Archie 99', 'Ari', '5-Card Draw'].includes(game) ? 'Draw' :
       'Other';
     setSelectedCategory(cat);
-    if (cat !== 'Stud') { setStudSuper(false); setStudAction(false); }
-    else if (!RAZZ_VARIANTS.includes(game)) setStudAction(false);
+    if (cat !== 'Stud') setStudSuper(false);
   };
 
   // ── The variant picker (VariantPicker.jsx, utils/variant-catalog.js) ──
@@ -6065,8 +6060,6 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     if (draftInTheWay()) return;
     const hand = createEmptyHand(selectedGameType, heroName);
     if (hand.gameType === 'Short Deck') hand.tripsBeatStraight = sdTrips === true;
-    const isRazzGame = RAZZ_VARIANTS.includes(selectedGame);
-    if (studAction && isRazzGame) hand.gameType = 'Action ' + hand.gameType;
     if (studSuper && selectedCategory === 'Stud') hand.gameType = 'Super ' + hand.gameType;
     if (selectedMix) hand.mix = selectedMix;
     // Double board: a second board on every street (utils/poker-engine.js handBoards).
@@ -6454,8 +6447,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         {false && selectedCategory === 'Stud' && (
           <div className="game-picker vp-stud">
             <div className="game-check-group">
-              {[['Super', studSuper, () => setStudSuper(p => !p), false],
-                ['Action', studAction, () => setStudAction(p => !p), !RAZZ_VARIANTS.includes(selectedGame)]].map(([label, checked, onToggle, disabled]) => (
+              {[['Super', studSuper, () => setStudSuper(p => !p), false]].map(([label, checked, onToggle, disabled]) => (
                 <div key={label} className={`game-check-row has-check${checked ? ' selected' : ''}`}
                   style={{opacity: disabled ? 0.35 : 1, cursor: disabled ? 'default' : 'pointer'}}
                   onClick={disabled ? undefined : onToggle}>
@@ -7518,7 +7510,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
             let ev = null;
             if (cfg.type === 'halves') { const s = scoreHalves(cfg, parsed, board); ev = s.hiEv || s.loEv; }
             if (cfg.type === 'high' || cfg.type === 'hilo') ev = bestHighFor(cfg, parsed, board);
-            else if (cfg.type === 'low') ev = cfg.lowType === 'a5' ? bestLowA5Hand(parsed.concat(board), false) : bestLow27Hand(parsed.concat(board));
+            else if (cfg.type === 'low') ev = bestLowFor(cfg, parsed.concat(board));
             else if (cfg.type === 'badugi') ev = bestBadugiHand(parsed);
             if (ev) winHandName = ev.name;
           }
@@ -7720,7 +7712,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         return { hi: hi ? hi.score : null, lo: lo && lo.qualified ? lo.score : null };
       }
       if (cfg.type === 'low') {
-        const lo = cfg.lowType === 'a5' ? bestLowA5Hand(all, false) : bestLow27Hand(all);
+        const lo = bestLowFor(cfg, all);
         return { hi: null, lo: lo ? lo.score : null };
       }
       if (cfg.type === 'badugi') {
@@ -8888,7 +8880,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           const lo = bestLow8For(cfg, parsed, bd);
           name = [hiN, lo && lo.qualified !== false && lo.name ? lo.name : null].filter(Boolean).join(' / ');
         } else if (cfg.type === 'high') name = nm(bestHighFor(cfg, parsed, bd));
-        else if (cfg.type === 'low') name = nm(cfg.lowType === 'a5' ? bestLowA5Hand(parsed.concat(bd), false) : bestLow27Hand(parsed.concat(bd)));
+        else if (cfg.type === 'low') name = nm(bestLowFor(cfg, parsed.concat(bd)));
         return name ? where[i] + ': ' + name : null;
       }).filter(Boolean);
       return lines.length ? lines.join('\n') : null;
@@ -8913,7 +8905,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     }
     let ev = null;
     if (cfg.type === 'high') ev = bestHighFor(cfg, parsed, board);
-    else if (cfg.type === 'low') ev = cfg.lowType === 'a5' ? bestLowA5Hand(parsed.concat(board), false) : bestLow27Hand(parsed.concat(board));
+    else if (cfg.type === 'low') ev = bestLowFor(cfg, parsed.concat(board));
     else if (cfg.type === 'badugi') ev = bestBadugiHand(parsed);
     if (!ev) return null;
     return useShort ? (ev.shortName || ev.name) : ev.name;

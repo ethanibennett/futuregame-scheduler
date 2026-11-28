@@ -53,7 +53,7 @@ test('the game wheel: the prototype families, each game in one place, nothing le
   const all = wheels.groups.flatMap((g) => g.games);
   assert.equal(new Set(all).size, all.length, 'no game in two places');
   assert.deepEqual(wheels.groups.find((g) => g.key === 'holdem').games, ["Hold'em", 'Pineapple', 'Short Deck']);
-  assert.deepEqual(wheels.groups.find((g) => g.key === 'razz').games, ['Razz', 'Razzdugi', 'Razzdeucy', '2-7 Razz']);
+  assert.deepEqual(wheels.groups.find((g) => g.key === 'razz').games, ['Razz', 'Action Razz', 'Razzdugi', 'Razzdeucy', '2-7 Razz']);
   assert.deepEqual(wheels.groups.find((g) => g.key === 'custom').games, CUSTOM);
   // Unbuilt games stay off the wheels, as they stay out of the palette.
   for (const g of C.UNBUILT_GAMES) assert.ok(!all.includes(g), g);
@@ -91,7 +91,7 @@ test('the variant wheel never repeats the game wheel (owner, 2026-11-22: "Let\'s
   assert.deepEqual(labels('a5draw'), ['Triple Draw', 'Single Draw']);
   assert.deepEqual(labels('5cd'), ['Single Draw', 'Double Draw']);
   assert.deepEqual(labels('holdem'), ['Texas', 'Pineapple', 'Short Deck']);
-  assert.deepEqual(labels('razz'), ['A-5', 'Razzdugi', 'Razzdeucy', '2-7']);
+  assert.deepEqual(labels('razz'), ['A-5', 'Action', 'Razzdugi', 'Razzdeucy', '2-7']);
   assert.deepEqual(labels('custom'), CUSTOM, 'a custom game keeps its own name');
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
   for (const g of wheels.groups) {
@@ -132,11 +132,11 @@ test('every structure the wheels offer plays with that betting', async () => {
   assert.equal(a5sd.gameType, 'NL A-5 SD');
   assert.equal(U.HAND_CONFIG['NL A-5 SD'].betting, 'nl');
   assert.equal(W.usualRow(wheels, 'A-5 Single Draw'), a5sd);
-  // 64 positions pick a row (the catalog's 62, NL Razz, OFC, the two double draws, Limit 5-Card Draw and Pot Limit
-  // Badugi among them, and the 2 custom games); 49 do not: 47 wait for a game type of their own, and OFC's Pot Limit
-  // and Limit, where no structure applies.
-  assert.equal(open, 64);
-  assert.equal(struck, 49);
+  // 65 positions pick a row (the catalog's 63, NL Razz, OFC, the two double draws, Limit 5-Card Draw, Pot Limit
+  // Badugi and Action Razz among them, and the 2 custom games); 51 do not: 49 wait for a game type of their own, and
+  // OFC's Pot Limit and Limit, where no structure applies.
+  assert.equal(open, 65);
+  assert.equal(struck, 51);
   // Limit 5-Card Draw and Pot Limit Badugi (owner, 2026-11-27: "add Limit 5-Card Draw and Pot Limit Badugi too"): game
   // types of their own, never the pot-limit draw's or the limit badugi's; the usual structures are unchanged.
   const l5 = W.rowAt(wheels, '5-Card Draw', 'Limit');

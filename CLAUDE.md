@@ -121,7 +121,10 @@ sessions opened here own scheduler work.
   quick add's parser is not told of them. **Limit 5-Card Draw and Pot Limit Badugi** (owner, 2026-11-27, "add … too") the same
   way: `L 5CD Hi` (a small bet before the draw, a big bet after: `flSmallStreets: [0]`) and `PL Badugi` (aces low, four cards,
   as Badugi everywhere it is named), codes `L5` and `PB`. Two recent games with one abbreviation say their structure on the chips ("NL 5CD",
-  "PL 5CD"). Over them, the last three
+  "PL 5CD"). **Action Razz** (owner, 2026-11-28: "J, Q, K anywhere in seven; plain low wins if none"): Razz on the Razz wheel's
+  "Action" row, code `AZ`, Razz's bring-in and order of play. A hand with no jack, queen or king in its seven scores past every
+  hand with one (`bestLowFor`, `ACTION_PAST` in poker-engine.js; every reader of a low goes through it), so each pot layer goes to
+  its lowest qualifier, or its plain low where nobody in it qualifies; the name says ", no face card". `action-razz.test.mjs`. Over them, the last three
   games picked (else NLH, PLO, 2-7 TD) and Search, which opens the palette (`VariantPicker.jsx` `Palette`: slang, the mixes, a game's
   rules; ⌘K and / still open it). The wheels are a second view of `buildCatalog`: every position not struck through is a catalog
   row and every row is one position, and a pick goes through `pickVariant`, so the game type is the palette's. Turning a game puts

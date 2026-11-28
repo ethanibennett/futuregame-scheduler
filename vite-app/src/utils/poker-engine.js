@@ -312,6 +312,21 @@ export function bestLow27Hand(cards) {
   return best;
 }
 
+/* Action Razz (owner, 2026-11-28: "J, Q, K anywhere in seven; plain low wins if none"): a razz low that only a hand
+   holding a jack, queen or king somewhere in its seven cards can win while anyone in that pot holds one. A hand with
+   none scores past every hand with one, so "the lowest score wins" settles each pot layer by the rule wherever a low
+   is read: a qualifier wins where any is in, the plain low where none is. */
+const ACTION_RANKS = new Set(['J', 'Q', 'K']);
+export const ACTION_PAST = 1e9;
+export const hasActionCard = (cards) => (cards || []).some((c) => ACTION_RANKS.has(c.rank));
+
+/** The low a 'low' game reads (GAME_EVAL lowType, and Action Razz's face-card rule). */
+export function bestLowFor(cfg, cards) {
+  const lo = cfg.lowType === 'a5' ? bestLowA5Hand(cards, false) : bestLow27Hand(cards);
+  if (!lo || !cfg.action || hasActionCard(cards)) return lo;
+  return { ...lo, score: lo.score + ACTION_PAST, name: lo.name + ', no face card', action: false };
+}
+
 export function bestBadugiHand(cards) {
   if (cards.length <= 4) return evalBadugi(cards);
   let best = null;
@@ -500,7 +515,7 @@ export const GAME_EVAL = {
   'PLO8':{type:'hilo',method:'omaha'},'O8':{type:'hilo',method:'omaha'},'Big O':{type:'hilo',method:'omaha'},
   'NL Big O':{type:'hilo',method:'omaha'},'L Big O':{type:'hilo',method:'omaha'},
   'Stud 8':{type:'hilo',method:'standard'},'Stud Hi-Lo':{type:'hilo',method:'standard'},
-  'Razz':{type:'low',lowType:'a5'},'A-5 TD':{type:'low',lowType:'a5'},'NL A-5 SD':{type:'low',lowType:'a5'},
+  'Razz':{type:'low',lowType:'a5'},'Action Razz':{type:'low',lowType:'a5',action:true},'A-5 TD':{type:'low',lowType:'a5'},'NL A-5 SD':{type:'low',lowType:'a5'},
   '2-7 TD':{type:'low',lowType:'27'},'PL 2-7 TD':{type:'low',lowType:'27'},'L 2-7 TD':{type:'low',lowType:'27'},
   'NL 2-7 SD':{type:'low',lowType:'27'},'PL 2-7 DD':{type:'low',lowType:'27'},'2-7 Razz':{type:'low',lowType:'27'},
   'Badugi':{type:'badugi'},'PL Badugi':{type:'badugi'},
@@ -543,7 +558,7 @@ export function evaluateShowdown(gameType, playerHands, boardCards, hand) {
       lo = bestLow8For(cfg, cards, boardCards);
     }
     if (cfg.type === 'low') {
-      lo = cfg.lowType === 'a5' ? bestLowA5Hand(all, false) : bestLow27Hand(all);
+      lo = bestLowFor(cfg, all);
     }
     if (cfg.type === 'badugi') {
       bad = bestBadugiHand(cards);
@@ -844,8 +859,7 @@ export function evaluateHand(game, heroCards, opponentCards, boardCards, hand) {
     oLo = bestLow8For(cfg, opponentCards, boardCards);
   }
   if (cfg.type === 'low') {
-    if (cfg.lowType === 'a5') { hLo = bestLowA5Hand(heroAll, false); oLo = bestLowA5Hand(oppAll, false); }
-    else { hLo = bestLow27Hand(heroAll); oLo = bestLow27Hand(oppAll); }
+    hLo = bestLowFor(cfg, heroAll); oLo = bestLowFor(cfg, oppAll);
   }
   if (cfg.type === 'badugi') {
     hBad = bestBadugiHand(heroCards); oBad = bestBadugiHand(opponentCards);
@@ -1027,7 +1041,7 @@ function scoreOnBoard(cfg, cards, board) {
     var q = ll && ll.qualified ? ll : null;
     return { hi: hh ? hh.score : null, lo: q ? q.score : null, hiEval: hh, loEval: q };
   }
-  if (cfg.type === 'low') { var lw = cfg.lowType === 'a5' ? bestLowA5Hand(all, false) : bestLow27Hand(all); return { hi: null, lo: lw ? lw.score : null, hiEval: null, loEval: lw }; }
+  if (cfg.type === 'low') { var lw = bestLowFor(cfg, all); return { hi: null, lo: lw ? lw.score : null, hiEval: null, loEval: lw }; }
   return null;
 }
 

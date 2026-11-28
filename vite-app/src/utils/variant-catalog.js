@@ -15,7 +15,7 @@ export const STRUCTURE_GAME_MAP = {
   'No Limit':  { "Hold'em": 'NLH', 'Pineapple': 'NL Pineapple', 'Short Deck': 'Short Deck',
     'Omaha': 'NLO', 'Omaha 8/b': 'NLO8', 'Big O': 'NL Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
     'Double Board Bomb Pot': 'PLO', 'Courchevel': 'Courchevel',
-    'Stud Hi': 'NL Stud Hi', 'Stud 8/b': 'NL Stud 8', 'Razz': 'NL Razz',
+    'Stud Hi': 'NL Stud Hi', 'Stud 8/b': 'NL Stud 8', 'Razz': 'NL Razz', 'Action Razz': 'Action Razz',
     'Stud Hi/Lo Regular': 'Stud Regular', '2-7 Razz': '2-7 Razz',
     'Razzdugi': 'Razzdugi', 'Razzdeucy': 'Razzdeucy',
     '2-7 Triple Draw': '2-7 TD', '2-7 Single Draw': 'NL 2-7 SD',
@@ -27,7 +27,7 @@ export const STRUCTURE_GAME_MAP = {
   'Pot Limit': { "Hold'em": 'PLH', 'Pineapple': 'PL Pineapple', 'Short Deck': 'Short Deck',
     'Omaha': 'PLO', 'Omaha 8/b': 'PLO8', 'Big O': 'Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
     'Double Board Bomb Pot': 'PLO', 'Courchevel': 'Courchevel',
-    'Stud Hi': 'PL Stud Hi', 'Stud 8/b': 'PL Stud 8', 'Razz': 'PL Razz',
+    'Stud Hi': 'PL Stud Hi', 'Stud 8/b': 'PL Stud 8', 'Razz': 'PL Razz', 'Action Razz': 'Action Razz',
     'Stud Hi/Lo Regular': 'Stud Regular', '2-7 Razz': '2-7 Razz',
     'Razzdugi': 'Razzdugi', 'Razzdeucy': 'Razzdeucy',
     '2-7 Triple Draw': 'PL 2-7 TD', '2-7 Single Draw': 'NL 2-7 SD', '2-7 Double Draw': 'PL 2-7 DD', 'Double Draw Hi': 'PL DD Hi',
@@ -39,7 +39,7 @@ export const STRUCTURE_GAME_MAP = {
   'Limit':     { "Hold'em": 'LHE', 'Pineapple': 'L Pineapple', 'Short Deck': 'Short Deck',
     'Omaha': 'LO Hi', 'Omaha 8/b': 'O8', 'Big O': 'L Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
     'Double Board Bomb Pot': 'PLO', 'Courchevel': 'Courchevel',
-    'Stud Hi': 'Stud Hi', 'Stud 8/b': 'Stud 8', 'Razz': 'Razz',
+    'Stud Hi': 'Stud Hi', 'Stud 8/b': 'Stud 8', 'Razz': 'Razz', 'Action Razz': 'Action Razz',
     'Stud Hi/Lo Regular': 'Stud Regular', '2-7 Razz': '2-7 Razz',
     'Razzdugi': 'Razzdugi', 'Razzdeucy': 'Razzdeucy',
     '2-7 Triple Draw': '2-7 TD', '2-7 Single Draw': 'NL 2-7 SD',
@@ -54,7 +54,7 @@ export const DEFAULT_STRUCTURE = {
   'Omaha': 'Pot Limit', 'Omaha 8/b': 'Pot Limit', 'Big O': 'Pot Limit', 'PLO6 8/b': 'Pot Limit',
   'PLO5': 'Pot Limit', 'PLO6': 'Pot Limit',
   'Double Board Bomb Pot': 'Pot Limit', 'Courchevel': 'Pot Limit',
-  'Stud Hi': 'Limit', 'Stud 8/b': 'Limit', 'Razz': 'Limit',
+  'Stud Hi': 'Limit', 'Stud 8/b': 'Limit', 'Razz': 'Limit', 'Action Razz': 'Limit',
   'Stud Hi/Lo Regular': 'Limit', '2-7 Razz': 'Limit',
   'Razzdugi': 'Limit', 'Razzdeucy': 'Limit',
   '2-7 Triple Draw': 'Limit', '2-7 Single Draw': 'No Limit', '2-7 Double Draw': 'Pot Limit', 'Double Draw Hi': 'Pot Limit',
@@ -67,8 +67,8 @@ export const DEFAULT_STRUCTURE = {
 };
 /* Games played one way only, known by their own name ("PLO6 8/b", not "Limit PLO6 8/b"). */
 export const FIXED_STRUCTURE = { 'Short Deck': 'No Limit', 'PLO5': 'Pot Limit', 'PLO6': 'Pot Limit', 'PLO6 8/b': 'Pot Limit' };
-export const RAZZ_VARIANTS = ['Razz', '2-7 Razz', 'Razzdugi', 'Razzdeucy'];
-const LIMIT_NAMED = ['Stud Hi', 'Stud 8/b', 'Razz', 'Stud Hi/Lo Regular', '2-7 Razz', 'Razzdugi', 'Razzdeucy',
+export const RAZZ_VARIANTS = ['Razz', 'Action Razz', '2-7 Razz', 'Razzdugi', 'Razzdeucy'];
+const LIMIT_NAMED = ['Stud Hi', 'Stud 8/b', 'Razz', 'Action Razz', 'Stud Hi/Lo Regular', '2-7 Razz', 'Razzdugi', 'Razzdeucy',
   '2-7 Triple Draw', 'A-5 Triple Draw', 'Badugi', 'Badeucy', 'Badacey', 'Archie 66', 'Archie 99', 'Ari'];
 const NAME_OVERRIDES = {
   'Pot Limit|Omaha': 'Pot Limit Omaha', 'Pot Limit|Omaha 8/b': 'PLO8', 'Pot Limit|Big O': 'Big O',
@@ -104,7 +104,7 @@ export const UNBUILT_GAMES = new Set(['Double Board Bomb Pot']);
 export const FAMILIES = [
   { id: 'holdem', label: "Hold'em", games: ["Hold'em", 'Pineapple', 'Short Deck'] },
   { id: 'omaha', label: 'Omaha', games: ['Omaha', 'Omaha 8/b', 'Big O', 'PLO5', 'PLO6', 'PLO6 8/b', 'Courchevel', 'Double Board Bomb Pot'] },
-  { id: 'stud', label: 'Stud', games: ['Stud Hi', 'Stud 8/b', 'Razz', 'Stud Hi/Lo Regular', '2-7 Razz', 'Razzdugi', 'Razzdeucy'] },
+  { id: 'stud', label: 'Stud', games: ['Stud Hi', 'Stud 8/b', 'Razz', 'Action Razz', 'Stud Hi/Lo Regular', '2-7 Razz', 'Razzdugi', 'Razzdeucy'] },
   { id: 'draw', label: 'Draw', games: ['2-7 Triple Draw', '2-7 Double Draw', '2-7 Single Draw', 'A-5 Triple Draw', 'A-5 Single Draw', 'Badugi', 'Badeucy', 'Badacey', '5-Card Draw', 'Double Draw Hi', 'Archie 66', 'Archie 99', 'Ari'] },
   { id: 'mixed', label: 'Mixed', games: [] },
   { id: 'other', label: 'Other', games: ['OFC', 'Dramaha Hi', 'Dramaha 2-7', 'Dramaha 49', 'Dramaha 0', 'Dramadugi', 'Omajack'] },
@@ -148,6 +148,7 @@ const ALIASES = {
   'Stud Hi|Limit': ['stud', 'seven card stud', '7 stud', '7cs', '7 card stud', 'stud high'],
   'Stud 8/b|Limit': ['stud 8', 'stud hi lo', 'stud8', 'eight or better', 'stud 8 or better', 'stud eight or better', '7 card stud hi lo'],
   'Razz|Limit': ['razz', 'a5 stud'],
+  'Action Razz|Limit': ['action razz', 'action', 'razz with a face card'],
   '2-7 Razz|Limit': ['27 razz', 'deuce razz'],
   '2-7 Triple Draw|Limit': ['27td', '2-7 td', 'deuce', 'deuce to seven', 'triple draw', 'td', 'lowball', 'deuce to seven lowball'],
   '2-7 Triple Draw|Pot Limit': ['pl 27 td', 'pl deuce'],

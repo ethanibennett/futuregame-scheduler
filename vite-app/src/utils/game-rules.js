@@ -21,6 +21,7 @@ const HALF = {
   high: ['High', 'The best five-card poker hand.'],
   short: ['High, short deck', 'The best five-card hand from a 36-card deck (sixes up): a flush beats a full house, and A-6-7-8-9 is the lowest straight.'],
   lo8: ['Low, 8 or better', 'The lowest five unpaired cards eight or under, aces low; straights and flushes do not count. No such hand, and the high takes all.'],
+  action: ['Low, with a face card', 'The lowest five cards, aces low, as in Razz, but only a hand holding a jack, queen or king anywhere in its seven cards can win while anyone in the pot holds one. If nobody does, the plain lowest hand wins.'],
   a5: ['Low, ace to five', 'The lowest five cards, aces low; straights and flushes do not count. A-2-3-4-5 is the best.'],
   '27': ['Low, deuce to seven', 'The lowest five cards with aces high; straights and flushes count against you. 7-5-4-3-2 is the best.'],
   badugi: ['Badugi', 'Four cards of different suits and ranks, the lowest wins; with none, the best three-card badugi, and so on.'],
@@ -32,7 +33,7 @@ const HALF = {
 function halvesOf(cfg) {
   if (!cfg) return [['Open-face', 'Scored by rows; the replayer shows the hands as dealt.']];
   if (cfg.type === 'high') return [cfg.method === 'short' ? HALF.short : (cfg.method === 'omaha' ? HALF.omaha : HALF.high)];
-  if (cfg.type === 'low') return [cfg.lowType === 'a5' ? HALF.a5 : HALF['27']];
+  if (cfg.type === 'low') return [cfg.action ? HALF.action : cfg.lowType === 'a5' ? HALF.a5 : HALF['27']];
   if (cfg.type === 'badugi') return [HALF.badugi];
   if (cfg.type === 'hilo') {
     const hi = cfg.method === 'omaha' ? HALF.omaha : HALF.high;

@@ -17,7 +17,7 @@
 
 import {
   computePotAwards, hiLoWinnersAmong, potLayerWinners, studOddChipOrder,
-  bestHighHand, bestOmahaLow, bestLowA5Hand, bestLow27Hand, bestBadugiHand,
+  bestHighHand, bestOmahaLow, bestLowA5Hand, bestLow27Hand, bestLowFor, bestBadugiHand,
 } from '../poker-engine.js';
 import { HandExportError } from './errors.js';
 import { fastBestHigh, fastBestOmahaHigh } from './fast-high.js';
@@ -67,7 +67,7 @@ export function evaluate(evalCfg, cards, board) {
     return hi ? { hi, lo: lo && lo.qualified ? lo : null } : null;
   }
   if (evalCfg.type === 'low') {
-    const lo = evalCfg.lowType === 'a5' ? bestLowA5Hand(all, false) : bestLow27Hand(all);
+    const lo = bestLowFor(evalCfg, all);
     return { hi: null, lo: lo && Number.isFinite(lo.score) ? lo : null, fallbackHi: lo ? null : bestHighHand(all) };
   }
   if (evalCfg.type === 'badugi') {

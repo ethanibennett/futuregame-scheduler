@@ -20,7 +20,7 @@ export const GAME_CODES = {
   'NL Stud Hi':'NS', 'PL Stud Hi':'PS', 'NL Stud 8':'N8', 'PL Stud 8':'G8',
   'NL Razz':'NZ', 'PL Razz':'PZ',
   'NL Pineapple':'NA', 'PL Pineapple':'PA', 'L Pineapple':'LA', 'Courchevel':'CV', 'Stud Regular':'SR',
-  'Razzdugi':'RD', 'Razzdeucy':'RC', 'Archie 99':'A9', 'Archie 66':'A6', 'Ari':'AR',
+  'Razzdugi':'RD', 'Razzdeucy':'RC', 'Action Razz':'AZ', 'Archie 99':'A9', 'Archie 66':'A6', 'Ari':'AR',
   'Dramaha Hi':'DH', 'Dramaha 2-7':'DL', 'Dramaha 49':'DP', 'Dramaha 0':'DZ', 'Dramadugi':'DD', 'Omajack':'OJ',
   'L Dramaha Hi':'LD', 'L Dramaha 2-7':'L7', 'L Dramaha 49':'L9', 'L Dramaha 0':'L0', 'L Dramadugi':'LG',
   // The double draws (2026-11-27). 'DD' and 'DH' were taken (Dramadugi, Dramaha Hi).

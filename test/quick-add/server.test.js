@@ -94,7 +94,9 @@ test('game table matches the replayer\'s HAND_CONFIG', async () => {
   // until quick add can say a throw, a draw on a board, or a card before the first bet.
   const known = new Set(Object.keys(G.GAMES));
   // Nor are the picker's no-limit rows that became games of their own on 2026-11-05: NLO, NL and L Big O, NL 5CD Hi, NL A-5 SD.
-  const notTyped = /^(NL |PL |L )Pineapple$|^Courchevel$|^Stud Regular$|^Razzd|^Archie |^Ari$|^(L )?Drama|^Omajack$|^NL 5CD Hi$|^NL A-5 SD$|^NLO$|^NL Big O$|^L Big O$/;
+  // Nor the wheels' games of 2026-11-27 and 28 (the double draws, Limit 5-Card Draw, Pot Limit Badugi, Action Razz), which
+  // quick add's parser is not told of yet.
+  const notTyped = /^(NL |PL |L )Pineapple$|^Courchevel$|^Stud Regular$|^Razzd|^Archie |^Ari$|^(L )?Drama|^Omajack$|^NL 5CD Hi$|^NL A-5 SD$|^NLO$|^NL Big O$|^L Big O$|^PL 2-7 DD$|^PL DD Hi$|^L 5CD Hi$|^PL Badugi$|^Action Razz$/;
   const missing = Object.keys(HAND_CONFIG).filter((k) => !known.has(k) && !/^OFC/.test(k) && !notTyped.test(k));
   eq(missing, []);
   // No fallback table is left: a hand opens in the replayer under the name the parse gave it.

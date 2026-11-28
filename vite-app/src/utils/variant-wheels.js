@@ -12,13 +12,13 @@ export const STRUCTURES = ['No Limit', 'Pot Limit', 'Limit'];
 export const STRUCTURE_SHORT = { 'No Limit': 'NL', 'Pot Limit': 'PL', Limit: 'Limit' };
 
 /* The game wheel, in the prototype's order. `games` is the variant wheel, the game itself first. A
-   name the catalog has no row for is left out (Double Board Bomb Pot is UNBUILT_GAMES; the prototype's
-   Action Razz has no rules of its own yet), so a game joins its wheel the day its row exists. */
+   name the catalog has no row for is left out (Double Board Bomb Pot is UNBUILT_GAMES), so a game joins its
+   wheel the day its row exists. */
 export const WHEEL_GAMES = [
   { key: 'holdem', label: "Hold'em", games: ["Hold'em", 'Pineapple', 'Short Deck'] },
   { key: 'omaha', label: 'Omaha', games: ['Omaha', 'Omaha 8/b', 'Big O', 'PLO5', 'PLO6', 'PLO6 8/b', 'Courchevel', 'Double Board Bomb Pot'] },
   { key: 'stud', label: 'Stud', games: ['Stud Hi', 'Stud 8/b', 'Stud Hi/Lo Regular'] },
-  { key: 'razz', label: 'Razz', games: ['Razz', 'Razzdugi', 'Razzdeucy', '2-7 Razz'] },
+  { key: 'razz', label: 'Razz', games: ['Razz', 'Action Razz', 'Razzdugi', 'Razzdeucy', '2-7 Razz'] },
   /* The draw families are named by the hand they play (owner, 2026-11-27: "For the draw games let's just say A-5 and
      2-7, not A-5 draw etc, since the third wheel will say single draw/triple draw"); 5-Card the same way. */
   { key: '27draw', label: '2-7', games: ['2-7 Triple Draw', '2-7 Double Draw', '2-7 Single Draw'] },
@@ -41,7 +41,7 @@ export const VARIANT_LABEL = {
   "Hold'em": 'Texas', 'Pineapple': 'Pineapple', 'Short Deck': 'Short Deck',
   'Omaha': 'Hi', 'Omaha 8/b': '8/b', 'Big O': 'Big O', 'PLO5': '5-Card', 'PLO6': '6-Card', 'PLO6 8/b': '6-Card 8/b', 'Courchevel': 'Courchevel',
   'Stud Hi': 'Hi', 'Stud 8/b': '8/b', 'Stud Hi/Lo Regular': 'Hi/Lo Regular',
-  'Razz': 'A-5', 'Razzdugi': 'Razzdugi', 'Razzdeucy': 'Razzdeucy', '2-7 Razz': '2-7',
+  'Razz': 'A-5', 'Action Razz': 'Action', 'Razzdugi': 'Razzdugi', 'Razzdeucy': 'Razzdeucy', '2-7 Razz': '2-7',
   '2-7 Triple Draw': 'Triple Draw', '2-7 Double Draw': 'Double Draw', '2-7 Single Draw': 'Single Draw',
   'A-5 Triple Draw': 'Triple Draw', 'A-5 Single Draw': 'Single Draw',
   'Badugi': 'Standard', 'Badeucy': 'Badeucy', 'Badacey': 'Badacey',

@@ -32,6 +32,8 @@ export const HAND_CONFIG = {
   // lowest straight (poker-engine.js SHORT_DECK_RULES). `shortDeck` is what the card pickers read.
   'Short Deck': { heroCards: 2, hasBoard: true, boardMax: 5, betting: 'nl', shortDeck: true, heroPlaceholder: 'AKhd', boardPlaceholder: 'J76hds' },
   'Razz':     { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A23x4567xhdscx' },
+  // Action Razz (owner, 2026-11-28): Razz, but only a hand with a J, Q or K in its seven wins while anyone holds one.
+  'Action Razz': { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A23x4567xhdscx' },
   'Stud Hi':  { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A9xxAKQJThdcsx' },
   'Stud 8':   { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A234567hdcshds' },
   '2-7 TD':   { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: '23457hdcss' },

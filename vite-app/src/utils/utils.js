@@ -91,6 +91,7 @@ const VARIANT_STRIPS = {
   'Stud 8':             { abbr: 'STUD 8', fam: 'stud',  shade: 1.16 },
   'Stud Hi-Lo':         { abbr: 'STUD 8', fam: 'stud',  shade: 1.16 },
   'Razz':               { abbr: 'RAZZ',   fam: 'stud',  shade: 0.84 },
+  'Action Razz':        { abbr: 'ARAZZ',  fam: 'stud',  shade: 0.80 },
   '2-7 Razz':           { abbr: 'RAZZ 7', fam: 'stud',  shade: 0.72 },
   '2-7 TD':             { abbr: '2-7 TD', fam: 'draw',  shade: 1.00 },
   'L 2-7 TD':           { abbr: '2-7 TD', fam: 'draw',  shade: 1.00 },
@@ -340,6 +341,8 @@ export const HAND_CONFIG = {
   // lowest straight (poker-engine.js SHORT_DECK_RULES). `shortDeck` is what the card pickers read.
   'Short Deck': { heroCards: 2, hasBoard: true, boardMax: 5, betting: 'nl', shortDeck: true, heroPlaceholder: 'AKhd', boardPlaceholder: 'J76hds' },
   'Razz':     { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A23x4567xhdscx' },
+  // Action Razz (owner, 2026-11-28): Razz, but only a hand with a J, Q or K in its seven wins while anyone holds one.
+  'Action Razz': { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A23x4567xhdscx' },
   'Stud Hi':  { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A9xxAKQJThdcsx' },
   'Stud 8':   { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A234567hdcshds' },
   '2-7 TD':   { heroCards: 5, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: '23457hdcss' },

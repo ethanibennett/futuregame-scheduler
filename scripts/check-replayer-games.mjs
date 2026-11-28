@@ -64,6 +64,8 @@ const DRAMAHA_BOARD = [['AhKc9d', 'Jh', '8c']];
 const DRAMAHA = (opp) => ({ hero: 'AsAdQh6c2s', opp, discard: '2s', draw: '3s', rounds: 1, boards: DRAMAHA_BOARD, expect: 'split' });
 const TRUTH = {
   '2-7 Razz': { plan: RAZZ_27, why: 'in 2-7 Razz the ace is high' },
+  // Hero's 8 low holds a king, the opponent's 7 low no jack, queen or king: in Razz the seven wins, here the eight.
+  'Action Razz': { plan: { hero: ['Ah2h', '3d', '4c', '9s', 'Kc', '8d'], opp: ['2c3s', '4d', '5c', '7h', 'Td', '9c'], expect: 'hero' } },
   'Double Board Bomb Pot': { plan: BOMB },
   // The thrown ace is gone: kept, it would make hero's three aces; without it the kings win.
   'Pineapple': { plan: { hero: 'QhQdAh', opp: 'KhKd', discard: 'Ah', boards: [['AdAc2s', '5h', '9c']], expect: 'opp' } },
