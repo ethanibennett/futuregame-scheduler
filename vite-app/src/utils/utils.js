@@ -979,6 +979,25 @@ export function isWsopOnlineCircuit(t) {
   return /\bonline circuit\b/i.test(String((t && t.venue) || ''));
 }
 
+/* Is this row's SERIES a live WSOP Circuit stop? Every WSOPC event awards a ring
+ * (owner, 2026-11-27: "WSOPC always rings (except for non-ring side events)"),
+ * and none awards a bracelet. Read from the series title the feed writes into
+ * `venue` ("WSOPC Horseshoe Las Vegas 2027", "WSOP Circuit Harrah's Cherokee
+ * 2026", "2026-27 WSOP International Circuit Italy", "WSOP Super Circuit LATAM
+ * 2027"), or a curated VENUE_MAP row whose name says WSOPC ('Turning Stone
+ * Casino' → 'WSOPC Turning Stone'). Never from getVenueInfo(t.venue) alone: once
+ * any card has asked with the row's property, that answer is the ROOM's
+ * ("Horseshoe Las Vegas"), so the WSOPC test failed and the January Horseshoe
+ * stop showed bracelets and no rings. Not "EuroPoker Circuit" or "Samurai
+ * Circuit": the word has to follow WSOP. */
+const WSOP_CIRCUIT_TITLE = /\bWSOPC\b|\b(?:WSOP|World Series of Poker)[- ](?:International |Super )?Circuit\b/i;
+export function isWsopCircuitSeries(t) {
+  const v = String((t && t.venue) || '');
+  if (WSOP_CIRCUIT_TITLE.test(v)) return true;
+  const curated = VENUE_MAP[v];
+  return !!(curated && /^WSOPC/.test(curated.longName || ''));
+}
+
 export function isBraceletEvent(t) {
   if (t.is_satellite) return false;
   if (t.is_restart) return false;
@@ -987,12 +1006,14 @@ export function isBraceletEvent(t) {
   // A ring is not a bracelet. WSOP.com's Circuit series is online and is not a
   // bracelet series, so it has to be excluded before the online test admits it.
   if (isWsopOnlineCircuit(t)) return false;
+  if (isWsopCircuitSeries(t)) return false;
   const online = isWsopOnline(t);
-  if (!v.includes('horseshoe') && !v.includes('paris') && v !== 'wsop europe' && !online) return false;
+  /* The summer series is at Horseshoe and Paris LAS VEGAS: a Horseshoe in Bossier City or
+     a club in Paris, France is not a bracelet venue. */
+  const summer = (v.includes('horseshoe') || v.includes('paris')) && v.includes('las vegas');
+  if (!summer && v !== 'wsop europe' && !online) return false;
   const name = (t.event_name || '').toLowerCase();
   if (name.includes('circuit') && v !== 'wsop europe' && !online) return false;
-  const info = getVenueInfo(t.venue);
-  if (/^WSOPC/.test(info.longName)) return false;
   return !NON_BRACELET_KEYWORDS.some(kw => name.includes(kw));
 }
 
@@ -1025,7 +1046,7 @@ export function isRingEvent(t) {
     const n = (t.event_name || '').toLowerCase();
     return !NON_BRACELET_KEYWORDS.some(kw => n.includes(kw));
   }
-  if (!/^WSOPC/.test(getVenueInfo(t.venue).longName || '')) return false;
+  if (!isWsopCircuitSeries(t)) return false;
   const name = (t.event_name || '').toLowerCase();
   return !NON_BRACELET_KEYWORDS.some(kw => name.includes(kw));
 }

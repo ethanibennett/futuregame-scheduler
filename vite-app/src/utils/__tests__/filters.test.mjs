@@ -3,7 +3,7 @@
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 
 // Dynamic, because a static import is hoisted above the stub above it.
-const { isOnline, isWsopOnline, matchesLocation, matchesOnline, getVenueTimezone, isSeriesEvent, isBraceletEvent, isRingEvent, isWsopOnlineCircuit, shortEventNumber, describeGame, getGamePills, registerRowCurrencies, nativeCurrency, currencySymbol } =
+const { getVenueInfo, isOnline, isWsopOnline, matchesLocation, matchesOnline, getVenueTimezone, isSeriesEvent, isBraceletEvent, isRingEvent, isWsopOnlineCircuit, shortEventNumber, describeGame, getGamePills, registerRowCurrencies, nativeCurrency, currencySymbol } =
   await import('../utils.js');
 
 let pass = 0, fail = 0;
@@ -272,6 +272,34 @@ eq('nor is one that says so in the name',
 eq('a live circuit stop still gets a ring',
    isRingEvent({ venue: 'Turning Stone Casino', event_name: 'NLH Monster Stack',
                  event_number: '12', category: null, is_satellite: 0 }), true);
+
+console.log('WSOPC always rings, never a bracelet');
+/* The January WSOPC Horseshoe Las Vegas stop showed bracelets and no rings (owner,
+   2026-11-27): the ring test read getVenueInfo(venue).longName, which is the ROOM's name
+   ("Horseshoe Las Vegas") once any card has asked with the row's property, and the
+   bracelet test admitted any venue containing "horseshoe". Asked in that order here. */
+const hsLv = { venue: 'WSOPC Horseshoe Las Vegas 2027', property: 'Horseshoe Las Vegas', event_name: 'PLO',
+               event_number: '2-x-20270101', category: null, is_satellite: 0, is_restart: 0 };
+getVenueInfo(hsLv.venue, hsLv.property);
+eq('the strip has learned the room', getVenueInfo(hsLv.venue).longName.startsWith('WSOPC'), false);
+eq('a WSOPC Horseshoe event is not a bracelet', isBraceletEvent(hsLv), false);
+eq('it is a ring', isRingEvent(hsLv), true);
+eq('its side event is not', isRingEvent({ ...hsLv, event_name: 'NLH Side Event - Nightly' }), false);
+for (const venue of ['WSOP Circuit Harrah\'s Cherokee 2026', '2026-27 WSOP International Circuit Italy',
+                     'WSOP Super Circuit LATAM 2027', 'WSOP-Circuit Playground 2026', '2026-27 WSOPC Cherokee-Fall']) {
+  const t = { venue, property: 'Somewhere', event_name: 'NLH', event_number: '5-x-20270105', category: null };
+  getVenueInfo(venue, t.property);
+  eq(`${venue}: a ring`, isRingEvent(t), true);
+  eq(`${venue}: no bracelet`, isBraceletEvent(t), false);
+}
+for (const venue of ['EuroPoker Circuit - Pornic', 'AJPC Samurai Circuit - Incheon 2026 III.']) {
+  eq(`${venue}: another tour's circuit is no ring`, isRingEvent({ venue, event_name: 'NLH', event_number: '3' }), false);
+}
+eq('the summer series keeps its bracelets', isBraceletEvent({ venue: 'Horseshoe / Paris Las Vegas', event_name: 'NLH', event_number: '17' }), true);
+eq('Horseshoe Bossier City is no bracelet venue',
+   isBraceletEvent({ venue: "Southern Poker Horseshoe Holiday Hold'em Series", event_name: 'NLH', event_number: '4' }), false);
+eq('nor is a club in Paris, France',
+   isBraceletEvent({ venue: 'TexaPoker Series - Paris (Partouche Pasino Club)', event_name: 'NLH', event_number: '4' }), false);
 
 
 console.log('a room switched off is off');
