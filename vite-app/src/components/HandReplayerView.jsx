@@ -11705,7 +11705,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
         const backPaint = motion.backPaint || null;
         /* Where a folded hand can go (foldAway, utils/replayer-card-moments.js), in the fold layer's px: the felt's middle
            (Spin in), the dealer's muck beside the deck, just past the seat's betting line (the wager's spot, as the bets'
-           own placement works it out, and a fifth of the way on toward the pot), and the seat's plaque. */
+           own placement works it out, and a fifth of the way on toward the pot), the seat's plaque, and the pot's graphic
+           (its chips and figure, which a flicked hand slides under). */
         const foldPoints = (pi, R0) => {
           const at = (pct) => { const p = ptOf(pct); return { x: p.x - R0.left, y: p.y - R0.top }; };
           const sp = seats[pi] || [50, 50];
@@ -11714,8 +11715,11 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
           const wy = side ? sp[1] : sp[1] + (40 - sp[1]) * (isLandscape ? 0.42 : sp[1] > 40 ? 0.26 : 0.3);
           const plaque = table.querySelector('.replayer-seat[data-seat="' + pi + '"] .replayer-seat-info');
           const PQ = plaque ? plaque.getBoundingClientRect() : null;
+          const potEl = table.querySelector('.replayer-pot-display') || table.querySelector('.replayer-pot-chips');
+          const PT = potEl ? potEl.getBoundingClientRect() : null;
           return {
             middle: at([50, 54]), muck: at(muckTarget),
+            pot: PT && PT.width ? { x: PT.left + PT.width / 2 - R0.left, y: PT.top + PT.height / 2 - R0.top } : at([50, 40]),
             line: at([wx + (50 - wx) * 0.2, side ? wy : wy + (40 - wy) * 0.2]),
             seat: PQ ? { x: PQ.left + PQ.width / 2 - R0.left, y: PQ.top + PQ.height / 2 - R0.top } : null,
           };

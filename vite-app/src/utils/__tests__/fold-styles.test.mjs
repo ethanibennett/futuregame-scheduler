@@ -28,7 +28,7 @@ const hand = [-15, -5, 5, 15].map((a) => {
 });
 const layer = fakeEl();
 const layerRect = { left: 0, top: 0 };
-const pts = { middle: { x: 200, y: 430 }, muck: { x: 150, y: 520 }, line: { x: 200, y: 600 }, seat: { x: 200, y: 740 } };
+const pts = { middle: { x: 200, y: 430 }, muck: { x: 150, y: 520 }, line: { x: 200, y: 600 }, seat: { x: 200, y: 740 }, pot: { x: 205, y: 330 } };
 
 for (const { id } of FOLD_STYLES.filter((s) => s.id !== 'each')) {
   test(`${id}: from the hand, smooth, gone at the end`, () => {
@@ -56,7 +56,7 @@ for (const { id } of FOLD_STYLES.filter((s) => s.id !== 'each')) {
 }
 
 test('the landing styles come to rest where they were sent', () => {
-  const near = { spread: pts.muck, drop: pts.line, lob: pts.muck, flick: pts.muck, throw: pts.muck };
+  const near = { spread: pts.muck, drop: pts.line, lob: pts.muck, flick: pts.pot, throw: pts.muck };
   for (const [id, to] of Object.entries(near)) {
     runs.length = 0;
     foldAway(reg, { style: id, set: 'B', rate: 0.5, layer, layerRect, cards: hand, ...pts, seed: 's' });
@@ -67,6 +67,16 @@ test('the landing styles come to rest where they were sent', () => {
       assert.ok(Math.hypot(x - to.x, y - to.y) < 2 * 56, `${id} card ${i} rests ${Math.hypot(x - to.x, y - to.y).toFixed(0)}px off`);
     });
   }
+});
+
+test('Flicked slides each card under the pot without turning it', () => {
+  runs.length = 0;
+  foldAway(reg, { style: 'flick', set: 'B', rate: 0.5, layer, layerRect, cards: hand, ...pts, seed: 'f' });
+  runs.forEach((spec, i) => {
+    for (let t = 0; t <= spec.end; t += 16.7) assert.equal(val(spec, 'rotate', t), hand[i].angle, 'its own tilt throughout');
+    const x = hand[i].cx + val(spec, 'x', spec.end * 0.7), y = hand[i].cy + val(spec, 'y', spec.end * 0.7);
+    assert.ok(Math.abs(x - pts.pot.x) <= 0.25 * 40 + 0.5 && Math.abs(y - pts.pot.y) <= 0.15 * 56 + 0.5, `card ${i} rests on the pot (${x.toFixed(0)}, ${y.toFixed(0)})`);
+  });
 });
 
 test('the same fold plays the same way (seeded)', () => {

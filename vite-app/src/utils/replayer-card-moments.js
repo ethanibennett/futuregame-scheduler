@@ -685,18 +685,20 @@ function dimTrack({ dimTo, dimMs, delay = 0, end, h, lift = null, steps = 28 }) 
  * A folded hand leaving in one of FOLD_STYLES: ghost copies of its cards in the fold layer, under every seat. Points
  * are in the layer's px: `middle` the felt's middle (Spin in), `muck` the dealer's muck beside the deck (where a hand
  * thrown in lands), `line` just past the seat's betting line (Lift and drop), `seat` its plaque's centre (Behind the
- * seat). `seed` fixes the scatter, so a fold plays the same way every time.
+ * seat), `pot` the pot's graphic (Flicked). `seed` fixes the scatter, so a fold plays the same way every time.
  *   spin    gathered into one stack, which spins into the middle and fades (25).
  *   tuck    gathered, then shrinks to nothing behind the seat's plaque (the stud fold's down cards).
  *   spread  gathered, the stack goes in to the muck and, as it lands, its cards spread apart into a loose fan.
  *   drop    gathered, the stack is picked up (it grows, its shadow lengthening) and dropped just past the betting line.
- *   flicked the cards are flicked in one at a time from the top, each spinning on its way, into a loose pile.
+ *   flick   the cards are flicked in one at a time from the top, each sliding straight in without turning and coming to
+ *           rest under the pot's graphic (owner, 2026-11-27: "For 5 let's have them land under the pot graphic, and
+ *           slide without spinning").
  *   push    the hand, as it is held, pushed forward across the cloth, slowing as it goes, and fades.
  *   lob     gathered, the stack is tossed in an arc to the muck (rising and falling), lands and skids.
  *   throw   the whole hand thrown at the muck at once, every card spinning its own way and skidding apart.
  *   coin    gathered, the stack spins on its edge like a coin, slowing, and falls flat as it fades.
  */
-export function foldAway(reg, { style, set, rate = 1, layer, layerRect, cards, back = null, dimTo = 0.42, middle, muck, line, seat, seed = '' }) {
+export function foldAway(reg, { style, set, rate = 1, layer, layerRect, cards, back = null, dimTo = 0.42, middle, muck, line, seat, pot, seed = '' }) {
   if (!layer || !layerRect || !cards.length) return [];
   const id = normalizeFoldStyle(style);
   if (id === 'tuck' && seat) return foldToStack(reg, { set, rate, layer, layerRect, cards, target: seat, back, dimTo, spin: 0, scaleTo: 0.05 });
@@ -769,16 +771,17 @@ export function foldAway(reg, { style, set, rate = 1, layer, layerRect, cards, b
   }
 
   if (id === 'flick') {
-    const M = page(muck || middle);
+    // Under the pot's graphic (the fold layer is under it), a little apart; each slides straight, its tilt kept.
+    const M = page(pot || muck || middle);
     const fly = tierSpring(set, 'flick');
     const F = timeTo(fly, 0.98) / rate;
     const stag = 0.75 * B;
     // From the top of the hand (the last card dealt sits over the rest) to the first.
     const slots = cards.map((c, i) => {
       const j = n - 1 - i, t0 = 0.2 * B + j * stag;
-      const to = { x: M.x + (R() - 0.5) * 0.7 * W, y: M.y + (R() - 0.5) * 0.5 * H };
-      const v = towards({ x: c.cx, y: c.cy }, to), dir = v.dx >= 0 ? 1 : -1;
-      return { t0, v, spin: dir * (150 + 120 * R()), bow: (R() < 0.5 ? -1 : 1) * 0.08 * v.d, k: sprAt(fly, t0) };
+      const to = { x: M.x + (R() - 0.5) * 0.5 * W, y: M.y + (R() - 0.5) * 0.3 * H };
+      const v = towards({ x: c.cx, y: c.cy }, to);
+      return { t0, v, spin: 0, bow: 0, k: sprAt(fly, t0) };
     });
     const last = Math.max(...slots.map((s) => s.t0)) + F;
     const tFade = last + 1.0 * B;

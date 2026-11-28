@@ -1223,7 +1223,8 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   the seat are `foldToStack`'s; Spread, Lift and drop and Flicked are the owner's; Pushed, Lobbed, Thrown and Coin spin were
   offered with them; Each their own gives every player one of them by their name (`foldStyleOf`). Each style is a pose per card
   over the moment's clock (`flyPoses`), so Back, a jump and an export seek it; a thrown or tossed hand lands in the dealer's
-  muck (`muckTarget`), Lift and drop just past the seat's betting line, and a landing hand is dimmed to 0.7, not 0.42 (on the
+  muck (`muckTarget`), Lift and drop just past the seat's betting line, Flicked under the pot's graphic, each card sliding
+  straight in with no turn (owner, 2026-11-27: "For 5 let's have them land under the pot graphic, and slide without spinning"), and a landing hand is dimmed to 0.7, not 0.42 (on the
   dark felt it could hardly be seen). In stud, Spin in keeps stud's own fold (the 2026-11-22 rule); any other choice plays on
   the down cards. The recordings: https://claude.ai/artifact/Fc6jrNtpiRx39h8dgViJZx
 - **The action pills are solid** (owner, 2026-11-22: "a solid color with contrasting text"): `--act-pill` / `--act-pill-ink`
