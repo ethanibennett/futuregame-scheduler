@@ -18591,9 +18591,10 @@
     form.tracking-card.tr-form .bk-picker > label { height: calc(var(--subrow) * 3); line-height: normal; padding-top: calc(var(--subrow) * 2 - 1cap); box-sizing: border-box; font-size: var(--fs-xs); font-weight: var(--fw-regular); text-transform: none; letter-spacing: 0; color: var(--text-muted); }
 
     /* ── Bankroll design upgrades, part D: desktop (83-86) ── */
-    /* The second pane (83, 84, 85): App's .dk-pane-side, a block scroller of its own, its first block level with
-       the main pane's first block under the 7r band (2r below it). Each block a section; 4r above a new one. */
-    .app-shell.is-desktop .dk-side-host.dk-side-bankroll { display: flex; flex-direction: column; padding-top: calc(var(--subrow) * 9); }
+    /* The second pane (83, 84, 85): App's .dk-pane-side, a block scroller of its own, its first block 2r from its top
+       (owner, 2026-11-28: "Let's remove the empty space at the top here"; it stood 9r down, level with the main pane's
+       first block under the 7r band, an empty 9r over Selected result). Each block a section; 4r above a new one. */
+    .app-shell.is-desktop .dk-side-host.dk-side-bankroll { display: flex; flex-direction: column; padding-top: calc(var(--subrow) * 2); }
     /* Its blocks keep the tab's 35g (UX pick 08) in a pane that runs to the shell's edge (UX pick 107), and
        their order is fixed whatever mounted first: the selection, then the totals, then money in and out. */
     .dk-side-bankroll > * { flex: none; width: calc(var(--gu) * 35); }
