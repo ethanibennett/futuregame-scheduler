@@ -645,7 +645,7 @@ export var VISUAL_SWITCHES = [
   'showPotOdds', 'showSPR', 'showBetSizing', 'showEquity', 'showChipDelta', 'showNutsHighlight',
   'showPlayerStats', 'showRanges', 'animateDeal', 'animateChips', 'animateBoard', 'animateFold',
 ];
-var THEME_CODES = { 'default': 'd', 'casino-royale': 'c', 'high-stakes': 'h' };
+var THEME_CODES = { 'default': 'd', 'casino-royale': 'c', 'high-stakes': 'h', 'minimal': 'm' };
 export function encodeVisuals(v) {
   if (!v) return '';
   var bits = 0;

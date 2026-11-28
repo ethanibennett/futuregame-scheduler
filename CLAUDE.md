@@ -1291,6 +1291,15 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   per action, from `--act-*-solid` and `--act-ink-light` / `--act-ink-dark` (styles.css, beside `--act-*`): fold, call
   (blue-600) and raise (red-600) in white, check and bet in near-black, all-in as before; each pair measured at 4.8:1 or
   more but all-in's 4.0. Swiss keeps its own.
+- **The Minimal theme** (owner, 2026-11-28: "a new minimalist replayer theme, all greyscale except for the cards";
+  `components/replayer-minimal.css`, `REPLAYER_THEMES`, link code `m`): Replayer settings > Theme > Minimal. The replay root
+  carries `data-rtheme="minimal"`, the table `.theme-minimal`. A flat grey cloth in a near-black rail, no weave, lamp, bevel
+  or glow; each action a step of lightness (fold darkest, raise lightest, all in black ringed white), the winner white, the
+  loser dimmed, --brand white (near black on a light page). Everything that holds no card is drawn through `grayscale(1)`,
+  so a colour the file never names comes out grey; never anything that holds a card (the table, a seat, a card row, the
+  board, the dead strip, the fold layer). Checked by walking NLH, O8, Stud Hi and 2-7 TD hands step by step at 402 (dark
+  and light) and 1440 and reading every painted colour off the cards (backgrounds, borders, shadows, text, SVG, ::before and
+  ::after): none with any chroma.
 - **The chips are casino clay** (owner, 2026-11-13: pick 1 of `docs/catalogues/replayer-chips`, gallery
   https://claude.ai/artifact/UrZPCY5D5q7TBcnwG49ZBY): `.chip-disc` / `.replayer-pot-chip-disc` in `styles.css`, six white
   edge inserts placed per chip by `utils/chip-inserts.js` (`chipInsertVars` / `applyChipInserts` from the chip's

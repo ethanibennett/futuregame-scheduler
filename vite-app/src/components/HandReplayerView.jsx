@@ -59,6 +59,7 @@ import { autoTitle as autoTitleOf, displayTitle as displayTitleOf, isBuiltTitle,
 import { SAMPLE_HAND } from '../utils/sample-hand.js';
 import { exportHandHistory, playedAtOf, handOfRow, handsFileName } from '../utils/hand-history/save.js';
 import { chipInsertVars, applyChipInserts, WHITE_CHIP } from '../utils/chip-inserts.js';
+import './replayer-minimal.css';
 const ReplayerDrill = lazy(() => import('./ReplayerDrill.jsx'));
 
 /* The ranks a game deals, high to low, for its card pickers. Short Deck plays a 36-card deck, the
@@ -2259,6 +2260,8 @@ const REPLAYER_THEMES = [
   { id: 'default', label: 'Default', lit: null, shade: '#2c2e50' },
   { id: 'casino-royale', label: 'Casino Royale', lit: '#2a5c8f', shade: '#0b1a2e' },
   { id: 'high-stakes', label: 'High Stakes', lit: '#3a3a3a', shade: '#101010' },
+  /* Minimal (owner, 2026-11-28): all greyscale but the cards; replayer-minimal.css. */
+  { id: 'minimal', label: 'Minimal', lit: '#2b2b2b', shade: '#2b2b2b' },
 ];
 /* Neon Vegas, Vintage and Minimalist were retired (2026-09-30). A viewer who had
    one saved — or a shared hand seeded with one — falls back to Default rather
@@ -2509,7 +2512,7 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
                 <button key={t.id} className={'replayer-settings-thumb' + (settings.theme === t.id ? ' active' : '')}
                   aria-pressed={settings.theme === t.id}
                   onClick={() => onUpdate('theme', t.id)}>
-                  <span className="thumb-felt" aria-hidden="true"
+                  <span className="thumb-felt" aria-hidden="true" data-theme-id={t.id}
                     style={{ '--thumb-lit': t.lit || settings.feltColor, '--thumb-shade': t.shade || '#2c2e50' }}>
                     <i /><i />
                   </span>
@@ -13019,7 +13022,8 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     <div className={'replayer-replay' + hcDeckClass
       + (isLandscape ? ' replayer-landscape' : ' replayer-fullbleed')
       + (inPane ? ' replayer-in-pane' : '')
-      + (rewinding ? ' is-rewinding' : '')}>
+      + (rewinding ? ' is-rewinding' : '')}
+      data-rtheme={rSettings.theme === 'minimal' ? 'minimal' : undefined}>
       {showSettings && <ReplayerSettingsPanel onClose={() => setShowSettings(false)} settings={rSettings} onUpdate={handleSettingsUpdate} />}
 
       {/* Table settings: the felt and splay controls on the replay screen
