@@ -689,14 +689,16 @@ function dimTrack({ dimTo, dimMs, delay = 0, end, h, lift = null, steps = 28 }) 
  *   spin    gathered into one stack, which spins into the middle and fades (25).
  *   tuck    gathered, then shrinks to nothing behind the seat's plaque (the stud fold's down cards).
  *   spread  gathered, the stack goes straight to just past the seat's betting line (its own side of the table) and, as
- *           it lands, its cards slide apart into a row; nothing turns but the gather.
- *   drop    gathered, the stack is picked up (it grows, its shadow lengthening) and dropped just past the betting line.
+ *           it lands, its cards slide apart into a row running toward the middle of the felt; nothing turns but the
+ *           gather.
+ *   drop    gathered, the stack is picked up (it grows, its shadow lengthening), makes one half turn in the air and is
+ *           dropped just past the betting line.
  *   flick   the cards are flicked in one at a time from the top, each sliding straight in without turning and coming to
  *           rest under the pot's graphic (owner, 2026-11-27: "For 5 let's have them land under the pot graphic, and
  *           slide without spinning").
  *   push    the hand, as it is held, pushed forward across the cloth, slowing as it goes, and fades.
  *   lob     gathered, the stack is tossed in an arc to the muck (rising and falling), lands and skids.
- *   throw   the whole hand thrown at the muck at once, every card spinning its own way and skidding apart.
+ *   throw   the whole hand thrown in at once, every card spinning its own way and skidding apart under the pot.
  *   coin    gathered, the stack spins on its edge like a coin, slowing, and falls flat as it fades.
  */
 export function foldAway(reg, { style, set, rate = 1, layer, layerRect, cards, back = null, dimTo = 0.42, middle, muck, line, seat, pot, seed = '' }) {
@@ -738,15 +740,23 @@ export function foldAway(reg, { style, set, rate = 1, layer, layerRect, cards, b
     const tFade = tLand + timeTo(fan, 0.99) / rate + 1.5 * B;
     const end = tFade + 2 * B;
     const fade = fadeFrom(tFade, 2 * B);
-    const mid = (n - 1) / 2;
-    const spreads = cards.map((c, i) => ({ across: (i - mid) * 0.42 * W, along: (R() - 0.5) * 0.1 * H }));
+    /* The row runs from where the stack lands toward the middle of the felt (owner, 2026-11-27: "Make #3 spread
+       diagonally toward the center"), the top card furthest in; from a side or corner seat that line is a diagonal. It
+       lay along the cards' own width before, flat beside the seat. A step is a share of the card's extent along that
+       line, so the cards overlap alike whether it runs across them or down them. */
+    const C = page(middle || muck || L0), u = towards(M, C);
+    const a0 = rad(geo.aS), along = Math.abs(u.ux * Math.cos(a0) + u.uy * Math.sin(a0)) * W + Math.abs(-u.ux * Math.sin(a0) + u.uy * Math.cos(a0)) * H;
+    const step = 0.38 * along;
+    /* Only toward the middle, never back (owner, 2026-11-27: "3 should expand only toward the middle, not backward"):
+       the bottom card stays where the stack lands and each card above it slides one step further in. */
+    const spreads = cards.map((c, i) => ({ on: i * step, off: (R() - 0.5) * 0.08 * W }));
     return flyPoses(reg, { layer, layerRect, cards, back, end,
       filter: () => dimTrack({ dimTo, dimMs: tMeet, end, h: H }),
       pose: (i, t) => {
         const c = cards[i], q = gq(t), p = geo.at(c, q), kk = k(t), s = sp(t);
-        const ang = geo.angleAt(c, q), a = rad(ang), sc = 1 + (LAND - 1) * clamp01(kk);
-        const ax = s * spreads[i].across * sc, ay = s * spreads[i].along * sc;
-        return { x: p.x + v.dx * kk + ax * Math.cos(a) - ay * Math.sin(a), y: p.y + v.dy * kk + ax * Math.sin(a) + ay * Math.cos(a),
+        const ang = geo.angleAt(c, q), sc = 1 + (LAND - 1) * clamp01(kk);
+        const on = s * spreads[i].on * sc, off = s * spreads[i].off * sc;
+        return { x: p.x + v.dx * kk + on * u.ux - off * u.uy, y: p.y + v.dy * kk + on * u.uy + off * u.ux,
           rotate: ang, scale: sc, scaleX: 1, opacity: fade(t) };
       } });
   }
@@ -765,11 +775,14 @@ export function foldAway(reg, { style, set, rate = 1, layer, layerRect, cards, b
     const end = tFade + 2 * B;
     const fade = fadeFrom(tFade, 2 * B);
     const restAngle = dir * (R() - 0.5) * 12;
+    /* One half turn while it is off the cloth (owner, 2026-11-27: "Make #4 have the stack do one half turn in the
+       air"): from the lift to just before it lands, slow to start and to finish, toward the side it is going. */
+    const halfTurn = (t) => dir * 180 * smooth((t - tGo) / (0.92 * F));
     return flyPoses(reg, { layer, layerRect, cards, back, end,
       filter: () => dimTrack({ dimTo, dimMs: tMeet, end, h: H, lift }),
       pose: (i, t) => {
         const c = cards[i], q = gq(t), p = geo.at(c, q), kk = k(t);
-        const ang = geo.angleAt(c, q) + (restAngle - geo.aS) * kk * 0.6;
+        const ang = geo.angleAt(c, q) + (restAngle - geo.aS) * kk * 0.6 + halfTurn(t);
         return { x: p.x + v.dx * kk, y: p.y + v.dy * kk, rotate: ang,
           scale: (1 + (0.92 - 1) * clamp01(kk)) * (1 + 0.2 * lift(t) - 0.035 * dip(t)), scaleX: 1, opacity: fade(t) };
       } });
@@ -844,14 +857,17 @@ export function foldAway(reg, { style, set, rate = 1, layer, layerRect, cards, b
   }
 
   if (id === 'throw') {
-    const M = page(muck || middle);
-    const fly = tierSpring(set, 'flick');
+    // Under the pot's graphic (owner, 2026-11-27: "Make #8 land under the pot"); it was the dealer's muck.
+    const M = page(pot || muck || middle);
+    /* Less violent (owner, 2026-11-27: "Make 8 less violent"): the arm's spring, not the flick's; each card turns 35 to
+       65 degrees, not 140 to 240; half the bow and two thirds of the scatter, the cards a little further apart in time. */
+    const fly = tierSpring(set, 'arm');
     const F = timeTo(fly, 0.98) / rate;
     const slots = cards.map((c, i) => {
-      const t0 = 0.15 * B + i * 0.08 * B;
-      const to = { x: M.x + (R() - 0.5) * 1.1 * W, y: M.y + (R() - 0.5) * 0.8 * H };
+      const t0 = 0.15 * B + i * 0.12 * B;
+      const to = { x: M.x + (R() - 0.5) * 0.7 * W, y: M.y + (R() - 0.5) * 0.5 * H };
       const v = towards({ x: c.cx, y: c.cy }, to);
-      return { t0, v, spin: (R() < 0.5 ? -1 : 1) * (140 + 100 * R()), bow: (i % 2 ? -1 : 1) * (0.06 + 0.08 * R()) * v.d, k: sprAt(fly, t0) };
+      return { t0, v, spin: (R() < 0.5 ? -1 : 1) * (35 + 30 * R()), bow: (i % 2 ? -1 : 1) * (0.03 + 0.04 * R()) * v.d, k: sprAt(fly, t0) };
     });
     const last = Math.max(...slots.map((s) => s.t0)) + F;
     const tFade = last + 0.8 * B;

@@ -315,7 +315,11 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   Since 2026-08-31 the feed also carries `property` (the room name) per row, and
   `getVenueInfo(venue, property)` derives an unmapped series' strip from THAT — the
   title-derived fallback only fires when the directory named no room (~23% of events).
-  VENUE_MAP still wins where curated.
+  VENUE_MAP still wins where curated. **So never ask `getVenueInfo(venue)` what SERIES a row is**: once any card has asked
+  with the property, the answer is the room's ("WSOPC Horseshoe Las Vegas 2027" reads "Horseshoe Las Vegas"), which put
+  bracelets and no rings on the January Horseshoe stop (owner, 2026-11-27: "WSOPC always rings (except for non-ring side
+  events)"). `isWsopCircuitSeries` reads the title itself (WSOPC, WSOP Circuit, International and Super Circuit; not
+  EuroPoker's or Samurai's), and the bracelet venues are Horseshoe and Paris LAS VEGAS only.
 - **Venue geo**: `PROPERTY_COORDS` (keyed by strip abbr) + `getVenueCoords(venue)` back the
   location filters; a series inherits its property's coordinate. Values were geocoded via
   Nominatim (the same service `/api/geocode` uses) from `venue_name` + `city_state`; lines
@@ -1222,11 +1226,15 @@ read-only check of a deploy (futurega.me by default). Each feature's own `test:*
   Replayer settings › Animation › Fold Motion (`replayerFoldStyle`, a viewer preference). Spin in (the default, 25) and Behind
   the seat are `foldToStack`'s; Spread, Lift and drop and Flicked are the owner's; Pushed, Lobbed, Thrown and Coin spin were
   offered with them; Each their own gives every player one of them by their name (`foldStyleOf`). Each style is a pose per card
-  over the moment's clock (`flyPoses`), so Back, a jump and an export seek it; a thrown or tossed hand lands in the dealer's
-  muck (`muckTarget`), Spread on the player's own side (three quarters of the way to the betting line, its cards sliding
-  apart into a row with no turn; owner, 2026-11-27: "come to rest on the same side of the table that they start, and also
-  not spin at all"), Lift and drop just past the seat's betting line, Flicked under the pot's graphic, each card sliding
-  straight in with no turn (owner, 2026-11-27: "For 5 let's have them land under the pot graphic, and slide without spinning"), and a landing hand is dimmed to 0.7, not 0.42 (on the
+  over the moment's clock (`flyPoses`), so Back, a jump and an export seek it; a tossed hand (Lobbed) lands in the dealer's
+  muck (`muckTarget`), Spread on the player's own side (three quarters of the way to the betting line, no turn; owner,
+  2026-11-27: "come to rest on the same side of the table that they start, and also not spin at all"), its bottom card
+  staying where the stack lands and the rest opening into a row toward the middle of the felt only, a diagonal from a corner
+  seat ("spread diagonally toward the center", "expand only toward the middle, not backward"), Lift and drop just past the
+  seat's betting line after one half turn in the air ("have the stack do one half turn in the air"), Flicked under the pot's
+  graphic, each card sliding straight in with no turn ("For 5 let's have them land under the pot graphic, and slide without
+  spinning"), Thrown under the pot too, on the arm's spring, each card turning 35 to 65 degrees ("Make #8 land under the
+  pot", "Make 8 less violent"), and a landing hand is dimmed to 0.7, not 0.42 (on the
   dark felt it could hardly be seen). In stud, Spin in keeps stud's own fold (the 2026-11-22 rule); any other choice plays on
   the down cards. The recordings: https://claude.ai/artifact/Fc6jrNtpiRx39h8dgViJZx
 - **The action pills are solid** (owner, 2026-11-22: "a solid color with contrasting text"): `--act-pill` / `--act-pill-ink`

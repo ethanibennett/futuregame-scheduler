@@ -56,7 +56,7 @@ for (const { id } of FOLD_STYLES.filter((s) => s.id !== 'each')) {
 }
 
 test('the landing styles come to rest where they were sent', () => {
-  const near = { spread: pts.line, drop: pts.line, lob: pts.muck, flick: pts.pot, throw: pts.muck };
+  const near = { spread: pts.line, drop: pts.line, lob: pts.muck, flick: pts.pot, throw: pts.pot };
   for (const [id, to] of Object.entries(near)) {
     runs.length = 0;
     foldAway(reg, { style: id, set: 'B', rate: 0.5, layer, layerRect, cards: hand, ...pts, seed: 's' });
@@ -88,6 +88,42 @@ test('Spread stays on its own side and turns nothing once the stack is made', ()
     for (let t = spec.end / 3; t <= spec.end; t += 16.7) assert.ok(Math.abs(val(spec, 'rotate', t) - ends[0]) < 0.25, `card ${i} turned at ${t.toFixed(0)}ms`);
     const y = hand[i].cy + val(spec, 'y', spec.end * 0.7);
     assert.ok(y > pts.middle.y, `card ${i} crossed the middle (y ${y.toFixed(0)})`);
+  });
+});
+
+test('Spread lays its row toward the middle, diagonally from a corner seat', () => {
+  // An upright hand at the upper left, its betting line down and in from it: the row must run down and right, at the
+  // middle, its top card nearest; it lay flat along the cards' width before.
+  const corner = [0, 1, 2, 3].map((i) => ({ node: fakeEl(), cx: 40 + i * 14, cy: 300, w: 40, h: 56, angle: 0 }));
+  const at = { ...pts, line: { x: 110, y: 340 } };
+  runs.length = 0;
+  foldAway(reg, { style: 'spread', set: 'B', rate: 0.5, layer, layerRect, cards: corner, ...at, seed: 'diag' });
+  const rest = runs.map((spec, i) => ({ x: corner[i].cx + val(spec, 'x', spec.end * 0.7), y: corner[i].cy + val(spec, 'y', spec.end * 0.7) }));
+  const row = { x: rest[3].x - rest[0].x, y: rest[3].y - rest[0].y };
+  const C = { x: (rest[0].x + rest[3].x) / 2, y: (rest[0].y + rest[3].y) / 2 };
+  const toMid = { x: pts.middle.x - C.x, y: pts.middle.y - C.y };
+  const cos = (row.x * toMid.x + row.y * toMid.y) / (Math.hypot(row.x, row.y) * Math.hypot(toMid.x, toMid.y));
+  assert.ok(cos > 0.97, `the row points at the middle (cos ${cos.toFixed(3)})`);
+  assert.ok(row.x > 10 && row.y > 10, `and runs down and right, a diagonal (${row.x.toFixed(0)}, ${row.y.toFixed(0)})`);
+  for (let i = 1; i < 4; i++) {
+    const d = Math.hypot(pts.middle.x - rest[i].x, pts.middle.y - rest[i].y), d0 = Math.hypot(pts.middle.x - rest[i - 1].x, pts.middle.y - rest[i - 1].y);
+    assert.ok(d < d0, `card ${i} is nearer the middle than card ${i - 1}`);
+  }
+  // Only toward the middle, never back: the bottom card rests where the stack lands, three quarters of the way from
+  // the stack (between the two middle cards, 61,300) to the line.
+  const land = { x: 61 + 0.75 * (110 - 61), y: 300 + 0.75 * (340 - 300) };
+  assert.ok(Math.hypot(rest[0].x - land.x, rest[0].y - land.y) < 4, `the bottom card stays where the stack landed (${rest[0].x.toFixed(1)}, ${rest[0].y.toFixed(1)})`);
+});
+
+test('Lift and drop: the stack makes one half turn in the air', () => {
+  runs.length = 0;
+  foldAway(reg, { style: 'drop', set: 'B', rate: 0.5, layer, layerRect, cards: hand, ...pts, seed: 'half' });
+  runs.forEach((spec, i) => {
+    const r = val(spec, 'rotate', spec.end);
+    // The hand's middle tilt is 0; the drop's own rest tilt is under 4 degrees.
+    assert.ok(Math.abs(Math.abs(r) - 180) < 6, `card ${i} ends ${r.toFixed(1)} degrees round`);
+    // And it turns while off the cloth: none of it once it has landed (from 85% of its time on).
+    assert.ok(Math.abs(val(spec, 'rotate', spec.end * 0.85) - r) < 1, `card ${i} still turning after it landed`);
   });
 });
 
