@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { rowStrip, recentRows, historyFromHands } from '../utils/variant-catalog.js';
-import { STRUCTURES, STRUCTURE_SHORT, buildWheels, positionOf, structuresOf, turnGame, turnVariant, turnStructure, quickPicks, variantLabel } from '../utils/variant-wheels.js';
+import { STRUCTURES, STRUCTURE_SHORT, SWITCH_GAMES, buildWheels, positionOf, structuresOf, turnGame, turnVariant, turnStructure, switchFor, turnSwitch, quickPicks, variantLabel } from '../utils/variant-wheels.js';
 import './variant-picker.css';
 
 /*
@@ -18,6 +18,11 @@ import './variant-picker.css';
  *                 to the standard limit for each game but allow users to change it"); a structure it has none for
  *                 (No Limit Badugi: it would be dealt with another game's betting) is struck through and springs back.
  *                 No line under the wheels (owner, 2026-11-22: "get rid of the 'X is only played limit' etc line").
+ *
+ *   The switches  under the wheels, each opening and fading in when its game is picked (owner, 2026-11-28: "Instead
+ *                 of having action on the wheels and super in the setup screen, let's just have a toggle for each that
+ *                 fades in when those games are selected"): Action under Razz (SWITCH_GAMES: it picks Action Razz's
+ *                 row), Super under any stud game (the hand's superStud, kept by HandReplayerView).
  *
  * Every position is a catalog row (utils/variant-wheels.js), and a pick goes through the same
  * onPick(row) the palette uses, so the hand made is the one the palette would make.
@@ -154,13 +159,35 @@ function Wheel({ id, label, items, index, onTurn, listKey, className = '', hidde
 
 const STRUCTURE_CHIP = { 'No Limit': 'NL', 'Pot Limit': 'PL', Limit: 'L' };
 
+const SUPER_NOTE = 'Four down and one up on 3rd street; after its betting, each player throws two down cards.';
+
+/* A switch under the wheels. It stays in the page while hidden, folded to no height and faded out, so it opens and
+   fades in when its game is picked, and folds and fades away when another is. */
+function SwitchRow({ shown, on, label, note, onChange }) {
+  return (
+    <div className={'vw-opt' + (shown ? ' is-shown' : '')} aria-hidden={shown ? undefined : true}>
+      <div className="vw-opt-in">
+        <div className="vw-opt-row">
+          <div className="vw-opt-text">
+            <div className="replayer-settings-label vw-opt-label">{label}</div>
+            <div className="replayer-settings-sublabel vw-opt-note">{note}</div>
+          </div>
+          <button type="button" className={'replayer-settings-toggle' + (on ? ' on' : '')} aria-pressed={on} aria-label={label}
+            tabIndex={shown ? 0 : -1} onClick={() => { if (shown) onChange(!on); }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const Chevron = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18" /></svg>
 );
 
-/** The wheels, the quick picks over them and the line under them. `current` is the picked row
- *  (HandReplayerView's currentRow); `onPick(row, { mix, create })` is the palette's pickVariant. */
-export function VariantWheels({ rows, current, onPick, history, hands, onSearch, name }) {
+/** The wheels, the quick picks over them and the switches under them. `current` is the picked row
+ *  (HandReplayerView's currentRow); `onPick(row, { mix, create })` is the palette's pickVariant; `superStud` and
+ *  `onSuperStud(on)` the Super switch, shown under any stud game. */
+export function VariantWheels({ rows, current, onPick, history, hands, onSearch, name, superStud = false, onSuperStud }) {
   const wheels = useMemo(() => buildWheels(rows), [rows]);
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const pos = useMemo(() => positionOf(wheels, current) || { g: 0, v: 0, s: 0 }, [wheels, current]);
@@ -200,6 +227,8 @@ export function VariantWheels({ rows, current, onPick, history, hands, onSearch,
   const recent = useMemo(() => recentRows(rows, seeded ? historyFromHands(rows, hands) : history), [rows, history, hands, seeded]);
   const quick = useMemo(() => quickPicks(rows, recent, 3), [rows, recent]);
   const band = current ? rowStrip(current).color : undefined;
+  const sw = switchFor(wheels, current);
+  const studGame = !!current && current.family === 'stud' && !current.custom;
 
   return (
     <div className={'vw' + (isOpen ? ' is-open' : '')}>
@@ -243,6 +272,12 @@ export function VariantWheels({ rows, current, onPick, history, hands, onSearch,
         <Wheel id={`vw-var-${uid}`} label={`${grp ? grp.label : ''} variants`} className="vw-var" items={varItems} index={isOpen ? pos.v : 0}
           listKey={grp ? grp.key : ''} hidden={!isOpen} onTurn={(i) => pick(turnVariant(wheels, pos.g, i))} />
       </div>
+      {SWITCH_GAMES.map((x) => {
+        const mine = !!sw && sw.game === x.game;
+        return <SwitchRow key={x.game} shown={mine} on={mine && sw.on} label={x.label} note={x.note}
+          onChange={(on) => pick(turnSwitch(wheels, current, on))} />;
+      })}
+      {onSuperStud && <SwitchRow shown={studGame} on={studGame && !!superStud} label="Super" note={SUPER_NOTE} onChange={onSuperStud} />}
       <span className="vw-sr" aria-live="polite">{name}</span>
     </div>
   );

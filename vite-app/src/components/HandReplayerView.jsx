@@ -3739,31 +3739,6 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName, resume = null
                 onClick={() => setBlind('uncapHeadsUp', !uncapHU)} />
             </div>
           )}
-          {/* Super (owner, 2026-11-28: "discard is after 3rd street betting, before 4th is dealt, applies to any stud game";
-              utils/super-stud.js): set with the hand it describes, like Double board. */}
-          {!isOfc && category === 'stud' && (
-            <div className="replayer-settings-row">
-              <div>
-                <div className="replayer-settings-label">Super</div>
-                <div className="replayer-settings-sublabel">Four down and one up on 3rd street; after its betting, each player throws two down cards.</div>
-              </div>
-              <button type="button" className={'replayer-settings-toggle' + (hand.superStud ? ' on' : '')}
-                aria-pressed={!!hand.superStud} aria-label="Super" disabled={locked}
-                onClick={() => setHand(prev => {
-                  const next = { ...prev };
-                  if (prev.superStud) {
-                    delete next.superStud;
-                    next.streets = prev.streets.map((s, i) => {
-                      if (i !== 0) return s;
-                      const cards = { ...s.cards };
-                      delete cards.heroThrown; delete cards.heroSuper;
-                      return { ...s, cards };
-                    });
-                  } else next.superStud = true;
-                  return next;
-                })} />
-            </div>
-          )}
           {/* Double board (UX pick 62): set with the hand it describes. Flop games, as the list offered it. */}
           {!isOfc && category === 'community' && !gameCfg.doorBoard && (
             <div className="replayer-settings-row">
@@ -5824,6 +5799,9 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   // Double board (owner, 2026-10-20): a flop game dealt two boards. The Bomb Pot row turns it on;
   // any hold'em or Omaha game can have it from the toggle under the launcher.
   const [doubleBoard, setDoubleBoard] = useState(false);
+  // Super (owner, 2026-11-28; utils/super-stud.js): the switch under the wheels for any stud game (owner: "a toggle for
+  // each that fades in when those games are selected"), made into hand.superStud by Create.
+  const [superStud, setSuperStud] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   useBackToClose(paletteOpen, () => setPaletteOpen(false));   // App improvements 454
   const [pendingCreate, setPendingCreate] = useState(false);
@@ -5836,6 +5814,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       || catalog.find(x => x.game === selectedGame);
     return r ? { ...r, mix: selectedMix } : null;
   }, [catalog, selectedGame, bettingStructure, selectedMix]);
+  const superOn = superStud && !!(HAND_CONFIG[selectedGameType] || {}).isStud && !!currentRow && currentRow.family === 'stud';
+  const createName = (superOn ? 'Super ' : '') + variantDisplayName;
   // A row from the palette or the guess: the game, its structure (its own row's), and the mix. From
   // the palette it also makes the hand, once the state above has caught up (pendingCreate).
   const pickVariant = (row, { mix = null, create = false } = {}) => {
@@ -5847,6 +5827,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     setSelectedMix(mix);
     if (row.game === 'Double Board Bomb Pot') setDoubleBoard(true);
     else if (!['holdem', 'omaha'].includes(row.family)) setDoubleBoard(false);
+    if (row.family !== 'stud' || row.custom) setSuperStud(false);
     setPaletteOpen(false);
     // Short Deck asks its rule first (startNewHand opens ShortDeckRuleDialog); the answer makes it.
     if (create) setPendingCreate(true);
@@ -6160,6 +6141,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       hand.doubleBoard = true;
       hand.streets = hand.streets.map(s => ({ ...s, cards: { ...s.cards, board2: '' } }));
     }
+    if (superOn) hand.superStud = true;
     recordGameUse(selectedGame, bettingStructure, selectedMix);
     setCurrentHandId(null);
     setHandIsShared(false);
@@ -6518,7 +6500,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             utils/variant-wheels.js), whose Search opens the palette (search, mixes, a game's rules). */}
         <GuessCard guess={guess} current={currentRow} onPick={pickVariant} />
         <VariantWheels rows={catalog} current={currentRow} onPick={pickVariant} history={gameHistory} hands={hands}
-          onSearch={() => setPaletteOpen(true)} name={variantDisplayName + (selectedMix ? ' · ' + selectedMix : '')} />
+          superStud={superStud} onSuperStud={setSuperStud}
+          onSearch={() => setPaletteOpen(true)} name={createName + (selectedMix ? ' · ' + selectedMix : '')} />
         {/* Double board moved to the hand's setup, beside Straddle (UX pick 62): it describes the hand. */}
         {false && currentRow && ['holdem', 'omaha'].includes(currentRow.family) && (
           <div className="game-picker vp-stud">
@@ -6539,7 +6522,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             onPick={pickVariant} onClose={() => setPaletteOpen(false)} />
         )}
         <div className="replayer-list-create">
-          <button className="btn btn-primary btn-sm" onClick={startNewHand}><span>Create {variantDisplayName} Hand</span></button>
+          <button className="btn btn-primary btn-sm" onClick={startNewHand}><span>Create {createName} Hand</span></button>
         </div>
         {/* Type a hand and Say a hand, the two other ways to the same goal, directly under Create
             (UX pick 62, owner 2026-10-16 for the pair). Play a hand is Study's (Practice). */}

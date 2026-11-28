@@ -345,4 +345,24 @@
 .vw-exp svg { width: calc(var(--gu) * 1.5); height: calc(var(--gu) * 1.5); transition: transform var(--dur-base) var(--ease-out); }
 .vw.is-open .vw-exp svg { transform: rotate(180deg); }
 .vw-sr { position: absolute; width: calc(var(--gu) * 0.1); height: calc(var(--gu) * 0.1); overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-@media (prefers-reduced-motion: reduce) { .vw-cols, .vw-wheels, .vw-var, .vw-exp svg, .vw-cols .vw-col.is-var, .vw-game li, .vw-var li { transition: none; } }
+/* The switches under the wheels (owner, 2026-11-28: "a toggle for each that fades in when those games are selected"):
+   Action under Razz, Super under any stud game. Hidden, a switch is folded to no height and faded out; picked, it opens
+   to its height and fades in, so Create moves down with it rather than jumping. A row, as the replay's quick settings:
+   the label's baseline 3r down with the 3g x 2r switch at 1..3r beside it, the note's lines on 2r steps under it, and
+   1r under the last (room for its descenders inside the fold's clip): 6r with one line of note, 8r with two. */
+.vw-opt {
+  display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden;
+  transition: grid-template-rows var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-standard), visibility 0s linear var(--dur-base);
+}
+.vw-opt.is-shown { grid-template-rows: 1fr; opacity: 1; visibility: visible; transition-delay: 0s; }
+.vw-opt-in { min-height: 0; overflow: hidden; }
+.vw-opt-row { display: flex; align-items: flex-start; justify-content: space-between; column-gap: var(--gu); padding-bottom: var(--subrow); }
+.vw-opt-text { flex: 1 1 auto; min-width: 0; }
+.vw-opt-label { line-height: 1; padding-top: calc(var(--subrow) * 3 - 1cap); text-box-trim: trim-both; text-box-edge: cap alphabetic; }
+.vw-opt-note {
+  margin: 0; line-height: calc(var(--subrow) * 2); padding-top: calc(var(--subrow) * 2 - 1cap);
+  text-box-trim: trim-both; text-box-edge: cap alphabetic;
+}
+.vw-opt .replayer-settings-toggle { margin-top: var(--subrow); }
+.vw-opt .replayer-settings-toggle:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+@media (prefers-reduced-motion: reduce) { .vw-cols, .vw-wheels, .vw-var, .vw-exp svg, .vw-cols .vw-col.is-var, .vw-game li, .vw-var li, .vw-opt { transition: none; } }

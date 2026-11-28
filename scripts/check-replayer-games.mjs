@@ -229,6 +229,19 @@ async function runRow(browser, row) {
     await p.waitForTimeout(900);
 
     // ── The picker ──
+    if (row.wheelSwitch) {
+      // A switch under the wheels (owner, 2026-11-28: Action under Razz, Super under any stud game): the family turned to
+      // on the game wheel (a row's own click, which scrolls nothing), the switch turned on, then Create.
+      await p.locator('.vw-game li').filter({ has: p.locator(`.vw-name:text-is("${row.wheelGame}")`) }).first().evaluate((el) => el.click());
+      await p.waitForTimeout(700);
+      await p.locator(`.vw-opt.is-shown button.replayer-settings-toggle[aria-label="${row.wheelSwitch}"]`).first().click();
+      await p.waitForTimeout(400);
+      const want = row.wheelSwitch === 'Super' ? `Create Super ${row.name} Hand` : `Create ${row.name} Hand`;
+      const label = (await p.locator('.replayer-list-create button').first().innerText()).trim();
+      if (label !== want) throw new Error(`Create reads "${label}", not "${want}"`);
+      await p.locator('.replayer-list-create button').first().click();
+      await p.waitForTimeout(500);
+    } else {
     await p.locator('.vw-search').first().click();
     await p.locator('input[aria-label="Search games"]').fill(row.mix || row.name);
     await p.waitForTimeout(150);
@@ -241,6 +254,7 @@ async function runRow(browser, row) {
     if (row.game === 'Short Deck') {
       const q = p.locator('[role="dialog"] button').first();
       if (await q.count()) { await q.click(); await p.waitForTimeout(300); }
+    }
     }
     if (!(await p.locator('.gto-entry').count())) {
       const create = p.locator('.replayer-list-create button').first();
@@ -440,7 +454,7 @@ async function runRow(browser, row) {
     await p.waitForTimeout(250);
     const atStart = await feltNow();
     if (atStart.board !== (cfg.doorBoard || 0)) problem(`${atStart.board} board cards before the first bet, the game deals ${cfg.doorBoard || 0}`);
-    if (row.toggle === 'Super' && atStart.hero !== 5) problem(`hero holds ${atStart.hero} cards on Super's 3rd street, not 5`);
+    if (row.wheelSwitch === 'Super' && atStart.hero !== 5) problem(`hero holds ${atStart.hero} cards on Super's 3rd street, not 5`);
     if (cfg.showCards && atStart.hero != null && atStart.hero !== cfg.heroCards) problem(`hero holds ${atStart.hero} cards before the throw, not ${cfg.heroCards}`);
     const forward = p.locator('button[title^="Forward"]').first();
     for (let i = 0; i < 200; i++) {
@@ -588,8 +602,9 @@ const EXTRAS = [
   { ...rowNamed("No Limit Hold'em"), label: 'Double board Hold\'em', toggle: 'Double board', plan: DOUBLE_HE },
   { ...rowNamed('Pot Limit Omaha'), label: 'Double board PLO', toggle: 'Double board', plan: BOMB },
   { ...rowNamed('Razz'), label: 'Razz in HORSE', mix: 'HORSE' },
-  { ...rowNamed('Stud Hi'), label: 'Super Stud Hi', toggle: 'Super', plan: SUPER_HI },
-  { ...rowNamed('Razz'), label: 'Super Razz', toggle: 'Super', plan: SUPER_RAZZ },
+  { ...rowNamed('Stud Hi'), label: 'Super Stud Hi', wheelGame: 'Stud', wheelSwitch: 'Super', plan: SUPER_HI },
+  { ...rowNamed('Razz'), label: 'Super Razz', wheelGame: 'Razz', wheelSwitch: 'Super', plan: SUPER_RAZZ },
+  { ...rowNamed('Action Razz'), label: 'Action Razz by its switch', wheelGame: 'Razz', wheelSwitch: 'Action' },
   { ...rowNamed('O8'), label: 'O8 in the 8-Game', mix: '8-Game Mix' },
 ];
 const rows = catalog.filter((r) => r.gameType !== 'OFC').concat(EXTRAS)

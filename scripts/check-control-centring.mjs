@@ -1860,6 +1860,16 @@ function finalize(c) {
     await p.waitForTimeout(900);
     if (!(await exists('button:has-text("Create No Limit Razz")'))) throw new Error('the wheels did not reach No Limit Razz');
   }, 1);
+  // The switches under the wheels (owner, 2026-11-28: "a toggle for each that fades in when those games are selected"):
+  // Razz picked, Action and Super turned on.
+  step('hands-wheels-switches', async () => {
+    await nav('Hands');
+    await p.locator('.vw-game li:has(.vw-name:text-is("Razz"))').first().evaluate((el) => el.click());
+    await p.waitForTimeout(700);
+    await tap('.vw-opt.is-shown button[aria-label="Action"]', 400);
+    await tap('.vw-opt.is-shown button[aria-label="Super"]', 600);
+    if (!(await exists('button:has-text("Create Super Action Razz Hand")'))) throw new Error('the switches did not make Super Action Razz');
+  }, 1);
   step('hands-palette', async () => { await nav('Hands'); await tap('.vw-search', 800); }, 1);
   step('hands-palette-search', async () => { await nav('Hands'); await tap('.vw-search', 800); await p.locator('.vp-search input').fill('o8'); await p.waitForTimeout(400); }, 1);
   step('calendar', async () => { await nav('Schedule'); await click('.sched-switch-seg:has-text("Calendar")', 1500); }, 1);
@@ -2430,15 +2440,13 @@ function finalize(c) {
     await p.waitForTimeout(400);
     await tap('.vp-list button:has(.vp-row-name:text-is("PLO8"))', 1500);
   }, 1);
-  // Super (owner, 2026-11-28; utils/super-stud.js): a stud hand's setup with its Super switch on, then 3rd street's five.
+  // Super (owner, 2026-11-28; utils/super-stud.js): Stud's Super switch on under the wheels, then 3rd street's five.
   step('hands-entry-super', async () => {
     await nav('Hands');
-    await tap('.vw-search', 800);
-    await p.locator('.vp-search input').fill('Stud Hi');
-    await p.waitForTimeout(400);
-    await tap('.vp-list button:has(.vp-row-name:text-is("Stud Hi"))', 900);
-    if (!(await exists('.gto-entry'))) await tap('.replayer-list-create button', 1500);
-    await tap('.replayer-entry-view button.replayer-settings-toggle[aria-label="Super"]', 400);
+    await p.locator('.vw-game li:has(.vw-name:text-is("Stud"))').first().evaluate((el) => el.click());
+    await p.waitForTimeout(700);
+    await tap('.vw-opt.is-shown button[aria-label="Super"]', 600);
+    await tap('.replayer-list-create button', 1500);
     await also('setup');
     await tap('.gto-sticky-footer button:has-text("Next")', 900);
     if (!(await exists('label:has-text("Four down, one up")'))) throw new Error('no Super 3rd street');

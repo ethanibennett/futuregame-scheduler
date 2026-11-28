@@ -501,6 +501,11 @@ function scan(rootSel) {
     await p.locator('.replayer-list-create button:has-text("Create No Limit Razz")').filter({ visible: true }).first().waitFor({ timeout: 5000 });
     await p.waitForTimeout(600);
     await run('hands wheels, No Limit Razz', '.vw');
+    // The switches under the wheels, both on (Action and Super under Razz).
+    await p.locator('.vw-opt.is-shown button[aria-label="Action"]').first().click({ timeout: 4000 });
+    await p.locator('.vw-opt.is-shown button[aria-label="Super"]').first().click({ timeout: 4000 });
+    await p.waitForTimeout(700);
+    await run('hands wheels, switches on', '.vw');
   } catch (e) { console.log(`  (hands wheels skipped: ${e.message.split('\n')[0]})`); }
   // Hands: the New Hand variant picker (VariantPicker.jsx): the palette open (the wheels' Search), then
   // a search ("o8": rows and the mixes that deal it).

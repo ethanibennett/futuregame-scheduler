@@ -121,13 +121,13 @@ sessions opened here own scheduler work.
   quick add's parser is not told of them. **Limit 5-Card Draw and Pot Limit Badugi** (owner, 2026-11-27, "add … too") the same
   way: `L 5CD Hi` (a small bet before the draw, a big bet after: `flSmallStreets: [0]`) and `PL Badugi` (aces low, four cards,
   as Badugi everywhere it is named), codes `L5` and `PB`. Two recent games with one abbreviation say their structure on the chips ("NL 5CD",
-  "PL 5CD"). **Action Razz** (owner, 2026-11-28: "J, Q, K anywhere in seven; plain low wins if none"): Razz on the Razz wheel's
-  "Action" row, code `AZ`, Razz's bring-in and order of play. A hand with no jack, queen or king in its seven scores past every
+  "PL 5CD"). **Action Razz** (owner, 2026-11-28: "J, Q, K anywhere in seven; plain low wins if none"): Razz with Action on (the
+  switch under the wheels, below), code `AZ`, Razz's bring-in and order of play. A hand with no jack, queen or king in its seven scores past every
   hand with one (`bestLowFor`, `ACTION_PAST` in poker-engine.js; every reader of a low goes through it), so each pot layer goes to
   its lowest qualifier, or its plain low where nobody in it qualifies; the name says ", no face card". `action-razz.test.mjs`. Over them, the last three
   games picked (else NLH, PLO, 2-7 TD) and Search, which opens the palette (`VariantPicker.jsx` `Palette`: slang, the mixes, a game's
   rules; ⌘K and / still open it). The wheels are a second view of `buildCatalog`: every position not struck through is a catalog
-  row and every row is one position, and a pick goes through `pickVariant`, so the game type is the palette's. Turning a game puts
+  row and every row is one position (Action Razz: Razz's, with its switch on), and a pick goes through `pickVariant`, so the game type is the palette's. Turning a game puts
   the structure on its usual one, and any structure the game has a game type for can be turned to, NL Stud and NL Razz included
   (owner, 2026-11-22: "Default to the standard limit for each game but allow users to change it"; no line under the wheels). The
   other 47 pairs (No Limit Badugi, PL Short Deck, the double draws at No Limit and Limit…) map in `STRUCTURE_GAME_MAP` to a game type that bets
@@ -135,9 +135,16 @@ sessions opened here own scheduler work.
   needs). `variant-wheels.test.mjs` (in `npm test`) holds all of it: every row reachable and none extra, every open structure
   dealt with its own betting, and no catalog game outside the families in `WHEEL_GAMES`. Scripts that pick a game open the palette with `.vw-search` (the launcher, `.vp-launcher`, is gone). Guards:
   `hands-wheels-*` (controls), `hands-wheels` (clipping).
+  **The switches under the wheels** (owner, 2026-11-28: "Instead of having action on the wheels and super in the setup screen,
+  let's just have a toggle for each that fades in when those games are selected"; `SwitchRow` in VariantWheels.jsx, `.vw-opt`):
+  Action under Razz (`SWITCH_GAMES` in variant-wheels.js: on picks the Action Razz row, which stands at Razz's position; the
+  palette and the quick picks still find it by name) and Super under any stud game (`superStud` in HandReplayerView, which
+  Create makes `hand.superStud`; the button reads "Create Super Stud Hi Hand"; leaving the stud games turns it off). Hidden, a
+  row is folded to no height and faded out; picked, it opens to its 6r or 8r and fades in (`grid-template-rows` 0fr to 1fr), so
+  Create moves down with it. Guards: `hands-wheels-switches` (controls), "hands wheels, switches on" (clipping).
 - **Super Stud** (owner, 2026-11-28: "discard is after 3rd street betting, before 4th is dealt, applies to any stud game";
-  `utils/super-stud.js`, `super-stud.test.mjs` in `npm test`): a switch in any stud hand's setup (Super, beside Uncapped
-  heads-up), not a wheel row. The published deal (BARGE, the Asian Poker Tour): four down and the door on 3rd street, then
+  `utils/super-stud.js`, `super-stud.test.mjs` in `npm test`): a switch under the wheels when a stud game is picked
+  (above), not a wheel row and not in the hand's setup. The published deal (BARGE, the Asian Poker Tour): four down and the door on 3rd street, then
   two down cards thrown by everyone still in before 4th (`SUPER_THROW`, the one constant if the owner plays it otherwise).
   `hand.superStud`; 3rd street's `cards.hero` stays two down and the door, as in every stud hand, so scoring, the felt's
   awards and the readers of a stud hand are unchanged, and the hero's throw is `cards.heroThrown` beside it (an opponent's
@@ -147,7 +154,7 @@ sessions opened here own scheduler work.
   as 4th is dealt (`cardsAway`, as a draw's throw); the hero's throw joins Dead cards from 4th. Links: `*S` and a `q` token
   on 3rd street, which an older decoder drops. The pill and the title say "Super Stud Hi". Not exported (PokerStars has
   none): `unsupported-game`, so a Super hand's saved row has no net. `check:replayer-games` plays Super Stud Hi and Super
-  Razz, each throwing the cards that would have won; guard view `hands-entry-super` (controls).
+  Razz, each throwing the cards that would have won; guard views `hands-wheels-switches` and `hands-entry-super` (controls).
 - **The entry's name fields suggest names** (owner, 2026-11-23: "an autopopulate function for the name fields in the hand
   replayer entry screen"; `utils/player-names.js`, `player-names.test.mjs` in `npm test`): a focused name field offers, as
   chips under it, up to four players from the account's saved hands (`nameBook` over the list `/api/replayer/hands`

@@ -15,13 +15,38 @@ const CUSTOM = ['Kansas Badugi', 'Irish'];
 const rows = C.buildCatalog(CUSTOM);
 const wheels = W.buildWheels(rows);
 
-test('every catalog row is reachable, and lands back on itself', () => {
+const isSwitch = (r) => W.SWITCH_GAMES.some((x) => x.game === r.game);
+
+test('every catalog row is reachable, and lands back on itself (a switch game by its switch)', () => {
   for (const r of rows) {
     const pos = W.positionOf(wheels, r);
     assert.ok(pos, `no position for ${r.key}`);
     assert.ok(pos.s >= 0, `${r.key}: structure ${r.structure} is not on the wheel`);
-    assert.equal(W.rowOfPosition(wheels, pos), r, `${r.key} at ${JSON.stringify(pos)}`);
+    if (!isSwitch(r)) { assert.equal(W.rowOfPosition(wheels, pos), r, `${r.key} at ${JSON.stringify(pos)}`); continue; }
+    // Under its base's position, the switch on.
+    const base = W.rowOfPosition(wheels, pos);
+    assert.equal(base.game, W.SWITCH_GAMES.find((x) => x.game === r.game).base, r.key);
+    assert.equal(W.turnSwitch(wheels, base, true), r, `${r.key} by its switch`);
+    assert.equal(W.turnSwitch(wheels, r, false), base, `${r.key}: the switch off is its base`);
   }
+});
+
+/* Action Razz is a switch under Razz, not a wheel row (owner, 2026-11-28: "Instead of having action on the wheels and
+   super in the setup screen, let's just have a toggle for each that fades in when those games are selected"). */
+test('the Action switch: under Razz only, on picks Action Razz, off picks Razz', () => {
+  const razz = W.rowAt(wheels, 'Razz', 'Limit');
+  const action = W.rowAt(wheels, 'Action Razz', 'Limit');
+  assert.ok(razz && action);
+  assert.deepEqual({ ...W.switchFor(wheels, razz), note: '' }, { game: 'Action Razz', base: 'Razz', label: 'Action', note: '', on: false });
+  assert.equal(W.switchFor(wheels, action).on, true);
+  assert.deepEqual(W.positionOf(wheels, action), W.positionOf(wheels, razz), 'Action Razz stands where Razz does');
+  assert.equal(W.turnSwitch(wheels, razz, true), action);
+  assert.equal(W.turnSwitch(wheels, action, false), razz);
+  // No Limit Razz turned to Action: Action Razz is played limit, so its usual row.
+  assert.equal(W.turnSwitch(wheels, W.rowAt(wheels, 'Razz', 'No Limit'), true), action);
+  // Nothing else has it.
+  for (const r of rows) if (r.game !== 'Razz' && r.game !== 'Action Razz') assert.equal(W.switchFor(wheels, r), null, r.key);
+  assert.equal(W.switchFor(wheels, null), null);
 });
 
 test('no position makes a row the catalog does not have (none extra, none missing)', () => {
@@ -35,7 +60,7 @@ test('no position makes a row the catalog does not have (none extra, none missin
     assert.ok(!seen.has(r.key), `${r.key} reached twice`);
     seen.add(r.key);
   })));
-  assert.deepEqual([...seen].sort(), rows.map((r) => r.key).sort());
+  assert.deepEqual([...seen].sort(), rows.filter((r) => !isSwitch(r)).map((r) => r.key).sort());
 });
 
 test('a pick sets the game type the old picker set', () => {
@@ -53,7 +78,7 @@ test('the game wheel: the prototype families, each game in one place, nothing le
   const all = wheels.groups.flatMap((g) => g.games);
   assert.equal(new Set(all).size, all.length, 'no game in two places');
   assert.deepEqual(wheels.groups.find((g) => g.key === 'holdem').games, ["Hold'em", 'Pineapple', 'Short Deck']);
-  assert.deepEqual(wheels.groups.find((g) => g.key === 'razz').games, ['Razz', 'Action Razz', 'Razzdugi', 'Razzdeucy', '2-7 Razz']);
+  assert.deepEqual(wheels.groups.find((g) => g.key === 'razz').games, ['Razz', 'Razzdugi', 'Razzdeucy', '2-7 Razz']);
   assert.deepEqual(wheels.groups.find((g) => g.key === 'custom').games, CUSTOM);
   // Unbuilt games stay off the wheels, as they stay out of the palette.
   for (const g of C.UNBUILT_GAMES) assert.ok(!all.includes(g), g);
@@ -91,7 +116,7 @@ test('the variant wheel never repeats the game wheel (owner, 2026-11-22: "Let\'s
   assert.deepEqual(labels('a5draw'), ['Triple Draw', 'Single Draw']);
   assert.deepEqual(labels('5cd'), ['Single Draw', 'Double Draw']);
   assert.deepEqual(labels('holdem'), ['Texas', 'Pineapple', 'Short Deck']);
-  assert.deepEqual(labels('razz'), ['A-5', 'Action', 'Razzdugi', 'Razzdeucy', '2-7']);
+  assert.deepEqual(labels('razz'), ['A-5', 'Razzdugi', 'Razzdeucy', '2-7']);
   assert.deepEqual(labels('custom'), CUSTOM, 'a custom game keeps its own name');
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
   for (const g of wheels.groups) {
@@ -132,11 +157,11 @@ test('every structure the wheels offer plays with that betting', async () => {
   assert.equal(a5sd.gameType, 'NL A-5 SD');
   assert.equal(U.HAND_CONFIG['NL A-5 SD'].betting, 'nl');
   assert.equal(W.usualRow(wheels, 'A-5 Single Draw'), a5sd);
-  // 65 positions pick a row (the catalog's 63, NL Razz, OFC, the two double draws, Limit 5-Card Draw, Pot Limit
-  // Badugi and Action Razz among them, and the 2 custom games); 51 do not: 49 wait for a game type of their own, and
-  // OFC's Pot Limit and Limit, where no structure applies.
-  assert.equal(open, 65);
-  assert.equal(struck, 51);
+  // 64 positions pick a row (the catalog's 62 on the wheels, NL Razz, OFC, the two double draws, Limit 5-Card Draw
+  // and Pot Limit Badugi among them, and the 2 custom games; Action Razz is Razz's switch, off the wheels); 49 do not:
+  // 47 wait for a game type of their own, and OFC's Pot Limit and Limit, where no structure applies.
+  assert.equal(open, 64);
+  assert.equal(struck, 49);
   // Limit 5-Card Draw and Pot Limit Badugi (owner, 2026-11-27: "add Limit 5-Card Draw and Pot Limit Badugi too"): game
   // types of their own, never the pot-limit draw's or the limit badugi's; the usual structures are unchanged.
   const l5 = W.rowAt(wheels, '5-Card Draw', 'Limit');
