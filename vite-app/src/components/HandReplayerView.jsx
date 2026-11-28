@@ -10207,6 +10207,28 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
     const t = setTimeout(placeNoteBubble, 700);
     return () => clearTimeout(t);
   });
+  /* The note answers its action (owner, 2026-11-28: "Pause briefly between the last action before a note and the display
+     of the note, so that it looks like a response"): at a step with a note the bubble waits until that step's motion is
+     over (the registry's extent, read the frame after the commit, once the moment's springs exist), then four beats more
+     (560ms), and comes in from its tail (data-shown; an attribute, since React writes the class). */
+  const NOTE_PAUSE_MS = 560;
+  const noteShowRef = useRef({ key: null, timer: 0, raf: 0 });
+  const shownNote = noteAt(hand, streetIdx, actionIdx);
+  const noteShowKey = shownNote ? streetIdx + ':' + actionIdx + ':' + shownNote.text : null;
+  useLayoutEffect(() => {
+    const s = noteShowRef.current;
+    if (s.key === noteShowKey) return;
+    s.key = noteShowKey;
+    clearTimeout(s.timer); cancelAnimationFrame(s.raf);
+    const b = noteBubbleRef.current;
+    if (b) delete b.dataset.shown;
+    if (!noteShowKey) return;
+    s.raf = requestAnimationFrame(() => {
+      const wait = Math.max(0, motion && motion.extentMs ? motion.extentMs() : 0) + NOTE_PAUSE_MS;
+      s.timer = setTimeout(() => { const el = noteBubbleRef.current; if (el) el.dataset.shown = '1'; }, wait);
+    });
+  }, [noteShowKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => { clearTimeout(noteShowRef.current.timer); cancelAnimationFrame(noteShowRef.current.raf); }, []);
   useEffect(() => {
     const table = tableRef.current;
     if (!table || typeof ResizeObserver !== 'function') return undefined;

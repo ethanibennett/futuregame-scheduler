@@ -822,6 +822,9 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
     It goes where it covers least ("Move this bubble to minimize collision with other elements, and take out the
     quotation marks"): up to 24g, 21g, 18g or 15g wide, anywhere along the row that keeps its tail on the hero's cards,
     scored by the area of the felt's pieces it would cover (the collision guard's; the game's label at a tenth).
+    It answers its action ("Pause briefly between the last action before a note and the display of the note, so that
+    it looks like a response"): unseen until the step's motion is over (`motion.extentMs()`) and 560ms more, then in
+    from its tail (`data-shown`).
   - **Hide money** (44, `utils/hide-money.js`) masks text inside `[data-money-zone]` (Bankroll, Cash, Staking,
     Home's result, period and bankroll blocks, the trip card, the pay ladder). New money screens need the attribute.
   - **Native** (41, 43, 47, 10): `AppLockPlugin`, `AppleSignInPlugin`, `DeepLinksPlugin`, `LiveActivityPlugin`
