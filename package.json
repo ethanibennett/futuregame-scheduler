@@ -104,6 +104,7 @@
     "test:live-page": "node --test test/live-css.test.mjs && cd vite-app && node --test src/utils/__tests__/live-page.test.mjs src/utils/__tests__/live-only-defaults.test.mjs",
     "test:growth": "node test/growth.test.js && node test/attribution.test.js && cd vite-app && node --test src/utils/__tests__/growth-report.test.mjs",
     "test:registration-codes": "node test/registration-codes.test.js",
+    "test:hand-links": "node test/hand-links-guest.test.js",
     "test:travel-details": "node test/travel-details.test.js",
     "test:apple-billing": "node test/apple-billing.test.js && node test/billing-features.test.js",
     "test:admin-eval": "node test/admin-eval.test.js",

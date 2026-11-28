@@ -8679,17 +8679,38 @@ function handLinkId(shorthand) {
     .replace(/[^A-Za-z0-9]/g, '').slice(0, 8);
 }
 
-// Mint (or return the existing id for) a short link. Same auth as creating hands.
-app.post('/api/hand-links', authenticateToken, requireRegistered, async (req, res) => {
+/* A guest's Copy link is short too (owner, 2026-11-28, choosing "Let guests get short links too" over a shorter long
+   form: a guest's link carried the whole hand in the URL, a 470-character link for a nine-handed hand). So is a
+   signed-out viewer's. Such a link has no sharer (uploaded_by NULL: every guest is id 0, so none may claim another's
+   link, see its question uncovered or retitle it), and it holds only what a #h/ link could already carry: a hand in
+   fragment-safe characters, at most 4000 of them, under a plain preview title (letters, figures, the stakes'
+   punctuation; anything else previews as "Poker hand"). 30 an IP every 10 minutes; a registered account is not
+   limited here. */
+const handLinkGuestLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false,
+  skip: (req) => !!(req.user && !req.user.isGuest),
+  message: { error: 'Too many links, please try again later.' },
+});
+const FRAGMENT_SAFE = /^[A-Za-z0-9\-._~!$&'()*+,;=:@/?%]+$/;
+const PLAIN_TITLE = /^[\p{L}\p{N} .,/()+\-·:'#$€£%&]+$/u;
+
+// Mint (or return the existing id for) a short link: an account's, a guest's, or a signed-out viewer's.
+app.post('/api/hand-links', features.handSocial.optionalAuthWith(jwt, JWT_SECRET), handLinkGuestLimiter, async (req, res) => {
   const { shorthand, title } = req.body || {};
   if (!shorthand || typeof shorthand !== 'string' || shorthand.length > 4000) {
     return res.status(400).json({ error: 'shorthand required' });
   }
+  // Only a registered account in good standing is a sharer; anyone else mints a link with no sharer.
+  const sharer = req.user && !req.user.isGuest && !sessionRefusal(req.user) ? Number(req.user.id) : null;
   // A question (Features 27): the hand as far as the hero's decision, and where it stops. Its own link.
   const q = req.body && req.body.question;
   const isQ = q && typeof q.shorthand === 'string' && q.shorthand.length <= 4000 && Number.isInteger(q.street) && Number.isInteger(q.action);
+  if (sharer == null && (!FRAGMENT_SAFE.test(shorthand) || (isQ && !FRAGMENT_SAFE.test(q.shorthand)))) {
+    return res.status(400).json({ error: 'shorthand required' });
+  }
   const id = isQ ? handLinkId(`${shorthand}:q:${q.street}:${q.action}`) : handLinkId(shorthand);
-  const cleanTitle = (typeof title === 'string' && title.trim()) ? title.trim().slice(0, 80) : null;
+  let cleanTitle = (typeof title === 'string' && title.trim()) ? title.trim().slice(0, 80) : null;
+  if (cleanTitle && sharer == null && !PLAIN_TITLE.test(cleanTitle)) cleanTitle = null;
   try {
     const existing = db.exec('SELECT id, title, uploaded_by FROM shared_hands WHERE id = ?', [id]);
     if (existing.length && existing[0].values.length) {
@@ -8697,17 +8718,17 @@ app.post('/api/hand-links', authenticateToken, requireRegistered, async (req, re
          now writes better (2026-11-22: "Stud 8 100/200000/50000" for a 200K/400K stud hand) reached old links only
          when their sharer shares again: theirs is replaced; anyone else's mint leaves it. */
       const [, oldTitle, by] = existing[0].values[0];
-      if (cleanTitle && cleanTitle !== oldTitle && by === req.user.id) {
+      if (sharer != null && cleanTitle && cleanTitle !== oldTitle && by === sharer) {
         db.run('UPDATE shared_hands SET title = ? WHERE id = ?', [cleanTitle, id]);
         await saveDatabase();
       }
     } else {
       if (isQ) {
         db.run('INSERT INTO shared_hands (id, shorthand, title, uploaded_by, question_shorthand, stop_street, stop_action) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [id, shorthand, cleanTitle, req.user.id, q.shorthand, q.street, q.action]);
+          [id, shorthand, cleanTitle, sharer, q.shorthand, q.street, q.action]);
       } else {
         db.run('INSERT INTO shared_hands (id, shorthand, title, uploaded_by) VALUES (?, ?, ?, ?)',
-          [id, shorthand, cleanTitle, req.user.id]);
+          [id, shorthand, cleanTitle, sharer]);
       }
       await saveDatabase();
     }

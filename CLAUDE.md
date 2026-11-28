@@ -59,6 +59,11 @@ sessions opened here own scheduler work.
   and `GET /api/my-schedule` is empty; a guest's picks stay on the device (`App.jsx` `guestPicks`). What
   anyone but the player sees of a schedule (share link, a friend, a group) goes through
   `scheduleForOthers`: no private plan, no Didn't play marker, no Personal day's note.
+  The one write a guest (or a signed-out viewer) makes is a hand's short link (owner, 2026-11-28: "Let guests get short
+  links too"; their Copy link was the whole hand in a `#h/` URL, 470 characters for a nine-handed hand): `POST
+  /api/hand-links` with no sharer (`uploaded_by` NULL, so no guest retitles another's link or sees a question link
+  uncovered), fragment-safe characters only, a plain preview title or "Poker hand", 30 an IP every 10 minutes; an account
+  is not limited. `npm run test:hand-links` (ports 4790-4799).
 - **Solver**: NOT in this repo (carved out 2026-08-09). `./solver` here is a **gitignored
   junction** → `D:\projects\futuregame-solver\solver` (server.js requires into it at
   boot for the trainer features). On Render, `build.js` clones the private

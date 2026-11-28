@@ -8802,14 +8802,15 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
       // Fallback: the self-contained fragment link. SITE_URL (not
       // window.location.origin, which is capacitor://localhost in the app), and
       // NOT url-encoded — the format's commas/slashes are fragment-safe, so this
-      // is shorter and the decoder handles encoded or raw. Used if the mint fails
-      // (offline / not signed in).
+      // is shorter and the decoder handles encoded or raw. Used only if the mint fails
+      // (offline, the server down, a guest past 30 links in 10 minutes).
       const fallbackUrl = SITE_URL + '/#h/' + shorthand;
       const urlPromise = (async () => {
         try {
           const res = await fetch(`${API_URL}/hand-links`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+            /* A guest or a signed-out viewer gets a short link too (owner, 2026-11-28): no header at all without a token. */
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
             body: JSON.stringify({ shorthand, title }),
           });
           if (res.ok) { const d = await res.json(); if (d && d.id) return SITE_URL + '/h/' + d.id; }
