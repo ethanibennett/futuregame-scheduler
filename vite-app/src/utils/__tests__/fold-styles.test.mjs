@@ -56,7 +56,7 @@ for (const { id } of FOLD_STYLES.filter((s) => s.id !== 'each')) {
 }
 
 test('the landing styles come to rest where they were sent', () => {
-  const near = { spread: pts.muck, drop: pts.line, lob: pts.muck, flick: pts.pot, throw: pts.muck };
+  const near = { spread: pts.line, drop: pts.line, lob: pts.muck, flick: pts.pot, throw: pts.muck };
   for (const [id, to] of Object.entries(near)) {
     runs.length = 0;
     foldAway(reg, { style: id, set: 'B', rate: 0.5, layer, layerRect, cards: hand, ...pts, seed: 's' });
@@ -76,6 +76,18 @@ test('Flicked slides each card under the pot without turning it', () => {
     for (let t = 0; t <= spec.end; t += 16.7) assert.equal(val(spec, 'rotate', t), hand[i].angle, 'its own tilt throughout');
     const x = hand[i].cx + val(spec, 'x', spec.end * 0.7), y = hand[i].cy + val(spec, 'y', spec.end * 0.7);
     assert.ok(Math.abs(x - pts.pot.x) <= 0.25 * 40 + 0.5 && Math.abs(y - pts.pot.y) <= 0.15 * 56 + 0.5, `card ${i} rests on the pot (${x.toFixed(0)}, ${y.toFixed(0)})`);
+  });
+});
+
+test('Spread stays on its own side and turns nothing once the stack is made', () => {
+  runs.length = 0;
+  foldAway(reg, { style: 'spread', set: 'B', rate: 0.5, layer, layerRect, cards: hand, ...pts, seed: 'sp' });
+  const ends = runs.map((spec) => val(spec, 'rotate', spec.end));
+  runs.forEach((spec, i) => {
+    // From the stack (the gather has all but settled a third of the way in) to the end, one tilt, the same for every card.
+    for (let t = spec.end / 3; t <= spec.end; t += 16.7) assert.ok(Math.abs(val(spec, 'rotate', t) - ends[0]) < 0.25, `card ${i} turned at ${t.toFixed(0)}ms`);
+    const y = hand[i].cy + val(spec, 'y', spec.end * 0.7);
+    assert.ok(y > pts.middle.y, `card ${i} crossed the middle (y ${y.toFixed(0)})`);
   });
 });
 
