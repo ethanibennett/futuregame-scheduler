@@ -13365,7 +13365,7 @@ function HandReplayerReplayView({ hand: enteredHand, token, onEdit, onBack, card
                     {skip > 0 ? (
                       /* Under run 1's own cards: the row keeps the board's width, the shared cards' places left empty, and
                          the tag sits beside these cards, not beside the empty places. */
-                      <span className="replayer-run-cards" style={{ marginLeft: `calc((var(--card-w) + var(--space-2xs)) * ${skip})` }}>
+                      <span className="replayer-run-cards" style={{ marginLeft: `calc((var(--card-w) + var(--board-gap, var(--space-2xs))) * ${skip})` }}>
                         {own}{tag(bi + 1)}
                       </span>
                     ) : <>{own}{tag(bi + 1)}</>}

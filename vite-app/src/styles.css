@@ -5787,6 +5787,15 @@
          (Previously the height stepped down at the turn and river via
          :has(nth-child(4|5)), so the cards shrank mid-hand — that is gone.) */
       --card-h: clamp(18px, 10.9375cqmin, 140px);   /* 1.75 cells — fits five */
+      /* Its own width, from its own height (the artwork is 180:252). It took the table's, worked out from the seats'
+         card height, so a board card's box was 3.2g wide round a 2.73g face on the phone (the SVG keeps its own
+         proportions inside), 0.47g of empty box between every two faces, and a hair narrower than its face on the
+         desktop. Measured 2026-11-28. */
+      --card-w: calc(var(--card-h) * 0.7143);
+      /* The gap between its cards, and between its rows (owner, 2026-11-28: "the board cards can be spaced a little
+         tighter"): r/2, 0.36g on every screen. The faces showed 0.65g apart on the phone (r/4 and the empty box) and
+         0.18g on the desktop. */
+      --board-gap: calc(var(--subrow) * 0.5);
       /* top:47% matches .replayer-watermark so the board is vertically CENTRED
          on the futurega.me wordmark rather than sitting a step below it. */
       position:absolute; left:50%; top:47%; transform:translate(-50%,-50%);
@@ -5796,7 +5805,7 @@
     /* Several boards (double board; run it twice or three times): the rows stack at the board's own
        card size, one card gap apart, as a row's cards are (owner, 2026-10-21: "two rows of the normal
        sized cards using the same spacing"). Three rows take a size smaller to clear the seats. */
-    .replayer-board-area.is-multi { gap: var(--space-2xs); }
+    .replayer-board-area.is-multi { gap: var(--board-gap); }
     /* --card-w with it: worked out on the table, it kept the full-size width, so these rows' faces were stretched. */
     .replayer-board-area.is-multi-3 { --card-h: clamp(14px, 7.6cqmin, 100px); --card-w: calc(var(--card-h) * 0.7143); }
     /* Landscape has no room above the board for a second full row (the top seat and the pot fill it),
@@ -6770,7 +6779,7 @@
 
 
     /* Board card street spacing */
-    .replayer-board-spaced { display:flex; align-items:center; gap: var(--space-2xs); justify-content:center; flex-wrap:nowrap; }
+    .replayer-board-spaced { display:flex; align-items:center; gap: var(--board-gap, var(--space-2xs)); justify-content:center; flex-wrap:nowrap; }
     /* Width too: an image not yet loaded is 0 wide, so the row reflowed as the
        faces arrived and the flop's spread measured every slot at one spot. */
     .replayer-board-spaced img { height: var(--card-h); width: var(--card-w); }
